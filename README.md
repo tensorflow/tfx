@@ -9,7 +9,7 @@ libraries together.
 
 ## Examples
 
-*   [Chicago Taxi Example](todo:link)
+*   [Chicago Taxi Example](./examples/chicago_taxi)
 
 ## Available TFX libraries
 
