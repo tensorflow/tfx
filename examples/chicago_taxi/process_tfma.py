@@ -20,7 +20,6 @@ from __future__ import print_function
 import argparse
 import tempfile
 
-
 import apache_beam as beam
 import tensorflow as tf
 

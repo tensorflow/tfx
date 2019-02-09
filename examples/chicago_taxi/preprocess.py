@@ -19,7 +19,6 @@ from __future__ import print_function
 import argparse
 import os
 
-
 import apache_beam as beam
 import tensorflow as tf
 
