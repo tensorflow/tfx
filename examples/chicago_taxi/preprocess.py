@@ -132,21 +132,22 @@ def transform_data(input_handle,
         raw_data = (
             pipeline
             | 'ReadFromText' >> beam.io.ReadFromText(
-                input_handle, skip_header_lines=1)
-            | 'ParseCSV' >> beam.Map(csv_coder.decode))
+                input_handle, skip_header_lines=1))
+        decode_transform = beam.Map(csv_coder.decode)
       else:
         query = taxi.make_sql(input_handle, max_rows, for_eval=False)
         raw_data = (
             pipeline
             | 'ReadBigQuery' >> beam.io.Read(
-                beam.io.BigQuerySource(query=query, use_standard_sql=True))
-            | 'CleanData' >> beam.Map(
-                taxi.clean_raw_data_dict, raw_feature_spec=raw_feature_spec))
+                beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+        decode_transform = beam.Map(
+            taxi.clean_raw_data_dict, raw_feature_spec=raw_feature_spec)
 
       if transform_dir is None:
+        decoded_data = raw_data | 'DecodeForAnalyze' >> decode_transform
         transform_fn = (
-            (raw_data, raw_data_metadata)
-            | ('Analyze' >> tft_beam.AnalyzeDataset(preprocessing_fn)))
+            (decoded_data, raw_data_metadata) |
+            ('Analyze' >> tft_beam.AnalyzeDataset(preprocessing_fn)))
 
         _ = (
             transform_fn
@@ -156,11 +157,13 @@ def transform_data(input_handle,
         transform_fn = pipeline | tft_beam.ReadTransformFn(transform_dir)
 
       # Shuffling the data before materialization will improve Training
-      # effectiveness downstream.
+      # effectiveness downstream. Here we shuffle the raw_data (as opposed to
+      # decoded data) since it has a compact representation.
       shuffled_data = raw_data | 'RandomizeData' >> beam.transforms.Reshuffle()
 
+      decoded_data = shuffled_data | 'DecodeForTransform' >> decode_transform
       (transformed_data, transformed_metadata) = (
-          ((shuffled_data, raw_data_metadata), transform_fn)
+          ((decoded_data, raw_data_metadata), transform_fn)
           | 'Transform' >> tft_beam.TransformDataset())
 
       coder = example_proto_coder.ExampleProtoCoder(transformed_metadata.schema)
