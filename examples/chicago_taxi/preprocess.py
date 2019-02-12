@@ -51,7 +51,7 @@ def _fill_in_missing(x):
 
 
 # TODO(b/114126687): Make schema as a required argument and remove the
-# hard-coded feature spec in trainer/taxi.py
+# hard-coded feature spec in trainer/taxi.py.
 def transform_data(input_handle,
                    outfile_prefix,
                    working_dir,
