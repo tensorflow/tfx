@@ -25,10 +25,10 @@ import tempfile
 from grpc.beta import implementations
 
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2
 
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from trainer import taxi
 
 _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
