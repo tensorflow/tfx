@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 set -u
-set -x
 
 echo Starting distributed TFDV stats computation and schema generation...
 
