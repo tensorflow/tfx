@@ -15,5 +15,5 @@
 
 ## Serving
 
-* [Server API (C++)](../../serving/api_docs/cc/)
-* [Client API (REST)](../../serving/api_rest/)
+* [Client API (REST)](../serving/api_rest/)
+* [Server API (C++)](../serving/api_docs/cc/)
