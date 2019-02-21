@@ -41,6 +41,15 @@ upper_tabs:
       - heading: Model Analysis
       - include: /tfx/model_analysis/api_docs/python/_toc.yaml
       - heading: Serving
-      - include: /tfx/serving/api_docs/rest/_toc.yaml
+      - title: Client API (REST)
+        path: /tfx/serving/api_rest/
+      - title: Client API (gRPC)
+        path: https://github.com/tensorflow/serving/tree/master/tensorflow_serving/apis
+        status: external
+      - title: Server API (C++)
+        section:
+        - title: Overview
+          path: /tfx/serving/api_docs/cc/
+        - include: /tfx/serving/api_docs/cc/_doxygen.yaml
 
 - include: /_upper_tabs_right.yaml
