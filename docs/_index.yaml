@@ -46,7 +46,7 @@ landing_page:
         description: >
           A flexible, high-performance serving system for machine learning
           models, designed for production environments.
-        path: /serving
+        path: /tfx/serving
         icon:
           icon_name: chevron_right
           foreground: theme
