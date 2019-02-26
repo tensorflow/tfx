@@ -45,7 +45,7 @@ python tfdv_analyze_and_validate.py \
   --temp_location $TEMP_PATH \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
-  --save_main_session True \
+  --save_main_session \
   --runner DataflowRunner
 
 EVAL_JOB_ID=$JOB_ID-eval
@@ -62,7 +62,7 @@ python tfdv_analyze_and_validate.py \
   --temp_location $TEMP_PATH \
   --job_name $EVAL_JOB_ID \
   --setup_file ./setup.py \
-  --save_main_session True \
+  --save_main_session \
   --runner DataflowRunner
 
 
