@@ -48,5 +48,5 @@ python process_tfma.py \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
-  --save_main_session True \
+  --save_main_session \
   --runner DataflowRunner
