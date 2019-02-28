@@ -1,34 +1,28 @@
 upper_tabs:
-- include: /_upper_tabs_left.yaml
-- include: /api_docs/_upper_tabs_api.yaml
+- name: "Install"
+  lower_tabs:
+    guides:
+    - include: /install/_toc.yaml
 
-- name: Resources
-  path: /resources
+- name: "Learn"
+  path: /learn/
   is_default: true
   menu:
-  - include: /resources/_menu_toc.yaml
+  - include: /learn/_menu_toc.yaml
   lower_tabs:
     other:
-    - name: Data Validation
+    - name: "Tutorials"
       contents:
-      - title: Data Validation
-        path: /tfx/data_validation
-      - include: /tfx/data_validation/_toc.yaml
-    - name: Transform
+      - title: "Tutorials"
+        path: /tfx/tutorials/
+    - name: "Guide"
       contents:
-      - title: Transform
-        path: /tfx/transform
-      - include: /tfx/transform/_toc.yaml
-    - name: Model Analysis
-      contents:
-      - title: Model Analysis
-        path: /tfx/model_analysis
-      - include: /tfx/model_analysis/_toc.yaml
-    - name: Serving
-      contents:
-      - title: Serving
-        path: /tfx/serving
-      - include: /tfx/serving/_toc.yaml
+      - title: "Guide"
+        path: /tfx/guide/
+    # - name: "Examples"
+    #   contents:
+    #   - title: "Examples"
+    #     path: /tfx/examples/
     - name: API
       skip_translation: true
       contents:
@@ -52,4 +46,6 @@ upper_tabs:
           path: /tfx/serving/api_docs/cc/
         - include: /tfx/serving/api_docs/cc/_doxygen.yaml
 
+- include: /api_docs/_upper_tabs_api.yaml
+- include: /resources/_upper_tabs_resources.yaml
 - include: /_upper_tabs_right.yaml
