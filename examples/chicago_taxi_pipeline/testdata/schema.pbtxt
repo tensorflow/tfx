@@ -268,3 +268,4 @@ string_domain {
   value: "Pcard"
   value: "Unknown"
 }
+# generate_legacy_feature_spec: false
