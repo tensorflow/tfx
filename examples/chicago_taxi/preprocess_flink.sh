@@ -16,25 +16,26 @@ set -u
 
 echo Starting distributed TFT preprocessing...
 
-
+# Using absolute path to make data accessible to different process started by flink.
 DATA_DIR=$(pwd)/data
 OUTPUT_DIR=$DATA_DIR
 SCHEMA_PATH=$DATA_DIR/flink_tfdv_output/schema.pbtxt
 
-
 echo Preprocessing train data...
-
-EXTRA_ARGS="--input $DATA_DIR/train/data.csv \
+rm -R -f data/train/flink_chicago_taxi_output
+$(pwd)/execute_on_flink.sh "preprocess.py" \
+            "--input $DATA_DIR/train/data.csv \
             --schema_file $SCHEMA_PATH \
             --output_dir $OUTPUT_DIR/train/flink_chicago_taxi_output \
-            --outfile_prefix train_transformed " SCRIPT=preprocess.py $(pwd)/execute_on_flink.sh
+            --outfile_prefix train_transformed \
+            "
 
 echo Preprocessing eval data...
-
-EXTRA_ARGS="--input $DATA_DIR/eval/data.csv \
+rm -R -f data/eval/flink_chicago_taxi_output
+$(pwd)/execute_on_flink.sh "preprocess.py" \
+            "--input $DATA_DIR/eval/data.csv \
             --schema_file $SCHEMA_PATH \
             --output_dir $OUTPUT_DIR/eval/flink_chicago_taxi_output \
             --outfile_prefix eval_transformed \
-            --transform_dir $OUTPUT_DIR/train/flink_chicago_taxi_output " SCRIPT=preprocess.py $(pwd)/execute_on_flink.sh
-
-
+            --transform_dir $OUTPUT_DIR/train/flink_chicago_taxi_output \
+            "

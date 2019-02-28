@@ -16,6 +16,7 @@ set -u
 
 echo Starting distributed TFDV stats computation and schema generation...
 
+# Using absolute path to make data accessible to different process started by flink.
 DATA_DIR=$(pwd)/data
 OUTPUT_DIR=$DATA_DIR/flink_tfdv_output
 
@@ -29,21 +30,26 @@ SCHEMA_PATH=$TFDV_OUTPUT_PATH/schema.pbtxt
 echo Job output path: $JOB_OUTPUT_PATH
 echo TFDV output path: $TFDV_OUTPUT_PATH
 
-mkdir -p data/flink_tfdv_output
+rm -R -f $OUTPUT_DIR
+mkdir -p $OUTPUT_DIR
 
-EXTRA_ARGS="--infer_schema \
+$(pwd)/execute_on_flink.sh "tfdv_analyze_and_validate.py" \
+            "--infer_schema \
             --stats_path $TFDV_OUTPUT_PATH/train_stats.tfrecord \
             --schema_path $SCHEMA_PATH \
             --save_main_session True \
-            --input $DATA_DIR/train/data.csv " SCRIPT=tfdv_analyze_and_validate.py $(pwd)/execute_on_flink.sh
+            --input $DATA_DIR/train/data.csv \
+            "
 
-EXTRA_ARGS="--for_eval \
+$(pwd)/execute_on_flink.sh "tfdv_analyze_and_validate.py" \
+            "--for_eval \
             --validate_stats \
             --stats_path $TFDV_OUTPUT_PATH/eval_stats.tfrecord \
             --schema_path $SCHEMA_PATH \
             --anomalies_path $TFDV_OUTPUT_PATH/anomalies.pbtxt \
             --save_main_session True \
-            --input $DATA_DIR/eval/data.csv " SCRIPT=tfdv_analyze_and_validate.py $(pwd)/execute_on_flink.sh
+            --input $DATA_DIR/eval/data.csv \
+            "
 
 
 echo
