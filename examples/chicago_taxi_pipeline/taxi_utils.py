@@ -1,4 +1,4 @@
-# Copyright 2019 Google Inc. All Rights Reserved.
+# Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -314,7 +314,11 @@ def trainer_fn(hparams, schema):
     schema: Holds the schema of the training examples.
 
   Returns:
-    The estimator that will be used for training and eval models.
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
   """
   # Number of nodes in the first layer of the DNN
   first_dnn_layer_size = 100
@@ -372,5 +376,5 @@ def trainer_fn(hparams, schema):
       'estimator': estimator,
       'train_spec': train_spec,
       'eval_spec': eval_spec,
-      'receiver_fn': receiver_fn
+      'eval_input_receiver_fn': receiver_fn
   }

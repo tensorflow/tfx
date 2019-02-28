@@ -44,8 +44,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_steps=10001,
         eval_steps=5000,
         verbosity='INFO',
-        warm_start_from=os.path.join(testdata_path, '/serving_model_dir')
-    )
+        warm_start_from=os.path.join(testdata_path, '/serving_model_dir'))
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils.trainer_fn(hparams, schema)
 
@@ -53,7 +52,8 @@ class TaxiUtilsTest(tf.test.TestCase):
                           tf.estimator.DNNLinearCombinedClassifier)
     self.assertIsInstance(training_spec['train_spec'], tf.estimator.TrainSpec)
     self.assertIsInstance(training_spec['eval_spec'], tf.estimator.EvalSpec)
-    self.assertIsInstance(training_spec['receiver_fn'], types.FunctionType)
+    self.assertIsInstance(training_spec['eval_input_receiver_fn'],
+                          types.FunctionType)
 
 
 if __name__ == '__main__':
