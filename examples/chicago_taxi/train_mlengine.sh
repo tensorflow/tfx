@@ -47,8 +47,8 @@ MODEL_DIR=$TRAIN_OUTPUT_PATH/model_dir
 echo Working directory: $WORKING_DIR
 echo Model directory: $MODEL_DIR
 
-# Start clean
-gsutil rm $TRAIN_OUTPUT_PATH
+# Start clean, but don't fail if the path does not exist yet.
+gsutil rm $TRAIN_OUTPUT_PATH || true
 
 # Inputs
 TRAIN_FILE=$TFT_OUTPUT_PATH/train_transformed-*
