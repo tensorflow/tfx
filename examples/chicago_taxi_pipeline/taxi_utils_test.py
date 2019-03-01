@@ -1,4 +1,4 @@
-# Copyright 2018 Google LLC
+# Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for chicago_taxi."""
+"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_utils."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -33,14 +33,18 @@ from tfx.utils import io_utils
 
 class TaxiUtilsTest(tf.test.TestCase):
 
+  def setUp(self):
+    self._testdata_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        'components/testdata')
+
   def test_utils(self):
     key = 'fare'
     xfm_key = taxi_utils._transformed_name(key)
     self.assertEqual(xfm_key, 'fare_xf')
 
   def test_preprocessing_fn(self):
-    testdata_path = os.path.join(os.path.dirname(__file__), 'testdata')
-    schema_file = os.path.join(testdata_path, 'schema.pbtxt')
+    schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     feature_spec = taxi_utils._get_raw_feature_spec(schema)
     working_dir = self.get_temp_dir()
@@ -60,7 +64,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         examples = (
             p
             | 'ReadTrainData' >> beam.io.ReadFromTFRecord(
-                os.path.join(testdata_path, 'example_gen_output/train/*'),
+                os.path.join(self._testdata_path, 'csv_example_gen/train/*'),
                 coder=beam.coders.BytesCoder(),
                 # TODO(b/114938612): Eventually remove this override.
                 validate=False)
@@ -90,8 +94,9 @@ class TaxiUtilsTest(tf.test.TestCase):
     # Verify the output matches golden output.
     # NOTE: we don't verify that transformed examples match golden output.
     expected_transformed_schema = io_utils.parse_pbtxt_file(
-        os.path.join(testdata_path,
-                     'transform_output/transformed_metadata/schema.pbtxt'),
+        os.path.join(
+            self._testdata_path,
+            'transform/transform_output/transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     transformed_schema = io_utils.parse_pbtxt_file(
         os.path.join(transform_output_path,
@@ -100,19 +105,23 @@ class TaxiUtilsTest(tf.test.TestCase):
     self.assertEqual(transformed_schema, expected_transformed_schema)
 
   def test_trainer_fn(self):
-    testdata_path = os.path.join(os.path.dirname(__file__), 'testdata')
-    schema_file = os.path.join(testdata_path, 'schema.pbtxt')
+    temp_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     hparams = tf.contrib.training.HParams(
-        train_files=os.path.join(testdata_path, 'transformed_examples/train/*'),
-        transform_output=os.path.join(testdata_path, 'transform_output/'),
-        output_dir=os.path.join(testdata_path, 'trainer_output/'),
-        serving_model_dir=os.path.join(testdata_path, 'serving_model_dir/'),
-        eval_files=os.path.join(testdata_path, 'transformed_examples/eval/*'),
+        train_files=os.path.join(temp_dir, 'train_files'),
+        transform_output=os.path.join(self._testdata_path,
+                                      'transform/transform_output/'),
+        output_dir=os.path.join(temp_dir, 'output_dir'),
+        serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
+        eval_files=os.path.join(temp_dir, 'eval_files'),
         schema_file=schema_file,
         train_steps=10001,
         eval_steps=5000,
         verbosity='INFO',
-        warm_start_from=os.path.join(testdata_path, '/serving_model_dir'))
+        warm_start_from=os.path.join(temp_dir, 'serving_model_dir'))
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils.trainer_fn(hparams, schema)
 
