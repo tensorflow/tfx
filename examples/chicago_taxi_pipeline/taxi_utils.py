@@ -16,8 +16,10 @@
 For a TFX pipeline to successfully run, a preprocessing_fn and a
 _build_estimator function needs to be provided.  This file contains both.
 
-This file is equivalent to /examples/chicago_taxi/trainer/task.py.
+This file is equivalent to examples/chicago_taxi/trainer/model.py and
+examples/chicago_taxi/preprocess.py.
 """
+
 from __future__ import division
 from __future__ import print_function
 
