@@ -9,7 +9,7 @@ libraries together.
 
 ## Examples
 
-*   [Chicago Taxi Example](./examples/chicago_taxi)
+*   [Chicago Taxi Example](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline)
 
 ## Available TFX libraries
 
