@@ -1,0 +1,12 @@
+book_path: /tfx/_book.yaml
+project_path: /tfx/_project.yaml
+description: <!--no description-->
+landing_page:
+  nav: left
+  custom_css_path: /site-assets/css/style.css
+  rows:
+  - heading: "TensorFlow in Production tutorials"
+    items:
+    - classname: devsite-landing-row-50
+      description: >
+        Cool stuff!
