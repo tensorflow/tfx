@@ -1,5 +1,5 @@
 toc:
-- title: "TFX tutorials"
+- title: "Get started with TFX"
   path: /tfx/tutorials/
 - title: "End-to-end pipeline example"
   path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi
