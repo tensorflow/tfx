@@ -7,6 +7,36 @@ landing_page:
   rows:
   - heading: "TensorFlow in Production tutorials"
     items:
-    - classname: devsite-landing-row-50
+    - classname: devsite-landing-row-100
       description: >
-        Cool stuff!
+        A great way to learn TensorFlow Extended (TFX) is to learn by doing.
+        These tutorials are focused examples of the key parts of TFX. They
+        include beginner tutorials to get started, and more advanced tutorials
+        for when you really want to dive into more advanced parts of TFX. Most
+        of these tutorials run in Google Colab so everything is already set up
+        and ready—there's no need to install anything to start learning.
+
+  - heading: "Videos and updates"
+    description: >
+      <p>
+        Subscribe to the TensorFlow
+        <a href="https://www.youtube.com/tensorflow" class="external">YouTube channel</a>
+        and <a href="https://blog.tensorflow.org" class="external">blog</a> for
+        the latest videos and updates.
+      </p>
+    items:
+    - heading: "TensorFlow Extended at the Dev Summit"
+      youtube_id: vdG7uKQ2eKk
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=vdG7uKQ2eKk
+    - heading: "TFX with Apache Beam"
+      youtube_id: XMw3-vm4x8w
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=XMw3-vm4x8w
+    - heading: "TFX and TF Hub"
+      youtube_id: wjTAQkzn7m8
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=wjTAQkzn7m8
