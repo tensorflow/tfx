@@ -7,7 +7,7 @@ toc:
 
 - heading: "TensorFlow Data Validation"
 - title: "Get started with TFDV"
-  path: https://github.com/tensorflow/data-validation/blob/master/examples/chicago_taxi/chicago_taxi_tfdv.ipynb
+  path: https://github.com/tensorflow/tfx/blob/master/docs/tutorials/data_validation/chicago_taxi.ipynb
   status: external
 
 - heading: "TensorFlow Transform"
