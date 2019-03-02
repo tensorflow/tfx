@@ -14,7 +14,11 @@
 # limitations under the License.
 set -u
 
-[[ "$VIRTUAL_ENV" == "" ]]; INVENV=$?
+if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
+  echo "Please run the setup script from a vritual environment and make sure environment variable\
+  VIRTUAL_ENV is set correctly."
+  exit 1
+fi
 
 WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
@@ -32,6 +36,7 @@ echo "Setup Beam from source code at $BEAM_REPO Branch $BEAM_BRANCH"
 echo "Using work directory $WORK_DIR"
 
 
+# TODO(BEAM-6763): Use artifacts instead of building from source once they are published.
 function install_beam(){
   mkdir -p $WORK_DIR
   if [ -z "$GIT_COMMAND" ]; then
@@ -49,12 +54,6 @@ function update_beam(){
     echo "Using $GIT_COMMAND to update Beam source code."
     cd $BEAM_DIR && $GIT_COMMAND checkout $BEAM_BRANCH && $GIT_COMMAND pull --rebase
   fi
-}
-
-function start_job_server() {
-  echo "Starting Beam jobserver"
-  cd $BEAM_DIR
-  ./gradlew beam-runners-flink_2.11-job-server:runShadow -PflinkMasterUrl=localhost:8081
 }
 
 function setup_flink() {
@@ -78,7 +77,13 @@ function install_beam_sdk() {
   cd $BEAM_DIR && ./gradlew :beam-sdks-python:sdist
   BEAM_SDK=`ls $BEAM_DIR/sdks/python/build/apache-beam-*.tar.gz`
   echo "Installing beam from $BEAM_SDK"
-  cd $BEAM_DIR && pip install --upgrade $BEAM_SDK
+  cd $BEAM_DIR && pip install --upgrade $BEAM_SDK[gcp]
+}
+
+function start_job_server() {
+  echo "Starting Beam jobserver"
+  cd $BEAM_DIR
+  ./gradlew beam-runners-flink_2.11-job-server:runShadow -PflinkMasterUrl=localhost:8081
 }
 
 function main(){

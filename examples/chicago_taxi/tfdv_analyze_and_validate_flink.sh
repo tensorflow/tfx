@@ -33,23 +33,21 @@ echo TFDV output path: $TFDV_OUTPUT_PATH
 rm -R -f $OUTPUT_DIR
 mkdir -p $OUTPUT_DIR
 
-$(pwd)/execute_on_flink.sh "tfdv_analyze_and_validate.py" \
-            "--infer_schema \
+$(pwd)/execute_on_flink.sh tfdv_analyze_and_validate.py \
+            --infer_schema \
             --stats_path $TFDV_OUTPUT_PATH/train_stats.tfrecord \
             --schema_path $SCHEMA_PATH \
             --save_main_session True \
-            --input $DATA_DIR/train/data.csv \
-            "
+            --input $DATA_DIR/train/data.csv
 
-$(pwd)/execute_on_flink.sh "tfdv_analyze_and_validate.py" \
-            "--for_eval \
+$(pwd)/execute_on_flink.sh tfdv_analyze_and_validate.py \
+            --for_eval \
             --validate_stats \
             --stats_path $TFDV_OUTPUT_PATH/eval_stats.tfrecord \
             --schema_path $SCHEMA_PATH \
             --anomalies_path $TFDV_OUTPUT_PATH/anomalies.pbtxt \
             --save_main_session True \
-            --input $DATA_DIR/eval/data.csv \
-            "
+            --input $DATA_DIR/eval/data.csv
 
 
 echo
