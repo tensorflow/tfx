@@ -11,11 +11,6 @@ components needed to define, launch, and monitor your machine learning system.
 ```
 pip install tensorflow
 pip install tfx
-
-# Airflow
-# set this to avoid the GPL version; no functionality difference either way
-export SLUGIFY_USES_TEXT_UNIDECODE=yes
-pip install apache-airflow
 ```
 
 Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
@@ -140,11 +135,18 @@ MLMD manages persistence using [SQL-Lite](https://www.sqlite.org/index.html),
 
 ### Supporting Technologies
 
+#### Required
+
 *   [**Apache Beam**](beam.md) is an open source, unified model for defining
 both batch and streaming data-parallel processing pipelines. TFX uses Beam to
 implement data-parallel pipelines.  The pipeline is then executed by one of
 Beam's supported distributed processing back-ends, which include Apache
 Flink, Google Cloud Dataflow, and others.
+
+#### Optional
+
+Orchestrators such as Apache Airflow and Kubeflow make configuring, operating,
+monitoring, and maintaining an ML pipeline easier.
 
 *   [**Apache Airflow**](orchestra.md) is a platform to programmatically author,
 schedule and monitor workflows.  TFX uses Airflow to author workflows as
@@ -154,6 +156,22 @@ line utilities make performing complex surgeries on DAGs a snap. The rich user
 interface makes it easy to visualize pipelines running in production, monitor
 progress, and troubleshoot issues when needed.  When workflows are defined as
 code, they become more maintainable, versionable, testable, and collaborative.
+
+* [**Kubeflow**](https://www.kubeflow.org/) is dedicated to making deployments
+of machine learning (ML) workflows on Kubernetes simple, portable and scalable.
+Kubeflow's goal is not to recreate other services, but to provide a
+straightforward way to deploy best-of-breed open-source systems for ML to
+diverse infrastructures.
+
+### Orchestration and Portability
+
+TFX is designed to be highly portable to multiple environments and
+orchestration frameworks, including Apache Airflow and Kubeflow.  It is also
+portable to different computing platforms, including bare-metal and the
+Google Cloud Platform (GCP).
+
+Note: The current revision of this user guide primarily discusses deployment
+on a bare-metal system using Apache Airflow for orchestration.
 
 ### Model vs. SavedModel
 
@@ -431,6 +449,19 @@ TensorFlow.js Web format.  See the TensorFlow JS documentation for more details
 on using TensorFlow JS.
 
 ## Creating a TFX Pipeline With Airflow
+
+### Install
+
+Airflow can be installed from PyPi:
+
+```python
+# Airflow
+# set this to avoid the GPL version; no functionality difference either way
+export SLUGIFY_USES_TEXT_UNIDECODE=yes
+pip install apache-airflow
+```
+
+### Creating a DAG
 
 You create a TFX pipeline by developing Python which defines a function that is
 decorated with the `tfx.runtimes.tfx_airflow.PipelineDecorator` and creates your
