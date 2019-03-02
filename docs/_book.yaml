@@ -13,12 +13,10 @@ upper_tabs:
     other:
     - name: "Tutorials"
       contents:
-      - title: "Tutorials"
-        path: /tfx/tutorials/
+      - include: /tfx/tutorials/_toc.yaml
     - name: "Guide"
       contents:
-      - title: "Guide"
-        path: /tfx/guide/
+      - include: /tfx/guide/_toc.yaml
     # - name: "Examples"
     #   contents:
     #   - title: "Examples"
