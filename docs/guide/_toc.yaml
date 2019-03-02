@@ -1,3 +1,37 @@
 toc:
 - title: "Guide"
   path: /tfx/guide/
+- heading: "Components"
+- title: "ExampleGen"
+  path: /tfx/guide/examplegen
+- title: "StatisticsGen"
+  path: /tfx/guide/statsgen
+- title: "SchemaGen"
+  path: /tfx/guide/schemagen
+- title: "ExampleValidator"
+  path: /tfx/guide/exampleval
+- title: "Transform"
+  path: /tfx/guide/transform
+- title: "Trainer"
+  path: /tfx/guide/trainer
+- title: "Evaluator"
+  path: /tfx/guide/evaluator
+- title: "ModelValidator"
+  path: /tfx/guide/modelval
+- title: "Pusher"
+  path: /tfx/guide/pusher
+- heading: "Orchestrators"
+- title: "Apache Airflow"
+  path: /tfx/guide/orchestra
+- heading: "Libraries"
+- title: "TensorFlow Data Validation"
+  path: /tfx/guide/tfdv
+- title: "TensorFlow Transform"
+  path: /tfx/guide/tft
+- title: "TensorFlow Modeling for TFX"
+  path: /tfx/guide/train
+- title: "TensorFlow Model Analysis"
+  path: /tfx/guide/tfma
+- title: "TensorFlow Serving"
+  path: /tfx/guide/tfs
+
