@@ -13,42 +13,42 @@
 # limitations under the License.
 """Chicago Taxi example using TFX DSL on Kubeflow."""
 import os
-from tfx.components import CsvExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
-from tfx.components import Pusher
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
-from tfx.runtimes.kubeflow.runner import KubeflowRunner as TfxRunner
-from tfx.runtimes.pipeline import PipelineDecorator
-from tfx.utils.dsl_utils import csv_inputs
+from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.model_validator.component import ModelValidator
+from tfx.components.pusher.component import Pusher
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
+from tfx.components.trainer.component import Trainer
+from tfx.components.transform.component import Transform
+from tfx.orchestration.kubeflow.runner import KubeflowRunner as TfxRunner
+from tfx.orchestration.pipeline import PipelineDecorator
+from tfx.utils.dsl_utils import csv_input
 
 # Cloud storage.
-input_bucket = 'gs://my-bucket'
-output_bucket = 'gs://my-bucket'
+_input_bucket = 'gs://my-bucket'
+_output_bucket = 'gs://my-bucket'
 # Data location
-base_dir = os.path.join(input_bucket, 'data/taxi_data')
+_base_dir = os.path.join(_input_bucket, 'data/taxi_data')
 # Helper functions for the taxi pipleine: estimator and preprocessing_fn
-taxi_pipeline_utils = os.path.join(input_bucket, 'taxi_utils.py')
+_taxi_pipeline_utils = os.path.join(_input_bucket, 'taxi_utils.py')
 # Path which can be listened by model server. Pusher will output model here.
-serving_model_dir = os.path.join(input_bucket, 'serving_model/taxi_bigquery')
+_serving_model_dir = os.path.join(_input_bucket, 'serving_model/taxi_bigquery')
 # Root for all pipeline output.
-pipeline_root = os.path.join(output_bucket, 'output')
+_pipeline_root = os.path.join(_output_bucket, 'output')
 
 
 @PipelineDecorator(
     pipeline_name='chicago_taxi_pipeline_kubeflow',
     log_root='/var/tmp/tfx/logs',
-    pipeline_root=pipeline_root)
+    pipeline_root=_pipeline_root)
 def create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
-  examples = csv_inputs(os.path.join(base_dir, 'no_split/span_1'))
+  examples = csv_input(os.path.join(_base_dir, 'no_split/span_1'))
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_data=examples)
+  example_gen = CsvExampleGen(input_base=examples)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
@@ -64,11 +64,11 @@ def create_pipeline():
   transform = Transform(
       input_data=example_gen.outputs.examples,
       schema=infer_schema.outputs.output,
-      module_file=taxi_pipeline_utils)
+      module_file=_taxi_pipeline_utils)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
-      module_file=taxi_pipeline_utils,
+      module_file=_taxi_pipeline_utils,
       transformed_examples=transform.outputs.transformed_examples,
       schema=infer_schema.outputs.output,
       transform_output=transform.outputs.transform_output,
@@ -90,7 +90,7 @@ def create_pipeline():
   pusher = Pusher(
       model_export=trainer.outputs.output,
       model_blessing=model_validator.outputs.blessing,
-      serving_model_dir=serving_model_dir)
+      serving_model_dir=_serving_model_dir)
 
   return [
       example_gen, statistics_gen, infer_schema, validate_stats, transform,

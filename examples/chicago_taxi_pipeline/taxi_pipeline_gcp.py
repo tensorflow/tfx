@@ -16,30 +16,30 @@ import datetime
 import json
 import os
 from tensorflow.python.lib.io import file_io
-from tfx.components import BigQueryExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
-from tfx.components import Pusher
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
-from tfx.runtimes.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
-from tfx.runtimes.pipeline import PipelineDecorator
+from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.model_validator.component import ModelValidator
+from tfx.components.pusher.component import Pusher
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
+from tfx.components.trainer.component import Trainer
+from tfx.components.transform.component import Transform
+from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
+from tfx.orchestration.pipeline import PipelineDecorator
 
 # Directory and data locations
-home_dir = os.path.join(os.environ['HOME'], 'airflow/')
+_home_dir = os.path.join(os.environ['HOME'], 'airflow/')
 # Cloud storage
-input_bucket = 'gs://my-bucket'
-output_bucket = 'gs://my-bucket'
+_input_bucket = 'gs://my-bucket'
+_output_bucket = 'gs://my-bucket'
 # Helper functions for the taxi pipleine: estimator and preprocessing_fn
-taxi_utils = os.path.join(input_bucket, 'taxi_utils.py')
+_taxi_utils = os.path.join(_input_bucket, 'taxi_utils.py')
 # Path which can be listened by model server. Pusher will output model here.
-serving_model_dir = os.path.join(output_bucket, 'serving_model/taxi_bigquery')
+_serving_model_dir = os.path.join(_output_bucket, 'serving_model/taxi_bigquery')
 
 # Airflow-specific configs; these will be passed directly to airflow
-airflow_config = {
+_airflow_config = {
     'schedule_interval': None,
     'start_date': datetime.datetime(2019, 1, 1),
 }
@@ -49,7 +49,7 @@ airflow_config = {
 # Set GOOGLE_APPLICATION_CREDENTIALS in the console that you run
 # "airflow webserver" and "airflow scheduler", For more information,
 # please see https://cloud.google.com/docs/authentication/getting-started.
-def get_project_id():
+def _get_project_id():
   if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
     return '''Environment variable GOOGLE_APPLICATION_CREDENTIALS is missing.
     See https://cloud.google.com/docs/authentication/getting-started for more
@@ -60,14 +60,14 @@ def get_project_id():
     return contents['project_id']
 
 
-cmle_training_args = {
+_cmle_training_args = {
     'pythonModule': None,  # Will be populated by TFX
     'args': None,  # Will be populated by TFX
     'region': 'us-central1',
-    'jobDir': os.path.join(output_bucket, 'tmp'),
+    'jobDir': os.path.join(_output_bucket, 'tmp'),
     'runtimeVersion': '1.11',
     'pythonVersion': '2.7',
-    'project': get_project_id()
+    'project': _get_project_id()
 }
 
 
@@ -75,14 +75,14 @@ cmle_training_args = {
 @PipelineDecorator(
     pipeline_name='chicago_taxi_gcp',
     log_root='/var/tmp/tfx/logs',
-    metadata_db_root=os.path.join(home_dir, 'data/tfx/metadata'),
-    pipeline_root=os.path.join(output_bucket, 'tfx-pipelines'),
+    metadata_db_root=os.path.join(_home_dir, 'data/tfx/metadata'),
+    pipeline_root=os.path.join(_output_bucket, 'tfx-pipelines'),
     additional_pipeline_args={
         'beam_pipeline_args': [
             '--runner=DataflowRunner', '--experiment=shuffle_mode=auto',
-            '--project=' + get_project_id(),
-            '--temp_location=' + os.path.join(output_bucket, 'tmp'),
-            '--staging_location=' + os.path.join(output_bucket, 'tmp')
+            '--project=' + _get_project_id(),
+            '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+            '--staging_location=' + os.path.join(_output_bucket, 'tmp')
         ],
     })
 def create_pipeline():
@@ -128,17 +128,17 @@ def create_pipeline():
   transform = Transform(
       input_data=example_gen.outputs.examples,
       schema=infer_schema.outputs.output,
-      module_file=taxi_utils)
+      module_file=_taxi_utils)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
-      module_file=taxi_utils,
+      module_file=_taxi_utils,
       transformed_examples=transform.outputs.transformed_examples,
       schema=infer_schema.outputs.output,
       transform_output=transform.outputs.transform_output,
       train_steps=10000,
       eval_steps=5000,
-      custom_config={'cmle_training_args': cmle_training_args},
+      custom_config={'cmle_training_args': _cmle_training_args},
       warm_starting=True)
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
@@ -155,7 +155,7 @@ def create_pipeline():
   pusher = Pusher(  # pylint: disable=unused-variable
       model_export=trainer.outputs.output,
       model_blessing=model_validator.outputs.blessing,
-      serving_model_dir=serving_model_dir)
+      serving_model_dir=_serving_model_dir)
 
   return [
       example_gen, statistics_gen, infer_schema, validate_stats, transform,
@@ -163,4 +163,4 @@ def create_pipeline():
   ]
 
 
-pipeline = TfxRunner(airflow_config).run(create_pipeline())
+pipeline = TfxRunner(_airflow_config).run(create_pipeline())
