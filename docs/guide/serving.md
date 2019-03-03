@@ -11,6 +11,6 @@ models and data.
 
 Detailed developer documentation on TensorFlow Serving is available:
 
-* [Architecture Overview](https://www.tensorflow.org/serving/overview)
-* [Server API](https://www.tensorflow.org/serving/api_docs/cc/)
-* [REST Client API](https://www.tensorflow.org/serving/api_rest)
+* [Architecture Overview](../../serving/architecture)
+* [Server API](../../serving/api_docs/cc/)
+* [REST Client API](../../serving/api_rest)
