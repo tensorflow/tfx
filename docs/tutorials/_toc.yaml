@@ -7,19 +7,22 @@ toc:
 
 - heading: "Data Validation"
 - title: "Get started with TFDV"
-  path: https://github.com/tensorflow/tfx/blob/master/docs/tutorials/data_validation/chicago_taxi.ipynb
-  status: external
+  path: /tfx/tutorials/data_validation/chicago_taxi
 
 - heading: "Transform"
-- title: "Preprocess data with TFT (beginner)"
-  path: /tfx/tutorials/transform/TFT_simple_example
-- title: "Preprocess data with TFT (advanced)"
-  path: /tfx/tutorials/transform/TFT_census_example
+- title: "Preprocess data (beginner)"
+  path: /tfx/tutorials/transform/simple
+- title: "Preprocess data (advanced)"
+  path: /tfx/tutorials/transform/census
 
 - heading: "Model Analysis"
-- title: "Foo"
-  path: /tfx/tutorials/model_analysis/
+- title: "Chicago Taxi"
+  path: https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/chicago_taxi_tfma.ipynb
+  status: external
+- title: "Chicago Taxi local playground"
+  path: https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
+  status: external
 
 - heading: "Serving"
 - title: "Train and serve a model with REST"
-  path: /tfx/tutorials/serving/Serving_REST_simple
+  path: /tfx/tutorials/serving/rest_simple
