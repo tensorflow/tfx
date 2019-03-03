@@ -1,7 +1,9 @@
 toc:
 - title: "Guide"
   path: /tfx/guide/
+
 - heading: "Components"
+  style: divider
 - title: "ExampleGen"
   path: /tfx/guide/examplegen
 - title: "StatisticsGen"
@@ -20,17 +22,45 @@ toc:
   path: /tfx/guide/modelval
 - title: "Pusher"
   path: /tfx/guide/pusher
+
 - heading: "Orchestrators"
+  style: divider
 - title: "Apache Airflow"
   path: /tfx/guide/orchestra
+
 - heading: "Libraries"
-- title: "TensorFlow Data Validation"
-  path: /tfx/guide/tfdv
-- title: "TensorFlow Transform"
-  path: /tfx/guide/tft
-- title: "TensorFlow Modeling for TFX"
-  path: /tfx/guide/train
-- title: "TensorFlow Model Analysis"
-  path: /tfx/guide/tfma
-- title: "TensorFlow Serving"
-  path: /tfx/guide/tfs
+  style: divider
+
+- title: "Data Validation"
+  style: accordion
+  section:
+  - title: "Check and analyze data"
+    path: /tfx/guide/tfdv
+  - include: /tfx/data_validation/_toc.yaml
+
+- title: "Transform"
+  style: accordion
+  section:
+  - title: "Preprocess and transform data"
+    path: /tfx/guide/tft
+  - include: /tfx/transform/_toc.yaml
+
+- title: "Modeling for TFX"
+  style: accordion
+  section:
+  - title: "Design modeling code"
+    path: /tfx/guide/train
+
+- title: "Model Analysis"
+  style: accordion
+  section:
+  - title: "Improving Model Quality"
+    path: /tfx/guide/tfma
+  - include: /tfx/model_analysis/_toc.yaml
+
+- title: "Serving"
+  style: accordion
+  section:
+  - title: "Serving models"
+    path: /tfx/guide/serving
+  - include: /tfx/serving/_toc.yaml
