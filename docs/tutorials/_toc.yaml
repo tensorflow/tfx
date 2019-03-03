@@ -5,21 +5,21 @@ toc:
   path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi
   status: external
 
-- heading: "TensorFlow Data Validation"
+- heading: "Data Validation"
 - title: "Get started with TFDV"
   path: https://github.com/tensorflow/tfx/blob/master/docs/tutorials/data_validation/chicago_taxi.ipynb
   status: external
 
-- heading: "TensorFlow Transform"
+- heading: "Transform"
 - title: "Preprocess data with TFT (beginner)"
   path: /tfx/tutorials/transform/TFT_simple_example
 - title: "Preprocess data with TFT (advanced)"
   path: /tfx/tutorials/transform/TFT_census_example
 
-- heading: "TensorFlow Model Analysis"
+- heading: "Model Analysis"
 - title: "Foo"
   path: /tfx/tutorials/model_analysis/
 
-- heading: "TensorFlow Serving"
+- heading: "Serving"
 - title: "Train and serve a model with REST"
   path: /tfx/tutorials/serving/Serving_REST_simple
