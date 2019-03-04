@@ -414,9 +414,9 @@ inference requests.  TFX supports deployment to three classes of deployment
 targets.  Trained models which have been exported as SavedModels can be deployed
 to any or all of these deployment targets.
 
-### Inference: TensorFlow Serving
+![Component Flow](diag_all.svg)
 
-![Inference](inference.svg)
+### Inference: TensorFlow Serving
 
 [TensorFlow Serving (TFS)](serving.md) is a flexible, high-performance serving
 system for machine learning models, designed for production environments. It
