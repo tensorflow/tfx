@@ -22,7 +22,6 @@ import json
 import os
 import re
 
-import apache_beam
 from future import utils
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
@@ -61,8 +60,9 @@ def to_snake_case(name: Text):
 class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
   """Abstract base class for all Kubeflow Pipelines-based TFX components."""
 
-  def __init__(self, executor_cls, input_dict: Dict[Text, List[types.TfxType]],
-               outputs: Text, exec_properties: Dict[Text, Any]):
+  def __init__(self, executor_cls, name: Text,
+               input_dict: Dict[Text, List[types.TfxType]], outputs: Text,
+               exec_properties: Dict[Text, Any]):
     raw_args = exec_properties.get('beam_pipeline_args', [])
 
     # Beam expects str types for it's pipeline args. Ensure unicode type is
@@ -78,13 +78,11 @@ class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
     setup_file = os.path.join(module_dir, 'setup.py')
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
-    self._executor = executor_cls(
-        pipeline=apache_beam.Pipeline(argv=beam_pipeline_args),
-        additional_pipeline_args=None)
+    self._executor = executor_cls(beam_pipeline_args)
     self._input_dict = input_dict
     self._output_dict = types.parse_tfx_type_dict(outputs)
     self._exec_properties = exec_properties
-    self._component_name = to_snake_case(self._executor.__class__.__name__)
+    self._component_name = to_snake_case(name)
 
     self._logger = logging_utils.get_logger(
         exec_properties['log_root'], self._component_name + '_driver.logs')
@@ -127,6 +125,7 @@ class CsvExampleGenRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(CsvExampleGenRunner, self).__init__(
         executor_cls=CSVExampleGen,
+        name='CSVExampleGen',
         input_dict={
             'input-base': parse_tfx_type(args.input_base),
         },
@@ -149,6 +148,7 @@ class BigQueryExampleGenRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(BigQueryExampleGenRunner, self).__init__(
         executor_cls=BigQueryExampleGen,
+        name='BigQueryExampleGen',
         input_dict={},
         outputs=args.outputs,
         exec_properties=json.loads(args.exec_properties),
@@ -162,6 +162,7 @@ class StatisticsGenRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(StatisticsGenRunner, self).__init__(
         executor_cls=StatisticsGen,
+        name='StatisticsGen',
         input_dict={
             'input_data': parse_tfx_type(args.input_data),
         },
@@ -177,6 +178,7 @@ class SchemaGenRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(SchemaGenRunner, self).__init__(
         executor_cls=SchemaGen,
+        name='SchemaGen',
         input_dict={
             'stats': parse_tfx_type(args.stats),
         },
@@ -192,6 +194,7 @@ class ExampleValidatorRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(ExampleValidatorRunner, self).__init__(
         executor_cls=ExampleValidator,
+        name='ExampleValidator',
         input_dict={
             'stats': parse_tfx_type(args.stats),
             'schema': parse_tfx_type(args.schema),
@@ -208,6 +211,7 @@ class TransformRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(TransformRunner, self).__init__(
         executor_cls=Transform,
+        name='Transform',
         input_dict={
             'input_data': parse_tfx_type(args.input_data),
             'schema': parse_tfx_type(args.schema),
@@ -224,6 +228,7 @@ class TrainerRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(TrainerRunner, self).__init__(
         executor_cls=Trainer,
+        name='Trainer',
         input_dict={
             'transformed_examples': parse_tfx_type(args.transformed_examples),
             'transform_output': parse_tfx_type(args.transform_output),
@@ -245,6 +250,7 @@ class EvaluatorRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(EvaluatorRunner, self).__init__(
         executor_cls=Evaluator,
+        name='Evaluator',
         input_dict={
             'examples': parse_tfx_type(args.examples),
             'model_exports': parse_tfx_type(args.model_exports),
@@ -261,6 +267,7 @@ class ModelValidatorRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(ModelValidatorRunner, self).__init__(
         executor_cls=ModelValidator,
+        name='ModelValidator',
         input_dict={
             'examples': parse_tfx_type(args.examples),
             'model': parse_tfx_type(args.model),
@@ -281,6 +288,7 @@ class PusherRunner(BaseRunner):
   def __init__(self, args: argparse.Namespace):
     super(PusherRunner, self).__init__(
         executor_cls=Pusher,
+        name='Pusher',
         input_dict={
             'model_export': parse_tfx_type(args.model_export),
             'model_blessing': parse_tfx_type(args.model_blessing),
