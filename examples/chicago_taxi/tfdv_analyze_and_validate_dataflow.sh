@@ -42,7 +42,9 @@ python tfdv_analyze_and_validate.py \
   --stats_path $TFDV_OUTPUT_PATH/train_stats.tfrecord \
   --schema_path $SCHEMA_PATH \
   --project $MYPROJECT \
+  --region us-central1 \
   --temp_location $TEMP_PATH \
+  --experiments shuffle_mode=auto \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
   --save_main_session \
@@ -59,7 +61,9 @@ python tfdv_analyze_and_validate.py \
   --stats_path $TFDV_OUTPUT_PATH/eval_stats.tfrecord \
   --anomalies_path $TFDV_OUTPUT_PATH/anomalies.pbtxt \
   --project $MYPROJECT \
+  --region us-central1 \
   --temp_location $TEMP_PATH \
+  --experiments shuffle_mode=auto \
   --job_name $EVAL_JOB_ID \
   --setup_file ./setup.py \
   --save_main_session \
