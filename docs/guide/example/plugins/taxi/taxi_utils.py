@@ -1,5 +1,4 @@
-```python
-# Copyright 2018 Google LLC
+# Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include taxi pipeline functions and necesasry utils."""
+"""Python source file include taxi pipeline functions and necesasry utils.
+
+For a TFX pipeline to successfully run, a preprocessing_fn and a
+_build_estimator function needs to be provided.  This file contains both.
+
+This file is equivalent to examples/chicago_taxi/trainer/model.py and
+examples/chicago_taxi/preprocess.py.
+"""
+
 from __future__ import division
 from __future__ import print_function
 
@@ -25,7 +32,123 @@ from tensorflow_transform.beam.tft_beam_io import transform_fn_io
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
-from tfx.executors.trainer import TrainingSpec
+
+
+# Categorical features are assumed to each have a maximum value in the dataset.
+_MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
+
+_CATEGORICAL_FEATURE_KEYS = [
+    'trip_start_hour', 'trip_start_day', 'trip_start_month',
+    'pickup_census_tract', 'dropoff_census_tract', 'pickup_community_area',
+    'dropoff_community_area'
+]
+
+_DENSE_FLOAT_FEATURE_KEYS = ['trip_miles', 'fare', 'trip_seconds']
+
+# Number of buckets used by tf.transform for encoding each feature.
+_FEATURE_BUCKET_COUNT = 10
+
+_BUCKET_FEATURE_KEYS = [
+    'pickup_latitude', 'pickup_longitude', 'dropoff_latitude',
+    'dropoff_longitude'
+]
+
+# Number of vocabulary terms used for encoding VOCAB_FEATURES by tf.transform
+_VOCAB_SIZE = 1000
+
+# Count of out-of-vocab buckets in which unrecognized VOCAB_FEATURES are hashed.
+_OOV_SIZE = 10
+
+_VOCAB_FEATURE_KEYS = [
+    'payment_type',
+    'company',
+]
+
+# Keys
+_LABEL_KEY = 'tips'
+_FARE_KEY = 'fare'
+
+
+def _transformed_name(key):
+  return key + '_xf'
+
+
+def _transformed_names(keys):
+  return [_transformed_name(key) for key in keys]
+
+
+# Tf.Transform considers these features as "raw"
+def _get_raw_feature_spec(schema):
+  return schema_utils.schema_as_feature_spec(schema).feature_spec
+
+
+def _gzip_reader_fn():
+  """Small utility returning a record reader that can read gzip'ed files."""
+  return tf.TFRecordReader(
+      options=tf.python_io.TFRecordOptions(
+          compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+
+
+def _fill_in_missing(x):
+  """Replace missing values in a SparseTensor.
+
+  Fills in missing values of `x` with '' or 0, and converts to a dense tensor.
+
+  Args:
+    x: A `SparseTensor` of rank 2.  Its dense shape should have size at most 1
+      in the second dimension.
+
+  Returns:
+    A rank 1 tensor where missing values of `x` have been filled in.
+  """
+  default_value = '' if x.dtype == tf.string else 0
+  return tf.squeeze(
+      tf.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
+                         default_value),
+      axis=1)
+
+
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
+
+  Args:
+    inputs: map from feature keys to raw not-yet-transformed features.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+  for key in _DENSE_FLOAT_FEATURE_KEYS:
+    # Preserve this feature as a dense float, setting nan's to the mean.
+    outputs[_transformed_name(key)] = transform.scale_to_z_score(
+        _fill_in_missing(inputs[key]))
+
+  for key in _VOCAB_FEATURE_KEYS:
+    # Build a vocabulary for this feature.
+    outputs[_transformed_name(key)] = transform.compute_and_apply_vocabulary(
+        _fill_in_missing(inputs[key]),
+        top_k=_VOCAB_SIZE,
+        num_oov_buckets=_OOV_SIZE)
+
+  for key in _BUCKET_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = transform.bucketize(
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+
+  for key in _CATEGORICAL_FEATURE_KEYS:
+    outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
+
+  # Was this passenger a big tipper?
+  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
+  tips = _fill_in_missing(inputs[_LABEL_KEY])
+  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
+      tf.is_nan(taxi_fare),
+      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
+      # Test if the tip was > 20% of the fare.
+      tf.cast(
+          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+
+  return outputs
+
 
 def _build_estimator(transform_output,
                      config,
@@ -42,7 +165,11 @@ def _build_estimator(transform_output,
     warm_start_from: Optional directory to warm start from.
 
   Returns:
-    Resulting DNNLinearCombinedClassifier.
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
   """
   metadata_dir = os.path.join(transform_output,
                               transform_fn_io.TRANSFORMED_METADATA_DIR)
@@ -67,10 +194,11 @@ def _build_estimator(transform_output,
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
-          key, num_buckets=num_buckets, default_value=0)
-      for key, num_buckets in zip(
-          _transformed_names(_CATEGORICAL_FEATURE_KEYS),
-          _MAX_CATEGORICAL_FEATURE_VALUES)
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(
       config=config,
@@ -171,10 +299,7 @@ def _input_fn(filenames, transform_output, batch_size=200):
   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
 
   transformed_features = tf.contrib.learn.io.read_batch_features(
-      filenames,
-      batch_size,
-      transformed_feature_spec,
-      reader=_gzip_reader_fn)
+      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
   # We pop the label because we do not want to use it as a feature while we're
   # training.
@@ -191,7 +316,11 @@ def trainer_fn(hparams, schema):
     schema: Holds the schema of the training examples.
 
   Returns:
-    The estimator that will be used for training and eval
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
   """
   # Number of nodes in the first layer of the DNN
   first_dnn_layer_size = 100
@@ -241,9 +370,13 @@ def trainer_fn(hparams, schema):
       config=run_config,
       warm_start_from=hparams.warm_start_from)
 
-  # Input receiver for TFMA
+  # Create an input receiver for TFMA processing
   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
       hparams.transform_output, schema)
 
-  return TrainingSpec(estimator, train_spec, eval_spec, receiver_fn)
-```
+  return {
+      'estimator': estimator,
+      'train_spec': train_spec,
+      'eval_spec': eval_spec,
+      'eval_input_receiver_fn': receiver_fn
+  }
