@@ -15,9 +15,9 @@ to production.
 component.
 * Emits: Validation results to [TensorFlow Metadata](tfmd.md)
 
-## Developing an ModelValidator Component
+## Using the ModelValidator Component
 
-An ModelValidator pipeline component is typically very easy to develop and
+An ModelValidator pipeline component is typically very easy to deploy and
 requires little customization, since all of the work is done by the
 ModelValidator TFX component. Typical code looks like this:
 

@@ -12,9 +12,9 @@ StatsGen uses Beam and approximate algorithms to scale to large datasets.
 StatsGen makes extensive use of [TensorFlow Data Validation](tfdv.md) for
 generating statistics from your dataset.
 
-## Developing a StatsGen Component
+## Using the StatsGen Component
 
-A StatsGen pipeline component is typically very easy to develop and requires little
+A StatsGen pipeline component is typically very easy to deploy and requires little
 customization, since all of the work is done by the StatsGen TFX component.
 Typical code looks like this:
 

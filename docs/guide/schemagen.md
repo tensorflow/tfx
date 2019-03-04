@@ -60,9 +60,9 @@ needed.
 
 SchemaGen makes extensive use of [TensorFlow Data Validation](tfdv.md) for inferring a schema.
 
-## Developing a SchemaGen Component
+## Using the SchemaGen Component
 
-A SchemaGen pipeline component is typically very easy to develop and requires little
+A SchemaGen pipeline component is typically very easy to deploy and requires little
 customization, since all of the work is done by the SchemaGen TFX component.
 Typical code looks like this:
 
