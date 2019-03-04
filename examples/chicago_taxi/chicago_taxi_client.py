@@ -15,18 +15,15 @@
 
 from __future__ import print_function
 
-
 import argparse
 import base64
+import json
 import os
 import subprocess
 import tempfile
 
-from grpc.beta import implementations
-
+import requests
 import tensorflow as tf
-from tensorflow_serving.apis import predict_pb2
-from tensorflow_serving.apis import prediction_service_pb2
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from trainer import taxi
@@ -37,20 +34,22 @@ _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
 def _do_local_inference(host, port, serialized_examples):
   """Performs inference on a model hosted by the host:port server."""
 
-  channel = implementations.insecure_channel(host, int(port))
-  stub = prediction_service_pb2.beta_create_PredictionService_stub(channel)
+  json_examples = []
+  for serialized_example in serialized_examples:
+    # The encoding follows the guidelines in:
+    # https://www.tensorflow.org/tfx/serving/api_rest
+    example_bytes = base64.b64encode(serialized_example).decode('utf-8')
+    predict_request = '{ "b64": "%s" }' % example_bytes
+    json_examples.append(predict_request)
 
-  request = predict_pb2.PredictRequest()
-  request.model_spec.name = 'chicago_taxi'
-  request.model_spec.signature_name = 'predict'
+  json_request = '{ "instances": [' + ','.join(map(str, json_examples)) + ']}'
 
-  tfproto = tf.contrib.util.make_tensor_proto([serialized_examples],
-                                              shape=[len(serialized_examples)],
-                                              dtype=tf.string)
-  # The name of the input tensor is 'examples' based on
-  # https://github.com/tensorflow/tensorflow/blob/r1.11/tensorflow/python/estimator/export/export.py#L306
-  request.inputs['examples'].CopyFrom(tfproto)
-  print(stub.Predict(request, _LOCAL_INFERENCE_TIMEOUT_SECONDS))
+  server_url = 'http://' + host + ':' + port + '/v1/models/chicago_taxi:predict'
+  response = requests.post(
+      server_url, data=json_request, timeout=_LOCAL_INFERENCE_TIMEOUT_SECONDS)
+  response.raise_for_status()
+  prediction = response.json()
+  print(json.dumps(prediction, indent=4))
 
 
 def _do_mlengine_inference(model, version, serialized_examples):

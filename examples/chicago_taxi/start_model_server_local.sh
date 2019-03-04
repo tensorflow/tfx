@@ -44,7 +44,7 @@ CONTAINER_MODEL_DIR=/models/chicago_taxi
 HOST_PORT=9000
 
 # Where our container is listening
-CONTAINER_PORT=8500
+CONTAINER_PORT=8501
 
 echo Model directory: $LOCAL_MODEL_DIR
 
