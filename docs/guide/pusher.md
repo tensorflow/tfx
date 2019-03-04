@@ -10,9 +10,9 @@ model is "good enough" to be pushed to production.
 https://www.tensorflow.org/api_docs/python/tf/saved_model) format
 * Emits: The same SavedModel, along with versioning metadata
 
-## Developing a Pusher Component
+## Using the Pusher Component
 
-A Pusher pipeline component is typically very easy to develop and requires little
+A Pusher pipeline component is typically very easy to deploy and requires little
 customization, since all of the work is done by the Pusher TFX component.
 Typical code looks like this:
 

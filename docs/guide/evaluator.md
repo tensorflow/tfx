@@ -12,9 +12,9 @@ your data.
 Evaluator leverages the [TensorFlow Model Analysis](tfma.md) library to perform
 the analysis, which in turn use [Apache Beam](beam.md) for scalable processing.
 
-## Developing a Evaluator Component
+## Using the Evaluator Component
 
-A Evaluator pipeline component is typically very easy to develop and requires little
+A Evaluator pipeline component is typically very easy to deploy and requires little
 customization, since all of the work is done by the Evaluator TFX component.
 Typical code looks like this:
 

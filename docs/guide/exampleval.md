@@ -25,9 +25,9 @@ ExampleValidator makes extensive use of [TensorFlow Data Validation](tfdv.md)
 for validating your input data, which in turn use [Beam](beam.md) for scalable
 processing.
 
-## Developing an ExampleValidator Component
+## Using the ExampleValidator Component
 
-An ExampleValidator pipeline component is typically very easy to develop and
+An ExampleValidator pipeline component is typically very easy to deploy and
 requires little customization, since all of the work is done by the
 ExampleValidator TFX component. Typical code looks like this:
 
