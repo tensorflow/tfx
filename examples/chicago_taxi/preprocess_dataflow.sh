@@ -50,7 +50,9 @@ python preprocess.py \
   --input bigquery-public-data.chicago_taxi_trips.taxi_trips \
   --schema_file $SCHEMA_PATH \
   --project $MYPROJECT \
+  --region us-central1 \
   --temp_location $TEMP_PATH \
+  --experiments shuffle_mode=auto \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
   --runner DataflowRunner

@@ -45,7 +45,9 @@ python process_tfma.py \
   --eval_model_dir $LAST_EVAL_MODEL_DIR \
   --eval_result_dir $EVAL_RESULT_DIR \
   --project $MYPROJECT \
+  --region us-central1 \
   --temp_location $MYBUCKET/$JOB_ID/tmp/ \
+  --experiments shuffle_mode=auto \
   --job_name $JOB_ID \
   --setup_file ./setup.py \
   --save_main_session \

@@ -15,25 +15,24 @@
 import setuptools
 
 # LINT.IfChange
-TF_VERSION = '1.11.0'
-# LINT.ThenChange(chicago_taxi_client.py,
-#                 train_mlengine.sh,
-#                 start_model_server_mlengine.sh)
+TF_VERSION = '1.12.0'
+# LINT.ThenChange(train_mlengine.sh, start_model_server_mlengine.sh)
 
 if __name__ == '__main__':
   setuptools.setup(
       name='tfx_chicago_taxi',
-      version='0.11.0',
+      version='0.12.0',
       packages=setuptools.find_packages(),
       install_requires=[
-          'apache-beam[gcp]==2.8.0',
+          'apache-beam[gcp]==2.10.0',
           'jupyter==1.0',
           'numpy==1.14.5',
-          'protobuf==3.6.0',
+          'protobuf==3.6.1',
           'tensorflow==' + TF_VERSION,
-          'tensorflow-data-validation==0.11.0',
-          'tensorflow-metadata==0.9.0',
-          'tensorflow-model-analysis==0.11.0',
-          'tensorflow-serving-api==1.11.0',
-          'tensorflow-transform==0.11.0',
-      ])
+          'tensorflow-data-validation==0.12.0',
+          'tensorflow-metadata==0.12.1',
+          'tensorflow-model-analysis==0.12.1',
+          'tensorflow-serving-api==1.12.0',
+          'tensorflow-transform==0.12.0',
+      ],
+      python_requires='>=2.7,<3')
