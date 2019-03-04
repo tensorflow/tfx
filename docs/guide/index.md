@@ -168,7 +168,7 @@ diverse infrastructures.
 TFX is designed to be highly portable to multiple environments and
 orchestration frameworks, including Apache Airflow and Kubeflow.  It is also
 portable to different computing platforms, including bare-metal and the
-Google Cloud Platform (GCP).
+[Google Cloud Platform (GCP)](gcp.md).
 
 Note: The current revision of this user guide primarily discusses deployment
 on a bare-metal system using Apache Airflow for orchestration.
