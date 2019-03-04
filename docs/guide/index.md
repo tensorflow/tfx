@@ -26,9 +26,9 @@ separately.
 
 ### TFX Pipelines
 
-A TFX pipeline defines a task sequence and data flow through your TFX
-deployment.  Individual tasks are created and sequenced by creating and linking
-pipeline components.  Pipeline components are built upon TFX libraries.
+A TFX pipeline defines a data flow through several components, with the goal of
+implementing a specific ML task (e.g., building and deploying a regression model
+for specific data). Pipeline components are built upon TFX libraries.
 The result of a pipeline is a TFX deployment target and/or service of an
 inference request.
 
@@ -42,11 +42,13 @@ online, native mobile, and JavaScript targets.
 
 A TFX pipeline typically includes the following components:
 
-* [**ExampleGen**](examplegen.md) is the initial input component of a pipeline.
-
-* [**SchemaGen**](schemagen.md) examines the dataset and creates a data schema.
+* [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
+that ingests and optionally splits the input dataset.
 
 * [**StatsGen**](statsgen.md) calculates statistics for the dataset.
+
+* [**SchemaGen**](schemagen.md) examines the statistics and creates a data
+schema.
 
 * [**ExampleValidator**](exampleval.md) looks for anomalies and missing values
 in the dataset.
@@ -80,13 +82,13 @@ pipeline.
 
 TFX libraries include:
 
-*   [**TensorFlow Data Validation (TFDV)**](tfdv.md) is a library for exploring
+*   [**TensorFlow Data Validation (TFDV)**](tfdv.md) is a library for analyzing
 and validating machine learning data. It is designed to be highly scalable and
 to work well with TensorFlow and TFX.  TFDV includes:
 
     * Scalable calculation of summary statistics of training and test data.
     * Integration with a viewer for data distributions and statistics, as well
-    as faceted comparison of pairs of features (Facets)
+    as faceted comparison of pairs of datasets (Facets)
     * Automated data-schema generation to describe expectations about data like
     required values, ranges, and vocabularies
     * A schema viewer to help you inspect the schema.
@@ -211,13 +213,13 @@ schema is an instance of
 https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0).
 Schemas are a type of [protocol buffer](
 https://developers.google.com/protocol-buffers/), more generally known as a
-"protobuf".  It can specify data types for feature values,
+"protobuf".  The schema can specify data types for feature values,
 whether a feature has to be present in all examples, allowed value ranges, and
 other properties.  One of the benefits of using TensorFlow Data Validation
 (TFDV) is that it will automatically generate a schema by inferring types,
 categories, and ranges from the training data.
 
-Here's an excerpt from a schema proto:
+Here's an excerpt from a schema protobuf:
 
 ```proto
 ...
@@ -283,19 +285,20 @@ TFX pipelines typically begin with an [ExampleGen](examplegen.md) component, whi
 accepts input data and formats it as tf.Examples.  Often this is done after the
 data has been split into training and evaluation datasets so that there are
 actually two copies of ExampleGen components, one each for training and evaluation.
-This is typically followed by a [SchemaGen](schemagen.md) component and a
-[StatsGen](statsgen.md) component, which will examine your data and infer a data
+This is typically followed by a
+[StatsGen](statsgen.md) component and a [SchemaGen](schemagen.md) component,
+which will examine your data and infer a data
 schema and statistics.  The schema and statistics will be consumed by an
 [ExampleValidator](exampleval.md) component, which will look for anomalies, missing
 values, and incorrect data types in your data.  All of these components leverage the
 capabilities of the [TensorFlow Data Validation](tfdv.md) library.
 
-[TensorFlow Data Validation (TFDV)](tfdv.md) is a very valuable tool when doing
+[TensorFlow Data Validation (TFDV)](tfdv.md) is a valuable tool when doing
 initial exploration, visualization, and cleaning of your dataset.  TFDV examines
 your data and infers the data types, categories, and ranges, and then
 automatically helps identify anomalies and missing values.  It also provides
 visualization tools that can help you examine and understand your dataset.
-After your pipeline completes you can read metadata from [TFMD](tfmd.md) and use
+After your pipeline completes you can read metadata from [MLMD](mlmd.md) and use
 the visualization tools of TFDV in a Jupyter notebook to analyze your data.
 
 Following your initial model training and deployment, TFDV can be used to
@@ -387,7 +390,7 @@ dominant group may mask unacceptable performance for important, yet smaller
 groups.  For example, your model may perform well for average employees but fail
 miserably for executive staff, and it might be important to you to know that.
 
-### Data Visualization
+### Model Analysis and Visualization
 
 After you have completed your first run of your data through training your
 model and running the [Evaluator](evaluator.md) component (which leverages
@@ -397,14 +400,14 @@ you make adjustments, until your results are optimal for your model and
 application.
 
 You will first query
-[**TensorFlow Metadata (TFMD)**](tfmd.md) to locate the results of these
+[**ML Metadata (MLMD)**](mlmd.md) to locate the results of these
 executions
-of these components, and then use the visualization support API in TFDV to create
+of these components, and then use the visualization support API in TFMA to create
 the visualizations in your notebook.  This includes [tfma.load_eval_results()](
 https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/load_eval_results)
 and [tfma.view.render_slicing_metrics()](`tfma/view/render_slicing_metrics`)
 Using this visualization you can better understand the characteristics of your
-dataset, and if necessary modify as required.
+model, and if necessary modify as required.
 
 ## Deployment Targets
 
