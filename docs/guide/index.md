@@ -581,21 +581,11 @@ cp data.csv ~/airflow/data/taxi     # or $AIRFLOW_HOME/data/taxi
 
 By convention your pipeline config should contain only the code necessary to
 configure your pipeline, as in
-[this example](example/dags/tfx_example_pipeline.md).
+[this example](examples/chicago_taxi_pipeline/taxi_pipeline_simple.py).
 
-By convention the code in your `plugins` folder may be organized as follows:
-
-* [`features.py`](example/plugins/taxi/features.md) should contain code which
-is used by various components to understand features, as in
-[this example](example/plugins/taxi/features.md).
-
-* [`model.py`](example/plugins/taxi/model.md) should contain your model and
-[Trainer](train.md) code, along with the appropriate input functions, as in
-[this example](example/plugins/taxi/model.md).
-
-* [`transforms.py`](example/plugins/taxi/transforms.md) should contain your
-data engineering code which will be used by your [Transform](transform.md)
-component, as in [this example](example/plugins/taxi/transforms.md).
+The supporting code, such as your TensorFlow model and your Transform
+`preprocessing_fn`, should all go in a single file, as in
+[this example](examples/chicago_taxi_pipeline/taxi_utils.py).
 
 ## Deploying and Operating a TFX Pipeline
 
