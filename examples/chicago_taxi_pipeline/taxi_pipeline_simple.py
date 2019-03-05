@@ -35,14 +35,21 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import csv_input
 
-# Directory and data locations
-_home_dir = os.path.join(os.environ['HOME'], 'airflow/')
-_pipeline_root = os.path.join(_home_dir, 'data/tfx/pipelines/')
-_data_root = os.path.join(_home_dir, 'data/taxi_data/')
 
+# This example assumes that the taxi data is stored in ~/taxi/data and the
+# taxi utility function is in ~/taxi.  Feel free to customize this as needed.
+_taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+_data_root = os.path.join(_taxi_root, 'data/simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_taxi_module_file = os.path.join(_home_dir, 'plugins/taxi/taxi_utils.py')
+_taxi_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+
+# Directory and data locations.  This example assumes all of the chicago taxi
+# example code and metadata library is relative to $HOME, but you can store
+# these files anywhere on your local filesystem.
+_tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+_pipeline_root = os.path.join(_tfx_root, 'pipelines')
+_metadata_db_root = os.path.join(_tfx_root, 'metadata')
 
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
@@ -59,11 +66,11 @@ _airflow_config = {
 @PipelineDecorator(
     pipeline_name='chicago_taxi_simple',
     enable_cache=True,
-    metadata_db_root=os.path.join(_home_dir, 'data/tfx/metadata'),
+    metadata_db_root=_metadata_db_root,
     pipeline_root=_pipeline_root)
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
-  examples = csv_input(os.path.join(_data_root, 'simple'))
+  examples = csv_input(_data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=examples)
