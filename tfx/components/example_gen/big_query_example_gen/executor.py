@@ -30,7 +30,7 @@ from tfx.utils import types
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _partition_fn(record: bytes, num_partitions: int) -> int:  # pylint: disable=unused-argument
+def _partition_fn(record, num_partitions):  # pylint: disable=unused-argument
   # TODO(jyzhao): support custom split.
   # Splits data, train(partition=0) : eval(partition=1) = 2 : 1
   return 1 if int(hashlib.sha256(record).hexdigest(), 16) % 3 == 0 else 0
@@ -40,7 +40,7 @@ def _partition_fn(record: bytes, num_partitions: int) -> int:  # pylint: disable
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(Dict[Text, Any])
 def _ReadFromBigQuery(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, query: Text) -> beam.pvalue.PCollection:
+    pipeline, query):
   return (pipeline
           | 'QueryTable' >> beam.io.Read(
               beam.io.BigQuerySource(query=query, use_standard_sql=True)))
@@ -49,7 +49,7 @@ def _ReadFromBigQuery(  # pylint: disable=invalid-name
 class _BigQueryConverter(object):
   """Help class for bigquery result row to tf example conversion."""
 
-  def __init__(self, query: Text):
+  def __init__(self, query):
     client = bigquery.Client()
     # Dummy query to get the type information for each field.
     query_job = client.query('SELECT * FROM ({}) LIMIT 0'.format(query))
@@ -58,7 +58,7 @@ class _BigQueryConverter(object):
     for field in results.schema:
       self._type_map[field.name] = field.field_type
 
-  def row_to_serialized_example(self, instance: Dict[Text, Any]) -> bytes:
+  def row_to_serialized_example(self, instance):
     """Convert bigquery result row to tf example."""
     feature = {}
     for key, value in instance.items():
@@ -89,9 +89,8 @@ class Executor(base_executor.BaseExecutor):
   """Generic TFX BigQueryExampleGen executor."""
 
   def __init__(self,
-               beam_pipeline_args: Optional[List[Text]] = None,
-               big_query_ptransform_for_testing: Callable[[Text], beam.pvalue
-                                                          .PCollection] = None):
+               beam_pipeline_args = None,
+               big_query_ptransform_for_testing = None):
     """Construct a BigQueryExampleGen Executor.
 
     Args:
@@ -102,9 +101,9 @@ class Executor(base_executor.BaseExecutor):
     self._big_query_ptransform = (
         big_query_ptransform_for_testing or _ReadFromBigQuery)
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Take BigQuery sql and generates train and eval tf examples.
 
     Args:

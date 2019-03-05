@@ -35,24 +35,24 @@ class Metadata(object):
   """Helper class to handle metadata I/O."""
 
   def __init__(self,
-               connection_config: metadata_store_pb2.ConnectionConfig) -> None:
+               connection_config):
     self._connection_config = connection_config
     self._store = None
 
-  def __enter__(self) -> 'Metadata':
+  def __enter__(self):
     # TODO(ruoyu): Establishing a connection pool instead of newing
     # a connection every time. Until then, check self._store before usage
     # in every method.
     self._store = metadata_store.MetadataStore(self._connection_config)
     return self
 
-  def __exit__(self, exc_type: Optional[Type[Exception]],
-               exc_value: Optional[Exception],
-               exc_tb: Optional[types.TracebackType]) -> None:
+  def __exit__(self, exc_type,
+               exc_value,
+               exc_tb):
     self._store = None
 
   @property
-  def store(self) -> metadata_store.MetadataStore:
+  def store(self):
     """Returns underlying MetadataStore.
 
     Raises:
@@ -63,16 +63,16 @@ class Metadata(object):
     return self._store
 
   def _prepare_artifact_type(self,
-                             artifact_type: metadata_store_pb2.ArtifactType
-                            ) -> metadata_store_pb2.ArtifactType:
+                             artifact_type
+                            ):
     if artifact_type.id:
       return artifact_type
     type_id = self._store.put_artifact_type(artifact_type)
     artifact_type.id = type_id
     return artifact_type
 
-  def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                            new_state: Text) -> None:
+  def update_artifact_state(self, artifact,
+                            new_state):
     if not artifact.id:
       raise ValueError('Artifact id missing for {}'.format(artifact))
     artifact.properties['state'].string_value = new_state
@@ -80,8 +80,8 @@ class Metadata(object):
 
   # This should be atomic. However this depends on ML metadata transaction
   # support.
-  def check_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                           expected_states: Set[Text]) -> None:
+  def check_artifact_state(self, artifact,
+                           expected_states):
     if not artifact.id:
       raise ValueError('Artifact id missing for {}'.format(artifact))
     [artifact_in_metadata] = self._store.get_artifacts_by_id([artifact.id])
@@ -93,8 +93,8 @@ class Metadata(object):
               artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(self, raw_artifact_list: List[TfxType]
-                       ) -> List[metadata_store_pb2.Artifact]:
+  def publish_artifacts(self, raw_artifact_list
+                       ):
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
     for raw_artifact in raw_artifact_list:
@@ -107,14 +107,14 @@ class Metadata(object):
       artifact_list.append(raw_artifact.artifact)
     return artifact_list
 
-  def get_all_artifacts(self) -> List[metadata_store_pb2.Artifact]:
+  def get_all_artifacts(self):
     try:
       return self._store.get_artifacts()
     except tf.errors.NotFoundError:
       return []
 
-  def _prepare_event(self, execution_id: int, artifact_id: int, key: Text,
-                     index: int, is_input: bool) -> metadata_store_pb2.Event:
+  def _prepare_event(self, execution_id, artifact_id, key,
+                     index, is_input):
     """Commits a single event to the repository."""
     event = metadata_store_pb2.Event()
     event.artifact_id = artifact_id
@@ -129,16 +129,16 @@ class Metadata(object):
       event.type = metadata_store_pb2.Event.DECLARED_OUTPUT
     return event
 
-  def _prepare_input_event(self, execution_id: int, artifact_id: int, key: Text,
-                           index: int) -> metadata_store_pb2.Event:
+  def _prepare_input_event(self, execution_id, artifact_id, key,
+                           index):
     return self._prepare_event(execution_id, artifact_id, key, index, True)
 
-  def _prepare_output_event(self, execution_id: int, artifact_id: int,
-                            key: Text, index: int) -> metadata_store_pb2.Event:
+  def _prepare_output_event(self, execution_id, artifact_id,
+                            key, index):
     return self._prepare_event(execution_id, artifact_id, key, index, False)
 
-  def _prepare_execution_type(self, type_name: Text,
-                              exec_properties: Dict[Text, Any]) -> int:
+  def _prepare_execution_type(self, type_name,
+                              exec_properties):
     """Get a execution type. Use existing type if available."""
     try:
       execution_type = self._store.get_execution_type(type_name)
@@ -157,8 +157,8 @@ class Metadata(object):
       return self._store.put_execution_type(execution_type)
 
   def _prepare_execution(
-      self, type_name: Text, state: Text,
-      exec_properties: Dict[Text, Any]) -> metadata_store_pb2.Execution:
+      self, type_name, state,
+      exec_properties):
     """Create a new execution with given type and state."""
     execution = metadata_store_pb2.Execution()
     execution.type_id = self._prepare_execution_type(type_name, exec_properties)
@@ -179,19 +179,19 @@ class Metadata(object):
               hashlib.md5(tf.compat.as_bytes(contents)).hexdigest()))
     return execution
 
-  def _update_execution_state(self, execution: metadata_store_pb2.Execution,
-                              new_state: Text) -> None:
+  def _update_execution_state(self, execution,
+                              new_state):
     execution.properties['state'].string_value = tf.compat.as_text(new_state)
     self._store.put_executions([execution])
 
-  def prepare_execution(self, type_name: Text, exec_properties: Any) -> int:
+  def prepare_execution(self, type_name, exec_properties):
     execution = self._prepare_execution(type_name, 'new', exec_properties)
     [execution_id] = self._store.put_executions([execution])
     return execution_id
 
   def publish_execution(
-      self, execution_id: int, input_dict: Dict[Text, List[TfxType]],
-      output_dict: Dict[Text, List[TfxType]]) -> Dict[Text, List[TfxType]]:
+      self, execution_id, input_dict,
+      output_dict):
     """Publish an execution with input and output artifacts info.
 
     Args:
@@ -238,8 +238,8 @@ class Metadata(object):
         'Published execution with final outputs {}'.format(output_dict))
     return output_dict
 
-  def previous_run(self, type_name: Text, input_dict: Dict[Text, List[TfxType]],
-                   exec_properties: Any) -> Optional[int]:
+  def previous_run(self, type_name, input_dict,
+                   exec_properties):
     """Gets previous run of same type that takes current set of input.
 
     Args:
@@ -298,8 +298,8 @@ class Metadata(object):
   # TODO(ruoyu): This should be merged with previous_run, otherwise we cannot
   # handle the case if output dict structure is changed.
   def fetch_previous_result_artifacts(
-      self, output_dict: Dict[Text, List[TfxType]],
-      execution_id: int) -> Dict[Text, List[TfxType]]:
+      self, output_dict,
+      execution_id):
     """Fetches output with artifact ids produced by a previous run.
 
     Args:

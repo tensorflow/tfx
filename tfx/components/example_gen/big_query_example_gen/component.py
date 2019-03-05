@@ -43,9 +43,9 @@ class BigQueryExampleGen(base_component.BaseComponent):
   """
 
   def __init__(self,
-               query: Text,
-               name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               query,
+               name = None,
+               outputs = None):
     component_name = 'BigQueryExampleGen'
     input_dict = {}
     exec_properties = {'query': query}
@@ -58,7 +58,7 @@ class BigQueryExampleGen(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for BigQueryExampleGen.
 
     Returns:
@@ -75,6 +75,6 @@ class BigQueryExampleGen(base_component.BaseComponent):
                 static_artifact_collection=output_artifact_collection)
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     pass

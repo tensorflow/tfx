@@ -95,8 +95,8 @@ class _Dataset(object):
   pipeline.
   """
 
-  def __init__(self, file_pattern: Text, file_format: Text, data_format: Text,
-               metadata: dataset_metadata.DatasetMetadata):
+  def __init__(self, file_pattern, file_format, data_format,
+               metadata):
     """Initialize a Dataset.
 
     Args:
@@ -165,9 +165,9 @@ class _Dataset(object):
 class Executor(base_executor.BaseExecutor):
   """Transform executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """TensorFlow Transform executor entrypoint.
 
     This implements BaseExecutor.Do() and is invoked by orchestration systems.
@@ -255,8 +255,8 @@ class Executor(base_executor.BaseExecutor):
   @beam.typehints.with_output_types(
       beam.typehints.KV[bytes, beam.typehints.Union[bytes, example_pb2.Example]]
   )
-  def _ReadExamples(pipeline: beam.Pipeline,
-                    dataset: _Dataset) -> beam.pvalue.PCollection:
+  def _ReadExamples(pipeline,
+                    dataset):
     """Reads examples from the given `dataset`.
 
     Args:
@@ -287,9 +287,9 @@ class Executor(base_executor.BaseExecutor):
   @beam.typehints.with_input_types(
       beam.typehints.KV[bytes, example_pb2.Example])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _WriteExamples(pcollection: beam.pvalue.PCollection,
-                     unused_file_format: Any,
-                     transformed_example_path: Text) -> beam.pvalue.PDone:
+  def _WriteExamples(pcollection,
+                     unused_file_format,
+                     transformed_example_path):
     """Writes transformed examples compressed in gzip format.
 
     Args:
@@ -307,7 +307,7 @@ class Executor(base_executor.BaseExecutor):
                 file_name_suffix='.gz',
                 coder=beam.coders.ProtoCoder(example_pb2.Example)))
 
-  def _GetSchema(self, schema_path: Text) -> schema_pb2.Schema:
+  def _GetSchema(self, schema_path):
     """Gets a tf.metadata schema.
 
     Args:
@@ -319,8 +319,8 @@ class Executor(base_executor.BaseExecutor):
     schema_reader = io_utils.SchemaReader()
     return schema_reader.read(schema_path)
 
-  def _ReadSchema(self, data_format: Text,
-                  schema_path: Text) -> dataset_schema.Schema:
+  def _ReadSchema(self, data_format,
+                  schema_path):
     """Returns a TFT schema for the input data.
 
     Args:
@@ -345,12 +345,12 @@ class Executor(base_executor.BaseExecutor):
       beam.typehints.Dict[str, beam.typehints.Any])  # TFDV format.
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _GenerateStats(
-      pcollection: beam.pvalue.PCollection,
-      stats_output_path: Text,
-      schema: schema_pb2.Schema,
+      pcollection,
+      stats_output_path,
+      schema,
       use_tfdv=True,
       use_deep_copy_optimization=False  # pylint: disable=unused-argument
-  ) -> beam.pvalue.PDone:
+  ):
     """Generates statistics.
 
     Args:
@@ -376,8 +376,8 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.typehints.Dict[str, beam.typehints.Any])
   @beam.typehints.with_output_types(statistics_pb2.DatasetFeatureStatisticsList)
-  def _ComputeTFDVStats(pcollection: beam.pvalue.PCollection,
-                        schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
+  def _ComputeTFDVStats(pcollection,
+                        schema):
     """Cmoputes Statistics with TFDV.
 
     Args:
@@ -423,8 +423,8 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(statistics_pb2.DatasetFeatureStatisticsList)
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _WriteStats(pcollection_stats: beam.pvalue.PCollection,
-                  stats_output_path: Text) -> beam.pvalue.PDone:
+  def _WriteStats(pcollection_stats,
+                  stats_output_path):
     """Writs Statistics outputs.
 
     Args:
@@ -452,8 +452,8 @@ class Executor(base_executor.BaseExecutor):
   )
   @beam.typehints.with_output_types(
       beam.typehints.Dict[str, beam.typehints.Any])
-  def _DecodeInputs(pcol: beam.pvalue.PCollection,
-                    decode_fn: Any) -> beam.pvalue.PCollection:
+  def _DecodeInputs(pcol,
+                    decode_fn):
     """Decodes the given PCollection while handling KV data.
 
     Args:
@@ -465,8 +465,8 @@ class Executor(base_executor.BaseExecutor):
     """
 
     def decode_example(
-        kv_pair: Mapping[bytes, Union[bytes, example_pb2.Example]]
-    ) -> Mapping[Text, Any]:  # pylint: disable=invalid-name
+        kv_pair
+    ):  # pylint: disable=invalid-name
       """Decodes a single example."""
       (key, elem) = kv_pair
       result = decode_fn(elem)
@@ -489,8 +489,8 @@ class Executor(base_executor.BaseExecutor):
     def __init__(self):
       self._coder = None
 
-    def process(self, element: Dict[Text, Any],
-                metadata: Any) -> Generator[Tuple[Any, Any], None, None]:
+    def process(self, element,
+                metadata):
       if self._coder is None:
         self._coder = tft.coders.ExampleProtoCoder(
             metadata.schema, serialized=False)
@@ -502,8 +502,8 @@ class Executor(base_executor.BaseExecutor):
       del element_copy[_TRANSFORM_INTERNAL_FEATURE_FOR_KEY]
       yield (key, self._coder.encode(element_copy))
 
-  def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
-                          unused_outputs: Mapping[Text, Any]) -> Any:
+  def _GetPreprocessingFn(self, inputs,
+                          unused_outputs):
     """Returns a user defined preprocessing_fn.
 
     Args:
@@ -519,8 +519,8 @@ class Executor(base_executor.BaseExecutor):
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
-  def Transform(self, inputs: Mapping[Text, Any], outputs: Mapping[Text, Any],
-                status_file: Text) -> None:
+  def Transform(self, inputs, outputs,
+                status_file):
     """Executes on request.
 
     This is the implementation part of transform executor. This is intended for
@@ -611,12 +611,12 @@ class Executor(base_executor.BaseExecutor):
                       compute_statistics, materialize_output_paths)
     # TODO(b/122478841): Writes status to status file.
 
-  def _RunBeamImpl(self, inputs: Mapping[Text, Any],
-                   outputs: Mapping[Text, Any], preprocessing_fn: Any,
-                   input_dataset_metadata: dataset_metadata.DatasetMetadata,
-                   raw_examples_data_format: Text, transform_output_path: Text,
-                   compute_statistics: bool,
-                   materialize_output_paths: Sequence[Text]) -> _Status:
+  def _RunBeamImpl(self, inputs,
+                   outputs, preprocessing_fn,
+                   input_dataset_metadata,
+                   raw_examples_data_format, transform_output_path,
+                   compute_statistics,
+                   materialize_output_paths):
     """Perform data preprocessing with FlumeC++ runner.
 
     Args:
@@ -837,9 +837,9 @@ class Executor(base_executor.BaseExecutor):
 
     return _Status.OK()
 
-  def _RunInPlaceImpl(self, preprocessing_fn: Any,
-                      metadata: dataset_metadata.DatasetMetadata,
-                      transform_output_path: Text) -> _Status:
+  def _RunInPlaceImpl(self, preprocessing_fn,
+                      metadata,
+                      transform_output_path):
     """Runs a transformation iteration in-place without looking at the data.
 
     Args:
@@ -892,7 +892,7 @@ class Executor(base_executor.BaseExecutor):
     return _Status.OK()
 
   def _CreatePipeline(self,
-                      unused_outputs: Mapping[Text, Any]) -> beam.Pipeline:
+                      unused_outputs):
     """Creates beam pipeline.
 
     Args:
@@ -908,10 +908,10 @@ class Executor(base_executor.BaseExecutor):
 
   # TODO(b/114444977): Remove the unused_can_process_jointly argument and
   # perhaps the need for this entire function.
-  def _MakeDatasetList(self, file_patterns: Sequence[Text], file_format: Text,
-                       data_format: Text,
-                       metadata: dataset_metadata.DatasetMetadata,
-                       unused_can_process_jointly: bool) -> List[_Dataset]:
+  def _MakeDatasetList(self, file_patterns, file_format,
+                       data_format,
+                       metadata,
+                       unused_can_process_jointly):
     """Makes a list of Dataset from the given `file_patterns`.
 
     Args:
@@ -933,7 +933,7 @@ class Executor(base_executor.BaseExecutor):
     ]
 
   @staticmethod
-  def _ShouldDecodeAsRawExample(data_format: Text) -> bool:
+  def _ShouldDecodeAsRawExample(data_format):
     """Returns true if data format should be decoded as raw example.
 
     Args:
@@ -946,7 +946,7 @@ class Executor(base_executor.BaseExecutor):
             Executor._IsDataFormatProto(data_format))
 
   @staticmethod
-  def _IsDataFormatSequenceExample(data_format: Text) -> bool:
+  def _IsDataFormatSequenceExample(data_format):
     """Returns true if data format is sequence example.
 
     Args:
@@ -958,7 +958,7 @@ class Executor(base_executor.BaseExecutor):
     return data_format == labels.FORMAT_TF_SEQUENCE_EXAMPLE
 
   @staticmethod
-  def _IsDataFormatProto(data_format: Text) -> bool:
+  def _IsDataFormatProto(data_format):
     """Returns true if data format is protocol buffer.
 
     Args:
@@ -969,7 +969,7 @@ class Executor(base_executor.BaseExecutor):
     """
     return data_format == labels.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(self, data_format: Text) -> Any:
+  def _GetDesiredBatchSize(self, data_format):
     """Returns batch size.
 
     Args:
@@ -986,8 +986,8 @@ class Executor(base_executor.BaseExecutor):
   def _DecodeAsRawExample(serialized_examples):
     return {RAW_EXAMPLE_KEY: serialized_examples}
 
-  def _GetDecodeFunction(self, data_format: Text,
-                         schema: dataset_schema.Schema) -> Any:
+  def _GetDecodeFunction(self, data_format,
+                         schema):
     """Returns the decode function for `data_format`.
 
     Args:

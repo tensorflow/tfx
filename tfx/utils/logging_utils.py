@@ -23,9 +23,9 @@ import tensorflow as tf
 from typing import Text
 
 
-def get_logger(log_dir: Text,
-               log_file_name: Text,
-               logging_level: int = logging.INFO) -> logging.Logger:
+def get_logger(log_dir,
+               log_file_name,
+               logging_level = logging.INFO):
   """Create and configure a TFX-specific logger.
 
   Args:

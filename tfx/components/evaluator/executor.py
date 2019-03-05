@@ -30,9 +30,9 @@ from tfx.utils import types
 class Executor(base_executor.BaseExecutor):
   """Generic TFX model evaluator executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Runs a batch job to evaluate the eval_model against the given input.
 
     Args:

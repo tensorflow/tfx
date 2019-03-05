@@ -30,10 +30,10 @@ from tfx.utils import channel
 class ComponentOutputs(object):
   """Helper class to wrap outputs from TFX components."""
 
-  def __init__(self, d: Dict[Text, channel.Channel]):
+  def __init__(self, d):
     self.__dict__ = d
 
-  def get_all(self) -> Dict[Text, channel.Channel]:
+  def get_all(self):
     return self.__dict__
 
 
@@ -54,13 +54,13 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   """
 
   def __init__(self,
-               component_name: Text,
-               driver: Any,
-               executor: Any,
-               input_dict: Dict[Text, channel.Channel],
-               exec_properties: Dict[Text, Any],
-               unique_name: Optional[Text] = '',
-               outputs: Optional[ComponentOutputs] = ComponentOutputs({})):
+               component_name,
+               driver,
+               executor,
+               input_dict,
+               exec_properties,
+               unique_name = '',
+               outputs = ComponentOutputs({})):
     self.component_name = component_name
     self.driver = driver
     self.executor = executor
@@ -94,7 +94,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     return self.__str__()
 
   @abc.abstractmethod
-  def _create_outputs(self) -> ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs placeholder for components.
 
     Returns:
@@ -103,8 +103,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:
