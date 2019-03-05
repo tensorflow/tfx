@@ -11,8 +11,8 @@ criteria relative to the baseline model (e.g. AUC is not lower), the model is "b
 (marked as good), indicating to the [Pusher](pusher.md) that it is ok to push the model
 to production.
 
-* Consumes: A schema from a SchemaGen component, and statistics from a StatsGen
-component.
+* Consumes: A schema from a SchemaGen component, and statistics from a
+StatisticsGen component.
 * Emits: Validation results to [TensorFlow Metadata](tfmd.md)
 
 ## Using the ModelValidator Component

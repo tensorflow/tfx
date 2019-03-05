@@ -11,7 +11,7 @@ Examples which will be read by other TFX components.
 
 ExampleGen provides data to components that make use of the
 [TensorFlow Data Validation](tfdv.md) library, such as [SchemaGen](schemagen.md),
-[StatsGen](statsgen.md), and [Example Validator](exampleval.md).  It also
+[StatisticsGen](statsgen.md), and [Example Validator](exampleval.md).  It also
 provides data to [Transform](transform.md), which makes use of the
 [TensorFlow Transform](tft.md) library, and ultimately to deployment targets
 during inference.

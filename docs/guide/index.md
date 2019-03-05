@@ -45,7 +45,7 @@ A TFX pipeline typically includes the following components:
 * [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
 that ingests and optionally splits the input dataset.
 
-* [**StatsGen**](statsgen.md) calculates statistics for the dataset.
+* [**StatisticsGen**](statsgen.md) calculates statistics for the dataset.
 
 * [**SchemaGen**](schemagen.md) examines the statistics and creates a data
 schema.
@@ -286,7 +286,7 @@ accepts input data and formats it as tf.Examples.  Often this is done after the
 data has been split into training and evaluation datasets so that there are
 actually two copies of ExampleGen components, one each for training and evaluation.
 This is typically followed by a
-[StatsGen](statsgen.md) component and a [SchemaGen](schemagen.md) component,
+[StatisticsGen](statsgen.md) component and a [SchemaGen](schemagen.md) component,
 which will examine your data and infer a data
 schema and statistics.  The schema and statistics will be consumed by an
 [ExampleValidator](exampleval.md) component, which will look for anomalies, missing
@@ -310,9 +310,12 @@ there are data problems or when models need to be retrained on new data.
 ### Data Visualization
 
 After you have completed your first run of your data through the section of your
-pipeline that uses TFDV (typically StatsGen, SchemaGen, and ExampleValidator) you
-can visualize the results in a Jupyter style notebook.  For additional runs you can
-compare these results as you make adjustments, until your data is optimal for your
+pipeline that uses TFDV (typically StatisticsGen, SchemaGen, and
+ExampleValidator) you
+can visualize the results in a Jupyter style notebook.  For additional runs
+you can
+compare these results as you make adjustments, until your data is optimal
+for your
 model and application.
 
 You will first query
