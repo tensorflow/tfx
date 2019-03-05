@@ -88,9 +88,9 @@ to work well with TensorFlow and TFX.  TFDV includes:
 
     * Scalable calculation of summary statistics of training and test data.
     * Integration with a viewer for data distributions and statistics, as well
-    as faceted comparison of pairs of datasets (Facets)
+    as faceted comparison of pairs of datasets (Facets).
     * Automated data-schema generation to describe expectations about data like
-    required values, ranges, and vocabularies
+    required values, ranges, and vocabularies.
     * A schema viewer to help you inspect the schema.
     * Anomaly detection to identify anomalies, such as missing features, out-of-
     range values, or wrong feature types, to name a few.
@@ -199,7 +199,7 @@ transform, and consume TensorFlow models using a single abstraction.
 
 SavedModel is the recommended serialization format for serving a TensorFlow
 model in production, or exporting a trained model for a native mobile or
-JavaScript application. For example, to turn a model into an REST service for
+JavaScript application. For example, to turn a model into a REST service for
 making predictions, you can serialize the model as a SavedModel and serve it
 using TensorFlow Serving. See [Serving a TensorFlow
 Model](https://www.tensorflow.org/serving/tutorials/Serving_REST_simple) for
@@ -383,7 +383,7 @@ to examine, such as particular categories for categorical features, or
 particular ranges for numerical features.
 
 For example, this would be important for trying to understand your model's
-performance for difference segments of your customers, which could be segmented
+performance for different segments of your customers, which could be segmented
 by annual purchases, geographical data, age group, or gender.  This can be
 especially important for datasets with long tails, where the performance of a
 dominant group may mask unacceptable performance for important, yet smaller
@@ -556,7 +556,7 @@ You deploy the remainder of your pipeline code by creating folders under `data`
 and `plugins` to hold your pipeline code. A good practice is to name these
 folders to match the name of your pipeline when naming your
 output_dir (which you set in your `PipelineDecorator`), so if your pipeline is
-named `taxi`, you might name your output dir:
+named `taxi`, you might name your output_dir:
 
 ```bash
 mkdir -p ~/airflow/data/taxi     # or $AIRFLOW_HOME/data/taxi

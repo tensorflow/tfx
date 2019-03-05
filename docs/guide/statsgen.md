@@ -5,7 +5,7 @@ over both training and serving data, which can be used by other pipeline compone
 StatsGen uses Beam and approximate algorithms to scale to large datasets.
 
 * Consumes: tf.Examples created by an ExampleGen pipeline component, or CSV directly.
-* Emits: Dataset statistics in metadata
+* Emits: Dataset statistics in metadata.
 
 ## StatsGen and TensorFlow Data Validation
 
