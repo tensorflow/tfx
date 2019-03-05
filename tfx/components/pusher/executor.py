@@ -45,7 +45,7 @@ class Executor(base_executor.BaseExecutor):
           include the model in this push execution if the model was pushed.
       exec_properties: A dict of execution properties, including:
         - push_destination: JSON string of pusher_pb2.PushDestination instance,
-            providing instruction of destination to push model.
+          providing instruction of destination to push model.
 
     Returns:
       None
@@ -97,9 +97,10 @@ class Executor(base_executor.BaseExecutor):
     model_push.set_int_custom_property('pushed_model_id', model_export.id)
     tf.logging.info('Model pushed to %s.', serving_path)
 
-    cmle_serving_args = exec_properties.get('custom_config',
-                                            {}).get('cmle_serving_args')
-    if cmle_serving_args is not None:
-      return cmle_runner.deploy_model_for_serving(serving_path, model_version,
-                                                  cmle_serving_args,
-                                                  exec_properties['log_root'])
+    if exec_properties.get('custom_config'):
+      cmle_serving_args = exec_properties.get('custom_config',
+                                              {}).get('cmle_serving_args')
+      if cmle_serving_args is not None:
+        return cmle_runner.deploy_model_for_serving(serving_path, model_version,
+                                                    cmle_serving_args,
+                                                    exec_properties['log_root'])
