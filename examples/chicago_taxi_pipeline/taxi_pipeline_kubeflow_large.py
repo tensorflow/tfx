@@ -23,7 +23,7 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
-from tfx.orchestration.kubeflow.runner import KubeflowRunner as TfxRunner
+from tfx.orchestration.kubeflow.runner import KubeflowRunner
 from tfx.orchestration.pipeline import PipelineDecorator
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
@@ -153,4 +153,4 @@ def _create_pipeline():
   ]
 
 
-pipeline = TfxRunner().run(_create_pipeline())
+pipeline = KubeflowRunner().run(_create_pipeline())
