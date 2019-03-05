@@ -115,7 +115,7 @@ def trainer_fn(hparams, schema):
   return TrainingSpec(estimator, train_spec, eval_spec, receiver_fn)
 
 
-  def _build_estimator(tf_transform_dir,
+def _build_estimator(tf_transform_dir,
                      config,
                      hidden_units=None,
                      warm_start_from=None):
