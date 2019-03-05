@@ -6,30 +6,28 @@ can:
 
 1.  perform validity checks by comparing data statistics against a schema that
     codifies expectations of the user
-1.  detect training-serving skew by comparing examples in training and serving
+1.  detect training-serving skew by comparing training and serving
     data.
 1.  detect data drift by looking at a series of data.
 
 The ExampleValidator pipeline component identifies any anomalies in the example data
-by comparing data statistics computed by the StatsGen pipeline component against a
+by comparing data statistics computed by the StatisticsGen pipeline component against a
 schema. The inferred schema codifies properties which the input data is expected to
 satisfy, and can be modified by the developer.
 
-* Consumes: A schema from a SchemaGen component, and statistics from a StatsGen
+* Consumes: A schema from a SchemaGen component, and statistics from a StatisticsGen
 component.
-* Emits: Validation results to [TensorFlow Metadata](tfmd.md)
+* Emits: Validation results
 
 ## ExampleValidator and TensorFlow Data Validation
 
 ExampleValidator makes extensive use of [TensorFlow Data Validation](tfdv.md)
-for validating your input data, which in turn use [Beam](beam.md) for scalable
-processing.
+for validating your input data.
 
 ## Using the ExampleValidator Component
 
 An ExampleValidator pipeline component is typically very easy to deploy and
-requires little customization, since all of the work is done by the
-ExampleValidator TFX component. Typical code looks like this:
+requires little customization. Typical code looks like this:
 
 ```python
 from tfx import components
