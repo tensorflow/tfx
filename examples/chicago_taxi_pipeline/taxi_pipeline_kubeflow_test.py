@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_kubeflow_large."""
+"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_kubeflow."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -35,12 +35,12 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
 
   def test_taxi_pipeline_construction_and_definition_file_exists(self):
     # Import creates the pipeline.
-    from examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_large  # pylint: disable=g-import-not-at-top
-    logical_pipeline = taxi_pipeline_kubeflow_large._create_pipeline()
+    from examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow  # pylint: disable=g-import-not-at-top
+    logical_pipeline = taxi_pipeline_kubeflow._create_pipeline()
     self.assertEqual(9, len(logical_pipeline.components))
 
     file_path = os.path.join(self.test_dir,
-                             'chicago_taxi_pipeline_kubeflow_large.tar.gz')
+                             'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 
 

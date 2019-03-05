@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# TODO(ajaygopinathan): Rename this file to taxi_pipeline_kubeflow.py
 import os
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
@@ -77,12 +76,13 @@ _cmle_serving_args = {
 
 
 @PipelineDecorator(
-    pipeline_name='chicago_taxi_pipeline_kubeflow_large',
+    pipeline_name='chicago_taxi_pipeline_kubeflow',
     log_root='/var/tmp/tfx/logs',
     pipeline_root=_pipeline_root,
     additional_pipeline_args={
         'beam_pipeline_args': [
-            '--runner=DataflowRunner', '--experiments=shuffle_mode=auto',
+            '--runner=DataflowRunner',
+            '--experiments=shuffle_mode=auto',
             '--project=' + _project_id,
             '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
             '--region=' + _gcp_region,
@@ -90,6 +90,9 @@ _cmle_serving_args = {
     })
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
+
+  # The full dataset consists of roughly 120M rows. Feel free to remove the
+  # sample rate to experiment with the full dataset.
   query = """
           SELECT
             pickup_community_area,
@@ -111,8 +114,7 @@ def _create_pipeline():
             dropoff_community_area,
             tips
           FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-          ORDER BY trip_start_timestamp
-          LIMIT 100000000"""  # 100 Million.
+          WHERE RAND() < 0.001"""
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = BigQueryExampleGen(query=query)
