@@ -9,7 +9,7 @@ whether a feature has to be present in all examples, allowed value ranges, and
 other properties.  A SchemaGen pipeline component will automatically generate a
 schema by inferring types, categories, and ranges from the training data.
 
-* Consumes: tf.Examples from an ExampleGen component
+* Consumes: statistics from an StatisticsGen component
 * Emits: Data schema proto
 
 Here's an excerpt from a schema proto:
@@ -63,8 +63,7 @@ SchemaGen makes extensive use of [TensorFlow Data Validation](tfdv.md) for infer
 ## Using the SchemaGen Component
 
 A SchemaGen pipeline component is typically very easy to deploy and requires little
-customization, since all of the work is done by the SchemaGen TFX component.
-Typical code looks like this:
+customization. Typical code looks like this:
 
 ```python
 from tfx import components
