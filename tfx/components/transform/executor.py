@@ -657,10 +657,15 @@ class Executor(base_executor.BaseExecutor):
     tf.logging.info('Transform output path: %s', transform_output_path)
 
     feature_spec = input_dataset_metadata.schema.as_feature_spec()
-    analyze_input_columns = (
-        tft.get_analyze_input_columns(preprocessing_fn, feature_spec))
-    transform_input_columns = (
-        tft.get_transform_input_columns(preprocessing_fn, feature_spec))
+    try:
+      analyze_input_columns = tft.get_analyze_input_columns(
+          preprocessing_fn, feature_spec)
+      transform_input_columns = (
+          tft.get_transform_input_columns(preprocessing_fn, feature_spec))
+    except AttributeError:
+      # If using TFT 1.12, fall back to assuming all features are used.
+      analyze_input_columns = feature_spec.keys()
+      transform_input_columns = feature_spec.keys()
     # Use the same dataset (same columns) for AnalyzeDataset and computing
     # pre-transform stats so that the data will only be read once for these
     # two operations.
