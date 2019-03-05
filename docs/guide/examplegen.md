@@ -18,7 +18,7 @@ during inference.
 
 ## Developing an ExampleGen Component
 
-For supported data sources (currently CSV only) ExampleGen pipeline
+For supported data sources (currently CSV only) the ExampleGen pipeline
 component is typically very easy to develop and requires little customization,
 since all of the work is done by the ExampleGen TFX component. Typical code looks
 like this:
