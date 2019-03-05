@@ -29,24 +29,32 @@ from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 
-# Cloud storage
+# Directory and data locations (uses Google Cloud Storage).
 _output_bucket = 'gs://my-bucket'
-# GCP project id to use.
+_pipeline_root = os.path.join(_output_bucket, 'output')
+
+# Google Cloud Platform project id to use when deploying this pipeline.
 _project_id = 'my-gcp-project'
-# Helper functions for the taxi pipeline: estimator and preprocessing_fn. Copy
-# this from the current directory to a GCS bucket and update the location
+
+# Python module file to inject customized logic into the TFX components. The
+# Transform and Trainer both require user-defined functions to run successfully.
+# Copy this from the current directory to a GCS bucket and update the location
 # below.
 _taxi_utils = os.path.join(_output_bucket, 'taxi_utils.py')
-# Path which can be listened by model server. Pusher will output model here.
+
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
 _serving_model_dir = os.path.join(_output_bucket, 'serving_model/taxi_bigquery')
-# Root for all pipeline output.
-_pipeline_root = os.path.join(_output_bucket, 'output')
 
 # Region to use for Dataflow jobs and CMLE training.
 #   Dataflow: https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
 #   CMLE:     https://cloud.google.com/ml-engine/docs/tensorflow/regions
 _gcp_region = 'us-central1'
 
+# A dict which contains the training job parameters to be passed to Google
+# Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
+# Engine, refer to
+# https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
 _cmle_training_args = {
     'pythonModule': None,  # Will be populated by TFX
     'args': None,  # Will be populated by TFX
@@ -55,6 +63,16 @@ _cmle_training_args = {
     'runtimeVersion': '1.12',
     'pythonVersion': '2.7',
     'project': _project_id,
+}
+
+# A dict which contains the serving job parameters to be passed to Google
+# Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
+# Engine, refer to
+# https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+_cmle_serving_args = {
+    'model_name': 'chicago_taxi',
+    'project_id': _project_id,
+    'runtime_version': '1.12',
 }
 
 
@@ -143,6 +161,7 @@ def _create_pipeline():
   pusher = Pusher(
       model_export=trainer.outputs.output,
       model_blessing=model_validator.outputs.blessing,
+      custom_config={'cmle_serving_args': _cmle_serving_args},
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=_serving_model_dir)))

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Any, Dict, Optional, Text
 
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
@@ -43,6 +43,10 @@ class Pusher(base_component.BaseComponent):
       info for tensorflow serving to load models.
     name: Optional unique name. Necessary if multiple Pusher components are
       declared in the same pipeline.
+    custom_config: A dict which contains the deployment job parameters to be
+      passed to Google Cloud ML Engine.  For the full set of parameters
+      supported by Google Cloud ML Engine, refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
     outputs: Optional dict from name to output channel.
   Attributes:
     outputs: A ComponentOutputs including following keys:
@@ -54,6 +58,7 @@ class Pusher(base_component.BaseComponent):
                model_blessing,
                push_destination,
                name = None,
+               custom_config = None,
                outputs = None):
     component_name = 'Pusher'
     input_dict = {
@@ -62,6 +67,7 @@ class Pusher(base_component.BaseComponent):
     }
     exec_properties = {
         'push_destination': json_format.MessageToJson(push_destination),
+        'custom_config': custom_config,
     }
     super(Pusher, self).__init__(
         component_name=component_name,
