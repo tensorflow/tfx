@@ -12,7 +12,7 @@ PyVCF,https://raw.githubusercontent.com/jamescasbon/PyVCF/master/LICENSE,BSD
 PyYAML,https://raw.githubusercontent.com/yaml/pyyaml/master/LICENSE,MIT
 Pygments,https://raw.githubusercontent.com/nex3/pygments/master/LICENSE,2-Clause BSD
 Send2Trash,https://raw.githubusercontent.com/hsoft/send2trash/master/LICENSE,3-Clause BSD
-Werkzeug,https://raw.githubusercontent.com/pallets/werkzeug/master/LICENSE,3-Clause BSD
+Werkzeug,https://raw.githubusercontent.com/pallets/werkzeug/master/LICENSE.rst,3-Clause BSD
 absl-py,https://raw.githubusercontent.com/abseil/abseil-py/master/LICENSE,Apache 2.0
 adal,https://raw.githubusercontent.com/AzureAD/azure-activedirectory-library-for-python/dev/LICENSE,MIT
 alembic,https://raw.githubusercontent.com/zzzeek/alembic/master/LICENSE,MIT
