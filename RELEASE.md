@@ -2,6 +2,17 @@
 
 ## Major Features and Improvements
 
+*   Initial version of following orchestration platform supported:
+    *   Kubeflow
+
+## Bug fixes and other changes
+
+## Breaking changes
+
+# Version 0.12.0
+
+## Major Features and Improvements
+
 *   TFX User Guide
 *   Initial version of the following TFX components:
     *   CSVExampleGen - CSV data ingestion
@@ -16,7 +27,6 @@
     *   Pusher - deploys the model to a serving infrastructure, for example the TensorFlow Serving Model Server
 *   Initial version of following orchestration platform supported:
     *   Apache Airflow
-    *   Kubeflow
 *   Polished examples based on the Chicago Taxi dataset.
 
 ## Bug fixes and other changes

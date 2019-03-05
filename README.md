@@ -37,3 +37,4 @@ framework, but other *untested* combinations may also work.
 |tfx                                                                                |tensorflow    |apache-beam[gcp]|tensorflow-data-validation|tensorflow-model-analysis|tensorflow-transform|ml-metadata|tensorflow-metadata|
 |-----------------------------------------------------------------------------------|--------------|----------------|--------------------------|--------------------------------|--------------------|-----------|-------------------|
 |[GitHub master](https://github.com/tensorflow/tfx/blob/master/RELEASE.md)|nightly (1.x) |2.10.0          |0.12.0                    |0.12.1                           |0.12.0              |0.13.2     |0.12.1             |
+|0.12.0                                                                   |1.12.0       |2.10.0          |0.12.0                    |0.12.1                           |0.12.0              |0.13.2     |0.12.1             |
