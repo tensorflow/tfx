@@ -16,7 +16,7 @@ Trainer emits: A SavedModel and an EvalSavedModel
 Trainer makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
-## Developing a Trainer Component
+## Configuring a Trainer Component
 
 A Trainer pipeline component is typically very easy to develop and requires little
 customization, since all of the work is done by the Trainer TFX component.  Your
