@@ -38,7 +38,7 @@ BEAM_ARGUMENTS="--runner PortableRunner \
                 --experiments worker_threads=100 \
                 --environment_type LOOPBACK "
 
-# TODO(b/126725506): Utilize multiple cores on a machine. 
+# TODO(b/126725506): Utilize multiple cores on a machine.
 # TODO(FLINK-10672): Obviate setting BATCH_FORCED.
 FLINK_ARGUMENTS="--execution_mode_for_batch BATCH_FORCED "
 

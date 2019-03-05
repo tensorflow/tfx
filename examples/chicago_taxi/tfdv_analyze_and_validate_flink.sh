@@ -18,7 +18,7 @@ echo Starting distributed TFDV stats computation and schema generation...
 
 # Using absolute path to make data accessible to different process started by flink.
 DATA_DIR=$(pwd)/data
-OUTPUT_DIR=$DATA_DIR/flink_tfdv_output
+OUTPUT_DIR=$DATA_DIR/local_tfdv_output
 
 JOB_ID="chicago-taxi-tfdv-$(date +%Y%m%d-%H%M%S)"
 JOB_OUTPUT_PATH=$OUTPUT_DIR

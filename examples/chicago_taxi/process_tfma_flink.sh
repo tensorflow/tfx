@@ -17,9 +17,9 @@ set -u
 # Using absolute path to make data accessible to different process started by flink.
 # Input: trained model to be evaluated
 DATA_DIR=$(pwd)/data
-WORKING_DIR=./data/train/flink_chicago_taxi_output
+WORKING_DIR=./data/train/local_chicago_taxi_output
 EVAL_MODEL_DIR=$WORKING_DIR/eval_model_dir/$(ls $WORKING_DIR/eval_model_dir | tail -n1)
-SCHEMA_PATH=$DATA_DIR/flink_tfdv_output/schema.pbtxt
+SCHEMA_PATH=$DATA_DIR/local_tfdv_output/schema.pbtxt
 
 
 # Output: evaluation result

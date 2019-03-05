@@ -20,21 +20,21 @@ echo Starting distributed TFT preprocessing...
 # flink.
 DATA_DIR=$(pwd)/data
 OUTPUT_DIR=$DATA_DIR
-SCHEMA_PATH=$DATA_DIR/flink_tfdv_output/schema.pbtxt
+SCHEMA_PATH=$DATA_DIR/local_tfdv_output/schema.pbtxt
 
 echo Preprocessing train data...
-rm -R -f data/train/flink_chicago_taxi_output
+rm -R -f data/train/local_chicago_taxi_output
 $(pwd)/execute_on_flink.sh preprocess.py \
             --input $DATA_DIR/train/data.csv \
             --schema_file $SCHEMA_PATH \
-            --output_dir $OUTPUT_DIR/train/flink_chicago_taxi_output \
+            --output_dir $OUTPUT_DIR/train/local_chicago_taxi_output \
             --outfile_prefix train_transformed
 
 echo Preprocessing eval data...
-rm -R -f data/eval/flink_chicago_taxi_output
+rm -R -f data/eval/local_chicago_taxi_output
 $(pwd)/execute_on_flink.sh preprocess.py \
             --input $DATA_DIR/eval/data.csv \
             --schema_file $SCHEMA_PATH \
-            --output_dir $OUTPUT_DIR/eval/flink_chicago_taxi_output \
+            --output_dir $OUTPUT_DIR/eval/local_chicago_taxi_output \
             --outfile_prefix eval_transformed \
-            --transform_dir $OUTPUT_DIR/train/flink_chicago_taxi_output
+            --transform_dir $OUTPUT_DIR/train/local_chicago_taxi_output

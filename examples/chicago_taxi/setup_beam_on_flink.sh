@@ -72,14 +72,6 @@ function start_flink() {
   echo "Flink running from $WORK_DIR/$FLINK_NAME"
 }
 
-function install_beam_sdk() {
-  echo "Building beam from source code at $BEAM_DIR"
-  cd $BEAM_DIR && ./gradlew :beam-sdks-python:sdist
-  BEAM_SDK=`ls $BEAM_DIR/sdks/python/build/apache-beam-*.tar.gz`
-  echo "Installing beam from $BEAM_SDK"
-  cd $BEAM_DIR && pip install --upgrade $BEAM_SDK[gcp]
-}
-
 function start_job_server() {
   echo "Starting Beam jobserver"
   cd $BEAM_DIR
@@ -97,7 +89,6 @@ function main(){
   fi
   setup_flink
   start_flink
-  install_beam_sdk
   start_job_server
 }
 
