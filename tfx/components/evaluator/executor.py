@@ -22,13 +22,36 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
+from tfx.proto import evaluator_pb2
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 class Executor(base_executor.BaseExecutor):
   """Generic TFX model evaluator executor."""
+
+  def _get_slice_spec_from_feature_slicing_spec(
+      self, spec
+  ):
+    """Given a feature slicing spec, returns a List of SingleSliceSpecs.
+
+    Args:
+      spec: slice specification.
+
+    Returns:
+      List of corresponding SingleSliceSpecs. Always includes the overall slice,
+      even if it was not specified in the given spec.
+    """
+    result = []
+    for single_spec in spec.specs:
+      columns = single_spec.column_for_slicing
+      result.append(tfma.slicer.SingleSliceSpec(columns=columns))
+    # Always include the overall slice.
+    if tfma.slicer.SingleSliceSpec() not in result:
+      result.append(tfma.slicer.SingleSliceSpec())
+    return result
 
   def Do(self, input_dict,
          output_dict,
@@ -42,6 +65,8 @@ class Executor(base_executor.BaseExecutor):
       output_dict: Output dict from output key to a list of Artifacts.
         - output: model evaluation results.
       exec_properties: A dict of execution properties.
+        - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
+          instance, providing the way to slice the data.
 
     Returns:
       None
@@ -58,8 +83,11 @@ class Executor(base_executor.BaseExecutor):
     # Extract input artifacts
     model_exports_uri = types.get_single_uri(input_dict['model_exports'])
 
-    # TODO(b/125853306): support customized slice spec.
-    slice_spec = [tfma.slicer.SingleSliceSpec()]
+    feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
+    json_format.Parse(exec_properties['feature_slicing_spec'],
+                      feature_slicing_spec)
+    slice_spec = self._get_slice_spec_from_feature_slicing_spec(
+        feature_slicing_spec)
 
     output_uri = types.get_single_uri(output_dict['output'])
 

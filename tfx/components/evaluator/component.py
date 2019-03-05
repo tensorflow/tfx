@@ -22,8 +22,10 @@ from typing import Any, Dict, Optional, Text
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
 from tfx.components.evaluator import executor
+from tfx.proto import evaluator_pb2
 from tfx.utils import channel
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 class Evaluator(base_component.BaseComponent):
@@ -36,6 +38,8 @@ class Evaluator(base_component.BaseComponent):
       component.
     model_exports: A Channel of 'ModelExportPath' type, usually produced by
       Trainer component.
+    feature_slicing_spec: A evaluator_pb2.FeatureSlicingSpec instance,
+      providing the way to slice the data.
     name: Optional unique name. Necessary if multiple Evaluator components are
       declared in the same pipeline.
     outputs: Optional dict from name to output channel.
@@ -44,17 +48,23 @@ class Evaluator(base_component.BaseComponent):
       - output: A channel of 'ModelEvalPath' with result of evaluation.
   """
 
-  def __init__(self,
-               examples,
-               model_exports,
-               name = None,
-               outputs = None):
+  def __init__(
+      self,
+      examples,
+      model_exports,
+      feature_slicing_spec = None,
+      name = None,
+      outputs = None):
     component_name = 'Evaluator'
     input_dict = {
         'examples': channel.as_channel(examples),
         'model_exports': channel.as_channel(model_exports),
     }
-    exec_properties = {}
+    exec_properties = {
+        'feature_slicing_spec':
+            json_format.MessageToJson(feature_slicing_spec or
+                                      evaluator_pb2.FeatureSlicingSpec()),
+    }
     super(Evaluator, self).__init__(
         component_name=component_name,
         unique_name=name,

@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.evaluator import component
+from tfx.proto import evaluator_pb2
 from tfx.utils import channel
 from tfx.utils import types
 
@@ -31,6 +32,18 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel.as_channel([examples]),
         model_exports=channel.as_channel([model_exports]))
+    self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
+
+  def test_construct_with_slice_spec(self):
+    examples = types.TfxType(type_name='ExamplesPath')
+    model_exports = types.TfxType(type_name='ModelExportPath')
+    evaluator = component.Evaluator(
+        examples=channel.as_channel([examples]),
+        model_exports=channel.as_channel([model_exports]),
+        feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
+            evaluator_pb2.SingleSlicingSpec(
+                column_for_slicing=['trip_start_hour'])
+        ]))
     self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
 
 

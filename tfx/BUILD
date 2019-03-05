@@ -18,6 +18,7 @@ sh_binary(
     name = "build_pip_package",
     srcs = ["build_pip_package.sh"],
     data = [
+        "//tfx/proto:evaluator_pb2.py",
         "//tfx/proto:pusher_pb2.py",
         "//tfx/proto:trainer_pb2.py",
     ],

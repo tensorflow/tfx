@@ -25,6 +25,7 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration.kubeflow.runner import KubeflowRunner as TfxRunner
 from tfx.orchestration.pipeline import PipelineDecorator
+from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 
@@ -127,7 +128,11 @@ def _create_pipeline():
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
       examples=example_gen.outputs.examples,
-      model_exports=trainer.outputs.output)
+      model_exports=trainer.outputs.output,
+      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
+          evaluator_pb2.SingleSlicingSpec(
+              column_for_slicing=['trip_start_hour'])
+      ]))
 
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(

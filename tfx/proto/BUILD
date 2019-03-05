@@ -33,3 +33,11 @@ py_proto_library(
     protoc = "@protobuf_archive//:protoc",
     srcs_version = "PY2AND3",
 )
+
+py_proto_library(
+    name = "evaluator_py_pb2",
+    srcs = ["evaluator.proto"],
+    default_runtime = "@protobuf_archive//:protobuf_python",
+    protoc = "@protobuf_archive//:protoc",
+    srcs_version = "PY2AND3",
+)

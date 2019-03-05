@@ -1,0 +1,49 @@
+// Copyright 2019 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.components.evaluator;
+
+// Specifies a single directive for choosing features for slicing.
+// An empty proto means we do not slice on features (i.e. use the entire data
+// set).
+message SingleSlicingSpec {
+  repeated string column_for_slicing = 1;
+
+  reserved 2;
+}
+
+// Specifies which features slices should be used for aggregating statistics
+// and metrics during evaluation. For example, if the FeatureSlicingSpec is set
+// as follows:
+//
+// specs: {
+// }
+// specs: {
+//   column_for_slicing: "continent"
+// }
+// specs: {
+//   column_for_slicing: "country"
+//   column_for_slicing: "education"
+// }
+//
+// Statistics will be generated for the following slices:
+// (i) The overall slice corresponding to the entire data set
+// (ii) Africa, Antarctica, ...
+// (iii) US_X_10th, US_X_Bachelors, Canada_X_Masters, ...
+message FeatureSlicingSpec {
+  repeated SingleSlicingSpec specs = 1;
+
+  reserved 2;
+}

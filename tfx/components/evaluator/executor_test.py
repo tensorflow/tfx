@@ -22,7 +22,9 @@ import tensorflow as tf
 # TODO(jyzhao): BucketizeWithInputBoundaries error without this.
 from tensorflow.contrib.boosted_trees.python.ops import quantile_ops  # pylint: disable=unused-import
 from tfx.components.evaluator import executor
+from tfx.proto import evaluator_pb2
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -50,9 +52,21 @@ class ExecutorTest(tf.test.TestCase):
     eval_output.uri = os.path.join(output_data_dir, 'eval_output')
     output_dict = {'output': [eval_output]}
 
+    # Create exec proterties.
+    exec_properties = {
+        'feature_slicing_spec':
+            json_format.MessageToJson(
+                evaluator_pb2.FeatureSlicingSpec(specs=[
+                    evaluator_pb2.SingleSlicingSpec(
+                        column_for_slicing=['trip_start_hour']),
+                    evaluator_pb2.SingleSlicingSpec(
+                        column_for_slicing=['trip_start_day', 'trip_miles']),
+                ]))
+    }
+
     # Run executor.
     evaluator = executor.Executor()
-    evaluator.Do(input_dict, output_dict, exec_properties={})
+    evaluator.Do(input_dict, output_dict, exec_properties)
 
     # Check evaluator outputs.
     self.assertTrue(

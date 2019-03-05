@@ -16,10 +16,7 @@
 
 set -u -x
 
-cp -f tfx/proto/pusher_pb2.py \
-  ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto
-cp -f tfx/proto/trainer_pb2.py \
-  ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto
+cp -f tfx/proto/*pb2.py ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto
 
 # Create the wheel
 cd ${BUILD_WORKSPACE_DIRECTORY}
