@@ -50,10 +50,10 @@ class ModelValidator(base_component.BaseComponent):
   """
 
   def __init__(self,
-               examples: channel.Channel,
-               model: channel.Channel,
-               name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               examples,
+               model,
+               name = None,
+               outputs = None):
     component_name = 'ModelValidator'
     input_dict = {
         'examples': channel.as_channel(examples),
@@ -72,7 +72,7 @@ class ModelValidator(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for ModelValidator.
 
     Returns:
@@ -91,8 +91,8 @@ class ModelValidator(base_component.BaseComponent):
                 static_artifact_collection=results_artifact_collection),
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:

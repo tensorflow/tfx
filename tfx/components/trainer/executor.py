@@ -35,7 +35,7 @@ from tfx.utils import types
 from google.protobuf import json_format
 
 
-def _all_files_pattern(file_pattern: Text) -> Text:
+def _all_files_pattern(file_pattern):
   return '{}*'.format(file_pattern)
 
 
@@ -44,9 +44,9 @@ class Executor(base_executor.BaseExecutor):
 
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Runs trainer job the given input.
 
     Args:

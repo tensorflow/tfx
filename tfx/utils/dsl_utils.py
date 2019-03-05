@@ -21,7 +21,7 @@ from typing import List, Text
 from tfx.utils import types
 
 
-def csv_input(uri: Text) -> List[types.TfxType]:
+def csv_input(uri):
   """Helper function to declare input for csv_example_gen component.
 
   Args:

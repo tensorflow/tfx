@@ -37,9 +37,9 @@ class ExecutionProperties(object):
   exec_properties = {}
 
   def __new__(cls,
-              output_dir: Text,
-              log_root: Text,
-              beam_pipeline_args: Optional[Text] = None):
+              output_dir,
+              log_root,
+              beam_pipeline_args = None):
     cls.exec_properties = {
         'output_dir': output_dir,
         'log_root': log_root,
@@ -65,9 +65,9 @@ class BaseComponent(object):
   components.
   """
 
-  def __new__(cls, component_name: Text, input_dict: Dict[Text, Any],
-              output_dict: Dict[Text, List[types.TfxType]],
-              exec_properties: Dict[Text, Any]):
+  def __new__(cls, component_name, input_dict,
+              output_dict,
+              exec_properties):
     """Creates a new component.
 
     Args:

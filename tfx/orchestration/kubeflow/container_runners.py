@@ -40,7 +40,7 @@ from tfx.utils import logging_utils
 from tfx.utils import types
 
 
-def parse_tfx_type(json_str: Text):
+def parse_tfx_type(json_str):
   """Parses a list of artifacts and their types from json."""
   json_artifact_list = json.loads(json_str)
 
@@ -52,7 +52,7 @@ def parse_tfx_type(json_str: Text):
   return tfx_types
 
 
-def to_snake_case(name: Text):
+def to_snake_case(name):
   s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
@@ -60,9 +60,9 @@ def to_snake_case(name: Text):
 class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
   """Abstract base class for all Kubeflow Pipelines-based TFX components."""
 
-  def __init__(self, executor_cls, name: Text,
-               input_dict: Dict[Text, List[types.TfxType]], outputs: Text,
-               exec_properties: Dict[Text, Any]):
+  def __init__(self, executor_cls, name,
+               input_dict, outputs,
+               exec_properties):
     raw_args = exec_properties.get('beam_pipeline_args', [])
 
     # Beam expects str types for it's pipeline args. Ensure unicode type is
@@ -122,7 +122,7 @@ class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
 class CsvExampleGenRunner(BaseRunner):
   """Runner for CSVExampleGen component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(CsvExampleGenRunner, self).__init__(
         executor_cls=CSVExampleGen,
         name='CSVExampleGen',
@@ -145,7 +145,7 @@ class CsvExampleGenRunner(BaseRunner):
 class BigQueryExampleGenRunner(BaseRunner):
   """Runner for BigQueryExampleGen component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(BigQueryExampleGenRunner, self).__init__(
         executor_cls=BigQueryExampleGen,
         name='BigQueryExampleGen',
@@ -159,7 +159,7 @@ class BigQueryExampleGenRunner(BaseRunner):
 class StatisticsGenRunner(BaseRunner):
   """Runner for StatisticsGen component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(StatisticsGenRunner, self).__init__(
         executor_cls=StatisticsGen,
         name='StatisticsGen',
@@ -175,7 +175,7 @@ class StatisticsGenRunner(BaseRunner):
 class SchemaGenRunner(BaseRunner):
   """Runner for SchemaGen component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(SchemaGenRunner, self).__init__(
         executor_cls=SchemaGen,
         name='SchemaGen',
@@ -191,7 +191,7 @@ class SchemaGenRunner(BaseRunner):
 class ExampleValidatorRunner(BaseRunner):
   """Runner for ExampleValidator component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(ExampleValidatorRunner, self).__init__(
         executor_cls=ExampleValidator,
         name='ExampleValidator',
@@ -208,7 +208,7 @@ class ExampleValidatorRunner(BaseRunner):
 class TransformRunner(BaseRunner):
   """Runner for Transform component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(TransformRunner, self).__init__(
         executor_cls=Transform,
         name='Transform',
@@ -225,7 +225,7 @@ class TransformRunner(BaseRunner):
 class TrainerRunner(BaseRunner):
   """Runner for Trainer component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(TrainerRunner, self).__init__(
         executor_cls=Trainer,
         name='Trainer',
@@ -247,7 +247,7 @@ class TrainerRunner(BaseRunner):
 class EvaluatorRunner(BaseRunner):
   """Runner for Evaluator component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(EvaluatorRunner, self).__init__(
         executor_cls=Evaluator,
         name='Evaluator',
@@ -264,7 +264,7 @@ class EvaluatorRunner(BaseRunner):
 class ModelValidatorRunner(BaseRunner):
   """Runner for ModelValidator component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(ModelValidatorRunner, self).__init__(
         executor_cls=ModelValidator,
         name='ModelValidator',
@@ -285,7 +285,7 @@ class ModelValidatorRunner(BaseRunner):
 class PusherRunner(BaseRunner):
   """Runner for Pusher component."""
 
-  def __init__(self, args: argparse.Namespace):
+  def __init__(self, args):
     super(PusherRunner, self).__init__(
         executor_cls=Pusher,
         name='Pusher',

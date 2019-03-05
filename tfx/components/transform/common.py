@@ -20,8 +20,8 @@ from __future__ import print_function
 from typing import Any, Text, Sequence, Mapping
 
 
-def GetValues(inputs: Mapping[Text, Sequence[Any]],
-              label: Text) -> Sequence[Any]:
+def GetValues(inputs,
+              label):
   """Retrieves the value of the given labeled input.
 
   Args:
@@ -42,8 +42,8 @@ def GetValues(inputs: Mapping[Text, Sequence[Any]],
   return values
 
 
-def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
-                 strict=True) -> Any:
+def GetSoleValue(inputs, label,
+                 strict=True):
   """Helper method for retrieving a sole labeled input.
 
   Args:

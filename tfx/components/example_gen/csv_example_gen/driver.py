@@ -27,8 +27,8 @@ class Driver(base_driver.BaseDriver):
   """Custom driver for CsvExampleGen."""
 
   def _prepare_input_for_processing(self,
-                                    input_dict: Dict[Text, List[types.TfxType]]
-                                   ) -> Dict[Text, List[types.TfxType]]:
+                                    input_dict
+                                   ):
     """Resolves artifacts for external inputs."""
     # TODO(jyzhao): check state of the artifacts.
     registered_artifacts = self._metadata_handler.get_all_artifacts()
@@ -59,11 +59,11 @@ class Driver(base_driver.BaseDriver):
 
   def prepare_execution(
       self,
-      input_dict: Dict[Text, List[types.TfxType]],
-      output_dict: Dict[Text, List[types.TfxType]],
-      exec_properties: Dict[Text, Any],
-      driver_options: base_driver.DriverOptions,
-  ) -> base_driver.ExecutionDecision:
+      input_dict,
+      output_dict,
+      exec_properties,
+      driver_options,
+  ):
     """Extends BaseDriver by resolving external inputs."""
     updated_input_dict = self._prepare_input_for_processing(input_dict)
     return self._default_caching_handling(updated_input_dict, output_dict,

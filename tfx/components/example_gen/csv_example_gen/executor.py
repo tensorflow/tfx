@@ -33,13 +33,13 @@ from tfx.utils import types
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _partition_fn(record: bytes, num_partitions: int) -> int:  # pylint: disable=unused-argument
+def _partition_fn(record, num_partitions):  # pylint: disable=unused-argument
   # TODO(jyzhao): support custom split.
   # Splits data, train(partition=0) : eval(partition=1) = 2 : 1
   return 1 if int(hashlib.sha256(record).hexdigest(), 16) % 3 == 0 else 0
 
 
-def _dict_to_example(instance: tfdv.types.Example) -> bytes:
+def _dict_to_example(instance):
   """Decoded CSV to tf example."""
   feature = {}
   for key, value in instance.items():
@@ -63,7 +63,7 @@ def _dict_to_example(instance: tfdv.types.Example) -> bytes:
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(bytes)
 def _CsvToSerializedExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, csv_uri: Text) -> beam.pvalue.PCollection:
+    pipeline, csv_uri):
   """Read csv file and transform to tf examples."""
   return (pipeline
           |
@@ -77,9 +77,9 @@ def _CsvToSerializedExample(  # pylint: disable=invalid-name
 class Executor(base_executor.BaseExecutor):
   """Generic TFX CSV example gen executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Take input csv data and generates train and eval tf examples.
 
     Args:

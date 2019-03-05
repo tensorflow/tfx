@@ -39,9 +39,9 @@ class StatisticsGen(base_component.BaseComponent):
   """
 
   def __init__(self,
-               input_data: channel.Channel,
-               name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
+               input_data,
+               name = None,
+               outputs = None):
     """Constructs a StatisticsGen component.
 
     Args:
@@ -63,7 +63,7 @@ class StatisticsGen(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for StatisticsGen.
 
     Returns:
@@ -84,8 +84,8 @@ class StatisticsGen(base_component.BaseComponent):
                 static_artifact_collection=output_artifact_collection)
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:
