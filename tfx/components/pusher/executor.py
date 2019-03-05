@@ -20,6 +20,7 @@ import os
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
+from tfx.orchestration.gcp import cmle_runner
 from tfx.proto import pusher_pb2
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -95,3 +96,10 @@ class Executor(base_executor.BaseExecutor):
     model_push.set_string_custom_property('pushed_model', model_export_uri)
     model_push.set_int_custom_property('pushed_model_id', model_export.id)
     tf.logging.info('Model pushed to %s.', serving_path)
+
+    cmle_serving_args = exec_properties.get('custom_config',
+                                            {}).get('cmle_serving_args')
+    if cmle_serving_args is not None:
+      return cmle_runner.deploy_model_for_serving(serving_path, model_version,
+                                                  cmle_serving_args,
+                                                  exec_properties['log_root'])

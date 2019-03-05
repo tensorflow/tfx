@@ -21,13 +21,19 @@ import json
 import os
 import time
 from googleapiclient import discovery
+from googleapiclient import errors
+from typing import Any, Dict, List, Text
 from tfx.utils import io_utils
 from tfx.utils import logging_utils
-from tfx.utils.types import jsonify_tfx_type_dict
+from tfx.utils import types
+
+_POLLING_INTERVAL_IN_SECONDS = 30
 
 
 # TODO(ajaygopinathan): Add pydocs once this interface is finalized.
-def start_cmle_training(input_dict, output_dict, exec_properties,
+def start_cmle_training(input_dict,
+                        output_dict,
+                        exec_properties,
                         training_inputs):
   """Start a trainer job on CMLE."""
   training_inputs = training_inputs.copy()
@@ -35,9 +41,9 @@ def start_cmle_training(input_dict, output_dict, exec_properties,
   # Remove cmle_args from exec_properties so CMLE trainer doesn't call itself
   exec_properties['custom_config'].pop('cmle_training_args')
 
-  json_inputs = jsonify_tfx_type_dict(input_dict)
+  json_inputs = types.jsonify_tfx_type_dict(input_dict)
   logger.info('json_inputs=\'%s\'.', json_inputs)
-  json_outputs = jsonify_tfx_type_dict(output_dict)
+  json_outputs = types.jsonify_tfx_type_dict(output_dict)
   logger.info('json_outputs=\'%s\'.', json_outputs)
   json_exec_properties = json.dumps(exec_properties)
   logger.info('json_exec_properties=\'%s\'.', json_exec_properties)
@@ -56,16 +62,13 @@ def start_cmle_training(input_dict, output_dict, exec_properties,
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
 
-  # Create TFX dist and add it to training_inputs
-  local_package = io_utils.build_package()
-  cloud_package = os.path.join(training_inputs['jobDir'],
-                               os.path.basename(local_package))
-  io_utils.copy_file(local_package, cloud_package, True)
-
-  if 'packageUris' in training_inputs:
-    training_inputs['packageUris'].append(cloud_package)
-  else:
-    training_inputs['packageUris'] = cloud_package
+  if 'packageUris' not in training_inputs:
+    # Create TFX dist and add it to training_inputs
+    local_package = io_utils.build_package()
+    cloud_package = os.path.join(training_inputs['jobDir'],
+                                 os.path.basename(local_package))
+    io_utils.copy_file(local_package, cloud_package, True)
+    training_inputs['packageUris'] = [cloud_package]
 
   job_name = 'tfx_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
   job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
@@ -82,7 +85,7 @@ def start_cmle_training(input_dict, output_dict, exec_properties,
   request = api_client.projects().jobs().get(name=job_id)
   response = request.execute()
   while response['state'] not in ('SUCCEEDED', 'FAILED'):
-    time.sleep(60)
+    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     response = request.execute()
 
   if response['state'] == 'FAILED':
@@ -93,3 +96,70 @@ def start_cmle_training(input_dict, output_dict, exec_properties,
 
   # CMLE training complete
   logger.info('Job \'{}\' successful.'.format(job_name))
+
+
+def deploy_model_for_serving(serving_path, model_version,
+                             cmle_serving_args,
+                             log_root):
+  """Deploys a model for serving with CMLE.
+
+  Args:
+    serving_path: The path to the model. Must be a GCS URI.
+    model_version: Version of the model being deployed. Must be different
+      from what is currently being served.
+    cmle_serving_args: Dictionary containing arguments for pushing to CMLE.
+    log_root: Logging root directory.
+
+  Raises:
+    RuntimeError: if an error is encountered when trying to push.
+  """
+  logger = logging_utils.get_logger(log_root, 'exec')
+  logger.info(
+      'Deploying to model with version {} to CMLE for serving: {}'.format(
+          model_version, cmle_serving_args))
+
+  model_name = cmle_serving_args['model_name']
+  project_id = cmle_serving_args['project_id']
+  runtime_version = cmle_serving_args['runtime_version']
+
+  api = discovery.build('ml', 'v1')
+  body = {'name': model_name}
+  parent = 'projects/{}'.format(project_id)
+  try:
+    api.projects().models().create(body=body, parent=parent).execute()
+  except errors.HttpError as e:
+    # If the error is to create an already existing model, it's ok to ignore.
+    if e.resp.status == 409:
+      logger.warn('Model {} already exists'.format(model_name))
+    else:
+      raise RuntimeError('CMLE Push failed: {}'.format(e))
+
+  body = {
+      'name': 'v{}'.format(model_version),
+      'deployment_uri': serving_path,
+      'runtime_version': runtime_version,
+  }
+
+  # Push to CMLE, and record the operation name so we can poll for its state.
+  model_name = 'projects/{}/models/{}'.format(project_id, model_name)
+  response = api.projects().models().versions().create(
+      body=body, parent=model_name).execute()
+  op_name = response['name']
+
+  while True:
+    deploy_status = api.projects().operations().get(name=op_name).execute()
+    if deploy_status.get('done'):
+      break
+    if 'error' in deploy_status:
+      # The operation completed with an error.
+      logger.error(deploy_status['error'])
+      raise RuntimeError(
+          'Failed to deploy model to CMLE for serving: {}'.format(
+              deploy_status['error']))
+
+    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
+    logger.info('Model still being deployed...')
+
+  logger.info(
+      'Successfully deployed model {} with version {}, serving from {}'.format(
+          model_name, model_version, serving_path))

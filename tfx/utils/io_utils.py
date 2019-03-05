@@ -164,22 +164,15 @@ def build_package():
   """Builds a package using setuptools to be pushed to GCP."""
   # TODO(b/124821007): Revisit this once PyPi package exists
   src_dir = sys.modules['tfx'].__file__  # Get the install path for TFX
-  setup_file = os.path.join(src_dir, 'runtimes/gcp/setup-tfx.py')
-  cwd = os.getcwd()
-  tmp_dir = tempfile.mktemp()
-  # airflow/plugins and experimental don't have a TFX setup.py file, so
-  # temporarily add one.  Fix is related to b/124821007 once PyPi exists
-  os.chdir(os.path.join(src_dir, '..'))
-  tmp_setup_file = os.path.join(src_dir, '..', 'setup.py')
-  copy_file(setup_file, tmp_setup_file, True)
-  # end-workaround
+  setup_file = os.path.join(
+      os.path.dirname(os.path.dirname(src_dir)), 'setup.py')
   # Create the temp package
-  cmd = ['python', tmp_setup_file, '--quiet', 'sdist', '--dist-dir', tmp_dir]
+  tmp_dir = tempfile.mkdtemp()
+  cmd = ['python', setup_file, '--quiet', 'sdist', '--dist-dir', tmp_dir]
   subprocess.call(cmd)
-  # workaround related to b/124821007
-  tf.gfile.Remove(tmp_setup_file)
-  # tf.gfile.Remove(tmp_setup_file+'c')
-  delete_dir('tfx.egg-info')
-  # end-workaround
-  os.chdir(cwd)
-  return os.path.join(tmp_dir, 'tfx-0.1.12.tar.gz')
+
+  files = tf.gfile.ListDirectory(tmp_dir)
+  if len(files) != 1:
+    raise RuntimeError('Found multiple package files: {}'.format(tmp_dir))
+
+  return os.path.join(tmp_dir, files[0])
