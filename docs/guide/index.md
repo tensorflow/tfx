@@ -593,11 +593,13 @@ cp data.csv ~/airflow/data/taxi     # or $AIRFLOW_HOME/data/taxi
 
 By convention your pipeline config should contain only the code necessary to
 configure your pipeline, as in
-[this example](examples/chicago_taxi_pipeline/taxi_pipeline_simple.py).
+[this example](
+https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py).
 
 The supporting code, such as your TensorFlow model and your Transform
 `preprocessing_fn`, should all go in a single file, as in
-[this example](examples/chicago_taxi_pipeline/taxi_utils.py).
+[this example](
+https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi_pipeline/taxi_utils.py).
 
 ## Deploying and Operating a TFX Pipeline
 
