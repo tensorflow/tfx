@@ -193,7 +193,7 @@ please follow the instructions [here](https://github.com/tensorflow/tfx/blob/mas
 In start_model_server_local.sh, change:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-LOCAL_MODEL_DIR=$(pwd)/tfx/pipelines/serving_model/taxi_simple
+LOCAL_MODEL_DIR=$(pwd)/taxi/serving_model/taxi_simple
 </pre>
 
 This will pick up the latest model under above path.
