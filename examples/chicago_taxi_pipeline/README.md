@@ -77,8 +77,8 @@ Create a Python 2.7 virtual environment for this example and activate the
 `virtualenv`:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-virtualenv -p python2.7 taxi
-source ./taxi/bin/activate
+virtualenv -p python2.7 taxi_pipeline
+source ./taxi_pipeline/bin/activate
 </pre>
 
 Configure common paths:
@@ -98,11 +98,11 @@ pip install -r requirements.txt
 -->
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow
+pip install tensorflow==1.12
 pip install docker
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 pip install apache-airflow
-pip install tfx==0.12.0rc3
+pip install tfx==0.12.0
 </pre>
 
 Next, initialize Airflow
@@ -117,14 +117,14 @@ The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
 small subset of the Taxi Trips dataset as CSV files.
 
-Note: Make sure to execute the following commands from the <code>tfx/examples/chicago_taxi_pipeline</code> directory.
+Note: Download [tfx](https://github.com/tensorflow/tfx), make sure to execute the following commands from the <code>examples/chicago_taxi_pipeline</code> directory.
 
 Let's copy the dataset CSV to the directory where TFX ExampleGen will ingest it
 from:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-mkdir -p $TAXI_DIR
-cp -r data/ $TAXI_DIR
+mkdir -p $TAXI_DIR/data/simple
+cp data/simple/data.csv $TAXI_DIR/data/simple
 </pre>
 
 Let's copy the TFX pipeline definition to Airflow's
@@ -146,7 +146,7 @@ cp taxi_utils.py $TAXI_DIR
 
 ### Start Airflow
 
-Start the <code>Airflow webserver</code>:
+Start the <code>Airflow webserver</code> (in 'taxi_pipeline' virtualenv):
 
 <pre class="devsite-terminal devsite-click-to-copy">
 airflow webserver
@@ -155,8 +155,7 @@ airflow webserver
 Open a new terminal window:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-virtualenv -p python2.7 taxi
-source ./taxi/bin/activate
+source ./taxi_pipeline/bin/activate
 </pre>
 
 and start the <code>Airflow scheduler</code>:
@@ -189,7 +188,24 @@ ls $TFX_DIR/pipelines/serving_model/taxi_simple
 
 
 To serve the model with [TensorFlow Serving](https://www.tensorflow.org/serving)
-please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/README.md#serve-the-tensorflow-model).
+please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following path changes before running the scripts:
+
+In start_model_server_local.sh, change:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+LOCAL_MODEL_DIR=$(pwd)/tfx/pipelines/serving_model/taxi_simple
+</pre>
+
+This will pick up the latest model under above path.
+
+In classify_local.sh (must run under examples/chicago_taxi/), change:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+--examples_file ~/taxi/data/simple/data.csv \
+--schema_file ~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt \
+</pre>
+
+
 
 # Learn more
 
