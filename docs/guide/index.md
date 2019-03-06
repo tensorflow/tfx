@@ -164,6 +164,15 @@ of machine learning (ML) workflows on Kubernetes simple, portable and scalable.
 Kubeflow's goal is not to recreate other services, but to provide a
 straightforward way to deploy best-of-breed open-source systems for ML to
 diverse infrastructures.
+[Kubeflow Pipelines](https://www.kubeflow.org/docs/pipelines/pipelines-overview/)
+enable composition and execution of reproducible workflows on Kubeflow,
+integrated with experimentation and notebook based experiences.
+Kubeflow Pipelines services on Kubernetes include the hosted Metadata store,
+container based orchestration engine, notebook server, and UI to help users
+develop, run, and manage complex ML pipelines at scale.
+The Kubeflow Pipelines SDK allows for creation and sharing of components
+and composition of pipelines programmatically.
+
 
 ### Orchestration and Portability
 
@@ -664,3 +673,22 @@ If you don't include "_DAG" at the end of your `pipeline_name` in your
 ### Pipeline is listed, but when triggering Airflow cannot find
 
 Try restarting the webserver and scheduler.
+
+## Creating a TFX Pipeline With Kubeflow
+
+### Setup
+
+Kubeflow requires a Kubernetes cluster to run the pipelines at scale.
+See the Kubeflow deployment guideline that guide through the options for
+[deplopying the Kubeflow cluster.] (https://www.kubeflow.org/docs/started/getting-started-gke/)
+
+### Configure and run TFX pipeline
+
+Please follow the Kubeflow Pipelines [instructions](https://github.com/kubeflow/pipelines/tree/master/samples/tfx-oss)
+to run the TFX example pipeline on Kubeflow.
+TFX components have been containerized to compose the Kubeflow pipeline and
+the sample illustrates the ability to configure the pipeline to read large 
+public dataset and execute training and data processing steps at scale in the cloud.
+
+
+
