@@ -74,6 +74,12 @@ _cmle_serving_args = {
     'runtime_version': '1.12',
 }
 
+# The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.
+# The full taxi dataset is > 120M record.  In the interest of resource
+# savings and time, we've set the default for this example to be much smaller.
+# Feel free to crank it up and process the full dataset!
+_query_sample_rate = 0.001  # Generate a 0.1% random sample.
+
 
 @PipelineDecorator(
     pipeline_name='chicago_taxi_pipeline_kubeflow',
@@ -91,8 +97,6 @@ _cmle_serving_args = {
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
 
-  # The full dataset consists of roughly 120M rows. Feel free to remove the
-  # sample rate to experiment with the full dataset.
   query = """
           SELECT
             pickup_community_area,
@@ -114,7 +118,7 @@ def _create_pipeline():
             dropoff_community_area,
             tips
           FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-          WHERE RAND() < 0.001"""
+          WHERE RAND() < {}""".format(_query_sample_rate)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = BigQueryExampleGen(query=query)
