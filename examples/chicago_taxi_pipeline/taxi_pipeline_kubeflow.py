@@ -29,8 +29,9 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 
 # Directory and data locations (uses Google Cloud Storage).
+_input_bucket = 'gs://my-bucket'
 _output_bucket = 'gs://my-bucket'
-_pipeline_root = os.path.join(_output_bucket, 'output')
+_pipeline_root = os.path.join(_output_bucket, 'tfx')
 
 # Google Cloud Platform project id to use when deploying this pipeline.
 _project_id = 'my-gcp-project'
@@ -39,7 +40,7 @@ _project_id = 'my-gcp-project'
 # Transform and Trainer both require user-defined functions to run successfully.
 # Copy this from the current directory to a GCS bucket and update the location
 # below.
-_taxi_utils = os.path.join(_output_bucket, 'taxi_utils.py')
+_taxi_utils = os.path.join(_input_bucket, 'taxi_utils.py')
 
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
