@@ -43,6 +43,9 @@ _data_root = os.path.join(_taxi_root, 'data/simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _taxi_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
+_serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_simple')
 
 # Directory and data locations.  This example assumes all of the chicago taxi
 # example code and metadata library is relative to $HOME, but you can store
@@ -50,10 +53,6 @@ _taxi_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines')
 _metadata_db_root = os.path.join(_tfx_root, 'metadata')
-
-# Path which can be listened to by the model server.  Pusher will output the
-# trained model here.
-_serving_model_dir = os.path.join(_pipeline_root, 'serving_model/taxi_simple')
 
 # Airflow-specific configs; these will be passed directly to airflow
 _airflow_config = {
