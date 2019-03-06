@@ -125,11 +125,9 @@ class BaseDriver(object):
     else:
       return None
 
-  # TODO(ruoyu): Add 'lock inputs' part.
-  # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def _verify_and_lock_inputs(
+  def _verify_inputs(
       self, input_dict):
-    """Verify inputs exist, lock them and update metadata state to in-use.
+    """Verify input exist.
 
     Args:
       input_dict: key -> TfxType for inputs.
@@ -142,14 +140,7 @@ class BaseDriver(object):
         if not single_input.uri:
           raise RuntimeError('Input {} not available'.format(single_input))
         if not tf.gfile.Exists(os.path.dirname(single_input.uri)):
-          # TODO(b/123311758): Convert artifact states to ml_metadata provided
-          # once they are available.
-          self._metadata_handler.update_artifact_state(
-              single_input.artifact, types.ARTIFACT_STATE_MISSING)
           raise RuntimeError('Input {} is missing'.format(single_input))
-        self._metadata_handler.check_artifact_state(
-            artifact=single_input.artifact,
-            expected_states=set([types.ARTIFACT_STATE_PUBLISHED]))
 
   def _default_caching_handling(
       self,
@@ -183,7 +174,7 @@ class BaseDriver(object):
 
     # Checks inputs exist and have valid states and locks them to avoid GC half
     # way
-    self._verify_and_lock_inputs(input_dict)
+    self._verify_inputs(input_dict)
 
     # Updates output.
     max_input_span = 0

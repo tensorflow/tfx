@@ -114,6 +114,31 @@ class BaseDriverTest(tf.test.TestCase):
     self.assertIsNone(execution_decision.execution_id)
     self._check_output(execution_decision)
 
+  def test_artifact_missing(self):
+    input_dict = copy.deepcopy(self._input_dict)
+    input_dict['input_data'][0].uri = 'should/not/exist'
+    output_dict = copy.deepcopy(self._output_dict)
+    exec_properties = copy.deepcopy(self._exec_properties)
+    driver_options = copy.deepcopy(self._driver_options)
+    driver_options.enable_cache = False
+
+    cached_output_dict = copy.deepcopy(self._output_dict)
+    for key, artifact_list in cached_output_dict.items():
+      for artifact in artifact_list:
+        artifact.uri = os.path.join(self._base_output_dir, key,
+                                    str(self._execution_id), '')
+        # valid cached artifacts must have an existing uri.
+        tf.gfile.MakeDirs(artifact.uri)
+    log_root = os.path.join(
+        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
+        self._testMethodName, 'log_root')
+    self._mock_metadata.previous_run.return_value = self._execution_id
+    self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
+    driver = base_driver.BaseDriver(log_root, self._mock_metadata)
+    with self.assertRaises(RuntimeError):
+      driver.prepare_execution(input_dict, output_dict, exec_properties,
+                               driver_options)
+
   def test_no_cache_on_missing_uri(self):
     input_dict = copy.deepcopy(self._input_dict)
     output_dict = copy.deepcopy(self._output_dict)
