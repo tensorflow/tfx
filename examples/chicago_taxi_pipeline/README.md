@@ -191,7 +191,7 @@ Once the pipeline completes, the model will be copied by the [Pusher](https://gi
 to the directory configured in the example code:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-ls $TFX_DIR/pipelines/serving_model/taxi_simple
+ls $TAXI_DIR/pipelines/serving_model/taxi_simple
 </pre>
 
 
