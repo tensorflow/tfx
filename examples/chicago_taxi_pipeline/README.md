@@ -117,7 +117,12 @@ The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
 small subset of the Taxi Trips dataset as CSV files.
 
-Note: Download [tfx](https://github.com/tensorflow/tfx), make sure to execute the following commands from the <code>examples/chicago_taxi_pipeline</code> directory.
+First let's download the TFX source we can run the example:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+git clone https://github.com/tensorflow/tfx
+cd tfx/examples/chicago_taxi_pipeline
+</pre>
 
 Let's copy the dataset CSV to the directory where TFX ExampleGen will ingest it
 from:
@@ -171,11 +176,14 @@ It should look like the image below if you click the Graph View option.
 
 ### Run the example
 
-If you were looking at the graph above, go back to the <code>DAGs View</code> to enable the
-<code>chicago_taxi_simple</code>.
-Enable the pipeline in airflow by toggling the DAG to <code>On</code>.  Now that it is
-schedulable, click on the <code>run button</code> (triangle) to start the run.
-You can view status by clicking on the started job, found in the <code>Last run</code> column.
+If you were looking at the graph above, click on the <code>DAGs</code> button to
+get back to the DAGs view.
+
+Enable the <code>chicago_taxi_simple</code> pipeline in Airflow by toggling
+the DAG to <code>On</code>.  Now that it is schedulable, click on the
+<code>Trigger DAG button</code> (triangle inside a circle) to start the run. You
+can view status by clicking on the started job, found in the
+<code>Last run</code> column. This process will take several minutes.
 
 ### Serve the TensorFlow model
 
