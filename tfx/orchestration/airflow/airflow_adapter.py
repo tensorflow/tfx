@@ -34,7 +34,7 @@ class AirflowAdapter(object):
     Args:
       component_name: Name of the component in the dag.
       input_dict: a dict from key name to a list of TfxType artifacts.
-      output_dict: a dict from key name to list of TfxType artifacts.
+      output_dict: a dict from key name to a list of TfxType artifacts.
       exec_properties: a dict of execution properties.
       driver_options: an instance of base_driver.DriverOptions to communicate
         with driver;
