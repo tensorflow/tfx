@@ -23,9 +23,9 @@ queries) the ExampleGen pipeline component is typically very easy to deploy and
 requires little customization. Typical code looks like this:
 
 ```python
-from tfx.utils.dsl_utils import csv_inputs
+from tfx.utils.dsl_utils import csv_input
 from tfx.components import ExamplesGen
 
-examples = csv_inputs(os.path.join(base_dir, 'no_split/span_1'))
+examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
 examples_gen = ExamplesGen(input_data=examples)
 ```

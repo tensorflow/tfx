@@ -495,7 +495,7 @@ example, a typical pipeline might look like:
     pipeline_root=pipeline_root)
 def create_pipeline():
   """Implements the example pipeline with TFX."""
-  examples = csv_inputs(os.path.join(base_dir, 'no_split/span_1'))
+  examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
   example_gen = CsvExampleGen(input_data=examples)
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.output)
   infer_schema = SchemaGen(stats=statistics_gen.outputs.output)

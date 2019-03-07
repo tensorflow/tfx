@@ -26,7 +26,7 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.runtimes.tfx_airflow import PipelineDecorator
-from tfx.utils.dsl_utils import csv_inputs
+from tfx.utils.dsl_utils import csv_input
 
 # Directory and data locations
 home_dir = os.path.join(os.environ['HOME'], 'airflow/')
@@ -59,7 +59,7 @@ tfx_example_mv_spec = [tfma.SingleSliceSpec()]
     output_dir=output_dir)
 def create_pipeline():
   """Implements the example pipeline with TFX."""
-  examples = csv_inputs(os.path.join(base_dir, 'no_split/span_1'))
+  examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
 
   examples_gen = ExamplesGen(input_data=examples)
 
