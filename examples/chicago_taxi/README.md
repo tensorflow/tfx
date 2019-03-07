@@ -1,18 +1,21 @@
 # Chicago Taxi Example
 
+
+Note: an updated end-to-end pipeline version of this example is available [here](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline).
+
 The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
 to analyze, validate and transform data, train a model, analyze and serve it. It
 uses:
 
-* [TensorFlow Data Validation](https://www.tensorflow.org/tfx/data_validation)
+* [TensorFlow Data Validation](https://www.tensorflow.org/tfx/guide/tfdv)
   for analyzing and validating data.
-* [TensorFlow Transform](https://www.tensorflow.org/tfx/transform) for feature
+* [TensorFlow Transform](https://www.tensorflow.org/tfx/guide/tft) for feature
   preprocessing,
 * TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
   for training,
-* [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/model_analysis) and
+* [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/guide/tfma) and
   Jupyter for evaluation, and
-* [TensorFlow Serving](https://www.tensorflow.org/serving) for serving.
+* [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving/) for serving.
 
 The example shows two modes of deployment:
 
