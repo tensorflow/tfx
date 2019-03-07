@@ -11,10 +11,60 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package Setup script for TFX.
-"""
+"""Package Setup script for TFX."""
+
+from __future__ import print_function
+
+import glob
+import os
+import subprocess
+import sys
+from distutils.spawn import find_executable
 from setuptools import find_packages
 from setuptools import setup
+
+# Find the Protocol Compiler.
+if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
+  protoc = os.environ['PROTOC']
+elif os.path.exists('../src/protoc'):
+  protoc = '../src/protoc'
+elif os.path.exists('../src/protoc.exe'):
+  protoc = '../src/protoc.exe'
+elif os.path.exists('../vsprojects/Debug/protoc.exe'):
+  protoc = '../vsprojects/Debug/protoc.exe'
+elif os.path.exists('../vsprojects/Release/protoc.exe'):
+  protoc = '../vsprojects/Release/protoc.exe'
+else:
+  protoc = find_executable('protoc')
+
+
+def generate_proto(source):
+  """Invokes the Protocol Compiler to generate a _pb2.py."""
+
+  output = source.replace('.proto', '_pb2.py')
+
+  if (not os.path.exists(output) or
+      (os.path.exists(source) and
+       os.path.getmtime(source) > os.path.getmtime(output))):
+    print('Generating %s...' % output)
+
+    if not os.path.exists(source):
+      sys.stderr.write('Cannot find required file: %s\n' % source)
+      sys.exit(-1)
+
+    if protoc is None:
+      sys.stderr.write(
+          'protoc is not installed nor found in ../src.  Please compile it '
+          'or install the binary package.\n')
+      sys.exit(-1)
+
+    protoc_command = [protoc, '-I.', '--python_out=.', source]
+    if subprocess.call(protoc_command) != 0:
+      sys.exit(-1)
+
+
+for proto_file in glob.glob('tfx/proto/*.proto'):
+  generate_proto(proto_file)
 
 
 def _make_required_install_packages():
@@ -32,10 +82,11 @@ def _make_required_install_packages():
       'tensorflow-transform>=0.12,<0.13',
   ]
 
+
 # Get version from version module.
 with open('tfx/version.py') as fp:
   globals_dict = {}
-  exec (fp.read(), globals_dict)  # pylint: disable=exec-used
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
 __version__ = globals_dict['__version__']
 
 # TODO(b/121329572): Remove the following comment after we can guarantee the
