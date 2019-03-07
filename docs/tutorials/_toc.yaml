@@ -2,7 +2,7 @@ toc:
 - title: "Get started with TFX"
   path: /tfx/tutorials/
 - title: "End-to-end pipeline example"
-  path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi
+  path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline
   status: external
 
 - heading: "Data Validation"
