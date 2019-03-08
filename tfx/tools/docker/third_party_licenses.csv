@@ -96,6 +96,7 @@ ipywidgets,https://raw.githubusercontent.com/jupyter-widgets/ipywidgets/master/L
 itsdangerous,https://raw.githubusercontent.com/pallets/itsdangerous/master/LICENSE,3-Clause BSD
 jedi,https://raw.githubusercontent.com/davidhalter/jedi/master/LICENSE.txt,MIT
 jinja2,https://raw.githubusercontent.com/pallets/jinja/master/LICENSE,BSD
+joblib,https://raw.githubusercontent.com/joblib/joblib/master/LICENSE.txt,3-Clause BSD
 jsonschema,https://raw.githubusercontent.com/Julian/jsonschema/master/COPYING,MIT
 jupyter,https://raw.githubusercontent.com/jupyter/notebook/master/COPYING.md,BSD
 jupyter-client,https://raw.githubusercontent.com/jupyter/jupyter_client/master/COPYING.md,BSD
