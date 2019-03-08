@@ -72,14 +72,14 @@ def _make_required_install_packages():
   # six, and protobuf) with TF.
   return [
       'absl-py>=0.1.6,<1',
-      'apache-beam[gcp]>=2.10,<3',
+      'apache-beam[gcp]>=2.11,<3',
       'google-api-python-client>=1.7.8,<2',
       'ml-metadata>=0.13.2,<0.14',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
-      'tensorflow-data-validation>=0.12,<0.13',
-      'tensorflow-model-analysis>=0.12,<0.13',
-      'tensorflow-transform>=0.12,<0.13',
+      'tensorflow-data-validation>=0.13.1,<0.14',
+      'tensorflow-model-analysis>=0.13,<0.14',
+      'tensorflow-transform>=0.13,<0.14',
   ]
 
 
@@ -116,11 +116,8 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        # TODO(b/34685282): Once we support Python 3, remove this line.
-        'Programming Language :: Python :: 2 :: Only',
-        # TODO(b/34685282): Once we support Python 3, uncomment these lines.
-        # 'Programming Language :: Python :: 3',
-        # 'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
         # 'Programming Language :: Python :: 3.6',
         # 'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering',
@@ -132,8 +129,7 @@ setup(
     ],
     namespace_packages=[],
     install_requires=_make_required_install_packages(),
-    # TODO(b/34685282): Remove < 3 after Apache Beam 2.11 is released.
-    python_requires='>=2.7,<3',
+    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),
     include_package_data=True,
     # TODO(b/124941876): Update with proper description.

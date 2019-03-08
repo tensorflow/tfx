@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Contains the version string of TFX."""
 
 # Note that setup.py uses this version.
-__version__ = '0.12.0'
+__version__ = '0.13.0rc0'
