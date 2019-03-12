@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import collections
 import hashlib
+import logging
 import types
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Set, Text, Type
@@ -35,9 +36,11 @@ class Metadata(object):
   """Helper class to handle metadata I/O."""
 
   def __init__(self,
-               connection_config):
+               connection_config,
+               logger):
     self._connection_config = connection_config
     self._store = None
+    self._logger = logger  # For future use; no logging done yet in class.
 
   def __enter__(self):
     # TODO(ruoyu): Establishing a connection pool instead of newing

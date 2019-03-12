@@ -16,13 +16,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import logging
 import os
 import tensorflow as tf
 
 from typing import Any, Dict, List, Optional, Text
 
 from tfx.orchestration import metadata
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -76,13 +76,14 @@ class BaseDriver(object):
   is needed.
 
   Args:
-    log_root: root logging directory.
+    logger: A logging.Logger
     metadata_handler: An instance of Metadata.
   """
 
-  def __init__(self, log_root, metadata_handler):
+  def __init__(self, logger,
+               metadata_handler):
     self._metadata_handler = metadata_handler
-    self._logger = logging_utils.get_logger(log_root, 'driver')
+    self._logger = logger
 
   def _log_properties(self, input_dict,
                       output_dict,

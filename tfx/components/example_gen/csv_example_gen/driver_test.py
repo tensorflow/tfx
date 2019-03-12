@@ -22,6 +22,7 @@ import os
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.csv_example_gen import driver
+from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -31,11 +32,12 @@ class DriverTest(tf.test.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    log_root = os.path.join(output_data_dir, 'log_root')
+    self._logger_config = logging_utils.LoggerConfig(
+        log_root=os.path.join(output_data_dir, 'log_dir'))
 
     # Mock metadata.
     mock_metadata = tf.test.mock.Mock()
-    csv_example_gen = driver.Driver(log_root, mock_metadata)
+    csv_example_gen = driver.Driver(self._logger_config, mock_metadata)
 
     # Mock artifact.
     artifacts = []

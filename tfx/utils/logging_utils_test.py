@@ -16,10 +16,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import logging
 import os
 # Standard Imports
-
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import logging_utils
@@ -28,18 +27,36 @@ from tfx.utils import logging_utils
 class LoggingUtilsTest(tf.test.TestCase):
 
   def setUp(self):
-    self._log_dir = os.path.join(self.get_temp_dir(), 'log_dir')
+    self._log_root = os.path.join(self.get_temp_dir(), 'log_dir')
+    self._logger_config = logging_utils.LoggerConfig(log_root=self._log_root)
 
   def test_logging(self):
-    logger = logging_utils.get_logger(self._log_dir, 'test')
+    """Ensure a logged string actually appears in the log file."""
+    logger = logging_utils.get_logger(self._logger_config)
     logger.info('Test')
-    log_file_path = os.path.join(self._log_dir, 'test')
-    f = file_io.FileIO(log_file_path, mode='r')
+    log_file_path = os.path.join(self._log_root)
+    f = file_io.FileIO(os.path.join(log_file_path, 'tfx.log'), mode='r')
     self.assertRegexpMatches(
         f.read(),
-        r'^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d\d\d - logging_utils_test.py:35 - INFO: Test$'
+        r'^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d\d\d - : \(logging_utils_test.py:\d\d\) - INFO: Test$'
     )
 
+  def test_default_settings(self):
+    """Ensure log defaults are set correctly."""
+    config = logging_utils.LoggerConfig()
+    self.assertEqual(config.log_root, '/var/tmp/tfx/logs')
+    self.assertEqual(config.log_level, logging.INFO)
+    self.assertEqual(config.pipeline_name, '')
+    self.assertEqual(config.worker_name, '')
+
+  def test_override_settings(self):
+    """Ensure log overrides are set correctly."""
+    config = logging_utils.LoggerConfig(log_root='path', log_level=logging.WARN,
+                                        pipeline_name='pipe', worker_name='wrk')
+    self.assertEqual(config.log_root, 'path')
+    self.assertEqual(config.log_level, logging.WARN)
+    self.assertEqual(config.pipeline_name, 'pipe')
+    self.assertEqual(config.worker_name, 'wrk')
 
 if __name__ == '__main__':
   tf.test.main()
