@@ -18,6 +18,7 @@ import os
 from airflow import models
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx.utils import logging_utils
 
 
 # TODO(b/126566908): More documentation for Airflow modules.
@@ -44,10 +45,9 @@ class AirflowPipeline(models.DAG):
                pipeline_root,
                metadata_db_root,
                metadata_connection_config=None,
-               additional_pipeline_args=[],
+               additional_pipeline_args=None,
                docker_operator_cfg=None,
-               enable_cache=False,
-               log_root=''):
+               enable_cache=False):
     super(AirflowPipeline, self).__init__(
         dag_id=pipeline_name,
         schedule_interval=schedule_interval,
@@ -56,9 +56,16 @@ class AirflowPipeline(models.DAG):
     self.additional_pipeline_args = additional_pipeline_args
     self.docker_operator_cfg = docker_operator_cfg
     self.enable_cache = enable_cache
-    # TODO(b/122677896): Add unid to log_root and run_name
-    self.log_root = os.path.join(log_root or '/var/tmp/tfx/logs/',
-                                 pipeline_name)
+
+    if additional_pipeline_args is None:
+      additional_pipeline_args = {}
+
+    # Configure logging
+    self.logger_config = logging_utils.LoggerConfig(pipeline_name=pipeline_name)
+    if 'logger_args' in additional_pipeline_args:
+      self.logger_config.update(additional_pipeline_args.get('logger_args'))
+
+    self._logger = logging_utils.get_logger(self.logger_config)
     self.metadata_connection_config = metadata_connection_config or _get_default_metadata_connection_config(
         metadata_db_root, pipeline_name)
     self._producer_map = {}

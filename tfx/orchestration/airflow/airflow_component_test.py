@@ -25,6 +25,7 @@ import tensorflow as tf
 
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.airflow import airflow_pipeline
+from tfx.utils import logging_utils
 from tfx.utils.types import TfxType
 
 
@@ -43,6 +44,7 @@ class AirflowComponentTest(tf.test.TestCase):
         task_id='my_component.publishcache', dag=dummy_dag)
     self.publishexec_op = dummy_operator.DummyOperator(
         task_id='my_component.publishexec', dag=dummy_dag)
+    self._logger_config = logging_utils.LoggerConfig()
     self.parent_dag = airflow_pipeline.AirflowPipeline(
         pipeline_name='pipeline_name',
         start_date=datetime.datetime(2018, 1, 1),
@@ -52,8 +54,7 @@ class AirflowComponentTest(tf.test.TestCase):
         metadata_connection_config=None,
         additional_pipeline_args=None,
         docker_operator_cfg=None,
-        enable_cache=True,
-        log_root='log_root')
+        enable_cache=True)
     self.input_dict = {'i': [TfxType('i')]}
     self.output_dict = {'o': [TfxType('o')]}
     self.exec_properties = {'e': 'e'}
@@ -76,7 +77,6 @@ class AirflowComponentTest(tf.test.TestCase):
         self.tfx_python_op, self.publishexec_op
     ]
     mock_branch_python_operator_class.side_effect = [self.checkcache_op]
-
     tfx_worker = airflow_component._TfxWorker(
         component_name='component_name',
         task_id='my_component',
@@ -88,7 +88,8 @@ class AirflowComponentTest(tf.test.TestCase):
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
-        metadata_connection_config=None)
+        metadata_connection_config=None,
+        logger_config=self._logger_config)
 
     self.assertItemsEqual(self.checkcache_op.upstream_list, [])
     self.assertItemsEqual(self.tfx_python_op.upstream_list,
@@ -107,7 +108,8 @@ class AirflowComponentTest(tf.test.TestCase):
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
-        metadata_connection_config=None)
+        metadata_connection_config=None,
+        logger_config=self._logger_config)
 
     mock_branch_python_operator_class.assert_called_with(
         task_id='my_component.checkcache',
@@ -173,7 +175,8 @@ class AirflowComponentTest(tf.test.TestCase):
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
-        metadata_connection_config=None)
+        metadata_connection_config=None,
+        logger_config=self._logger_config)
 
     self.assertItemsEqual(self.checkcache_op.upstream_list, [])
     self.assertItemsEqual(self.tfx_docker_op.upstream_list,
@@ -243,7 +246,8 @@ class AirflowComponentTest(tf.test.TestCase):
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
-        metadata_connection_config=self.parent_dag.metadata_connection_config)
+        metadata_connection_config=self.parent_dag.metadata_connection_config,
+        logger_config=mock.ANY)
 
     self.assertItemsEqual(component.upstream_list, [])
 

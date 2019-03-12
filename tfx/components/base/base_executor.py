@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import json
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
@@ -64,12 +65,14 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     """Get beam pipeline args."""
     return self._beam_pipeline_args
 
-  def _log_startup(self, inputs, outputs, exec_properties):
+  def _log_startup(self, inputs,
+                   outputs,
+                   exec_properties):
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting {} execution.'.format(self.__class__.__name__))
-    tf.logging.info('Inputs for {} is: {}'.format(self.__class__.__name__,
-                                                  inputs))
+    tf.logging.info('Inputs for {} is: {}'.format(
+        self.__class__.__name__, types.jsonify_tfx_type_dict(inputs)))
+    tf.logging.info('Outputs for {} is: {}'.format(
+        self.__class__.__name__, types.jsonify_tfx_type_dict(outputs)))
     tf.logging.info('Execution properties for {} is: {}'.format(
-        self.__class__.__name__, exec_properties))
-    tf.logging.info('Outputs for {} is: {}'.format(self.__class__.__name__,
-                                                   outputs))
+        self.__class__.__name__, json.dumps(exec_properties)))

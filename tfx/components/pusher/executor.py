@@ -102,5 +102,4 @@ class Executor(base_executor.BaseExecutor):
                                               {}).get('cmle_serving_args')
       if cmle_serving_args is not None:
         return cmle_runner.deploy_model_for_serving(serving_path, model_version,
-                                                    cmle_serving_args,
-                                                    exec_properties['log_root'])
+                                                    cmle_serving_args)

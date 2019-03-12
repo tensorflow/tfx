@@ -21,6 +21,7 @@ import copy
 import os
 import tensorflow as tf
 from tfx.components.base import base_driver
+from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -55,6 +56,9 @@ class BaseDriverTest(tf.test.TestCase):
         base_output_dir=self._base_output_dir,
         enable_cache=True)
     self._execution_id = 100
+    log_root = os.path.join(self._base_output_dir, 'log_dir')
+    logger_config = logging_utils.LoggerConfig(log_root=log_root)
+    self._logger = logging_utils.get_logger(logger_config)
 
   def _check_output(self, execution_decision):
     output_dict = execution_decision.output_dict
@@ -80,12 +84,10 @@ class BaseDriverTest(tf.test.TestCase):
     output_dict = copy.deepcopy(self._output_dict)
     exec_properties = copy.deepcopy(self._exec_properties)
 
-    log_root = os.path.join(
-        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        self._testMethodName, 'log_root')
     self._mock_metadata.previous_run.return_value = None
     self._mock_metadata.prepare_execution.return_value = self._execution_id
-    driver = base_driver.BaseDriver(log_root, self._mock_metadata)
+    driver = base_driver.BaseDriver(logger=self._logger,
+                                    metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(
         input_dict, output_dict, exec_properties, self._driver_options)
     self.assertEqual(self._execution_id, execution_decision.execution_id)
@@ -103,12 +105,10 @@ class BaseDriverTest(tf.test.TestCase):
                                     str(self._execution_id), '')
         # valid cached artifacts must have an existing uri.
         tf.gfile.MakeDirs(artifact.uri)
-    log_root = os.path.join(
-        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        self._testMethodName, 'log_root')
     self._mock_metadata.previous_run.return_value = self._execution_id
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(log_root, self._mock_metadata)
+    driver = base_driver.BaseDriver(logger=self._logger,
+                                    metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(
         input_dict, output_dict, exec_properties, self._driver_options)
     self.assertIsNone(execution_decision.execution_id)
@@ -129,12 +129,10 @@ class BaseDriverTest(tf.test.TestCase):
                                     str(self._execution_id), '')
         # valid cached artifacts must have an existing uri.
         tf.gfile.MakeDirs(artifact.uri)
-    log_root = os.path.join(
-        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        self._testMethodName, 'log_root')
+
     self._mock_metadata.previous_run.return_value = self._execution_id
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(log_root, self._mock_metadata)
+    driver = base_driver.BaseDriver(self._logger, self._mock_metadata)
     with self.assertRaises(RuntimeError):
       driver.prepare_execution(input_dict, output_dict, exec_properties,
                                driver_options)
@@ -151,15 +149,13 @@ class BaseDriverTest(tf.test.TestCase):
                                     str(self._execution_id), '')
         # Non existing output uri will force a cache miss.
         self.assertFalse(tf.gfile.Exists(artifact.uri))
-    log_root = os.path.join(
-        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        self._testMethodName, 'log_root')
     self._mock_metadata.previous_run.return_value = self._execution_id
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
     actual_execution_id = self._execution_id + 1
     self._mock_metadata.prepare_execution.return_value = actual_execution_id
 
-    driver = base_driver.BaseDriver(log_root, self._mock_metadata)
+    driver = base_driver.BaseDriver(logger=self._logger,
+                                    metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(
         input_dict, output_dict, exec_properties, self._driver_options)
     self.assertEqual(actual_execution_id, execution_decision.execution_id)

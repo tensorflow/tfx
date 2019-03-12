@@ -22,9 +22,9 @@ import os
 import time
 from googleapiclient import discovery
 from googleapiclient import errors
+import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.utils import io_utils
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -37,16 +37,16 @@ def start_cmle_training(input_dict,
                         training_inputs):
   """Start a trainer job on CMLE."""
   training_inputs = training_inputs.copy()
-  logger = logging_utils.get_logger(exec_properties['log_root'], 'exec')
+  # TODO(khaas): This file goes away when cl/236428692 lands
   # Remove cmle_args from exec_properties so CMLE trainer doesn't call itself
   exec_properties['custom_config'].pop('cmle_training_args')
 
   json_inputs = types.jsonify_tfx_type_dict(input_dict)
-  logger.info('json_inputs=\'%s\'.', json_inputs)
+  tf.logging.info('json_inputs=\'%s\'.', json_inputs)
   json_outputs = types.jsonify_tfx_type_dict(output_dict)
-  logger.info('json_outputs=\'%s\'.', json_outputs)
+  tf.logging.info('json_outputs=\'%s\'.', json_outputs)
   json_exec_properties = json.dumps(exec_properties)
-  logger.info('json_exec_properties=\'%s\'.', json_exec_properties)
+  tf.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
   # Configure CMLE job
   api_client = discovery.build('ml', 'v1')
@@ -74,7 +74,7 @@ def start_cmle_training(input_dict,
   job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
 
   # Submit job to CMLE
-  logger.info('Submitting job=\'{}\', project=\'{}\' to CMLE.'.format(
+  tf.logging.info('Submitting job=\'{}\', project=\'{}\' to CMLE.'.format(
       job_name, project))
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
@@ -91,16 +91,15 @@ def start_cmle_training(input_dict,
   if response['state'] == 'FAILED':
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
         job_name, response)
-    logger.error(err_msg)
+    tf.logging.error(err_msg)
     raise RuntimeError(err_msg)
 
   # CMLE training complete
-  logger.info('Job \'{}\' successful.'.format(job_name))
+  tf.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
 def deploy_model_for_serving(serving_path, model_version,
-                             cmle_serving_args,
-                             log_root):
+                             cmle_serving_args):
   """Deploys a model for serving with CMLE.
 
   Args:
@@ -108,13 +107,11 @@ def deploy_model_for_serving(serving_path, model_version,
     model_version: Version of the model being deployed. Must be different
       from what is currently being served.
     cmle_serving_args: Dictionary containing arguments for pushing to CMLE.
-    log_root: Logging root directory.
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  logger = logging_utils.get_logger(log_root, 'exec')
-  logger.info(
+  tf.logging.info(
       'Deploying to model with version {} to CMLE for serving: {}'.format(
           model_version, cmle_serving_args))
 
@@ -130,7 +127,7 @@ def deploy_model_for_serving(serving_path, model_version,
   except errors.HttpError as e:
     # If the error is to create an already existing model, it's ok to ignore.
     if e.resp.status == 409:
-      logger.warn('Model {} already exists'.format(model_name))
+      tf.logging.warn('Model {} already exists'.format(model_name))
     else:
       raise RuntimeError('CMLE Push failed: {}'.format(e))
 
@@ -152,14 +149,14 @@ def deploy_model_for_serving(serving_path, model_version,
       break
     if 'error' in deploy_status:
       # The operation completed with an error.
-      logger.error(deploy_status['error'])
+      tf.logging.error(deploy_status['error'])
       raise RuntimeError(
           'Failed to deploy model to CMLE for serving: {}'.format(
               deploy_status['error']))
 
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    logger.info('Model still being deployed...')
+    tf.logging.info('Model still being deployed...')
 
-  logger.info(
+  tf.logging.info(
       'Successfully deployed model {} with version {}, serving from {}'.format(
           model_name, model_version, serving_path))

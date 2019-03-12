@@ -26,13 +26,13 @@ from tfx.utils import types
 class ExampleValidatorTest(tf.test.TestCase):
 
   def test_construct(self):
-    example_vadalitor = component.ExampleValidator(
+    example_validator = component.ExampleValidator(
         stats=channel.as_channel(
             [types.TfxType(type_name='ExampleStatisticsPath', split='eval')]),
         schema=channel.as_channel([types.TfxType(type_name='SchemaPath')]),
     )
     self.assertEqual('ExampleValidationPath',
-                     example_vadalitor.outputs.output.type_name)
+                     example_validator.outputs.output.type_name)
 
 
 if __name__ == '__main__':

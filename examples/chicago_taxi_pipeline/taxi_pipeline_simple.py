@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import logging
 import os
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -53,11 +54,18 @@ _serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_simple')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines')
 _metadata_db_root = os.path.join(_tfx_root, 'metadata')
+_log_root = os.path.join(_tfx_root, 'logs')
 
 # Airflow-specific configs; these will be passed directly to airflow
 _airflow_config = {
     'schedule_interval': None,
     'start_date': datetime.datetime(2019, 1, 1),
+}
+
+# Logging overrides
+logger_overrides = {
+    'log_root': _log_root,
+    'log_level': logging.INFO
 }
 
 
@@ -66,6 +74,7 @@ _airflow_config = {
     pipeline_name='chicago_taxi_simple',
     enable_cache=True,
     metadata_db_root=_metadata_db_root,
+    additional_pipeline_args={'logger_args': logger_overrides},
     pipeline_root=_pipeline_root)
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""

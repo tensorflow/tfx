@@ -17,11 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 # Standard Imports
-
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration.metadata import Metadata
+from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -30,9 +31,14 @@ class MetadataTest(tf.test.TestCase):
   def setUp(self):
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
+    log_root = os.path.join(self.get_temp_dir(), 'log_dir')
+    logger_config = logging_utils.LoggerConfig(log_root=log_root)
+    self._logger = logging_utils.get_logger(logger_config)
 
   def test_empty_artifact(self):
-    with Metadata(self._connection_config) as m:
+    with Metadata(
+        connection_config=self._connection_config,
+        logger=self._logger) as m:
       m.publish_artifacts([])
       eid = m.prepare_execution('Test', {})
       m.publish_execution(eid, {}, {})
@@ -49,7 +55,9 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
   def test_artifact(self):
-    with Metadata(self._connection_config) as m:
+    with Metadata(
+        connection_config=self._connection_config,
+        logger=self._logger) as m:
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
@@ -90,21 +98,18 @@ class MetadataTest(tf.test.TestCase):
                         types.ARTIFACT_STATE_PUBLISHED)
 
   def test_execution(self):
-    with Metadata(self._connection_config) as m:
+    with Metadata(
+        connection_config=self._connection_config,
+        logger=self._logger) as m:
+
       # Test prepare_execution.
-      exec_properties = {'log_root': 'path'}
+      exec_properties = {}
       eid = m.prepare_execution('Test', exec_properties)
       [execution] = m.store.get_executions()
       self.assertProtoEquals(
           """
         id: 1
         type_id: 1
-        properties {
-          key: "log_root"
-          value {
-            string_value: "path"
-          }
-        }
         properties {
           key: "state"
           value {
@@ -149,7 +154,9 @@ class MetadataTest(tf.test.TestCase):
           }""", events[1].path)
 
   def test_fetch_previous_result(self):
-    with Metadata(self._connection_config) as m:
+    with Metadata(
+        connection_config=self._connection_config,
+        logger=self._logger) as m:
 
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}

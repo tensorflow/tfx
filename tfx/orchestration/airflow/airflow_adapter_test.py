@@ -24,6 +24,7 @@ from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.orchestration.airflow import airflow_adapter
 from tfx.orchestration.airflow import airflow_component
+from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -38,6 +39,7 @@ class AirflowAdapterTest(tf.test.TestCase):
         'output_one_key', 'output_one_component_id')
     self.input_one_json = json.dumps([self.input_one.json_dict()])
     self.output_one_json = json.dumps([self.output_one.json_dict()])
+    self._logger_config = logging_utils.LoggerConfig()
 
   def _setup_mocks(self, mock_metadata_class, mock_driver_class,
                    mock_executor_class, mock_docker_operator_class,
@@ -46,11 +48,12 @@ class AirflowAdapterTest(tf.test.TestCase):
     self._setup_mock_executor(mock_executor_class)
     self._setup_mock_metadata(mock_metadata_class)
     self._setup_mock_task_instance()
+    self._mock_get_logger = mock_get_logger
 
   def _setup_adapter_and_args(self):
     input_dict = {u'input_one': [self.input_one]}
     output_dict = {u'output_one': [self.output_one]}
-    exec_properties = {u'log_root': u'log_root'}
+    exec_properties = {}
     driver_options = {}
 
     adapter = airflow_adapter.AirflowAdapter(
@@ -62,7 +65,8 @@ class AirflowAdapterTest(tf.test.TestCase):
         executor_class=base_executor.BaseExecutor,
         driver_options=driver_options,
         additional_pipeline_args=None,
-        metadata_connection_config='metadata_connection_config')
+        metadata_connection_config='metadata_connection_config',
+        logger_config=self._logger_config)
 
     return adapter, input_dict, output_dict, exec_properties, driver_options
 
@@ -122,9 +126,9 @@ class AirflowAdapterTest(tf.test.TestCase):
         'uncached_branch',
         ti=self.mock_task_instance)
 
-    mock_get_logger.assert_called_with('log_root', 'comp')
+    mock_get_logger.assert_called_with(self._logger_config)
     mock_driver_class.assert_called_with(
-        log_root='log_root', metadata_handler=self.mock_metadata)
+        logger=mock.ANY, metadata_handler=self.mock_metadata)
     self.mock_driver.prepare_execution.called_with(
         input_dict, output_dict, exec_properties, driver_options)
     self.mock_task_instance.xcom_pull.assert_called_with(
@@ -159,7 +163,7 @@ class AirflowAdapterTest(tf.test.TestCase):
         ti=self.mock_task_instance)
 
     mock_driver_class.assert_called_with(
-        log_root='log_root', metadata_handler=self.mock_metadata)
+        logger=mock.ANY, metadata_handler=self.mock_metadata)
     self.mock_driver.prepare_execution.called_with(
         input_dict, output_dict, exec_properties, driver_options)
     self.mock_task_instance.xcom_pull.assert_called_with(

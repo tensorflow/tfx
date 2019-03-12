@@ -36,7 +36,6 @@ from tfx.components.schema_gen.executor import Executor as SchemaGen
 from tfx.components.statistics_gen.executor import Executor as StatisticsGen
 from tfx.components.trainer.executor import Executor as Trainer
 from tfx.components.transform.executor import Executor as Transform
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -84,13 +83,10 @@ class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
     self._exec_properties = exec_properties
     self._component_name = to_snake_case(name)
 
-    self._logger = logging_utils.get_logger(
-        exec_properties['log_root'], self._component_name + '_driver.logs')
-
   def _set_outputs(self):
     output_dir = self._exec_properties['output_dir']
     workflow_id = os.environ['WORKFLOW_ID']
-    self._logger.info('Using workflow id {}'.format(workflow_id))
+    tf.logging.info('Using workflow id {}'.format(workflow_id))
 
     max_input_span = 0
     for input_list in self._input_dict.values():

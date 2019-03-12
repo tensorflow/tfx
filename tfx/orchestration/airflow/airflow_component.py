@@ -23,6 +23,7 @@ from airflow.operators import subdag_operator
 
 from tfx.components.base import base_driver
 from tfx.orchestration.airflow import airflow_adapter
+from tfx.utils import logging_utils
 
 
 # TODO(b/126566908): More documentation for Airflow modules.
@@ -41,13 +42,12 @@ class _TfxWorker(models.DAG):
   def __init__(self, component_name, task_id, parent_dag, input_dict,
                output_dict, exec_properties, driver_options, driver_class,
                executor_class, additional_pipeline_args,
-               metadata_connection_config):
+               metadata_connection_config, logger_config):
     super(_TfxWorker, self).__init__(
         dag_id=task_id,
         schedule_interval=None,
         start_date=parent_dag.start_date,
         user_defined_filters={'b64encode': base64.b64encode})
-    # TODO(b/123534176): Remove log_root from exec_properties
     adaptor = airflow_adapter.AirflowAdapter(
         component_name=component_name,
         input_dict=input_dict,
@@ -58,7 +58,7 @@ class _TfxWorker(models.DAG):
         executor_class=executor_class,
         additional_pipeline_args=additional_pipeline_args,
         metadata_connection_config=metadata_connection_config,
-    )
+        logger_config=logger_config)
     # Before the executor runs, check if the artifact already exists
     checkcache_op = python_operator.BranchPythonOperator(
         task_id=task_id + '.checkcache',
@@ -123,12 +123,16 @@ class Component(subdag_operator.SubDagOperator):
         component_name,
         unique_name or '')
 
-    # Update the output dict before providing to downstream components
+    # Update the output dict before providing to downstream componentsget_
     for k, output_list in output_dict.items():
       for single_output in output_list:
         single_output.source = _OrchestrationSource(key=k, component_id=task_id)
 
-    exec_properties['log_root'] = os.path.join(parent_dag.log_root, worker_name)
+    my_logger_config = logging_utils.LoggerConfig(
+        log_root=parent_dag.logger_config.log_root,
+        log_level=parent_dag.logger_config.log_level,
+        pipeline_name=parent_dag.logger_config.pipeline_name,
+        worker_name=worker_name)
     driver_options = base_driver.DriverOptions(
         worker_name=worker_name,
         base_output_dir=output_dir,
@@ -145,7 +149,8 @@ class Component(subdag_operator.SubDagOperator):
         driver_class=driver,
         executor_class=executor,
         additional_pipeline_args=parent_dag.additional_pipeline_args,
-        metadata_connection_config=parent_dag.metadata_connection_config)
+        metadata_connection_config=parent_dag.metadata_connection_config,
+        logger_config=my_logger_config)
     subdag_operator.SubDagOperator.__init__(
         self, subdag=worker, task_id=worker_name, dag=parent_dag)
 

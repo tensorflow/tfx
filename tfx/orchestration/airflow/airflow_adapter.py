@@ -26,9 +26,11 @@ from tfx.utils.types import TfxType
 class AirflowAdapter(object):
   """Execute executor based on decision from Metadata."""
 
+  # TODO(khaas): pytypes here
   def __init__(self, component_name, input_dict, output_dict, exec_properties,
                driver_options, driver_class, executor_class,
-               additional_pipeline_args, metadata_connection_config):
+               additional_pipeline_args, metadata_connection_config,
+               logger_config):
     """Constructs an AirflowAdaptor.
 
     Args:
@@ -41,8 +43,9 @@ class AirflowAdapter(object):
       driver_class: Python class of driver;
       executor_class: Python class of executor;
       additional_pipeline_args: a dict of additional pipeline args. Currently
-        supporting following keys; - beam_pipeline_args;
+        supporting following keys: beam_pipeline_args.
       metadata_connection_config: configuration for how to connect to metadata.
+      logger_config: dict of logging parameters for configuring the logger.
     """
     self._component_name = component_name
     self._input_dict = dict((k, v) for k, v in input_dict.items() if v)
@@ -51,7 +54,7 @@ class AirflowAdapter(object):
     self._driver_options = driver_options
     self._driver_class = driver_class
     self._executor_class = executor_class
-    self._logger = logging_utils.get_logger(exec_properties['log_root'], 'comp')
+    self._logger = logging_utils.get_logger(logger_config)
     # Resolve source from input_dict and output_dict to decouple this earlier.
     self._input_source_dict = self._make_source_dict(self._input_dict)
     self._output_source_dict = self._make_source_dict(self._output_dict)
@@ -84,7 +87,8 @@ class AirflowAdapter(object):
         input_list[index] = TfxType.parse_from_json_dict(resolved_json_dict)
 
   def _publish_execution_to_metadata(self):
-    with metadata.Metadata(self._metadata_connection_config) as m:
+    with metadata.Metadata(self._metadata_connection_config,
+                           self._logger) as m:
       return m.publish_execution(self._execution_id, self._input_dict,
                                  self._output_dict)
 
@@ -102,9 +106,10 @@ class AirflowAdapter(object):
     task_instance = kwargs['ti']
     self._update_input_dict_from_xcom(task_instance)
 
-    with metadata.Metadata(self._metadata_connection_config) as m:
-      driver = self._driver_class(
-          log_root=self._exec_properties['log_root'], metadata_handler=m)
+    with metadata.Metadata(self._metadata_connection_config,
+                           self._logger) as m:
+      driver = self._driver_class(logger=self._logger,
+                                  metadata_handler=m)
       execution_decision = driver.prepare_execution(
           self._input_dict, self._output_dict, self._exec_properties,
           self._driver_options)
@@ -140,6 +145,7 @@ class AirflowAdapter(object):
     executor = self._executor_class(
         beam_pipeline_args=self._additional_pipeline_args.get(
             'beam_pipeline_args'))
+
     # Run executor
     executor.Do(self._input_dict, self._output_dict, self._exec_properties)
     # Docker operator chooses 'return_value' so we try to be consistent.
