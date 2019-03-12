@@ -27,7 +27,7 @@ import os
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-import tensorflow_transform as transform
+import tensorflow_transform as tft
 from tensorflow_transform.beam.tft_beam_io import transform_fn_io
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import metadata_io
@@ -120,18 +120,18 @@ def preprocessing_fn(inputs):
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
     # Preserve this feature as a dense float, setting nan's to the mean.
-    outputs[_transformed_name(key)] = transform.scale_to_z_score(
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(inputs[key]))
 
   for key in _VOCAB_FEATURE_KEYS:
     # Build a vocabulary for this feature.
-    outputs[_transformed_name(key)] = transform.compute_and_apply_vocabulary(
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
         _fill_in_missing(inputs[key]),
         top_k=_VOCAB_SIZE,
         num_oov_buckets=_OOV_SIZE)
 
   for key in _BUCKET_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = transform.bucketize(
+    outputs[_transformed_name(key)] = tft.bucketize(
         _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
 
   for key in _CATEGORICAL_FEATURE_KEYS:
