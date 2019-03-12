@@ -191,7 +191,7 @@ Once the pipeline completes, the model will be copied by the [Pusher](https://gi
 to the directory configured in the example code:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-ls $TAXI_DIR/pipelines/serving_model/taxi_simple
+ls $TAXI_DIR/serving_model/taxi_simple
 </pre>
 
 
@@ -201,7 +201,7 @@ please follow the instructions [here](https://github.com/tensorflow/tfx/blob/mas
 In start_model_server_local.sh, change:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-LOCAL_MODEL_DIR=$(pwd)/taxi/serving_model/taxi_simple
+LOCAL_MODEL_DIR=$TAXI_DIR/serving_model/taxi_simple
 </pre>
 
 This will pick up the latest model under above path.
