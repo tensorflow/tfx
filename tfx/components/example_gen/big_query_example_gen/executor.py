@@ -17,33 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import hashlib
-import os
 import apache_beam as beam
 import tensorflow as tf
-from typing import Any, Callable, Dict, List, Optional, Text
+from typing import Any, Dict, List, Text
 from google.cloud import bigquery
-from tfx.components.base import base_executor
+from tfx.components.example_gen import base_example_gen_executor
 from tfx.utils import types
-
-# Default file name for TFRecord output file prefix.
-DEFAULT_FILE_NAME = 'data_tfrecord'
-
-
-def _partition_fn(record, num_partitions):  # pylint: disable=unused-argument
-  # TODO(jyzhao): support custom split.
-  # Splits data, train(partition=0) : eval(partition=1) = 2 : 1
-  return 1 if int(hashlib.sha256(record).hexdigest(), 16) % 3 == 0 else 0
-
-
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(Dict[Text, Any])
-def _ReadFromBigQuery(  # pylint: disable=invalid-name
-    pipeline, query):
-  return (pipeline
-          | 'QueryTable' >> beam.io.Read(
-              beam.io.BigQuerySource(query=query, use_standard_sql=True)))
 
 
 class _BigQueryConverter(object):
@@ -58,7 +37,7 @@ class _BigQueryConverter(object):
     for field in results.schema:
       self._type_map[field.name] = field.field_type
 
-  def row_to_serialized_example(self, instance):
+  def RowToExample(self, instance):
     """Convert bigquery result row to tf example."""
     feature = {}
     for key, value in instance.items():
@@ -78,76 +57,54 @@ class _BigQueryConverter(object):
         # TODO(jyzhao): support more types.
         raise RuntimeError(
             'BigQuery column type {} is not supported.'.format(data_type))
-    example_proto = tf.train.Example(
-        features=tf.train.Features(feature=feature))
-    # Returns deterministic result as downstream partition based on it.
-    return example_proto.SerializeToString(deterministic=True)
+    return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-# TODO(jyzhao): BaseExampleGen for common stuff sharing.
-class Executor(base_executor.BaseExecutor):
+# Create this instead of inline in _BigQueryToExample for test mocking purpose.
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(beam.typehints.Dict[Text, Any])
+def _ReadFromBigQuery(  # pylint: disable=invalid-name
+    pipeline, query):
+  return (pipeline
+          | 'QueryTable' >> beam.io.Read(
+              beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(tf.train.Example)
+def _BigQueryToExample(  # pylint: disable=invalid-name
+    pipeline,
+    input_dict,  # pylint: disable=unused-argument
+    exec_properties):
+  """Read from BigQuery and transform to TF examples.
+
+  Args:
+    pipeline: beam pipeline.
+    input_dict: Input dict from input key to a list of Artifacts.
+    exec_properties: A dict of execution properties.
+      - query: BigQuery sql string.
+
+  Returns:
+    PCollection of TF examples.
+
+  Raises:
+    RuntimeError: if query is missing in exec_properties.
+  """
+  if 'query' not in exec_properties:
+    raise RuntimeError('Missing query.')
+  query = exec_properties['query']
+  converter = _BigQueryConverter(query)
+
+  return (pipeline
+          | 'QueryTable' >> _ReadFromBigQuery(query)  # pylint: disable=no-value-for-parameter
+          | 'ToTFExample' >> beam.Map(converter.RowToExample))
+
+
+class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX BigQueryExampleGen executor."""
 
-  def __init__(self,
-               beam_pipeline_args = None,
-               big_query_ptransform_for_testing = None):
-    """Construct a BigQueryExampleGen Executor.
-
-    Args:
-      beam_pipeline_args: beam pipeline args.
-      big_query_ptransform_for_testing: for testing use only.
-    """
-    super(Executor, self).__init__(beam_pipeline_args)
-    self._big_query_ptransform = (
-        big_query_ptransform_for_testing or _ReadFromBigQuery)
-
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
-    """Take BigQuery sql and generates train and eval tf examples.
-
-    Args:
-      input_dict: Input dict from input key to a list of Artifacts.
-      output_dict: Output dict from output key to a list of Artifacts.
-        - examples: train and eval split of tf examples.
-      exec_properties: A dict of execution properties.
-        - query: BigQuery sql string.
-
-    Returns:
-      None
-
-    Raises:
-      RuntimeError: if query is missing in exec_properties.
-    """
-    self._log_startup(input_dict, output_dict, exec_properties)
-
-    training_tfrecord = types.get_split_uri(output_dict['examples'], 'train')
-    eval_tfrecord = types.get_split_uri(output_dict['examples'], 'eval')
-
-    if 'query' not in exec_properties:
-      raise RuntimeError('Missing query.')
-    query = exec_properties['query']
-
-    tf.logging.info('Generating examples from BigQuery.')
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
-      converter = _BigQueryConverter(query)
-      example_splits = (
-          pipeline
-          | 'QueryTable' >> self._big_query_ptransform(query)
-          | 'ToSerializedTFExample' >> beam.Map(
-              converter.row_to_serialized_example)
-          | 'SplitData' >> beam.Partition(_partition_fn, 2))
-      # TODO(jyzhao): make shuffle optional.
-      # pylint: disable=expression-not-assigned
-      (example_splits[0]
-       | 'ShuffleTrainSplit' >> beam.transforms.Reshuffle()
-       | 'OutputTrainSplit' >> beam.io.WriteToTFRecord(
-           os.path.join(training_tfrecord, DEFAULT_FILE_NAME),
-           file_name_suffix='.gz'))
-      (example_splits[1]
-       | 'ShuffleEvalSplit' >> beam.transforms.Reshuffle()
-       | 'OutputEvalSplit' >> beam.io.WriteToTFRecord(
-           os.path.join(eval_tfrecord, DEFAULT_FILE_NAME),
-           file_name_suffix='.gz'))
-      # pylint: enable=expression-not-assigned
-    tf.logging.info('Examples generated.')
+  def GetInputSourceToExamplePTransform(self):
+    """Returns PTransform for BigQuery to TF examples."""
+    return _BigQueryToExample
