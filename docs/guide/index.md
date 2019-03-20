@@ -6,7 +6,12 @@ TFX is a Google-production-scale machine learning platform based on TensorFlow.
 It provides a configuration framework and shared libraries to integrate common
 components needed to define, launch, and monitor your machine learning system.
 
-## Install
+## Installation
+
+
+[![Python](https://img.shields.io/pypi/pyversions/tfx.svg?style=plastic)](
+https://github.com/tensorflow/tfx)
+[![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 
 ```
 pip install tensorflow
@@ -67,6 +72,32 @@ they are "good enough" to be pushed to production.
 This diagram illustrates the flow of data between these components:
 
 ![Component Flow](diag_all.svg)
+
+### Anatomy of a Component
+
+TFX components consist of three main pieces:
+
+* Driver
+* Executor
+* Publisher
+
+![Component Anatomy](images/component.svg)
+
+#### Driver and Publisher
+
+The driver supplies metadata to the executor by querying the metadata store,
+while the publisher accepts the results of the executor and stores them in
+metadata. As a developer you will typically not need to interact with the
+driver and publisher directly, but messages logged by the driver and publisher
+may be useful during debugging.  See [Troubleshooting](#troubleshooting).
+
+#### Executor
+
+The executor is where a component performs its processing.  As a developer you
+write code which runs in the executor, based on the requirements
+of the classes which implement the type of component that you're working with.
+For example, when you're working on a [Transform component](transform.md) you
+will need to develop a `preprocessing_fn`.
 
 ## TFX Libraries
 
