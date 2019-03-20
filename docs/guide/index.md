@@ -490,7 +490,8 @@ example, a typical pipeline might look like:
     schedule_interval=None,
     start_date=datetime.datetime(2018, 1, 1),
     enable_cache=True,
-    log_root='/var/tmp/tfx/logs',
+    additional_pipeline_args={'logger_args': logging_utils.LoggerConfig(
+        log_root='/var/tmp/tfx/logs', log_level=logging.INFO)},
     metadata_db_root=os.path.join(home_dir, 'data/tfx/metadata'),
     pipeline_root=pipeline_root)
 def create_pipeline():
@@ -639,9 +640,35 @@ in detail.
 
 ### Finding Errors In Log Files
 
-There are several log files for Airflow and your pipeline components.  When
-trying to diagnose errors in your pipeline, these log files are very valuable.
-For a pipeline named `taxi`, you would have:
+TFX will generate log entries in the location defined by the LoggerConfig, set
+as an additional argument in the PipelineDecorator. The default is
+`/var/tmp/tfx/logs/tfx.log`. In addition, the orchestrator (e.g. Airflow,
+Kubeflow) will also generate log files. When trying to diagnose errors in your
+pipeline, these log files are very valuable. For a pipeline named `taxi` with no
+LoggerConfig specified in your pipeline, the TFX logs will be written to
+`/var/tmp/tfx/logs/tfx.log`. This is customizable by creating a
+[logging_utils.LoggerConfig](https://github.com/tensorflow/tfx/blob/master/tfx/utils/logging_utils.py)
+object and adding it as an additional parameter called `logger_args` in your
+pipeline configuration:
+
+```python
+@PipelineDecorator(
+    pipeline_name='tfx_example_solution',
+    schedule_interval=None,
+    start_date=datetime.datetime(2018, 1, 1),
+    enable_cache=True,
+    additional_pipeline_args={'logger_args': logging_utils.LoggerConfig(
+        log_root='/var/tmp/tfx/logs', log_level=logging.INFO)},
+    metadata_db_root=os.path.join(home_dir, 'data/tfx/metadata'),
+    pipeline_root=pipeline_root)
+```
+
+Note: if you are running the executors remotely via Docker or Kubeflow, the
+executor logs will be written onto the remote worker.
+
+If you are using Airflow, the log entries will also be written to the Airflow
+logs. The default for the Airflow logs is `$AIRFLOW_HOME/logs` and will contain
+the following files:
 
 ```
 $AIRFLOW_HOME/logs/scheduler/{DATE}/taxi.py.log
@@ -649,28 +676,6 @@ $AIRFLOW_HOME/logs/scheduler/latest/taxi.py.log
 $AIRFLOW_HOME/logs/taxi
 $AIRFLOW_HOME/logs/taxi.COMPONENT_NAME
 ```
-
-By default Airflow places many log files under `/var/tmp/tfx/logs` (you can
-change this in your `PipelineDecorator`).  For a pipeline named `taxi`
-you would have:
-
-```
-/var/tmp/tfx/logs/taxi/
-```
-
-For each component of your pipeline this folder contains:
-
-* A `COMPONENT_NAME.comp` log file for that component
-* A `COMPONENT_NAME.driver` log file for that component's driver
-* A `COMPONENT_NAME.exec` log file for that component's executor
-* A `COMPONENT_NAME.pub` log file for that component's publisher
-
-where COMPONENT_NAME is the class name of the individual component.
-
-### Pipeline not appearing in Airflow
-
-If you don't include "_DAG" at the end of your `pipeline_name` in your
-`PipelineDecorator`, Airflow may not recognize your pipeline.
 
 ### Pipeline is listed, but when triggering Airflow cannot find
 
