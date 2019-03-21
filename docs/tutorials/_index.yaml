@@ -25,16 +25,18 @@ landing_page:
         the latest videos and updates.
       </p>
     items:
-    - heading: "TensorFlow Extended at the Dev Summit"
-      youtube_id: vdG7uKQ2eKk
+    - heading: "TFX Overview and Pre-training Workflow "
+      description: "Presented at TF Dev Summit 2019"
+      youtube_id: A5wiwT1qFjc
       buttons:
       - label: Watch the video
-        path: https://www.youtube.com/watch?v=vdG7uKQ2eKk
-    - heading: "TFX with Apache Beam"
-      youtube_id: XMw3-vm4x8w
+        path: https://www.youtube.com/watch?v=A5wiwT1qFjc
+    - heading: "TFX Post-training Workflow"
+      description: "Presented at TF Dev Summit 2019"
+      youtube_id: 0O201IQlkxc
       buttons:
       - label: Watch the video
-        path: https://www.youtube.com/watch?v=XMw3-vm4x8w
+        path: https://www.youtube.com/watch?v=0O201IQlkxc
     - heading: "TFX and TF Hub"
       youtube_id: wjTAQkzn7m8
       buttons:
