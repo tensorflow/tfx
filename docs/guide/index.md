@@ -81,7 +81,7 @@ TFX components consist of three main pieces:
 * Executor
 * Publisher
 
-![Component Anatomy](images/component.svg)
+![Component Anatomy](images/component.svg){ width=40% }
 
 #### Driver and Publisher
 
