@@ -81,7 +81,7 @@ TFX components consist of three main pieces:
 * Executor
 * Publisher
 
-![Component Anatomy](images/component.svg){ width=40% }
+<img src="images/component.svg" alt="Component Anatomy" style="width:40%" />
 
 #### Driver and Publisher
 
@@ -294,7 +294,6 @@ The following components use the schema:
 
 *   TensorFlow Data Validation
 *   TensorFlow Transform
-*   TensorFlow Model Analysis
 
 In a typical TFX pipeline TensorFlow Data Validation generates a schema, which
 is consumed by the other components.
