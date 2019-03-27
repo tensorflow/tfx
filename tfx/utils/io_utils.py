@@ -50,7 +50,7 @@ def import_func(module_path, fn_name):  # pylint: disable=g-bare-generic
       import importlib.util  # pylint: disable=g-import-not-at-top
       spec = importlib.util.spec_from_file_location('user_module', module_path)
       user_module = importlib.util.module_from_spec(spec)
-      spec.loader.exec_module(user_module)
+      spec.loader.exec_module(user_module)  # pytype: disable=attribute-error
   except IOError:
     raise IOError('{} not found in import_func()'.format(module_path))
 
