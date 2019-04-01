@@ -72,7 +72,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
 
   def __str__(self):
     return """
-{
+{{
   component_name: {component_name},
   unique_name: {unique_name},
   driver: {driver},
@@ -80,7 +80,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   input_dict: {input_dict},
   outputs: {outputs},
   exec_properties: {exec_properties}
-}
+}}
     """.format(  # pylint: disable=missing-format-argument-key
         component_name=self.component_name,
         unique_name=self.unique_name,
