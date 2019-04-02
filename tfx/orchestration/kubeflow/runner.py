@@ -27,8 +27,6 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
 
 
-# TODO(ajaygopinathan): Add tests to ensure components are compiled into a
-# valid Kubeflow pipeline.
 class KubeflowRunner(tfx_runner.TfxRunner):
   """Kubeflow Pipelines runner.
 
