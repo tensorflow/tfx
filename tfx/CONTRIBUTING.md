@@ -22,4 +22,18 @@ We use GitHub pull requests for this purpose. Consult GitHub Help for more
 information on using pull requests.
 
 ## Community Guidelines
-This project follows Google's Open Source Community Guidelines.
+This project follows[Google's Open Source Community Guidelines](
+https://opensource.google.com/conduct/).
+
+# Contributing Guidelines
+
+## Running Unit Tests
+We recommend using virtualenv and Python 3.5 and above for development.
+After installing 'test' extra dependency, you can invoke all python unit tests:
+
+```
+# From root directory after git checkout
+pip install -e .[tfx]
+python -m unittest discover -s tfx -p '*test.py'
+```
+
