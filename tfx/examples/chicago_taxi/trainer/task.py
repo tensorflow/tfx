@@ -21,8 +21,8 @@ import os
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from trainer import model
-from trainer import taxi
+from tfx.examples.chicago_taxi.trainer import model
+from tfx.examples.chicago_taxi.trainer import taxi
 
 SERVING_MODEL_DIR = 'serving_model_dir'
 EVAL_MODEL_DIR = 'eval_model_dir'

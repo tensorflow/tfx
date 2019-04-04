@@ -28,7 +28,7 @@ import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.coders import example_proto_coder
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
-from trainer import taxi
+from tfx.examples.chicago_taxi.trainer import taxi
 
 
 def _fill_in_missing(x):
