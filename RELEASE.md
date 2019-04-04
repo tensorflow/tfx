@@ -14,6 +14,7 @@
 *   Depends on `tensorflow-transform>=0.13,<0.14`
 
 ## Breaking changes
+*   Examples code are moved from 'examples' to 'tfx/examples': this ensures that PyPi package contains only one top level python module 'tfx'.
 
 # Version 0.12.0
 

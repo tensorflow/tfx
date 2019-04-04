@@ -24,7 +24,7 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 
 from tensorflow_data_validation.coders import csv_decoder
-from trainer import taxi
+from tfx.examples.chicago_taxi.trainer import taxi
 
 from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io
