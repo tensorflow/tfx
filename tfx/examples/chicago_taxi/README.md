@@ -1,7 +1,7 @@
 # Chicago Taxi Example
 
 
-Note: an updated end-to-end pipeline version of this example is available [here](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline).
+Note: an updated end-to-end pipeline version of this example is available [here](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline).
 
 The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
 to analyze, validate and transform data, train a model, analyze and serve it. It
