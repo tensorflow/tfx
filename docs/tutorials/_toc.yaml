@@ -2,7 +2,7 @@ toc:
 - title: "Get started with TFX"
   path: /tfx/tutorials/
 - title: "End-to-end pipeline example"
-  path: https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline
+  path: https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline
   status: external
 
 - heading: "Data Validation"
@@ -17,10 +17,10 @@ toc:
 
 - heading: "Model Analysis"
 - title: "Chicago Taxi"
-  path: https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/chicago_taxi_tfma.ipynb
+  path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma.ipynb
   status: external
 - title: "Chicago Taxi local playground"
-  path: https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
+  path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
   status: external
 
 - heading: "Serving"
