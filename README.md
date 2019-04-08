@@ -28,7 +28,7 @@ Please see the
 
 ## Examples
 
-*   [Chicago Taxi Example](https://github.com/tensorflow/tfx/tree/master/examples/chicago_taxi_pipeline)
+*   [Chicago Taxi Example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline)
 
 ## Compatible versions
 
