@@ -121,7 +121,7 @@ First let's download the TFX source we can run the example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 git clone https://github.com/tensorflow/tfx
-cd tfx/examples/chicago_taxi_pipeline
+cd tfx/tfx/examples/chicago_taxi_pipeline
 </pre>
 
 Let's copy the dataset CSV to the directory where TFX ExampleGen will ingest it
@@ -196,7 +196,7 @@ ls $TAXI_DIR/serving_model/taxi_simple
 
 
 To serve the model with [TensorFlow Serving](https://www.tensorflow.org/serving)
-please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following path changes before running the scripts:
+please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following path changes before running the scripts:
 
 In start_model_server_local.sh, change:
 
