@@ -89,7 +89,7 @@ def _make_required_test_packages():
   return [
       'apache-airflow>=1.10,<2',
       'docker>=3.7,<4',
-      'kfp>=0.1,<1',
+      'kfp>=0.1,<=0.1.11',
       'tensorflow>=1.13,<2',
   ]
 
