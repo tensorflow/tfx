@@ -405,13 +405,9 @@ class Executor(base_executor.BaseExecutor):
         feature_value = element.get(feature_name)
         if feature_value is None:
           result[feature_name] = None
-        elif isinstance(feature_value, np.ndarray):
-          # copy=False is best effort and won't fail if a copy has to be made.
-          result[feature_name] = feature_value.astype(
-              feature_spec.dtype.as_numpy_dtype, copy=False)
-        elif isinstance(feature_value, list):
+        elif isinstance(feature_value, (np.ndarray, list)):
           result[feature_name] = np.asarray(
-              feature_value, dtype=feature_spec.dtype.as_numpy_dtype)
+              feature_value, feature_spec.dtype.as_numpy_dtype)
         else:
           result[feature_name] = np.asarray(
               [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
