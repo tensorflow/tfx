@@ -21,6 +21,7 @@ import copy
 import os
 import apache_beam as beam
 import numpy as np
+import six
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
@@ -386,35 +387,40 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
+    feature_specs_from_schema = schema_utils.schema_as_feature_spec(
+        schema).feature_spec
 
-    def EncodeTFDV(element):
+    def EncodeTFDV(element, feature_specs):
       """Encodes element in an in-memory format that TFDV expects."""
-      assert _TRANSFORM_INTERNAL_FEATURE_FOR_KEY in element
+      if _TRANSFORM_INTERNAL_FEATURE_FOR_KEY not in element:
+        raise ValueError(
+            'Expected _TRANSFORM_INTERNAL_FEATURE_FOR_KEY ({}) to exist in the '
+            'input but not found.'.format(_TRANSFORM_INTERNAL_FEATURE_FOR_KEY))
 
-      # TODO(b/123549935): Obviate the numpy array converstions by
+      # TODO(b/123549935): Obviate the numpy array conversions by
       # allowing TFDV to accept primitives in general, and TFT's
       # input/output format in particular.
-      # TODO(kestert): Iterate through schema instead of element.items and
-      # encode missing elements of `element` as None.
       result = {}
-      for k, v in element.items():
-        if k == _TRANSFORM_INTERNAL_FEATURE_FOR_KEY:
-          continue  # Make sure the synthetic key feature doesn't get encoded.
-        elif isinstance(v, np.ndarray) or v is None:
-          result[k] = v
-        elif isinstance(v, list):
-          if v:
-            result[k] = np.asarray(v)
-          else:
-            # An empty list.
-            # TODO(kestert): Use Metadata to determine the dtype.
-            continue  # Instead want: result[k] = np.asarray([], dtype=...)
+      for feature_name, feature_spec in six.iteritems(feature_specs):
+        feature_value = element.get(feature_name)
+        if feature_value is None:
+          result[feature_name] = None
+        elif isinstance(feature_value, np.ndarray):
+          # copy=False is best effort and won't fail if a copy has to be made.
+          result[feature_name] = feature_value.astype(
+              feature_spec.dtype.as_numpy_dtype, copy=False)
+        elif isinstance(feature_value, list):
+          result[feature_name] = np.asarray(
+              feature_value, dtype=feature_spec.dtype.as_numpy_dtype)
         else:
-          result[k] = np.asarray([v])
+          result[feature_name] = np.asarray(
+              [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
+
       return result
 
     return (pcollection
-            | 'EncodeTFDV' >> beam.Map(EncodeTFDV)
+            | 'EncodeTFDV' >> beam.Map(
+                EncodeTFDV, feature_specs=feature_specs_from_schema)
             | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
                 tfdv.StatsOptions(schema=schema)))
 
