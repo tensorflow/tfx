@@ -17,8 +17,7 @@ toc:
 
 - heading: "Model Analysis"
 - title: "Chicago Taxi"
-  path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma.ipynb
-  status: external
+  path: /tfx/tutorials/model_analysis/chicago_taxi
 - title: "Chicago Taxi local playground"
   path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
   status: external

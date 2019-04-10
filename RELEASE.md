@@ -5,6 +5,7 @@
 *   Adds support for Python 3.5
 *   Initial version of following orchestration platform supported:
     *   Kubeflow
+*   Added TensorFlow Model Analysis Colab example
 
 ## Bug fixes and other changes
 
