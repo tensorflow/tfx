@@ -94,6 +94,10 @@ class KubeflowRunner(tfx_runner.TfxRunner):
         pipeline.
     """
 
+    @dsl.pipeline(
+      pipeline.pipeline_args['pipeline_name'],
+      pipeline.pipeline_args.get('description', '')
+    )
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
 
@@ -115,11 +119,6 @@ class KubeflowRunner(tfx_runner.TfxRunner):
       )
 
       self._construct_pipeline_graph(pipeline)
-
-    pipeline_name = pipeline.pipeline_args['pipeline_name']
-    dsl.Pipeline.add_pipeline(pipeline_name,
-                              pipeline.pipeline_args.get('description', ''),
-                              _construct_pipeline)
 
     pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
     compiler.Compiler().compile(_construct_pipeline, pipeline_file)
