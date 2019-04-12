@@ -33,7 +33,6 @@ from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 
-
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
 
@@ -150,15 +149,10 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _build_estimator(transform_output,
-                     config,
-                     hidden_units=None,
-                     warm_start_from=None):
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
   """Build an estimator for predicting the tipping behavior of taxi riders.
 
   Args:
-    transform_output: directory in which the tf-transform model was written
-      during the preprocessing step.
     config: tf.contrib.learn.RunConfig defining the runtime environment for the
       estimator (including model_dir).
     hidden_units: [int], the layer sizes of the DNN (input layer first)
@@ -171,13 +165,6 @@ def _build_estimator(transform_output,
       - eval_spec: Spec for eval.
       - eval_input_receiver_fn: Input function for eval.
   """
-  metadata_dir = os.path.join(transform_output,
-                              transform_fn_io.TRANSFORMED_METADATA_DIR)
-  transformed_metadata = metadata_io.read_metadata(metadata_dir)
-  transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
-
-  transformed_feature_spec.pop(_transformed_name(_LABEL_KEY))
-
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
       for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
@@ -360,8 +347,6 @@ def trainer_fn(hparams, schema):
   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
   estimator = _build_estimator(
-      transform_output=hparams.transform_output,
-
       # Construct layers sizes with exponetial decay
       hidden_units=[
           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
