@@ -49,7 +49,7 @@ ipykernel==4.10.0
 ipython==5.8.0
 ipython-genutils==0.2.0
 ipywidgets==7.4.2
-Jinja2==2.10
+Jinja2==2.10.1
 jsonschema==2.6.0
 jupyter==1.0.0
 jupyter-client==5.2.4
@@ -68,7 +68,7 @@ monotonic==1.5
 nbconvert==5.4.1
 nbformat==4.4.0
 networkx==2.2
-notebook==5.7.4
+notebook==5.7.8
 numpy==1.15.4
 oauth2client==3.0.0
 pandas==0.24.1
@@ -94,7 +94,7 @@ pyparsing==2.3.1
 python-dateutil==2.8.0
 pytz==2018.9
 PyVCF==0.6.8
-PyYAML==3.13
+PyYAML==4.2b1
 pyzmq==18.0.0
 qtconsole==4.4.3
 requests==2.21.0
