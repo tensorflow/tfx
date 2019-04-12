@@ -66,3 +66,14 @@ toc:
   - title: "Serving models"
     path: /tfx/guide/serving
   - include: /tfx/serving/_toc.yaml
+
+- heading: "Related Projects"
+  style: divider
+- title: "Apache Beam"
+  path: https://beam.apache.org/
+  status: external
+- title: "ML Metadata"
+  path: https://github.com/google/ml-metadata
+  status: external
+- title: "TensorBoard"
+  path: /tensorboard
