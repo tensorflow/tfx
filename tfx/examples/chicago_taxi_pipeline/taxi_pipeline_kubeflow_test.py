@@ -18,8 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import shutil
-import tempfile
 
 import tensorflow as tf
 
@@ -27,11 +25,13 @@ import tensorflow as tf
 class TaxiPipelineKubeflowTest(tf.test.TestCase):
 
   def setUp(self):
-    self.test_dir = tempfile.mkdtemp()
-    os.chdir(self.test_dir)
+    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                   self.get_temp_dir())
+    self._olddir = os.getcwd()
+    os.chdir(self._tmp_dir)
 
   def tearDown(self):
-    shutil.rmtree(self.test_dir)
+    os.chdir(self._olddir)
 
   def test_taxi_pipeline_construction_and_definition_file_exists(self):
     # Import creates the pipeline.
@@ -39,7 +39,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     logical_pipeline = taxi_pipeline_kubeflow._create_pipeline()
     self.assertEqual(9, len(logical_pipeline.components))
 
-    file_path = os.path.join(self.test_dir,
+    file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 
