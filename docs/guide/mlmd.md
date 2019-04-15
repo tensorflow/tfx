@@ -1,6 +1,6 @@
 # ML Metadata
 
-[ML Metadata (MLMD)](https://github.com/tensorflow/metadata) is a library
+[ML Metadata (MLMD)](https://github.com/google/ml-metadata) is a library
 for recording and retrieving metadata
 associated with ML developer and data scientist workflows. MLMD is an integral
 part of [TensorFlow Extended (TFX)](https://www.tensorflow.org/tfx), but is
