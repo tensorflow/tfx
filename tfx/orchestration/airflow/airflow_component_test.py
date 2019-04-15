@@ -17,6 +17,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
 
 from airflow import models
 from airflow.operators import dummy_operator
@@ -32,6 +33,8 @@ from tfx.utils.types import TfxType
 class AirflowComponentTest(tf.test.TestCase):
 
   def setUp(self):
+    self._temp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                    self.get_temp_dir())
     dummy_dag = models.DAG(
         dag_id='my_component', start_date=datetime.datetime(2019, 1, 1))
     self.checkcache_op = dummy_operator.DummyOperator(
@@ -50,7 +53,7 @@ class AirflowComponentTest(tf.test.TestCase):
         start_date=datetime.datetime(2018, 1, 1),
         schedule_interval=None,
         pipeline_root='pipeline_root',
-        metadata_db_root='metadata_db_root',
+        metadata_db_root=self._temp_dir,
         metadata_connection_config=None,
         additional_pipeline_args=None,
         docker_operator_cfg=None,

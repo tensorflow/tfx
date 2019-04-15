@@ -29,12 +29,14 @@ from tfx.utils.types import TfxType
 class AirflowPipelineTest(tf.test.TestCase):
 
   def setUp(self):
+    self._temp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                    self.get_temp_dir())
     self.pipeline = airflow_pipeline.AirflowPipeline(
         pipeline_name='pipeline_name',
         start_date=datetime.datetime(2018, 1, 1),
         schedule_interval=None,
         pipeline_root='pipeline_root',
-        metadata_db_root='metadata_db_root',
+        metadata_db_root=self._temp_dir,
         metadata_connection_config=None,
         additional_pipeline_args=None,
         docker_operator_cfg=None,
@@ -45,7 +47,7 @@ class AirflowPipelineTest(tf.test.TestCase):
                      os.path.join('pipeline_root', 'pipeline_name'))
     self.assertEqual(
         self.pipeline.metadata_connection_config.sqlite.filename_uri,
-        os.path.join('metadata_db_root', 'pipeline_name', 'metadata.db'))
+        os.path.join(self._temp_dir, 'pipeline_name', 'metadata.db'))
 
   def test_build_graph(self):
     r"""Tests building airflow DAG graph using add_node_to_graph().

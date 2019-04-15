@@ -13,6 +13,8 @@
 # limitations under the License.
 """A client for the chicago_taxi demo."""
 
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 import argparse
@@ -26,7 +28,7 @@ import requests
 import tensorflow as tf
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from trainer import taxi
+from tfx.examples.chicago_taxi.trainer import taxi
 
 _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
 
