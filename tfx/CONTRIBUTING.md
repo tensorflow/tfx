@@ -33,7 +33,7 @@ After installing 'test' extra dependency, you can invoke all python unit tests:
 
 ```
 # From root directory after git checkout
-pip install -e .[tfx]
+pip install -e .[test]
 python -m unittest discover -s tfx -p '*test.py'
 ```
 
