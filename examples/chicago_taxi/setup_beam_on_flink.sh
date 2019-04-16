@@ -36,7 +36,27 @@ echo "Setup Beam from source code at $BEAM_REPO Branch $BEAM_BRANCH"
 echo "Using work directory $WORK_DIR"
 
 
-# TODO(BEAM-6763): Use artifacts instead of building from source once they are published.
+function check_java() {
+  if type -p java; then
+    _java=java
+  elif [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
+    _java="$JAVA_HOME/bin/java"
+  else
+    echo "No java found. Please install Java 1.8"
+    exit 1
+  fi
+
+  if [[ "$_java" ]]; then
+    version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+    if [[ ! `echo $version | sed "s/1\.8\..*/1.8/"` == "1.8" ]]; then
+      echo "Java version $version. The script requires Java 1.8."
+      exit 1
+    fi
+  fi
+}
+
+# TODO(BEAM-6763): Use artifacts instead of building from source once they are
+# published.
 function install_beam(){
   mkdir -p $WORK_DIR
   if [ -z "$GIT_COMMAND" ]; then
@@ -60,7 +80,16 @@ function setup_flink() {
   if [ $SETUP_FLINK == 1 ]; then
     if [ ! -d $WORK_DIR/$FLINK_NAME ]; then
       echo "SETUP FLINK at $WORK_DIR/$FLINK_NAME"
-      cd $WORK_DIR && wget -P $WORK_DIR $FLINK_DOWNLOAD_URL && tar -xvf $FLINK_BINARY
+      cd $WORK_DIR && curl $FLINK_DOWNLOAD_URL -o $WORK_DIR/$FLINK_BINARY  && tar -xvf $FLINK_BINARY
+      if [ $? != 0 ]; then
+        echo "ERROR: Unable to download Flink from $FLINK_DOWNLOAD_URL." \
+              "Please make sure you have working internet and you have" \
+              "curl(https://en.wikipedia.org/wiki/CURL) on your machine." \
+              "Alternatively, you can also manually download Flink archive"\
+              "and place it at $FLINK_DOWNLOAD_URL and extract Flink"\
+              "to $WORK_DIR/$FLINK_NAME"
+        exit 1
+      fi
       echo "FLINK SETUP DONE at $WORK_DIR/$FLINK_NAME"
     fi
   fi
@@ -79,6 +108,7 @@ function start_job_server() {
 }
 
 function main(){
+  check_java
   # Check and create the relevant directory
   if [ ! -d "$WORK_DIR" ]; then
     install_beam
