@@ -43,8 +43,8 @@ class ExecutorTest(tf.test.TestCase):
           | 'ToTFExample' >> executor._CsvToExample(self._input_dict, {}))
 
       def check_result(got):
-        assert (15000 == len(got))
-        assert (18 == len(got[0].features.feature))
+        assert (15000 == len(got)), 'Unexpected example count'
+        assert (18 == len(got[0].features.feature)), 'Example not match'
 
       util.assert_that(examples, check_result)
 
