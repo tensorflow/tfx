@@ -44,13 +44,13 @@ def _dict_to_example(instance):
 def _ParquetToExample(
     pipeline, input_dict,
     exec_properties):
-  """Read CSV file and transform to TF examples.
+  """Read parquet file and transform to TF examples.
 
   Args:
     pipeline: beam pipeline.
     input_dict: Input dict from input key to a list of Artifacts.
-      - input-base: input dir that contains csv data. csv files must have header
-        line.
+      - input-base: input dir that contains one or more parquet files, which
+        may be compressed or not
     exec_properties: A dict of execution properties.
 
   Returns:
