@@ -17,10 +17,12 @@ uses:
   Jupyter for evaluation, and
 * [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving/) for serving.
 
-The example shows two modes of deployment:
+The example shows three modes of deployment:
 
 1. *Local mode* with all necessary dependencies and components deployed locally.
 2. *Cloud mode* where all components are deployed on Google Cloud.
+3. *Local Apache Flink mode* with all necessary dependencies and components
+deployed locally. Can also be modified to run on remote Apache Flink Cluster.
 
 ## The dataset
 
@@ -57,8 +59,8 @@ platforms, but here are a couple:
 
 * For Linux:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-sudo apt-get install python-pip python-virtualenv python-dev build-essential
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">sudo apt-get install python-pip python-virtualenv python-dev build-essential</code>
 </pre>
 
 * For Mac:
@@ -78,8 +80,8 @@ Create a Python 2.7 virtual environment for this example and activate the
 
 Next, install the dependencies required by the Chicago Taxi example:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-pip install -r requirements.txt
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">pip install -r requirements.txt</code>
 </pre>
 
 Register the TensorFlow Model Analysis rendering components with Jupyter
@@ -101,8 +103,8 @@ small subset of the Taxi Trips dataset as CSV files.
 `tf.DataValidation` (`tfdv_analyze_and_validate.py`) allows you to analyze and
 validate the input dataset. To run this step locally:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./tfdv_analyze_and_validate_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./tfdv_analyze_and_validate_local.sh</code>
 </pre>
 
 We first compute descriptive [statistics](https://github.com/tensorflow/metadata/tree/master/tensorflow_metadata/proto/v0/statistics.proto)
@@ -152,8 +154,8 @@ describes the above steps as well as the visualization functions in detail.
 `tf.Transform` (`preprocess.py`) allows preprocessing the results with
 full-pass operations over the dataset. To run this step locally:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./preprocess_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./preprocess_local.sh</code>
 </pre>
 
 Have `tf.Transform` compute the global statistics (mean, standard deviation,
@@ -200,8 +202,8 @@ outputs of the preprocessing step:
 
 The next step trains the model using TensorFlow. To run this step locally, call:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./train_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./train_local.sh</code>
 </pre>
 
 The model leverages TensorFlow’s
@@ -245,8 +247,8 @@ To recap, the trainer outputs the following:
 Now run a batch job to evaluate the model against the entire data set. To run
 the batch evaluator:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./process_tfma_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./process_tfma_local.sh</code>
 </pre>
 
 This step is executed locally with a small CSV dataset. TensorFlow Model
@@ -274,8 +276,8 @@ This job outputs a file that can be visualized in Jupyter in the
 
 Run the Jupyter notebook locally to view the sliced results:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser</code>
 </pre>
 
 This prints a URL like `http://0.0.0.0:8888/?token=...`. You may need to
@@ -300,8 +302,8 @@ installing Docker locally are found in the
 
 In the terminal, run the following script to start a server:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./start_model_server_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./start_model_server_local.sh</code>
 </pre>
 
 This script pulls a TensorFlow Serving serving image and listens for for gRPC
@@ -310,8 +312,8 @@ from the trainer.
 
 To send a request to the server for model inference, run:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./classify_local.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./classify_local.sh</code>
 </pre>
 
 For more information, see [TensorFlow Serving](/serving/).
@@ -365,8 +367,8 @@ Create the `gs://` bucket:
 
 Activate the `virtualenv` (created above) to setup the shell environment:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-source ./bin/taxi/activate
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./bin/taxi/activate</code>
 </pre>
 
 ## Run the Cloud example
@@ -380,8 +382,8 @@ Use the same code from the local `tf.DataValidation`
 (in `tfdv_analyze_and_validate.py`) to do the distributed analysis and
 validation. To start the job, run:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-source ./tfdv_analyze_and_validate_dataflow.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./tfdv_analyze_and_validate_dataflow.sh</code>
 </pre>
 
 You can see the status of the running job on the
@@ -396,26 +398,26 @@ The outputs are the same as the local job, but stored in Google Cloud Storage:
 
 * Training data statistics:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFDV_OUTPUT_PATH/train_stats.tfrecord
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFDV_OUTPUT_PATH/train_stats.tfrecord</code>
 </pre>
 
 * Schema:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFDV_OUTPUT_PATH/schema.pbtxt
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFDV_OUTPUT_PATH/schema.pbtxt</code>
 </pre>
 
 * Eval data statistics:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFDV_OUTPUT_PATH/eval_stats.tfrecord
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFDV_OUTPUT_PATH/eval_stats.tfrecord</code>
 </pre>
 
 * Anomalies:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFDV_OUTPUT_PATH/anomalies.pbtxt
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFDV_OUTPUT_PATH/anomalies.pbtxt</code>
 </pre>
 
 Notice that the `Schema` generated by `tf.DataValidation` is used by the
@@ -428,8 +430,8 @@ examples.
 Use the same code from the local `tf.Transform` (in `preprocess.py`) to do
 the distributed transform. To start the job, run:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-source ./preprocess_dataflow.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./preprocess_dataflow.sh</code>
 </pre>
 
 You can see the status of the running job on the
@@ -442,22 +444,22 @@ The outputs are the same as the local job, but stored in Google Cloud Storage:
 
 * `SavedModel` containing the transform graph:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFT_OUTPUT_PATH/transform_fn
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFT_OUTPUT_PATH/transform_fn</code>
 </pre>
 
 * Materialized, transformed examples (train_transformed-\*):
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $TFT_OUTPUT_PATH
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $TFT_OUTPUT_PATH</code>
 </pre>
 
 ### Model training on the Google Cloud Machine Learning Engine
 
 Run the distributed TensorFlow trainer in the cloud:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-source ./train_mlengine.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./train_mlengine.sh</code>
 </pre>
 
 See the status of the running job in the
@@ -470,14 +472,14 @@ Again, our outputs are identical to the local run:
 
 * `SavedModel` containing the serving graph for TensorFlow Serving:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi</code>
 </pre>
 
 * `SavedModel` containing the evaluation graph for TensorFlow Model Analysis:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls $WORKING_DIR/eval_model_dir
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls $WORKING_DIR/eval_model_dir</code>
 </pre>
 
 ### Model Evaluation with TensorFlow Model Analysis on Google Cloud Dataflow
@@ -486,15 +488,15 @@ Run a distributed batch job to compute sliced metrics across the large Google
 BigQuery dataset. In this step, `tf.ModelAnalysis` takes advantage of the
 `DataflowRunner` to control its workers.
 
-<pre class="devsite-terminal devsite-click-to-copy">
-source ./process_tfma_dataflow.sh
+<pre class="devsite-terminal">
+ <code class="devsite-click-to-copy">source ./process_tfma_dataflow.sh</code>
 </pre>
 
 The output is the `eval_result` file rendered by the notebook in the next
 step:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-gsutil ls -l $TFT_OUTPUT_PATH/eval_result_dir
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">gsutil ls -l $TFT_OUTPUT_PATH/eval_result_dir</code>
 </pre>
 
 ### Render TensorFlow Model Analysis results in a local Jupyter notebook
@@ -508,13 +510,121 @@ notebook and set up the output directory to see the results.
 
 To serve the model from the cloud, run:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./start_model_server_mlengine.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./start_model_server_mlengine.sh</code>
 </pre>
 
 To send a request to the cloud:
 
-<pre class="devsite-terminal devsite-click-to-copy">
-bash ./classify_mlengine.sh
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./classify_mlengine.sh</code>
+</pre>
+
+
+## Local Apache Flink prerequisites
+
+This section requires the [local prerequisites](#local_prerequisites) and adds a
+few more for [Apache Flink](https://flink.apache.org/).
+
+
+You need a local Apache Flink cluster and Java 8 to run the example locally on
+Apache Flink. You will also need a Apache Beam Job Server running locally for
+Apache Flink. Apache Beam and Flink setup is encapsulated in an easy to use
+script. The script should be executed from within a virtual environment. The
+script builds and updates the Apache Beam version inside the virtual
+environment.
+
+Activate the `virtualenv` (created above) to setup the shell environment:
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./bin/taxi/activate</code>
+</pre>
+
+<pre class="prettyprint lang-bsh">
+<code class="devsite-terminal">sh ./setup_beam_on_flink.sh</code>
+</pre>
+
+This will start a local Beam Job Server.
+You can kill the server by killing the command.
+You can view Apache Flink UI at http://localhost:8081
+
+Open a new terminal and activate another instance of same `virtualenv`.
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./bin/taxi/activate</code>
+</pre>
+
+## Run the example on Local Apache Flink
+
+This Taxi Trips example is run on the locally installed Apache Flink Cluster.
+
+### Analyzing and validating data with TensorFlow Data Validation on Local Apache Flink
+
+Use the same code from the local `tf.DataValidation`
+(in `tfdv_analyze_and_validate.py`) to do the distributed analysis and
+validation. To start the job, run:
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./tfdv_analyze_and_validate_flink.sh</code>
+</pre>
+
+You can see the status of the running job on the
+[Flink UI](http://localhost:8081).
+
+The outputs are the same as the local job and are stored at the same path.
+
+Notice that the `Schema` generated by `tf.DataValidation` is used by the
+subsequent steps (`preprocess_flink.sh`, `train_local.sh`,
+`process_tfma_flink.sh`, and `classify_local.sh`) to parse the input
+examples.
+
+### Preprocessing with TensorFlow Transform on Apache Flink
+
+Use the same code from the local `tf.Transform` (in `preprocess.py`) to do
+the transform on Apache Flink. To start the job, run:
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./preprocess_flink.sh</code>
+</pre>
+
+You can see the status of the running job on the
+[Apache Flink UI](http://localhost:8081).
+
+Unlike our local example above, we are using Apache Flink for processing.
+
+The outputs are the same as the local job and stored in the same directory.
+
+### Model training on the Local machine.
+
+The training uses the data genetated by jobs run on Apache Flink.
+However, the traning is done by local trainer and not on Apache Flink.
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./train_local.sh</code>
+</pre>
+
+Again, our outputs are identical to the local run.
+
+### Model Evaluation with TensorFlow Model Analysis on Apache Flink
+
+Run a job to compute sliced metrics across the local dataset.
+In this step, `tf.ModelAnalysis` takes advantage of Apache Flink.
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">source ./process_tfma_flink.sh</code>
+</pre>
+
+### Model serving
+
+To serve the model generated in previous steps using local server, run:
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./start_model_server_local.sh</code>
+</pre>
+
+To send a request to the local model server:
+
+<pre class="devsite-terminal">
+<code class="devsite-click-to-copy">bash ./classify_local.sh</code>
 </pre>
 
