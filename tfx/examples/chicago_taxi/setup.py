@@ -18,13 +18,17 @@ import setuptools
 TF_VERSION = '1.12.0'
 # LINT.ThenChange(train_mlengine.sh, start_model_server_mlengine.sh)
 
+# LINT.IfChange
+BEAM_VERSION = '2.11.0'
+# LINT.ThenChange(setup_beam_on_flink.sh)
+
 if __name__ == '__main__':
   setuptools.setup(
       name='tfx_chicago_taxi',
       version='0.12.0',
       packages=setuptools.find_packages(),
       install_requires=[
-          'apache-beam[gcp]==2.10.0',
+          'apache-beam[gcp]==' + BEAM_VERSION,
           'jupyter==1.0',
           'numpy==1.14.5',
           'protobuf==3.6.1',
