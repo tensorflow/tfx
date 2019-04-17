@@ -124,3 +124,6 @@ dmypy.json
 
 # pb2.py files
 *_pb2.py
+
+# Intellij settings
+.idea/
