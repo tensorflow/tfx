@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX CsvExampleGen component definition."""
+"""TFX ParquetExampleGen component definition."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,17 +26,17 @@ from tfx.utils import channel
 from tfx.utils import types
 
 
-class CsvExampleGen(base_component.BaseComponent):
+class ParquetExampleGen(base_component.BaseComponent):
   # TODO(jyzhao): document how to import external data.
-  """Official TFX CsvExampleGen component.
+  """Official TFX ParquetExampleGen component.
 
-  The csv examplegen component takes csv data, and generates train
+  The parquet examplegen component takes parquet data, and generates train
   and eval examples for downsteam components.
 
   Args:
     input_base: A Channel of 'ExternalPath' type, which includes one artifact
-      whose uri is an external directory with a single csv file inside.
-    name: Optional unique name. Necessary if multiple CsvExampleGen components
+      whose uri is an external directory with a single parquet file inside.
+    name: Optional unique name. Necessary if multiple ParquetExampleGen components
       are declared in the same pipeline.
     outputs: Optional dict from name to output channel.
   Attributes:
@@ -48,10 +48,10 @@ class CsvExampleGen(base_component.BaseComponent):
                input_base,
                name = None,
                outputs = None):
-    component_name = 'CsvExampleGen'
+    component_name = 'ParquetExampleGen'
     input_dict = {'input-base': channel.as_channel(input_base)}
     exec_properties = {}
-    super(CsvExampleGen, self).__init__(
+    super(ParquetExampleGen, self).__init__(
         component_name=component_name,
         unique_name=name,
         driver=driver.Driver,
@@ -61,7 +61,7 @@ class CsvExampleGen(base_component.BaseComponent):
         exec_properties=exec_properties)
 
   def _create_outputs(self):
-    """Creates outputs for CsvExampleGen.
+    """Creates outputs for ParquetExampleGen.
 
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
