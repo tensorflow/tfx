@@ -49,8 +49,9 @@ def _ParquetToExample(
   Args:
     pipeline: beam pipeline.
     input_dict: Input dict from input key to a list of Artifacts.
-      - input-base: input dir that contains one or more parquet files, which
-        may be compressed or not
+      - input-base: file pattern that points to a set of Parquet files for 
+        input. Examples include '/path/data.parquet', '/path/data_directory/', 
+        and '/path/data_directory/data_prefix*'
     exec_properties: A dict of execution properties.
 
   Returns:
