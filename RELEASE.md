@@ -41,6 +41,7 @@
 
 ## Bug fixes and other changes
 
+*   Cleanup Colabs to remove TF warnings
 *   Performance improvement during shuffling of post-transform data.
 *   Changing example to move everything to one file in plugins
 *   Adding instructions to refer to README when running Chicago Taxi notebooks
