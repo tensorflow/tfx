@@ -75,8 +75,9 @@ def _fill_in_missing(x):
   """
   default_value = '' if x.dtype == tf.string else 0
   return tf.squeeze(
-      tf.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
-                         default_value),
+      tf.sparse.to_dense(
+          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+          default_value),
       axis=1)
 
 
