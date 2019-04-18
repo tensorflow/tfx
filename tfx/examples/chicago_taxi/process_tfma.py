@@ -24,7 +24,7 @@ import apache_beam as beam
 import tensorflow as tf
 
 import tensorflow_model_analysis as tfma
-from tfx.examples.chicago_taxi.trainer import taxi
+from trainer import taxi
 
 
 def process_tfma(eval_result_dir,
