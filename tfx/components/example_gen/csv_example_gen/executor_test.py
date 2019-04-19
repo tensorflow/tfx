@@ -22,7 +22,9 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen import executor
+from tfx.proto import example_gen_pb2
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -60,9 +62,22 @@ class ExecutorTest(tf.test.TestCase):
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 
+    # Create exec proterties.
+    exec_properties = {
+        'output':
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
+    }
+
     # Run executor.
     csv_example_gen = executor.Executor()
-    csv_example_gen.Do(self._input_dict, output_dict, {})
+    csv_example_gen.Do(self._input_dict, output_dict, exec_properties)
 
     # Check CSV example gen outputs.
     train_output_file = os.path.join(train_examples.uri,

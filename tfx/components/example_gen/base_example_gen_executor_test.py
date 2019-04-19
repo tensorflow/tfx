@@ -22,7 +22,9 @@ import random
 import apache_beam as beam
 import tensorflow as tf
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.proto import example_gen_pb2
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 @beam.ptransform_fn
@@ -68,9 +70,22 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 
+    # Create exec proterties.
+    exec_properties = {
+        'output':
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
+    }
+
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, output_dict, {})
+    example_gen.Do({}, output_dict, exec_properties)
 
     # Check example gen outputs.
     train_output_file = os.path.join(train_examples.uri,

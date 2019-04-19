@@ -1,0 +1,64 @@
+// Copyright 2019 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.components.example_gen;
+
+// Specification of the output of the example gen.
+message Output {
+  // Specifies how the output should be split.
+  SplitConfig split_config = 3;
+
+  reserved 1, 2, 4;
+}
+
+// A config to partition examples into splits.
+message SplitConfig {
+  // TODO(jyzhao): support custom output split.
+  // Currently, if split config is specified, it must contains both 'train' and
+  // 'eval' split.
+  //
+  // Splits.hash_buckets determine how splits are assigned for each example
+  // from this hash output. Number of hash buckets are created according to the
+  // given bucket counts, then examples are assigned in order.
+  //
+  // For example, for the following config
+  //   {
+  //     splits: [{name:'train' hash_buckets:60},
+  //              {name:'test'  hash_buckets:10},
+  //              {name:'eval'  hash_buckets:20}]
+  //   }
+  // m = mod(hash(id), 60+10+20) will be calculated.
+  // Then,
+  //   if m < 60: example belongs to Split-train
+  //   if m >= 60 && m < 60+10: example belongs to Split-test
+  //   if m >= 60+10: example belongs to Split-eval.
+  //
+  // Note that buckets [train:6, test:1, eval:2] might result in different
+  // mapping of examples to splits from [60, 10, 20]. Also the order is
+  // important, so that [eval:20, test:10, train:60] will give different splits.
+  //
+  // By design, [train:60, test1:5, test2:5, eval:20] would divide the middle
+  // split into two without changing the first and the last splits.
+  message Split {
+    string name = 1;
+    uint32 hash_buckets = 2;
+
+    reserved 3;
+  }
+  repeated Split splits = 1;
+
+  // TODO(jyzhao): support feature based partition.
+  reserved 2;
+}
