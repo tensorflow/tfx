@@ -19,7 +19,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-import pickle
+
 # Standard Imports
 
 import tensorflow as tf
@@ -36,9 +36,9 @@ class TypesTest(tf.test.TestCase):
     self.assertEqual(0, instance.id)
     self.assertEqual(0, instance.type_id)
     self.assertEqual('MyTypeName', instance.type_name)
-    self.assertIsNone(instance.state)
+    self.assertEqual('', instance.state)
     self.assertEqual('eval', instance.split)
-    self.assertIsNone(instance.span)
+    self.assertEqual(0, instance.span)
 
     # Test property setters.
     instance.uri = '/tmp/uri2'
@@ -77,16 +77,6 @@ class TypesTest(tf.test.TestCase):
     self.assertEqual(instance.artifact, other_instance.artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 
-    # Test pickling
-    dumped_instance = pickle.dumps(instance)
-    loaded_instance = pickle.loads(dumped_instance)
-    self.assertEqual(instance.artifact, loaded_instance.artifact)
-    self.assertEqual(instance.artifact_type, loaded_instance.artifact_type)
-
-    self.assertIsNone(instance.source)
-    instance.source = 'hello_world'
-    self.assertEqual('hello_world', instance.source)
-
   def test_get_from_single_list(self):
     """Test various retrieval utilities on a single list of TfxType."""
     single_list = [types.TfxType('MyTypeName', split='eval')]
@@ -118,8 +108,8 @@ class TypesTest(tf.test.TestCase):
     self.assertEqual(split_list[0],
                      types._get_split_instance(split_list, 'train'))
     self.assertEqual('/tmp/train', types.get_split_uri(split_list, 'train'))
-    self.assertEqual(split_list[1],
-                     types._get_split_instance(split_list, 'eval'))
+    self.assertEqual(split_list[1], types._get_split_instance(
+        split_list, 'eval'))
     self.assertEqual('/tmp/eval', types.get_split_uri(split_list, 'eval'))
 
 
