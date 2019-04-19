@@ -36,6 +36,7 @@ echo "Setup Beam from source code at $BEAM_REPO Branch $BEAM_BRANCH"
 echo "Using work directory $WORK_DIR"
 
 
+# TODO(BEAM-2530): Update the check to Java 11 once Beam support Java 11.
 function check_java() {
   if type -p java; then
     _java=java
