@@ -20,10 +20,13 @@ from __future__ import print_function
 from typing import Any, Dict, Optional, Text
 
 from tfx.components.base import base_component
+from tfx.components.example_gen import utils
 from tfx.components.example_gen.csv_example_gen import driver
 from tfx.components.example_gen.csv_example_gen import executor
+from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 class CsvExampleGen(base_component.BaseComponent):
@@ -36,6 +39,9 @@ class CsvExampleGen(base_component.BaseComponent):
   Args:
     input_base: A Channel of 'ExternalPath' type, which includes one artifact
       whose uri is an external directory with a single csv file inside.
+    output_config: An example_gen_pb2.Output instance, providing output
+      configuration. If unset, default splits will be 'train' and 'eval' with
+      size 2:1.
     name: Optional unique name. Necessary if multiple CsvExampleGen components
       are declared in the same pipeline.
     outputs: Optional dict from name to output channel.
@@ -46,11 +52,14 @@ class CsvExampleGen(base_component.BaseComponent):
 
   def __init__(self,
                input_base,
+               # TODO(jyzhao): add documentation about input/output config.
+               output_config = None,
                name = None,
                outputs = None):
     component_name = 'CsvExampleGen'
     input_dict = {'input-base': channel.as_channel(input_base)}
-    exec_properties = {}
+    self._output_config = output_config or utils.get_default_output_config()
+    exec_properties = {'output': json_format.MessageToJson(self._output_config)}
     super(CsvExampleGen, self).__init__(
         component_name=component_name,
         unique_name=name,
@@ -67,8 +76,8 @@ class CsvExampleGen(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     output_artifact_collection = [
-        types.TfxType('ExamplesPath', split=split)
-        for split in types.DEFAULT_EXAMPLE_SPLITS
+        types.TfxType('ExamplesPath', split=split.name)
+        for split in self._output_config.split_config.splits
     ]
     return base_component.ComponentOutputs({
         'examples':

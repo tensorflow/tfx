@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import bisect
 import hashlib
 import os
 import apache_beam as beam
@@ -25,16 +26,24 @@ from six import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
+from tfx.proto import example_gen_pb2
 from tfx.utils import types
+from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _partition_fn(record, num_partitions):  # pylint: disable=unused-argument
-  # TODO(jyzhao): support custom split.
-  # Splits data, train(partition=0) : eval(partition=1) = 2 : 1
-  return 1 if int(hashlib.sha256(record).hexdigest(), 16) % 3 == 0 else 0
+def _partition_fn(
+    record,
+    num_partitions,  # pylint: disable=unused-argument
+    buckets):
+  bucket = int(hashlib.sha256(record).hexdigest(), 16) % buckets[-1]
+  # For example, if buckets is [10,50,80], there will be 3 splits:
+  #   bucket >=0 && < 10, returns 0
+  #   bucket >=10 && < 50, returns 1
+  #   bucket >=50 && < 80, returns 2
+  return bisect.bisect(buckets, bucket)
 
 
 class BaseExampleGenExecutor(
@@ -57,6 +66,24 @@ class BaseExampleGenExecutor(
     """
     pass
 
+  def _check_split_config(self,
+                          split_config):
+    split_names = set()
+    for split in split_config.splits:
+      if not split.name or split.hash_buckets <= 0:
+        raise RuntimeError('Split name and hash_buckets are required.')
+      if split.name in split_names:
+        raise RuntimeError('Duplicated split name {}.'.format(split.name))
+      else:
+        split_names.add(split.name)
+    # TODO(jyzhao): use input splits if output splits are not specified.
+    if not split_names:
+      raise RuntimeError('ExampleGen output split is missing.')
+    # TODO(jyzhao): support custom split for downstream components.
+    if not {'train', 'eval'}.issubset(split_names):
+      raise RuntimeError(
+          'ExampleGen output splits must contain train and eval.')
+
   def Do(self, input_dict,
          output_dict,
          exec_properties):
@@ -69,14 +96,28 @@ class BaseExampleGenExecutor(
         - examples: train and eval split of tf examples.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
+        - output: JSON string of example_gen_pb2.Output instance, providing
+          output configuration.
 
     Returns:
       None
+
+    Raises:
+      RuntimeError: if output split config is not specified.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    training_tfrecord = types.get_split_uri(output_dict['examples'], 'train')
-    eval_tfrecord = types.get_split_uri(output_dict['examples'], 'eval')
+    # Get output split information.
+    output_config = example_gen_pb2.Output()
+    json_format.Parse(exec_properties['output'], output_config)
+    self._check_split_config(output_config.split_config)
+    splits = output_config.split_config.splits
+    # Calculate split buckets.
+    buckets = []
+    total_buckets = 0
+    for split in splits:
+      total_buckets += split.hash_buckets
+      buckets.append(total_buckets)
 
     tf.logging.info('Generating examples.')
     with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
@@ -88,19 +129,17 @@ class BaseExampleGenExecutor(
           # Returns deterministic string as partition is based on it.
           | 'SerializeDeterministically' >>
           beam.Map(lambda x: x.SerializeToString(deterministic=True))
-          | 'SplitData' >> beam.Partition(_partition_fn, 2))
+          | 'SplitData' >> beam.Partition(_partition_fn, len(buckets), buckets))
       # TODO(jyzhao): make shuffle optional.
       # pylint: disable=expression-not-assigned
-      (example_splits[0]
-       | 'ShuffleTrainSplit' >> beam.transforms.Reshuffle()
-       | 'OutputTrainSplit' >> beam.io.WriteToTFRecord(
-           os.path.join(training_tfrecord, DEFAULT_FILE_NAME),
-           file_name_suffix='.gz'))
-      (example_splits[1]
-       | 'ShuffleEvalSplit' >> beam.transforms.Reshuffle()
-       | 'OutputEvalSplit' >> beam.io.WriteToTFRecord(
-           os.path.join(eval_tfrecord, DEFAULT_FILE_NAME),
-           file_name_suffix='.gz'))
+      for index, example_split in enumerate(example_splits):
+        (example_split
+         | 'ShuffleSplit' + splits[index].name >> beam.transforms.Reshuffle()
+         | 'OutputSplit' + splits[index].name >> beam.io.WriteToTFRecord(
+             os.path.join(
+                 types.get_split_uri(output_dict['examples'],
+                                     splits[index].name), DEFAULT_FILE_NAME),
+             file_name_suffix='.gz'))
       # pylint: enable=expression-not-assigned
 
     tf.logging.info('Examples generated.')

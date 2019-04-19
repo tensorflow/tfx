@@ -25,7 +25,9 @@ import mock
 import tensorflow as tf
 from google.cloud import bigquery
 from tfx.components.example_gen.big_query_example_gen import executor
+from tfx.proto import example_gen_pb2
 from tfx.utils import types
+from google.protobuf import json_format
 
 
 @beam.ptransform_fn
@@ -63,7 +65,17 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create exe properties.
     self._exec_properties = {
-        'query': 'SELECT i, f, s FROM `fake`',
+        'query':
+            'SELECT i, f, s FROM `fake`',
+        'output':
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
     }
 
   @mock.patch.multiple(

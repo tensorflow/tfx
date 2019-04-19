@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_gen.big_query_example_gen import component
+from tfx.proto import example_gen_pb2
 
 
 class ComponentTest(tf.test.TestCase):
@@ -27,6 +28,25 @@ class ComponentTest(tf.test.TestCase):
     big_query_example_gen = component.BigQueryExampleGen(query='')
     self.assertEqual('ExamplesPath',
                      big_query_example_gen.outputs.examples.type_name)
+    artifact_collection = big_query_example_gen.outputs.examples.get()
+    self.assertEqual('train', artifact_collection[0].split)
+    self.assertEqual('eval', artifact_collection[1].split)
+
+  def test_construct_with_output_config(self):
+    big_query_example_gen = component.BigQueryExampleGen(
+        query='',
+        output_config=example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(splits=[
+                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
+                example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
+            ])))
+    self.assertEqual('ExamplesPath',
+                     big_query_example_gen.outputs.examples.type_name)
+    artifact_collection = big_query_example_gen.outputs.examples.get()
+    self.assertEqual('train', artifact_collection[0].split)
+    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual('test', artifact_collection[2].split)
 
 
 if __name__ == '__main__':
