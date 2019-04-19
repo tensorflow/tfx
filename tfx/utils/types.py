@@ -17,16 +17,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import json
+import builtins
 
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Text
 
-from ml_metadata.metadata_store import types
 from ml_metadata.proto import metadata_store_pb2
+from google.protobuf import json_format
 
 # Indicating there is an execution producing it.
 ARTIFACT_STATE_PENDING = 'pending'
@@ -43,7 +43,7 @@ ARTIFACT_STATE_DELETED = 'deleted'
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 
 
-class TfxType(types.Artifact):
+class TfxType(object):
   """Base Tfx Type used for orchestration.
 
   This is used for type checking and inter component communicating. Currently
@@ -63,122 +63,142 @@ class TfxType(types.Artifact):
       type_name: Name of underlying ArtifactType.
       split: Which split this instance of articact maps to.
     """
-    super(TfxType, self).__init__(
-        _create_tfx_artifact(type_name, split),
-        _create_tfx_artifact_type(type_name))
-    self.__dict__['source'] = None
+    artifact_type = metadata_store_pb2.ArtifactType()
+    artifact_type.name = type_name
+    artifact_type.properties['type_name'] = metadata_store_pb2.STRING
+    # This is a temporary solution due to b/123435989.
+    artifact_type.properties['name'] = metadata_store_pb2.STRING
+    # This indicates the state of an artifact. A state can be any of the
+    # followings: PENDING, PUBLISHED, MISSING, DELETING, DELETED
+    # TODO(ruoyu): Maybe switch to artifact top-level state if it's supported.
+    artifact_type.properties['state'] = metadata_store_pb2.STRING
+    # Span number of an artifact. For the same artifact type produced by the
+    # same executor, this number should always increase.
+    artifact_type.properties['span'] = metadata_store_pb2.INT
+    # Comma separated splits recognized. Empty string means artifact has no
+    # split.
+    artifact_type.properties['split'] = metadata_store_pb2.STRING
+
+    self.artifact_type = artifact_type
+
+    artifact = metadata_store_pb2.Artifact()
+    artifact.properties['type_name'].string_value = type_name
+    artifact.properties['split'].string_value = split
+
+    self.artifact = artifact
 
   def __str__(self):
-    return '{}:{}.{}'.format(self.type.name, self.uri, str(self.id))
+    return '{}:{}.{}'.format(self.artifact_type.name, self.uri, str(self.id))
 
   def __repr__(self):
     return self.__str__()
 
-  def __deepcopy__(self, memo):
-    """Create a deep copy of the artifact.
-
-    Note that if the artifact has an ID then this is copied as well.
-
-    Args:
-      memo: information for memoization (not used)
-
-    Returns:
-      a deep copy with a new ID and new state. All information is erased.
-    """
-    del memo
-    result = TfxType(self.type.name, self.split)
-    result.set_artifact_and_type(
-        copy.deepcopy(self.artifact), copy.deepcopy(self.type))
-    return result
-
   def json_dict(self):
     """Returns a dict suitable for json serialization."""
-    # TODO(martinz): reconcile these two method names.
-    # Decide if this should be public or private.
-    return self._create_pre_json()
-
-  @classmethod
-  def from_types_artifact(cls, art):
-    """Create a TfxType from an types.Artifact object."""
-    result = TfxType(art.type.name, art.uri)
-    result.set_artifact_and_type(art.artifact, art.type)
-    return result
+    return {
+        'artifact':
+            json.loads(json_format.MessageToJson(self.artifact)),
+        'artifact_type':
+            json.loads(json_format.MessageToJson(self.artifact_type)),
+    }
 
   @classmethod
   def parse_from_json_dict(cls, d):
     """Creates a instance of TfxType from a json deserialized dict."""
-    return TfxType.from_types_artifact(types.Artifact.from_json(d))
+    artifact = metadata_store_pb2.Artifact()
+    json_format.Parse(json.dumps(d['artifact']), artifact)
+    artifact_type = metadata_store_pb2.ArtifactType()
+    json_format.Parse(json.dumps(d['artifact_type']), artifact_type)
+    result = TfxType(artifact_type.name, artifact.uri)
+    result.set_artifact_type(artifact_type)
+    result.set_artifact(artifact)
+    return result
+
+  @property
+  def uri(self):
+    """URI of underlying artifact."""
+    return self.artifact.uri
+
+  @uri.setter
+  def uri(self, uri):
+    """Set URI of underlying artifact."""
+    self.artifact.uri = uri
+
+  @property
+  def id(self):
+    """Id of underlying artifact."""
+    return self.artifact.id
+
+  @id.setter
+  def id(self, artifact_id):
+    """Set id of underlying artifact."""
+    self.artifact.id = artifact_id
+
+  @property
+  def span(self):
+    """Span of underlying artifact."""
+    return self.artifact.properties['span'].int_value
+
+  @span.setter
+  def span(self, span):
+    """Set span of underlying artifact."""
+    self.artifact.properties['span'].int_value = span
 
   @property
   def type_id(self):
     """Id of underlying artifact type."""
     return self.artifact.type_id
 
-  @property
-  def artifact_type(self):
-    """The underlying artifact type."""
-    return self.type
-
-  def __setattr__(self, attr, value):
-    """Set an attribute."""
-    # We need this because __setattr__ in the base clase has a higher
-    # priority than setting a property.
-    if attr == 'id':
-      self.artifact.id = value
-    elif attr == 'type_id':
-      self.artifact.type_id = value
-      self.type.id = value
-    elif attr == 'source':
-      self.__dict__['source'] = value
-    else:
-      super(TfxType, self).__setattr__(attr, value)
+  @type_id.setter
+  def type_id(self, type_id):
+    """Set id of underlying artifact type."""
+    self.artifact.type_id = type_id
 
   @property
   def type_name(self):
     """Name of underlying artifact type."""
-    return self.type.name
+    return self.artifact_type.name
 
   @property
-  def source(self):
-    """Name of underlying artifact type."""
-    return self.__dict__['source']
+  def state(self):
+    """State of the underlying artifact."""
+    return self.artifact.properties['state'].string_value
+
+  @state.setter
+  def state(self, state):
+    """Set state of the underlying artifact."""
+    self.artifact.properties['state'].string_value = state
+
+  @property
+  def split(self):
+    """Split of the underlying artifact is in."""
+    return self.artifact.properties['split'].string_value
+
+  @split.setter
+  def split(self, split):
+    """Set state of the underlying artifact."""
+    self.artifact.properties['split'].string_value = split
 
   def set_artifact(self, artifact):
     """Set entire artifact in this object."""
-    # TODO(martinz): check for type consistency.
-    self.__dict__['_artifact'] = artifact
+    self.artifact = artifact
 
   def set_artifact_type(self, artifact_type):
     """Set entire ArtifactType in this object."""
-    # TODO(martinz): check for type consistency.
-    self.__dict__['_type'] = artifact_type
+    self.artifact_type = artifact_type
     self.artifact.type_id = artifact_type.id
-
-  def set_artifact_and_type(self, artifact,
-                            artifact_type):
-    self.__dict__['_artifact'] = artifact
-    self.__dict__['_type'] = artifact_type
-    if not self._is_consistent():
-      raise ValueError('Type is not internally consistent')
-
-  def __setstate__(self, state):
-    self.set_artifact_and_type(state[0], state[1])
-
-  def __getstate__(self):
-    return self.artifact, self.type
 
   def set_string_custom_property(self, key, value):
     """Set a custom property of string type."""
-    self.set_custom_property(key, value)
+    self.artifact.custom_properties[key].string_value = value
 
   def set_int_custom_property(self, key, value):
     """Set a custom property of int type."""
-    self.set_custom_property(key, int(value))
+    self.artifact.custom_properties[key].int_value = builtins.int(value)
 
 
 def parse_tfx_type_dict(json_str):
-  """Parse a dict from key to dictonary of TfxType from its json format."""
-  # TODO(martinz): See types.ArtifactStruct.
+  """Parse a dict from key to list of TfxType from its json format."""
   tfx_artifacts = {}
   for k, l in json.loads(json_str).items():
     tfx_artifacts[k] = [TfxType.parse_from_json_dict(v) for v in l]
@@ -187,7 +207,10 @@ def parse_tfx_type_dict(json_str):
 
 def jsonify_tfx_type_dict(artifact_dict):
   """Serialize a dict from key to list of TfxType into json format."""
-  return types.create_json(artifact_dict)
+  d = {}
+  for k, l in artifact_dict.items():
+    d[k] = [v.json_dict() for v in l]
+  return json.dumps(d)
 
 
 def get_single_instance(artifact_list):
@@ -256,34 +279,3 @@ def get_split_uri(artifact_list, split):
     ValueError: If number with matching split in artifact_list is not one.
   """
   return _get_split_instance(artifact_list, split).uri
-
-
-def _create_tfx_artifact_type(type_name
-                             ):
-  """Create an ArtifactType for TfxType.__init__()."""
-  artifact_type = metadata_store_pb2.ArtifactType()
-  artifact_type.name = type_name
-  # TODO(martinz): remove type_name as a property.
-  artifact_type.properties['type_name'] = metadata_store_pb2.STRING
-  # This indicates the state of an artifact. A state can be any of the
-  # followings: PENDING, PUBLISHED, MISSING, DELETING, DELETED
-  # TODO(ruoyu): Maybe switch to artifact top-level state if it's supported.
-  artifact_type.properties['state'] = metadata_store_pb2.STRING
-  # Span number of an artifact. For the same artifact type produced by the
-  # same executor, this number should always increase.
-  artifact_type.properties['span'] = metadata_store_pb2.INT
-  # Comma separated splits recognized. Empty string means artifact has no
-  # split.
-  artifact_type.properties['split'] = metadata_store_pb2.STRING
-  return artifact_type
-
-
-def _create_tfx_artifact(type_name,
-                         split):
-  """Create an Artifact for TfxType.__init__()."""
-  artifact = metadata_store_pb2.Artifact()
-  # TODO(martinz): consider whether type_name needs to be hard-coded into the
-  # artifact.
-  artifact.properties['type_name'].string_value = type_name
-  artifact.properties['split'].string_value = split
-  return artifact

@@ -181,8 +181,7 @@ class BaseDriver(object):
     max_input_span = 0
     for input_list in input_dict.values():
       for single_input in input_list:
-        if single_input.span is not None:
-          max_input_span = max(max_input_span, single_input.span)
+        max_input_span = max(max_input_span, single_input.span)
     # TODO(ruoyu): This location is dangerous because this function is not
     # guaranteed to be called on custom driver.
     for output_name, output_list in output_dict.items():
