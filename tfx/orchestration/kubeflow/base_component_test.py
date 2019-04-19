@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+import json
 from kfp import dsl
 import tensorflow as tf
 from tfx.orchestration.kubeflow import base_component
@@ -24,29 +26,47 @@ from tfx.utils import types
 
 
 class BaseComponentTest(tf.test.TestCase):
+  maxDiff = None  # pylint: disable=invalid-name
 
   def setUp(self):
-    output_dict = {'output_name': [types.TfxType(type_name='ExamplesPath')]}
+    self._output_dict = {
+        'output_name': [types.TfxType(type_name='ExamplesPath')]
+    }
+    self._pipeline_properties = base_component.PipelineProperties(
+        output_dir='output_dir',
+        log_root='log_root',
+    )
 
     with dsl.Pipeline('test_pipeline'):
       self.component = base_component.BaseComponent(
           component_name='TFXComponent',
-          input_dict={
-              'input_data': 'input-data-contents',
-              'train_steps': 300,
-              'accuracy_threshold': 0.3,
-          },
-          output_dict=output_dict,
-          exec_properties={'module_file': '/path/to/module.py'},
+          input_dict=collections.OrderedDict([
+              ('input_data', 'input-data-contents'),
+              ('train_steps', 300),
+              ('accuracy_threshold', 0.3),
+          ]),
+          output_dict=self._output_dict,
+          exec_properties=collections.OrderedDict([('module_file',
+                                                    '/path/to/module.py')]),
+          executor_class_path='some.executor.Class',
+          pipeline_properties=self._pipeline_properties,
       )
 
   def test_container_op_arguments(self):
-    self.assertEqual(self.component.container_op.arguments[:3], [
-        '--exec_properties',
-        '{"module_file": "/path/to/module.py"}',
+    self.assertEqual(self.component.container_op.arguments[0],
+                     '--exec_properties')
+    self.assertDictEqual(
+        {
+            'output_dir': 'output_dir',
+            'log_root': 'log_root',
+            'module_file': '/path/to/module.py'
+        }, json.loads(self.component.container_op.arguments[1]))
+
+    self.assertEqual(self.component.container_op.arguments[2:], [
         '--outputs',
-    ])
-    self.assertItemsEqual(self.component.container_op.arguments[-7:], [
+        types.jsonify_tfx_type_dict(self._output_dict),
+        '--executor_class_path',
+        'some.executor.Class',
         'TFXComponent',
         '--input_data',
         'input-data-contents',

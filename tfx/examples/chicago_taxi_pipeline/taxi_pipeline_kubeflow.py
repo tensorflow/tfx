@@ -99,6 +99,8 @@ _query_sample_rate = 0.001  # Generate a 0.1% random sample.
             '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
             '--region=' + _gcp_region,
         ],
+        # Optional args:
+        # 'tfx_image': custom docker image to use for components.
     })
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""

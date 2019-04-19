@@ -82,11 +82,6 @@ class RunnerTest(tf.test.TestCase):
           '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
       ], big_query_container[0]['container']['command'])
 
-      self.assertEqual([
-          'python',
-          '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
-      ], big_query_container[0]['container']['command'])
-
       statistics_gen_container = [
           c
           for c in containers

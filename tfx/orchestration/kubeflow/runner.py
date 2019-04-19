@@ -51,6 +51,24 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     Args:
       pipeline: The logical TFX pipeline to base the construction on.
     """
+    output_dir = os.path.join(pipeline.pipeline_args['pipeline_root'],
+                              pipeline.pipeline_args['pipeline_name'])
+    beam_pipeline_args = []
+    tfx_image = None
+    if 'additional_pipeline_args' in pipeline.pipeline_args:
+      additional_pipeline_args = pipeline.pipeline_args[
+          'additional_pipeline_args']
+      beam_pipeline_args = additional_pipeline_args.get('beam_pipeline_args',
+                                                        [])
+      tfx_image = additional_pipeline_args.get('tfx_image')
+
+    pipeline_properties = base_component.PipelineProperties(
+        output_dir=output_dir,
+        log_root=pipeline.pipeline_args['log_root'],
+        beam_pipeline_args=beam_pipeline_args,
+        tfx_image=tfx_image,
+    )
+
     # producers is a map from an output Channel, to a Kubeflow component that
     # is responsible for the named output represented by the Channel.
     # Assumption: Channels are unique in a pipeline.
@@ -74,12 +92,15 @@ class KubeflowRunner(tfx_runner.TfxRunner):
         else:
           input_dict[input_name] = json.dumps(
               [x.json_dict() for x in input_channel.get()])
-
+      executor_class_path = '.'.join(
+          [component.executor.__module__, component.executor.__name__])
       kfp_component = base_component.BaseComponent(
           component_name=component.component_name,
           input_dict=input_dict,
           output_dict=self._prepare_output_dict(component.outputs),
-          exec_properties=component.exec_properties)
+          exec_properties=component.exec_properties,
+          executor_class_path=executor_class_path,
+          pipeline_properties=pipeline_properties)
 
       for channel_name, channel in component.outputs.get_all().items():
         producers[channel] = {}
@@ -100,20 +121,6 @@ class KubeflowRunner(tfx_runner.TfxRunner):
       Creates Kubeflow ContainerOps for each TFX component encountered in the
       logical pipeline definition.
       """
-      output_dir = os.path.join(pipeline.pipeline_args['pipeline_root'],
-                                pipeline.pipeline_args['pipeline_name'])
-
-      beam_pipeline_args = []
-      if 'additional_pipeline_args' in pipeline.pipeline_args:
-        beam_pipeline_args = pipeline.pipeline_args[
-            'additional_pipeline_args'].get('beam_pipeline_args', [])
-
-      base_component.ExecutionProperties(
-          output_dir=output_dir,
-          log_root=pipeline.pipeline_args['log_root'],
-          beam_pipeline_args=beam_pipeline_args,
-      )
-
       self._construct_pipeline_graph(pipeline)
 
     pipeline_name = pipeline.pipeline_args['pipeline_name']

@@ -94,6 +94,14 @@ def _make_required_test_packages():
   ]
 
 
+def _make_extra_packages_docker_image():
+  # Packages needed for tfx docker image.
+  return [
+      'python-snappy>=0.5,<1',
+      'tensorflow>=1.13,<2',
+  ]
+
+
 # Get version from version module.
 with open('tfx/version.py') as fp:
   globals_dict = {}
@@ -142,6 +150,7 @@ setup(
     install_requires=_make_required_install_packages(),
     extras_require={
         'test': _make_required_test_packages(),
+        'docker-image': _make_extra_packages_docker_image(),
     },
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),

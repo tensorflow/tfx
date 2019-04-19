@@ -176,9 +176,13 @@ class AirflowAdapter(object):
         v if ':' in v else '{v}:{v}:rw'.format(v=v)
         for v in docker_operator_cfg.get('volumes', [])
     ]
+    executor_class_path = '.'.join([
+        self._executor_class.__module__,
+        self._executor_class.__name__,
+    ])
     args = [
         '--write-outputs-stdout',
-        '--executor=%s' % self._component_name,
+        '--executor_class_path=%s' % executor_class_path,
         '--inputs-base64={{ ti.xcom_pull(key="_exec_inputs", '
         'task_ids="%s") | b64encode }}' % pusher_task,
         '--outputs-base64={{ ti.xcom_pull(key="_exec_outputs", '
