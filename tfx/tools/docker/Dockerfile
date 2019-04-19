@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update -y && \
   apt-get install --no-install-recommends -y -q \
@@ -21,26 +21,17 @@ RUN apt-get update -y && \
   ca-certificates \
   libsnappy-dev \
   python-dev \
+  python-pip \
   python-setuptools \
+  python-wheel \
   wget \
   unzip \
   git
 
-# tensorflow dependency is not explicitly listed in TFX setup.py.
-RUN easy_install pip && pip install \
-  python-snappy==0.5.3 \
-  # LINT.IfChange
-  tensorflow==1.12.0
-  # LINT.ThenChange(
-  #    ../../examples/chicago_taxi/setup.py,
-  #    ../../examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_large.py,
-  #    ../../examples/chicago_taxi_pipeline/taxi_pipeline_gcp.py,
-  #)
-
 # docker build command should be run under root directory of github checkout.
 ADD . /tfx-src
 WORKDIR /tfx-src
-RUN pip install -r ./requirements.txt
+RUN pip install -e .[docker-image]
 
 RUN /tfx-src/tfx/tools/docker/license.sh /tfx-src/tfx/tools/docker/third_party_licenses.csv /third_party/licenses
 

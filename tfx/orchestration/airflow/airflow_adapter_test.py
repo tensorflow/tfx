@@ -94,6 +94,7 @@ class AirflowAdapterTest(tf.test.TestCase):
   def _setup_mock_executor(self, mock_executor_class):
     mock_executor = mock.Mock()
     mock_executor_class.return_value = mock_executor
+    mock_executor_class.__name__ = 'mock_executor_class'
 
     self.mock_executor = mock_executor
 
@@ -236,7 +237,8 @@ class AirflowAdapterTest(tf.test.TestCase):
         'volumes': ['root', 'base', 'taxi'],
     }, 'pusher_task')
 
-    expected_command = ('--write-outputs-stdout --executor=TfxComponent '
+    expected_command = ('--write-outputs-stdout '
+                        '--executor_class_path=mock.mock.mock_executor_class '
                         '--inputs-base64={{ ti.xcom_pull(key="_exec_inputs", '
                         'task_ids="pusher_task") | b64encode }} '
                         '--outputs-base64={{ ti.xcom_pull(key="_exec_outputs", '

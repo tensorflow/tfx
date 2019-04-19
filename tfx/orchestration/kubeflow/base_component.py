@@ -25,36 +25,40 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import json
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
+from tfx import version
 from tfx.utils import types
 
 
-class ExecutionProperties(object):
-  """Holds global execution properties that apply to all component."""
-  exec_properties = {}
-
-  def __new__(cls,
-              output_dir,
-              log_root,
-              beam_pipeline_args = None):
-    cls.exec_properties = {
-        'output_dir': output_dir,
-        'log_root': log_root,
-    }
-    if beam_pipeline_args is not None:
-      cls.exec_properties['beam_pipeline_args'] = beam_pipeline_args
-
-    return super(ExecutionProperties, cls).__new__(cls)
-
-
+# Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
+# pipeline property.
 # TODO(ajaygopinathan): Update with final image location.
-_KUBEFLOW_TFX_IMAGE = 'gcr.io/cloud-ml-pipelines-test/tfx-kubeflow'
+_KUBEFLOW_TFX_IMAGE = 'gcr.io/cloud-ml-pipelines-test/tfx-kubeflow:%s' % (
+    version.__version__)
 _COMMAND = [
     'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
 ]
+
+
+class PipelineProperties(object):
+  """Holds pipeline level execution properties that apply to all component."""
+
+  def __init__(self,
+               output_dir,
+               log_root,
+               beam_pipeline_args = None,
+               tfx_image = None):
+    self.exec_properties = collections.OrderedDict([
+        ('output_dir', output_dir),
+        ('log_root', log_root),
+    ])
+    if beam_pipeline_args:
+      self.exec_properties['beam_pipeline_args'] = beam_pipeline_args
+    self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
 
 
 class BaseComponent(object):
@@ -65,9 +69,15 @@ class BaseComponent(object):
   components.
   """
 
-  def __new__(cls, component_name, input_dict,
-              output_dict,
-              exec_properties):
+  def __new__(
+      cls,
+      component_name,
+      input_dict,
+      output_dict,
+      exec_properties,
+      executor_class_path,
+      pipeline_properties,
+  ):
     """Creates a new component.
 
     Args:
@@ -76,6 +86,8 @@ class BaseComponent(object):
         kfp.dsl.PipelineParam representing input parameters.
       output_dict: Dictionary of output names to List of TFX types.
       exec_properties: Execution properties.
+      executor_class_path: <module>.<class> for Python class of executor.
+      pipeline_properties: Pipeline level properties shared by all components.
 
     Returns:
       Newly constructed TFX Kubeflow component instance.
@@ -85,7 +97,7 @@ class BaseComponent(object):
         output: '/output/ml_metadata/{}'.format(output) for output in outputs
     }
 
-    for k, v in ExecutionProperties.exec_properties.items():
+    for k, v in pipeline_properties.exec_properties.items():
       exec_properties[k] = v
 
     arguments = [
@@ -93,6 +105,8 @@ class BaseComponent(object):
         json.dumps(exec_properties),
         '--outputs',
         types.jsonify_tfx_type_dict(output_dict),
+        '--executor_class_path',
+        executor_class_path,
         component_name,
     ]
 
@@ -105,7 +119,7 @@ class BaseComponent(object):
     container_op = dsl.ContainerOp(
         name=component_name,
         command=_COMMAND,
-        image=_KUBEFLOW_TFX_IMAGE,
+        image=pipeline_properties.tfx_image,
         arguments=arguments,
         file_outputs=file_outputs,
     ).apply(gcp.use_gcp_secret('user-gcp-sa'))  # Adds GCP authentication.

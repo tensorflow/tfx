@@ -20,27 +20,10 @@ from __future__ import print_function
 import argparse
 import base64
 import json
-import sys
 import tensorflow as tf
 from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
-# pylint: disable=unused-import
-from tfx.components.evaluator.executor import Executor as Evaluator
-from tfx.components.example_gen.big_query_example_gen.executor import Executor as BigQueryExampleGen
-from tfx.components.example_gen.csv_example_gen.executor import Executor as CSVExampleGen
-from tfx.components.example_validator.executor import Executor as ExampleValidator
-from tfx.components.model_validator.executor import Executor as Modelvalidator
-from tfx.components.pusher.executor import Executor as Pusher
-from tfx.components.schema_gen.executor import Executor as SchemaGen
-from tfx.components.statistics_gen.executor import Executor as StatisticsGen
-from tfx.components.trainer.executor import Executor as Trainer
-from tfx.components.transform.executor import Executor as Transform
-# pylint: disable=unused-import
-from tfx.utils.types import jsonify_tfx_type_dict
-from tfx.utils.types import parse_tfx_type_dict
-
-
-def _get_executor_class(classname):
-  return getattr(sys.modules[__name__], classname)
+from tfx.utils import import_utils
+from tfx.utils import types
 
 
 def _run_executor(args, pipeline_args):
@@ -54,30 +37,30 @@ def _run_executor(args, pipeline_args):
                            args.exec_properties or
                            base64.b64decode(args.exec_properties_base64))
 
-  inputs = parse_tfx_type_dict(inputs_str)
-  outputs = parse_tfx_type_dict(outputs_str)
+  inputs = types.parse_tfx_type_dict(inputs_str)
+  outputs = types.parse_tfx_type_dict(outputs_str)
   exec_properties = json.loads(exec_properties_str)
   tf.logging.info(
       'Executor {} do: inputs: {}, outputs: {}, exec_properties: {}'.format(
           args.executor, inputs, outputs, exec_properties))
 
-  executor = _get_executor_class(args.executor)(
-      beam_pipeline_args=pipeline_args)
+  executor_cls = import_utils.import_class_by_path(args.executor_class_path)
+  executor = executor_cls(beam_pipeline_args=pipeline_args)
   tf.logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
 
   # The last line of stdout will be pushed to xcom by Airflow.
   if args.write_outputs_stdout:
-    print(jsonify_tfx_type_dict(outputs))
+    print(types.jsonify_tfx_type_dict(outputs))
 
 
 def main(argv):
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '--executor',
+      '--executor_class_path',
       type=str,
       required=True,
-      help='Name of executor for current task')
+      help='Python class of executor in format of <module>.<class>.')
   inputs_group = parser.add_mutually_exclusive_group(required=True)
   inputs_group.add_argument(
       '--inputs',

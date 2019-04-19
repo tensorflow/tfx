@@ -37,6 +37,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--exec_properties', type=str, required=True)
   parser.add_argument('--outputs', type=str, required=True)
+  parser.add_argument('--executor_class_path', type=str, required=True)
 
   subparsers = parser.add_subparsers(dest='runner')
 
