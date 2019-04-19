@@ -21,6 +21,7 @@
 
 ## Major Features and Improvements
 
+*   Adding TFMA Architecture doc
 *   TFX User Guide
 *   Initial version of the following TFX components:
     *   CSVExampleGen - CSV data ingestion

@@ -56,8 +56,6 @@ toc:
 - title: "Model Analysis"
   style: accordion
   section:
-  - title: "Improving Model Quality"
-    path: /tfx/guide/tfma
   - include: /tfx/model_analysis/_toc.yaml
 
 - title: "Serving"
