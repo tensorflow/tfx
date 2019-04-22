@@ -84,14 +84,19 @@ def _make_required_install_packages():
 
 
 def _make_required_test_packages():
-  # Packages needed for 'python setup.py test': They are generally wider than
-  # install packages.
-  return [
+  """Prepare extra packages needed for 'python setup.py test'."""
+  py2and3_test_dependencies = [
       'apache-airflow>=1.10,<2',
       'docker>=3.7,<4',
-      'kfp>=0.1,<=0.1.11',
+      'pytest>=4.4.1,<5',
       'tensorflow>=1.13,<2',
   ]
+  py3_only_test_dependencies = ['kfp>=0.1,<=0.1.11']
+
+  if sys.version_info.major == 2:
+    return py2and3_test_dependencies
+  else:
+    return py2and3_test_dependencies + py3_only_test_dependencies
 
 
 def _make_extra_packages_docker_image():
@@ -149,9 +154,10 @@ setup(
     namespace_packages=[],
     install_requires=_make_required_install_packages(),
     extras_require={
-        'test': _make_required_test_packages(),
         'docker-image': _make_extra_packages_docker_image(),
     },
+    setup_requires=['pytest-runner'],
+    tests_require=_make_required_test_packages(),
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),
     include_package_data=True,
