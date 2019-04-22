@@ -95,8 +95,8 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     """
 
     @dsl.pipeline(
-      pipeline.pipeline_args['pipeline_name'],
-      pipeline.pipeline_args.get('description', '')
+      name=pipeline.pipeline_args['pipeline_name'],
+      description=pipeline.pipeline_args.get('description', '')
     )
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
