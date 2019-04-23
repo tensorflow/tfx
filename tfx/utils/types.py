@@ -47,7 +47,7 @@ class TfxType(object):
   """Base Tfx Type used for orchestration.
 
   This is used for type checking and inter component communicating. Currently
-  it wraps a tupel of
+  it wraps a tuple of
   (ml_metadata.proto.Artifact, ml_metadata.proto.ArtifactType)
   with additional properties for accessing internal state.
   """
