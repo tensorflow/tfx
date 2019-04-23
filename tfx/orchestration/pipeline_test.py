@@ -18,29 +18,64 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-# Standard Imports
-
 import tensorflow as tf
+from typing import Any, Dict, Text
 
+from tfx.components.base import base_component
 from tfx.orchestration import pipeline
+from tfx.utils import channel
+
+
+class _FakeComponent(base_component.BaseComponent):
+
+  def __init__(self, name):
+    super(_FakeComponent, self).__init__(
+        component_name=name,
+        driver=None,
+        executor=None,
+        input_dict={},
+        exec_properties={})
+    self.name = name
+
+  def _create_outputs(self):
+    raise NotImplementedError
+
+  def _type_check(self, input_dict,
+                  exec_properties):
+    return None
 
 
 class PipelineTest(tf.test.TestCase):
 
   def test_pipeline(self):
 
+    component_a = _FakeComponent('component_a')
+    component_b = _FakeComponent('component_b')
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[component_a, component_b])
+    self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
+    self.assertDictEqual(my_pipeline.pipeline_args, {
+        'pipeline_name': 'a',
+        'pipeline_root': 'b',
+        'log_root': 'c'
+    })
+
+  def test_pipeline_decorator(self):
+
     @pipeline.PipelineDecorator(
         pipeline_name='a', pipeline_root='b', log_root='c')
     def create_pipeline():
-      component_a = 'component_a'
-      component_b = 'component_b'
-
-      return [component_a, component_b]
+      self.component_a = 'component_a'
+      self.component_b = 'component_b'
+      return [self.component_a, self.component_b]
 
     my_pipeline = create_pipeline()
 
     self.assertItemsEqual(my_pipeline.components,
-                          ['component_a', 'component_b'])
+                          [self.component_a, self.component_b])
     self.assertDictEqual(my_pipeline.pipeline_args, {
         'pipeline_name': 'a',
         'pipeline_root': 'b',
