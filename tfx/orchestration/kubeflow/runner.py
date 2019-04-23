@@ -37,8 +37,8 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     """Initializes KubeflowRunner for compiling a Kubeflow Pipeline.
 
     Args:
-      output_dir: An optional output directory into which to output the
-          pipeline definition files. Defaults to the current working directory.
+      output_dir: An optional output directory into which to output the pipeline
+        definition files. Defaults to the current working directory.
     """
     self._output_dir = output_dir or os.getcwd()
 
@@ -115,6 +115,9 @@ class KubeflowRunner(tfx_runner.TfxRunner):
         pipeline.
     """
 
+    @dsl.pipeline(
+        name=pipeline.pipeline_args['pipeline_name'],
+        description=pipeline.pipeline_args.get('description', ''))
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
 
@@ -124,9 +127,5 @@ class KubeflowRunner(tfx_runner.TfxRunner):
       self._construct_pipeline_graph(pipeline)
 
     pipeline_name = pipeline.pipeline_args['pipeline_name']
-    dsl.Pipeline.add_pipeline(pipeline_name,
-                              pipeline.pipeline_args.get('description', ''),
-                              _construct_pipeline)
-
     pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
     compiler.Compiler().compile(_construct_pipeline, pipeline_file)
