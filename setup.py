@@ -86,6 +86,7 @@ def _make_required_install_packages():
 def _make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
   py2and3_test_dependencies = [
+      'tzlocal<2.0.0.0,>=1.5.0.0',
       'apache-airflow>=1.10,<2',
       'docker>=3.7,<4',
       'pytest>=4.4.1,<5',
