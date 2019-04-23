@@ -103,7 +103,7 @@ def _make_required_test_packages():
 def _make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
-      'python-snappy>=0.5,<1',
+      'python-snappy>=0.5,<0.6',
       'tensorflow>=1.13,<2',
   ]
 
