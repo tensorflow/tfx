@@ -85,19 +85,14 @@ def _make_required_install_packages():
 
 def _make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
-  py2and3_test_dependencies = [
-      'tzlocal<2.0.0.0,>=1.5.0.0',
+  return [
       'apache-airflow>=1.10,<2',
       'docker>=3.7,<4',
+      'kfp>=0.1,<=0.1.11; python_version >= "3.0"',
       'pytest>=4.4.1,<5',
       'tensorflow>=1.13,<2',
+      'tzlocal>=1.5,<2.0',
   ]
-  py3_only_test_dependencies = ['kfp>=0.1,<=0.1.11']
-
-  if sys.version_info.major == 2:
-    return py2and3_test_dependencies
-  else:
-    return py2and3_test_dependencies + py3_only_test_dependencies
 
 
 def _make_extra_packages_docker_image():
