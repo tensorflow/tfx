@@ -28,6 +28,8 @@ RUN apt-get update -y && \
   unzip \
   git
 
+RUN python -m pip install --upgrade pip==19.0.3
+
 # docker build command should be run under root directory of github checkout.
 ADD . /tfx-src
 WORKDIR /tfx-src
