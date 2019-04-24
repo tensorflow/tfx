@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 # Standard Imports
+import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration.metadata import Metadata
@@ -37,8 +38,7 @@ class MetadataTest(tf.test.TestCase):
 
   def test_empty_artifact(self):
     with Metadata(
-        connection_config=self._connection_config,
-        logger=self._logger) as m:
+        connection_config=self._connection_config, logger=self._logger) as m:
       m.publish_artifacts([])
       eid = m.prepare_execution('Test', {})
       m.publish_execution(eid, {}, {})
@@ -56,8 +56,7 @@ class MetadataTest(tf.test.TestCase):
 
   def test_artifact(self):
     with Metadata(
-        connection_config=self._connection_config,
-        logger=self._logger) as m:
+        connection_config=self._connection_config, logger=self._logger) as m:
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
@@ -99,8 +98,7 @@ class MetadataTest(tf.test.TestCase):
 
   def test_execution(self):
     with Metadata(
-        connection_config=self._connection_config,
-        logger=self._logger) as m:
+        connection_config=self._connection_config, logger=self._logger) as m:
 
       # Test prepare_execution.
       exec_properties = {}
@@ -155,8 +153,7 @@ class MetadataTest(tf.test.TestCase):
 
   def test_fetch_previous_result(self):
     with Metadata(
-        connection_config=self._connection_config,
-        logger=self._logger) as m:
+        connection_config=self._connection_config, logger=self._logger) as m:
 
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}
@@ -188,6 +185,44 @@ class MetadataTest(tf.test.TestCase):
                        current_artifact.properties['state'].string_value)
       self.assertEqual(previous_artifact.id, current_artifact.id)
       self.assertEqual(previous_artifact.type_id, current_artifact.type_id)
+
+  def test_get_cached_execution_ids(self):
+    with Metadata(
+        connection_config=self._connection_config, logger=self._logger) as m:
+      mock_store = mock.Mock()
+      mock_store.get_events_by_execution_ids.side_effect = [
+          [
+              metadata_store_pb2.Event(
+                  artifact_id=1, type=metadata_store_pb2.Event.INPUT)
+          ],
+          [
+              metadata_store_pb2.Event(
+                  artifact_id=1, type=metadata_store_pb2.Event.INPUT),
+              metadata_store_pb2.Event(
+                  artifact_id=2, type=metadata_store_pb2.Event.INPUT),
+              metadata_store_pb2.Event(
+                  artifact_id=3, type=metadata_store_pb2.Event.INPUT)
+          ],
+          [
+              metadata_store_pb2.Event(
+                  artifact_id=1, type=metadata_store_pb2.Event.INPUT),
+              metadata_store_pb2.Event(
+                  artifact_id=2, type=metadata_store_pb2.Event.INPUT),
+          ],
+      ]
+      m._store = mock_store
+
+      input_one = types.TfxType(type_name='ExamplesPath')
+      input_one.id = 1
+      input_two = types.TfxType(type_name='ExamplesPath')
+      input_two.id = 2
+
+      input_dict = {
+          'input_one': [input_one],
+          'input_two': [input_two],
+      }
+
+      self.assertEqual(1, m._get_cached_execution_id(input_dict, [3, 2, 1]))
 
 
 if __name__ == '__main__':
