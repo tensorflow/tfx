@@ -98,8 +98,12 @@ class Executor(base_executor.BaseExecutor):
     json_format.Parse(exec_properties['train_args'], train_args)
     json_format.Parse(exec_properties['eval_args'], eval_args)
 
-    train_steps = train_args.num_steps
-    eval_steps = eval_args.num_steps
+    # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
+    # num_steps=None.  Conversion of the proto to python will set the default
+    # value of an int as 0 so modify the value here.  Tensorflow will raise an
+    # error if num_steps <= 0.
+    train_steps = train_args.num_steps or None
+    eval_steps = eval_args.num_steps or None
 
     output_path = types.get_single_uri(output_dict['output'])
     serving_model_dir = path_utils.serving_model_dir(output_path)
