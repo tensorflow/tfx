@@ -35,3 +35,7 @@ invoke all python unit tests:
 python setup.py test
 ```
 
+# Check Pending Changes
+Each change being worked on internally will have a pending PR, which will be
+automatically closed once internal change is submitted. You are welcome to
+checkout the PR branch to observe the behavior.
