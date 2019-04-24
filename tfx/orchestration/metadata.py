@@ -30,6 +30,10 @@ from tfx.utils.types import ARTIFACT_STATE_PUBLISHED
 from tfx.utils.types import TfxType
 
 
+# Maximum number of executions we look at for previous result.
+MAX_EXECUTIONS_FOR_CACHE = 100
+
+
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
 class Metadata(object):
@@ -241,6 +245,42 @@ class Metadata(object):
         'Published execution with final outputs {}'.format(output_dict))
     return output_dict
 
+  def _get_cached_execution_id(self, input_dict,
+                               candidate_execution_ids):
+    """Gets common execution ids that are related to all the artifacts in input.
+
+    Args:
+      input_dict: input used by a component run.
+      candidate_execution_ids: a list of id of candidate execution.
+
+    Returns:
+      a qualified execution id or None.
+
+    """
+    input_ids = set()
+    for input_list in input_dict.values():
+      for single_input in input_list:
+        input_ids.add(single_input.artifact.id)
+
+    for execution_id in candidate_execution_ids:
+      events = self._store.get_events_by_execution_ids([execution_id])
+      execution_input_ids = set([
+          event.artifact_id for event in events if event.type in [
+              metadata_store_pb2.Event.INPUT,
+              metadata_store_pb2.Event.DECLARED_INPUT
+          ]
+      ])
+      if input_ids == execution_input_ids:
+        tf.logging.info(
+            'Found matching execution with all input artifacts: {}'.format(
+                execution_id))
+        return execution_id
+      else:
+        tf.logging.debug('Execution %d does not match desired input artifacts',
+                         execution_id)
+    tf.logging.info('No execution matching type id and input artifacts found')
+    return None
+
   def previous_run(self, type_name, input_dict,
                    exec_properties):
     """Gets previous run of same type that takes current set of input.
@@ -258,45 +298,20 @@ class Metadata(object):
         'Checking previous run for execution_type_name {} and input_dict {}'
         .format(type_name, input_dict))
 
-    if not input_dict:
-      tf.logging.info(
-          'No previous run for empty input_dict of type {}'.format(type_name))
-      return None
-    execution_ids_set = set()
+    # Ids of candidate executions which share the same execution property as
+    # current.
+    candidate_execution_ids = []
+    expected_previous_execution = self._prepare_execution(
+        type_name, 'complete', exec_properties)
+    for execution in self._store.get_executions_by_type(type_name):
+      expected_previous_execution.id = execution.id
+      if execution == expected_previous_execution:
+        candidate_execution_ids.append(execution.id)
+    candidate_execution_ids.sort(reverse=True)
+    candidate_execution_ids = candidate_execution_ids[0:min(
+        len(candidate_execution_ids), MAX_EXECUTIONS_FOR_CACHE)]
 
-    input_ids = []
-    for input_list in input_dict.values():
-      for single_input in input_list:
-        input_ids.append(single_input.artifact.id)
-
-    for input_artifact_id in input_ids:
-      current_execution_ids_set = set([
-          e.execution_id
-          for e in self._store.get_events_by_artifact_ids([input_artifact_id])
-      ])
-      tf.logging.info('Artifact id {} is used in executions {}'.format(
-          input_artifact_id, current_execution_ids_set))
-      if execution_ids_set:
-        execution_ids_set = current_execution_ids_set.intersection(
-            execution_ids_set)
-      else:
-        execution_ids_set = current_execution_ids_set
-
-    tf.logging.info(
-        'Following executions include all input artifacts: {}'.format(
-            execution_ids_set))
-
-    if execution_ids_set:
-      expected_previous_execution = self._prepare_execution(
-          type_name, 'complete', exec_properties)
-      for execution in self._store.get_executions_by_id(
-          list(execution_ids_set)):
-        expected_previous_execution.id = execution.id
-        if execution == expected_previous_execution:
-          tf.logging.info('Found previous execution: {}'.format(execution))
-          return execution.id
-    tf.logging.info('No execution matching type id and input artifacts found')
-    return None
+    return self._get_cached_execution_id(input_dict, candidate_execution_ids)
 
   # TODO(ruoyu): This should be merged with previous_run, otherwise we cannot
   # handle the case if output dict structure is changed.
