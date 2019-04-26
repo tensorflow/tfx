@@ -99,7 +99,7 @@ def _make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
       'python-snappy>=0.5,<0.6',
-      'tensorflow>=1.13,<2',
+      'tensorflow>=1.13.1,<2',
   ]
 
 
@@ -157,7 +157,6 @@ setup(
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),
     include_package_data=True,
-    # TODO(b/124941876): Update with proper description.
     description='TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google',
     long_description=_LONG_DESCRIPTION,
     long_description_content_type='text/markdown',

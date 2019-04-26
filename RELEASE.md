@@ -16,7 +16,8 @@
 *   Initial version of following orchestration platform supported:
     *   Kubeflow
 *   Added TensorFlow Model Analysis Colab example
-*   Supported split ratio for ExampleGen components.
+*   Supported split ratio for ExampleGen components
+*   Supported running a single executor independently
 
 ## Bug fixes and other changes
 
