@@ -42,8 +42,7 @@ def _run_executor(args, pipeline_args):
   exec_properties = json.loads(exec_properties_str)
   tf.logging.info(
       'Executor {} do: inputs: {}, outputs: {}, exec_properties: {}'.format(
-          args.executor, inputs, outputs, exec_properties))
-
+          args.executor_class_path, inputs, outputs, exec_properties))
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
   executor = executor_cls(beam_pipeline_args=pipeline_args)
   tf.logging.info('Starting executor')
