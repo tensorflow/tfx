@@ -2,6 +2,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other changes
+
+## Breaking changes
+
+
+
+# Version 0.13.0
+
+## Major Features and Improvements
+
 *   Adds support for Python 3.5
 *   Initial version of following orchestration platform supported:
     *   Kubeflow
@@ -10,10 +20,13 @@
 
 ## Bug fixes and other changes
 
+*   Fixes issue #45 that prevent new execution in some scenarios
 *   Depends on `apache-beam[gcp]>=2.12,<3`
 *   Depends on `tensorflow-data-validation>=0.13.1,<0.14`
 *   Depends on `tensorflow-model-analysis>=0.13.2,<0.14`
 *   Depends on `tensorflow-transform>=0.13,<0.14`
+*   Deprecations:
+    *    PipelineDecorator is deprecated. Please construct a pipeline directly from a list of components instead.
 
 ## Breaking changes
 *   Examples code are moved from 'examples' to 'tfx/examples': this ensures that PyPi package contains only one top level python module 'tfx'.
