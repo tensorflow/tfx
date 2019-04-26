@@ -10,9 +10,9 @@
 
 ## Bug fixes and other changes
 
-*   Depends on `apache-beam[gcp]>=2.11,<3`
+*   Depends on `apache-beam[gcp]>=2.12,<3`
 *   Depends on `tensorflow-data-validation>=0.13.1,<0.14`
-*   Depends on `tensorflow-model-analysis>=0.13,<0.14`
+*   Depends on `tensorflow-model-analysis>=0.13.2,<0.14`
 *   Depends on `tensorflow-transform>=0.13,<0.14`
 
 ## Breaking changes
