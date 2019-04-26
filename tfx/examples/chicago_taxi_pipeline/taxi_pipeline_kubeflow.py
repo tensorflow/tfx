@@ -27,8 +27,8 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
-from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow.runner import KubeflowRunner
+from tfx.orchestration.pipeline import PipelineDecorator
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -87,6 +87,22 @@ _cmle_serving_args = {
 _query_sample_rate = 0.001  # Generate a 0.1% random sample.
 
 
+# TODO(zhitaoli): Remove PipelineDecorator after 0.13.0.
+@PipelineDecorator(
+    pipeline_name='chicago_taxi_pipeline_kubeflow',
+    log_root='/var/tmp/tfx/logs',
+    pipeline_root=_pipeline_root,
+    additional_pipeline_args={
+        'beam_pipeline_args': [
+            '--runner=DataflowRunner',
+            '--experiments=shuffle_mode=auto',
+            '--project=' + _project_id,
+            '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+            '--region=' + _gcp_region,
+        ],
+        # Optional args:
+        # 'tfx_image': custom docker image to use for components.
+    })
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
 
@@ -165,33 +181,10 @@ def _create_pipeline():
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=_serving_model_dir)))
 
-  return pipeline.Pipeline(
-      pipeline_name='chicago_taxi_pipeline_kubeflow',
-      pipeline_root=_pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          infer_schema,
-          validate_stats,
-          transform,
-          trainer,
-          model_analyzer,
-          model_validator,
-          pusher,
-      ],
-      log_root='/var/tmp/tfx/logs',
-      additional_pipeline_args={
-          'beam_pipeline_args': [
-              '--runner=DataflowRunner',
-              '--experiments=shuffle_mode=auto',
-              '--project=' + _project_id,
-              '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
-              '--region=' + _gcp_region,
-          ],
-          # Optional args:
-          # 'tfx_image': custom docker image to use for components.
-      },
-  )
+  return [
+      example_gen, statistics_gen, infer_schema, validate_stats, transform,
+      trainer, model_analyzer, model_validator, pusher
+  ]
 
 
-taxi_pipeline = KubeflowRunner().run(_create_pipeline())
+pipeline = KubeflowRunner().run(_create_pipeline())
