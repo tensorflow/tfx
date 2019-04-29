@@ -11,10 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utils to query a TFX pipeline's ml-metadata store in a notebook.
-
-pip packages required to use this module are listed in requirements.txt.
-"""
+"""Utils to query a TFX pipeline's ml-metadata store in a notebook."""
 
 import os
 import time

@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utils to query ml-metadata store in a notebook.
+"""Utils to query ml-metadata store in a notebook."""
 
-pip packages required to use this module are listed in requirements.txt.
-"""
-
-# TODO(b/130371320): Move ML Metadata notebook utils into TFX repo
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
