@@ -24,11 +24,15 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 
 from tensorflow_data_validation.coders import csv_decoder
-from tfx.examples.chicago_taxi.trainer import taxi
 
 from google.protobuf import text_format
-from tensorflow.python.lib.io import file_io
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import statistics_pb2
+
+try:
+  from tfx.examples.chicago_taxi.trainer import taxi  # pylint: disable=g-import-not-at-top
+except ImportError:
+  from trainer import taxi  # pylint: disable=g-import-not-at-top
 
 
 def infer_schema(stats_path, schema_path):

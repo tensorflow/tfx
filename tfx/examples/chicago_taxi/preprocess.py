@@ -28,7 +28,10 @@ import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.coders import example_proto_coder
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
-from tfx.examples.chicago_taxi.trainer import taxi
+try:
+  from tfx.examples.chicago_taxi.trainer import taxi  # pylint: disable=g-import-not-at-top
+except ImportError:
+  from trainer import taxi  # pylint: disable=g-import-not-at-top
 
 
 def _fill_in_missing(x):

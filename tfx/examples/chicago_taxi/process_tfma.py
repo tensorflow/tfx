@@ -24,7 +24,10 @@ import apache_beam as beam
 import tensorflow as tf
 
 import tensorflow_model_analysis as tfma
-from tfx.examples.chicago_taxi.trainer import taxi
+try:
+  from tfx.examples.chicago_taxi.trainer import taxi  # pylint: disable=g-import-not-at-top
+except ImportError:
+  from trainer import taxi  # pylint: disable=g-import-not-at-top
 
 
 def process_tfma(eval_result_dir,
