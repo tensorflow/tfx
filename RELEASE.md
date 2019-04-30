@@ -22,6 +22,7 @@
 ## Bug fixes and other changes
 
 *   Fixes issue #43 that prevent new execution in some scenarios
+*   Fixes issue #47 that causes ImportError on chicago_taxi execution on dataflow
 *   Depends on `apache-beam[gcp]>=2.12,<3`
 *   Depends on `tensorflow-data-validation>=0.13.1,<0.14`
 *   Depends on `tensorflow-model-analysis>=0.13.2,<0.14`

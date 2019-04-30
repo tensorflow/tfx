@@ -24,11 +24,18 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 
 from tensorflow_data_validation.coders import csv_decoder
-from tfx.examples.chicago_taxi.trainer import taxi
 
 from google.protobuf import text_format
-from tensorflow.python.lib.io import file_io
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import statistics_pb2
+
+try:
+  # Absolute import is preferred after 0.13 release, in which the path below
+  # will be available in TFX package and will be a dependency of chicago taxi
+  # example.
+  from tfx.examples.chicago_taxi.trainer import taxi  # pylint: disable=g-import-not-at-top
+except ImportError:
+  from trainer import taxi  # pylint: disable=g-import-not-at-top
 
 
 def infer_schema(stats_path, schema_path):
