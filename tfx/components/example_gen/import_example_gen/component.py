@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFX CsvExampleGen component definition."""
+"""TFX ImportExampleGen component definition."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,30 +22,32 @@ from typing import Any, Dict, Optional, Text
 from tfx.components.base import base_component
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
-from tfx.components.example_gen.csv_example_gen import executor
+from tfx.components.example_gen.import_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 from tfx.utils import types
 from google.protobuf import json_format
 
 
-class CsvExampleGen(base_component.BaseComponent):
-  """Official TFX CsvExampleGen component.
+class ImportExampleGen(base_component.BaseComponent):
+  """Official TFX ImportExampleGen component.
 
-  The csv examplegen component takes csv data, and generates train
-  and eval examples for downsteam components.
+  The ImportExampleGen component takes TFRecord files with TF Example data
+  format, and generates train and eval examples for downsteam components.
+  This component provides consistent and configurable partition, and it also
+  shuffle the dataset for ML best practice.
 
   Args:
     input_base: A Channel of 'ExternalPath' type, which includes one artifact
-      whose uri is an external directory with csv files inside.
+      whose uri is an external directory with TFRecord files inside.
     input_config: An example_gen_pb2.Input instance, providing input
       configuration. If unset, the files under input_base will be treated as a
       single split.
     output_config: An example_gen_pb2.Output instance, providing output
       configuration. If unset, default splits will be 'train' and 'eval' with
       size 2:1.
-    name: Optional unique name. Necessary if multiple CsvExampleGen components
-      are declared in the same pipeline.
+    name: Optional unique name. Necessary if multiple ImportExampleGen
+      components are declared in the same pipeline.
     outputs: Optional dict from name to output channel.
   Attributes:
     outputs: A ComponentOutputs including following keys:
@@ -58,7 +60,7 @@ class CsvExampleGen(base_component.BaseComponent):
                output_config = None,
                name = None,
                outputs = None):
-    component_name = 'CsvExampleGen'
+    component_name = 'ImportExampleGen'
     input_dict = {'input-base': channel.as_channel(input_base)}
     # Default value need to be set in component instead of executor as output
     # artifacts depend on it.
@@ -69,7 +71,7 @@ class CsvExampleGen(base_component.BaseComponent):
         'input': json_format.MessageToJson(self._input_config),
         'output': json_format.MessageToJson(self._output_config)
     }
-    super(CsvExampleGen, self).__init__(
+    super(ImportExampleGen, self).__init__(
         component_name=component_name,
         unique_name=name,
         driver=driver.Driver,
@@ -79,7 +81,7 @@ class CsvExampleGen(base_component.BaseComponent):
         exec_properties=exec_properties)
 
   def _create_outputs(self):
-    """Creates outputs for CsvExampleGen.
+    """Creates outputs for ImportExampleGen.
 
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]

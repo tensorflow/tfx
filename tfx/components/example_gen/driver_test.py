@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.example_gen.csv_example_gen.driver."""
+"""Tests for tfx.components.example_gen.driver."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,7 +21,7 @@ import copy
 import os
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.example_gen.csv_example_gen import driver
+from tfx.components.example_gen import driver
 from tfx.utils import logging_utils
 from tfx.utils import types
 
@@ -37,7 +37,7 @@ class DriverTest(tf.test.TestCase):
 
     # Mock metadata.
     mock_metadata = tf.test.mock.Mock()
-    csv_example_gen = driver.Driver(self._logger_config, mock_metadata)
+    example_gen_driver = driver.Driver(self._logger_config, mock_metadata)
 
     # Mock artifact.
     artifacts = []
@@ -56,7 +56,7 @@ class DriverTest(tf.test.TestCase):
     # Cache not hit.
     mock_metadata.get_all_artifacts.return_value = []
     mock_metadata.publish_artifacts.return_value = [artifacts[3]]
-    updated_input_dict = csv_example_gen._prepare_input_for_processing(
+    updated_input_dict = example_gen_driver._prepare_input_for_processing(
         copy.deepcopy(input_dict))
     self.assertEqual(1, len(updated_input_dict))
     self.assertEqual(1, len(updated_input_dict['input-base']))
@@ -67,7 +67,7 @@ class DriverTest(tf.test.TestCase):
     # Cache hit.
     mock_metadata.get_all_artifacts.return_value = artifacts
     mock_metadata.publish_artifacts.return_value = []
-    updated_input_dict = csv_example_gen._prepare_input_for_processing(
+    updated_input_dict = example_gen_driver._prepare_input_for_processing(
         copy.deepcopy(input_dict))
     self.assertEqual(1, len(updated_input_dict))
     self.assertEqual(1, len(updated_input_dict['input-base']))

@@ -3,6 +3,8 @@
 ## Major Features and Improvements
 
 *   Supported pre-split input for ExampleGen components
+*   Added ImportExampleGen component for importing tfrecord files with
+    TF Example data format
 
 ## Bug fixes and other changes
 
