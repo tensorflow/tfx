@@ -25,7 +25,7 @@ from tfx.utils import dsl_utils
 
 class DslUtilsTest(tf.test.TestCase):
 
-  def csv_input(self):
+  def testCsvInput(self):
     [csv] = dsl_utils.csv_input(uri='path')
     self.assertEqual('ExternalPath', csv.type_name)
     self.assertEqual('path', csv.uri)
