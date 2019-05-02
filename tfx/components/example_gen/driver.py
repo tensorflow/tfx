@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Generic TFX CsvExampleGen custom driver."""
+"""Generic TFX ExampleGen custom driver."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,11 @@ from tfx.utils import types
 
 
 class Driver(base_driver.BaseDriver):
-  """Custom driver for CsvExampleGen."""
+  """Custom driver for ExampleGen.
+
+  This driver supports file based ExampleGen, it registers external file path as
+  an artifact, e.g., for CsvExampleGen and ImportExampleGen.
+  """
 
   def _prepare_input_for_processing(self,
                                     input_dict
@@ -36,6 +40,9 @@ class Driver(base_driver.BaseDriver):
     for input_list in input_dict.values():
       for single_input in input_list:
         tf.logging.info('Processing input {}.'.format(single_input.uri))
+        tf.logging.info('single_input {}.'.format(single_input))
+        tf.logging.info('single_input.artifact {}.'.format(
+            single_input.artifact))
         matched_artifacts = [
             artifact for artifact in registered_artifacts
             if artifact.uri == single_input.uri
@@ -45,6 +52,10 @@ class Driver(base_driver.BaseDriver):
           # Using id because spans are the same for matched artifacts.
           latest_artifact = max(
               matched_artifacts, key=lambda artifact: artifact.id)
+          tf.logging.info('latest_artifact {}.'.format(latest_artifact))
+          tf.logging.info('type(latest_artifact) {}.'.format(
+              type(latest_artifact)))
+
           single_input.set_artifact(latest_artifact)
         else:
           # TODO(jyzhao): support span.

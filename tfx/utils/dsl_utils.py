@@ -17,8 +17,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
+from typing import Text
+from tfx.utils import channel
 from tfx.utils import types
+
+
+def external_input(uri):
+  """Helper function to declare external input.
+
+  Args:
+    uri: external path.
+
+  Returns:
+    input channel.
+  """
+  instance = types.TfxType(type_name='ExternalPath')
+  instance.uri = uri
+  return channel.as_channel([instance])
 
 
 def csv_input(uri):
@@ -28,8 +43,19 @@ def csv_input(uri):
     uri: path of an external directory with a single csv file inside.
 
   Returns:
-    A list of TfxType which will be constructed as Channel later.
+    input channel.
   """
-  instance = types.TfxType(type_name='ExternalPath')
-  instance.uri = uri
-  return [instance]
+  return external_input(uri)
+
+
+def tfrecord_input(uri):
+  """Helper function to declare input for import_example_gen component.
+
+  Args:
+    uri: path of an external directory with tfrecord(contains tf examples) files
+      inside.
+
+  Returns:
+    input channel.
+  """
+  return external_input(uri)
