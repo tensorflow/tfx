@@ -15,9 +15,26 @@ syntax = "proto3";
 
 package tfx.components.example_gen;
 
+message Input {
+  // List of split name and input glob pattern pairs.
+  //
+  // 'name' shouldn't be empty and must be unique within the list.
+  // 'pattern' is a glob relative file pattern that maps to input files with
+  //   root directory given by input base path. Some ExampleGen might take the
+  //   pattern as something other than file pattern, e.g. BigQuery.
+  // TODO(ruoyu): support span and version spec in continuous training.
+  message Split {
+    string name = 1;
+    string pattern = 2;
+  }
+  repeated Split splits = 1;
+}
+
 // Specification of the output of the example gen.
 message Output {
-  // Specifies how the output should be split.
+  // Specifies how the output should be split. If not specified, the output
+  // will have the same split as the input. If specified, then there should
+  // only be one input split.
   SplitConfig split_config = 3;
 
   reserved 1, 2, 4;

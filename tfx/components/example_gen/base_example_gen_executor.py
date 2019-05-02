@@ -26,6 +26,7 @@ from six import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
+from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.utils import types
 from google.protobuf import json_format
@@ -34,10 +35,9 @@ from google.protobuf import json_format
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _partition_fn(
-    record,
-    num_partitions,  # pylint: disable=unused-argument
-    buckets):
+def _PartitionFn(record, num_partitions, buckets):
+  assert num_partitions == len(
+      buckets), 'Partitions do not match bucket number.'
   bucket = int(hashlib.sha256(record).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
   #   bucket >=0 && < 10, returns 0
@@ -46,14 +46,48 @@ def _partition_fn(
   return bisect.bisect(buckets, bucket)
 
 
+@beam.ptransform_fn
+@beam.typehints.with_input_types(bytes)
+@beam.typehints.with_output_types(beam.pvalue.PDone)
+def _WriteSplit(example_split,
+                output_split_path):
+  """Shuffles and writes output split."""
+  return (example_split
+          # TODO(jyzhao): make shuffle optional.
+          | 'Shuffle' >> beam.transforms.Reshuffle()
+          # TODO(jyzhao): multiple output format.
+          | 'Write' >> beam.io.WriteToTFRecord(
+              os.path.join(output_split_path, DEFAULT_FILE_NAME),
+              file_name_suffix='.gz'))
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(beam.Pipeline)
+@beam.typehints.with_output_types(bytes)
+def _InputToSerializedExample(pipeline,
+                              input_to_example,
+                              input_dict,
+                              exec_properties,
+                              split_pattern):
+  """Converts input to serialized TF examples."""
+  return (pipeline
+          | 'InputSourceToExample' >> input_to_example(
+              input_dict, exec_properties, split_pattern)
+          # Returns deterministic string as partition is based on it.
+          | 'SerializeDeterministically' >>
+          beam.Map(lambda x: x.SerializeToString(deterministic=True)))
+
+
 class BaseExampleGenExecutor(
     with_metaclass(abc.ABCMeta, base_executor.BaseExecutor)):
   """Generic TFX example gen base executor."""
 
-  # TODO(b/67107830): align with GenerateExamplesForVersion.
   @abc.abstractmethod
   def GetInputSourceToExamplePTransform(self):
     """Returns PTransform for converting input source to TF examples.
+
+    Note that each input split will be transformed by this function separately.
+    For complex use case, consider override 'GenerateExamplesByBeam' instead.
 
     Here is an example PTransform:
       @beam.ptransform_fn
@@ -62,84 +96,112 @@ class BaseExampleGenExecutor(
       def ExamplePTransform(
           pipeline: beam.Pipeline,
           input_dict: Dict[Text, List[types.TfxType]],
-          exec_properties: Dict[Text, Any]) -> beam.pvalue.PCollection
+          exec_properties: Dict[Text, Any],
+          split_pattern: Text) -> beam.pvalue.PCollection
     """
     pass
 
-  def _check_split_config(self,
-                          split_config):
-    split_names = set()
-    for split in split_config.splits:
-      if not split.name or split.hash_buckets <= 0:
-        raise RuntimeError('Split name and hash_buckets are required.')
-      if split.name in split_names:
-        raise RuntimeError('Duplicated split name {}.'.format(split.name))
-      else:
-        split_names.add(split.name)
-    # TODO(jyzhao): use input splits if output splits are not specified.
-    if not split_names:
-      raise RuntimeError('ExampleGen output split is missing.')
-    # TODO(jyzhao): support custom split for downstream components.
-    if not {'train', 'eval'}.issubset(split_names):
-      raise RuntimeError(
-          'ExampleGen output splits must contain train and eval.')
+  def GenerateExamplesByBeam(self, pipeline,
+                             input_dict,
+                             exec_properties
+                            ):
+    """Converts input source to TF example splits based on configs.
+
+    Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
+    for converting input split to TF Examples. Overriding this
+    'GenerateExamplesByBeam' method instead if complex logic is need, e.g.,
+    custom spliting logic.
+
+    Args:
+      pipeline: beam pipeline.
+      input_dict: Input dict from input key to a list of Artifacts. Depends on
+        detailed example gen implementation.
+      exec_properties: A dict of execution properties. Depends on detailed
+        example gen implementation.
+        - input: JSON string of example_gen_pb2.Input instance, providing input
+          configuration.
+        - output: JSON string of example_gen_pb2.Output instance, providing
+          output configuration.
+
+    Returns:
+      Dict of beam PCollection with split name as key, each PCollection is a
+      single output split that contains serialized TF Examples.
+    """
+    # Get input split information.
+    input_config = example_gen_pb2.Input()
+    json_format.Parse(exec_properties['input'], input_config)
+    # Get output split information.
+    output_config = example_gen_pb2.Output()
+    json_format.Parse(exec_properties['output'], output_config)
+    # Get output split names.
+    split_names = utils.generate_output_split_names(input_config, output_config)
+
+    example_splits = []
+    input_to_example = self.GetInputSourceToExamplePTransform()
+    if output_config.split_config.splits:
+      # Use output splits, input must have only one split.
+      assert len(
+          input_config.splits
+      ) == 1, 'input must have only one split when output split is specified.'
+      # Calculate split buckets.
+      buckets = []
+      total_buckets = 0
+      for split in output_config.split_config.splits:
+        total_buckets += split.hash_buckets
+        buckets.append(total_buckets)
+      example_splits = (
+          pipeline
+          | 'InputToSerializedExample' >> _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
+              input_to_example, input_dict, exec_properties,
+              input_config.splits[0].pattern)
+          | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets))
+    else:
+      # Use input splits.
+      for split in input_config.splits:
+        examples = (
+            pipeline
+            | 'InputToSerializedExample' + split.name >>
+            _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
+                input_to_example, input_dict, exec_properties, split.pattern))
+        example_splits.append(examples)
+
+    result = {}
+    for index, example_split in enumerate(example_splits):
+      result[split_names[index]] = example_split
+    return result
 
   def Do(self, input_dict,
          output_dict,
          exec_properties):
-    """Take input data source and generates train and eval tf examples.
+    """Take input data source and generates TF Example splits.
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts. Depends on
         detailed example gen implementation.
       output_dict: Output dict from output key to a list of Artifacts.
-        - examples: train and eval split of tf examples.
+        - examples: splits of tf examples.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
+        - input: JSON string of example_gen_pb2.Input instance, providing input
+          configuration.
         - output: JSON string of example_gen_pb2.Output instance, providing
           output configuration.
 
     Returns:
       None
-
-    Raises:
-      RuntimeError: if output split config is not specified.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    # Get output split information.
-    output_config = example_gen_pb2.Output()
-    json_format.Parse(exec_properties['output'], output_config)
-    self._check_split_config(output_config.split_config)
-    splits = output_config.split_config.splits
-    # Calculate split buckets.
-    buckets = []
-    total_buckets = 0
-    for split in splits:
-      total_buckets += split.hash_buckets
-      buckets.append(total_buckets)
-
     tf.logging.info('Generating examples.')
     with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
-      input_to_example = self.GetInputSourceToExamplePTransform()
-      example_splits = (
-          pipeline
-          | 'InputSourceToExample' >> input_to_example(input_dict,
-                                                       exec_properties)
-          # Returns deterministic string as partition is based on it.
-          | 'SerializeDeterministically' >>
-          beam.Map(lambda x: x.SerializeToString(deterministic=True))
-          | 'SplitData' >> beam.Partition(_partition_fn, len(buckets), buckets))
-      # TODO(jyzhao): make shuffle optional.
-      # pylint: disable=expression-not-assigned
-      for index, example_split in enumerate(example_splits):
+      example_splits = self.GenerateExamplesByBeam(pipeline, input_dict,
+                                                   exec_properties)
+
+      # pylint: disable=expression-not-assigned, no-value-for-parameter
+      for split_name, example_split in example_splits.items():
         (example_split
-         | 'ShuffleSplit' + splits[index].name >> beam.transforms.Reshuffle()
-         | 'OutputSplit' + splits[index].name >> beam.io.WriteToTFRecord(
-             os.path.join(
-                 types.get_split_uri(output_dict['examples'],
-                                     splits[index].name), DEFAULT_FILE_NAME),
-             file_name_suffix='.gz'))
-      # pylint: enable=expression-not-assigned
+         | 'WriteSplit' + split_name >> _WriteSplit(
+             types.get_split_uri(output_dict['examples'], split_name)))
+      # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     tf.logging.info('Examples generated.')

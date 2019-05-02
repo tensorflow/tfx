@@ -51,6 +51,21 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
 
+  def test_construct_with_input_config(self):
+    input_base = types.TfxType(type_name='ExternalPath')
+    csv_example_gen = component.CsvExampleGen(
+        input_base=channel.as_channel([input_base]),
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+            example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
+            example_gen_pb2.Input.Split(name='test', pattern='test/*')
+        ]))
+    self.assertEqual('ExamplesPath', csv_example_gen.outputs.examples.type_name)
+    artifact_collection = csv_example_gen.outputs.examples.get()
+    self.assertEqual('train', artifact_collection[0].split)
+    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual('test', artifact_collection[2].split)
+
 
 if __name__ == '__main__':
   tf.test.main()

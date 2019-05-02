@@ -36,7 +36,11 @@ class BigQueryExampleGen(base_component.BaseComponent):
   and eval examples for downsteam components.
 
   Args:
-    query: BigQuery sql string.
+    query: BigQuery sql string, query result will be treated as a single split,
+      can be overwritten by input_config.
+    input_config: An example_gen_pb2.Input instance with Split.pattern as
+      BigQuery sql string. If set, it overwrites the 'query' arg, and allows
+      different queries per split.
     output_config: An example_gen_pb2.Output instance, providing output
       configuration. If unset, default splits will be 'train' and 'eval' with
       size 2:1.
@@ -49,15 +53,22 @@ class BigQueryExampleGen(base_component.BaseComponent):
   """
 
   def __init__(self,
-               query,
+               query = None,
+               input_config = None,
                output_config = None,
                name = None,
                outputs = None):
     component_name = 'BigQueryExampleGen'
     input_dict = {}
-    self._output_config = output_config or utils.get_default_output_config()
+    # Default value need to be set in component instead of executor as output
+    # artifacts depend on it.
+    assert bool(query) ^ bool(
+        input_config), 'One of query and input_config must be set.'
+    self._input_config = input_config or utils.make_default_input_config(query)
+    self._output_config = output_config or utils.make_default_output_config(
+        self._input_config)
     exec_properties = {
-        'query': query,
+        'input': json_format.MessageToJson(self._input_config),
         'output': json_format.MessageToJson(self._output_config)
     }
     super(BigQueryExampleGen, self).__init__(
@@ -76,8 +87,9 @@ class BigQueryExampleGen(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     output_artifact_collection = [
-        types.TfxType('ExamplesPath', split=split.name)
-        for split in self._output_config.split_config.splits
+        types.TfxType('ExamplesPath', split=split_name)
+        for split_name in utils.generate_output_split_names(
+            self._input_config, self._output_config)
     ]
     return base_component.ComponentOutputs({
         'examples':

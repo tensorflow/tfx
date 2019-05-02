@@ -35,14 +35,17 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create input dict.
     input_base = types.TfxType(type_name='ExternalPath')
-    input_base.uri = os.path.join(input_data_dir, 'external/csv/')
+    input_base.uri = os.path.join(input_data_dir, 'external')
     self._input_dict = {'input-base': [input_base]}
 
   def testCsvToExample(self):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline
-          | 'ToTFExample' >> executor._CsvToExample(self._input_dict, {}))
+          | 'ToTFExample' >> executor._CsvToExample(
+              input_dict=self._input_dict,
+              exec_properties={},
+              split_pattern='csv/*'))
 
       def check_result(got):
         # We use Python assertion here to avoid Beam serialization error in
@@ -66,6 +69,11 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create exec proterties.
     exec_properties = {
+        'input':
+            json_format.MessageToJson(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(name='csv', pattern='csv/*'),
+                ])),
         'output':
             json_format.MessageToJson(
                 example_gen_pb2.Output(

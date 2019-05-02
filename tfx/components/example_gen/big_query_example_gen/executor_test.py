@@ -63,21 +63,6 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
     ]
 
-    # Create exe properties.
-    self._exec_properties = {
-        'query':
-            'SELECT i, f, s FROM `fake`',
-        'output':
-            json_format.MessageToJson(
-                example_gen_pb2.Output(
-                    split_config=example_gen_pb2.SplitConfig(splits=[
-                        example_gen_pb2.SplitConfig.Split(
-                            name='train', hash_buckets=2),
-                        example_gen_pb2.SplitConfig.Split(
-                            name='eval', hash_buckets=1)
-                    ])))
-    }
-
   @mock.patch.multiple(
       executor,
       _ReadFromBigQuery=_MockReadFromBigQuery2,  # pylint: disable=invalid-name, unused-argument
@@ -90,7 +75,9 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
-              {}, self._exec_properties))
+              input_dict={},
+              exec_properties={},
+              split_pattern='SELECT i, f, s FROM `fake`'))
 
       feature = {}
       feature['i'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
@@ -122,9 +109,28 @@ class ExecutorTest(tf.test.TestCase):
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 
+    # Create exe properties.
+    exec_properties = {
+        'input':
+            json_format.MessageToJson(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='bq', pattern='SELECT i, f, s FROM `fake`'),
+                ])),
+        'output':
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
+    }
+
     # Run executor.
     big_query_example_gen = executor.Executor()
-    big_query_example_gen.Do({}, output_dict, self._exec_properties)
+    big_query_example_gen.Do({}, output_dict, exec_properties)
 
     # Check BigQuery example gen outputs.
     train_output_file = os.path.join(train_examples.uri,
