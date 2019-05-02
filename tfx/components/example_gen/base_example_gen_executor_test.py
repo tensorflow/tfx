@@ -31,9 +31,18 @@ from google.protobuf import json_format
 def _TestInputSourceToExamplePTransform(
     pipeline,
     input_dict,  # pylint: disable=unused-argument
-    exec_properties):  # pylint: disable=unused-argument
+    exec_properties,  # pylint: disable=unused-argument
+    split_pattern):
   mock_examples = []
-  for i in range(10000):
+  size = 0
+  if split_pattern == 'single/*':
+    size = 30000
+  elif split_pattern == 'train/*':
+    size = 20000
+  elif split_pattern == 'eval/*':
+    size = 10000
+  assert size != 0
+  for i in range(size):
     feature = {}
     feature['i'] = tf.train.Feature() if random.randrange(
         10) == 0 else tf.train.Feature(
@@ -58,7 +67,7 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 
 class BaseExampleGenExecutorTest(tf.test.TestCase):
 
-  def test_do(self):
+  def setUp(self):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -68,10 +77,48 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     train_examples.uri = os.path.join(output_data_dir, 'train')
     eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    output_dict = {'examples': [train_examples, eval_examples]}
+    self._output_dict = {'examples': [train_examples, eval_examples]}
 
+    self._train_output_file = os.path.join(train_examples.uri,
+                                           'data_tfrecord-00000-of-00001.gz')
+    self._eval_output_file = os.path.join(eval_examples.uri,
+                                          'data_tfrecord-00000-of-00001.gz')
+
+  def test_do_input_split(self):
     # Create exec proterties.
     exec_properties = {
+        'input':
+            json_format.MessageToJson(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='train', pattern='train/*'),
+                    example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
+                ])),
+        'output':
+            json_format.MessageToJson(example_gen_pb2.Output())
+    }
+
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.gfile.Exists(self._train_output_file))
+    self.assertTrue(tf.gfile.Exists(self._eval_output_file))
+    # Input train split is bigger than eval split.
+    self.assertGreater(
+        tf.gfile.GFile(self._train_output_file).size(),
+        tf.gfile.GFile(self._eval_output_file).size())
+
+  def test_do_output_split(self):
+    # Create exec proterties.
+    exec_properties = {
+        'input':
+            json_format.MessageToJson(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='single', pattern='single/*'),
+                ])),
         'output':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
@@ -85,18 +132,15 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, output_dict, exec_properties)
+    example_gen.Do({}, self._output_dict, exec_properties)
 
     # Check example gen outputs.
-    train_output_file = os.path.join(train_examples.uri,
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(eval_examples.uri,
-                                    'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.gfile.Exists(train_output_file))
-    self.assertTrue(tf.gfile.Exists(eval_output_file))
+    self.assertTrue(tf.gfile.Exists(self._train_output_file))
+    self.assertTrue(tf.gfile.Exists(self._eval_output_file))
+    # Output split ratio: train:eval=2:1.
     self.assertGreater(
-        tf.gfile.GFile(train_output_file).size(),
-        tf.gfile.GFile(eval_output_file).size())
+        tf.gfile.GFile(self._train_output_file).size(),
+        tf.gfile.GFile(self._eval_output_file).size())
 
 
 if __name__ == '__main__':

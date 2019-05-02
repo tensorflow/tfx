@@ -77,28 +77,23 @@ def _ReadFromBigQuery(  # pylint: disable=invalid-name
 def _BigQueryToExample(  # pylint: disable=invalid-name
     pipeline,
     input_dict,  # pylint: disable=unused-argument
-    exec_properties):
+    exec_properties,  # pylint: disable=unused-argument
+    split_pattern):
   """Read from BigQuery and transform to TF examples.
 
   Args:
     pipeline: beam pipeline.
     input_dict: Input dict from input key to a list of Artifacts.
     exec_properties: A dict of execution properties.
-      - query: BigQuery sql string.
+    split_pattern: Split.pattern in Input config, a BigQuery sql string.
 
   Returns:
     PCollection of TF examples.
-
-  Raises:
-    RuntimeError: if query is missing in exec_properties.
   """
-  if 'query' not in exec_properties:
-    raise RuntimeError('Missing query.')
-  query = exec_properties['query']
-  converter = _BigQueryConverter(query)
+  converter = _BigQueryConverter(split_pattern)
 
   return (pipeline
-          | 'QueryTable' >> _ReadFromBigQuery(query)  # pylint: disable=no-value-for-parameter
+          | 'QueryTable' >> _ReadFromBigQuery(split_pattern)  # pylint: disable=no-value-for-parameter
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
 

@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import apache_beam as beam
 import numpy
 import tensorflow as tf
@@ -50,9 +51,13 @@ def _dict_to_example(instance):
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
-    pipeline, input_dict,
-    exec_properties):  # pylint: disable=unused-argument
-  """Read CSV file and transform to TF examples.
+    pipeline,
+    input_dict,
+    exec_properties,  # pylint: disable=unused-argument
+    split_pattern):
+  """Read CSV files and transform to TF examples.
+
+  Note that each input split will be transformed by this function separately.
 
   Args:
     pipeline: beam pipeline.
@@ -60,20 +65,35 @@ def _CsvToExample(  # pylint: disable=invalid-name
       - input-base: input dir that contains csv data. csv files must have header
         line.
     exec_properties: A dict of execution properties.
+    split_pattern: Split.pattern in Input config, glob relative file pattern
+      that maps to input files with root directory given by input-base.
 
   Returns:
     PCollection of TF examples.
+
+  Raises:
+    RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base = types.get_single_instance(input_dict['input-base'])
-  input_base_uri = input_base.uri
-  csv_uri = io_utils.get_only_uri_in_dir(input_base_uri)
-  tf.logging.info('Processing input csv data {} to TFExample.'.format(csv_uri))
+  input_base_uri = types.get_single_uri(input_dict['input-base'])
+  csv_pattern = os.path.join(input_base_uri, split_pattern)
+  tf.logging.info(
+      'Processing input csv data {} to TFExample.'.format(csv_pattern))
+
+  csv_files = tf.gfile.Glob(csv_pattern)
+  if not csv_files:
+    raise RuntimeError(
+        'Split pattern {} does not match any files.'.format(csv_pattern))
+
+  column_names = io_utils.load_csv_column_names(csv_files[0])
+  for csv_files in csv_files[1:]:
+    if io_utils.load_csv_column_names(csv_files) != column_names:
+      raise RuntimeError(
+          'Files in same split {} have different header.'.format(csv_pattern))
 
   return (pipeline
-          |
-          'ReadFromText' >> beam.io.ReadFromText(csv_uri, skip_header_lines=1)
-          | 'ParseCSV' >> csv_decoder.DecodeCSV(
-              io_utils.load_csv_column_names(csv_uri))
+          | 'ReadFromText' >> beam.io.ReadFromText(
+              file_pattern=csv_pattern, skip_header_lines=1)
+          | 'ParseCSV' >> csv_decoder.DecodeCSV(column_names)
           | 'ToTFExample' >> beam.Map(_dict_to_example))
 
 

@@ -30,7 +30,6 @@ from google.protobuf import json_format
 
 
 class CsvExampleGen(base_component.BaseComponent):
-  # TODO(jyzhao): document how to import external data.
   """Official TFX CsvExampleGen component.
 
   The csv examplegen component takes csv data, and generates train
@@ -38,7 +37,10 @@ class CsvExampleGen(base_component.BaseComponent):
 
   Args:
     input_base: A Channel of 'ExternalPath' type, which includes one artifact
-      whose uri is an external directory with a single csv file inside.
+      whose uri is an external directory with csv files inside.
+    input_config: An example_gen_pb2.Input instance, providing input
+      configuration. If unset, the files under input_base will be treated as a
+      single split.
     output_config: An example_gen_pb2.Output instance, providing output
       configuration. If unset, default splits will be 'train' and 'eval' with
       size 2:1.
@@ -52,14 +54,21 @@ class CsvExampleGen(base_component.BaseComponent):
 
   def __init__(self,
                input_base,
-               # TODO(jyzhao): add documentation about input/output config.
+               input_config = None,
                output_config = None,
                name = None,
                outputs = None):
     component_name = 'CsvExampleGen'
     input_dict = {'input-base': channel.as_channel(input_base)}
-    self._output_config = output_config or utils.get_default_output_config()
-    exec_properties = {'output': json_format.MessageToJson(self._output_config)}
+    # Default value need to be set in component instead of executor as output
+    # artifacts depend on it.
+    self._input_config = input_config or utils.make_default_input_config()
+    self._output_config = output_config or utils.make_default_output_config(
+        self._input_config)
+    exec_properties = {
+        'input': json_format.MessageToJson(self._input_config),
+        'output': json_format.MessageToJson(self._output_config)
+    }
     super(CsvExampleGen, self).__init__(
         component_name=component_name,
         unique_name=name,
@@ -76,8 +85,9 @@ class CsvExampleGen(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     output_artifact_collection = [
-        types.TfxType('ExamplesPath', split=split.name)
-        for split in self._output_config.split_config.splits
+        types.TfxType('ExamplesPath', split=split_name)
+        for split_name in utils.generate_output_split_names(
+            self._input_config, self._output_config)
     ]
     return base_component.ComponentOutputs({
         'examples':

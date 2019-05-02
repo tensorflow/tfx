@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Supported pre-split input for ExampleGen components
+
 ## Bug fixes and other changes
 
 ## Breaking changes
