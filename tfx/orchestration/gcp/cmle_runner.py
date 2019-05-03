@@ -34,6 +34,7 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 def start_cmle_training(input_dict,
                         output_dict,
                         exec_properties,
+                        executor_class_path,
                         training_inputs):
   """Start a trainer job on CMLE."""
   training_inputs = training_inputs.copy()
@@ -51,8 +52,8 @@ def start_cmle_training(input_dict,
   # Configure CMLE job
   api_client = discovery.build('ml', 'v1')
   job_args = [
-      '--executor', 'Trainer', '--inputs', json_inputs, '--outputs',
-      json_outputs, '--exec-properties', json_exec_properties
+      '--executor_class_path', executor_class_path, '--inputs', json_inputs,
+      '--outputs', json_outputs, '--exec-properties', json_exec_properties
   ]
   training_inputs['args'] = job_args
   training_inputs['pythonModule'] = 'tfx.scripts.run_executor'
