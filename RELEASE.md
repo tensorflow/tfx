@@ -29,6 +29,8 @@
 *   Depends on `tensorflow-transform>=0.13,<0.14`
 *   Deprecations:
     *    PipelineDecorator is deprecated. Please construct a pipeline directly from a list of components instead.
+*   Increased verbosity of logging to container stdout when running under
+    Kubeflow Pipelines.
 
 ## Breaking changes
 *   Examples code are moved from 'examples' to 'tfx/examples': this ensures that PyPi package contains only one top level python module 'tfx'.
