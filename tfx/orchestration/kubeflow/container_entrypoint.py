@@ -30,10 +30,16 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import logging
+import sys
 from tfx.orchestration.kubeflow import container_runners as runners
 
 
 def main():
+  # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
+  # the user.
+  logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
   parser = argparse.ArgumentParser()
   parser.add_argument('--exec_properties', type=str, required=True)
   parser.add_argument('--outputs', type=str, required=True)
