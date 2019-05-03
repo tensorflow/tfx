@@ -76,8 +76,10 @@ class Executor(base_executor.BaseExecutor):
       cmle_args = exec_properties.get('custom_config',
                                       {}).get('cmle_training_args')
       if cmle_args:
+        executor_class_path = '.'.join([Executor.__module__, Executor.__name__])
         return cmle_runner.start_cmle_training(input_dict, output_dict,
-                                               exec_properties, cmle_args)
+                                               exec_properties,
+                                               executor_class_path, cmle_args)
 
     trainer_fn = io_utils.import_func(exec_properties['module_file'],
                                       'trainer_fn')
