@@ -37,8 +37,7 @@ from tfx.utils import types
 # Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
 # pipeline property.
 # TODO(ajaygopinathan): Update with final image location.
-_KUBEFLOW_TFX_IMAGE = 'gcr.io/cloud-ml-pipelines-test/tfx-kubeflow:%s' % (
-    version.__version__)
+_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 _COMMAND = [
     'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
 ]
