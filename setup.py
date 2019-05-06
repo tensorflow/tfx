@@ -78,7 +78,7 @@ def _make_required_install_packages():
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
       'tensorflow-data-validation>=0.13.1,<0.14',
-      'tensorflow-model-analysis>=0.13,<0.14',
+      'tensorflow-model-analysis>=0.13.2,<0.14',
       'tensorflow-transform>=0.13,<0.14',
   ]
 
