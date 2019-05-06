@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen import component
-from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 from tfx.utils import types
 
@@ -34,37 +33,6 @@ class ComponentTest(tf.test.TestCase):
     artifact_collection = csv_example_gen.outputs.examples.get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
-
-  def test_construct_with_output_config(self):
-    input_base = types.TfxType(type_name='ExternalPath')
-    csv_example_gen = component.CsvExampleGen(
-        input_base=channel.as_channel([input_base]),
-        output_config=example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
-                example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
-            ])))
-    self.assertEqual('ExamplesPath', csv_example_gen.outputs.examples.type_name)
-    artifact_collection = csv_example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
-
-  def test_construct_with_input_config(self):
-    input_base = types.TfxType(type_name='ExternalPath')
-    csv_example_gen = component.CsvExampleGen(
-        input_base=channel.as_channel([input_base]),
-        input_config=example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='train/*'),
-            example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
-            example_gen_pb2.Input.Split(name='test', pattern='test/*')
-        ]))
-    self.assertEqual('ExamplesPath', csv_example_gen.outputs.examples.type_name)
-    artifact_collection = csv_example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
 
 
 if __name__ == '__main__':

@@ -89,3 +89,28 @@ generate train and eval output split with size 2:1.
 Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
 for details.
+
+# Custom ExampleGen
+
+If the currently available ExampleGen components don't fit your needs, you can
+create a custom ExampleGen, which will include a new executor extended from
+BaseExampleGenExecutor. Here's how to create a new file based ExampleGen:
+
+First, extend BaseExampleGenExecutor with a custom Beam PTransform, which
+provides the conversion from your train/eval input split to TF examples. For
+example, the executor of this
+[CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/executor.py)
+provides the conversion from an input CSV split to TF examples.
+
+Then, you can either create a simple component with above executor, for example
+[CsvExampleGen](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py),
+or use the new Executor with a standard ExampleGen component like this:
+
+```python
+from tfx.components.example_gen.component import ExampleGen
+from tfx.components.example_gen.csv_example_gen import executor
+from tfx.utils.dsl_utils import csv_input
+
+examples = csv_input(os.path.join(base_dir, 'data/simple'))
+example_gen = ExampleGen(executor=executor.Executor, input_base=examples)
+```
