@@ -24,6 +24,7 @@ WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
+# TODO(jyzhao): update to Beam version that support py3 Flink PortableRunner.
 BEAM_BRANCH="release-2.11.0"
 
 SETUP_FLINK=1

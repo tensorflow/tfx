@@ -213,7 +213,18 @@ In classify_local.sh (must run under examples/chicago_taxi/), change:
 --schema_file ~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt \
 </pre>
 
+# Chicago Taxi Flink Example (python 2.7 only, python 3 WIP)
 
+Start local Flink cluster and Beam job server:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
+sh tfx/examples/chicago_taxi/setup_beam_on_flink.sh
+</pre>
+
+Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
+replaced by 'taxi_pipeline_flink'.
+(Check http://localhost:8081 for the Flink Cluster Dashboard)
 
 # Learn more
 
