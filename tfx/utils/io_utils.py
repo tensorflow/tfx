@@ -17,9 +17,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import subprocess
-import sys
-import tempfile
 import six
 import tensorflow as tf
 from typing import Callable
@@ -68,7 +65,7 @@ def copy_file(src, dst, overwrite = False):
 
 
 def copy_dir(src, dst):
-  """Copies the whole directory recursively from source to distination."""
+  """Copies the whole directory recursively from source to destination."""
 
   if tf.gfile.Exists(dst):
     tf.gfile.DeleteRecursively(dst)
@@ -110,7 +107,7 @@ def write_string_file(file_name, string_value):
 
 
 def write_pbtxt_file(file_name, proto):
-  """Writes a text proto to file."""
+  """Writes a text protobuf to file."""
 
   write_string_file(file_name, text_format.MessageToString(proto))
 
@@ -124,7 +121,7 @@ def write_tfrecord_file(file_name, proto):
 
 
 def parse_pbtxt_file(file_name, message):
-  """Parses a proto message from a text file and return message itself."""
+  """Parses a protobuf message from a text file and return message itself."""
   contents = file_io.read_file_to_string(file_name)
   text_format.Parse(contents, message)
   return message
@@ -137,7 +134,7 @@ def load_csv_column_names(csv_file):
 
 
 def all_files_pattern(file_pattern):
-  """Returns file pattern suitable for beam to locate multiple files."""
+  """Returns file pattern suitable for Beam to locate multiple files."""
   return '{}*'.format(file_pattern)
 
 
@@ -158,21 +155,3 @@ class SchemaReader(object):
     contents = file_io.read_file_to_string(schema_path)
     text_format.Parse(contents, result)
     return result
-
-
-def build_package():
-  """Builds a package using setuptools to be pushed to GCP."""
-  # TODO(b/124821007): Revisit this once PyPi package exists
-  src_dir = sys.modules['tfx'].__file__  # Get the install path for TFX
-  setup_file = os.path.join(
-      os.path.dirname(os.path.dirname(src_dir)), 'setup.py')
-  # Create the temp package
-  tmp_dir = tempfile.mkdtemp()
-  cmd = ['python', setup_file, '--quiet', 'sdist', '--dist-dir', tmp_dir]
-  subprocess.call(cmd)
-
-  files = tf.gfile.ListDirectory(tmp_dir)
-  if len(files) != 1:
-    raise RuntimeError('Found multiple package files: {}'.format(tmp_dir))
-
-  return os.path.join(tmp_dir, files[0])

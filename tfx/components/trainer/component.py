@@ -16,9 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Type
 
 from tfx.components.base import base_component
+from tfx.components.base import base_executor
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
@@ -33,6 +34,13 @@ class Trainer(base_component.BaseComponent):
   The Trainer component is used to train and eval a model using given inputs.
   This component includes a custom driver to optionally grab previous model to
   warm start from.
+
+  There are two executors provided for this component currently:
+  - A default executor (in tfx.components.trainer.executor.py) provides local
+    training;
+  - A custom executor (in
+    tfx.extensions.google_cloud_ai_platform.trainer.executor.py) provides
+    training on Google Cloud AI Platform.
 
   Args:
     transformed_examples: A Channel of 'ExamplesPath' type, serving as the
@@ -52,6 +60,7 @@ class Trainer(base_component.BaseComponent):
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
     name: Optional unique name. Necessary iff multiple Trainer components are
       declared in the same pipeline.
+    executor_class: Optional custom executor class.
     outputs: Optional dict from name to output channel.
   Attributes:
     outputs: A ComponentOutputs including following members:
@@ -67,6 +76,7 @@ class Trainer(base_component.BaseComponent):
                eval_args,
                custom_config = None,
                name = None,
+               executor_class = executor.Executor,
                outputs = None):
     component_name = 'Trainer'
     input_dict = {
@@ -84,7 +94,7 @@ class Trainer(base_component.BaseComponent):
         component_name=component_name,
         unique_name=name,
         driver=driver.Driver,
-        executor=executor.Executor,
+        executor=executor_class,
         input_dict=input_dict,
         outputs=outputs,
         exec_properties=exec_properties)

@@ -22,6 +22,7 @@ import json
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
+from tfx.utils import deps_utils
 from tfx.utils import types
 
 
@@ -58,6 +59,9 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       beam_pipeline_args: Beam pipeline args.
     """
     self._beam_pipeline_args = beam_pipeline_args
+    if self._beam_pipeline_args:
+      self._beam_pipeline_args = deps_utils.make_beam_dependency_flags(
+          self._beam_pipeline_args)
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
