@@ -16,22 +16,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import tensorflow as tf
 
 import tensorflow_model_analysis as tfma
-from tensorflow_transform.beam.tft_beam_io import transform_fn_io
-from tensorflow_transform.saved import saved_transform_io
-from tensorflow_transform.tf_metadata import metadata_io
 from tfx.examples.chicago_taxi.trainer import taxi
 
 
-def build_estimator(tf_transform_dir, config, hidden_units=None):
+def build_estimator(tf_transform_output, config, hidden_units=None):
   """Build an estimator for predicting the tipping behavior of taxi riders.
 
   Args:
-    tf_transform_dir: directory in which the tf-transform model was written
-      during the preprocessing step.
+    tf_transform_output: A TFTransformOutput.
     config: tf.contrib.learn.RunConfig defining the runtime environment for the
       estimator (including model_dir).
     hidden_units: [int], the layer sizes of the DNN (input layer first)
@@ -39,10 +34,8 @@ def build_estimator(tf_transform_dir, config, hidden_units=None):
   Returns:
     Resulting DNNLinearCombinedClassifier.
   """
-  metadata_dir = os.path.join(tf_transform_dir,
-                              transform_fn_io.TRANSFORMED_METADATA_DIR)
-  transformed_metadata = metadata_io.read_metadata(metadata_dir)
-  transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
 
   transformed_feature_spec.pop(taxi.transformed_name(taxi.LABEL_KEY))
 
@@ -74,12 +67,11 @@ def build_estimator(tf_transform_dir, config, hidden_units=None):
       dnn_hidden_units=hidden_units or [100, 70, 50, 25])
 
 
-def example_serving_receiver_fn(tf_transform_dir, schema):
+def example_serving_receiver_fn(tf_transform_output, schema):
   """Build the serving in inputs.
 
   Args:
-    tf_transform_dir: directory in which the tf-transform model was written
-      during the preprocessing step.
+    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -92,21 +84,18 @@ def example_serving_receiver_fn(tf_transform_dir, schema):
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
-  _, transformed_features = (
-      saved_transform_io.partially_apply_saved_transform(
-          os.path.join(tf_transform_dir, transform_fn_io.TRANSFORM_FN_DIR),
-          serving_input_receiver.features))
+  transformed_features = tf_transform_output.transform_raw_features(
+      serving_input_receiver.features)
 
   return tf.estimator.export.ServingInputReceiver(
       transformed_features, serving_input_receiver.receiver_tensors)
 
 
-def eval_input_receiver_fn(tf_transform_dir, schema):
+def eval_input_receiver_fn(tf_transform_output, schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
-    tf_transform_dir: directory in which the tf-transform model was written
-      during the preprocessing step.
+    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -128,10 +117,8 @@ def eval_input_receiver_fn(tf_transform_dir, schema):
 
   # Now that we have our raw examples, process them through the tf-transform
   # function computed during the preprocessing step.
-  _, transformed_features = (
-      saved_transform_io.partially_apply_saved_transform(
-          os.path.join(tf_transform_dir, transform_fn_io.TRANSFORM_FN_DIR),
-          features))
+  transformed_features = tf_transform_output.transform_raw_features(
+      features)
 
   # The key name MUST be 'examples'.
   receiver_tensors = {'examples': serialized_tf_example}
@@ -153,23 +140,20 @@ def _gzip_reader_fn():
           compression_type=tf.python_io.TFRecordCompressionType.GZIP))
 
 
-def input_fn(filenames, tf_transform_dir, batch_size=200):
+def input_fn(filenames, tf_transform_output, batch_size=200):
   """Generates features and labels for training or evaluation.
 
   Args:
     filenames: [str] list of CSV files to read data from.
-    tf_transform_dir: directory in which the tf-transform model was written
-      during the preprocessing step.
+    tf_transform_output: A TFTransformOutput.
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
     A (features, indices) tuple where features is a dictionary of
       Tensors, and indices is a single Tensor of label indices.
   """
-  metadata_dir = os.path.join(tf_transform_dir,
-                              transform_fn_io.TRANSFORMED_METADATA_DIR)
-  transformed_metadata = metadata_io.read_metadata(metadata_dir)
-  transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
 
   transformed_features = tf.contrib.learn.io.read_batch_features(
       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
