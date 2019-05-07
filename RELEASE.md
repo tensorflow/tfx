@@ -9,6 +9,11 @@
 
 ## Bug fixes and other changes
 
+*   Update components and code samples to use `tft.TFTransformOutput` (
+    introduced in tensorflow_transform 0.8).  This avoids directly accessing the
+    DatasetSchema object which may be removed in tensorflow_transform 0.14 or
+    0.15.
+
 ## Breaking changes
 
 
