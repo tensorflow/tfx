@@ -60,24 +60,34 @@ _gcp_region = 'us-central1'
 # Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
 # Engine, refer to
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
-_cmle_training_args = {
-    'pythonModule': None,  # Will be populated by TFX
-    'args': None,  # Will be populated by TFX
+_ai_platform_training_args = {
+    'project': _project_id,
     'region': _gcp_region,
     'jobDir': os.path.join(_output_bucket, 'tmp'),
+    # Starting from TFX 0.14, 'runtimeVersion' is not relevant anymore.
+    # Instead, it will be populated by TFX as <major>.<minor> version of
+    # the imported TensorFlow package;
     'runtimeVersion': '1.12',
+    # Starting from TFX 0.14, 'pythonVersion' is not relevant anymore.
+    # Instead, it will be populated by TFX as the <major>.<minor> version
+    # of the running Python interpreter;
     'pythonVersion': '2.7',
-    'project': _project_id,
+    # 'pythonModule' will be populated by TFX;
+    # 'args' will be populated by TFX;
+    # If 'packageUris' is not empty, CMLE trainer will assume this includes
+    # sdist package of TFX directly or indirectly. Otherwise, TFX will populate
+    # this field with an ephemeral TFX package built from current installation.
 }
 
 # A dict which contains the serving job parameters to be passed to Google
 # Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
 # Engine, refer to
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-_cmle_serving_args = {
+_ai_platform_serving_args = {
     'model_name': 'chicago_taxi',
     'project_id': _project_id,
-    'runtime_version': '1.12',
+    # 'runtimeVersion' will be populated by TFX as <major>.<minor> version of
+    #   the imported TensorFlow package;
 }
 
 # The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.
@@ -85,6 +95,10 @@ _cmle_serving_args = {
 # savings and time, we've set the default for this example to be much smaller.
 # Feel free to crank it up and process the full dataset!
 _query_sample_rate = 0.001  # Generate a 0.1% random sample.
+
+# This is the upper bound of FARM_FINGERPRINT in Bigquery (ie the max value of
+# signed int64).
+_max_int64 = '0x7FFFFFFFFFFFFFFF'
 
 
 # TODO(zhitaoli): Remove PipelineDecorator after 0.13.0.
@@ -128,7 +142,9 @@ def _create_pipeline():
             dropoff_community_area,
             tips
           FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-          WHERE RAND() < {}""".format(_query_sample_rate)
+          WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
+            < {query_sample_rate}""".format(
+                max_int64=_max_int64, query_sample_rate=_query_sample_rate)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = BigQueryExampleGen(query=query)
@@ -149,15 +165,30 @@ def _create_pipeline():
       schema=infer_schema.outputs.output,
       module_file=_taxi_utils)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
-  trainer = Trainer(
-      module_file=_taxi_utils,
-      transformed_examples=transform.outputs.transformed_examples,
-      schema=infer_schema.outputs.output,
-      transform_output=transform.outputs.transform_output,
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000),
-      custom_config={'cmle_training_args': _cmle_training_args})
+  # Uses user-provided Python function that implements a model using TF-Learn
+  # to train a model on Google Cloud AI Platform.
+  try:
+    from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor  # pylint: disable=g-import-not-at-top
+    # Train using a custom executor. This requires TFX >= 0.14.
+    trainer = Trainer(
+        executor_class=ai_platform_trainer_executor.Executor,
+        module_file=_taxi_utils,
+        transformed_examples=transform.outputs.transformed_examples,
+        schema=infer_schema.outputs.output,
+        transform_output=transform.outputs.transform_output,
+        train_args=trainer_pb2.TrainArgs(num_steps=10000),
+        eval_args=trainer_pb2.EvalArgs(num_steps=5000),
+        custom_config={'ai_platform_training_args': _ai_platform_training_args})
+  except ImportError:
+    # Train using a deprecated flag.
+    trainer = Trainer(
+        module_file=_taxi_utils,
+        transformed_examples=transform.outputs.transformed_examples,
+        schema=infer_schema.outputs.output,
+        transform_output=transform.outputs.transform_output,
+        train_args=trainer_pb2.TrainArgs(num_steps=10000),
+        eval_args=trainer_pb2.EvalArgs(num_steps=5000),
+        custom_config={'cmle_training_args': _ai_platform_training_args})
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
@@ -173,14 +204,27 @@ def _create_pipeline():
       examples=example_gen.outputs.examples, model=trainer.outputs.output)
 
   # Checks whether the model passed the validation steps and pushes the model
-  # to a file destination if check passed.
-  pusher = Pusher(
-      model_export=trainer.outputs.output,
-      model_blessing=model_validator.outputs.blessing,
-      custom_config={'cmle_serving_args': _cmle_serving_args},
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=_serving_model_dir)))
+  # to a destination if check passed.
+  try:
+    from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor  # pylint: disable=g-import-not-at-top
+    # Deploy the model on Google Cloud AI Platform. This requires TFX >=0.14.
+    pusher = Pusher(
+        executor_class=ai_platform_pusher_executor.Executor,
+        model_export=trainer.outputs.output,
+        model_blessing=model_validator.outputs.blessing,
+        custom_config={'ai_platform_serving_args': _ai_platform_serving_args},
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=_serving_model_dir)))
+  except ImportError:
+    # Deploy the model on Google Cloud AI Platform, using a deprecated flag.
+    pusher = Pusher(
+        model_export=trainer.outputs.output,
+        model_blessing=model_validator.outputs.blessing,
+        custom_config={'cmle_serving_args': _ai_platform_serving_args},
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=_serving_model_dir)))
 
   return [
       example_gen, statistics_gen, infer_schema, validate_stats, transform,

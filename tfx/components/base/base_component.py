@@ -23,7 +23,10 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 from typing import Text
+from typing import Type
 
+from tfx.components.base import base_driver
+from tfx.components.base import base_executor
 from tfx.utils import channel
 
 

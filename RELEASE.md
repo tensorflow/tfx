@@ -1,6 +1,7 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Adds support for Google Cloud ML Engine Training and Serving as extension.
 
 *   Supported pre-split input for ExampleGen components
 *   Added ImportExampleGen component for importing tfrecord files with
@@ -8,6 +9,9 @@
 *   Added a generic ExampleGen component to reduce the work of custom ExampleGen
 
 ## Bug fixes and other changes
+*   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
+    pusher deprecated. User should use the `trainer/pusher` executors in
+    tfx.extensions.google_cloud_ai_platform module instead.
 
 *   Update components and code samples to use `tft.TFTransformOutput` (
     introduced in tensorflow_transform 0.8).  This avoids directly accessing the
@@ -15,7 +19,6 @@
     0.15.
 
 ## Breaking changes
-
 
 
 # Version 0.13.0

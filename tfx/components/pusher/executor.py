@@ -31,6 +31,28 @@ from google.protobuf import json_format
 class Executor(base_executor.BaseExecutor):
   """Generic TFX pusher executor."""
 
+  def CheckBlessing(self, input_dict,
+                    output_dict):
+    """Check that model is blessed by upstream ModelValidator, or update output.
+
+    Args:
+      input_dict: Input dict from input key to a list of artifacts:
+        - model_blessing: model blessing path from model_validator.
+      output_dict: Output dict from key to a list of artifacts, including:
+        - model_push: A list of 'ModelPushPath' artifact of size one.
+
+    Returns:
+      True if the model is blessed by validator.
+    """
+    model_blessing_uri = types.get_single_uri(input_dict['model_blessing'])
+    model_push = types.get_single_instance(output_dict['model_push'])
+    # TODO(jyzhao): should this be in driver or executor.
+    if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
+      model_push.set_int_custom_property('pushed', 0)
+      tf.logging.info('Model on %s was not blessed', model_blessing_uri)
+      return False
+    return True
+
   def Do(self, input_dict,
          output_dict,
          exec_properties):
@@ -51,16 +73,12 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    model_export = types.get_single_instance(input_dict['model_export'])
-    model_export_uri = model_export.uri
-    model_blessing_uri = types.get_single_uri(input_dict['model_blessing'])
+    if not self.CheckBlessing(input_dict, output_dict):
+      return
     model_push = types.get_single_instance(output_dict['model_push'])
     model_push_uri = model_push.uri
-    # TODO(jyzhao): should this be in driver or executor.
-    if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
-      model_push.set_int_custom_property('pushed', 0)
-      tf.logging.info('Model on %s was not blessed',)
-      return
+    model_export = types.get_single_instance(input_dict['model_export'])
+    model_export_uri = model_export.uri
     tf.logging.info('Model pushing.')
     # Copy the model we are pushing into
     model_path = path_utils.serving_model_path(model_export_uri)
@@ -101,5 +119,9 @@ class Executor(base_executor.BaseExecutor):
       cmle_serving_args = exec_properties.get('custom_config',
                                               {}).get('cmle_serving_args')
       if cmle_serving_args is not None:
-        return cmle_runner.deploy_model_for_serving(serving_path, model_version,
-                                                    cmle_serving_args)
+        tf.logging.warn(
+            '\'cmle_serving_args\' is deprecated, please use custom executor '
+            'in tfx.extensions.google_cloud_ai_platform.pusher instead'
+        )
+        return cmle_runner.deploy_model_for_cmle_serving(
+            serving_path, model_version, cmle_serving_args)

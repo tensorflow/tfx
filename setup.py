@@ -67,40 +67,14 @@ for proto_file in glob.glob('tfx/proto/*.proto'):
   generate_proto(proto_file)
 
 
-def _make_required_install_packages():
-  # Make sure to sync the versions of common dependencies (absl-py, numpy,
-  # six, and protobuf) with TF.
-  return [
-      'absl-py>=0.1.6,<1',
-      'apache-beam[gcp]>=2.12,<3',
-      'google-api-python-client>=1.7.8,<2',
-      'ml-metadata>=0.13.2,<0.14',
-      'protobuf>=3.7,<4',
-      'six>=1.10,<2',
-      'tensorflow-data-validation>=0.13.1,<0.14',
-      'tensorflow-model-analysis>=0.13.2,<0.14',
-      'tensorflow-transform>=0.13,<0.14',
-  ]
-
-
-def _make_required_test_packages():
-  """Prepare extra packages needed for 'python setup.py test'."""
-  return [
-      'apache-airflow>=1.10,<2',
-      'docker>=3.7,<4',
-      'kfp>=0.1,<=0.1.11; python_version >= "3.0"',
-      'pytest>=4.4.1,<5',
-      'tensorflow>=1.13,<2',
-      'tzlocal>=1.5,<2.0',
-  ]
-
-
-def _make_extra_packages_docker_image():
-  # Packages needed for tfx docker image.
-  return [
-      'python-snappy>=0.5,<0.6',
-      'tensorflow>=1.13.1,<2',
-  ]
+# Get various package dependencies list.
+with open('tfx/dependencies.py') as fp:
+  globals_dict = {}
+  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
+_make_required_install_packages = globals_dict['make_required_install_packages']
+_make_required_test_packages = globals_dict['make_required_test_packages']
+_make_extra_packages_docker_image = globals_dict[
+    'make_extra_packages_docker_image']
 
 
 # Get version from version module.
