@@ -32,6 +32,7 @@ if __name__ == '__main__':
           'jupyter==1.0',
           'numpy==1.14.5',
           'protobuf==3.6.1',
+          'scikit-learn==0.20.0',
           'tensorflow==' + TF_VERSION,
           'tensorflow-data-validation==0.12.0',
           'tensorflow-metadata==0.12.1',
