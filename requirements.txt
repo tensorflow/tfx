@@ -1,3 +1,6 @@
+# latest version 0.21.0 of scikit-learn only supports python>=3.5
+scikit-learn==0.20.3
+
 --index-url https://pypi.python.org/simple/
 
 -e .
