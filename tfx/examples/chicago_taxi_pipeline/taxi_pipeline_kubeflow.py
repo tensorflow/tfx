@@ -100,6 +100,34 @@ _query_sample_rate = 0.001  # Generate a 0.1% random sample.
 # signed int64).
 _max_int64 = '0x7FFFFFFFFFFFFFFF'
 
+# The query that extracts the examples from BigQuery.  The Chicago Taxi dataset
+# used for this example is a public dataset available on Google AI Platform.
+# https://console.cloud.google.com/marketplace/details/city-of-chicago-public-data/chicago-taxi-trips
+_query = """
+         SELECT
+           pickup_community_area,
+           fare,
+           EXTRACT(MONTH FROM trip_start_timestamp) AS trip_start_month,
+           EXTRACT(HOUR FROM trip_start_timestamp) AS trip_start_hour,
+           EXTRACT(DAYOFWEEK FROM trip_start_timestamp) AS trip_start_day,
+           UNIX_SECONDS(trip_start_timestamp) AS trip_start_timestamp,
+           pickup_latitude,
+           pickup_longitude,
+           dropoff_latitude,
+           dropoff_longitude,
+           trip_miles,
+           pickup_census_tract,
+           dropoff_census_tract,
+           payment_type,
+           company,
+           trip_seconds,
+           dropoff_community_area,
+           tips
+         FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+         WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
+           < {query_sample_rate}""".format(
+               max_int64=_max_int64, query_sample_rate=_query_sample_rate)
+
 
 # TODO(zhitaoli): Remove PipelineDecorator after 0.13.0.
 @PipelineDecorator(
@@ -119,35 +147,10 @@ _max_int64 = '0x7FFFFFFFFFFFFFFF'
         #   if TFX package is not installed from an RC or released version.
     })
 def _create_pipeline():
-  """Implements the chicago taxi pipeline with TFX."""
-
-  query = """
-          SELECT
-            pickup_community_area,
-            fare,
-            EXTRACT(MONTH FROM trip_start_timestamp) AS trip_start_month,
-            EXTRACT(HOUR FROM trip_start_timestamp) AS trip_start_hour,
-            EXTRACT(DAYOFWEEK FROM trip_start_timestamp) AS trip_start_day,
-            UNIX_SECONDS(trip_start_timestamp) AS trip_start_timestamp,
-            pickup_latitude,
-            pickup_longitude,
-            dropoff_latitude,
-            dropoff_longitude,
-            trip_miles,
-            pickup_census_tract,
-            dropoff_census_tract,
-            payment_type,
-            company,
-            trip_seconds,
-            dropoff_community_area,
-            tips
-          FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-          WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
-            < {query_sample_rate}""".format(
-                max_int64=_max_int64, query_sample_rate=_query_sample_rate)
+  """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = BigQueryExampleGen(query=query)
+  example_gen = BigQueryExampleGen(query=_query)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
