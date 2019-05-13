@@ -35,6 +35,11 @@
 ## Breaking changes
 *   Examples code are moved from 'examples' to 'tfx/examples': this ensures that PyPi package contains only one top level python module 'tfx'.
 
+## Things to notice for upgrading
+*   Multiprocessing on Mac OS >= 10.13 might crash for Airflow. See
+    [AIRFLOW-3326](https://issues.apache.org/jira/browse/AIRFLOW-3326)
+    for details and solution.
+
 # Version 0.12.0
 
 ## Major Features and Improvements
