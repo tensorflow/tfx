@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Runners for TFX components running as part of a Kubeflow pipeline."""
+"""Wrappers for TFX executors running as part of a Kubeflow pipeline."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -47,7 +47,7 @@ def to_snake_case(name):
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
+class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
   """Abstract base class for all Kubeflow Pipelines-based TFX components."""
 
   def __init__(
@@ -110,15 +110,15 @@ class BaseRunner(utils.with_metaclass(abc.ABCMeta), object):
         f.write(json.dumps(output_list))
 
 
-# TODO(ajaygopinathan): Get rid of all the individual runner classes below and
-# combine them into a single generic runner that constructs the input dict from
-# the individual named arguments instead. In the future, the generic runner can
-# call into TFX drivers to handle component-specific logic as well.
-class CsvExampleGenRunner(BaseRunner):
-  """Runner for CSVExampleGen component."""
+# TODO(b/132197968): Get rid of all the individual wrapper classes below and
+# combine them into a single generic one that constructs the input dict from
+# the individual named arguments instead. In the future, the generic wrapper
+# can call into TFX drivers to handle component-specific logic as well.
+class CsvExampleGenWrapper(KubeflowExecutorWrapper):
+  """Wrapper for CSVExampleGen component."""
 
   def __init__(self, args):
-    super(CsvExampleGenRunner, self).__init__(
+    super(CsvExampleGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='CSVExampleGen',
         input_dict={
@@ -137,11 +137,11 @@ class CsvExampleGenRunner(BaseRunner):
       input_artifact.span = span
 
 
-class BigQueryExampleGenRunner(BaseRunner):
-  """Runner for BigQueryExampleGen component."""
+class BigQueryExampleGenWrapper(KubeflowExecutorWrapper):
+  """Wrapper for BigQueryExampleGen component."""
 
   def __init__(self, args):
-    super(BigQueryExampleGenRunner, self).__init__(
+    super(BigQueryExampleGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='BigQueryExampleGen',
         input_dict={},
@@ -151,11 +151,11 @@ class BigQueryExampleGenRunner(BaseRunner):
     self._set_outputs()
 
 
-class StatisticsGenRunner(BaseRunner):
-  """Runner for StatisticsGen component."""
+class StatisticsGenWrapper(KubeflowExecutorWrapper):
+  """Wrapper for StatisticsGen component."""
 
   def __init__(self, args):
-    super(StatisticsGenRunner, self).__init__(
+    super(StatisticsGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='StatisticsGen',
         input_dict={
@@ -167,11 +167,11 @@ class StatisticsGenRunner(BaseRunner):
     self._set_outputs()
 
 
-class SchemaGenRunner(BaseRunner):
-  """Runner for SchemaGen component."""
+class SchemaGenWrapper(KubeflowExecutorWrapper):
+  """Wrapper for SchemaGen component."""
 
   def __init__(self, args):
-    super(SchemaGenRunner, self).__init__(
+    super(SchemaGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='SchemaGen',
         input_dict={
@@ -183,11 +183,11 @@ class SchemaGenRunner(BaseRunner):
     self._set_outputs()
 
 
-class ExampleValidatorRunner(BaseRunner):
-  """Runner for ExampleValidator component."""
+class ExampleValidatorWrapper(KubeflowExecutorWrapper):
+  """Wrapper for ExampleValidator component."""
 
   def __init__(self, args):
-    super(ExampleValidatorRunner, self).__init__(
+    super(ExampleValidatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='ExampleValidator',
         input_dict={
@@ -200,11 +200,11 @@ class ExampleValidatorRunner(BaseRunner):
     self._set_outputs()
 
 
-class TransformRunner(BaseRunner):
-  """Runner for Transform component."""
+class TransformWrapper(KubeflowExecutorWrapper):
+  """Wrapper for Transform component."""
 
   def __init__(self, args):
-    super(TransformRunner, self).__init__(
+    super(TransformWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Transform',
         input_dict={
@@ -217,11 +217,11 @@ class TransformRunner(BaseRunner):
     self._set_outputs()
 
 
-class TrainerRunner(BaseRunner):
-  """Runner for Trainer component."""
+class TrainerWrapper(KubeflowExecutorWrapper):
+  """Wrapper for Trainer component."""
 
   def __init__(self, args):
-    super(TrainerRunner, self).__init__(
+    super(TrainerWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Trainer',
         input_dict={
@@ -239,11 +239,11 @@ class TrainerRunner(BaseRunner):
     self._exec_properties['warm_start_from'] = None
 
 
-class EvaluatorRunner(BaseRunner):
-  """Runner for Evaluator component."""
+class EvaluatorWrapper(KubeflowExecutorWrapper):
+  """Wrapper for Evaluator component."""
 
   def __init__(self, args):
-    super(EvaluatorRunner, self).__init__(
+    super(EvaluatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Evaluator',
         input_dict={
@@ -256,11 +256,11 @@ class EvaluatorRunner(BaseRunner):
     self._set_outputs()
 
 
-class ModelValidatorRunner(BaseRunner):
-  """Runner for ModelValidator component."""
+class ModelValidatorWrapper(KubeflowExecutorWrapper):
+  """Wrapper for ModelValidator component."""
 
   def __init__(self, args):
-    super(ModelValidatorRunner, self).__init__(
+    super(ModelValidatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='ModelValidator',
         input_dict={
@@ -277,11 +277,11 @@ class ModelValidatorRunner(BaseRunner):
     self._exec_properties['latest_blessed_model_id'] = None
 
 
-class PusherRunner(BaseRunner):
-  """Runner for Pusher component."""
+class PusherWrapper(KubeflowExecutorWrapper):
+  """Wrapper for Pusher component."""
 
   def __init__(self, args):
-    super(PusherRunner, self).__init__(
+    super(PusherWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Pusher',
         input_dict={
