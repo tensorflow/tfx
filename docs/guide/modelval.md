@@ -1,6 +1,6 @@
 # The ModelValidator TFX Pipeline Component
 
-The ModelValidator FX Pipeline Component helps you validate your exported models,
+The ModelValidator TFX Pipeline Component helps you validate your exported models,
 ensuring that they are "good enough" to be pushed to production.
 
 ModelValidator compares new models against a baseline (such as the currently serving
