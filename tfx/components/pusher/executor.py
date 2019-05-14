@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Generic TFX pusher executor."""
+"""TFX pusher executor."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -29,7 +30,22 @@ from google.protobuf import json_format
 
 
 class Executor(base_executor.BaseExecutor):
-  """Generic TFX pusher executor."""
+  """TFX Pusher executor to push the new TF model to a filesystem target.
+
+  The Pusher component is used to deploy a validated model to a filesystem
+  target or serving environment using tf.serving.  Pusher depends on the outputs
+  of ModelValidator to determine if a model is ready to push. A model is
+  considered to be safe to push only if ModelValidator has marked it as BLESSED.
+  A push action delivers the model exports produced by Trainer to the
+  destination defined in the ``push_destination`` of the component config.
+
+  To include Pusher in a TFX pipeline, configure your pipeline similar to
+  https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L104.
+
+  For more details on tf.serving itself, please refer to
+  https://tensorflow.org/tfx/guide/pusher.  For a tutuorial on TF Serving,
+  please refer to https://www.tensorflow.org/tfx/guide/serving.
+  """
 
   def CheckBlessing(self, input_dict,
                     output_dict):
@@ -37,7 +53,9 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts:
-        - model_blessing: model blessing path from model_validator.
+        - model_blessing: model blessing path from model_validator. Pusher looks
+          for a file named 'BLESSED' to consider the model blessed and safe to
+          push.
       output_dict: Output dict from key to a list of artifacts, including:
         - model_push: A list of 'ModelPushPath' artifact of size one.
 
@@ -56,12 +74,14 @@ class Executor(base_executor.BaseExecutor):
   def Do(self, input_dict,
          output_dict,
          exec_properties):
-    """Push model to target if blessed.
+    """Push model to target directory if blessed.
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - model_export: exported model from trainer.
-        - model_blessing: model blessing path from model_validator.
+        - model_blessing: model blessing path from model_validator.  A push
+        action delivers the model exports produced by Trainer to the destination
+        defined in component config.
       output_dict: Output dict from key to a list of artifacts, including:
         - model_push: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.
