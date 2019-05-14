@@ -54,6 +54,10 @@ def main():
   subparser = subparsers.add_parser('BigQueryExampleGen')
   subparser.set_defaults(executor=wrappers.BigQueryExampleGenWrapper)
 
+  subparser = subparsers.add_parser('ImportExampleGen')
+  subparser.add_argument('--input-base', type=str, required=True)
+  subparser.set_defaults(executor=wrappers.ImportExampleGenWrapper)
+
   subparser = subparsers.add_parser('StatisticsGen')
   subparser.add_argument('--input_data', type=str, required=True)
   subparser.set_defaults(executor=wrappers.StatisticsGenWrapper)

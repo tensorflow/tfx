@@ -151,6 +151,29 @@ class BigQueryExampleGenWrapper(KubeflowExecutorWrapper):
     self._set_outputs()
 
 
+class ImportExampleGenWrapper(KubeflowExecutorWrapper):
+  """Wrapper for CSVExampleGen component."""
+
+  def __init__(self, args):
+    super(ImportExampleGenWrapper, self).__init__(
+        executor_class_path=args.executor_class_path,
+        name='ImportExampleGen',
+        input_dict={
+            'input-base': parse_tfx_type(args.input_base),
+        },
+        outputs=args.outputs,
+        exec_properties=json.loads(args.exec_properties),
+    )
+    self._set_input_artifact_span()
+    self._set_outputs()
+
+  def _set_input_artifact_span(self):
+    for input_artifact in self._input_dict['input-base']:
+      matched = re.match(r'span_([0-9]+)', input_artifact.uri)
+      span = matched.group(1) if matched else 1
+      input_artifact.span = span
+
+
 class StatisticsGenWrapper(KubeflowExecutorWrapper):
   """Wrapper for StatisticsGen component."""
 
