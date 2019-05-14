@@ -44,6 +44,7 @@
     *    PipelineDecorator is deprecated. Please construct a pipeline directly from a list of components instead.
 *   Increased verbosity of logging to container stdout when running under
     Kubeflow Pipelines.
+*   Updated developer tutorial to support Python 3.5+
 
 ## Breaking changes
 *   Examples code are moved from 'examples' to 'tfx/examples': this ensures that PyPi package contains only one top level python module 'tfx'.
