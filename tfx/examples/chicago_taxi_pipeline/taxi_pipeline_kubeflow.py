@@ -51,14 +51,14 @@ _taxi_utils = os.path.join(_input_bucket, 'taxi_utils.py')
 # trained model here.
 _serving_model_dir = os.path.join(_output_bucket, 'serving_model/taxi_bigquery')
 
-# Region to use for Dataflow jobs and CMLE training.
+# Region to use for Dataflow jobs and AI Platform training jobs.
 #   Dataflow: https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
-#   CMLE:     https://cloud.google.com/ml-engine/docs/tensorflow/regions
+#   AI Platform: https://cloud.google.com/ml-engine/docs/tensorflow/regions
 _gcp_region = 'us-central1'
 
 # A dict which contains the training job parameters to be passed to Google
-# Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
-# Engine, refer to
+# Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
+# Platform, refer to
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
 _ai_platform_training_args = {
     'project': _project_id,
@@ -74,14 +74,14 @@ _ai_platform_training_args = {
     'pythonVersion': '2.7',
     # 'pythonModule' will be populated by TFX;
     # 'args' will be populated by TFX;
-    # If 'packageUris' is not empty, CMLE trainer will assume this includes
-    # sdist package of TFX directly or indirectly. Otherwise, TFX will populate
-    # this field with an ephemeral TFX package built from current installation.
+    # If 'packageUris' is not empty, AI Platform trainer will assume this
+    # will populate this field with an ephemeral TFX package built from current
+    # installation.
 }
 
 # A dict which contains the serving job parameters to be passed to Google
-# Cloud ML Engine. For the full set of parameters supported by Google Cloud ML
-# Engine, refer to
+# Cloud AI Platform. For the full set of parameters supported by Google Cloud AI
+# Platform, refer to
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
 _ai_platform_serving_args = {
     'model_name': 'chicago_taxi',
