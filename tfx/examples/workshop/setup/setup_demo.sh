@@ -27,7 +27,7 @@ printf "${GREEN}Installing TensorFlow${NORMAL}\n"
 pip install tensorflow==1.13.1
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install tfx==0.12.0
+pip install tfx==0.13.0rc2
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
@@ -35,14 +35,19 @@ pip install google-api-python-client
 printf "${GREEN}Installing required Jupyter version${NORMAL}\n"
 pip install ipykernel
 ipython kernel install --user --name=tfx
-pip install --upgrade notebook==5.7.2
+pip install --upgrade notebook==5.7.8
 jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis
 jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis
 
-# Docker images
+printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
+pip install matplotlib
+pip install papermill
+pip install pandas
+pip install networkx
+
+# # Docker images
 printf "${GREEN}Installing docker${NORMAL}\n"
 pip install docker
-docker build -t ..
 
 # Airflow
 # Set this to avoid the GPL version; no functionality difference either way
