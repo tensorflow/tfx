@@ -40,9 +40,9 @@ following a typical ML development process.  Here are the steps:
 
 ## Prerequisites
 
-* Linux or MacOS
+* Linux / MacOS
 * Virtualenv
-* Python 2.7
+* Python 3.5+
 * Git
 
 ### Required packages
@@ -54,6 +54,16 @@ sudo apt-get install python-dev  \
     build-essential libssl-dev libffi-dev \
     libxml2-dev libxslt1-dev zlib1g-dev \
     python-pip
+```
+
+### MacOS Environment
+
+MacOS sometimes has problems forking threads when running Airflow, depending on
+the configuration. To avoid those problems you should edit your
+`~/.bash_profile` and add the following line to the end of the file:
+
+```bash
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ```
 
 ## Tutorial materials
@@ -158,12 +168,12 @@ In a shell:
 
 ```bash
 cd
-virtualenv -p python2.7 tfx-env
+virtualenv -p python3 tfx-env
 source ~/tfx-env/bin/activate
 mkdir tfx; cd tfx
 
 pip install tensorflow==1.13.1
-pip install tfx==0.12.0
+pip install tfx==0.13.0rc2
 git clone https://github.com/tensorflow/tfx.git
 cd ~/tfx/tfx/tfx/examples/workshop/setup
 ./setup_demo.sh
