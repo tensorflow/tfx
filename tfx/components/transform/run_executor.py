@@ -47,7 +47,7 @@ def _run_transform(args, beam_pipeline_args):
       labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: (args.per_set_stats_outputs),
       labels.TEMP_OUTPUT_LABEL: args.tmp_location,
   }
-  executor = Executor(beam_pipeline_args)
+  executor = Executor(Executor.Context(beam_pipeline_args=beam_pipeline_args))
   executor.Transform(inputs, outputs, args.status_file)
 
 
