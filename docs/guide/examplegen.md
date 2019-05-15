@@ -5,8 +5,8 @@ consumes external files/services to generate Examples which will be read by
 other TFX components. It also provides consistent and configurable partition,
 and shuffles the dataset for ML best practice.
 
-*   Consumes: Data from external data sources such as CSV, TFRecord and BigQuery
-*   Emits: tf.Example records
+*   Consumes: Data from external data sources such as CSV, `TFRecord` and BigQuery
+*   Emits: `tf.Example` records
 
 ## ExampleGen and Other Components
 
@@ -17,7 +17,7 @@ provides data to [Transform](transform.md), which makes use of the
 [TensorFlow Transform](tft.md) library, and ultimately to deployment targets
 during inference.
 
-## Using an ExampleGen Component
+## How to use an ExampleGen Component
 
 For supported data sources (currently, CSV files, TFRecord files with TF Example
 data format, and results of BigQuery queries) the ExampleGen pipeline component
