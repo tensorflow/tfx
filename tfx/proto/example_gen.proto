@@ -42,7 +42,6 @@ message Output {
 
 // A config to partition examples into splits.
 message SplitConfig {
-  // TODO(jyzhao): support custom output split.
   // Currently, if split config is specified, it must contains both 'train' and
   // 'eval' split.
   //
