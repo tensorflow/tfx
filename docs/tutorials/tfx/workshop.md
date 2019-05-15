@@ -233,6 +233,20 @@ airflow webserver -p 7070
 
 ![Graph refresh button](images/workshop/graph_refresh_button.png)
 
+#### Airflow CLI
+
+You can also use the [Airflow CLI](https://airflow.apache.org/cli.html) to
+enable and trigger your DAGs:
+
+```bash
+# enable/disable
+airflow unpause <your DAG>
+airflow pause <your DAG>
+
+# trigger
+airflow trigger_dag <your DAG>
+```
+
 #### Waiting for the pipeline to complete
 
 After you've triggered your pipeline in the DAGs view, you can watch as your
