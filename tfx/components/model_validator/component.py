@@ -79,16 +79,12 @@ class ModelValidator(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     blessing_artifact_collection = [types.TfxType('ModelBlessingPath')]
-    results_artifact_collection = [types.TfxType('ModelValidationPath')]
     return base_component.ComponentOutputs({
         'blessing':
             channel.Channel(
                 type_name='ModelBlessingPath',
                 static_artifact_collection=blessing_artifact_collection),
-        'results':
-            channel.Channel(
-                type_name='ModelValidationPath',
-                static_artifact_collection=results_artifact_collection),
+
     })
 
   def _type_check(self, input_dict,

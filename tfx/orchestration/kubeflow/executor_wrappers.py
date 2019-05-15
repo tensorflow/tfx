@@ -26,6 +26,7 @@ from future import utils
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
 import tfx
+from tfx.components.base import base_executor
 from tfx.utils import import_utils
 from tfx.utils import types
 
@@ -75,17 +76,25 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
     executor_cls = import_utils.import_class_by_path(executor_class_path)
-    self._executor = executor_cls(beam_pipeline_args=beam_pipeline_args)
+    self._output_dir = self._exec_properties['output_dir']
+    self._workflow_id = os.environ['WORKFLOW_ID']
+    # TODO(swoonna): Switch to execution_id when available
+    unique_id = '{}_{}'.format(self._component_name, self._workflow_id)
+    # TODO(swoonna): Add tmp_dir to additional_pipeline_args
+    executor_context = base_executor.BaseExecutor.Context(
+        beam_pipeline_args=self._additional_pipeline_args.get(
+            'beam_pipeline_args'),
+        tmp_dir=os.path.join(self._output_dir, '.temp', ''),
+        unique_id=unique_id)
 
+    self._executor = executor_cls(executor_context)
     self._input_dict = input_dict
     self._output_dict = types.parse_tfx_type_dict(outputs)
     self._exec_properties = exec_properties
     self._component_name = to_snake_case(name)
 
   def _set_outputs(self):
-    output_dir = self._exec_properties['output_dir']
-    workflow_id = os.environ['WORKFLOW_ID']
-    tf.logging.info('Using workflow id {}'.format(workflow_id))
+    tf.logging.info('Using workflow id {}'.format(self._workflow_id))
 
     max_input_span = 0
     for input_list in self._input_dict.values():
@@ -93,8 +102,9 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
         max_input_span = max(max_input_span, single_input.span)
     for output_name, output_artifact_list in self._output_dict.items():
       for output_artifact in output_artifact_list:
-        output_artifact.uri = os.path.join(output_dir, self._component_name,
-                                           output_name, workflow_id,
+        output_artifact.uri = os.path.join(self._output_dir,
+                                           self._component_name, output_name,
+                                           self._workflow_id,
                                            output_artifact.split, '')
         output_artifact.span = max_input_span
 

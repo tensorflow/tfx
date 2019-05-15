@@ -71,6 +71,7 @@ class ExecutorTest(tf.test.TestCase):
         'module_file': module_file,
     }
 
+    # Run executor
     transform_executor = executor.Executor()
     transform_executor.Do(input_dict, output_dict, exec_properties)
     self.assertNotEqual(

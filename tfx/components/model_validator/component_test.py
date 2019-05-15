@@ -33,9 +33,6 @@ class ComponentTest(tf.test.TestCase):
         model=channel.as_channel([model]))
     self.assertEqual('ModelBlessingPath',
                      model_validator.outputs.blessing.type_name)
-    self.assertEqual('ModelValidationPath',
-                     model_validator.outputs.results.type_name)
-
 
 if __name__ == '__main__':
   tf.test.main()

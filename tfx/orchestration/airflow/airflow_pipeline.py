@@ -60,6 +60,11 @@ class AirflowPipeline(models.DAG):
     if additional_pipeline_args is None:
       additional_pipeline_args = {}
 
+    # Add temporary directory path
+    if 'tmp_dir' not in additional_pipeline_args:
+      tmp_dir = os.path.join(self.project_path, '.temp', '')
+      additional_pipeline_args['tmp_dir'] = tmp_dir
+
     # Configure logging
     self.logger_config = logging_utils.LoggerConfig(pipeline_name=pipeline_name)
     if 'logger_args' in additional_pipeline_args:
