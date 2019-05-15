@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2018 Google LLC
+# Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,9 +31,11 @@ gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/
 MODEL_BINARIES=$(gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/ \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
-TF_VERSION=1.12
+# Please refer to https://cloud.google.com/ml-engine/docs/tensorflow/runtime-version-list
+# for version list.
+CAI_RUNTIME_VERSION=1.13
 
 gcloud ml-engine versions create v1 \
   --model chicago_taxi \
   --origin $MODEL_BINARIES \
-  --runtime-version $TF_VERSION
+  --runtime-version $CAI_RUNTIME_VERSION
