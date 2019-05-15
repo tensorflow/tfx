@@ -35,16 +35,16 @@ class LoggerConfig(object):
   """
 
   def __init__(self,
-               log_root: Optional[Text] = '/var/tmp/tfx/logs',
-               log_level: Optional[int] = logging.INFO,
-               pipeline_name: Optional[Text] = '',
-               worker_name: Optional[Text] = ''):
+               log_root = '/var/tmp/tfx/logs',
+               log_level = logging.INFO,
+               pipeline_name = '',
+               worker_name = ''):
     self.log_root = log_root
     self.log_level = log_level
     self.pipeline_name = pipeline_name
     self.worker_name = worker_name
 
-  def update(self, config: Optional[Dict[Text, Any]] = None):
+  def update(self, config = None):
     """Updates the log config parameters via elements in a dict.
 
     Args:

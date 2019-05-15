@@ -35,7 +35,7 @@ from tfx.utils import types
 from google.protobuf import json_format
 
 
-def _all_files_pattern(file_pattern: Text) -> Text:
+def _all_files_pattern(file_pattern):
   return '{}*'.format(file_pattern)
 
 
@@ -67,9 +67,9 @@ class Executor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
 
     The Trainer Executor invokes a training_fn callback function provided by

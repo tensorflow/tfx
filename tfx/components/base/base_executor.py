@@ -33,24 +33,24 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   class Context(object):
     """A context class for all excecutors."""
 
-    def __init__(self, beam_pipeline_args: Optional[List[Text]] = None,
-                 tmp_dir: Optional[Text] = None,
-                 unique_id: Optional[Text] = None):
+    def __init__(self, beam_pipeline_args = None,
+                 tmp_dir = None,
+                 unique_id = None):
       self.beam_pipeline_args = beam_pipeline_args
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
       # A unique id to distinguish every execution run
       self._unique_id = unique_id
 
-    def get_tmp_path(self) -> Text:
+    def get_tmp_path(self):
       if not self._tmp_dir or not self._unique_id:
         raise RuntimeError('Temp path not available')
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
   @abc.abstractmethod
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Execute underlying component implementation.
 
     Args:
@@ -70,7 +70,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     """
     pass
 
-  def __init__(self, context: Optional[Context] = None):
+  def __init__(self, context = None):
     """Constructs a beam based executor."""
     self._context = context
     self._beam_pipeline_args = context.beam_pipeline_args if context else None
@@ -81,11 +81,11 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
-  def _get_beam_pipeline_args(self) -> Optional[List[Text]]:
+  def _get_beam_pipeline_args(self):
     """Get beam pipeline args."""
     return self._beam_pipeline_args
 
-  def _get_tmp_dir(self) -> Text:
+  def _get_tmp_dir(self):
     """Get the temporary directory path."""
     if not self._context:
       raise RuntimeError('No context for the executor')
@@ -95,9 +95,9 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       tf.gfile.MakeDirs(tmp_path)
     return tmp_path
 
-  def _log_startup(self, inputs: Dict[Text, List[types.TfxType]],
-                   outputs: Dict[Text, List[types.TfxType]],
-                   exec_properties: Dict[Text, Any]) -> None:
+  def _log_startup(self, inputs,
+                   outputs,
+                   exec_properties):
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting {} execution.'.format(self.__class__.__name__))
     tf.logging.info('Inputs for {} is: {}'.format(

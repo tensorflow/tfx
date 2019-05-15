@@ -37,11 +37,11 @@ class _FakeComponent(base_component.BaseComponent):
         exec_properties={})
     self.name = name
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     raise NotImplementedError
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     return None
 
 

@@ -36,9 +36,13 @@ class AirflowRunnerTest(tf.test.TestCase):
     mock_airflow_pipeline_class.return_value = 'DAG'
 
     c1 = stats_gen_component.StatisticsGen(
-        input_data=channel.Channel(type_name='ExamplesPath'))
+        input_data=channel.StaticChannel(
+            type_name='ExamplesPath',
+            artifacts=[]))
     c2 = schema_component.SchemaGen(
-        stats=channel.Channel(type_name='ExampleStatisticsPath'))
+        stats=channel.StaticChannel(
+            type_name='ExampleStatisticsPath',
+            artifacts=[]))
     airflow_config = {'schedule_interval': '* * * * *',
                       'start_date': datetime.datetime(2019, 1, 1)}
     pipeline_config = {

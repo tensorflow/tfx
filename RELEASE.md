@@ -7,7 +7,6 @@
 *   Added ImportExampleGen component for importing tfrecord files with
     TF Example data format
 *   Added a generic ExampleGen component to reduce the work of custom ExampleGen
-*   Release Python 3 type hints.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
@@ -25,6 +24,7 @@
 # Version 0.13.0
 
 ## Major Features and Improvements
+
 *   Adds support for Python 3.5
 *   Initial version of following orchestration platform supported:
     *   Kubeflow

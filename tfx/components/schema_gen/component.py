@@ -37,9 +37,9 @@ class SchemaGen(base_component.BaseComponent):
   """
 
   def __init__(self,
-               stats: channel.Channel,
-               name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
+               stats,
+               name = None,
+               outputs = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -61,22 +61,22 @@ class SchemaGen(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for ExampleValidator.
 
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    output_artifact_collection = [types.TfxType('SchemaPath')]
+    output_artifacts = [types.TfxType('SchemaPath')]
     return base_component.ComponentOutputs({
         'output':
-            channel.Channel(
+            channel.StaticChannel(
                 type_name='SchemaPath',
-                static_artifact_collection=output_artifact_collection)
+                artifacts=output_artifacts)
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:

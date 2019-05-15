@@ -54,11 +54,11 @@ class Transform(base_component.BaseComponent):
   """
 
   def __init__(self,
-               input_data: channel.Channel,
-               schema: channel.Channel,
-               module_file: Text,
-               name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
+               input_data,
+               schema,
+               module_file,
+               name = None,
+               outputs = None):
     component_name = 'Transform'
     input_dict = {
         'input_data': channel.as_channel(input_data),
@@ -76,32 +76,32 @@ class Transform(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for Transform.
 
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    transform_output_artifact_collection = [types.TfxType('TransformPath',)]
-    transformed_examples_artifact_collection = [
+    transform_output_artifacts = [types.TfxType('TransformPath',)]
+    transformed_examples_artifacts = [
         types.TfxType('ExamplesPath', split=split)
         for split in types.DEFAULT_EXAMPLE_SPLITS
     ]
     return base_component.ComponentOutputs({
         'transform_output':
-            channel.Channel(
+            channel.StaticChannel(
                 type_name='TransformPath',
-                static_artifact_collection=transform_output_artifact_collection
+                artifacts=transform_output_artifacts
             ),
         'transformed_examples':
-            channel.Channel(
+            channel.StaticChannel(
                 type_name='ExamplesPath',
-                static_artifact_collection=transformed_examples_artifact_collection
+                artifacts=transformed_examples_artifacts
             ),
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:

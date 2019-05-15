@@ -30,8 +30,8 @@ class ChannelTest(tf.test.TestCase):
   def test_valid_channel(self):
     instance_a = types.TfxType('MyTypeName')
     instance_b = types.TfxType('MyTypeName')
-    chnl = channel.Channel(
-        'MyTypeName', static_artifact_collection=[instance_a, instance_b])
+    chnl = channel.StaticChannel(
+        'MyTypeName', [instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
@@ -39,9 +39,9 @@ class ChannelTest(tf.test.TestCase):
     instance_a = types.TfxType('MyTypeName')
     instance_b = types.TfxType('MyTypeName')
     with self.assertRaises(ValueError):
-      channel.Channel(
+      channel.StaticChannel(
           'AnotherTypeName',
-          static_artifact_collection=[instance_a, instance_b])
+          [instance_a, instance_b])
 
   def test_artifact_collection_as_channel(self):
     instance_a = types.TfxType('MyTypeName')
@@ -53,8 +53,8 @@ class ChannelTest(tf.test.TestCase):
   def test_channel_as_channel_success(self):
     instance_a = types.TfxType('MyTypeName')
     instance_b = types.TfxType('MyTypeName')
-    chnl_original = channel.Channel(
-        'MyTypeName', static_artifact_collection=[instance_a, instance_b])
+    chnl_original = channel.StaticChannel(
+        'MyTypeName', [instance_a, instance_b])
     chnl_result = channel.as_channel(chnl_original)
     self.assertEqual(chnl_original, chnl_result)
 

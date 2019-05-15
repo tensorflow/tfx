@@ -35,7 +35,7 @@ from google.protobuf import json_format
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int]) -> int:
+def _PartitionFn(record, num_partitions, buckets):
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
   bucket = int(hashlib.sha256(record).hexdigest(), 16) % buckets[-1]
@@ -49,8 +49,8 @@ def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int]) -> int:
 @beam.ptransform_fn
 @beam.typehints.with_input_types(bytes)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
-def _WriteSplit(example_split: beam.pvalue.PCollection,
-                output_split_path: Text) -> beam.pvalue.PDone:
+def _WriteSplit(example_split,
+                output_split_path):
   """Shuffles and writes output split."""
   return (example_split
           # TODO(jyzhao): make shuffle optional.
@@ -64,11 +64,11 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(bytes)
-def _InputToSerializedExample(pipeline: beam.Pipeline,
-                              input_to_example: beam.PTransform,
-                              input_dict: Dict[Text, List[types.TfxType]],
-                              exec_properties: Dict[Text, Any],
-                              split_pattern: Text) -> beam.pvalue.PCollection:
+def _InputToSerializedExample(pipeline,
+                              input_to_example,
+                              input_dict,
+                              exec_properties,
+                              split_pattern):
   """Converts input to serialized TF examples."""
   return (pipeline
           | 'InputSourceToExample' >> input_to_example(
@@ -105,7 +105,7 @@ class BaseExampleGenExecutor(
   """
 
   @abc.abstractmethod
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
+  def GetInputSourceToExamplePTransform(self):
     """Returns PTransform for converting input source to TF examples.
 
     Note that each input split will be transformed by this function separately.
@@ -123,10 +123,10 @@ class BaseExampleGenExecutor(
     """
     pass
 
-  def GenerateExamplesByBeam(self, pipeline: beam.Pipeline,
-                             input_dict: Dict[Text, List[types.TfxType]],
-                             exec_properties: Dict[Text, Any]
-                            ) -> Dict[Text, beam.pvalue.PCollection]:
+  def GenerateExamplesByBeam(self, pipeline,
+                             input_dict,
+                             exec_properties
+                            ):
     """Converts input source to TF example splits based on configs.
 
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
@@ -192,9 +192,9 @@ class BaseExampleGenExecutor(
       result[split_names[index]] = example_split
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(self, input_dict,
+         output_dict,
+         exec_properties):
     """Take input data source and generates TF Example splits.
 
     Args:

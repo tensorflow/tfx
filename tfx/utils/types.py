@@ -52,7 +52,7 @@ class TfxType(object):
   with additional properties for accessing internal state.
   """
 
-  def __init__(self, type_name: Text, split: Text = ''):
+  def __init__(self, type_name, split = ''):
     """Construct an instance of TfxType.
 
     Each instance of TfxTypes wraps an Artifact and its type internally. When
@@ -93,7 +93,7 @@ class TfxType(object):
   def __repr__(self):
     return self.__str__()
 
-  def json_dict(self) -> Dict[Text, Any]:
+  def json_dict(self):
     """Returns a dict suitable for json serialization."""
     return {
         'artifact':
@@ -103,7 +103,7 @@ class TfxType(object):
     }
 
   @classmethod
-  def parse_from_json_dict(cls, d: Dict[Text, Any]):
+  def parse_from_json_dict(cls, d):
     """Creates a instance of TfxType from a json deserialized dict."""
     artifact = metadata_store_pb2.Artifact()
     json_format.Parse(json.dumps(d['artifact']), artifact)
@@ -115,89 +115,89 @@ class TfxType(object):
     return result
 
   @property
-  def uri(self) -> Text:
+  def uri(self):
     """URI of underlying artifact."""
     return self.artifact.uri
 
   @uri.setter
-  def uri(self, uri: Text):
+  def uri(self, uri):
     """Set URI of underlying artifact."""
     self.artifact.uri = uri
 
   @property
-  def id(self) -> int:
+  def id(self):
     """Id of underlying artifact."""
     return self.artifact.id
 
   @id.setter
-  def id(self, artifact_id: int):
+  def id(self, artifact_id):
     """Set id of underlying artifact."""
     self.artifact.id = artifact_id
 
   @property
-  def span(self) -> int:
+  def span(self):
     """Span of underlying artifact."""
     return self.artifact.properties['span'].int_value
 
   @span.setter
-  def span(self, span: int):
+  def span(self, span):
     """Set span of underlying artifact."""
     self.artifact.properties['span'].int_value = span
 
   @property
-  def type_id(self) -> int:
+  def type_id(self):
     """Id of underlying artifact type."""
     return self.artifact.type_id
 
   @type_id.setter
-  def type_id(self, type_id: int):
+  def type_id(self, type_id):
     """Set id of underlying artifact type."""
     self.artifact.type_id = type_id
 
   @property
-  def type_name(self) -> Text:
+  def type_name(self):
     """Name of underlying artifact type."""
     return self.artifact_type.name
 
   @property
-  def state(self) -> Text:
+  def state(self):
     """State of the underlying artifact."""
     return self.artifact.properties['state'].string_value
 
   @state.setter
-  def state(self, state: Text):
+  def state(self, state):
     """Set state of the underlying artifact."""
     self.artifact.properties['state'].string_value = state
 
   @property
-  def split(self) -> Text:
+  def split(self):
     """Split of the underlying artifact is in."""
     return self.artifact.properties['split'].string_value
 
   @split.setter
-  def split(self, split: Text):
+  def split(self, split):
     """Set state of the underlying artifact."""
     self.artifact.properties['split'].string_value = split
 
-  def set_artifact(self, artifact: metadata_store_pb2.Artifact):
+  def set_artifact(self, artifact):
     """Set entire artifact in this object."""
     self.artifact = artifact
 
-  def set_artifact_type(self, artifact_type: metadata_store_pb2.ArtifactType):
+  def set_artifact_type(self, artifact_type):
     """Set entire ArtifactType in this object."""
     self.artifact_type = artifact_type
     self.artifact.type_id = artifact_type.id
 
-  def set_string_custom_property(self, key: Text, value: Text):
+  def set_string_custom_property(self, key, value):
     """Set a custom property of string type."""
     self.artifact.custom_properties[key].string_value = value
 
-  def set_int_custom_property(self, key: Text, value: int):
+  def set_int_custom_property(self, key, value):
     """Set a custom property of int type."""
     self.artifact.custom_properties[key].int_value = builtins.int(value)
 
 
-def parse_tfx_type_dict(json_str: Text) -> Dict[Text, List[TfxType]]:
+def parse_tfx_type_dict(json_str):
   """Parse a dict from key to list of TfxType from its json format."""
   tfx_artifacts = {}
   for k, l in json.loads(json_str).items():
@@ -205,7 +205,7 @@ def parse_tfx_type_dict(json_str: Text) -> Dict[Text, List[TfxType]]:
   return tfx_artifacts
 
 
-def jsonify_tfx_type_dict(artifact_dict: Dict[Text, List[TfxType]]) -> Text:
+def jsonify_tfx_type_dict(artifact_dict):
   """Serialize a dict from key to list of TfxType into json format."""
   d = {}
   for k, l in artifact_dict.items():
@@ -213,7 +213,7 @@ def jsonify_tfx_type_dict(artifact_dict: Dict[Text, List[TfxType]]) -> Text:
   return json.dumps(d)
 
 
-def get_single_instance(artifact_list: List[TfxType]) -> TfxType:
+def get_single_instance(artifact_list):
   """Get a single instance of TfxType from a list of length one.
 
   Args:
@@ -231,7 +231,7 @@ def get_single_instance(artifact_list: List[TfxType]) -> TfxType:
   return artifact_list[0]
 
 
-def get_single_uri(artifact_list: List[TfxType]) -> Text:
+def get_single_uri(artifact_list):
   """Get the uri of TfxType from a list of length one.
 
   Args:
@@ -246,7 +246,7 @@ def get_single_uri(artifact_list: List[TfxType]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
-def _get_split_instance(artifact_list: List[TfxType], split: Text) -> TfxType:
+def _get_split_instance(artifact_list, split):
   """Get an instance of TfxType with matching split from given list.
 
   Args:
@@ -265,7 +265,7 @@ def _get_split_instance(artifact_list: List[TfxType], split: Text) -> TfxType:
   return matched[0]
 
 
-def get_split_uri(artifact_list: List[TfxType], split: Text) -> Text:
+def get_split_uri(artifact_list, split):
   """Get the uri of TfxType with matching split from given list.
 
   Args:

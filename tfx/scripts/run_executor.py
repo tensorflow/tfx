@@ -28,7 +28,7 @@ from tfx.utils import import_utils
 from tfx.utils import types
 
 
-def _run_executor(args, pipeline_args) -> None:
+def _run_executor(args, pipeline_args):
   """Select a particular executor and run it based on name."""
   tf.logging.set_verbosity(tf.logging.INFO)
 

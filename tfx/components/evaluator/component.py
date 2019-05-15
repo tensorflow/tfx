@@ -50,11 +50,11 @@ class Evaluator(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples: channel.Channel,
-      model_exports: channel.Channel,
-      feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
-      name: Optional[Text] = None,
-      outputs: Optional[base_component.ComponentOutputs] = None):
+      examples,
+      model_exports,
+      feature_slicing_spec = None,
+      name = None,
+      outputs = None):
     component_name = 'Evaluator'
     input_dict = {
         'examples': channel.as_channel(examples),
@@ -74,22 +74,22 @@ class Evaluator(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
+  def _create_outputs(self):
     """Creates outputs for Evaluator.
 
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    output_artifact_collection = [types.TfxType('ModelEvalPath')]
+    output_artifacts = [types.TfxType('ModelEvalPath')]
     return base_component.ComponentOutputs({
         'output':
-            channel.Channel(
+            channel.StaticChannel(
                 type_name='ModelEvalPath',
-                static_artifact_collection=output_artifact_collection),
+                artifacts=output_artifacts),
     })
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
+  def _type_check(self, input_dict,
+                  exec_properties):
     """Does type checking for the inputs and exec_properties.
 
     Args:
