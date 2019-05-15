@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2018 Google LLC
+# Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
-BEAM_BRANCH="release-2.11.0"
+BEAM_BRANCH="release-2.12.0"
 
 SETUP_FLINK=1
 FLINK_VERSION="1.5.6"
