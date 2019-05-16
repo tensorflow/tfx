@@ -21,6 +21,8 @@ import os
 
 from kfp import compiler
 from kfp import dsl
+from typing import Optional, Text
+
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner

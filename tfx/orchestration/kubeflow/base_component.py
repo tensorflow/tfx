@@ -30,6 +30,8 @@ import json
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
+from typing import Any, Dict, List, Optional, Text
+
 from tfx import version
 from tfx.utils import types
 
