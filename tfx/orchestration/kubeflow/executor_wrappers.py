@@ -76,6 +76,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
     executor_cls = import_utils.import_class_by_path(executor_class_path)
+    self._exec_properties = exec_properties
     self._output_dir = self._exec_properties['output_dir']
     self._workflow_id = os.environ['WORKFLOW_ID']
     # TODO(swoonna): Switch to execution_id when available
@@ -90,7 +91,6 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     self._executor = executor_cls(executor_context)
     self._input_dict = input_dict
     self._output_dict = types.parse_tfx_type_dict(outputs)
-    self._exec_properties = exec_properties
     self._component_name = to_snake_case(name)
 
   def _set_outputs(self):
