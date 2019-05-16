@@ -166,6 +166,7 @@ six,https://raw.githubusercontent.com/benjaminp/six/master/LICENSE,MIT
 sklearn,https://raw.githubusercontent.com/scikit-learn/scikit-learn/master/COPYING,BSD
 sqlalchemy,https://raw.githubusercontent.com/zzzeek/sqlalchemy/master/LICENSE,MIT
 statistics,https://raw.githubusercontent.com/digitalemagine/py-statistics/master/LICENSE,PSF v2
+strip-hints,https://github.com/abarker/strip-hints/blob/master/LICENSE.txt,MIT
 subprocess32,https://raw.githubusercontent.com/google/python-subprocess32/master/LICENSE,Python Software Foundation License
 tensorboard,https://raw.githubusercontent.com/tensorflow/tensorboard/master/LICENSE,Apache 2.0
 tensorflow,https://raw.githubusercontent.com/tensorflow/tensorflow/master/LICENSE,Apache 2.0
