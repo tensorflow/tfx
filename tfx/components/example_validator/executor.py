@@ -32,9 +32,9 @@ DEFAULT_FILE_NAME = 'anomalies.pbtxt'
 class Executor(base_executor.BaseExecutor):
   """TensorFlow ExampleValidator component executor."""
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow ExampleValidator executor entrypoint.
 
     This validates the statistics on the 'eval' split against the schema.

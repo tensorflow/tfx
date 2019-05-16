@@ -35,9 +35,9 @@ _DEFAULT_FILE_NAME = 'stats_tfrecord'
 class Executor(base_executor.BaseExecutor):
   """Generic TFX statsgen executor."""
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """Computes stats for each split of input using tensorflow_data_validation.
 
     Args:

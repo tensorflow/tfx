@@ -41,10 +41,10 @@ class ExecutionDecision(object):
   """
 
   def __init__(self,
-               input_dict,
-               output_dict,
-               exec_properties,
-               execution_id = None):
+               input_dict: Dict[Text, List[types.TfxType]],
+               output_dict: Dict[Text, List[types.TfxType]],
+               exec_properties: Dict[Text, Any],
+               execution_id: Optional[int] = None):
     self.input_dict = input_dict
     self.output_dict = output_dict
     self.exec_properties = exec_properties
@@ -62,8 +62,8 @@ class DriverOptions(object):
     enable_cache: whether cache is enabled in current execution.
   """
 
-  def __init__(self, worker_name, base_output_dir,
-               enable_cache):
+  def __init__(self, worker_name: Text, base_output_dir: Text,
+               enable_cache: bool):
     self.worker_name = worker_name
     self.base_output_dir = base_output_dir
     self.enable_cache = enable_cache
@@ -80,14 +80,14 @@ class BaseDriver(object):
     metadata_handler: An instance of Metadata.
   """
 
-  def __init__(self, logger,
-               metadata_handler):
+  def __init__(self, logger: logging.Logger,
+               metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
     self._logger = logger
 
-  def _log_properties(self, input_dict,
-                      output_dict,
-                      exec_properties):
+  def _log_properties(self, input_dict: Dict[Text, List[types.TfxType]],
+                      output_dict: Dict[Text, List[types.TfxType]],
+                      exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     self._logger.info('Starting %s driver.', self.__class__.__name__)
     self._logger.info('Inputs for {} is: {}'.format(self.__class__.__name__,
@@ -99,11 +99,11 @@ class BaseDriver(object):
 
   def _get_output_from_previous_run(
       self,
-      input_dict,
-      output_dict,
-      exec_properties,
-      driver_options,
-  ):
+      input_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      driver_options: DriverOptions,
+  ) -> Optional[Dict[Text, List[types.TfxType]]]:
     """Returns outputs from previous identical execution if found."""
     previous_execution_id = self._metadata_handler.previous_run(
         type_name=driver_options.worker_name,
@@ -127,7 +127,7 @@ class BaseDriver(object):
       return None
 
   def _verify_inputs(
-      self, input_dict):
+      self, input_dict: Dict[Text, List[types.TfxType]]) -> None:
     """Verify input exist.
 
     Args:
@@ -145,11 +145,11 @@ class BaseDriver(object):
 
   def _default_caching_handling(
       self,
-      input_dict,
-      output_dict,
-      exec_properties,
-      driver_options,
-  ):
+      input_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      driver_options: DriverOptions,
+  ) -> ExecutionDecision:
     """Check cache for desired and applicable identical execution."""
     enable_cache = driver_options.enable_cache
     base_output_dir = driver_options.base_output_dir
@@ -211,11 +211,11 @@ class BaseDriver(object):
 
   def prepare_execution(
       self,
-      input_dict,
-      output_dict,
-      exec_properties,
-      driver_options,
-  ):
+      input_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      driver_options: DriverOptions,
+  ) -> ExecutionDecision:
     """Prepares inputs, outputs and execution properties for actual execution.
 
     This method could be overridden by custom drivers if they have a different

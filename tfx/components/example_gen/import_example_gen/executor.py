@@ -30,10 +30,10 @@ from tfx.utils import types
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _ImportExample(  # pylint: disable=invalid-name
-    pipeline,
-    input_dict,
-    exec_properties,  # pylint: disable=unused-argument
-    split_pattern):
+    pipeline: beam.Pipeline,
+    input_dict: Dict[Text, List[types.TfxType]],
+    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    split_pattern: Text) -> beam.pvalue.PCollection:
   """Read TFRecord files to PCollection of TF examples.
 
   Note that each input split will be transformed by this function separately.
@@ -66,6 +66,6 @@ def _ImportExample(  # pylint: disable=invalid-name
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX import example gen executor."""
 
-  def GetInputSourceToExamplePTransform(self):
+  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
     """Returns PTransform for importing TF examples."""
     return _ImportExample

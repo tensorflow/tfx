@@ -33,8 +33,8 @@ class Executor(base_executor.BaseExecutor):
   """Generic TFX model evaluator executor."""
 
   def _get_slice_spec_from_feature_slicing_spec(
-      self, spec
-  ):
+      self, spec: evaluator_pb2.FeatureSlicingSpec
+  ) -> List[tfma.slicer.SingleSliceSpec]:
     """Given a feature slicing spec, returns a List of SingleSliceSpecs.
 
     Args:
@@ -53,9 +53,9 @@ class Executor(base_executor.BaseExecutor):
       result.append(tfma.slicer.SingleSliceSpec())
     return result
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """Runs a batch job to evaluate the eval_model against the given input.
 
     Args:

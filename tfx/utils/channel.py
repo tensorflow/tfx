@@ -38,8 +38,8 @@ class Channel(object):
   # TODO(b/124763842): Consider replace type_name with ArtifactType.
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(self,
-               type_name,
-               static_artifact_collection = None):
+               type_name: Text,
+               static_artifact_collection: Iterable[types.TfxType] = None):
     """Initialization of Channel.
 
     Args:
@@ -61,14 +61,14 @@ class Channel(object):
   def __repr__(self):
     return self.__str__()
 
-  def _validate_type(self):
+  def _validate_type(self) -> None:
     for artifact in self._static_artifact_collection:
       if artifact.type_name != self.type_name:
         raise ValueError(
             'Static artifact collection with different artifact type than {}'
             .format(self.type_name))
 
-  def get(self):
+  def get(self) -> Iterable[types.TfxType]:
     """Returns all artifacts that can be get from this Channel.
 
     Returns:
@@ -78,7 +78,7 @@ class Channel(object):
     #  instead of a static Artifact collection.
     return self._static_artifact_collection
 
-  def type_check(self, expected_type_name):
+  def type_check(self, expected_type_name: Text) -> None:
     """Checks whether a Channel has the expected type name.
 
     Args:
@@ -92,7 +92,7 @@ class Channel(object):
                                                        str(self.type_name)))
 
 
-def as_channel(source):
+def as_channel(source: Union[Channel, Iterable[types.TfxType]]) -> Channel:
   """Converts artifact collection of the same artifact type into a Channel.
 
   Args:

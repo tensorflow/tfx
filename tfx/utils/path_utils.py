@@ -42,23 +42,23 @@ SERVING_MODEL_DIR = 'serving_model_dir'
 #           |-- ...
 
 
-def eval_model_dir(output_uri):
+def eval_model_dir(output_uri: Text) -> Text:
   """Returns directory for exported model for evaluation purpose."""
   return os.path.join(output_uri, EVAL_MODEL_DIR)
 
 
-def eval_model_path(output_uri):
+def eval_model_path(output_uri: Text) -> Text:
   """Returns path to timestamped exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
   return io_utils.get_only_uri_in_dir(model_dir)
 
 
-def serving_model_dir(output_uri):
+def serving_model_dir(output_uri: Text) -> Text:
   """Returns directory for exported model for serving purpose."""
   return os.path.join(output_uri, SERVING_MODEL_DIR)
 
 
-def serving_model_path(output_uri):
+def serving_model_path(output_uri: Text) -> Text:
   """Returns path for timestamped and named serving model exported."""
   export_dir = os.path.join(serving_model_dir(output_uri), 'export')
   model_dir = io_utils.get_only_uri_in_dir(export_dir)

@@ -22,7 +22,7 @@ from tfx.utils import channel
 from tfx.utils import types
 
 
-def external_input(uri):
+def external_input(uri: Text) -> channel.Channel:
   """Helper function to declare external input.
 
   Args:
@@ -36,7 +36,7 @@ def external_input(uri):
   return channel.as_channel([instance])
 
 
-def csv_input(uri):
+def csv_input(uri: Text) -> channel.Channel:
   """Helper function to declare input for csv_example_gen component.
 
   Args:
@@ -48,7 +48,7 @@ def csv_input(uri):
   return external_input(uri)
 
 
-def tfrecord_input(uri):
+def tfrecord_input(uri: Text) -> channel.Channel:
   """Helper function to declare input for import_example_gen component.
 
   Args:

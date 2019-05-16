@@ -39,9 +39,9 @@ class ArgsCapture(object):
 
 class FakeExecutor(base_executor.BaseExecutor):
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """Overrides BaseExecutor.Do()."""
     args_capture = ArgsCapture.instance
     args_capture.input_dict = input_dict

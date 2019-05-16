@@ -33,7 +33,7 @@ class KubeflowRunner(tfx_runner.TfxRunner):
   Constructs a pipeline definition YAML file based on the TFX logical pipeline.
   """
 
-  def __init__(self, output_dir = None):
+  def __init__(self, output_dir: Optional[Text] = None):
     """Initializes KubeflowRunner for compiling a Kubeflow Pipeline.
 
     Args:
@@ -42,10 +42,10 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     """
     self._output_dir = output_dir or os.getcwd()
 
-  def _prepare_output_dict(self, outputs):
+  def _prepare_output_dict(self, outputs: tfx_base_component.ComponentOutputs):
     return dict((k, v.get()) for k, v in outputs.get_all().items())
 
-  def _construct_pipeline_graph(self, pipeline):
+  def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
 
     Args:
@@ -107,7 +107,7 @@ class KubeflowRunner(tfx_runner.TfxRunner):
         producers[channel]['component'] = kfp_component
         producers[channel]['channel_name'] = channel_name
 
-  def run(self, pipeline):
+  def run(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.
 
     Args:

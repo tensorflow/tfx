@@ -29,7 +29,7 @@ from tfx import version
 from tfx.utils import io_utils
 
 
-def _get_pypi_package_version():
+def _get_pypi_package_version() -> Optional[Text]:
   """Returns package version if TFX is installed from PyPI, otherwise None."""
   # We treat any integral patch version as published to PyPI, since development
   # packages always end with 'dev' or 'rc'.
@@ -39,7 +39,7 @@ def _get_pypi_package_version():
     return None
 
 
-def make_beam_dependency_flags(beam_pipeline_args):
+def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   """Make beam arguments for TFX python dependencies, if latter was not set.
 
   When TFX executors are used with non-local beam runners (Dataflow, Flink, etc)
@@ -89,7 +89,7 @@ if __name__ == '__main__':
 """
 
 
-def _build_requirements_file():
+def _build_requirements_file() -> Text:
   """Returns a requirements.txt file which includes current TFX package."""
   result = os.path.join(tempfile.mkdtemp(), 'requirement.txt')
   tf.logging.info('Generating a temp requirements.txt file at %s', result)
@@ -97,7 +97,7 @@ def _build_requirements_file():
   return result
 
 
-def build_ephemeral_package():
+def build_ephemeral_package() -> Text:
   """Repackage current installation of TFX into a tfx_ephemeral sdist.
 
   Returns:

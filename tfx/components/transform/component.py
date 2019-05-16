@@ -54,11 +54,11 @@ class Transform(base_component.BaseComponent):
   """
 
   def __init__(self,
-               input_data,
-               schema,
-               module_file,
-               name = None,
-               outputs = None):
+               input_data: channel.Channel,
+               schema: channel.Channel,
+               module_file: Text,
+               name: Text = None,
+               outputs: Dict[Text, channel.Channel] = None):
     component_name = 'Transform'
     input_dict = {
         'input_data': channel.as_channel(input_data),
@@ -76,7 +76,7 @@ class Transform(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self):
+  def _create_outputs(self) -> base_component.ComponentOutputs:
     """Creates outputs for Transform.
 
     Returns:
@@ -100,8 +100,8 @@ class Transform(base_component.BaseComponent):
             ),
     })
 
-  def _type_check(self, input_dict,
-                  exec_properties):
+  def _type_check(self, input_dict: Dict[Text, channel.Channel],
+                  exec_properties: Dict[Text, Any]) -> None:
     """Does type checking for the inputs and exec_properties.
 
     Args:

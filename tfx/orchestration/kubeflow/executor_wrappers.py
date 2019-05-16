@@ -31,7 +31,7 @@ from tfx.utils import import_utils
 from tfx.utils import types
 
 
-def parse_tfx_type(json_str):
+def parse_tfx_type(json_str: Text):
   """Parses a list of artifacts and their types from json."""
   json_artifact_list = json.loads(json_str)
 
@@ -43,7 +43,7 @@ def parse_tfx_type(json_str):
   return tfx_types
 
 
-def to_snake_case(name):
+def to_snake_case(name: Text):
   s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
   return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
@@ -53,11 +53,11 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
 
   def __init__(
       self,
-      executor_class_path,
-      name,
-      input_dict,
-      outputs,
-      exec_properties,
+      executor_class_path: Text,
+      name: Text,
+      input_dict: Dict[Text, List[types.TfxType]],
+      outputs: Text,
+      exec_properties: Dict[Text, Any],
   ):
     raw_args = exec_properties.get('beam_pipeline_args', [])
 
@@ -127,7 +127,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
 class CsvExampleGenWrapper(KubeflowExecutorWrapper):
   """Wrapper for CSVExampleGen component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(CsvExampleGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='CSVExampleGen',
@@ -150,7 +150,7 @@ class CsvExampleGenWrapper(KubeflowExecutorWrapper):
 class BigQueryExampleGenWrapper(KubeflowExecutorWrapper):
   """Wrapper for BigQueryExampleGen component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(BigQueryExampleGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='BigQueryExampleGen',
@@ -164,7 +164,7 @@ class BigQueryExampleGenWrapper(KubeflowExecutorWrapper):
 class StatisticsGenWrapper(KubeflowExecutorWrapper):
   """Wrapper for StatisticsGen component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(StatisticsGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='StatisticsGen',
@@ -180,7 +180,7 @@ class StatisticsGenWrapper(KubeflowExecutorWrapper):
 class SchemaGenWrapper(KubeflowExecutorWrapper):
   """Wrapper for SchemaGen component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(SchemaGenWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='SchemaGen',
@@ -196,7 +196,7 @@ class SchemaGenWrapper(KubeflowExecutorWrapper):
 class ExampleValidatorWrapper(KubeflowExecutorWrapper):
   """Wrapper for ExampleValidator component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(ExampleValidatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='ExampleValidator',
@@ -213,7 +213,7 @@ class ExampleValidatorWrapper(KubeflowExecutorWrapper):
 class TransformWrapper(KubeflowExecutorWrapper):
   """Wrapper for Transform component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(TransformWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Transform',
@@ -230,7 +230,7 @@ class TransformWrapper(KubeflowExecutorWrapper):
 class TrainerWrapper(KubeflowExecutorWrapper):
   """Wrapper for Trainer component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(TrainerWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Trainer',
@@ -252,7 +252,7 @@ class TrainerWrapper(KubeflowExecutorWrapper):
 class EvaluatorWrapper(KubeflowExecutorWrapper):
   """Wrapper for Evaluator component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(EvaluatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Evaluator',
@@ -269,7 +269,7 @@ class EvaluatorWrapper(KubeflowExecutorWrapper):
 class ModelValidatorWrapper(KubeflowExecutorWrapper):
   """Wrapper for ModelValidator component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(ModelValidatorWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='ModelValidator',
@@ -290,7 +290,7 @@ class ModelValidatorWrapper(KubeflowExecutorWrapper):
 class PusherWrapper(KubeflowExecutorWrapper):
   """Wrapper for Pusher component."""
 
-  def __init__(self, args):
+  def __init__(self, args: argparse.Namespace):
     super(PusherWrapper, self).__init__(
         executor_class_path=args.executor_class_path,
         name='Pusher',

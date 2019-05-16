@@ -68,16 +68,17 @@ class Trainer(base_component.BaseComponent):
   """
 
   def __init__(self,
-               transformed_examples,
-               transform_output,
-               schema,
-               module_file,
-               train_args,
-               eval_args,
-               custom_config = None,
-               name = None,
-               executor_class = executor.Executor,
-               outputs = None):
+               transformed_examples: channel.Channel,
+               transform_output: channel.Channel,
+               schema: channel.Channel,
+               module_file: Text,
+               train_args: trainer_pb2.TrainArgs,
+               eval_args: trainer_pb2.EvalArgs,
+               custom_config: Optional[Dict[Text, Any]] = None,
+               name: Optional[Text] = None,
+               executor_class: Optional[Type[
+                   base_executor.BaseExecutor]] = executor.Executor,
+               outputs: Optional[channel.Channel] = None):
     component_name = 'Trainer'
     input_dict = {
         'transformed_examples': channel.as_channel(transformed_examples),
@@ -99,7 +100,7 @@ class Trainer(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self):
+  def _create_outputs(self) -> base_component.ComponentOutputs:
     """Creates outputs for Trainer.
 
     Returns:
@@ -115,8 +116,8 @@ class Trainer(base_component.BaseComponent):
                 static_artifact_collection=output_artifact_collection),
     })
 
-  def _type_check(self, input_dict,
-                  exec_properties):
+  def _type_check(self, input_dict: Dict[Text, channel.Channel],
+                  exec_properties: Dict[Text, Any]) -> None:
     """Does type checking for the inputs and exec_properties.
 
     Args:

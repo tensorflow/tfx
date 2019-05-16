@@ -47,10 +47,10 @@ class PipelineProperties(object):
   """Holds pipeline level execution properties that apply to all component."""
 
   def __init__(self,
-               output_dir,
-               log_root,
-               beam_pipeline_args = None,
-               tfx_image = None):
+               output_dir: Text,
+               log_root: Text,
+               beam_pipeline_args: Optional[Text] = None,
+               tfx_image: Text = None):
     self.exec_properties = collections.OrderedDict([
         ('output_dir', output_dir),
         ('log_root', log_root),
@@ -70,12 +70,12 @@ class BaseComponent(object):
 
   def __new__(
       cls,
-      component_name,
-      input_dict,
-      output_dict,
-      exec_properties,
-      executor_class_path,
-      pipeline_properties,
+      component_name: Text,
+      input_dict: Dict[Text, Any],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      executor_class_path: Text,
+      pipeline_properties: PipelineProperties,
   ):
     """Creates a new component.
 

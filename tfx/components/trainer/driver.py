@@ -39,11 +39,11 @@ class Driver(base_driver.BaseDriver):
 
   def prepare_execution(
       self,
-      input_dict,
-      output_dict,
-      exec_properties,
-      driver_options,
-  ):
+      input_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      driver_options: base_driver.DriverOptions,
+  ) -> base_driver.ExecutionDecision:
     """Extends BaseDriver.prepare_execution() for potential warm starting."""
 
     execution_decision = self._default_caching_handling(

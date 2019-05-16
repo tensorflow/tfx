@@ -32,9 +32,9 @@ _DEFAULT_FILE_NAME = 'schema.pbtxt'
 class Executor(base_executor.BaseExecutor):
   """Generic TFX schema_gen executor."""
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 
     This infers the schema using tensorflow_data_validation on the precomputed

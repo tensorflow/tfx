@@ -52,11 +52,11 @@ class ImportExampleGen(component.ExampleGen):
   """
 
   def __init__(self,
-               input_base,
-               input_config = None,
-               output_config = None,
-               name = None,
-               outputs = None):
+               input_base: channel.Channel,
+               input_config: Optional[example_gen_pb2.Input] = None,
+               output_config: Optional[example_gen_pb2.Output] = None,
+               name: Optional[Text] = None,
+               outputs: Optional[base_component.ComponentOutputs] = None):
     super(ImportExampleGen, self).__init__(
         executor=executor.Executor,
         input_base=input_base,

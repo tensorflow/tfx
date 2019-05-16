@@ -29,7 +29,7 @@ from tfx.utils import io_utils
 from tfx.utils import types
 
 
-def _dict_to_example(instance):
+def _dict_to_example(instance: tfdv.types.Example) -> tf.train.Example:
   """Decoded CSV to tf example."""
   feature = {}
   for key, value in instance.items():
@@ -51,10 +51,10 @@ def _dict_to_example(instance):
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
-    pipeline,
-    input_dict,
-    exec_properties,  # pylint: disable=unused-argument
-    split_pattern):
+    pipeline: beam.Pipeline,
+    input_dict: Dict[Text, List[types.TfxType]],
+    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    split_pattern: Text) -> beam.pvalue.PCollection:
   """Read CSV files and transform to TF examples.
 
   Note that each input split will be transformed by this function separately.
@@ -100,6 +100,6 @@ def _CsvToExample(  # pylint: disable=invalid-name
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX CSV example gen executor."""
 
-  def GetInputSourceToExamplePTransform(self):
+  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
     """Returns PTransform for CSV to TF examples."""
     return _CsvToExample
