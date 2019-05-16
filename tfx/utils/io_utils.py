@@ -29,7 +29,7 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-def import_func(module_path, fn_name):  # pylint: disable=g-bare-generic
+def import_func(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
   """Imports a function from a module provided as source file."""
 
   # If a GCS bucket (gs://...), download to local filesystem first as
@@ -54,7 +54,7 @@ def import_func(module_path, fn_name):  # pylint: disable=g-bare-generic
   return getattr(user_module, fn_name)
 
 
-def copy_file(src, dst, overwrite = False):
+def copy_file(src: Text, dst: Text, overwrite: bool = False):
   """Copies a single file from source to destination."""
 
   if overwrite and tf.gfile.Exists(dst):
@@ -64,7 +64,7 @@ def copy_file(src, dst, overwrite = False):
   tf.gfile.Copy(src, dst, overwrite=overwrite)
 
 
-def copy_dir(src, dst):
+def copy_dir(src: Text, dst: Text) -> None:
   """Copies the whole directory recursively from source to destination."""
 
   if tf.gfile.Exists(dst):
@@ -81,7 +81,7 @@ def copy_dir(src, dst):
       tf.gfile.MakeDirs(os.path.join(dst, sub_dir))
 
 
-def get_only_uri_in_dir(dir_path):
+def get_only_uri_in_dir(dir_path: Text) -> Text:
   """Gets the only uri from given directory."""
 
   files = tf.gfile.ListDirectory(dir_path)
@@ -92,27 +92,27 @@ def get_only_uri_in_dir(dir_path):
   return os.path.join(dir_path, filename)
 
 
-def delete_dir(path):
+def delete_dir(path: Text) -> None:
   """Deletes a directory if exists."""
 
   if tf.gfile.IsDirectory(path):
     tf.gfile.DeleteRecursively(path)
 
 
-def write_string_file(file_name, string_value):
+def write_string_file(file_name: Text, string_value: Text) -> None:
   """Writes a string to file."""
 
   tf.gfile.MakeDirs(os.path.dirname(file_name))
   file_io.write_string_to_file(file_name, string_value)
 
 
-def write_pbtxt_file(file_name, proto):
+def write_pbtxt_file(file_name: Text, proto: Message) -> None:
   """Writes a text protobuf to file."""
 
   write_string_file(file_name, text_format.MessageToString(proto))
 
 
-def write_tfrecord_file(file_name, proto):
+def write_tfrecord_file(file_name: Text, proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
 
   tf.gfile.MakeDirs(os.path.dirname(file_name))
@@ -120,20 +120,20 @@ def write_tfrecord_file(file_name, proto):
     writer.write(proto.SerializeToString())
 
 
-def parse_pbtxt_file(file_name, message):
+def parse_pbtxt_file(file_name: Text, message: Message) -> Message:
   """Parses a protobuf message from a text file and return message itself."""
   contents = file_io.read_file_to_string(file_name)
   text_format.Parse(contents, message)
   return message
 
 
-def load_csv_column_names(csv_file):
+def load_csv_column_names(csv_file: Text) -> List[Text]:
   """Parse the first line of a csv file as column names."""
   with file_io.FileIO(csv_file, 'r') as f:
     return f.readline().strip().split(',')
 
 
-def all_files_pattern(file_pattern):
+def all_files_pattern(file_pattern: Text) -> Text:
   """Returns file pattern suitable for Beam to locate multiple files."""
   return '{}*'.format(file_pattern)
 
@@ -141,7 +141,7 @@ def all_files_pattern(file_pattern):
 class SchemaReader(object):
   """Schema reader."""
 
-  def read(self, schema_path):
+  def read(self, schema_path: Text) -> schema_pb2.Schema:
     """Gets a tf.metadata schema.
 
     Args:

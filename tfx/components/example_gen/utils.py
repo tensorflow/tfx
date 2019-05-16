@@ -21,9 +21,9 @@ from typing import List, Text
 from tfx.proto import example_gen_pb2
 
 
-def generate_output_split_names(input_config,
-                                output_config
-                               ):
+def generate_output_split_names(input_config: example_gen_pb2.Input,
+                                output_config: example_gen_pb2.Output
+                               ) -> List[Text]:
   """Return output split name based on input and output config.
 
   Return output split name if it's specified and input only contains one split,
@@ -72,8 +72,8 @@ def generate_output_split_names(input_config,
   return result
 
 
-def make_default_input_config(split_pattern = '*'
-                             ):
+def make_default_input_config(split_pattern: Text = '*'
+                             ) -> example_gen_pb2.Input:
   """Returns default input config."""
   # Treats input base dir as a single split.
   return example_gen_pb2.Input(splits=[
@@ -81,8 +81,8 @@ def make_default_input_config(split_pattern = '*'
   ])
 
 
-def make_default_output_config(input_config
-                              ):
+def make_default_output_config(input_config: example_gen_pb2.Input
+                              ) -> example_gen_pb2.Output:
   """Returns default output config based on input config."""
   if len(input_config.splits) > 1:
     # Returns empty output split config as output split will be same as input.

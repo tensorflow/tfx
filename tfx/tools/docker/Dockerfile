@@ -28,11 +28,14 @@ RUN apt-get update -y && \
   unzip \
   git
 
-RUN python -m pip install --upgrade pip==19.0.3
+RUN python -m pip install --upgrade pip==19.0.3 && \
+  pip install strip-hints==0.1.14
 
 # docker build command should be run under root directory of github checkout.
 ADD . /tfx-src
 WORKDIR /tfx-src
+# TODO(zhitaoli): Remove this once we move to python 3.
+RUN python /tfx-src/tfx/scripts/strip-type-hints.py
 RUN pip install -e .[docker-image]
 
 RUN /tfx-src/tfx/tools/docker/license.sh /tfx-src/tfx/tools/docker/third_party_licenses.csv /third_party/licenses

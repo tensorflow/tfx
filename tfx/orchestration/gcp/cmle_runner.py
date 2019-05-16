@@ -32,22 +32,22 @@ from tfx.utils import types
 _POLLING_INTERVAL_IN_SECONDS = 30
 
 
-def _get_tf_runtime_version():
+def _get_tf_runtime_version() -> Text:
   # runtimeVersion should be same as <major>.<minor> of currently
   # installed tensorflow version.
   return '.'.join(tf.__version__.split('.')[0:2])
 
 
-def _get_python_version():
+def _get_python_version() -> Text:
   """Return <major>.<minor> version for current Python interpreter."""
   return '%d.%d' % (sys.version_info.major, sys.version_info.minor)
 
 
-def start_cmle_training(input_dict,
-                        output_dict,
-                        exec_properties,
-                        executor_class_path,
-                        training_inputs):
+def start_cmle_training(input_dict: Dict[Text, List[types.TfxType]],
+                        output_dict: Dict[Text, List[types.TfxType]],
+                        exec_properties: Dict[Text, Any],
+                        executor_class_path: Text,
+                        training_inputs: Dict[Text, Any]):
   """Start a trainer job on CMLE.
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -140,8 +140,8 @@ def start_cmle_training(input_dict,
   tf.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
-def deploy_model_for_cmle_serving(serving_path, model_version,
-                                  cmle_serving_args):
+def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
+                                  cmle_serving_args: Dict[Text, Any]):
   """Deploys a model for serving with CMLE.
 
   Args:

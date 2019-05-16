@@ -52,11 +52,11 @@ class BigQueryExampleGen(component.ExampleGen):
   """
 
   def __init__(self,
-               query = None,
-               input_config = None,
-               output_config = None,
-               name = None,
-               outputs = None):
+               query: Optional[Text] = None,
+               input_config: Optional[example_gen_pb2.Input] = None,
+               output_config: Optional[example_gen_pb2.Output] = None,
+               name: Optional[Text] = None,
+               outputs: Optional[base_component.ComponentOutputs] = None):
     if bool(query) == bool(input_config):
       raise RuntimeError('Only one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)

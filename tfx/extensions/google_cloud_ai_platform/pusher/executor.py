@@ -35,7 +35,7 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 class Executor(tfx_pusher_executor.Executor):
   """Deploy a model to Google Cloud AI Platform serving."""
 
-  def _make_local_temp_destination(self):
+  def _make_local_temp_destination(self) -> Text:
     """Make a temp destination to push the model."""
     temp_dir = tempfile.mkdtemp()
     push_destination = pusher_pb2.PushDestination(
@@ -43,9 +43,9 @@ class Executor(tfx_pusher_executor.Executor):
             base_directory=temp_dir))
     return json_format.MessageToJson(push_destination)
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]):
     """Overrides the tfx_pusher_executor.
 
     Args:

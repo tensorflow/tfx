@@ -36,13 +36,13 @@ class Executor(base_executor.BaseExecutor):
   """Generic TFX model validator executor."""
 
   # TODO(jyzhao): customized threshold support.
-  def _pass_threshold(self, eval_result):
+  def _pass_threshold(self, eval_result: tfma.EvalResult) -> bool:
     """Check threshold."""
     return True
 
   # TODO(jyzhao): customized validation support.
-  def _compare_eval_result(self, current_model_eval_result,
-                           blessed_model_eval_result):
+  def _compare_eval_result(self, current_model_eval_result: tfma.EvalResult,
+                           blessed_model_eval_result: tfma.EvalResult) -> bool:
     """Compare accuracy of all metrics and return true if current is better or equal."""
     for current_metric, blessed_metric in zip(
         current_model_eval_result.slicing_metrics,
@@ -59,10 +59,10 @@ class Executor(base_executor.BaseExecutor):
         return False
     return True
 
-  def _generate_blessing_result(self, eval_examples_uri,
-                                slice_spec,
-                                current_model_dir,
-                                blessed_model_dir):
+  def _generate_blessing_result(self, eval_examples_uri: Text,
+                                slice_spec: List[tfma.slicer.SingleSliceSpec],
+                                current_model_dir: Text,
+                                blessed_model_dir: Text) -> bool:
     current_model_eval_result_path = os.path.join(
         self._temp_path, CURRENT_MODEL_EVAL_RESULT_PATH)
     blessed_model_eval_result_path = os.path.join(
@@ -111,9 +111,9 @@ class Executor(base_executor.BaseExecutor):
       tf.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict,
-         output_dict,
-         exec_properties):
+  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
+         output_dict: Dict[Text, List[types.TfxType]],
+         exec_properties: Dict[Text, Any]) -> None:
     """Validate current model against last blessed model.
 
     Args:

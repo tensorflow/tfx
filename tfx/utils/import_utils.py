@@ -20,7 +20,7 @@ from __future__ import print_function
 from typing import Any, Text, Type
 
 
-def import_class_by_path(class_path):
+def import_class_by_path(class_path: Text) -> Type[Any]:
   """Import a class by its <module>.<name> path.
 
   Args:

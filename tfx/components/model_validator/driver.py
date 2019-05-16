@@ -26,7 +26,7 @@ from tfx.utils import types
 class Driver(base_driver.BaseDriver):
   """Custom driver for model validator."""
 
-  def _fetch_last_blessed_model(self):
+  def _fetch_last_blessed_model(self) -> Tuple[Optional[Text], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     # TODO(b/122970393): This is a temporary solution since ML metadata not
     # support get artifacts by type.
@@ -46,11 +46,11 @@ class Driver(base_driver.BaseDriver):
 
   def prepare_execution(
       self,
-      input_dict,
-      output_dict,
-      exec_properties,
-      driver_options,
-  ):
+      input_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxType]],
+      exec_properties: Dict[Text, Any],
+      driver_options: base_driver.DriverOptions,
+  ) -> base_driver.ExecutionDecision:
     """Extends BaseDriver by resolving last blessed model."""
     execution_decision = self._default_caching_handling(
         input_dict, output_dict, exec_properties, driver_options)

@@ -70,9 +70,9 @@ class Pipeline(object):
   """
 
   def __init__(self,
-               pipeline_name,
-               pipeline_root,
-               components = None,
+               pipeline_name: Text,
+               pipeline_root: Text,
+               components: Optional[List[base_component.BaseComponent]] = None,
                **kwargs):
     # TODO(b/126565661): Add more documentation on this.
     self.pipeline_args = kwargs

@@ -59,13 +59,13 @@ class ExampleGen(base_component.BaseComponent):
   """
 
   def __init__(self,
-               executor,
-               input_base = None,
-               input_config = None,
-               output_config = None,
-               component_name = 'ExampleGen',
-               unique_name = None,
-               outputs = None):
+               executor: Any,
+               input_base: Optional[channel.Channel] = None,
+               input_config: Optional[example_gen_pb2.Input] = None,
+               output_config: Optional[example_gen_pb2.Output] = None,
+               component_name: Optional[Text] = 'ExampleGen',
+               unique_name: Optional[Text] = None,
+               outputs: Optional[base_component.ComponentOutputs] = None):
     if input_base is None and input_config is None:
       raise RuntimeError('One of input_base and input_config must be set.')
     input_dict = {
@@ -89,7 +89,7 @@ class ExampleGen(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self):
+  def _create_outputs(self) -> base_component.ComponentOutputs:
     """Creates outputs for ExampleGen.
 
     Returns:
@@ -107,8 +107,8 @@ class ExampleGen(base_component.BaseComponent):
                 static_artifact_collection=output_artifact_collection)
     })
 
-  def _type_check(self, input_dict,
-                  exec_properties):
+  def _type_check(self, input_dict: Dict[Text, channel.Channel],
+                  exec_properties: Dict[Text, Any]) -> None:
     """Does type checking for the inputs and exec_properties.
 
     Args:

@@ -50,11 +50,11 @@ class Evaluator(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples,
-      model_exports,
-      feature_slicing_spec = None,
-      name = None,
-      outputs = None):
+      examples: channel.Channel,
+      model_exports: channel.Channel,
+      feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
+      name: Optional[Text] = None,
+      outputs: Optional[base_component.ComponentOutputs] = None):
     component_name = 'Evaluator'
     input_dict = {
         'examples': channel.as_channel(examples),
@@ -74,7 +74,7 @@ class Evaluator(base_component.BaseComponent):
         outputs=outputs,
         exec_properties=exec_properties)
 
-  def _create_outputs(self):
+  def _create_outputs(self) -> base_component.ComponentOutputs:
     """Creates outputs for Evaluator.
 
     Returns:
@@ -88,8 +88,8 @@ class Evaluator(base_component.BaseComponent):
                 static_artifact_collection=output_artifact_collection),
     })
 
-  def _type_check(self, input_dict,
-                  exec_properties):
+  def _type_check(self, input_dict: Dict[Text, channel.Channel],
+                  exec_properties: Dict[Text, Any]) -> None:
     """Does type checking for the inputs and exec_properties.
 
     Args:
