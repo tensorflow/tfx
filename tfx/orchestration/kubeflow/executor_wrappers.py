@@ -23,6 +23,7 @@ import os
 import re
 
 from future import utils
+import six
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
 from typing import Any, Dict, Text
@@ -67,7 +68,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     # converted to str if required.
     beam_pipeline_args = []
     for arg in raw_args:
-      if isinstance(arg, unicode):
+      if isinstance(arg, six.text_type):
         arg = arg.encode('ascii', 'ignore')
       beam_pipeline_args.append(arg)
 
