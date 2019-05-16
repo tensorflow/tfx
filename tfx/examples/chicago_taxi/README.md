@@ -280,6 +280,9 @@ Run the Jupyter notebook locally to view the sliced results:
 <code class="devsite-click-to-copy">jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser</code>
 </pre>
 
+To enable TFMA visualizations in the Jupyter Notebook follow the instructions
+ [here](https://github.com/tensorflow/model-analysis#installation)
+
 This prints a URL like `http://0.0.0.0:8888/?token=...`. You may need to
 enter a username and password the first time you visit the page (these prompts
 accept anything, so you can use "test" for both).
@@ -332,7 +335,7 @@ scripts.
 ## Cloud prerequisites
 
 This section requires the [local prerequisites](#local_prerequisites) and adds a
-few more for the [Gooogle Cloud Platform](https://cloud.google.com/).
+few more for the [Google Cloud Platform](https://cloud.google.com/).
 
 Follow the Google Cloud Machine Learning Engine
 [setup guide](https://cloud.google.com/ml-engine/docs/how-tos/getting-set-up)
