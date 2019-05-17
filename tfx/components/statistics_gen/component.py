@@ -71,7 +71,7 @@ class StatisticsGen(base_component.BaseComponent):
     """
     # pylint: disable=g-complex-comprehension
     output_artifact_collection = [
-        types.TfxType(
+        types.TfxArtifact(
             'ExampleStatisticsPath',
             split=split,
         ) for split in types.DEFAULT_EXAMPLE_SPLITS

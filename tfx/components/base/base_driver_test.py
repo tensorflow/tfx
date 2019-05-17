@@ -30,7 +30,7 @@ class BaseDriverTest(tf.test.TestCase):
   def setUp(self):
     self._mock_metadata = tf.test.mock.Mock()
     self._input_dict = {
-        'input_data': [types.TfxType(type_name='InputType')],
+        'input_data': [types.TfxArtifact(type_name='InputType')],
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -43,7 +43,7 @@ class BaseDriverTest(tf.test.TestCase):
         artifact.uri = uri
         tf.gfile.MakeDirs(uri)
     self._output_dict = {
-        'output_data': [types.TfxType(type_name='OutputType')],
+        'output_data': [types.TfxArtifact(type_name='OutputType')],
     }
     self._exec_properties = {
         'key': 'value',

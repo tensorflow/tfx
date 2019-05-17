@@ -20,6 +20,8 @@
 *   Fixes issue #113 to have consistent type of train_files and eval_files
     passed to trainer user module.
 
+*   TfxType has been renamed to TfxArtifact.
+
 ## Breaking changes
 
 

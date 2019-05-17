@@ -28,8 +28,9 @@ class ExampleValidatorTest(tf.test.TestCase):
   def test_construct(self):
     example_validator = component.ExampleValidator(
         stats=channel.as_channel(
-            [types.TfxType(type_name='ExampleStatisticsPath', split='eval')]),
-        schema=channel.as_channel([types.TfxType(type_name='SchemaPath')]),
+            [types.TfxArtifact(type_name='ExampleStatisticsPath',
+                               split='eval')]),
+        schema=channel.as_channel([types.TfxArtifact(type_name='SchemaPath')]),
     )
     self.assertEqual('ExampleValidationPath',
                      example_validator.outputs.output.type_name)

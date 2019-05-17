@@ -43,8 +43,8 @@ class Executor(tfx_pusher_executor.Executor):
             base_directory=temp_dir))
     return json_format.MessageToJson(push_destination)
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]):
     """Overrides the tfx_pusher_executor.
 

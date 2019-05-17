@@ -27,8 +27,8 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    model_export = types.TfxType(type_name='ModelExportPath')
-    model_blessing = types.TfxType(type_name='ModelBlessingPath')
+    model_export = types.TfxArtifact(type_name='ModelExportPath')
+    model_blessing = types.TfxArtifact(type_name='ModelBlessingPath')
     pusher = component.Pusher(
         model_export=channel.as_channel([model_export]),
         model_blessing=channel.as_channel([model_blessing]),

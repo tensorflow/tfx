@@ -32,8 +32,8 @@ _DEFAULT_FILE_NAME = 'schema.pbtxt'
 class Executor(base_executor.BaseExecutor):
   """Generic TFX schema_gen executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 

@@ -27,7 +27,7 @@ import tensorflow as tf
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.airflow import airflow_pipeline
 from tfx.utils import logging_utils
-from tfx.utils.types import TfxType
+from tfx.utils.types import TfxArtifact
 
 
 class AirflowComponentTest(tf.test.TestCase):
@@ -58,8 +58,8 @@ class AirflowComponentTest(tf.test.TestCase):
         additional_pipeline_args=None,
         docker_operator_cfg=None,
         enable_cache=True)
-    self.input_dict = {'i': [TfxType('i')]}
-    self.output_dict = {'o': [TfxType('o')]}
+    self.input_dict = {'i': [TfxArtifact('i')]}
+    self.output_dict = {'o': [TfxArtifact('o')]}
     self.exec_properties = {'e': 'e'}
     self.driver_options = {'d': 'd'}
 

@@ -30,7 +30,7 @@ class BaseComponentTest(tf.test.TestCase):
 
   def setUp(self):
     self._output_dict = {
-        'output_name': [types.TfxType(type_name='ExamplesPath')]
+        'output_name': [types.TfxArtifact(type_name='ExamplesPath')]
     }
     self._pipeline_properties = base_component.PipelineProperties(
         output_dir='output_dir',

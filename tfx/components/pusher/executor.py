@@ -47,8 +47,8 @@ class Executor(base_executor.BaseExecutor):
   please refer to https://www.tensorflow.org/tfx/guide/serving.
   """
 
-  def CheckBlessing(self, input_dict: Dict[Text, List[types.TfxType]],
-                    output_dict: Dict[Text, List[types.TfxType]]) -> bool:
+  def CheckBlessing(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+                    output_dict: Dict[Text, List[types.TfxArtifact]]) -> bool:
     """Check that model is blessed by upstream ModelValidator, or update output.
 
     Args:
@@ -71,8 +71,8 @@ class Executor(base_executor.BaseExecutor):
       return False
     return True
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Push model to target directory if blessed.
 

@@ -26,8 +26,8 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    train_examples = types.TfxType(type_name='ExamplesPath', split='train')
-    eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
+    train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
+    eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
     statistics_gen = component.StatisticsGen(
         input_data=channel.as_channel([train_examples, eval_examples]))
     self.assertEqual('ExampleStatisticsPath',

@@ -165,8 +165,8 @@ class _Dataset(object):
 class Executor(base_executor.BaseExecutor):
   """Transform executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow Transform executor entrypoint.
 

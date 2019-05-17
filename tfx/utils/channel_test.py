@@ -28,31 +28,31 @@ from tfx.utils import types
 class ChannelTest(tf.test.TestCase):
 
   def test_valid_channel(self):
-    instance_a = types.TfxType('MyTypeName')
-    instance_b = types.TfxType('MyTypeName')
+    instance_a = types.TfxArtifact('MyTypeName')
+    instance_b = types.TfxArtifact('MyTypeName')
     chnl = channel.Channel(
         'MyTypeName', static_artifact_collection=[instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
   def test_invalid_channel_type(self):
-    instance_a = types.TfxType('MyTypeName')
-    instance_b = types.TfxType('MyTypeName')
+    instance_a = types.TfxArtifact('MyTypeName')
+    instance_b = types.TfxArtifact('MyTypeName')
     with self.assertRaises(ValueError):
       channel.Channel(
           'AnotherTypeName',
           static_artifact_collection=[instance_a, instance_b])
 
   def test_artifact_collection_as_channel(self):
-    instance_a = types.TfxType('MyTypeName')
-    instance_b = types.TfxType('MyTypeName')
+    instance_a = types.TfxArtifact('MyTypeName')
+    instance_b = types.TfxArtifact('MyTypeName')
     chnl = channel.as_channel([instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
   def test_channel_as_channel_success(self):
-    instance_a = types.TfxType('MyTypeName')
-    instance_b = types.TfxType('MyTypeName')
+    instance_a = types.TfxArtifact('MyTypeName')
+    instance_b = types.TfxArtifact('MyTypeName')
     chnl_original = channel.Channel(
         'MyTypeName', static_artifact_collection=[instance_a, instance_b])
     chnl_result = channel.as_channel(chnl_original)

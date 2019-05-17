@@ -27,7 +27,7 @@ from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils.types import ARTIFACT_STATE_PUBLISHED
-from tfx.utils.types import TfxType
+from tfx.utils.types import TfxArtifact
 
 
 # Maximum number of executions we look at for previous result.
@@ -100,7 +100,7 @@ class Metadata(object):
               artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(self, raw_artifact_list: List[TfxType]
+  def publish_artifacts(self, raw_artifact_list: List[TfxArtifact]
                        ) -> List[metadata_store_pb2.Artifact]:
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
@@ -197,8 +197,9 @@ class Metadata(object):
     return execution_id
 
   def publish_execution(
-      self, execution_id: int, input_dict: Dict[Text, List[TfxType]],
-      output_dict: Dict[Text, List[TfxType]]) -> Dict[Text, List[TfxType]]:
+      self, execution_id: int, input_dict: Dict[Text, List[TfxArtifact]],
+      output_dict: Dict[Text, List[TfxArtifact]]
+      ) -> Dict[Text, List[TfxArtifact]]:
     """Publish an execution with input and output artifacts info.
 
     Args:
@@ -245,7 +246,7 @@ class Metadata(object):
         'Published execution with final outputs {}'.format(output_dict))
     return output_dict
 
-  def _get_cached_execution_id(self, input_dict: Dict[Text, List[TfxType]],
+  def _get_cached_execution_id(self, input_dict: Dict[Text, List[TfxArtifact]],
                                candidate_execution_ids: List[int]):
     """Gets common execution ids that are related to all the artifacts in input.
 
@@ -281,7 +282,8 @@ class Metadata(object):
     tf.logging.info('No execution matching type id and input artifacts found')
     return None
 
-  def previous_run(self, type_name: Text, input_dict: Dict[Text, List[TfxType]],
+  def previous_run(self, type_name: Text,
+                   input_dict: Dict[Text, List[TfxArtifact]],
                    exec_properties: Any) -> Optional[int]:
     """Gets previous run of same type that takes current set of input.
 
@@ -316,12 +318,12 @@ class Metadata(object):
   # TODO(ruoyu): This should be merged with previous_run, otherwise we cannot
   # handle the case if output dict structure is changed.
   def fetch_previous_result_artifacts(
-      self, output_dict: Dict[Text, List[TfxType]],
-      execution_id: int) -> Dict[Text, List[TfxType]]:
+      self, output_dict: Dict[Text, List[TfxArtifact]],
+      execution_id: int) -> Dict[Text, List[TfxArtifact]]:
     """Fetches output with artifact ids produced by a previous run.
 
     Args:
-      output_dict: a dict from name to a list of output TfxType objects.
+      output_dict: a dict from name to a list of output TfxArtifact objects.
       execution_id: the id of the execution that produced the outputs.
 
     Returns:

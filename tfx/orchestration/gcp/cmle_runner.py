@@ -43,8 +43,8 @@ def _get_python_version() -> Text:
   return '%d.%d' % (sys.version_info.major, sys.version_info.minor)
 
 
-def start_cmle_training(input_dict: Dict[Text, List[types.TfxType]],
-                        output_dict: Dict[Text, List[types.TfxType]],
+def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
+                        output_dict: Dict[Text, List[types.TfxArtifact]],
                         exec_properties: Dict[Text, Any],
                         executor_class_path: Text,
                         training_inputs: Dict[Text, Any]):

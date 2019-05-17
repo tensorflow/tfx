@@ -53,8 +53,8 @@ class Executor(base_executor.BaseExecutor):
       result.append(tfma.slicer.SingleSliceSpec())
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Runs a batch job to evaluate the eval_model against the given input.
 

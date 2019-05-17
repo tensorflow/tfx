@@ -107,7 +107,7 @@ class Trainer(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     output_artifact_collection = [
-        types.TfxType('ModelExportPath'),
+        types.TfxArtifact('ModelExportPath'),
     ]
     return base_component.ComponentOutputs({
         'output':

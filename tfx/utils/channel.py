@@ -39,7 +39,7 @@ class Channel(object):
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(self,
                type_name: Text,
-               static_artifact_collection: Iterable[types.TfxType] = None):
+               static_artifact_collection: Iterable[types.TfxArtifact] = None):
     """Initialization of Channel.
 
     Args:
@@ -68,7 +68,7 @@ class Channel(object):
             'Static artifact collection with different artifact type than {}'
             .format(self.type_name))
 
-  def get(self) -> Iterable[types.TfxType]:
+  def get(self) -> Iterable[types.TfxArtifact]:
     """Returns all artifacts that can be get from this Channel.
 
     Returns:
@@ -92,17 +92,17 @@ class Channel(object):
                                                        str(self.type_name)))
 
 
-def as_channel(source: Union[Channel, Iterable[types.TfxType]]) -> Channel:
+def as_channel(source: Union[Channel, Iterable[types.TfxArtifact]]) -> Channel:
   """Converts artifact collection of the same artifact type into a Channel.
 
   Args:
-    source: Either a Channel or an iterable of TfxType.
+    source: Either a Channel or an iterable of TfxArtifact.
 
   Returns:
     A static Channel containing the source artifact collection.
 
   Raises:
-    ValueError when source is not a non-empty iterable of TfxType.
+    ValueError when source is not a non-empty iterable of TfxArtifact.
   """
 
   if isinstance(source, Channel):
@@ -110,7 +110,7 @@ def as_channel(source: Union[Channel, Iterable[types.TfxType]]) -> Channel:
   elif isinstance(source, collections.Iterable):
     try:
       first_element = next(iter(source))
-      if isinstance(first_element, types.TfxType):
+      if isinstance(first_element, types.TfxArtifact):
         return Channel(
             type_name=first_element.type_name,
             static_artifact_collection=source)

@@ -46,8 +46,8 @@ class Driver(base_driver.BaseDriver):
 
   def prepare_execution(
       self,
-      input_dict: Dict[Text, List[types.TfxType]],
-      output_dict: Dict[Text, List[types.TfxType]],
+      input_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
       driver_options: base_driver.DriverOptions,
   ) -> base_driver.ExecutionDecision:

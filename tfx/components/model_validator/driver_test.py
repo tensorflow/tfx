@@ -45,7 +45,7 @@ class DriverTest(tf.test.TestCase):
     # Mock blessing artifacts.
     artifacts = []
     for span in [4, 3, 2, 1]:
-      model_blessing = types.TfxType(type_name='ModelBlessingPath')
+      model_blessing = types.TfxArtifact(type_name='ModelBlessingPath')
       model_blessing.span = span
       model_blessing.set_string_custom_property('current_model',
                                                 'uri-%d' % span)

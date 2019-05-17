@@ -32,11 +32,11 @@ class ExecutorTest(tf.test.TestCase):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    train_artifact = types.TfxType('ExamplesPath', split='train')
+    train_artifact = types.TfxArtifact('ExamplesPath', split='train')
     train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
-    eval_artifact = types.TfxType('ExamplesPath', split='eval')
+    eval_artifact = types.TfxArtifact('ExamplesPath', split='eval')
     eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
-    schema_artifact = types.TfxType('Schema')
+    schema_artifact = types.TfxArtifact('Schema')
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     module_file = os.path.join(source_data_dir,
@@ -46,13 +46,14 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    transformed_output = types.TfxType('TransformPath')
+    transformed_output = types.TfxArtifact('TransformPath')
     transformed_output.uri = os.path.join(output_data_dir, 'transformed_output')
-    transformed_train_examples = types.TfxType('ExamplesPath', split='train')
+    transformed_train_examples = types.TfxArtifact('ExamplesPath',
+                                                   split='train')
     transformed_train_examples.uri = os.path.join(output_data_dir, 'train')
-    transformed_eval_examples = types.TfxType('ExamplesPath', split='eval')
+    transformed_eval_examples = types.TfxArtifact('ExamplesPath', split='eval')
     transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    temp_path_output = types.TfxType('TempPath')
+    temp_path_output = types.TfxArtifact('TempPath')
     temp_path_output.uri = tempfile.mkdtemp()
 
     input_dict = {

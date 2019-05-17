@@ -66,7 +66,7 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
 @beam.typehints.with_output_types(bytes)
 def _InputToSerializedExample(pipeline: beam.Pipeline,
                               input_to_example: beam.PTransform,
-                              input_dict: Dict[Text, List[types.TfxType]],
+                              input_dict: Dict[Text, List[types.TfxArtifact]],
                               exec_properties: Dict[Text, Any],
                               split_pattern: Text) -> beam.pvalue.PCollection:
   """Converts input to serialized TF examples."""
@@ -117,14 +117,14 @@ class BaseExampleGenExecutor(
       @beam.typehints.with_output_types(tf.train.Example)
       def ExamplePTransform(
           pipeline: beam.Pipeline,
-          input_dict: Dict[Text, List[types.TfxType]],
+          input_dict: Dict[Text, List[types.TfxArtifact]],
           exec_properties: Dict[Text, Any],
           split_pattern: Text) -> beam.pvalue.PCollection
     """
     pass
 
   def GenerateExamplesByBeam(self, pipeline: beam.Pipeline,
-                             input_dict: Dict[Text, List[types.TfxType]],
+                             input_dict: Dict[Text, List[types.TfxArtifact]],
                              exec_properties: Dict[Text, Any]
                             ) -> Dict[Text, beam.pvalue.PCollection]:
     """Converts input source to TF example splits based on configs.
@@ -192,8 +192,8 @@ class BaseExampleGenExecutor(
       result[split_names[index]] = example_split
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Take input data source and generates TF Example splits.
 

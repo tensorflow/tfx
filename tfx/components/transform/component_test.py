@@ -33,10 +33,10 @@ class TransformTest(tf.test.TestCase):
                                          'preprocess.py')
     transform = component.Transform(
         input_data=channel.as_channel([
-            types.TfxType(type_name='ExamplesPath', split='train'),
-            types.TfxType(type_name='ExamplesPath', split='eval'),
+            types.TfxArtifact(type_name='ExamplesPath', split='train'),
+            types.TfxArtifact(type_name='ExamplesPath', split='eval'),
         ]),
-        schema=channel.as_channel([types.TfxType(type_name='SchemaPath')]),
+        schema=channel.as_channel([types.TfxArtifact(type_name='SchemaPath')]),
         module_file=preprocessing_fn_file,
     )
     self.assertEqual('TransformPath',

@@ -30,9 +30,9 @@ class ExecutionDecision(object):
   """ExecutionDecision records how executor should perform next execution.
 
   Attributes:
-    input_dict: Updated key -> TfxType for inputs that will be used by
+    input_dict: Updated key -> TfxArtifact for inputs that will be used by
       actual execution.
-    output_dict: Updated key -> TfxType for outputs that will be used by
+    output_dict: Updated key -> TfxArtifact for outputs that will be used by
       actual execution.
     exec_properties: Updated dict of other execution properties that will be
       used by actual execution.
@@ -41,8 +41,8 @@ class ExecutionDecision(object):
   """
 
   def __init__(self,
-               input_dict: Dict[Text, List[types.TfxType]],
-               output_dict: Dict[Text, List[types.TfxType]],
+               input_dict: Dict[Text, List[types.TfxArtifact]],
+               output_dict: Dict[Text, List[types.TfxArtifact]],
                exec_properties: Dict[Text, Any],
                execution_id: Optional[int] = None):
     self.input_dict = input_dict
@@ -85,8 +85,8 @@ class BaseDriver(object):
     self._metadata_handler = metadata_handler
     self._logger = logger
 
-  def _log_properties(self, input_dict: Dict[Text, List[types.TfxType]],
-                      output_dict: Dict[Text, List[types.TfxType]],
+  def _log_properties(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+                      output_dict: Dict[Text, List[types.TfxArtifact]],
                       exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     self._logger.info('Starting %s driver.', self.__class__.__name__)
@@ -99,11 +99,11 @@ class BaseDriver(object):
 
   def _get_output_from_previous_run(
       self,
-      input_dict: Dict[Text, List[types.TfxType]],
-      output_dict: Dict[Text, List[types.TfxType]],
+      input_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
       driver_options: DriverOptions,
-  ) -> Optional[Dict[Text, List[types.TfxType]]]:
+  ) -> Optional[Dict[Text, List[types.TfxArtifact]]]:
     """Returns outputs from previous identical execution if found."""
     previous_execution_id = self._metadata_handler.previous_run(
         type_name=driver_options.worker_name,
@@ -127,11 +127,11 @@ class BaseDriver(object):
       return None
 
   def _verify_inputs(
-      self, input_dict: Dict[Text, List[types.TfxType]]) -> None:
+      self, input_dict: Dict[Text, List[types.TfxArtifact]]) -> None:
     """Verify input exist.
 
     Args:
-      input_dict: key -> TfxType for inputs.
+      input_dict: key -> TfxArtifact for inputs.
 
     Raises:
       RuntimeError: if any input as an empty uri.
@@ -145,8 +145,8 @@ class BaseDriver(object):
 
   def _default_caching_handling(
       self,
-      input_dict: Dict[Text, List[types.TfxType]],
-      output_dict: Dict[Text, List[types.TfxType]],
+      input_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
       driver_options: DriverOptions,
   ) -> ExecutionDecision:
@@ -211,8 +211,8 @@ class BaseDriver(object):
 
   def prepare_execution(
       self,
-      input_dict: Dict[Text, List[types.TfxType]],
-      output_dict: Dict[Text, List[types.TfxType]],
+      input_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
       driver_options: DriverOptions,
   ) -> ExecutionDecision:
@@ -224,9 +224,9 @@ class BaseDriver(object):
     instead of a new execution if found.
 
     Args:
-      input_dict: key -> TfxType for inputs. One can expect every input already
-        registered in ML metadata except ExamplesGen.
-      output_dict: key -> TfxType for outputs. Uris of the outputs are not
+      input_dict: key -> TfxArtifact for inputs. One can expect every input
+        already registered in ML metadata except ExamplesGen.
+      output_dict: key -> TfxArtifact for outputs. Uris of the outputs are not
         assigned. It's subclasses' responsibility to set the real output uris.
       exec_properties: Dict of other execution properties.
       driver_options: An instance of DriverOptions class.

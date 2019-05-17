@@ -49,7 +49,7 @@ class DriverTest(tf.test.TestCase):
       artifacts.append(artifact)
 
     # Create input dict.
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     input_base.uri = 'path-1'
     input_dict = {'input-base': [input_base]}
 

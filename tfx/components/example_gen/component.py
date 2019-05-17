@@ -96,7 +96,7 @@ class ExampleGen(base_component.BaseComponent):
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
     output_artifact_collection = [
-        types.TfxType('ExamplesPath', split=split_name)
+        types.TfxArtifact('ExamplesPath', split=split_name)
         for split_name in utils.generate_output_split_names(
             self._input_config, self._output_config)
     ]

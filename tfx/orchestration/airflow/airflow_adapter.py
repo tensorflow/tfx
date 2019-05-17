@@ -20,7 +20,7 @@ from tfx.orchestration import metadata
 from tfx.utils import logging_utils
 from tfx.utils.types import jsonify_tfx_type_dict
 from tfx.utils.types import parse_tfx_type_dict
-from tfx.utils.types import TfxType
+from tfx.utils.types import TfxArtifact
 
 
 # TODO(b/126566908): More documentation for Airflow modules.
@@ -36,8 +36,8 @@ class AirflowAdapter(object):
 
     Args:
       component_name: Name of the component in the dag.
-      input_dict: a dict from key name to a list of TfxType artifacts.
-      output_dict: a dict from key name to a list of TfxType artifacts.
+      input_dict: a dict from key name to a list of TfxArtifact artifacts.
+      output_dict: a dict from key name to a list of TfxArtifact artifacts.
       exec_properties: a dict of execution properties.
       driver_options: an instance of base_driver.DriverOptions to communicate
         with driver;
@@ -85,7 +85,7 @@ class AirflowAdapter(object):
         continue
       resolved_list = json.loads(xcom_result)
       for index, resolved_json_dict in enumerate(resolved_list):
-        input_list[index] = TfxType.parse_from_json_dict(resolved_json_dict)
+        input_list[index] = TfxArtifact.parse_from_json_dict(resolved_json_dict)
 
   def _publish_execution_to_metadata(self):
     with metadata.Metadata(self._metadata_connection_config,
