@@ -13,11 +13,12 @@
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
     pusher deprecated. User should use the `trainer/pusher` executors in
     tfx.extensions.google_cloud_ai_platform module instead.
-
 *   Update components and code samples to use `tft.TFTransformOutput` (
     introduced in tensorflow_transform 0.8).  This avoids directly accessing the
     DatasetSchema object which may be removed in tensorflow_transform 0.14 or
     0.15.
+*   Fixes issue #113 to have consistent type of train_files and eval_files
+    passed to trainer user module.
 
 ## Breaking changes
 
