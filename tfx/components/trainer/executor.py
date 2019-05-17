@@ -126,8 +126,10 @@ class Executor(base_executor.BaseExecutor):
             types.get_split_uri(input_dict['transformed_examples'], 'train'))
     ]
     transform_output = types.get_single_uri(input_dict['transform_output'])
-    eval_files = _all_files_pattern(
-        types.get_split_uri(input_dict['transformed_examples'], 'eval'))
+    eval_files = [
+        _all_files_pattern(
+            types.get_split_uri(input_dict['transformed_examples'], 'eval'))
+    ]
     schema_file = io_utils.get_only_uri_in_dir(
         types.get_single_uri(input_dict['schema']))
 
@@ -159,14 +161,21 @@ class Executor(base_executor.BaseExecutor):
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     hparams = tf.contrib.training.HParams(
+        # A list of uris for train files.
         train_files=train_files,
+        # A single uri for transform graph produced by TFT.
         transform_output=transform_output,
-        output_dir=output_path,
+        # A single uri for the output directory of the serving model.
         serving_model_dir=serving_model_dir,
+        # A list of uris for eval files.
         eval_files=eval_files,
+        # A single uri for schema file.
         schema_file=schema_file,
+        # Number of train steps.
         train_steps=train_steps,
+        # Number of eval steps.
         eval_steps=eval_steps,
+        # A single uri for the model directory to warm start from.
         warm_start_from=warm_start_from)
 
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
