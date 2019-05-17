@@ -82,9 +82,9 @@ class Transform(base_component.BaseComponent):
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    transform_output_artifact_collection = [types.TfxType('TransformPath',)]
+    transform_output_artifact_collection = [types.TfxArtifact('TransformPath',)]
     transformed_examples_artifact_collection = [
-        types.TfxType('ExamplesPath', split=split)
+        types.TfxArtifact('ExamplesPath', split=split)
         for split in types.DEFAULT_EXAMPLE_SPLITS
     ]
     return base_component.ComponentOutputs({

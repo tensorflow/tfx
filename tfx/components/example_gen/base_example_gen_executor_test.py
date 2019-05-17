@@ -73,9 +73,9 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = types.TfxType(type_name='ExamplesPath', split='train')
+    train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
     train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
+    eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     self._output_dict = {'examples': [train_examples, eval_examples]}
 

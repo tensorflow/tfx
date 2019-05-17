@@ -39,7 +39,7 @@ def parse_tfx_type(json_str: Text):
 
   tfx_types = []
   for json_artifact in json_artifact_list:
-    tfx_type = types.TfxType.parse_from_json_dict(json_artifact)
+    tfx_type = types.TfxArtifact.parse_from_json_dict(json_artifact)
     tfx_types.append(tfx_type)
 
   return tfx_types
@@ -57,7 +57,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
       self,
       executor_class_path: Text,
       name: Text,
-      input_dict: Dict[Text, List[types.TfxType]],
+      input_dict: Dict[Text, List[types.TfxArtifact]],
       outputs: Text,
       exec_properties: Dict[Text, Any],
   ):

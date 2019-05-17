@@ -26,7 +26,7 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     csv_example_gen = component.CsvExampleGen(
         input_base=channel.as_channel([input_base]))
     self.assertEqual('ExamplesPath', csv_example_gen.outputs.examples.type_name)

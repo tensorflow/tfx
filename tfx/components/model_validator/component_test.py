@@ -26,8 +26,8 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    examples = types.TfxType(type_name='ExamplesPath')
-    model = types.TfxType(type_name='ModelExportPath')
+    examples = types.TfxArtifact(type_name='ExamplesPath')
+    model = types.TfxArtifact(type_name='ModelExportPath')
     model_validator = component.ModelValidator(
         examples=channel.as_channel([examples]),
         model=channel.as_channel([model]))

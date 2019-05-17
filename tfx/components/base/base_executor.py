@@ -48,8 +48,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
   @abc.abstractmethod
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation.
 
@@ -95,8 +95,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       tf.gfile.MakeDirs(tmp_path)
     return tmp_path
 
-  def _log_startup(self, inputs: Dict[Text, List[types.TfxType]],
-                   outputs: Dict[Text, List[types.TfxType]],
+  def _log_startup(self, inputs: Dict[Text, List[types.TfxArtifact]],
+                   outputs: Dict[Text, List[types.TfxArtifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting {} execution.'.format(self.__class__.__name__))

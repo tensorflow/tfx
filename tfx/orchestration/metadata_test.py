@@ -60,7 +60,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
-      artifact = types.TfxType(type_name='ExamplesPath')
+      artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
       self.assertProtoEquals(
@@ -116,9 +116,9 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
       # Test publish_execution.
-      input_artifact = types.TfxType(type_name='ExamplesPath')
+      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxType(type_name='ExamplesPath')
+      output_artifact = types.TfxArtifact(type_name='ExamplesPath')
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(eid, input_dict, output_dict)
@@ -158,9 +158,9 @@ class MetadataTest(tf.test.TestCase):
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}
       eid = m.prepare_execution('Test', exec_properties)
-      input_artifact = types.TfxType(type_name='ExamplesPath')
+      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxType(type_name='ExamplesPath')
+      output_artifact = types.TfxArtifact(type_name='ExamplesPath')
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(eid, input_dict, output_dict)
@@ -173,7 +173,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(eid, m.previous_run('Test', input_dict, exec_properties))
 
       # Test fetch_previous_result_artifacts.
-      new_output_artifact = types.TfxType(type_name='ExamplesPath')
+      new_output_artifact = types.TfxArtifact(type_name='ExamplesPath')
       self.assertNotEqual(types.ARTIFACT_STATE_PUBLISHED,
                           new_output_artifact.state)
       new_output_dict = {'output': [new_output_artifact]}
@@ -212,9 +212,9 @@ class MetadataTest(tf.test.TestCase):
       ]
       m._store = mock_store
 
-      input_one = types.TfxType(type_name='ExamplesPath')
+      input_one = types.TfxArtifact(type_name='ExamplesPath')
       input_one.id = 1
-      input_two = types.TfxType(type_name='ExamplesPath')
+      input_two = types.TfxArtifact(type_name='ExamplesPath')
       input_two.id = 2
 
       input_dict = {

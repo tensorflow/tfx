@@ -74,7 +74,7 @@ class BaseComponent(object):
       cls,
       component_name: Text,
       input_dict: Dict[Text, Any],
-      output_dict: Dict[Text, List[types.TfxType]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
       executor_class_path: Text,
       pipeline_properties: PipelineProperties,

@@ -80,7 +80,7 @@ class Evaluator(base_component.BaseComponent):
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    output_artifact_collection = [types.TfxType('ModelEvalPath')]
+    output_artifact_collection = [types.TfxArtifact('ModelEvalPath')]
     return base_component.ComponentOutputs({
         'output':
             channel.Channel(

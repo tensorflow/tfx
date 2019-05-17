@@ -37,10 +37,10 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    train_examples = types.TfxType(type_name='ExamplesPath', split='train')
-    eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
+    train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
+    eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
     eval_examples.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
-    model_exports = types.TfxType(type_name='ModelExportPath')
+    model_exports = types.TfxArtifact(type_name='ModelExportPath')
     model_exports.uri = os.path.join(source_data_dir, 'trainer/current/')
     input_dict = {
         'examples': [train_examples, eval_examples],
@@ -48,7 +48,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    eval_output = types.TfxType('ModelEvalPath')
+    eval_output = types.TfxArtifact('ModelEvalPath')
     eval_output.uri = os.path.join(output_data_dir, 'eval_output')
     output_dict = {'output': [eval_output]}
 

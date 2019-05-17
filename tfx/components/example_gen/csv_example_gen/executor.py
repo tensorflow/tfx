@@ -52,7 +52,7 @@ def _dict_to_example(instance: tfdv.types.Example) -> tf.train.Example:
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxType]],
+    input_dict: Dict[Text, List[types.TfxArtifact]],
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read CSV files and transform to TF examples.

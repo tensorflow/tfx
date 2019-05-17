@@ -31,10 +31,10 @@ from tfx.utils import types
 class AirflowAdapterTest(tf.test.TestCase):
 
   def setUp(self):
-    self.input_one = types.TfxType('INPUT_ONE')
+    self.input_one = types.TfxArtifact('INPUT_ONE')
     self.input_one.source = airflow_component._OrchestrationSource(
         'input_one_key', 'input_one_component_id')
-    self.output_one = types.TfxType('OUTPUT_ONE')
+    self.output_one = types.TfxArtifact('OUTPUT_ONE')
     self.output_one.source = airflow_component._OrchestrationSource(
         'output_one_key', 'output_one_component_id')
     self.input_one_json = json.dumps([self.input_one.json_dict()])
@@ -277,7 +277,7 @@ class AirflowAdapterTest(tf.test.TestCase):
         json.dumps(exec_properties), 12345,
         types.jsonify_tfx_type_dict(output_dict)
     ]
-    output_artifact_published = types.TfxType('O')
+    output_artifact_published = types.TfxArtifact('O')
     output_artifact_published.source = self.output_one.source
     self.mock_metadata.publish_execution.return_value = {
         u'output_one': [output_artifact_published]

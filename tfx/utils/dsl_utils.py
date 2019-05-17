@@ -31,7 +31,7 @@ def external_input(uri: Text) -> channel.Channel:
   Returns:
     input channel.
   """
-  instance = types.TfxType(type_name='ExternalPath')
+  instance = types.TfxArtifact(type_name='ExternalPath')
   instance.uri = uri
   return channel.as_channel([instance])
 

@@ -39,8 +39,8 @@ class ArgsCapture(object):
 
 class FakeExecutor(base_executor.BaseExecutor):
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Overrides BaseExecutor.Do()."""
     args_capture = ArgsCapture.instance
@@ -53,8 +53,9 @@ class RunExecutorTest(tf.test.TestCase):
 
   def testMainEmptyInputs(self):
     """Test executor class import under empty inputs/outputs."""
-    inputs = {'x': [types.TfxType(type_name='X'), types.TfxType(type_name='X')]}
-    outputs = {'y': [types.TfxType(type_name='Y')]}
+    inputs = {'x': [types.TfxArtifact(type_name='X'),
+                    types.TfxArtifact(type_name='X')]}
+    outputs = {'y': [types.TfxArtifact(type_name='Y')]}
     exec_properties = {'a': 'b'}
     args = [
         '--executor_class_path=%s.%s' %
@@ -65,7 +66,7 @@ class RunExecutorTest(tf.test.TestCase):
     ]
     with ArgsCapture() as args_capture:
       run_executor.main(args)
-      # TODO(b/131417512): Add equal comparison to TfxType class so we can
+      # TODO(b/131417512): Add equal comparison to TfxArtifact class so we can
       # use asserters.
       self.assertSetEqual(
           set(args_capture.input_dict.keys()), set(inputs.keys()))

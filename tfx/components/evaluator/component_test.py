@@ -27,16 +27,16 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    examples = types.TfxType(type_name='ExamplesPath')
-    model_exports = types.TfxType(type_name='ModelExportPath')
+    examples = types.TfxArtifact(type_name='ExamplesPath')
+    model_exports = types.TfxArtifact(type_name='ModelExportPath')
     evaluator = component.Evaluator(
         examples=channel.as_channel([examples]),
         model_exports=channel.as_channel([model_exports]))
     self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
 
   def test_construct_with_slice_spec(self):
-    examples = types.TfxType(type_name='ExamplesPath')
-    model_exports = types.TfxType(type_name='ModelExportPath')
+    examples = types.TfxArtifact(type_name='ExamplesPath')
+    model_exports = types.TfxArtifact(type_name='ModelExportPath')
     evaluator = component.Evaluator(
         examples=channel.as_channel([examples]),
         model_exports=channel.as_channel([model_exports]),

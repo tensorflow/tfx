@@ -23,7 +23,7 @@ from airflow.operators import dummy_operator
 import tensorflow as tf
 
 from tfx.orchestration.airflow import airflow_pipeline
-from tfx.utils.types import TfxType
+from tfx.utils.types import TfxArtifact
 
 
 class AirflowPipelineTest(tf.test.TestCase):
@@ -71,13 +71,13 @@ class AirflowPipelineTest(tf.test.TestCase):
     component_four = dummy_operator.DummyOperator(
         task_id='four', dag=self.pipeline)
 
-    component_one_input_a = TfxType('i1a')
-    component_one_input_b = TfxType('i1b')
-    component_one_output_a = TfxType('o1a')
-    component_one_output_b = TfxType('o1b')
-    component_two_output = TfxType('o2')
-    component_three_output = TfxType('o3')
-    component_four_output = TfxType('o4')
+    component_one_input_a = TfxArtifact('i1a')
+    component_one_input_b = TfxArtifact('i1b')
+    component_one_output_a = TfxArtifact('o1a')
+    component_one_output_b = TfxArtifact('o1b')
+    component_two_output = TfxArtifact('o2')
+    component_three_output = TfxArtifact('o3')
+    component_four_output = TfxArtifact('o4')
 
     component_one_input_dict = {
         'i1a': [component_one_input_a],

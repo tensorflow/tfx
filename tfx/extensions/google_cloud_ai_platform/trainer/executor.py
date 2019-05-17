@@ -29,8 +29,8 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 class Executor(base_executor.BaseExecutor):
   """Start a trainer job on Google Cloud AI Platform (GAIP)."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]):
     """Starts a trainer job on Google Cloud AI Platform.
 

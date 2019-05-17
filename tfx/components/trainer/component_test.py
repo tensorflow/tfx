@@ -27,9 +27,9 @@ from tfx.utils import types
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    transformed_examples = types.TfxType(type_name='ExamplesPath')
-    transform_output = types.TfxType(type_name='TransformPath')
-    schema = types.TfxType(type_name='SchemaPath')
+    transformed_examples = types.TfxArtifact(type_name='ExamplesPath')
+    transform_output = types.TfxArtifact(type_name='TransformPath')
+    schema = types.TfxArtifact(type_name='SchemaPath')
     trainer = component.Trainer(
         module_file='/path/to/module/file',
         transformed_examples=channel.as_channel([transformed_examples]),

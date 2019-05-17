@@ -111,8 +111,8 @@ class Executor(base_executor.BaseExecutor):
       tf.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Validate current model against last blessed model.
 

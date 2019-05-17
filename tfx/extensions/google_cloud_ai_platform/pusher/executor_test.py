@@ -37,16 +37,16 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     tf.gfile.MakeDirs(self._output_data_dir)
-    self._model_export = types.TfxType(type_name='ModelExportPath')
+    self._model_export = types.TfxArtifact(type_name='ModelExportPath')
     self._model_export.uri = os.path.join(self._source_data_dir,
                                           'trainer/current/')
-    self._model_blessing = types.TfxType(type_name='ModelBlessingPath')
+    self._model_blessing = types.TfxArtifact(type_name='ModelBlessingPath')
     self._input_dict = {
         'model_export': [self._model_export],
         'model_blessing': [self._model_blessing],
     }
 
-    self._model_push = types.TfxType(type_name='ModelPushPath')
+    self._model_push = types.TfxArtifact(type_name='ModelPushPath')
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
     tf.gfile.MakeDirs(self._model_push.uri)
     self._output_dict = {

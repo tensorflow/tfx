@@ -34,7 +34,7 @@ class ExecutorTest(tf.test.TestCase):
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
 
     # Create input dict.
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     input_base.uri = os.path.join(input_data_dir, 'external')
     self._input_dict = {'input-base': [input_base]}
 
@@ -61,9 +61,9 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = types.TfxType(type_name='ExamplesPath', split='train')
+    train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
     train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
+    eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 

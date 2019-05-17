@@ -36,16 +36,16 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    train_examples = types.TfxType(type_name='ExamplesPath', split='train')
+    train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
     train_examples.uri = os.path.join(source_data_dir,
                                       'transform/transformed_examples/train/')
-    eval_examples = types.TfxType(type_name='ExamplesPath', split='eval')
+    eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
     eval_examples.uri = os.path.join(source_data_dir,
                                      'transform/transformed_examples/eval/')
-    transform_output = types.TfxType(type_name='TransformPath')
+    transform_output = types.TfxArtifact(type_name='TransformPath')
     transform_output.uri = os.path.join(source_data_dir,
                                         'transform/transform_output/')
-    schema = types.TfxType(type_name='ExamplesPath')
+    schema = types.TfxArtifact(type_name='ExamplesPath')
     schema.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     input_dict = {
@@ -55,7 +55,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    model_exports = types.TfxType(type_name='ModelExportPath')
+    model_exports = types.TfxArtifact(type_name='ModelExportPath')
     model_exports.uri = os.path.join(output_data_dir, 'model_export_path')
     output_dict = {'output': [model_exports]}
 

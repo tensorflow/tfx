@@ -30,7 +30,7 @@ class DriverTest(tf.test.TestCase):
     mock_metadata = tf.test.mock.Mock()
     artifacts = []
     for span in [3, 2, 1]:
-      model = types.TfxType(type_name='ModelExportPath')
+      model = types.TfxArtifact(type_name='ModelExportPath')
       model.span = span
       model.uri = 'uri-%d' % span
       artifacts.append(model.artifact)

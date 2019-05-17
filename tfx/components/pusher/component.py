@@ -88,7 +88,7 @@ class Pusher(base_component.BaseComponent):
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    model_push_artifact_collection = [types.TfxType('ModelPushPath',)]
+    model_push_artifact_collection = [types.TfxArtifact('ModelPushPath',)]
     return base_component.ComponentOutputs({
         'model_push':
             channel.Channel(

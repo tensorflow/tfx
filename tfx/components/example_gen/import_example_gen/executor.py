@@ -31,7 +31,7 @@ from tfx.utils import types
 @beam.typehints.with_output_types(tf.train.Example)
 def _ImportExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxType]],
+    input_dict: Dict[Text, List[types.TfxArtifact]],
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read TFRecord files to PCollection of TF examples.

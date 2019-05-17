@@ -67,8 +67,8 @@ class Executor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
 

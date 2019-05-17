@@ -54,7 +54,7 @@ class TestExampleGenComponent(component.ExampleGen):
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     example_gen = component.ExampleGen(
         executor=TestExampleGenExecutor,
         input_base=channel.as_channel([input_base]))
@@ -66,7 +66,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('eval', artifact_collection[1].split)
 
   def test_construct_subclass(self):
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     example_gen = TestExampleGenComponent(
         input_base=channel.as_channel([input_base]))
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
@@ -75,7 +75,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('eval', artifact_collection[1].split)
 
   def test_construct_with_output_config(self):
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     example_gen = component.ExampleGen(
         executor=TestExampleGenExecutor,
         input_base=channel.as_channel([input_base]),
@@ -92,7 +92,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('test', artifact_collection[2].split)
 
   def test_construct_with_input_config(self):
-    input_base = types.TfxType(type_name='ExternalPath')
+    input_base = types.TfxArtifact(type_name='ExternalPath')
     example_gen = component.ExampleGen(
         executor=TestExampleGenExecutor,
         input_base=channel.as_channel([input_base]),
