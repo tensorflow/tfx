@@ -85,8 +85,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     unique_id = '{}_{}'.format(self._component_name, self._workflow_id)
     # TODO(swoonna): Add tmp_dir to additional_pipeline_args
     executor_context = base_executor.BaseExecutor.Context(
-        beam_pipeline_args=self._additional_pipeline_args.get(
-            'beam_pipeline_args'),
+        beam_pipeline_args=beam_pipeline_args,
         tmp_dir=os.path.join(self._output_dir, '.temp', ''),
         unique_id=unique_id)
 
