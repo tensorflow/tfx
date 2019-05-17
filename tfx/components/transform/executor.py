@@ -198,21 +198,11 @@ class Executor(base_executor.BaseExecutor):
     eval_data_uri = types.get_split_uri(input_dict['input_data'], 'eval')
     schema_file = io_utils.get_only_uri_in_dir(
         types.get_single_uri(input_dict['schema']))
-
     transform_output = types.get_single_uri(output_dict['transform_output'])
-    if tf.gfile.Exists(transform_output):
-      io_utils.delete_dir(transform_output)
-
     transformed_train_output = types.get_split_uri(
         output_dict['transformed_examples'], 'train')
-    if tf.gfile.Exists(transformed_train_output):
-      io_utils.delete_dir(transformed_train_output)
-
     transformed_eval_output = types.get_split_uri(
         output_dict['transformed_examples'], 'eval')
-    if tf.gfile.Exists(transformed_eval_output):
-      io_utils.delete_dir(transformed_eval_output)
-
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     tf.logging.debug('Using temp path %s for tft.beam', temp_path)
 
