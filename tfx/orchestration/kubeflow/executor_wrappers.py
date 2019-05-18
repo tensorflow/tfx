@@ -25,7 +25,7 @@ import re
 from future import utils
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io
-from typing import Any, Dict, Text
+from typing import Any, Dict, List, Text
 
 import tfx
 from tfx.components.base import base_executor
@@ -61,7 +61,14 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
       outputs: Text,
       exec_properties: Dict[Text, Any],
   ):
-    raw_args = exec_properties.get('beam_pipeline_args', [])
+    self._input_dict = input_dict
+    self._output_dict = types.parse_tfx_type_dict(outputs)
+    self._component_name = to_snake_case(name)
+    self._exec_properties = exec_properties
+    self._output_dir = self._exec_properties['output_dir']
+    self._workflow_id = os.environ['WORKFLOW_ID']
+
+    raw_args = self._exec_properties.get('beam_pipeline_args', [])
 
     # Beam expects str types for it's pipeline args. Ensure unicode type is
     # converted to str if required.
@@ -78,9 +85,6 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
     executor_cls = import_utils.import_class_by_path(executor_class_path)
-    self._exec_properties = exec_properties
-    self._output_dir = self._exec_properties['output_dir']
-    self._workflow_id = os.environ['WORKFLOW_ID']
     # TODO(swoonna): Switch to execution_id when available
     unique_id = '{}_{}'.format(self._component_name, self._workflow_id)
     # TODO(swoonna): Add tmp_dir to additional_pipeline_args
@@ -88,11 +92,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
         beam_pipeline_args=beam_pipeline_args,
         tmp_dir=os.path.join(self._output_dir, '.temp', ''),
         unique_id=unique_id)
-
     self._executor = executor_cls(executor_context)
-    self._input_dict = input_dict
-    self._output_dict = types.parse_tfx_type_dict(outputs)
-    self._component_name = to_snake_case(name)
 
   def _set_outputs(self):
     tf.logging.info('Using workflow id {}'.format(self._workflow_id))
