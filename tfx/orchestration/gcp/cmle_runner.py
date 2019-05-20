@@ -51,12 +51,16 @@ def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
   """Start a trainer job on CMLE.
 
   This is done by forwarding the inputs/outputs/exec_properties to the
-  tfx.scripts.run_executor module on a CMLE training job interpreter.
+  tfx.scripts.run_executor
+  module on a CMLE training job interpreter.
 
   Args:
-    input_dict: Passthrough input dict for tfx.components.Trainer.executor.
-    output_dict: Passthrough input dict for tfx.components.Trainer.executor.
-    exec_properties: Passthrough input dict fortfx.components.Trainer.executor.
+    input_dict: Passthrough input dict for
+      tfx.components.Trainer.executor.
+    output_dict: Passthrough input dict for
+      tfx.components.Trainer.executor.
+    exec_properties: Passthrough input dict for
+      tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
     training_inputs: Training input for CMLE training job. 'pythonModule',
       'pythonVersion' and 'runtimeVersion' will be inferred by the runner. For

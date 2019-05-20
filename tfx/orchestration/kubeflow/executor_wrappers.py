@@ -24,8 +24,9 @@ import re
 
 from future import utils
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io
 from typing import Any, Dict, List, Text
+
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 import tfx
 from tfx.components.base import base_executor
