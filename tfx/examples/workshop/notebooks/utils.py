@@ -19,9 +19,10 @@ from __future__ import print_function
 
 from IPython.display import display_html
 import matplotlib.pyplot as plt
-from ml_metadata.proto import metadata_store_pb2
 import networkx as nx
 import pandas as pd
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 def _is_output_event(event):
