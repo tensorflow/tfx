@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Text
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
-import tfx
+from tfx import version
 from tfx.components.base import base_executor
 from tfx.utils import import_utils
 from tfx.utils import types
@@ -81,7 +81,7 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
 
     # TODO(zhitaoli): Revisit usage of setup_file here.
     module_dir = os.path.dirname(
-        os.path.dirname(tfx.__file__))
+        os.path.dirname(os.path.dirname(version.__file__)))
     setup_file = os.path.join(module_dir, 'setup.py')
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 

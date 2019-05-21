@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test for tfx.orchestration.airflow.airflow_runner."""
+"""Tests for tfx.orchestration.airflow.airflow_runner."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -29,8 +29,12 @@ from tfx.utils import channel
 
 class AirflowRunnerTest(tf.test.TestCase):
 
-  @mock.patch('tfx.orchestration.airflow.airflow_component.Component')
-  @mock.patch('tfx.orchestration.airflow.airflow_pipeline.AirflowPipeline')
+  @mock.patch(
+      'tfx.orchestration.airflow.airflow_component.Component'
+  )
+  @mock.patch(
+      'tfx.orchestration.airflow.airflow_pipeline.AirflowPipeline'
+  )
   def test_airflow_runner(self, mock_airflow_pipeline_class,
                           mock_airflow_component_class):
     mock_airflow_pipeline_class.return_value = 'DAG'
