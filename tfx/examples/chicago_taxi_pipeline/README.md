@@ -98,11 +98,11 @@ pip install -r requirements.txt
 -->
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow==1.12
+pip install tensorflow==1.13.1
 pip install docker
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 pip install apache-airflow
-pip install tfx==0.12.0
+pip install tfx==0.13.0
 </pre>
 
 Next, initialize Airflow
