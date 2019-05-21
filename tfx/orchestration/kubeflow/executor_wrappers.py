@@ -21,8 +21,8 @@ import argparse
 import json
 import os
 import re
-
 from future import utils
+import six
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 
@@ -75,8 +75,10 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     # converted to str if required.
     beam_pipeline_args = []
     for arg in raw_args:
-      if isinstance(arg, unicode):
+      # In order to support both Py2 and Py3: Py3 doesn't have `unicode` type.
+      if six.PY2 and isinstance(arg, unicode):
         arg = arg.encode('ascii', 'ignore')
+
       beam_pipeline_args.append(arg)
 
     # TODO(zhitaoli): Revisit usage of setup_file here.
@@ -110,13 +112,20 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
                                            output_artifact.split, '')
         output_artifact.span = max_input_span
 
-  def run(self):
+  def run(self, output_basedir: Text = '/'):
+    """Runs the wrapped Executor, and writes metadata of output artifacts.
+
+    Args:
+      output_basedir: Base directory to which output artifacts metadata
+                      is written. Useful for unit tests.
+    """
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
 
-    tf.gfile.MakeDirs('/output/ml_metadata')
+    output_dir = os.path.join(output_basedir, 'output/ml_metadata')
+    tf.gfile.MakeDirs(output_dir)
     for output_name, output_artifact_list in self._output_dict.items():
-      filename = os.path.join('/output/ml_metadata', output_name)
+      filename = os.path.join(output_dir, output_name)
       with file_io.FileIO(filename, 'w') as f:
         output_list = [x.json_dict() for x in output_artifact_list]
         f.write(json.dumps(output_list))
