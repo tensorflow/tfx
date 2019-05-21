@@ -22,6 +22,7 @@ import sys
 # Standard Imports
 import mock
 import tensorflow as tf
+
 from tfx.orchestration.gcp import cmle_runner
 from tfx.utils import io_utils
 

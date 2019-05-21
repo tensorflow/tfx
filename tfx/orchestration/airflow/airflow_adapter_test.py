@@ -105,7 +105,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
   @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch('tfx.components.base.base_executor.BaseExecutor')
+  @mock.patch(
+      'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_cached_execution(self, mock_metadata_class, mock_driver_class,
@@ -141,7 +142,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
   @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch('tfx.components.base.base_executor.BaseExecutor')
+  @mock.patch(
+      'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_new_execution(self, mock_metadata_class, mock_driver_class,
@@ -185,7 +187,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
   @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch('tfx.components.base.base_executor.BaseExecutor')
+  @mock.patch(
+      'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_python_exec(self, mock_metadata_class, mock_driver_class,
@@ -222,7 +225,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
   @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch('tfx.components.base.base_executor.BaseExecutor')
+  @mock.patch(
+      'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_docker_exec(self, mock_metadata_class, mock_driver_class,
@@ -259,7 +263,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
   @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch('tfx.components.base.base_executor.BaseExecutor')
+  @mock.patch(
+      'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_publish_exec(self, mock_metadata_class, mock_driver_class,
