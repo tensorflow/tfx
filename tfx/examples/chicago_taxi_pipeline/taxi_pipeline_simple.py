@@ -29,13 +29,12 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
-from tfx.orchestration.pipeline import PipelineDecorator
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import csv_input
-
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
@@ -63,20 +62,9 @@ _airflow_config = {
 }
 
 # Logging overrides
-logger_overrides = {
-    'log_root': _log_root,
-    'log_level': logging.INFO
-}
+logger_overrides = {'log_root': _log_root, 'log_level': logging.INFO}
 
 
-# TODO(b/124066911): Centralize tfx related config into one place.
-# TODO(zhitaoli): Remove PipelineDecorator after 0.13.0.
-@PipelineDecorator(
-    pipeline_name='chicago_taxi_simple',
-    enable_cache=True,
-    metadata_db_root=_metadata_db_root,
-    additional_pipeline_args={'logger_args': logger_overrides},
-    pipeline_root=_pipeline_root)
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
   examples = csv_input(_data_root)
@@ -131,10 +119,17 @@ def _create_pipeline():
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=_serving_model_dir)))
 
-  return [
-      example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      trainer, model_analyzer, model_validator, pusher
-  ]
+  return pipeline.Pipeline(
+      pipeline_name='chicago_taxi_simple',
+      pipeline_root=_pipeline_root,
+      components=[
+          example_gen, statistics_gen, infer_schema, validate_stats, transform,
+          trainer, model_analyzer, model_validator, pusher
+      ],
+      enable_cache=True,
+      metadata_db_root=_metadata_db_root,
+      additional_pipeline_args={'logger_args': logger_overrides},
+  )
 
 
-pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())
+airflow_pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())
