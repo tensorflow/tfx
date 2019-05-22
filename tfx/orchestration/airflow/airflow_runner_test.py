@@ -84,7 +84,8 @@ class AirflowRunnerTest(tf.test.TestCase):
             output_dict=mock.ANY,
             exec_properties=c2.exec_properties)
     ]
-    mock_airflow_component_class.assert_has_calls(component_calls)
+    mock_airflow_component_class.assert_has_calls(
+        component_calls, any_order=True)
 
 
 if __name__ == '__main__':
