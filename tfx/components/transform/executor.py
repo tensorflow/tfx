@@ -27,6 +27,7 @@ import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
+from tensorflow_transform.beam import common as tft_beam_common
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
@@ -237,6 +238,34 @@ class Executor(base_executor.BaseExecutor):
     self.Transform(label_inputs, label_outputs, status_file)
     tf.logging.info('Cleaning up temp path %s on executor success', temp_path)
     io_utils.delete_dir(temp_path)
+
+  @staticmethod
+  @beam.ptransform_fn
+  @beam.typehints.with_input_types(beam.Pipeline)
+  @beam.typehints.with_output_types(beam.pvalue.PDone)
+  def _IncrementColumnUsageCounter(pipeline: beam.Pipeline,
+                                   total_columns_count: int,
+                                   analyze_columns_count: int,
+                                   transform_columns_count: int):
+    """A beam PTransform to increment counters of column usage."""
+
+    def _MakeAndIncrementCounters(_):
+      """Increment column usage counters."""
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'total_columns_count').inc(total_columns_count)
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'analyze_columns_count').inc(analyze_columns_count)
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'transform_columns_count').inc(transform_columns_count)
+      return None
+
+    return (
+        pipeline
+        | 'CreateNone' >> beam.Create([None])
+        | 'IncrementColumnUsageCounter' >> beam.Map(_MakeAndIncrementCounters))
 
   @staticmethod
   @beam.ptransform_fn
@@ -696,6 +725,11 @@ class Executor(base_executor.BaseExecutor):
           use_deep_copy_optimization=True):
         # pylint: disable=expression-not-assigned
         # pylint: disable=no-value-for-parameter
+
+        _ = (
+            p | self._IncrementColumnUsageCounter(
+                len(feature_spec.keys()), len(analyze_input_columns),
+                len(transform_input_columns)))
 
         analyze_decode_fn = (
             self._GetDecodeFunction(raw_examples_data_format,
