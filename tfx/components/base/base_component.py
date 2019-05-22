@@ -63,7 +63,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
                input_dict: Dict[Text, channel.Channel],
                exec_properties: Dict[Text, Any],
                unique_name: Optional[Text] = '',
-               outputs: Optional[ComponentOutputs] = ComponentOutputs({})):
+               outputs: Optional[ComponentOutputs] = None):
     self.component_name = component_name
     self.driver = driver
     self.executor = executor
@@ -72,6 +72,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     self.unique_name = unique_name
     self.outputs = outputs or self._create_outputs()
     self._type_check(self.input_dict, self.exec_properties)
+    self._upstream_nodes = set()
+    self._downstream_nodes = set()
 
   def __str__(self):
     return """
@@ -116,3 +118,17 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
         component.
     """
     raise NotImplementedError
+
+  @property
+  def upstream_nodes(self):
+    return self._upstream_nodes
+
+  def add_upstream_node(self, upstream_node):
+    self._upstream_nodes.add(upstream_node)
+
+  @property
+  def downstream_nodes(self):
+    return self._downstream_nodes
+
+  def add_downstream_node(self, downstream_node):
+    self._downstream_nodes.add(downstream_node)

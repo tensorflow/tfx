@@ -80,12 +80,48 @@ class Pipeline(object):
         'pipeline_name': pipeline_name,
         'pipeline_root': pipeline_root
     })
-    self._components = components or []
+    # Calls property setter.
+    self.components = components or []
 
   @property
   def components(self):
+    """A list of logical components that are deduped and topological sorted."""
     return self._components
 
   @components.setter
-  def components(self, components):
-    self._components = components
+  def components(self, components: List[base_component.BaseComponent]):
+    deduped_components = set(components)
+    producer_map = {}
+
+    # Fills in producer map.
+    for component in deduped_components:
+      for o in component.outputs.get_all().values():
+        assert not producer_map.get(0), '{} produced more than once'.format(o)
+        producer_map[o] = component
+
+    # Connects nodes based on producer map.
+    for component in deduped_components:
+      for i in component.input_dict.values():
+        if producer_map.get(i):
+          component.add_upstream_node(producer_map[i])
+          producer_map[i].add_downstream_node(component)
+
+    self._components = []
+    visited = set()
+    # Finds the nodes with indegree 0.
+    current_layer = [c for c in deduped_components if not c.upstream_nodes]
+    # Sorts component in topological order.
+    while current_layer:
+      next_layer = []
+      for component in current_layer:
+        self._components.append(component)
+        visited.add(component)
+        for downstream_node in component.downstream_nodes:
+          if downstream_node.upstream_nodes.issubset(visited):
+            next_layer.append(downstream_node)
+      current_layer = next_layer
+    # If there is a cycle in the graph, upon visiting the cycle, no node will be
+    # ready to be processed because it is impossible to find a single node that
+    # has all its dependencies visited.
+    if len(self._components) < len(deduped_components):
+      raise RuntimeError('There is a cycle in the pipeline')
