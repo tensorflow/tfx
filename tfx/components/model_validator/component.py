@@ -46,7 +46,6 @@ class ModelValidator(base_component.BaseComponent):
   Attributes:
     outputs: A ComponentOutputs including following keys:
       - blessing: A channel of 'ModelBlessingPath' with result of blessing.
-      - results: A channel of 'ModelValidationPath' with result of validation.
   """
 
   def __init__(self,
