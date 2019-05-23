@@ -32,6 +32,5 @@ taxi_mv_spec = [tfma.SingleSliceSpec()]
 
 model_validator = components.ModelValidator(
       examples=examples_gen.outputs.output,
-      model=trainer.outputs.output,
-      eval_spec=taxi_mv_spec)
+      model=trainer.outputs.output)
 ```
