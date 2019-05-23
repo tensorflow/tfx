@@ -90,7 +90,7 @@ Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
 for details.
 
-# Custom ExampleGen
+## Custom ExampleGen
 
 If the currently available ExampleGen components don't fit your needs, you can
 create a custom ExampleGen, which will include a new executor extended from
