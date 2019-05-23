@@ -123,6 +123,8 @@ class AirflowEndToEndTest(unittest.TestCase):
         self._airflow_home, 'logs')
     os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = ('sqlite:///%s/airflow.db' %
                                                      self._airflow_home)
+    # Do not load examples to make this a bit faster.
+    os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
     # Following environment variables make scheduler process dags faster.
     os.environ['AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC'] = '1'
     os.environ['AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC'] = '1'
