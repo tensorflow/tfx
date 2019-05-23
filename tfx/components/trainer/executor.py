@@ -55,8 +55,7 @@ class Executor(base_executor.BaseExecutor):
   please refer to https://www.tensorflow.org/extend/estimators.
 
   How to create a trainer callback function to be used by this Trainer executor:
-
-  A TFX Trainer binary can be created by first creating a trainer_fn callback
+  An estimator can be executed by TFX by first creating a trainer_fn callback
   method that returns an estimator and some additional parameters, similar to
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py#L285.
   This becomes the basis of the new Executor for Trainer. This Executor will
