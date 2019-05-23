@@ -33,7 +33,25 @@ BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model/'
 
 
 class Executor(base_executor.BaseExecutor):
-  """Generic TFX model validator executor."""
+  """TFX model validator executor.
+
+  The model validator helps prevent bad models from being pushed to production.
+  It does this by validating exported models against known good models (e.g. the
+  current production model), and marking the exported model as good ("blessing
+  it") only if the exported model's metrics are within predefined thresholds
+  around the good model's metrics.
+
+  The model validator will validate tf.serving format exported models produced
+  by the Trainer component. The validator evaluates the models on examples
+  created by the ExampleGen component. The validator will also automatically
+  read data written by the Pusher component regarding the latest pushed models
+  by using ml.metadata to query the previously pushed artifacts.
+
+  To include ModelValidator in a TFX pipeline, configure your pipeline similar
+  to
+  https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L110.
+
+  """
 
   # TODO(jyzhao): customized threshold support.
   def _pass_threshold(self, eval_result: tfma.EvalResult) -> bool:

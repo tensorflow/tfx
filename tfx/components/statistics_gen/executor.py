@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Generic TFX statistics_gen executor."""
+"""TFX statistics_gen executor."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -33,7 +34,15 @@ _DEFAULT_FILE_NAME = 'stats_tfrecord'
 
 
 class Executor(base_executor.BaseExecutor):
-  """Generic TFX statsgen executor."""
+  """Computes statistics over input training data for example validation.
+
+  The StatisticsGen component generates features statistics and random samples
+  over training data, which can be used for visualization and validation.
+  StatisticsGen uses Beam and appropriate algorithms to scale to large datasets.
+
+  To include StatisticsGen in a TFX pipeline, configure your pipeline similar to
+  https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L75.
+  """
 
   def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
          output_dict: Dict[Text, List[types.TfxArtifact]],
