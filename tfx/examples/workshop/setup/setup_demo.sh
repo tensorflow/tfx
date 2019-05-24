@@ -27,7 +27,7 @@ printf "${GREEN}Installing TensorFlow${NORMAL}\n"
 pip install tensorflow==1.13.1
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install tfx==0.13.0rc2
+pip install tfx==0.13.0
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
