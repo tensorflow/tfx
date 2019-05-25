@@ -42,7 +42,7 @@ class Transform(base_component.BaseComponent):
       artifact.
     module_file: The file path to a python module file, from which the
       'preprocessing_fn' function will be loaded.
-    name: Optional unique name. Necessary iff multiple transform components are
+    name: Optional unique name. Necessary if multiple transform components are
       declared in the same pipeline.
     output: Optional dict from name to output channel.
   Attributes:
