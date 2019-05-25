@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2019 Google LLC
+# Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,24 +18,22 @@ echo Running cloud serving...
 
 if [ -z "$WORKING_DIR" ]; then
   echo WORKING_DIR was not set.  Typically this is set by the model trainer.
-  echo You can run 'source train_mlengine.sh' to set it.
+  echo You can run 'source train_aiplatform.sh' to set it.
   echo Otherwise please set WORKING_DIR using:
   echo export WORKING_DIR=gs://bucket/output
   exit 1
 fi
 
-gcloud ml-engine models create chicago_taxi --regions us-central1
+gcloud ai-platform models create chicago_taxi --regions us-central1
 gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/
 
 # Pick out the directory containing the last trained model.
 MODEL_BINARIES=$(gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/ \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
-# Please refer to https://cloud.google.com/ml-engine/docs/tensorflow/runtime-version-list
-# for version list.
-CAI_RUNTIME_VERSION=1.13
+TF_VERSION=1.12
 
-gcloud ml-engine versions create v1 \
+gcloud ai-platform versions create v1 \
   --model chicago_taxi \
   --origin $MODEL_BINARIES \
-  --runtime-version $CAI_RUNTIME_VERSION
+  --runtime-version $TF_VERSION
