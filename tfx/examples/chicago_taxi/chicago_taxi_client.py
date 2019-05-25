@@ -54,8 +54,8 @@ def _do_local_inference(host, port, serialized_examples):
   print(json.dumps(prediction, indent=4))
 
 
-def _do_mlengine_inference(model, version, serialized_examples):
-  """Performs inference on the model:version in CMLE."""
+def _do_aiplatform_inference(model, version, serialized_examples):
+  """Performs inference on the model:version in AI Platform."""
   working_dir = tempfile.mkdtemp()
   instances_file = os.path.join(working_dir, 'test.json')
   json_examples = []
@@ -66,8 +66,8 @@ def _do_mlengine_inference(model, version, serialized_examples):
         '{ "inputs": { "b64": "%s" } }' % base64.b64encode(serialized_example))
   file_io.write_string_to_file(instances_file, '\n'.join(json_examples))
   gcloud_command = [
-      'gcloud', 'ml-engine', 'predict', '--model', model, '--version', version,
-      '--json-instances', instances_file
+      'gcloud', 'ai-platform', 'predict', '--model', model, '--version',
+      version, '--json-instances', instances_file
   ]
   print(subprocess.check_output(gcloud_command))
 
@@ -77,7 +77,7 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
 
   Args:
     model_handle: handle to the model. This can be either
-     "mlengine:model:version" or "host:port"
+     "aiplatform:model:version" or "host:port"
     examples_file: path to csv file containing examples, with the first line
       assumed to have the column headers
     num_examples: number of requests to send to the server
@@ -110,8 +110,8 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
     serialized_examples.append(serialized_example)
 
   parsed_model_handle = model_handle.split(':')
-  if parsed_model_handle[0] == 'mlengine':
-    _do_mlengine_inference(
+  if parsed_model_handle[0] == 'aiplatform':
+    _do_aiplatform_inference(
         model=parsed_model_handle[1],
         version=parsed_model_handle[2],
         serialized_examples=serialized_examples)
@@ -132,7 +132,7 @@ def main(_):
 
   parser.add_argument(
       '--server',
-      help=('Prediction service host:port or mlengine:model:version'),
+      help=('Prediction service host:port or aiplatform:model:version'),
       required=True)
 
   parser.add_argument(

@@ -14,7 +14,7 @@
 # limitations under the License.
 set -u
 
-echo Running cloud inference...
+echo Running Google Cloud AI Platform inference...
 
 if [ -z "$SCHEMA_PATH" ]; then
   echo SCHEMA_PATH was not set. Please set SCHEMA_PATH to schema produced
@@ -27,4 +27,4 @@ python chicago_taxi_client.py \
   --num_examples 3 \
   --examples_file ./data/train/data.csv \
   --schema_file $SCHEMA_PATH \
-  --server mlengine:chicago_taxi:v1
+  --server aiplatform:chicago_taxi:v1

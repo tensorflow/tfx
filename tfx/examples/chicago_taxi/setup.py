@@ -16,7 +16,7 @@ import setuptools
 
 # LINT.IfChange
 TF_VERSION = '1.13.1'
-# LINT.ThenChange(train_mlengine.sh, start_model_server_mlengine.sh)
+# LINT.ThenChange(train_aiplatform.sh, start_model_server_aiplatform.sh)
 
 # LINT.IfChange
 BEAM_VERSION = '2.12.0'

@@ -57,7 +57,7 @@ def build_estimator(tf_transform_output, config, hidden_units=None):
       tf.feature_column.categorical_column_with_identity(
           key, num_buckets=num_buckets, default_value=0)
       for key, num_buckets in zip(
-          taxi.transformed_names(taxi.CATEGORICAL_FEATURE_KEYS),  #
+          taxi.transformed_names(taxi.CATEGORICAL_FEATURE_KEYS),
           taxi.MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(

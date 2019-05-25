@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2019 Google LLC
+# Copyright 2018 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,14 +61,12 @@ EVAL_FILE=$TFT_OUTPUT_PATH/train_transformed-*
 TRAIN_STEPS=100000
 EVAL_STEPS=1000
 
-# Please refer to https://cloud.google.com/ml-engine/docs/tensorflow/runtime-version-list
-# for version info.
-CAI_RUNTIME_VERSION=1.13
+TF_VERSION=1.12
 
-gcloud ml-engine jobs submit training $JOB_ID \
+gcloud ai-platform jobs submit training $JOB_ID \
                                     --stream-logs \
                                     --job-dir $MODEL_DIR \
-                                    --runtime-version $CAI_RUNTIME_VERSION \
+                                    --runtime-version $TF_VERSION \
                                     --module-name trainer.task \
                                     --package-path trainer/ \
                                     --region us-central1 \
