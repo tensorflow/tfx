@@ -40,8 +40,9 @@ class Pusher(base_component.BaseComponent):
       Trainer component.
     model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
       ModelValidator component.
-    push_destination: A pusher_py2.PushDestinationLabel instance, providing
-      info for tensorflow serving to load models.
+    push_destination: A pusher_pb2.PushDestination instance, providing
+      info for tensorflow serving to load models. Optional if executor_class
+      doesn't require push_destination.
     name: Optional unique name. Necessary if multiple Pusher components are
       declared in the same pipeline.
     custom_config: A dict which contains the deployment job parameters to be
@@ -58,7 +59,7 @@ class Pusher(base_component.BaseComponent):
   def __init__(self,
                model_export: channel.Channel,
                model_blessing: channel.Channel,
-               push_destination: pusher_pb2.PushDestination,
+               push_destination: Optional[pusher_pb2.PushDestination] = None,
                name: Text = None,
                custom_config: Optional[Dict[Text, Any]] = None,
                executor_class: Optional[Type[
@@ -70,9 +71,17 @@ class Pusher(base_component.BaseComponent):
         'model_blessing': channel.as_channel(model_blessing),
     }
     exec_properties = {
-        'push_destination': json_format.MessageToJson(push_destination),
         'custom_config': custom_config,
     }
+
+    if push_destination is None:
+      if executor_class == executor.Executor:
+        raise ValueError('push_destination is required unless custom '
+                         'executor_class is supplied that does not require it.')
+    else:
+      exec_properties['push_destination'] = (
+          json_format.MessageToJson(push_destination))
+
     super(Pusher, self).__init__(
         component_name=component_name,
         unique_name=name,
