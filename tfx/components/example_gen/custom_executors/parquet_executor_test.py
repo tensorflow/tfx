@@ -36,7 +36,7 @@ class ExecutorTest(tf.test.TestCase):
     # Create input dict.
     input_base = types.TfxArtifact(type_name='ExternalPath')
     input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {'input-base': [input_base]}
+    self._input_dict = {'input_base': [input_base]}
 
   def testDictToExample(self):
     parquet_dict = {
@@ -147,13 +147,13 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create exec proterties.
     exec_properties = {
-        'input':
+        'input_config':
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='parquet', pattern='parquet/*'),
                 ])),
-        'output':
+        'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[

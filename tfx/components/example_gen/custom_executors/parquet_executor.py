@@ -81,15 +81,15 @@ def _ParquetToExample(  # pylint: disable=invalid-name
   Args:
     pipeline: beam pipeline.
     input_dict: Input dict from input key to a list of Artifacts.
-      - input-base: input dir that contains Parquet data.
+      - input_base: input dir that contains Parquet data.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, glob relative file pattern
-      that maps to input files with root directory given by input-base.
+      that maps to input files with root directory given by input_base.
 
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = types.get_single_uri(input_dict['input-base'])
+  input_base_uri = types.get_single_uri(input_dict['input_base'])
   parquet_pattern = os.path.join(input_base_uri, split_pattern)
   tf.logging.info(
       'Processing input parquet data {} to TFExample.'.format(parquet_pattern))

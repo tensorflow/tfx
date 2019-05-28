@@ -16,13 +16,27 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Optional, Text
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
 from tfx.components.schema_gen import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class SchemaGenSpec(base_component.ComponentSpec):
+  """SchemaGen component spec."""
+
+  COMPONENT_NAME = 'SchemaGen'
+  PARAMETERS = []
+  INPUTS = [
+      ChannelInput('stats', type='ExampleStatisticsPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('output', type='SchemaPath'),
+  ]
 
 
 class SchemaGen(base_component.BaseComponent):
@@ -39,7 +53,7 @@ class SchemaGen(base_component.BaseComponent):
   def __init__(self,
                stats: channel.Channel,
                name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
+               output: Optional[channel.Channel] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -47,45 +61,16 @@ class SchemaGen(base_component.BaseComponent):
         least 'train' split. Other splits are ignored currently.
       name: Optional unique name. Necessary iff multiple SchemaGen components
         are declared in the same pipeline.
-      outputs: Optional dict from name to output channel.
+      output: Optional output 'SchemaPath' channel for schema result.
     """
-    component_name = 'SchemaGen'
-    input_dict = {'stats': channel.as_channel(stats)}
-    exec_properties = {}
+    if not output:
+      output = channel.Channel(
+          type_name='SchemaPath',
+          static_artifact_collection=[types.TfxArtifact('SchemaPath')])
+    spec = SchemaGenSpec(
+        stats=channel.as_channel(stats),
+        output=output)
     super(SchemaGen, self).__init__(
-        component_name=component_name,
         unique_name=name,
-        driver=base_driver.BaseDriver,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for ExampleValidator.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    output_artifact_collection = [types.TfxArtifact('SchemaPath')]
-    return base_component.ComponentOutputs({
-        'output':
-            channel.Channel(
-                type_name='SchemaPath',
-                static_artifact_collection=output_artifact_collection)
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError if the type_name of given Channel is different from expected.
-    """
-    del exec_properties  # Unused right now.
-    input_dict['stats'].type_check('ExampleStatisticsPath')
+        spec=spec,
+        executor=executor.Executor)

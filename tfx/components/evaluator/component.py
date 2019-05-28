@@ -17,15 +17,32 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Optional, Text
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
+from tfx.components.base.base_component import Parameter
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.utils import channel
 from tfx.utils import types
-from google.protobuf import json_format
+
+
+class EvaluatorSpec(base_component.ComponentSpec):
+  """Evaluator component spec."""
+
+  COMPONENT_NAME = 'Evaluator'
+  PARAMETERS = [
+      Parameter('feature_slicing_spec', type=evaluator_pb2.FeatureSlicingSpec),
+  ]
+  INPUTS = [
+      ChannelInput('examples', type='ExamplesPath'),
+      ChannelInput('model_exports', type='ModelExportPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('output', type='ModelEvalPath'),
+  ]
 
 
 class Evaluator(base_component.BaseComponent):
@@ -43,9 +60,7 @@ class Evaluator(base_component.BaseComponent):
     name: Optional unique name. Necessary if multiple Evaluator components are
       declared in the same pipeline.
     outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - output: A channel of 'ModelEvalPath' with result of evaluation.
+    output: Optional channel of 'ModelEvalPath' for result of evaluation.
   """
 
   def __init__(
@@ -54,51 +69,16 @@ class Evaluator(base_component.BaseComponent):
       model_exports: channel.Channel,
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
       name: Optional[Text] = None,
-      outputs: Optional[base_component.ComponentOutputs] = None):
-    component_name = 'Evaluator'
-    input_dict = {
-        'examples': channel.as_channel(examples),
-        'model_exports': channel.as_channel(model_exports),
-    }
-    exec_properties = {
-        'feature_slicing_spec':
-            json_format.MessageToJson(feature_slicing_spec or
-                                      evaluator_pb2.FeatureSlicingSpec()),
-    }
+      output: Optional[channel.Channel] = None):
+    if not output:
+      output = channel.Channel(
+          type_name='ModelEvalPath',
+          static_artifact_collection=[types.TfxArtifact('ModelEvalPath')])
+    spec = EvaluatorSpec(
+        examples=channel.as_channel(examples),
+        model_exports=channel.as_channel(model_exports),
+        feature_slicing_spec=(
+            feature_slicing_spec or evaluator_pb2.FeatureSlicingSpec()),
+        output=output)
     super(Evaluator, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        driver=base_driver.BaseDriver,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Evaluator.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    output_artifact_collection = [types.TfxArtifact('ModelEvalPath')]
-    return base_component.ComponentOutputs({
-        'output':
-            channel.Channel(
-                type_name='ModelEvalPath',
-                static_artifact_collection=output_artifact_collection),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
-    """
-    input_dict['examples'].type_check('ExamplesPath')
-    input_dict['model_exports'].type_check('ModelExportPath')
+        unique_name=name, spec=spec, executor=executor.Executor)

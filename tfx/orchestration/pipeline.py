@@ -101,7 +101,7 @@ class Pipeline(object):
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.input_dict.values():
+      for i in component.inputs.get_all().values():
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)

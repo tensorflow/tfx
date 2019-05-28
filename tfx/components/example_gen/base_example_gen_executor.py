@@ -151,10 +151,10 @@ class BaseExampleGenExecutor(
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties['input'], input_config)
+    json_format.Parse(exec_properties['input_config'], input_config)
     # Get output split information.
     output_config = example_gen_pb2.Output()
-    json_format.Parse(exec_properties['output'], output_config)
+    json_format.Parse(exec_properties['output_config'], output_config)
     # Get output split names.
     split_names = utils.generate_output_split_names(input_config, output_config)
 

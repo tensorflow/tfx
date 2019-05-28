@@ -19,11 +19,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx.components.base import base_component
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.utils import channel
 
 
 class BigQueryExampleGen(component.ExampleGen):
@@ -43,10 +43,8 @@ class BigQueryExampleGen(component.ExampleGen):
       size 2:1.
     name: Optional unique name. Necessary if multiple BigQueryExampleGen
       components are declared in the same pipeline.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - examples: A channel of 'ExamplesPath' with train and eval examples.
+    example_artifacts: Optional channel of 'ExamplesPath' for output train and
+      eval examples.
   Raises:
     RuntimeError: Only one of query and input_config should be set.
   """
@@ -56,7 +54,7 @@ class BigQueryExampleGen(component.ExampleGen):
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               example_artifacts: Optional[channel.Channel] = None):
     if bool(query) == bool(input_config):
       raise RuntimeError('Only one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
@@ -69,4 +67,4 @@ class BigQueryExampleGen(component.ExampleGen):
         output_config=output_config,
         component_name='BigQueryExampleGen',
         unique_name=name,
-        outputs=outputs)
+        example_artifacts=example_artifacts)

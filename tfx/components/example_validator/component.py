@@ -16,13 +16,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Optional, Text
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
 from tfx.components.example_validator import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class ExampleValidatorSpec(base_component.ComponentSpec):
+  """ExampleValidator component spec."""
+
+  COMPONENT_NAME = 'ExampleValidator'
+  PARAMETERS = []
+  INPUTS = [
+      ChannelInput('stats', type='ExampleStatisticsPath'),
+      ChannelInput('schema', type='SchemaPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('output', type='ExampleValidationPath'),
+  ]
 
 
 class ExampleValidator(base_component.BaseComponent):
@@ -37,69 +52,24 @@ class ExampleValidator(base_component.BaseComponent):
     schema: A Channel of "SchemaPath' type.
     name: Optional unique name. Necessary iff multiple ExampleValidator
       components are declared in the same pipeline.
-    output: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - output: A channel of 'ExampleValidationPath' type.
+    output: Optional output channel of 'ExampleValidationPath' type.
   """
 
   def __init__(self,
                stats: channel.Channel,
                schema: channel.Channel,
                name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
-    """Construct an ExampleValidator component.
-
-    Args:
-      stats: A Channel of 'ExampleStatisticsPath' type. This should contain at
-        least 'eval' split. Other splits are ignored currently.
-      schema: A Channel of "SchemaPath' type.
-      name: Optional unique name. Necessary iff multiple ExampleValidator
-        components are declared in the same pipeline.
-      outputs: Optional dict from name to output channel.
-    """
-    # TODO(zhitaoli): Move all constants to a constants.py.
-    component_name = 'ExampleValidator'
-    input_dict = {
-        'stats': channel.as_channel(stats),
-        'schema': channel.as_channel(schema)
-    }
-    exec_properties = {}
+               output: Optional[channel.Channel] = None):
+    if not output:
+      output = channel.Channel(
+          type_name='ExampleValidationPath',
+          static_artifact_collection=[
+              types.TfxArtifact('ExampleValidationPath')])
+    spec = ExampleValidatorSpec(
+        stats=channel.as_channel(stats),
+        schema=channel.as_channel(schema),
+        output=output)
     super(ExampleValidator, self).__init__(
-        component_name=component_name,
         unique_name=name,
-        driver=base_driver.BaseDriver,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for ExampleValidator.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    output_artifact_collection = [types.TfxArtifact('ExampleValidationPath',)]
-    return base_component.ComponentOutputs({
-        'output':
-            channel.Channel(
-                type_name='ExampleValidationPath',
-                static_artifact_collection=output_artifact_collection)
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError if the type_name of given Channel is different from expected.
-    """
-    del exec_properties
-    input_dict['stats'].type_check('ExampleStatisticsPath')
-    input_dict['schema'].type_check('SchemaPath')
+        spec=spec,
+        executor=executor.Executor)

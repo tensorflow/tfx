@@ -87,14 +87,14 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
   def test_do_input_split(self):
     # Create exec proterties.
     exec_properties = {
-        'input':
+        'input_config':
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='train', pattern='train/*'),
                     example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
                 ])),
-        'output':
+        'output_config':
             json_format.MessageToJson(example_gen_pb2.Output())
     }
 
@@ -113,13 +113,13 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
   def test_do_output_split(self):
     # Create exec proterties.
     exec_properties = {
-        'input':
+        'input_config':
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='single', pattern='single/*'),
                 ])),
-        'output':
+        'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[

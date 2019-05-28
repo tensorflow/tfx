@@ -44,8 +44,9 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     """
     self._output_dir = output_dir or os.getcwd()
 
-  def _prepare_output_dict(self, outputs: tfx_base_component.ComponentOutputs):
-    return dict((k, v.get()) for k, v in outputs.get_all().items())
+  def _prepare_output_dict(self,
+                           wrapper: tfx_base_component._PropertyDictWrapper):
+    return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
@@ -81,7 +82,7 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     # in the list.
     for component in pipeline.components:
       input_dict = {}
-      for input_name, input_channel in component.input_dict.items():
+      for input_name, input_channel in component.inputs.get_all().items():
         if input_channel in producers:
           output = getattr(producers[input_channel]['component'].outputs,
                            producers[input_channel]['channel_name'])

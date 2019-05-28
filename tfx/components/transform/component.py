@@ -16,12 +16,31 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Optional, Text
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
+from tfx.components.base.base_component import Parameter
 from tfx.components.transform import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class TransformSpec(base_component.ComponentSpec):
+  """Transform component spec."""
+
+  COMPONENT_NAME = 'Transform'
+  PARAMETERS = [
+      Parameter('module_file', type=(str, Text)),
+  ]
+  INPUTS = [
+      ChannelInput('input_data', type='ExamplesPath'),
+      ChannelInput('schema', type='SchemaPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('transform_output', type='TransformPath'),
+      ChannelOutput('transformed_examples', type='ExamplesPath'),
+  ]
 
 
 class Transform(base_component.BaseComponent):
@@ -44,13 +63,12 @@ class Transform(base_component.BaseComponent):
       'preprocessing_fn' function will be loaded.
     name: Optional unique name. Necessary iff multiple transform components are
       declared in the same pipeline.
-    output: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - transform_output: Output of 'tf.Transform', which includes an exported
-        Tensorflow graph suitable for both training and serving;
-      - transformed_examples: Materialized transformed examples, which includes
-        both 'train' and 'eval' splits.
+    transform_output: Optional output 'TransformPath' channel for output of
+      'tf.Transform', which includes an exported Tensorflow graph suitable for
+      both training and serving;
+    transformed_examples: Optional output 'ExamplesPath' channel for
+      materialized transformed examples, which includes both 'train' and 'eval'
+      splits.
   """
 
   def __init__(self,
@@ -58,60 +76,26 @@ class Transform(base_component.BaseComponent):
                schema: channel.Channel,
                module_file: Text,
                name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
-    component_name = 'Transform'
-    input_dict = {
-        'input_data': channel.as_channel(input_data),
-        'schema': channel.as_channel(schema)
-    }
-    exec_properties = {
-        'module_file': module_file,
-    }
+               transform_output: Optional[channel.Channel] = None,
+               transformed_examples: Optional[channel.Channel] = None):
+    if not transform_output:
+      transform_output = channel.Channel(
+          type_name='TransformPath',
+          static_artifact_collection=[types.TfxArtifact('TransformPath')])
+    if not transformed_examples:
+      transformed_examples = channel.Channel(
+          type_name='ExamplesPath',
+          static_artifact_collection=[
+              types.TfxArtifact('ExamplesPath', split=split)
+              for split in types.DEFAULT_EXAMPLE_SPLITS
+          ])
+    spec = TransformSpec(
+        input_data=channel.as_channel(input_data),
+        schema=channel.as_channel(schema),
+        module_file=module_file,
+        transform_output=transform_output,
+        transformed_examples=transformed_examples)
     super(Transform, self).__init__(
-        component_name=component_name,
         unique_name=name,
-        driver=base_driver.BaseDriver,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Transform.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    transform_output_artifact_collection = [types.TfxArtifact('TransformPath',)]
-    transformed_examples_artifact_collection = [
-        types.TfxArtifact('ExamplesPath', split=split)
-        for split in types.DEFAULT_EXAMPLE_SPLITS
-    ]
-    return base_component.ComponentOutputs({
-        'transform_output':
-            channel.Channel(
-                type_name='TransformPath',
-                static_artifact_collection=transform_output_artifact_collection
-            ),
-        'transformed_examples':
-            channel.Channel(
-                type_name='ExamplesPath',
-                static_artifact_collection=transformed_examples_artifact_collection
-            ),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unchecked right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
-    """
-    del exec_properties
-    input_dict['input_data'].type_check('ExamplesPath')
-    input_dict['schema'].type_check('SchemaPath')
+        spec=spec,
+        executor=executor.Executor)

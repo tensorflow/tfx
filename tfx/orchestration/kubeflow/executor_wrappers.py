@@ -144,7 +144,7 @@ class CsvExampleGenWrapper(KubeflowExecutorWrapper):
         executor_class_path=args.executor_class_path,
         name='CSVExampleGen',
         input_dict={
-            'input-base': parse_tfx_type(args.input_base),
+            'input_base': parse_tfx_type(args.input_base),
         },
         outputs=args.outputs,
         exec_properties=json.loads(args.exec_properties),
@@ -153,7 +153,7 @@ class CsvExampleGenWrapper(KubeflowExecutorWrapper):
     self._set_outputs()
 
   def _set_input_artifact_span(self):
-    for input_artifact in self._input_dict['input-base']:
+    for input_artifact in self._input_dict['input_base']:
       matched = re.match(r'span_([0-9]+)', input_artifact.uri)
       span = matched.group(1) if matched else 1
       input_artifact.span = span

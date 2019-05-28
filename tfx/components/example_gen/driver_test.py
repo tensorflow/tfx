@@ -51,7 +51,7 @@ class DriverTest(tf.test.TestCase):
     # Create input dict.
     input_base = types.TfxArtifact(type_name='ExternalPath')
     input_base.uri = 'path-1'
-    input_dict = {'input-base': [input_base]}
+    input_dict = {'input_base': [input_base]}
 
     # Cache not hit.
     mock_metadata.get_all_artifacts.return_value = []
@@ -59,8 +59,8 @@ class DriverTest(tf.test.TestCase):
     updated_input_dict = example_gen_driver._prepare_input_for_processing(
         copy.deepcopy(input_dict))
     self.assertEqual(1, len(updated_input_dict))
-    self.assertEqual(1, len(updated_input_dict['input-base']))
-    updated_input_base = updated_input_dict['input-base'][0]
+    self.assertEqual(1, len(updated_input_dict['input_base']))
+    updated_input_base = updated_input_dict['input_base'][0]
     self.assertEqual(1, updated_input_base.id)
     self.assertEqual('path-1', updated_input_base.uri)
 
@@ -70,8 +70,8 @@ class DriverTest(tf.test.TestCase):
     updated_input_dict = example_gen_driver._prepare_input_for_processing(
         copy.deepcopy(input_dict))
     self.assertEqual(1, len(updated_input_dict))
-    self.assertEqual(1, len(updated_input_dict['input-base']))
-    updated_input_base = updated_input_dict['input-base'][0]
+    self.assertEqual(1, len(updated_input_dict['input_base']))
+    updated_input_base = updated_input_dict['input_base'][0]
     self.assertEqual(3, updated_input_base.id)
     self.assertEqual('path-1', updated_input_base.uri)
 

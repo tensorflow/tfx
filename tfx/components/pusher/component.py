@@ -19,13 +19,32 @@ from __future__ import print_function
 from typing import Any, Dict, Optional, Text, Type
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
 from tfx.components.base import base_executor
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
+from tfx.components.base.base_component import Parameter
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.utils import channel
 from tfx.utils import types
-from google.protobuf import json_format
+
+
+class PusherSpec(base_component.ComponentSpec):
+  """Pusher component spec."""
+
+  COMPONENT_NAME = 'Pusher'
+  PARAMETERS = [
+      Parameter('push_destination', type=pusher_pb2.PushDestination,
+                optional=True),
+      Parameter('custom_config', type=Dict[Text, Any], optional=True),
+  ]
+  INPUTS = [
+      ChannelInput('model_export', type='ModelExportPath'),
+      ChannelInput('model_blessing', type='ModelBlessingPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('model_push', type='ModelPushPath'),
+  ]
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
@@ -51,10 +70,7 @@ class Pusher(base_component.BaseComponent):
       supported by Google Cloud ML Engine, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
     executor_class: Optional custom python executor class.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - model_push: A channel of 'ModelPushPath' with result of push.
+    model_push: Optional output 'ModelPushPath' channel with result of push.
   """
 
   def __init__(self,
@@ -65,58 +81,23 @@ class Pusher(base_component.BaseComponent):
                custom_config: Optional[Dict[Text, Any]] = None,
                executor_class: Optional[Type[
                    base_executor.BaseExecutor]] = executor.Executor,
-               outputs: base_component.ComponentOutputs = None):
-    component_name = 'Pusher'
-    input_dict = {
-        'model_export': channel.as_channel(model_export),
-        'model_blessing': channel.as_channel(model_blessing),
-    }
-    exec_properties = {
-        'custom_config': custom_config,
-    }
-
+               model_push: Optional[channel.Channel] = None):
+    if not model_push:
+      model_push = channel.Channel(
+          type_name='ModelPushPath',
+          static_artifact_collection=[types.TfxArtifact('ModelPushPath')])
     if push_destination is None:
       if executor_class == executor.Executor:
         raise ValueError('push_destination is required unless custom '
                          'executor_class is supplied that does not require it.')
-    else:
-      exec_properties['push_destination'] = (
-          json_format.MessageToJson(push_destination))
+    spec = PusherSpec(
+        model_export=channel.as_channel(model_export),
+        model_blessing=channel.as_channel(model_blessing),
+        push_destination=push_destination,
+        custom_config=custom_config,
+        model_push=model_push)
 
     super(Pusher, self).__init__(
-        component_name=component_name,
         unique_name=name,
-        driver=base_driver.BaseDriver,
-        executor=executor_class,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Pusher.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    model_push_artifact_collection = [types.TfxArtifact('ModelPushPath',)]
-    return base_component.ComponentOutputs({
-        'model_push':
-            channel.Channel(
-                type_name='ModelPushPath',
-                static_artifact_collection=model_push_artifact_collection),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
-    """
-    input_dict['model_export'].type_check('ModelExportPath')
-    input_dict['model_blessing'].type_check('ModelBlessingPath')
+        spec=spec,
+        executor=executor_class)

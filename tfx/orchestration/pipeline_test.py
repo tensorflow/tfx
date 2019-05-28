@@ -18,57 +18,70 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import itertools
+
 import tensorflow as tf
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Text
 
 from tfx.components.base import base_component
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
 from tfx.orchestration import pipeline
 from tfx.utils import channel
 
 
-class _FakeComponent(base_component.BaseComponent):
+def get_fake_component_instance(
+    name: Text,
+    inputs: Dict[Text, channel.Channel],
+    outputs: Dict[Text, channel.Channel]):
 
-  def __init__(self,
-               name: Text,
-               input_dict: Dict[Text, channel.Channel],
-               outputs: Optional[base_component.ComponentOutputs] = None):
-    super(_FakeComponent, self).__init__(
-        component_name=name,
-        driver=None,
-        executor=None,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties={})
-    self.name = name
+  class _FakeComponentSpec(base_component.ComponentSpec):
+    COMPONENT_NAME = name
+    PARAMETERS = []
+    INPUTS = [
+        ChannelInput(arg, type=channel.type_name)
+        for arg, channel in inputs.items()
+    ]
+    OUTPUTS = [
+        ChannelOutput(arg, type=channel.type_name)
+        for arg, channel in outputs.items()
+    ] + [ChannelOutput('output', type=name)]
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    return base_component.ComponentOutputs({
-        'output': channel.Channel(type_name=self.component_name),
-    })
+  class _FakeComponent(base_component.BaseComponent):
 
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    return None
+    def __init__(self,
+                 name: Text,
+                 spec_kwargs: Dict[Text, Any]):
+      spec = _FakeComponentSpec(
+          output=channel.Channel(type_name=name),
+          **spec_kwargs)
+      super(_FakeComponent, self).__init__(
+          unique_name=name,
+          spec=spec,
+          executor=None)
+
+  spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
+  return _FakeComponent(name, spec_kwargs)
 
 
 class PipelineTest(tf.test.TestCase):
 
   def test_pipeline(self):
-    component_a = _FakeComponent('component_a', {})
-    component_b = _FakeComponent('component_b',
-                                 {'a': component_a.outputs.output})
-    component_c = _FakeComponent('component_c',
-                                 {'a': component_a.outputs.output})
-    component_d = _FakeComponent('component_d', {
+    component_a = get_fake_component_instance('component_a', {}, {})
+    component_b = get_fake_component_instance(
+        'component_b', {'a': component_a.outputs.output}, {})
+    component_c = get_fake_component_instance(
+        'component_c', {'a': component_a.outputs.output}, {})
+    component_d = get_fake_component_instance('component_d', {
         'b': component_b.outputs.output,
         'c': component_c.outputs.output
-    })
-    component_e = _FakeComponent(
+    }, {})
+    component_e = get_fake_component_instance(
         'component_e', {
             'a': component_a.outputs.output,
             'b': component_b.outputs.output,
             'd': component_d.outputs.output
-        })
+        }, {})
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
@@ -94,28 +107,34 @@ class PipelineTest(tf.test.TestCase):
     channel_one = channel.Channel(type_name='channel_one')
     channel_two = channel.Channel(type_name='channel_two')
     channel_three = channel.Channel(type_name='channel_three')
-    component_a = _FakeComponent('component_a', {})
-    component_b = _FakeComponent(
+    component_a = get_fake_component_instance('component_a', {}, {})
+    component_b = get_fake_component_instance(
         name='component_b',
-        input_dict={
+        inputs={
             'a': component_a.outputs.output,
             'one': channel_one
         },
-        outputs=base_component.ComponentOutputs({'two': channel_two}))
-    component_c = _FakeComponent(
+        outputs={
+            'two': channel_two
+        })
+    component_c = get_fake_component_instance(
         name='component_b',
-        input_dict={
+        inputs={
             'a': component_a.outputs.output,
             'two': channel_two
         },
-        outputs=base_component.ComponentOutputs({'three': channel_three}))
-    component_d = _FakeComponent(
+        outputs={
+            'three': channel_three
+        })
+    component_d = get_fake_component_instance(
         name='component_b',
-        input_dict={
+        inputs={
             'a': component_a.outputs.output,
             'three': channel_three
         },
-        outputs=base_component.ComponentOutputs({'one': channel_one}))
+        outputs={
+            'one': channel_one
+        })
 
     with self.assertRaises(RuntimeError):
       pipeline.Pipeline(
@@ -129,8 +148,8 @@ class PipelineTest(tf.test.TestCase):
     @pipeline.PipelineDecorator(
         pipeline_name='a', pipeline_root='b', log_root='c')
     def create_pipeline():
-      self.component_a = _FakeComponent('component_a', {})
-      self.component_b = _FakeComponent('component_b', {})
+      self.component_a = get_fake_component_instance('component_a', {}, {})
+      self.component_b = get_fake_component_instance('component_b', {}, {})
       return [self.component_a, self.component_b]
 
     my_pipeline = create_pipeline()

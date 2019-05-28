@@ -17,16 +17,47 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Optional, Text
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
+from tfx.components.base.base_component import ChannelInput
+from tfx.components.base.base_component import ChannelOutput
+from tfx.components.base.base_component import Parameter
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 from tfx.utils import types
-from google.protobuf import json_format
+
+
+class ExampleGenSpec(base_component.ComponentSpec):
+  """ExampleGen component spec."""
+
+  COMPONENT_NAME = 'ExampleGen'
+  PARAMETERS = [
+      Parameter('input_config', type=example_gen_pb2.Input),
+      Parameter('output_config', type=example_gen_pb2.Output),
+  ]
+  INPUTS = []
+  OUTPUTS = [
+      ChannelOutput('examples', type='ExamplesPath'),
+  ]
+
+
+class FilebasedExampleGenSpec(base_component.ComponentSpec):
+  """File-based ExampleGen component spec."""
+
+  COMPONENT_NAME = 'ExampleGen'
+  PARAMETERS = [
+      Parameter('input_config', type=example_gen_pb2.Input),
+      Parameter('output_config', type=example_gen_pb2.Output),
+  ]
+  INPUTS = [
+      ChannelInput('input_base', type='ExternalPath'),
+  ]
+  OUTPUTS = [
+      ChannelOutput('examples', type='ExamplesPath'),
+  ]
 
 
 class ExampleGen(base_component.BaseComponent):
@@ -50,9 +81,8 @@ class ExampleGen(base_component.BaseComponent):
       Default to 'ExampleGen', can be overwritten by sub-classes.
     unique_name: Unique name for every component class instance.
     outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - examples: A channel of 'ExamplesPath' with train and eval examples.
+    example_artifacts: Optional channel of 'ExamplesPath' for output train and
+      eval examples.
 
   Raises:
     RuntimeError: If both input_base and input_config are unset.
@@ -65,61 +95,38 @@ class ExampleGen(base_component.BaseComponent):
                output_config: Optional[example_gen_pb2.Output] = None,
                component_name: Optional[Text] = 'ExampleGen',
                unique_name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               example_artifacts: Optional[channel.Channel] = None):
     if input_base is None and input_config is None:
-      raise RuntimeError('One of input_base and input_config must be set.')
-    input_dict = {
-        'input-base': channel.as_channel(input_base)
-    } if input_base else {}
-    # Default value need to be set in component instead of executor as output
-    # artifacts depend on it.
-    self._input_config = input_config or utils.make_default_input_config()
-    self._output_config = output_config or utils.make_default_output_config(
-        self._input_config)
-    exec_properties = {
-        'input': json_format.MessageToJson(self._input_config),
-        'output': json_format.MessageToJson(self._output_config)
-    }
+      raise RuntimeError('One of input_base or input_config must be set.')
+
+    # Configure inputs and outputs.
+    input_config = input_config or utils.make_default_input_config()
+    output_config = (
+        output_config or utils.make_default_output_config(input_config))
+    if not example_artifacts:
+      example_artifacts = channel.as_channel(
+          [types.TfxArtifact('ExamplesPath', split=split_name)
+           for split_name in utils.generate_output_split_names(
+               input_config, output_config)])
+
+    # Configure ComponentSpec.
+    custom_driver = None
+    if input_base:
+      spec = FilebasedExampleGenSpec(
+          component_name=component_name,
+          input_base=input_base,
+          input_config=input_config,
+          output_config=output_config,
+          examples=example_artifacts)
+      # A custom driver is needed for file-based ExampleGen.
+      custom_driver = driver.Driver
+    else:
+      spec = ExampleGenSpec(
+          component_name=component_name,
+          input_config=input_config,
+          output_config=output_config,
+          examples=example_artifacts)
+
     super(ExampleGen, self).__init__(
-        component_name=component_name,
-        unique_name=unique_name,
-        driver=driver.Driver if input_base else base_driver.BaseDriver,
-        executor=executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for ExampleGen.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    output_artifact_collection = [
-        types.TfxArtifact('ExamplesPath', split=split_name)
-        for split_name in utils.generate_output_split_names(
-            self._input_config, self._output_config)
-    ]
-    return base_component.ComponentOutputs({
-        'examples':
-            channel.Channel(
-                type_name='ExamplesPath',
-                static_artifact_collection=output_artifact_collection)
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
-    """
-    del exec_properties  # Unused right now.
-    # TODO(jyzhao): apply the check for all components for codegen.
-    if 'input-base' in input_dict:
-      input_dict['input-base'].type_check('ExternalPath')
+        unique_name=unique_name, spec=spec, executor=executor,
+        driver=custom_driver)
