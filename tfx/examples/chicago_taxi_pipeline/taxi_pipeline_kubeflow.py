@@ -212,28 +212,28 @@ def _create_pipeline():
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory=_serving_model_dir)))
 
-    return pipeline.Pipeline(
-        pipeline_name='chicago_taxi_pipeline_kubeflow',
-        pipeline_root=_pipeline_root,
-        components=[
-            example_gen, statistics_gen, infer_schema, validate_stats,
-            transform, trainer, model_analyzer, model_validator, pusher
-        ],
-        additional_pipeline_args={
-            'beam_pipeline_args': [
-                '--runner=DataflowRunner',
-                '--experiments=shuffle_mode=auto',
-                '--project=' + _project_id,
-                '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
-                '--region=' + _gcp_region,
-            ],
-            # Optional args:
-            # 'tfx_image': custom docker image to use for components.
-            # This is needed if TFX package is not installed from an RC
-            # or released version.
-        },
-        log_root='/var/tmp/tfx/logs',
-    )
+  return pipeline.Pipeline(
+      pipeline_name='chicago_taxi_pipeline_kubeflow',
+      pipeline_root=_pipeline_root,
+      components=[
+          example_gen, statistics_gen, infer_schema, validate_stats,
+          transform, trainer, model_analyzer, model_validator, pusher
+      ],
+      additional_pipeline_args={
+          'beam_pipeline_args': [
+              '--runner=DataflowRunner',
+              '--experiments=shuffle_mode=auto',
+              '--project=' + _project_id,
+              '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+              '--region=' + _gcp_region,
+          ],
+          # Optional args:
+          # 'tfx_image': custom docker image to use for components.
+          # This is needed if TFX package is not installed from an RC
+          # or released version.
+      },
+      log_root='/var/tmp/tfx/logs',
+  )
 
 
 _ = KubeflowRunner().run(_create_pipeline())
