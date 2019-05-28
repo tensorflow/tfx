@@ -198,10 +198,7 @@ def _create_pipeline():
         executor_class=ai_platform_pusher_executor.Executor,
         model_export=trainer.outputs.output,
         model_blessing=model_validator.outputs.blessing,
-        custom_config={'ai_platform_serving_args': _ai_platform_serving_args},
-        push_destination=pusher_pb2.PushDestination(
-            filesystem=pusher_pb2.PushDestination.Filesystem(
-                base_directory=_serving_model_dir)))
+        custom_config={'ai_platform_serving_args': _ai_platform_serving_args})
   except ImportError:
     # Deploy the model on Google Cloud AI Platform, using a deprecated flag.
     pusher = Pusher(
