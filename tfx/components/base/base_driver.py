@@ -80,6 +80,7 @@ class BaseDriver(object):
     metadata_handler: An instance of Metadata.
   """
 
+  # TODO(b/131703697): Remove the need for constructor to make driver stateless.
   def __init__(self, logger: logging.Logger,
                metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
@@ -192,8 +193,10 @@ class BaseDriver(object):
                                            str(execution_id),
                                            output_artifact.split, '')
         if tf.gfile.Exists(output_artifact.uri):
-          tf.logging.warn('Output artifact uri %s already exists',
-                          output_artifact.uri)
+          msg = 'Output artifact uri {} already exists'.format(
+              output_artifact.uri)
+          tf.logging.error(msg)
+          raise RuntimeError(msg)
         else:
           # TODO(zhitaoli): Consider refactoring this out into something
           # which can handle permission bits.
