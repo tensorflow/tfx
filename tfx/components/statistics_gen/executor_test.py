@@ -18,21 +18,29 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import tempfile
+
+from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
 from tfx.utils import types
 
 
-class ExecutorTest(tf.test.TestCase):
+# TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
+# when used with tfdv.
+class ExecutorTest(absltest.TestCase):
+
+  def get_temp_dir(self):
+    return tempfile.mkdtemp()
 
   def _validate_stats_output(self, stats_path):
     self.assertTrue(tf.gfile.Exists(stats_path))
     stats = tfdv.load_statistics(stats_path)
-    self.assertEqual(1, len(stats.datasets))
+    self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]
     self.assertGreater(data_set.num_examples, 0)
-    self.assertNotEqual(0, len(data_set.features))
+    self.assertNotEmpty(data_set.features)
     # TODO(b/126245422): verify content of generated stats after we have stable
     # test data set.
 
@@ -72,6 +80,5 @@ class ExecutorTest(tf.test.TestCase):
     self._validate_stats_output(os.path.join(train_stats.uri, 'stats_tfrecord'))
     self._validate_stats_output(os.path.join(eval_stats.uri, 'stats_tfrecord'))
 
-
 if __name__ == '__main__':
-  tf.test.main()
+  absltest.main()
