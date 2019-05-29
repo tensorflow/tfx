@@ -30,6 +30,8 @@ from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 # from tfx.components.transform.component import Transform # Step 4
 
+from tfx.orchestration import pipeline
+
 # from tfx.proto import trainer_pb2 # Step 5
 # from tfx.components.trainer.component import Trainer # Step 5
 
@@ -41,7 +43,6 @@ from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 # from tfx.components.pusher.component import Pusher # Step 7
 
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
-from tfx.orchestration.pipeline import PipelineDecorator
 from tfx.utils.dsl_utils import csv_input
 # pylint: enable=line-too-long
 
@@ -77,12 +78,6 @@ logger_overrides = {
 }
 
 
-@PipelineDecorator(
-    pipeline_name='taxi',
-    enable_cache=True,
-    metadata_db_root=_metadata_db_root,
-    additional_pipeline_args={'logger_args': logger_overrides},
-    pipeline_root=_pipeline_root)
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
   examples = csv_input(_data_root)
@@ -141,14 +136,22 @@ def _create_pipeline():
   #         filesystem=pusher_pb2.PushDestination.Filesystem( # Step 7
   #             base_directory=_serving_model_dir))) # Step 7
 
-  return [
-      example_gen,
-      # statistics_gen, infer_schema, validate_stats, # Step 3
-      # transform, # Step 4
-      # trainer, # Step 5
-      # model_analyzer, # Step 6
-      # model_validator, pusher # Step 7
-  ]
+  return pipeline.Pipeline(
+      pipeline_name='taxi',
+      pipeline_root=_pipeline_root,
+      components=[
+          example_gen,
+          # statistics_gen, infer_schema, validate_stats, # Step 3
+          # transform, # Step 4
+          # trainer, # Step 5
+          # model_analyzer, # Step 6
+          # model_validator, pusher # Step 7
+      ],
+      enable_cache=True,
+      metadata_db_root=_metadata_db_root,
+      additional_pipeline_args={'logger_args': logger_overrides},
+  )
 
 
-pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())
+airflow_pipeline = AirflowDAGRunner(
+    _airflow_config).run(_create_pipeline())
