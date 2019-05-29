@@ -2,7 +2,6 @@
 
 ## Major Features and Improvements
 *   Added support for Google Cloud ML Engine Training and Serving as extension.
-
 *   Supported pre-split input for ExampleGen components
 *   Added ImportExampleGen component for importing tfrecord files with
     TF Example data format
