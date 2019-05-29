@@ -28,6 +28,7 @@ from tfx.utils import types
 from google.protobuf import json_format
 
 
+# TODO(b/133845381): Investigate other ways to keep push destination converged.
 class Pusher(base_component.BaseComponent):
   """Official TFX Pusher component.
 
