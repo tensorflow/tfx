@@ -9,6 +9,7 @@
 *   Added a generic ExampleGen component to reduce the work of custom ExampleGen
 *   Released Python 3 type hints.
 *   Added an Airflow integration test for chicago_taxi_simple example.
+*   Updated tfx docker image to use Python 3.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on

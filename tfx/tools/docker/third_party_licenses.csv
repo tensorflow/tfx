@@ -21,6 +21,8 @@ asn1crypto,https://raw.githubusercontent.com/wbond/asn1crypto/master/LICENSE,MIT
 astor,https://raw.githubusercontent.com/berkerpeksag/astor/master/LICENSE,BSD-3-Clause
 attrs,https://raw.githubusercontent.com/python-attrs/attrs/master/LICENSE,MIT
 avro,https://raw.githubusercontent.com/apache/avro/master/LICENSE.txt,Apache 2.0
+avro-python3,https://raw.githubusercontent.com/apache/avro/master/LICENSE.txt,Apache 2.0
+backcall,https://raw.githubusercontent.com/takluyver/backcall/master/LICENSE,BSD-3-Clause
 backports-abc,https://raw.githubusercontent.com/cython/backports_abc/master/LICENSE,PSF
 backports.functools-lru-cache,https://raw.githubusercontent.com/jaraco/backports.functools_lru_cache/master/LICENSE,MIT
 backports.shutil-get-terminal-size,https://raw.githubusercontent.com/chrippa/backports.shutil_get_terminal_size/master/LICENSE,MIT

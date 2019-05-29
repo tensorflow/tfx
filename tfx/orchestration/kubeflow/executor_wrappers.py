@@ -82,9 +82,10 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
       beam_pipeline_args.append(arg)
 
     # TODO(zhitaoli): Revisit usage of setup_file here.
-    module_dir = os.path.dirname(
-        os.path.dirname(os.path.dirname(version.__file__)))
+    module_dir = os.path.dirname(os.path.dirname(version.__file__))
     setup_file = os.path.join(module_dir, 'setup.py')
+    tf.logging.info('Using setup_file \'%s\' to capture TFX dependencies',
+                    setup_file)
     beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
     executor_cls = import_utils.import_class_by_path(executor_class_path)

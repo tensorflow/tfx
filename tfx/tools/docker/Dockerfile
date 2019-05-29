@@ -15,30 +15,36 @@
 
 FROM ubuntu:18.04
 
+# Need additional ppa since python 3.5 is not part of Ubuntu 18.04 by default.
+RUN apt-get update -y && \
+  apt-get install --no-install-recommends -y -q software-properties-common && \
+  add-apt-repository ppa:deadsnakes/ppa
+
 RUN apt-get update -y && \
   apt-get install --no-install-recommends -y -q \
   build-essential \
   ca-certificates \
   libsnappy-dev \
-  python-dev \
-  python-pip \
-  python-setuptools \
-  python-wheel \
+  python3.5-dev \
+  python3-pip \
+  python3-setuptools \
+  python3-virtualenv \
+  python3-wheel \
   wget \
   unzip \
   git
 
-RUN python -m pip install --upgrade pip==19.0.3 && \
-  pip install strip-hints==0.1.4
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.5 1
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m virtualenv --python=/usr/bin/python3.5 $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # docker build command should be run under root directory of github checkout.
 ADD . /tfx-src
 WORKDIR /tfx-src
-# TODO(zhitaoli): Remove this once we move to python 3.
-RUN python /tfx-src/tfx/scripts/strip_type_hints.py
-RUN pip install -e .[docker-image]
+RUN python setup.py bdist_wheel
+RUN CFLAGS=$(/usr/bin/python3.5-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker-image]
 
 RUN /tfx-src/tfx/tools/docker/license.sh /tfx-src/tfx/tools/docker/third_party_licenses.csv /third_party/licenses
 
-ENV PYTHONPATH "${PYTHONPATH}:/tfx-src"
-ENTRYPOINT ["python", "/tfx-src/tfx/scripts/run_executor.py"]
+ENTRYPOINT ["python3.5", "/tfx-src/tfx/scripts/run_executor.py"]
