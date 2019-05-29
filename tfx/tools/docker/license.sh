@@ -23,7 +23,7 @@
 
 # Get the list of python packages installed locally.
 IFS=$'\n'
-INSTALLED_PACKAGES=($(pip freeze --exclude-editable | sed s/=.*//))
+INSTALLED_PACKAGES=($(pip freeze --exclude-editable | grep -v "pkg-resources" | sed s/=.*//))
 
 
 # Get the list of python packages tracked in the given CSV file.

@@ -39,9 +39,16 @@ def _get_tf_runtime_version() -> Text:
   return '.'.join(tf.__version__.split('.')[0:2])
 
 
-def _get_python_version() -> Text:
-  """Return <major>.<minor> version for current Python interpreter."""
-  return '%d.%d' % (sys.version_info.major, sys.version_info.minor)
+def _get_caip_python_version() -> Text:
+  """Returns supported python version on Cloud AI Platform.
+
+  See
+  https://cloud.google.com/ml-engine/docs/tensorflow/versioning#set-python-version-training
+
+  Returns:
+    '2.7' for PY2 or '3.5' for PY3.
+  """
+  return {2: '2.7', 3: '3.5'}[sys.version_info.major]
 
 
 def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
@@ -90,7 +97,7 @@ def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
   ]
   training_inputs['args'] = job_args
   training_inputs['pythonModule'] = 'tfx.scripts.run_executor'
-  training_inputs['pythonVersion'] = _get_python_version()
+  training_inputs['pythonVersion'] = _get_caip_python_version()
   # runtimeVersion should be same as <major>.<minor> of currently
   # installed tensorflow version.
   training_inputs['runtimeVersion'] = _get_tf_runtime_version()
@@ -163,7 +170,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
   model_name = cmle_serving_args['model_name']
   project_id = cmle_serving_args['project_id']
   runtime_version = _get_tf_runtime_version()
-  python_version = _get_python_version()
+  python_version = _get_caip_python_version()
 
   api = discovery.build('ml', 'v1')
   body = {'name': model_name}
