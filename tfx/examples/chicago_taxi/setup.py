@@ -35,7 +35,7 @@ if __name__ == '__main__':
           'protobuf>=3.7.0,<3.8.0',
           'tensorflow>=' + TF_VERSION,
           'tensorflow-data-validation>=0.13.1,<0.14',
-          'tensorflow-metadata>=0.13.1,<0.14',
+          'tensorflow-metadata>=0.13,<0.14',
           'tensorflow-model-analysis>=0.13.2,<0.14',
           'tensorflow-serving-api>=1.13.0,<1.14',
           'tensorflow-transform>=0.13.0,<0.14',
