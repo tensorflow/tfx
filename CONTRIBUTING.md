@@ -35,6 +35,15 @@ invoke all python unit tests:
 python setup.py test
 ```
 
+## Testing local change
+To test local change, you will need to install code into virtualenv in editable
+mode:
+
+```
+pushd <your_source_dir>
+pip install -e .
+```
+
 # Check Pending Changes
 Each change being worked on internally will have a pending PR, which will be
 automatically closed once internal change is submitted. You are welcome to
