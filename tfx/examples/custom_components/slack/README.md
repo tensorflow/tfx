@@ -117,6 +117,8 @@ the pipeline name is `chicago_taxi_slack`.
 
 ### Interact with Slack
 After the `Model Validator` phase succeeds, you will get a Slack message sent to
-your Slack channel asking you to review a model with a URI. If you reply 'LGTM',
-the pipeline will continue to push the model. If you answer 'NOT BLESSED', the
-pipeline will continue without pushing the model.
+your Slack channel asking you to review a model with a URI. If you reply 'LGTM'
+or 'approve', the pipeline will continue to push the model. If you reply
+'decline' or 'reject', the pipeline will continue without pushing the model. All
+the key words are case insensitive. If your reply fall out of the above key
+words, you will get a hint.
