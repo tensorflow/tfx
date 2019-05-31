@@ -17,6 +17,7 @@
 def make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # six, and protobuf) with TF.
+  # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
       'absl-py>=0.1.6,<1',
       'apache-beam[gcp]>=2.12,<3',
