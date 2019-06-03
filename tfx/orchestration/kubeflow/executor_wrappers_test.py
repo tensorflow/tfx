@@ -23,22 +23,10 @@ import os
 import tempfile
 from unittest.mock import patch
 import tensorflow as tf
-from typing import Text
 
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.orchestration.kubeflow import executor_wrappers
 from tfx.utils import types
-
-
-def _locate_setup_file_dir() -> Text:
-  """Traverse path from current file until setup.py is located."""
-  path = os.path.dirname(__file__)
-  while path != os.path.dirname(path):
-    setup_file = os.path.join(path, 'setup.py')
-    if os.path.isfile(setup_file):
-      return path
-    path = os.path.dirname(path)
-  raise IOError('setup.py file not found among current file path %s' % __file__)
 
 
 class ExecutorWrappersTest(tf.test.TestCase):
@@ -54,7 +42,6 @@ class ExecutorWrappersTest(tf.test.TestCase):
     self.output_basedir = tempfile.mkdtemp()
 
     os.environ['WORKFLOW_ID'] = 'mock_workflow_id'
-    os.environ['TFX_SRC_DIR'] = _locate_setup_file_dir()
 
   def testCsvExampleGenWrapper(self):
     input_base = types.TfxArtifact(type_name='ExternalPath', split='')

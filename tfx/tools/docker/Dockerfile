@@ -40,9 +40,8 @@ RUN python3 -m virtualenv --python=/usr/bin/python3.5 $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # docker build command should be run under root directory of github checkout.
-ENV TFX_SRC_DIR=/tfx-src
-ADD . ${TFX_SRC_DIR}
-WORKDIR ${TFX_SRC_DIR}
+ADD . /tfx-src
+WORKDIR /tfx-src
 RUN python setup.py bdist_wheel
 RUN CFLAGS=$(/usr/bin/python3.5-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker-image]
 
