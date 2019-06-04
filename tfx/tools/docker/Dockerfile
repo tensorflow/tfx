@@ -42,8 +42,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # docker build command should be run under root directory of github checkout.
 ADD . /tfx-src
 WORKDIR /tfx-src
-RUN python setup.py bdist_wheel
-RUN CFLAGS=$(/usr/bin/python3.5-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker-image]
+RUN CFLAGS=$(/usr/bin/python3.5-config --cflags) pip install -e .[docker-image]
 
 RUN /tfx-src/tfx/tools/docker/license.sh /tfx-src/tfx/tools/docker/third_party_licenses.csv /third_party/licenses
 
