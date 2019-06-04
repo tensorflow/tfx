@@ -13,7 +13,7 @@ to production.
 
 * Consumes: A schema from a SchemaGen component, and statistics from a
 StatisticsGen component.
-* Emits: Validation results to [TensorFlow Metadata](tfmd.md)
+* Emits: Validation results to [TensorFlow Metadata](https://github.com/tensorflow/metadata)
 
 ## Using the ModelValidator Component
 
