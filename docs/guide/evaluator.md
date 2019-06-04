@@ -5,7 +5,7 @@ for your models, to help you understand how your model performs on subsets of
 your data. 
 
 * Consumes: EvalSavedModel from [Trainer](trainer.md)
-* Emits: Analysis results to [TensorFlow Metadata](tfmd.md)
+* Emits: Analysis results to [TensorFlow Metadata](https://github.com/tensorflow/metadata)
 
 ## Evaluator and TensorFlow Model Analysis
 
