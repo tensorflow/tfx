@@ -29,12 +29,12 @@ import collections
 import json
 from kfp import dsl
 from kfp import gcp
+from kfp import onprem
 from kubernetes import client as k8s_client
 from typing import Any, Dict, List, Optional, Text
 
 from tfx import version
 from tfx.utils import types
-
 
 # Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
 # pipeline property.
@@ -46,102 +46,128 @@ _COMMAND = [
 
 
 class PipelineProperties(object):
-  """Holds pipeline level execution properties that apply to all component."""
+    """Holds pipeline level execution properties that apply to all component."""
 
-  def __init__(self,
-               output_dir: Text,
-               log_root: Text,
-               beam_pipeline_args: Optional[Text] = None,
-               tfx_image: Text = None):
-    self.exec_properties = collections.OrderedDict([
-        ('output_dir', output_dir),
-        ('log_root', log_root),
-    ])
-    if beam_pipeline_args:
-      self.exec_properties['beam_pipeline_args'] = beam_pipeline_args
-    self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
+    def __init__(self,
+                 output_dir: Text,
+                 log_root: Text,
+                 beam_pipeline_args: Optional[Text] = None,
+                 tfx_image: Text = None,
+                 pipeline_pv_mount=None):
+        """pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
+        volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
+        It is encouraged to use a PV of type ReadWriteMany."""
+
+        self.exec_properties = collections.OrderedDict([
+            ('output_dir', output_dir),
+            ('log_root', log_root),
+        ])
+        if beam_pipeline_args:
+            self.exec_properties['beam_pipeline_args'] = beam_pipeline_args
+        self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
+
+        # pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
+        # volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
+        # It is encouraged to use a PV of type ReadWriteMany.
+        self.pipeline_pv_mount = pipeline_pv_mount
 
 
 class BaseComponent(object):
-  """Base component for all Kubeflow pipelines TFX components.
+    """Base component for all Kubeflow pipelines TFX components.
 
-  Returns a wrapper around a KFP DSL ContainerOp class, and adds named output
-  attributes that match the output names for the corresponding native TFX
-  components.
-  """
-
-  def __new__(
-      cls,
-      component_name: Text,
-      input_dict: Dict[Text, Any],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      executor_class_path: Text,
-      pipeline_properties: PipelineProperties,
-  ):
-    """Creates a new component.
-
-    Args:
-      component_name: TFX component name.
-      input_dict: Dictionary of input names to TFX types, or
-        kfp.dsl.PipelineParam representing input parameters.
-      output_dict: Dictionary of output names to List of TFX types.
-      exec_properties: Execution properties.
-      executor_class_path: <module>.<class> for Python class of executor.
-      pipeline_properties: Pipeline level properties shared by all components.
-
-    Returns:
-      Newly constructed TFX Kubeflow component instance.
+    Returns a wrapper around a KFP DSL ContainerOp class, and adds named output
+    attributes that match the output names for the corresponding native TFX
+    components.
     """
-    outputs = output_dict.keys()
-    file_outputs = {
-        output: '/output/ml_metadata/{}'.format(output) for output in outputs
-    }
 
-    for k, v in pipeline_properties.exec_properties.items():
-      exec_properties[k] = v
+    def __new__(
+            cls,
+            component_name: Text,
+            input_dict: Dict[Text, Any],
+            output_dict: Dict[Text, List[types.TfxArtifact]],
+            exec_properties: Dict[Text, Any],
+            executor_class_path: Text,
+            pipeline_properties: PipelineProperties,
+    ):
+        """Creates a new component.
 
-    arguments = [
-        '--exec_properties',
-        json.dumps(exec_properties),
-        '--outputs',
-        types.jsonify_tfx_type_dict(output_dict),
-        '--executor_class_path',
-        executor_class_path,
-        component_name,
-    ]
+        Args:
+          component_name: TFX component name.
+          input_dict: Dictionary of input names to TFX types, or
+            kfp.dsl.PipelineParam representing input parameters.
+          output_dict: Dictionary of output names to List of TFX types.
+          exec_properties: Execution properties.
+          executor_class_path: <module>.<class> for Python class of executor.
+          pipeline_properties: Pipeline level properties shared by all components.
 
-    for k, v in input_dict.items():
-      if isinstance(v, float) or isinstance(v, int):
-        v = str(v)
-      arguments.append('--{}'.format(k))
-      arguments.append(v)
+        Returns:
+          Newly constructed TFX Kubeflow component instance.
+        """
+        outputs = output_dict.keys()
+        file_outputs = {
+            output: '/output/ml_metadata/{}'.format(output) for output in outputs
+        }
 
-    container_op = dsl.ContainerOp(
-        name=component_name,
-        command=_COMMAND,
-        image=pipeline_properties.tfx_image,
-        arguments=arguments,
-        file_outputs=file_outputs,
-    ).apply(gcp.use_gcp_secret('user-gcp-sa'))  # Adds GCP authentication.
+        for k, v in pipeline_properties.exec_properties.items():
+            exec_properties[k] = v
 
-    # Add the Argo workflow ID to the container's environment variable so it
-    # can be used to uniquely place pipeline outputs under the pipeline_root.
-    field_path = "metadata.labels['workflows.argoproj.io/workflow']"
-    container_op.add_env_variable(
-        k8s_client.V1EnvVar(
-            name='WORKFLOW_ID',
-            value_from=k8s_client.V1EnvVarSource(
-                field_ref=k8s_client.V1ObjectFieldSelector(
-                    field_path=field_path))))
+        arguments = [
+            '--exec_properties',
+            json.dumps(exec_properties),
+            '--outputs',
+            types.jsonify_tfx_type_dict(output_dict),
+            '--executor_class_path',
+            executor_class_path,
+            component_name,
+        ]
 
-    named_outputs = {output: container_op.outputs[output] for output in outputs}
+        for k, v in input_dict.items():
+            if isinstance(v, float) or isinstance(v, int):
+                v = str(v)
+            arguments.append('--{}'.format(k))
+            arguments.append(v)
 
-    # This allows user code to refer to the ContainerOp 'op' output named 'x'
-    # as op.outputs.x
-    component_outputs = type('Output', (), named_outputs)
+        container_op = dsl.ContainerOp(
+            name=component_name,
+            command=_COMMAND,
+            image=pipeline_properties.tfx_image,
+            arguments=arguments,
+            file_outputs=file_outputs,
+        ).apply(gcp.use_gcp_secret('user-gcp-sa'))  # Adds GCP authentication.
 
-    return type(component_name, (BaseComponent,), {
-        'container_op': container_op,
-        'outputs': component_outputs
-    })
+        # mount pv if one was set
+        if pipeline_properties.pipeline_pv_mount is not None:
+
+            mount = pipeline_properties.pipeline_pv_mount
+
+            if "pvc_name" not in mount:
+                raise ValueError("pipeline_pv_mount must contain the key pvc_name containing the name of a valid PVC")
+
+            if "volume_name" not in mount:
+                mount["volume_name"] = "pipeline_shared_volume"
+
+            if "volume_mount_path" not in mount:
+                mount["volume_mount_path"] = "/pipeline_shared_volume"
+
+            container_op.apply(onprem.mount_pvc(mount["pvc_name"], mount["volume_name"], mount["volume_mount_path"]))
+
+        # Add the Argo workflow ID to the container's environment variable so it
+        # can be used to uniquely place pipeline outputs under the pipeline_root.
+        field_path = "metadata.labels['workflows.argoproj.io/workflow']"
+        container_op.add_env_variable(
+            k8s_client.V1EnvVar(
+                name='WORKFLOW_ID',
+                value_from=k8s_client.V1EnvVarSource(
+                    field_ref=k8s_client.V1ObjectFieldSelector(
+                        field_path=field_path))))
+
+        named_outputs = {output: container_op.outputs[output] for output in outputs}
+
+        # This allows user code to refer to the ContainerOp 'op' output named 'x'
+        # as op.outputs.x
+        component_outputs = type('Output', (), named_outputs)
+
+        return type(component_name, (BaseComponent,), {
+            'container_op': container_op,
+            'outputs': component_outputs
+        })
