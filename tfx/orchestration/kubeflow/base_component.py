@@ -55,7 +55,7 @@ class PipelineProperties(object):
                  tfx_image: Text = None,
                  pipeline_pv_mount=None):
         """pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
-        volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
+        volume_name defaults to 'pipeline-shared-volume' and volume_mount_path to '/pipeline_shared_volume'.
         It is encouraged to use a PV of type ReadWriteMany."""
 
         self.exec_properties = collections.OrderedDict([
@@ -67,7 +67,7 @@ class PipelineProperties(object):
         self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
 
         # pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
-        # volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
+        # volume_name defaults to 'pipeline-shared-volume' and volume_mount_path to '/pipeline_shared_volume'.
         # It is encouraged to use a PV of type ReadWriteMany.
         self.pipeline_pv_mount = pipeline_pv_mount
 
@@ -144,7 +144,7 @@ class BaseComponent(object):
                 raise ValueError("pipeline_pv_mount must contain the key pvc_name containing the name of a valid PVC")
 
             if "volume_name" not in mount:
-                mount["volume_name"] = "pipeline_shared_volume"
+                mount["volume_name"] = "pipeline-shared-volume"
 
             if "volume_mount_path" not in mount:
                 mount["volume_mount_path"] = "/pipeline_shared_volume"
