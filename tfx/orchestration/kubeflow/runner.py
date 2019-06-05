@@ -59,7 +59,7 @@ class KubeflowRunner(tfx_runner.TfxRunner):
         tfx_image = None
 
         # pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
-        # volume_name defaults to 'pipeline-shared-volume' and volume_mount_path to '/pipeline_shared_volume'.
+        # volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
         # It is encouraged to use a PV of type ReadWriteMany.
         pipeline_pv_mount = None
         if 'additional_pipeline_args' in pipeline.pipeline_args:
