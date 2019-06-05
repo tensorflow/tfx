@@ -22,8 +22,9 @@
     0.15.
 *   Fixes issue #113 to have consistent type of train_files and eval_files
     passed to trainer user module.
-
 *   TfxType has been renamed to TfxArtifact.
+*   Fixes issue #185 preventing the Airflow UI from visualizing the component's
+    subdag operators and logs.
 
 ## Breaking changes
 

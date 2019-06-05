@@ -24,6 +24,8 @@ from airflow.operators import dummy_operator
 import mock
 import tensorflow as tf
 
+from tfx.components.trainer import driver
+from tfx.components.trainer import executor
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.airflow import airflow_pipeline
 from tfx.utils import logging_utils
@@ -43,8 +45,8 @@ class AirflowComponentTest(tf.test.TestCase):
         task_id='my_component.pythonexec', dag=dummy_dag)
     self.tfx_docker_op = dummy_operator.DummyOperator(
         task_id='my_component.dockerexec', dag=dummy_dag)
-    self.publishcache_op = dummy_operator.DummyOperator(
-        task_id='my_component.publishcache', dag=dummy_dag)
+    self.noop_sink_op = dummy_operator.DummyOperator(
+        task_id='my_component.noop_sink', dag=dummy_dag)
     self.publishexec_op = dummy_operator.DummyOperator(
         task_id='my_component.publishexec', dag=dummy_dag)
     self._logger_config = logging_utils.LoggerConfig()
@@ -75,7 +77,7 @@ class AirflowComponentTest(tf.test.TestCase):
     mock_airflow_adapter.python_exec = 'python_exec'
     mock_airflow_adapter.publish_exec = 'publish_exec'
     mock_airflow_adapter_class.return_value = mock_airflow_adapter
-    mock_dummy_operator_class.side_effect = [self.publishcache_op]
+    mock_dummy_operator_class.side_effect = [self.noop_sink_op]
     mock_python_operator_class.side_effect = [
         self.tfx_python_op, self.publishexec_op
     ]
@@ -99,7 +101,7 @@ class AirflowComponentTest(tf.test.TestCase):
                           [self.checkcache_op])
     self.assertItemsEqual(self.publishexec_op.upstream_list,
                           [self.tfx_python_op])
-    self.assertItemsEqual(self.publishcache_op.upstream_list,
+    self.assertItemsEqual(self.noop_sink_op.upstream_list,
                           [self.checkcache_op])
 
     mock_airflow_adapter_class.assert_called_with(
@@ -120,12 +122,12 @@ class AirflowComponentTest(tf.test.TestCase):
         python_callable='check_cache',
         op_kwargs={
             'uncached_branch': 'my_component.exec',
-            'cached_branch': 'my_component.publishcache',
+            'cached_branch': 'my_component.noop_sink',
         },
         dag=tfx_worker)
 
     mock_dummy_operator_class.assert_called_with(
-        task_id='my_component.publishcache', dag=tfx_worker)
+        task_id='my_component.noop_sink', dag=tfx_worker)
 
     python_operator_calls = [
         mock.call(
@@ -160,7 +162,7 @@ class AirflowComponentTest(tf.test.TestCase):
     mock_airflow_adapter.python_exec = 'python_exec'
     mock_airflow_adapter.publish_exec = 'publish_exec'
     mock_airflow_adapter_class.return_value = mock_airflow_adapter
-    mock_dummy_operator_class.side_effect = [self.publishcache_op]
+    mock_dummy_operator_class.side_effect = [self.noop_sink_op]
     mock_python_operator_class.side_effect = [self.publishexec_op]
     mock_branch_python_operator_class.side_effect = [self.checkcache_op]
     mock_airflow_adapter.docker_operator.return_value = self.tfx_docker_op
@@ -186,7 +188,7 @@ class AirflowComponentTest(tf.test.TestCase):
                           [self.checkcache_op])
     self.assertItemsEqual(self.publishexec_op.upstream_list,
                           [self.tfx_docker_op])
-    self.assertItemsEqual(self.publishcache_op.upstream_list,
+    self.assertItemsEqual(self.noop_sink_op.upstream_list,
                           [self.checkcache_op])
 
     mock_branch_python_operator_class.assert_called_with(
@@ -195,11 +197,11 @@ class AirflowComponentTest(tf.test.TestCase):
         python_callable='check_cache',
         op_kwargs={
             'uncached_branch': 'my_component.exec',
-            'cached_branch': 'my_component.publishcache',
+            'cached_branch': 'my_component.noop_sink',
         },
         dag=tfx_worker)
     mock_dummy_operator_class.assert_called_with(
-        task_id='my_component.publishcache', dag=tfx_worker)
+        task_id='my_component.noop_sink', dag=tfx_worker)
     mock_python_operator_class.assert_called_with(
         task_id='my_component.publishexec',
         provide_context=True,
@@ -215,44 +217,30 @@ class AirflowComponentTest(tf.test.TestCase):
         parent_dag=tfx_worker,
         docker_operator_cfg=self.parent_dag.docker_operator_cfg)
 
+  @mock.patch('airflow.operators.python_operator.BranchPythonOperator')
+  @mock.patch('airflow.operators.python_operator.PythonOperator')
   @mock.patch('tfx.orchestration.airflow.airflow_adapter.AirflowAdapter')
-  @mock.patch('tfx.orchestration.airflow.airflow_component._TfxWorker')
-  def test_airflow_component(self, mock_tfx_worker_class,
-                             mock_airflow_adapter_class):
+  def test_airflow_component(self, mock_airflow_adapter_class,
+                             mock_python_operator_class,
+                             mock_branch_python_operator_class):
     mock_airflow_adapter = mock.Mock()
     mock_airflow_adapter.check_cache_and_maybe_prepare_execution = 'check_cache'
     mock_airflow_adapter.python_exec = 'python_exec'
     mock_airflow_adapter.publish_exec = 'publish_exec'
     mock_airflow_adapter_class.return_value = mock_airflow_adapter
-    mock_tfx_worker_class.return_value = models.DAG(
-        dag_id='pipeline_name.component_name.unique_name',
-        start_date=datetime.datetime(2019, 1, 1))
 
-    component = airflow_component.Component(
+    # Ensure the new component is added to the dag
+    component_count = len(self.parent_dag.subdags)
+    _ = airflow_component.Component(
         parent_dag=self.parent_dag,
-        component_name='component_name',
-        unique_name='unique_name',
-        driver=None,
-        executor=None,
+        component_name='test_component',
+        unique_name='test_component_unique_name',
+        driver=driver.Driver,
+        executor=executor.Executor,
         input_dict=self.input_dict,
         output_dict=self.output_dict,
         exec_properties=self.exec_properties)
-
-    mock_tfx_worker_class.assert_called_with(
-        component_name='component_name',
-        task_id='pipeline_name.component_name.unique_name',
-        parent_dag=self.parent_dag,
-        input_dict=self.input_dict,
-        output_dict=self.output_dict,
-        exec_properties=self.exec_properties,
-        driver_options=mock.ANY,
-        driver_class=None,
-        executor_class=None,
-        additional_pipeline_args=None,
-        metadata_connection_config=self.parent_dag.metadata_connection_config,
-        logger_config=mock.ANY)
-
-    self.assertItemsEqual(component.upstream_list, [])
+    self.assertEqual(len(self.parent_dag.subdags), component_count+1)
 
 
 if __name__ == '__main__':
