@@ -30,104 +30,111 @@ from tfx.orchestration.kubeflow import base_component
 
 
 class KubeflowRunner(tfx_runner.TfxRunner):
-  """Kubeflow Pipelines runner.
+    """Kubeflow Pipelines runner.
 
-  Constructs a pipeline definition YAML file based on the TFX logical pipeline.
-  """
-
-  def __init__(self, output_dir: Optional[Text] = None):
-    """Initializes KubeflowRunner for compiling a Kubeflow Pipeline.
-
-    Args:
-      output_dir: An optional output directory into which to output the pipeline
-        definition files. Defaults to the current working directory.
-    """
-    self._output_dir = output_dir or os.getcwd()
-
-  def _prepare_output_dict(self, outputs: tfx_base_component.ComponentOutputs):
-    return dict((k, v.get()) for k, v in outputs.get_all().items())
-
-  def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
-    """Constructs a Kubeflow Pipeline graph.
-
-    Args:
-      pipeline: The logical TFX pipeline to base the construction on.
-    """
-    output_dir = os.path.join(pipeline.pipeline_args['pipeline_root'],
-                              pipeline.pipeline_args['pipeline_name'])
-    beam_pipeline_args = []
-    tfx_image = None
-    if 'additional_pipeline_args' in pipeline.pipeline_args:
-      additional_pipeline_args = pipeline.pipeline_args[
-          'additional_pipeline_args']
-      beam_pipeline_args = additional_pipeline_args.get('beam_pipeline_args',
-                                                        [])
-      tfx_image = additional_pipeline_args.get('tfx_image')
-
-    pipeline_properties = base_component.PipelineProperties(
-        output_dir=output_dir,
-        log_root=pipeline.pipeline_args['log_root'],
-        beam_pipeline_args=beam_pipeline_args,
-        tfx_image=tfx_image,
-    )
-
-    # producers is a map from an output Channel, to a Kubeflow component that
-    # is responsible for the named output represented by the Channel.
-    # Assumption: Channels are unique in a pipeline.
-    producers = {}
-
-    # Assumption: There is a partial ordering of components in the list, i.e.,
-    # if component A depends on component B and C, then A appears after B and C
-    # in the list.
-    for component in pipeline.components:
-      input_dict = {}
-      for input_name, input_channel in component.input_dict.items():
-        if input_channel in producers:
-          output = getattr(producers[input_channel]['component'].outputs,
-                           producers[input_channel]['channel_name'])
-
-          if not isinstance(output, dsl.PipelineParam):
-            raise ValueError(
-                'Component outputs should be of type dsl.PipelineParam.'
-                ' Got type {} for output {}'.format(type(output), output))
-          input_dict[input_name] = output
-        else:
-          input_dict[input_name] = json.dumps(
-              [x.json_dict() for x in input_channel.get()])
-      executor_class_path = '.'.join(
-          [component.executor.__module__, component.executor.__name__])
-      kfp_component = base_component.BaseComponent(
-          component_name=component.component_name,
-          input_dict=input_dict,
-          output_dict=self._prepare_output_dict(component.outputs),
-          exec_properties=component.exec_properties,
-          executor_class_path=executor_class_path,
-          pipeline_properties=pipeline_properties)
-
-      for channel_name, channel in component.outputs.get_all().items():
-        producers[channel] = {}
-        producers[channel]['component'] = kfp_component
-        producers[channel]['channel_name'] = channel_name
-
-  def run(self, pipeline: tfx_pipeline.Pipeline):
-    """Compiles and outputs a Kubeflow Pipeline YAML definition file.
-
-    Args:
-      pipeline: The logical TFX pipeline to use when building the Kubeflow
-        pipeline.
+    Constructs a pipeline definition YAML file based on the TFX logical pipeline.
     """
 
-    @dsl.pipeline(
-        name=pipeline.pipeline_args['pipeline_name'],
-        description=pipeline.pipeline_args.get('description', ''))
-    def _construct_pipeline():
-      """Constructs a Kubeflow pipeline.
+    def __init__(self, output_dir: Optional[Text] = None):
+        """Initializes KubeflowRunner for compiling a Kubeflow Pipeline.
 
-      Creates Kubeflow ContainerOps for each TFX component encountered in the
-      logical pipeline definition.
-      """
-      self._construct_pipeline_graph(pipeline)
+        Args:
+          output_dir: An optional output directory into which to output the pipeline
+            definition files. Defaults to the current working directory.
+        """
+        self._output_dir = output_dir or os.getcwd()
 
-    pipeline_name = pipeline.pipeline_args['pipeline_name']
-    pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
-    compiler.Compiler().compile(_construct_pipeline, pipeline_file)
+    def _prepare_output_dict(self, outputs: tfx_base_component.ComponentOutputs):
+        return dict((k, v.get()) for k, v in outputs.get_all().items())
+
+    def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
+        """Constructs a Kubeflow Pipeline graph.
+
+        Args:
+          pipeline: The logical TFX pipeline to base the construction on.
+        """
+        output_dir = os.path.join(pipeline.pipeline_args['pipeline_root'],
+                                  pipeline.pipeline_args['pipeline_name'])
+        beam_pipeline_args = []
+        tfx_image = None
+
+        # pipeline_pv_mount must be a dict with the following keys: pvc_name, volume_name, volume_mount_path.
+        # volume_name defaults to 'pipeline_shared_volume' and volume_mount_path to '/pipeline_shared_volume'.
+        # It is encouraged to use a PV of type ReadWriteMany.
+        pipeline_pv_mount = None
+        if 'additional_pipeline_args' in pipeline.pipeline_args:
+            additional_pipeline_args = pipeline.pipeline_args[
+                'additional_pipeline_args']
+            beam_pipeline_args = additional_pipeline_args.get('beam_pipeline_args',
+                                                              [])
+            tfx_image = additional_pipeline_args.get('tfx_image')
+            pipeline_pv_mount = additional_pipeline_args.get('pipeline_pv_mount')
+
+        pipeline_properties = base_component.PipelineProperties(
+            output_dir=output_dir,
+            log_root=pipeline.pipeline_args['log_root'],
+            beam_pipeline_args=beam_pipeline_args,
+            tfx_image=tfx_image,
+            pipeline_pv_mount=pipeline_pv_mount
+        )
+
+        # producers is a map from an output Channel, to a Kubeflow component that
+        # is responsible for the named output represented by the Channel.
+        # Assumption: Channels are unique in a pipeline.
+        producers = {}
+
+        # Assumption: There is a partial ordering of components in the list, i.e.,
+        # if component A depends on component B and C, then A appears after B and C
+        # in the list.
+        for component in pipeline.components:
+            input_dict = {}
+            for input_name, input_channel in component.input_dict.items():
+                if input_channel in producers:
+                    output = getattr(producers[input_channel]['component'].outputs,
+                                     producers[input_channel]['channel_name'])
+
+                    if not isinstance(output, dsl.PipelineParam):
+                        raise ValueError(
+                            'Component outputs should be of type dsl.PipelineParam.'
+                            ' Got type {} for output {}'.format(type(output), output))
+                    input_dict[input_name] = output
+                else:
+                    input_dict[input_name] = json.dumps(
+                        [x.json_dict() for x in input_channel.get()])
+            executor_class_path = '.'.join(
+                [component.executor.__module__, component.executor.__name__])
+            kfp_component = base_component.BaseComponent(
+                component_name=component.component_name,
+                input_dict=input_dict,
+                output_dict=self._prepare_output_dict(component.outputs),
+                exec_properties=component.exec_properties,
+                executor_class_path=executor_class_path,
+                pipeline_properties=pipeline_properties)
+
+            for channel_name, channel in component.outputs.get_all().items():
+                producers[channel] = {}
+                producers[channel]['component'] = kfp_component
+                producers[channel]['channel_name'] = channel_name
+
+    def run(self, pipeline: tfx_pipeline.Pipeline):
+        """Compiles and outputs a Kubeflow Pipeline YAML definition file.
+
+        Args:
+          pipeline: The logical TFX pipeline to use when building the Kubeflow
+            pipeline.
+        """
+
+        @dsl.pipeline(
+            name=pipeline.pipeline_args['pipeline_name'],
+            description=pipeline.pipeline_args.get('description', ''))
+        def _construct_pipeline():
+            """Constructs a Kubeflow pipeline.
+
+            Creates Kubeflow ContainerOps for each TFX component encountered in the
+            logical pipeline definition.
+            """
+            self._construct_pipeline_graph(pipeline)
+
+        pipeline_name = pipeline.pipeline_args['pipeline_name']
+        pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
+        compiler.Compiler().compile(_construct_pipeline, pipeline_file)
