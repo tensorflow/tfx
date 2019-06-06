@@ -149,7 +149,7 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
   """Build an estimator for predicting the tipping behavior of taxi riders.
 
   Args:
-    config: tf.contrib.learn.RunConfig defining the runtime environment for the
+    config: tf.estimator.RunConfig defining the runtime environment for the
       estimator (including model_dir).
     hidden_units: [int], the layer sizes of the DNN (input layer first)
     warm_start_from: Optional directory to warm start from.
