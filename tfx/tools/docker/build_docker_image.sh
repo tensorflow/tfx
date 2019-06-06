@@ -20,8 +20,5 @@ DOCKER_IMAGE_REPO=${DOCKER_IMAGE_REPO:-"tensorflow/tfx"}
 DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAG:-"latest"}
 DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 
-# Generate all proto files.
-protoc -I. --python_out=. ./tfx/proto/*.proto
-
 # Run docker build command.
 docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} -f tfx/tools/docker/${DOCKER_FILE} .
