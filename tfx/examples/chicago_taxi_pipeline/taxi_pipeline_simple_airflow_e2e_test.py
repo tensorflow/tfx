@@ -20,11 +20,13 @@ import os
 import subprocess
 import tempfile
 import time
-import unittest
 import pytest
 
 import tensorflow as tf
 from typing import Sequence, Set, Text
+
+import unittest
+
 from tfx.utils import io_utils
 
 
@@ -99,7 +101,7 @@ class AirflowEndToEndTest(unittest.TestCase):
     for task, state in failed.items():
       tf.logging.error('Retrieving logs for %s task %s', state, task)
       self._PrintTaskLogsOnError(task)
-    self.assertEqual(0, len(failed))
+    self.assertFalse(failed)
     return still_pending
 
   def setUp(self):

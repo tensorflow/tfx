@@ -18,11 +18,12 @@ from __future__ import print_function
 
 import os
 import tempfile
-import unittest
 
 import docker
 import pytest
 import tensorflow as tf
+
+import unittest
 
 
 @pytest.mark.end_to_end

@@ -68,7 +68,9 @@ class AirflowComponentTest(tf.test.TestCase):
   @mock.patch('airflow.operators.python_operator.BranchPythonOperator')
   @mock.patch('airflow.operators.python_operator.PythonOperator')
   @mock.patch('airflow.operators.dummy_operator.DummyOperator')
-  @mock.patch('tfx.orchestration.airflow.airflow_adapter.AirflowAdapter')
+  @mock.patch(
+      'tfx.orchestration.airflow.airflow_adapter.AirflowAdapter'
+  )
   def test_tfx_workflow_non_docker(
       self, mock_airflow_adapter_class, mock_dummy_operator_class,
       mock_python_operator_class, mock_branch_python_operator_class):
@@ -153,7 +155,9 @@ class AirflowComponentTest(tf.test.TestCase):
   @mock.patch('airflow.operators.python_operator.BranchPythonOperator')
   @mock.patch('airflow.operators.python_operator.PythonOperator')
   @mock.patch('airflow.operators.dummy_operator.DummyOperator')
-  @mock.patch('tfx.orchestration.airflow.airflow_adapter.AirflowAdapter')
+  @mock.patch(
+      'tfx.orchestration.airflow.airflow_adapter.AirflowAdapter'
+  )
   def test_tfx_workflow_docker(
       self, mock_airflow_adapter_class, mock_dummy_operator_class,
       mock_python_operator_class, mock_branch_python_operator_class):
@@ -219,7 +223,9 @@ class AirflowComponentTest(tf.test.TestCase):
 
   @mock.patch('airflow.operators.python_operator.BranchPythonOperator')
   @mock.patch('airflow.operators.python_operator.PythonOperator')
-  @mock.patch('tfx.orchestration.airflow.airflow_adapter.AirflowAdapter')
+  @mock.patch(
+      'tfx.orchestration.airflow.airflow_adapter.AirflowAdapter'
+  )
   def test_airflow_component(self, mock_airflow_adapter_class,
                              mock_python_operator_class,
                              mock_branch_python_operator_class):
