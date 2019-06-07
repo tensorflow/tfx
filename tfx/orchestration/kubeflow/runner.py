@@ -21,12 +21,69 @@ import os
 
 from kfp import compiler
 from kfp import dsl
-from typing import Optional, Text
+from kfp import gcp
+from typing import Callable, List, Optional, Text
 
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
+
+# OpFunc represents the type of a function that takes as input a
+# dsl.ContainerOp and returns the same object. Common operations such as adding
+# k8s secrets, mounting volumes, specifying the use of TPUs and so on can be
+# specified as an OpFunc.
+# See example usage here:
+# https://github.com/kubeflow/pipelines/blob/master/sdk/python/kfp/gcp.py
+OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
+
+
+# Default secret name for GCP credentials. This secret is installed as part of
+# a typical Kubeflow installation when the platform is GKE.
+_KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
+
+
+def get_default_pipeline_operator_funcs() -> List[OpFunc]:
+  """Returns a default list of pipeline operator functions.
+
+  Returns:
+    A list of functions with type OpFunc.
+  """
+  # Enables authentication for GCP services in a typical GKE Kubeflow
+  # installation.
+  gcp_secret_op = gcp.use_gcp_secret(_KUBEFLOW_GCP_SECRET_NAME)
+
+  return [gcp_secret_op]
+
+
+class KubeflowRunnerConfig(object):
+  """Runtime configuration parameters specific to execution on Kubeflow."""
+
+  def __init__(self, pipeline_operator_funcs: Optional[List[OpFunc]] = None):
+    """Creates a KubeflowRunnerConfig object.
+
+    The user can use pipeline_operator_funcs to apply modifications to
+    ContainerOps used in the pipeline. For example, to ensure the pipeline
+    steps mount a GCP secret, and a Persistent Volume, one can create config
+    object like so:
+
+      from kfp import gcp, onprem
+      mount_secret_op = gcp.use_secret('my-secret-name)
+      mount_volume_op = onprem.mount_pvc(
+        "my-persistent-volume-claim",
+        "my-volume-name",
+        "/mnt/volume-mount-path")
+
+      config = KubeflowRunnerConfig(
+        pipeline_operator_funcs=[mount_secret_op, mount_volume_op]
+      )
+
+    Args:
+      pipeline_operator_funcs: A list of ContainerOp modifying functions that
+        will be applied to every container step in the pipeline.
+    """
+    self.pipeline_operator_funcs = (
+        pipeline_operator_funcs or get_default_pipeline_operator_funcs())
 
 
 class KubeflowRunner(tfx_runner.TfxRunner):
@@ -35,14 +92,19 @@ class KubeflowRunner(tfx_runner.TfxRunner):
   Constructs a pipeline definition YAML file based on the TFX logical pipeline.
   """
 
-  def __init__(self, output_dir: Optional[Text] = None):
+  def __init__(self,
+               output_dir: Optional[Text] = None,
+               config: Optional[KubeflowRunnerConfig] = None):
     """Initializes KubeflowRunner for compiling a Kubeflow Pipeline.
 
     Args:
       output_dir: An optional output directory into which to output the pipeline
         definition files. Defaults to the current working directory.
+      config: An optional KubeflowRunnerConfig object to specify runtime
+        configuration when running the pipeline under Kubeflow.
     """
     self._output_dir = output_dir or os.getcwd()
+    self._config = config or KubeflowRunnerConfig()
 
   def _prepare_output_dict(self, outputs: tfx_base_component.ComponentOutputs):
     return dict((k, v.get()) for k, v in outputs.get_all().items())
@@ -104,6 +166,9 @@ class KubeflowRunner(tfx_runner.TfxRunner):
           executor_class_path=executor_class_path,
           pipeline_properties=pipeline_properties)
 
+      for operator in self._config.pipeline_operator_funcs:
+        kfp_component.container_op.apply(operator)
+
       for channel_name, channel in component.outputs.get_all().items():
         producers[channel] = {}
         producers[channel]['component'] = kfp_component
@@ -129,5 +194,8 @@ class KubeflowRunner(tfx_runner.TfxRunner):
       self._construct_pipeline_graph(pipeline)
 
     pipeline_name = pipeline.pipeline_args['pipeline_name']
+    # TODO(b/134680219): Allow users to specify the extension. Specifying
+    # .yaml will compile the pipeline directly into a YAML file. Kubeflow
+    # backend recognizes .tar.gz, .zip, and .yaml today.
     pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
     compiler.Compiler().compile(_construct_pipeline, pipeline_file)
