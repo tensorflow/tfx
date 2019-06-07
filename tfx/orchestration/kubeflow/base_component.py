@@ -28,7 +28,6 @@ from __future__ import print_function
 import collections
 import json
 from kfp import dsl
-from kfp import gcp
 from kubernetes import client as k8s_client
 from typing import Any, Dict, List, Optional, Text
 
@@ -123,7 +122,7 @@ class BaseComponent(object):
         image=pipeline_properties.tfx_image,
         arguments=arguments,
         file_outputs=file_outputs,
-    ).apply(gcp.use_gcp_secret('user-gcp-sa'))  # Adds GCP authentication.
+    )
 
     # Add the Argo workflow ID to the container's environment variable so it
     # can be used to uniquely place pipeline outputs under the pipeline_root.

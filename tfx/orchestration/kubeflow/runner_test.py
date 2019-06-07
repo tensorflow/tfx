@@ -21,6 +21,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+from kfp import onprem
 import tensorflow as tf
 import yaml
 
@@ -57,8 +58,7 @@ class RunnerTest(tf.test.TestCase):
     """Sanity-checks the construction and dependencies for a 2-step pipeline.
     """
     runner.KubeflowRunner().run(_two_step_pipeline())
-    file_path = os.path.join(self.test_dir,
-                             'two_step_pipeline.tar.gz')
+    file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
@@ -72,9 +72,7 @@ class RunnerTest(tf.test.TestCase):
       self.assertEqual(2, len(containers))
 
       big_query_container = [
-          c
-          for c in containers
-          if c['name'] == 'bigqueryexamplegen'
+          c for c in containers if c['name'] == 'bigqueryexamplegen'
       ]
       self.assertEqual(1, len(big_query_container))
       self.assertEqual([
@@ -83,9 +81,7 @@ class RunnerTest(tf.test.TestCase):
       ], big_query_container[0]['container']['command'])
 
       statistics_gen_container = [
-          c
-          for c in containers
-          if c['name'] == 'statisticsgen'
+          c for c in containers if c['name'] == 'statisticsgen'
       ]
       self.assertEqual(1, len(statistics_gen_container))
 
@@ -100,19 +96,93 @@ class RunnerTest(tf.test.TestCase):
           'tasks': [{
               'name': 'bigqueryexamplegen',
               'template': 'bigqueryexamplegen'
-          },
-                    {
-                        'name': 'statisticsgen',
-                        'template': 'statisticsgen',
-                        'dependencies': ['bigqueryexamplegen'],
-                        'arguments': {
-                            'parameters': [{
-                                'name': 'bigqueryexamplegen-examples',
-                                'value': parameter_value
-                            }],
-                        },
-                    }]
+          }, {
+              'name': 'statisticsgen',
+              'template': 'statisticsgen',
+              'dependencies': ['bigqueryexamplegen'],
+              'arguments': {
+                  'parameters': [{
+                      'name': 'bigqueryexamplegen-examples',
+                      'value': parameter_value
+                  }],
+              },
+          }]
       }, dag[0]['dag'])
+
+  def test_default_pipeline_operator_funcs(self):
+    runner.KubeflowRunner().run(_two_step_pipeline())
+    file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
+    self.assertTrue(tf.gfile.Exists(file_path))
+
+    with tarfile.TarFile.open(file_path).extractfile(
+        'pipeline.yaml') as pipeline_file:
+      self.assertIsNotNone(pipeline_file)
+      pipeline = yaml.load(pipeline_file)
+
+      containers = [
+          c for c in pipeline['spec']['templates'] if 'container' in c
+      ]
+      self.assertEqual(2, len(containers))
+
+      # Check that each container has default GCP credentials.
+
+      container_0 = containers[0]
+      env = [
+          env for env in container_0['container']['env']
+          if env['name'] == 'GOOGLE_APPLICATION_CREDENTIALS'
+      ]
+      self.assertEqual(1, len(env))
+      self.assertEqual('/secret/gcp-credentials/user-gcp-sa.json',
+                       env[0]['value'])
+
+      container_1 = containers[0]
+      env = [
+          env for env in container_1['container']['env']
+          if env['name'] == 'GOOGLE_APPLICATION_CREDENTIALS'
+      ]
+      self.assertEqual(1, len(env))
+      self.assertEqual('/secret/gcp-credentials/user-gcp-sa.json',
+                       env[0]['value'])
+
+  def test_volume_mounting_pipeline_operator_funcs(self):
+    mount_volume_op = onprem.mount_pvc('my-persistent-volume-claim',
+                                       'my-volume-name',
+                                       '/mnt/volume-mount-path')
+    config = runner.KubeflowRunnerConfig(
+        pipeline_operator_funcs=[mount_volume_op])
+
+    runner.KubeflowRunner(config=config).run(_two_step_pipeline())
+    file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
+    self.assertTrue(tf.gfile.Exists(file_path))
+
+    with tarfile.TarFile.open(file_path).extractfile(
+        'pipeline.yaml') as pipeline_file:
+      self.assertIsNotNone(pipeline_file)
+      pipeline = yaml.load(pipeline_file)
+
+      containers = [
+          c for c in pipeline['spec']['templates'] if 'container' in c
+      ]
+      self.assertEqual(2, len(containers))
+
+      # Check that each container has the volume mounted.
+      self.assertEqual([{
+          'name': 'my-volume-name',
+          'mountPath': '/mnt/volume-mount-path'
+      }], containers[0]['container']['volumeMounts'])
+
+      self.assertEqual([{
+          'name': 'my-volume-name',
+          'mountPath': '/mnt/volume-mount-path'
+      }], containers[1]['container']['volumeMounts'])
+
+      # Check that the PVC is specified.
+      self.assertEqual([{
+          'name': 'my-volume-name',
+          'persistentVolumeClaim': {
+              'claimName': 'my-persistent-volume-claim'
+          }
+      }], pipeline['spec']['volumes'])
 
 
 if __name__ == '__main__':

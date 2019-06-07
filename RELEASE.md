@@ -11,6 +11,8 @@
 *   Updated tfx docker image to use Python 3.
 *   Added example for how to define and add a custom component.
 *   Added Parquet executor for ExampleGen component.
+*   Enables Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
+    that can be applied to each pipeline step.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
@@ -25,6 +27,9 @@
 *   TfxType has been renamed to TfxArtifact.
 *   Fixes issue #185 preventing the Airflow UI from visualizing the component's
     subdag operators and logs.
+*   Fixes issue #201 so GCP credentials are optional.
+*   Bumped dependency to kfp (Kubeflow Pipelines SDK) version to be at later
+    than 0.1.18.
 
 ## Breaking changes
 
