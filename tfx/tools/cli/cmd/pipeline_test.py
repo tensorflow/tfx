@@ -35,32 +35,41 @@ class PipelineTest(tf.test.TestCase):
       os.environ['LANG'] = 'en_US.utf-8'
     self.runner = CliRunner()
 
-  def test_pipeline_create(self):
+  # TODO(b/132286477):Change tests after writing default_handler()
+
+  def test_pipeline_create_auto(self):
     result = self.runner.invoke(pipeline_group,
                                 ['create', '--path', 'chicago.py'])
-    self.assertEqual(0, result.exit_code)
+    self.assertNotEqual(0, result.exit_code)
     self.assertIn('Creating pipeline', result.output)
 
   def test_pipeline_update(self):
-    result = self.runner.invoke(pipeline_group,
-                                ['update', '--path', 'chicago.py'])
+    result = self.runner.invoke(
+        pipeline_group,
+        ['update', '--path', 'chicago.py', '--engine', 'kubeflow'])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Updating pipeline', result.output)
+    self.assertIn('Kubeflow', result.output)
 
   def test_pipeline_run(self):
-    result = self.runner.invoke(pipeline_group, ['run', '--name', 'chicago'])
+    result = self.runner.invoke(
+        pipeline_group, ['run', '--name', 'chicago', '--engine', 'airflow'])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Triggering pipeline', result.output)
+    self.assertIn('Airflow', result.output)
 
   def test_pipeline_delete(self):
-    result = self.runner.invoke(pipeline_group, ['delete', '--name', 'chicago'])
+    result = self.runner.invoke(
+        pipeline_group, ['delete', '--name', 'chicago', '--engine', 'airflow'])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Deleting pipeline', result.output)
+    self.assertIn('Airflow', result.output)
 
   def test_pipeline_list(self):
     result = self.runner.invoke(pipeline_group, ['list', '--engine', 'airflow'])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Listing all pipelines', result.output)
+    self.assertIn('Airflow', result.output)
 
   def test_pipeline_invalid_flag(self):
     result = self.runner.invoke(pipeline_group,

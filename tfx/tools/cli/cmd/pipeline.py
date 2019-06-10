@@ -18,18 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 import click
-
 from typing import Text
-from tfx.tools.cli.cmd import labels
 
-
-class PipelineContext(object):
-
-  def __init__(self):
-    self.flags_dict = {}
-
-
-pass_context = click.make_pass_decorator(PipelineContext, ensure=True)
+from tfx.tools.cli import labels
+from tfx.tools.cli.cli_context import Context
+from tfx.tools.cli.cli_context import pass_context
+from tfx.tools.cli.handler import handler_factory
 
 
 @click.group('pipeline')
@@ -47,12 +41,13 @@ def pipeline_group() -> None:
     required=True,
     type=str,
     help='Path to Python DSL file')
-def create_pipeline(ctx: PipelineContext, engine: Text,
+def create_pipeline(ctx: Context, engine: Text,
                     pipeline_path: Text) -> None:
-  """Command definition create a pipeline."""
+  """Command definition to create a pipeline."""
   click.echo('Creating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_PATH_FLAG] = pipeline_path
+  handler_factory.create_handler(ctx.flags_dict).create_pipeline()
 
 
 @pipeline_group.command('update', help='Update an existing pipeline.')
@@ -65,12 +60,13 @@ def create_pipeline(ctx: PipelineContext, engine: Text,
     required=True,
     type=str,
     help='Path to Python DSL file')
-def update_pipeline(ctx: PipelineContext, engine: Text,
+def update_pipeline(ctx: Context, engine: Text,
                     pipeline_path: Text) -> None:
-  """Command definition update a pipeline."""
+  """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_PATH_FLAG] = pipeline_path
+  handler_factory.create_handler(ctx.flags_dict).update_pipeline()
 
 
 @pipeline_group.command('run', help='Create a new run for a pipeline.')
@@ -83,12 +79,13 @@ def update_pipeline(ctx: PipelineContext, engine: Text,
     required=True,
     type=str,
     help='Name of the pipeline')
-def run_pipeline(ctx: PipelineContext, pipeline_name: Text,
+def run_pipeline(ctx: Context, pipeline_name: Text,
                  engine: Text) -> None:
-  """Command definition run a pipeline."""
+  """Command definition to run a pipeline."""
   click.echo('Triggering pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME_FLAG] = pipeline_name
+  handler_factory.create_handler(ctx.flags_dict).run_pipeline()
 
 
 @pipeline_group.command('delete', help='Delete a pipeline.')
@@ -101,19 +98,23 @@ def run_pipeline(ctx: PipelineContext, pipeline_name: Text,
     required=True,
     type=str,
     help='Name of the pipeline')
-def delete_pipeline(ctx: PipelineContext, pipeline_name: Text,
+def delete_pipeline(ctx: Context, pipeline_name: Text,
                     engine: Text) -> None:
-  """Command definition delete a pipeline."""
+  """Command definition to delete a pipeline."""
   click.echo('Deleting pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME_FLAG] = pipeline_name
+  handler_factory.create_handler(ctx.flags_dict).delete_pipeline()
 
 
 @pipeline_group.command('list', help='List all the pipelines.')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='orchestrator for pipelines')
-def list_pipelines(ctx: PipelineContext, engine: Text) -> None:
-  """Command definition list pipelines."""
+def list_pipelines(ctx: Context, engine: Text) -> None:
+  """Command definition to list pipelines."""
   click.echo('Listing all pipelines')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
+  handler_factory.create_handler(ctx.flags_dict).list_pipelines()
+
+
