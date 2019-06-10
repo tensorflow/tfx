@@ -20,6 +20,8 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
+# Dummy change to activate Airflow tests
+
 from __future__ import division
 from __future__ import print_function
 
