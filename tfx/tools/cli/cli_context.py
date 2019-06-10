@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Main script to invoke CLI."""
+"""Context for @cli_group."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,15 +19,16 @@ from __future__ import print_function
 
 import click
 
-from tfx.tools.cli.cmd.pipeline import pipeline_group
 
+class Context(object):
+  """Context shared between all command groups.
 
-@click.group('cli')
-def cli():
-  click.echo('CLI')
+  Attributes :
+    flags_dict: A dictionary containing the flags of a command and additional
+    properties.
+  """
 
+  def __init__(self):
+    self.flags_dict = {}
 
-cli.add_command(pipeline_group)
-
-if __name__ == '__main__':
-  cli()
+pass_context = click.make_pass_decorator(Context, ensure=True)

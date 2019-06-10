@@ -23,7 +23,7 @@ import os
 
 from click.testing import CliRunner
 import tensorflow as tf
-from tfx.tools.cli.cli import cli
+from tfx.tools.cli.cli_main import cli_group
 
 
 class CliTest(tf.test.TestCase):
@@ -36,11 +36,11 @@ class CliTest(tf.test.TestCase):
     self.runner = CliRunner()
 
   def test_cli_pipeline(self):
-    result = self.runner.invoke(cli, ['pipeline'])
+    result = self.runner.invoke(cli_group, ['pipeline'])
     self.assertIn('CLI', result.output)
 
   def test_cli_invalid_command(self):
-    result = self.runner.invoke(cli, ['pipelin'])
+    result = self.runner.invoke(cli_group, ['pipelin'])
     self.assertNotEqual(0, result.exit_code)
 
 
