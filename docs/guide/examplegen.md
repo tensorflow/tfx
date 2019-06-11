@@ -44,6 +44,8 @@ example_gen = ImportExampleGen(input_base=examples)
 
 ## Custom input/output split
 
+Note: this feature is only available after TFX 0.14.
+
 To customize the train/eval split ratio which ExampleGen will output, set the
 `output_config` for ExampleGen component. For example:
 
@@ -91,6 +93,8 @@ Please refer to
 for details.
 
 ## Custom ExampleGen
+
+Note: this feature is only available after TFX 0.14.
 
 If the currently available ExampleGen components don't fit your needs, you can
 create a custom ExampleGen, which will include a new executor extended from
