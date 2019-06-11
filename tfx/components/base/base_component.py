@@ -48,7 +48,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   Attributes:
     component_name: Name of the component, should be unique per component class.
     unique_name: Unique name for every component class instance.
-    driver: Driver class to handle pre-execution behaviors in a component.
+    driver: Optional driver class to handle pre-execution behaviors in a
+      component. Default to base_driver.BaseDriver.
     executor: Executor class to do the real execution work.
     input_dict: A [Text -> Channel] dict serving as the inputs to the component.
     exec_properties: A [Text -> Any] dict serving as additional properties
@@ -56,19 +57,20 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     outputs: Optional Channel destinations of the component.
   """
 
-  def __init__(self,
-               component_name: Text,
-               driver: Type[base_driver.BaseDriver],
-               executor: Type[base_executor.BaseExecutor],
-               input_dict: Dict[Text, channel.Channel],
-               exec_properties: Dict[Text, Any],
-               unique_name: Optional[Text] = '',
-               outputs: Optional[ComponentOutputs] = None):
+  def __init__(
+      self,
+      component_name: Text,
+      executor: Type[base_executor.BaseExecutor],
+      input_dict: Dict[Text, channel.Channel],
+      exec_properties: Dict[Text, Any],
+      driver: Optional[Type[base_driver.BaseDriver]] = base_driver.BaseDriver,
+      unique_name: Optional[Text] = '',
+      outputs: Optional[ComponentOutputs] = None):
     self.component_name = component_name
-    self.driver = driver
     self.executor = executor
     self.input_dict = input_dict
     self.exec_properties = exec_properties
+    self.driver = driver
     self.unique_name = unique_name
     self.outputs = outputs or self._create_outputs()
     self._type_check(self.input_dict, self.exec_properties)

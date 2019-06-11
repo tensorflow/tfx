@@ -19,7 +19,6 @@ from __future__ import print_function
 from typing import Any, Dict, Text
 
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
 from tfx.components.example_validator import executor
 from tfx.utils import channel
 from tfx.utils import types
@@ -68,7 +67,6 @@ class ExampleValidator(base_component.BaseComponent):
     super(ExampleValidator, self).__init__(
         component_name=component_name,
         unique_name=name,
-        driver=base_driver.BaseDriver,
         executor=executor.Executor,
         input_dict=input_dict,
         outputs=outputs,
