@@ -30,6 +30,8 @@
 *   Fixes issue #201 so GCP credentials are optional.
 *   Bumped dependency to kfp (Kubeflow Pipelines SDK) version to be at later
     than 0.1.18.
+*   Updated code example to use 'tf.data.TFRecordDataset' instead of the
+    deprecated function 'tf.TFRecordReader'
 
 ## Breaking changes
 
