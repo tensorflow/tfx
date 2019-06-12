@@ -76,11 +76,11 @@ def _get_raw_feature_spec(schema):
   return schema_utils.schema_as_feature_spec(schema).feature_spec
 
 
-def _gzip_reader_fn():
+def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.TFRecordReader(
-      options=tf.python_io.TFRecordOptions(
-          compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+  return tf.data.TFRecordDataset(
+      filenames,
+      compression_type='GZIP')
 
 
 def _fill_in_missing(x):
@@ -272,9 +272,10 @@ def _input_fn(filenames, tf_transform_output, batch_size=200):
   transformed_feature_spec = (
       tf_transform_output.transformed_feature_spec().copy())
 
-  transformed_features = tf.contrib.learn.io.read_batch_features(
+  dataset = tf.data.experimental.make_batched_features_dataset(
       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
+  transformed_features = dataset.make_one_shot_iterator().get_next()
   # We pop the label because we do not want to use it as a feature while we're
   # training.
   return transformed_features, transformed_features.pop(
