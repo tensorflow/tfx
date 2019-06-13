@@ -87,7 +87,7 @@ class TaxiUtilsTest(tf.test.TestCase):
          | 'EncodeTrainData' >> beam.Map(encoder.encode)
          | 'WriteTrainData' >> beam.io.WriteToTFRecord(
              os.path.join(transformed_examples_path,
-                          'train/transformed_exmaples.gz'),
+                          'train/transformed_examples.gz'),
              coder=beam.coders.BytesCoder()))
         # pylint: enable=expression-not-assigned
 
