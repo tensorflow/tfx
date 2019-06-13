@@ -42,8 +42,7 @@ class AirflowAdapterTest(tf.test.TestCase):
     self._logger_config = logging_utils.LoggerConfig()
 
   def _setup_mocks(self, mock_metadata_class, mock_driver_class,
-                   mock_executor_class, mock_docker_operator_class,
-                   mock_get_logger):
+                   mock_executor_class, mock_get_logger):
     self._setup_mock_driver(mock_driver_class)
     self._setup_mock_executor(mock_executor_class)
     self._setup_mock_metadata(mock_metadata_class)
@@ -104,17 +103,14 @@ class AirflowAdapterTest(tf.test.TestCase):
     self.mock_task_instance = mock_task_instance
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
-  @mock.patch('airflow.operators.docker_operator.DockerOperator')
   @mock.patch(
       'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_cached_execution(self, mock_metadata_class, mock_driver_class,
-                            mock_executor_class, mock_docker_operator_class,
-                            mock_get_logger):
+                            mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
-                      mock_executor_class, mock_docker_operator_class,
-                      mock_get_logger)
+                      mock_executor_class, mock_get_logger)
     adapter, input_dict, output_dict, exec_properties, driver_options = self._setup_adapter_and_args(
     )
 
@@ -141,17 +137,14 @@ class AirflowAdapterTest(tf.test.TestCase):
     self.assertEqual(check_result, 'cached_branch')
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
-  @mock.patch('airflow.operators.docker_operator.DockerOperator')
   @mock.patch(
       'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_new_execution(self, mock_metadata_class, mock_driver_class,
-                         mock_executor_class, mock_docker_operator_class,
-                         mock_get_logger):
+                         mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
-                      mock_executor_class, mock_docker_operator_class,
-                      mock_get_logger)
+                      mock_executor_class, mock_get_logger)
     adapter, input_dict, output_dict, exec_properties, driver_options = self._setup_adapter_and_args(
     )
 
@@ -186,17 +179,14 @@ class AirflowAdapterTest(tf.test.TestCase):
     self.assertEqual(check_result, 'uncached_branch')
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
-  @mock.patch('airflow.operators.docker_operator.DockerOperator')
   @mock.patch(
       'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_python_exec(self, mock_metadata_class, mock_driver_class,
-                       mock_executor_class, mock_docker_operator_class,
-                       mock_get_logger):
+                       mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
-                      mock_executor_class, mock_docker_operator_class,
-                      mock_get_logger)
+                      mock_executor_class, mock_get_logger)
     adapter, input_dict, output_dict, exec_properties, _ = self._setup_adapter_and_args(
     )
 
@@ -224,55 +214,14 @@ class AirflowAdapterTest(tf.test.TestCase):
     self.mock_task_instance.xcom_push.assert_called_once()
 
   @mock.patch('tfx.utils.logging_utils.get_logger')
-  @mock.patch('airflow.operators.docker_operator.DockerOperator')
-  @mock.patch(
-      'tfx.components.base.base_executor.BaseExecutor')
-  @mock.patch('tfx.components.base.base_driver.BaseDriver')
-  @mock.patch('tfx.orchestration.metadata.Metadata')
-  def test_docker_exec(self, mock_metadata_class, mock_driver_class,
-                       mock_executor_class, mock_docker_operator_class,
-                       mock_get_logger):
-    self._setup_mocks(mock_metadata_class, mock_driver_class,
-                      mock_executor_class, mock_docker_operator_class,
-                      mock_get_logger)
-    adapter, _, _, _, _ = self._setup_adapter_and_args()
-
-    adapter.docker_operator('task_id', 'parent_dag', {
-        'volumes': ['root', 'base', 'taxi'],
-    }, 'pusher_task')
-
-    expected_command = ('--write-outputs-stdout '
-                        '--executor_class_path=mock.mock.mock_executor_class '
-                        '--inputs-base64={{ ti.xcom_pull(key="_exec_inputs", '
-                        'task_ids="pusher_task") | b64encode }} '
-                        '--outputs-base64={{ ti.xcom_pull(key="_exec_outputs", '
-                        'task_ids="pusher_task") | b64encode }} '
-                        '--exec-properties-base64={{ '
-                        'ti.xcom_pull(key="_exec_properties", '
-                        'task_ids="pusher_task") | b64encode }}')
-    expected_volume = ['root:root:rw', 'base:base:rw', 'taxi:taxi:rw']
-
-    mock_docker_operator_class.assert_called_with(
-        dag='parent_dag',
-        task_id='task_id',
-        command=expected_command,
-        volumes=expected_volume,
-        xcom_push=True,
-        image='tfx-executors-test:latest',
-    )
-
-  @mock.patch('tfx.utils.logging_utils.get_logger')
-  @mock.patch('airflow.operators.docker_operator.DockerOperator')
   @mock.patch(
       'tfx.components.base.base_executor.BaseExecutor')
   @mock.patch('tfx.components.base.base_driver.BaseDriver')
   @mock.patch('tfx.orchestration.metadata.Metadata')
   def test_publish_exec(self, mock_metadata_class, mock_driver_class,
-                        mock_executor_class, mock_docker_operator_class,
-                        mock_get_logger):
+                        mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
-                      mock_executor_class, mock_docker_operator_class,
-                      mock_get_logger)
+                      mock_executor_class, mock_get_logger)
     adapter, input_dict, output_dict, exec_properties, _ = self._setup_adapter_and_args(
     )
 

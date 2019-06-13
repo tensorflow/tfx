@@ -46,7 +46,6 @@ class AirflowPipeline(models.DAG):
                metadata_db_root,
                metadata_connection_config=None,
                additional_pipeline_args=None,
-               docker_operator_cfg=None,
                enable_cache=False):
     super(AirflowPipeline, self).__init__(
         dag_id=pipeline_name,
@@ -54,7 +53,6 @@ class AirflowPipeline(models.DAG):
         start_date=start_date)
     self.project_path = os.path.join(pipeline_root, pipeline_name)
     self.additional_pipeline_args = additional_pipeline_args
-    self.docker_operator_cfg = docker_operator_cfg
     self.enable_cache = enable_cache
 
     if additional_pipeline_args is None:

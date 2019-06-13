@@ -14,7 +14,6 @@
 """Definition of Airflow TFX adapter."""
 import json
 
-from airflow.operators import docker_operator
 from tfx.components.base import base_executor
 from tfx.orchestration import metadata
 from tfx.utils import logging_utils
@@ -153,7 +152,8 @@ class AirflowAdapter(object):
 
     # Run executor
     executor.Do(self._input_dict, self._output_dict, self._exec_properties)
-    # Docker operator chooses 'return_value' so we try to be consistent.
+    # Airflow's docker_operator chooses 'return_value' so we try to be
+    # consistent in case one day we want to add it back.
     task_instance.xcom_push(
         key='return_value', value=jsonify_tfx_type_dict(self._output_dict))
 
@@ -173,39 +173,6 @@ class AirflowAdapter(object):
 
     self._execution_id = task_instance.xcom_pull(
         key='_execution_id', task_ids=pushing_task_name)
-
-  def docker_operator(self, task_id, parent_dag, docker_operator_cfg,
-                      pusher_task):
-    """Creates a DockerOpertor to run executor in docker images."""
-    volumes = [
-        v if ':' in v else '{v}:{v}:rw'.format(v=v)
-        for v in docker_operator_cfg.get('volumes', [])
-    ]
-    executor_class_path = '.'.join([
-        self._executor_class.__module__,
-        self._executor_class.__name__,
-    ])
-    args = [
-        '--write-outputs-stdout',
-        '--executor_class_path=%s' % executor_class_path,
-        '--inputs-base64={{ ti.xcom_pull(key="_exec_inputs", '
-        'task_ids="%s") | b64encode }}' % pusher_task,
-        '--outputs-base64={{ ti.xcom_pull(key="_exec_outputs", '
-        'task_ids="%s") | b64encode }}' % pusher_task,
-        '--exec-properties-base64={{ ti.xcom_pull(key="_exec_properties", '
-        'task_ids="%s") | b64encode }}' % pusher_task
-    ]
-    if 'beam_pipeline_args' in self._additional_pipeline_args:
-      args += self._additional_pipeline_args['beam_pipeline_args']
-    command = ' '.join(args)
-    return docker_operator.DockerOperator(
-        dag=parent_dag,
-        task_id=task_id,
-        command=command,
-        volumes=volumes,
-        xcom_push=True,
-        image='tfx-executors-test:latest',
-    )
 
   def publish_exec(self, cache_task_name, exec_task_name, **kwargs):
     """Publish artifacts produced in this execution to the pipeline."""

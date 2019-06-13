@@ -39,7 +39,6 @@ class AirflowPipelineTest(tf.test.TestCase):
         metadata_db_root=self._temp_dir,
         metadata_connection_config=None,
         additional_pipeline_args=None,
-        docker_operator_cfg=None,
         enable_cache=True)
 
   def test_initialize_pipeline(self):
