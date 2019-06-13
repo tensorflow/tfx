@@ -35,7 +35,6 @@ def make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
   return [
       'apache-airflow>=1.10,<2',
-      'docker>=3.7,<4',
       'kfp>=0.1.18,<0.2; python_version >= "3.0"',
       'pytest>=4.4.1,<5',
       'tensorflow>=1.13,<2',
