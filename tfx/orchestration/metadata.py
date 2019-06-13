@@ -339,7 +339,6 @@ class Metadata(object):
         [artifact] = self._store.get_artifacts_by_id([event.artifact_id])
         output_key = event.path.steps[0].key
         output_index = event.path.steps[1].index
-        [artifact] = self._store.get_artifacts_by_id([event.artifact_id])
         name_to_index_to_artifacts[output_key][output_index] = artifact
     for output_name, output_list in output_dict.items():
       if output_name not in name_to_index_to_artifacts:
