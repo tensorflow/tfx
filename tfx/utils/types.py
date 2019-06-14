@@ -23,6 +23,7 @@ import builtins
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Text
 
 from ml_metadata.proto import metadata_store_pb2
@@ -53,7 +54,7 @@ class TfxArtifact(object):
   internal state.
   """
 
-  def __init__(self, type_name: Text, split: Text = ''):
+  def __init__(self, type_name: Text, split: Optional[Text] = ''):
     """Construct an instance of TfxArtifact.
 
     Each instance of TfxArtifact wraps an Artifact and its type internally.
@@ -110,7 +111,7 @@ class TfxArtifact(object):
     json_format.Parse(json.dumps(d['artifact']), artifact)
     artifact_type = metadata_store_pb2.ArtifactType()
     json_format.Parse(json.dumps(d['artifact_type']), artifact_type)
-    result = TfxArtifact(artifact_type.name, artifact.uri)
+    result = TfxArtifact(artifact_type.name)
     result.set_artifact_type(artifact_type)
     result.set_artifact(artifact)
     return result
