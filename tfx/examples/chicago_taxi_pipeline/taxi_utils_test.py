@@ -22,6 +22,7 @@ import types
 
 import apache_beam as beam
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
@@ -29,6 +30,7 @@ from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.utils import io_utils
+from tfx.utils import path_utils
 
 
 class TaxiUtilsTest(tf.test.TestCase):
@@ -110,27 +112,55 @@ class TaxiUtilsTest(tf.test.TestCase):
         self._testMethodName)
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
+    output_dir = os.path.join(temp_dir, 'output_dir')
     hparams = tf.contrib.training.HParams(
-        train_files=os.path.join(temp_dir, 'train_files'),
+        train_files=os.path.join(self._testdata_path,
+                                 'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
                                       'transform/transform_output/'),
-        output_dir=os.path.join(temp_dir, 'output_dir'),
+        output_dir=output_dir,
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
-        eval_files=os.path.join(temp_dir, 'eval_files'),
+        eval_files=os.path.join(self._testdata_path,
+                                'transform/transformed_examples/eval/*.gz'),
         schema_file=schema_file,
-        train_steps=10001,
-        eval_steps=5000,
+        train_steps=1,
+        eval_steps=1,
         verbosity='INFO',
-        warm_start_from=os.path.join(temp_dir, 'serving_model_dir'))
+        warm_start_from=os.path.join(self._testdata_path,
+                                     'trainer/current/serving_model_dir')
+    )
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils.trainer_fn(hparams, schema)
 
-    self.assertIsInstance(training_spec['estimator'],
+    estimator = training_spec['estimator']
+    train_spec = training_spec['train_spec']
+    eval_spec = training_spec['eval_spec']
+    eval_input_receiver_fn = training_spec['eval_input_receiver_fn']
+
+    self.assertIsInstance(estimator,
                           tf.estimator.DNNLinearCombinedClassifier)
-    self.assertIsInstance(training_spec['train_spec'], tf.estimator.TrainSpec)
-    self.assertIsInstance(training_spec['eval_spec'], tf.estimator.EvalSpec)
-    self.assertIsInstance(training_spec['eval_input_receiver_fn'],
-                          types.FunctionType)
+    self.assertIsInstance(train_spec, tf.estimator.TrainSpec)
+    self.assertIsInstance(eval_spec, tf.estimator.EvalSpec)
+    self.assertIsInstance(eval_input_receiver_fn, types.FunctionType)
+
+    # Train for one step, then eval for one step.
+    eval_result, exports = tf.estimator.train_and_evaluate(
+        estimator, train_spec, eval_spec)
+    self.assertGreater(eval_result['loss'], 0.0)
+    self.assertTrue(tf.gfile.IsDirectory(exports[0]))
+
+    # Export the eval saved model.
+    eval_savedmodel_path = tfma.export.export_eval_savedmodel(
+        estimator=estimator,
+        export_dir_base=path_utils.eval_model_dir(output_dir),
+        eval_input_receiver_fn=eval_input_receiver_fn)
+    self.assertTrue(tf.gfile.IsDirectory(eval_savedmodel_path))
+
+    # Test exported serving graph.
+    with tf.Session() as sess:
+      metagraph_def = tf.compat.v1.saved_model.loader.load(
+          sess, [tf.saved_model.tag_constants.SERVING], exports[0])
+      self.assertIsInstance(metagraph_def, tf.MetaGraphDef)
 
 
 if __name__ == '__main__':
