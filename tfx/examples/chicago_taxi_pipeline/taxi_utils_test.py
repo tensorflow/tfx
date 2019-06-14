@@ -147,14 +147,16 @@ class TaxiUtilsTest(tf.test.TestCase):
     eval_result, exports = tf.estimator.train_and_evaluate(
         estimator, train_spec, eval_spec)
     self.assertGreater(eval_result['loss'], 0.0)
-    self.assertTrue(tf.gfile.IsDirectory(exports[0]))
+    self.assertEqual(len(exports), 1)
+    self.assertGreaterEqual(len(tf.gfile.ListDirectory(exports[0])), 1)
 
     # Export the eval saved model.
     eval_savedmodel_path = tfma.export.export_eval_savedmodel(
         estimator=estimator,
         export_dir_base=path_utils.eval_model_dir(output_dir),
         eval_input_receiver_fn=eval_input_receiver_fn)
-    self.assertTrue(tf.gfile.IsDirectory(eval_savedmodel_path))
+    self.assertGreaterEqual(
+        len(tf.gfile.ListDirectory(eval_savedmodel_path)), 1)
 
     # Test exported serving graph.
     with tf.Session() as sess:
