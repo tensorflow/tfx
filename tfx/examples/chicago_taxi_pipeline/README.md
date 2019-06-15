@@ -99,9 +99,9 @@ pip install -r requirements.txt
 
 <pre class="devsite-terminal devsite-click-to-copy">
 pip install tensorflow==1.13.1
-pip install docker
+pip install docker==4.0.1
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
-pip install apache-airflow
+pip install apache-airflow==1.10.3
 pip install tfx==0.13.0
 </pre>
 
