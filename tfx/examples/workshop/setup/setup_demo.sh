@@ -22,6 +22,7 @@ NORMAL=$(tput sgr0)
 
 printf "${GREEN}Installing TFX workshop${NORMAL}\n\n"
 
+# TODO(b/135470014): Use range or pin for pip installs.
 # TF/TFX prereqs
 printf "${GREEN}Installing TensorFlow${NORMAL}\n"
 pip install tensorflow==1.13.1
