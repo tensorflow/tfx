@@ -16,7 +16,8 @@ set -u
 
 echo Starting distributed TFDV stats computation and schema generation...
 
-# Using absolute path to make data accessible to different process started by flink.
+# Using absolute path to make data accessible to different process started by
+# the Beam runner.
 DATA_DIR=$(pwd)/data
 OUTPUT_DIR=$DATA_DIR/local_tfdv_output
 
@@ -33,14 +34,14 @@ echo TFDV output path: $TFDV_OUTPUT_PATH
 rm -R -f $OUTPUT_DIR
 mkdir -p $OUTPUT_DIR
 
-$(pwd)/execute_on_flink.sh tfdv_analyze_and_validate.py \
+$(pwd)/execute_on_portable_beam.sh tfdv_analyze_and_validate.py \
             --infer_schema \
             --stats_path $TFDV_OUTPUT_PATH/train_stats.tfrecord \
             --schema_path $SCHEMA_PATH \
             --save_main_session True \
             --input $DATA_DIR/train/data.csv
 
-$(pwd)/execute_on_flink.sh tfdv_analyze_and_validate.py \
+$(pwd)/execute_on_portable_beam.sh tfdv_analyze_and_validate.py \
             --for_eval \
             --validate_stats \
             --stats_path $TFDV_OUTPUT_PATH/eval_stats.tfrecord \

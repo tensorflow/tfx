@@ -31,7 +31,7 @@ echo Eval result dir: $EVAL_RESULT_DIR
 # Start clean.
 rm -R -f $EVAL_RESULT_DIR > /dev/null
 
-$(pwd)/execute_on_flink.sh process_tfma.py \
+$(pwd)/execute_on_portable_beam.sh process_tfma.py \
   --eval_model_dir $EVAL_MODEL_DIR \
   --eval_result_dir $EVAL_RESULT_DIR \
   --schema_file $SCHEMA_PATH \
