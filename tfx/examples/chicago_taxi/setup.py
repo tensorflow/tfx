@@ -19,8 +19,8 @@ TF_VERSION = '1.13.1'
 # LINT.ThenChange(train_aiplatform.sh, start_model_server_aiplatform.sh)
 
 # LINT.IfChange
-BEAM_VERSION = '2.12.0'
-# LINT.ThenChange(setup_beam_on_flink.sh)
+BEAM_VERSION = '2.13.0'
+# LINT.ThenChange(setup_beam.sh)
 
 if __name__ == '__main__':
   setuptools.setup(

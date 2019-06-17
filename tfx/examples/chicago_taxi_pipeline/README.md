@@ -223,8 +223,21 @@ sh tfx/examples/chicago_taxi/setup_beam_on_flink.sh
 </pre>
 
 Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
-replaced by 'taxi_pipeline_flink'.
+replaced by 'taxi_pipeline_portable_beam'.
 (Check http://localhost:8081 for the Flink Cluster Dashboard)
+
+# Chicago Taxi Spark Example (python 2.7 only, python 3 WIP)
+
+Start local Spark cluster and Beam job server:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
+sh tfx/examples/chicago_taxi/setup_beam_on_spark.sh
+</pre>
+
+Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
+replaced by 'taxi_pipeline_portable_beam'.
+(Check http://localhost:8081 for the Spark Cluster Dashboard)
 
 # Learn more
 

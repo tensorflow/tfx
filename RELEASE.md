@@ -13,6 +13,8 @@
 *   Added Parquet executor for ExampleGen component.
 *   Enables Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
     that can be applied to each pipeline step.
+*   Added scripts and instructions to run on Spark via Beam to the Chicago Taxi
+    examples
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on

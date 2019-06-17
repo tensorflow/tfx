@@ -24,7 +24,7 @@ SCHEMA_PATH=$DATA_DIR/local_tfdv_output/schema.pbtxt
 
 echo Preprocessing train data...
 rm -R -f data/train/local_chicago_taxi_output
-$(pwd)/execute_on_flink.sh preprocess.py \
+$(pwd)/execute_on_portable_beam.sh preprocess.py \
             --input $DATA_DIR/train/data.csv \
             --schema_file $SCHEMA_PATH \
             --output_dir $OUTPUT_DIR/train/local_chicago_taxi_output \
@@ -32,7 +32,7 @@ $(pwd)/execute_on_flink.sh preprocess.py \
 
 echo Preprocessing eval data...
 rm -R -f data/eval/local_chicago_taxi_output
-$(pwd)/execute_on_flink.sh preprocess.py \
+$(pwd)/execute_on_portable_beam.sh preprocess.py \
             --input $DATA_DIR/eval/data.csv \
             --schema_file $SCHEMA_PATH \
             --output_dir $OUTPUT_DIR/eval/local_chicago_taxi_output \
