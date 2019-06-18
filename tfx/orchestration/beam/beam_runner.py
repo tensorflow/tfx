@@ -19,17 +19,15 @@ from __future__ import print_function
 
 import apache_beam as beam
 import tensorflow as tf
-from typing import Generator, List, Optional, Text, Tuple
+from typing import Any, Iterable, List, Optional, Text
 from tfx.components.base import base_component
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 
-# Key for the signal element using to trigger component execution.
-_SIGNAL_ELEMENT = 'SIGNAL_ELEMENT'
-# Value of root signal element using as the start point of beam pipeline.
-_ROOT = '_ROOT'
 
-
+# TODO(jyzhao): comfirm it's re-executable, add test case.
+@beam.typehints.with_input_types(Any)
+@beam.typehints.with_output_types(Any)
 class _ComponentAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
@@ -37,22 +35,16 @@ class _ComponentAsDoFn(beam.DoFn):
     self._component = component
     self._name = component.component_name
 
-  def process(self, signal_element: Tuple[Text, List[Text]]
-             ) -> Generator[Tuple[Text, Text], None, None]:
-    """Use single signal element to trigger component execution.
+  def process(self, element: Any, *signals: Iterable[Any]) -> None:
+    """Executes component based on signals.
 
     Args:
-      signal_element: a signal tuple with _SIGNAL_ELEMENT as key and list of
-        upstream component name as value. For example, pusher will receive
-        signal tuple ('SIGNAL_ELEMENT', ['Trainer', 'ModelValidator']).
-
-    Yields:
-      A single signal tuple with component name as value.
+      element: a signal element to trigger the component.
+      *signals: side input signals indicate completeness of upstream components.
     """
-    tf.logging.info('Component %s received signal %s.', self._name,
-                    signal_element)
+    for signal in signals:
+      assert not list(signal), 'Signal PCollection should be empty.'
     self._run_component()
-    yield (_SIGNAL_ELEMENT, self._name)
 
   def _run_component(self) -> None:
     tf.logging.info('Component %s is running.', self._name)
@@ -81,40 +73,30 @@ class BeamRunner(tfx_runner.TfxRunner):
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
     with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
-      entrypoint_signal = (
-          p |
-          'CreateEntryPointSignal' >> beam.Create([(_SIGNAL_ELEMENT, [_ROOT])]))
+      # Uses for triggering the component DoFns.
+      root = p | 'CreateRoot' >> beam.Create([None])
 
-      # Stores component output signals.
+      # Stores mapping of component to its signal.
       signal_map = {}
       # pipeline.components are in topological order.
       for component in tfx_pipeline.components:
         name = component.component_name
 
-        signal = None
+        # Signals from upstream components.
+        signals_to_wait = []
         if component.upstream_nodes:
-          # List of upstream output signal, each signal is a PCollection of
-          # single signal element, e.g., ('SIGNAL_ELEMENT', 'Trainer').
-          upstream_output_signals = []
           for upstream_node in component.upstream_nodes:
             assert upstream_node in signal_map, ('Components is not in '
                                                  'topological order')
-            upstream_output_signals.append(signal_map[upstream_node])
-          # Combine all upstream signals, result is a PCollection of single
-          # signal, e.g., ('SIGNAL_ELEMENT', ['Trainer', 'ModelValidator']).
-          signal = (
-              upstream_output_signals
-              | 'FlattenUpstreamSignals[%s]' % name >> beam.Flatten()
-              | 'CombineUpstreamSignals[%s]' % name >> beam.GroupByKey())
-        else:
-          signal = entrypoint_signal
+            signals_to_wait.append(signal_map[upstream_node])
+        tf.logging.info('Component %s depends on %s.', name,
+                        [s.producer.full_label for s in signals_to_wait])
 
-        # TODO(jyzhao): implement signal as side input.
-        # In normal case, component will be executed only once as signal is
-        # beam PCollection of single signal element. But DoFn should be
-        # re-executable as Beam might schedule the processing of one signal
-        # element multiple times, especially in distributed environment.
+        # Each signal is an empty PCollection. AsIter ensures component will be
+        # triggered after upstream components are finished.
         signal_map[component] = (
-            signal
-            | 'Run[%s]' % name >> beam.ParDo(_ComponentAsDoFn(component)))
+            root
+            | 'Run[%s]' % name >> beam.ParDo(
+                _ComponentAsDoFn(component),
+                *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
         tf.logging.info('Component %s is scheduled.', name)
