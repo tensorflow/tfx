@@ -38,6 +38,8 @@ class ExecutorTest(tf.test.TestCase):
     eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
     schema_artifact = types.TfxArtifact('Schema')
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
+    input_cache_artifact = types.TfxArtifact('InputCache')
+    input_cache_artifact.uri = os.path.join(source_data_dir, 'CACHE/')
 
     module_file = os.path.join(source_data_dir,
                                'module_file/transform_module.py')
@@ -55,10 +57,13 @@ class ExecutorTest(tf.test.TestCase):
     transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
     temp_path_output = types.TfxArtifact('TempPath')
     temp_path_output.uri = tempfile.mkdtemp()
+    output_cache_artifact = types.TfxArtifact('OutputCache')
+    output_cache_artifact.uri = os.path.join(output_data_dir, 'CACHE/')
 
     input_dict = {
         'input_data': [train_artifact, eval_artifact],
         'schema': [schema_artifact],
+        'cache_input_path': [input_cache_artifact],
     }
     output_dict = {
         'transform_output': [transformed_output],
@@ -66,6 +71,7 @@ class ExecutorTest(tf.test.TestCase):
             transformed_train_examples, transformed_eval_examples
         ],
         'temp_path': [temp_path_output],
+        'cache_output_path': [output_cache_artifact],
     }
 
     exec_properties = {
@@ -83,6 +89,7 @@ class ExecutorTest(tf.test.TestCase):
         transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.constants.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.gfile.Exists(path_to_saved_model))
+    self.assertTrue(tf.gfile.Exists(output_cache_artifact.uri))
 
 
 if __name__ == '__main__':

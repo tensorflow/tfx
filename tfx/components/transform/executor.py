@@ -27,13 +27,14 @@ import tensorflow_data_validation as tfdv
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
+from tensorflow_transform.beam import analyzer_cache
 from tensorflow_transform.beam import common as tft_beam_common
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
-from typing import Any, Dict, Generator, List, Mapping, Sequence, Text, Tuple, Union
+from typing import Any, Dict, Generator, List, Mapping, Sequence, Text, Tuple, Union, Optional
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.core.example import example_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
@@ -114,6 +115,10 @@ class _Dataset(object):
   @property
   def file_pattern(self):
     return self._file_pattern
+
+  @property
+  def file_pattern_suffix(self):
+    return os.path.join(*self._file_pattern.split(os.sep)[-6:])
 
   @property
   def data_format(self):
@@ -207,6 +212,12 @@ class Executor(base_executor.BaseExecutor):
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     tf.logging.debug('Using temp path %s for tft.beam', temp_path)
 
+    empty_artifact = [types.TfxArtifact('')]
+    cache_input = types.get_single_uri(
+        input_dict.get('cache_input_path', empty_artifact))
+    cache_output = types.get_single_uri(
+        output_dict.get('cache_output_path', empty_artifact))
+
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -222,6 +233,8 @@ class Executor(base_executor.BaseExecutor):
             True,
         labels.PREPROCESSING_FN:
             exec_properties['module_file'],
+        labels.CACHE_INPUT_PATH_LABEL:
+            cache_input,
     }
 
     label_outputs = {
@@ -233,6 +246,7 @@ class Executor(base_executor.BaseExecutor):
                          _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
         ],
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
+        labels.CACHE_OUTPUT_PATH_LABEL: cache_output,
     }
     status_file = 'status_file'  # Unused
     self.Transform(label_inputs, label_outputs, status_file)
@@ -522,6 +536,49 @@ class Executor(base_executor.BaseExecutor):
       del element_copy[_TRANSFORM_INTERNAL_FEATURE_FOR_KEY]
       yield (key, self._coder.encode(element_copy))
 
+  @staticmethod
+  @beam.ptransform_fn
+  @beam.typehints.with_input_types(beam.Pipeline)
+  def _OptimizeRun(
+      pipeline: beam.Pipeline, input_cache_dir: Text,
+      analyze_data_list: List[_Dataset], feature_spec: Mapping[Text, Any],
+      preprocessing_fn: Any, cache_source: beam.PTransform
+  ) -> Tuple[Dict[Text, Optional[_Dataset]],
+             Dict[Text, Dict[Text, beam.pvalue.PCollection]], bool]:
+    """Utilizes TFT cache if applicable and removes unused datasets."""
+
+    analysis_key_to_dataset = {
+        analyzer_cache.make_dataset_key(dataset.file_pattern_suffix): dataset
+        for dataset in analyze_data_list
+    }
+    if input_cache_dir is not None:
+      input_cache = pipeline | analyzer_cache.ReadAnalysisCacheFromFS(
+          input_cache_dir,
+          list(analysis_key_to_dataset.keys()),
+          source=cache_source)
+    else:
+      input_cache = None
+
+    filtered_analysis_dataset_keys, flat_data_required = (
+        tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
+            preprocessing_fn, feature_spec,
+            list(analysis_key_to_dataset.keys()), input_cache))
+    if len(filtered_analysis_dataset_keys) < len(analysis_key_to_dataset):
+      tf.logging.info('Not reading the following datasets due to cache: %s', [
+          v.file_pattern_suffix
+          for k, v in analysis_key_to_dataset.items()
+          if k not in filtered_analysis_dataset_keys
+      ])
+
+    new_analyze_data_dict = {}
+    for key, dataset in six.iteritems(analysis_key_to_dataset):
+      if key in filtered_analysis_dataset_keys:
+        new_analyze_data_dict[key] = dataset
+      else:
+        new_analyze_data_dict[key] = None
+
+    return new_analyze_data_dict, input_cache, flat_data_required
+
   def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
                           unused_outputs: Mapping[Text, Any]) -> Any:
     """Returns a user defined preprocessing_fn.
@@ -668,6 +725,11 @@ class Executor(base_executor.BaseExecutor):
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     temp_path = common.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
 
+    input_cache_dir = common.GetSoleValue(
+        inputs, labels.CACHE_INPUT_PATH_LABEL, strict=False)
+    output_cache_dir = common.GetSoleValue(
+        outputs, labels.CACHE_OUTPUT_PATH_LABEL, strict=False)
+
     tf.logging.info('Analyze and transform data patterns: %s',
                     list(enumerate(analyze_and_transform_data_paths)))
     tf.logging.info('Transform data patterns: %s',
@@ -704,7 +766,7 @@ class Executor(base_executor.BaseExecutor):
           }))
 
     can_process_jointly = not bool(per_set_stats_output_paths or
-                                   materialize_output_paths)
+                                   materialize_output_paths or output_cache_dir)
     analyze_data_list = self._MakeDatasetList(
         analyze_and_transform_data_paths, raw_examples_file_format,
         raw_examples_data_format, analyze_input_dataset_metadata,
@@ -731,6 +793,15 @@ class Executor(base_executor.BaseExecutor):
                 len(feature_spec.keys()), len(analyze_input_columns),
                 len(transform_input_columns)))
 
+        new_analyze_data_dict, input_cache, flat_data_required = (
+            p | self._OptimizeRun(input_cache_dir, analyze_data_list,
+                                  feature_spec, preprocessing_fn,
+                                  self._GetCacheSource()))
+        if not materialize_output_paths:
+          analyze_data_list = [
+              d for d in new_analyze_data_dict.values() if d is not None
+          ]
+
         analyze_decode_fn = (
             self._GetDecodeFunction(raw_examples_data_format,
                                     analyze_input_dataset_metadata.schema))
@@ -744,12 +815,35 @@ class Executor(base_executor.BaseExecutor):
               | 'DecodeAnalysisDataset[{}]'.format(idx) >>
               self._DecodeInputs(analyze_decode_fn))
 
-        input_analysis_data = (
-            [dataset.decoded for dataset in analyze_data_list]
-            | 'FlattenAnalysisDatasets' >> beam.Flatten())
-        transform_fn = (
-            (input_analysis_data, input_dataset_metadata)
-            | 'AnalyzeDataset' >> tft_beam.AnalyzeDataset(preprocessing_fn))
+        input_analysis_data = {}
+        for key, dataset in six.iteritems(new_analyze_data_dict):
+          if dataset is None:
+            input_analysis_data[key] = (
+                p | 'CreateEmptyDataset[{}]'.format(key) >> beam.Create([None]))
+          else:
+            input_analysis_data[key] = dataset.decoded
+
+        if flat_data_required:
+          flat_input_analysis_data = (
+              [dataset.decoded for dataset in analyze_data_list]
+              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=p))
+        else:
+          flat_input_analysis_data = (
+              p | 'CreateEmptyFlatDataset' >> beam.Create([None]))
+        if input_cache or output_cache_dir is not None:
+          tf.logging.info('Analyzing data with cache.')
+          transform_fn, cache_output = (
+              (flat_input_analysis_data, input_analysis_data, input_cache,
+               input_dataset_metadata)
+              | 'AnalyzeDataset' >>
+              tft_beam.AnalyzeDatasetWithCache(preprocessing_fn))
+        else:
+          tf.logging.info('Analyzing data without cache.')
+          cache_output = {}
+          transform_fn = (
+              (flat_input_analysis_data, input_dataset_metadata)
+              | 'AnalyzeDataset' >> tft_beam.AnalyzeDataset(preprocessing_fn))
+
         # Write the raw/input metadata.
         (input_dataset_metadata
          | 'WriteMetadata' >> tft_beam.WriteMetadata(
@@ -761,6 +855,25 @@ class Executor(base_executor.BaseExecutor):
         # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
         (transform_fn |
          'WriteTransformFn' >> tft_beam.WriteTransformFn(transform_output_path))
+
+        if output_cache_dir is not None:
+          # TODO(b/37788560): Possibly make this part of the beam graph.
+          tf.io.gfile.makedirs(output_cache_dir)
+          tf.logging.info('Using existing cache in: %s', input_cache_dir)
+          if input_cache_dir is not None:
+            # Only copy cache that is relevant to this iteration. This is
+            # assuming that this pipeline operates on rolling ranges, so those
+            # cache entries may also be relevant for future iterations.
+            for span_cache_dir in input_analysis_data:
+              full_span_cache_dir = os.path.join(input_cache_dir,
+                                                 span_cache_dir)
+              if tf.io.gfile.isdir(full_span_cache_dir):
+                self._CopyCache(full_span_cache_dir,
+                                os.path.join(output_cache_dir, span_cache_dir))
+
+          (cache_output
+           | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
+               p, output_cache_dir, sink=self._GetCacheSink()))
 
         if compute_statistics or materialize_output_paths:
           # Do not compute pre-transform stats if the input format is raw proto,
@@ -781,7 +894,7 @@ class Executor(base_executor.BaseExecutor):
                 dataset.decoded if stats_use_tfdv else dataset.encoded
                 for dataset in analyze_data_list
             ]
-             | 'FlattenPreTransformAnalysisDatasets' >> beam.Flatten()
+             | 'FlattenPreTransformAnalysisDatasets' >> beam.Flatten(pipeline=p)
              | 'GenerateAggregatePreTransformAnalysisStats' >>
              self._GenerateStats(
                  pre_transform_feature_stats_path,
@@ -1039,3 +1152,16 @@ class Executor(base_executor.BaseExecutor):
 
     # TODO(b/122478841): Eventually make it always serialize.
     return tft.coders.ExampleProtoCoder(schema, serialized=False).decode
+
+  @staticmethod
+  def _GetCacheSource():
+    return None
+
+  @staticmethod
+  def _GetCacheSink():
+    return None
+
+  @staticmethod
+  def _CopyCache(src, dst):
+    # TODO(b/37788560): Make this more efficient.
+    io_utils.copy_dir(src, dst)
