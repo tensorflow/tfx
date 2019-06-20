@@ -18,15 +18,18 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import sys
+
 from six import with_metaclass
+import tensorflow as tf
+from tfx.tools.cli import labels
 
 
 class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   """Base Handler for CLI.
 
   Attributes:
-    flags_dict: A dictionary containing the flags of a command and additional
-    properties.
+    flags_dict: A dictionary with flags provided in a command.
   """
   # TODO(b/132286477): Update comments after finalizing return types.
 
@@ -57,3 +60,10 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   def run_pipeline(self) -> None:
     """Runs a pipeline for the handler."""
     pass
+
+  def _check_pipeline_dsl_path(self) -> None:
+    """Check if pipeline dsl path exists."""
+    # Check if dsl exists.
+    if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_DSL_PATH]):
+      sys.exit('Invalid pipeline path: {}'
+               .format(self.flags_dict[labels.PIPELINE_DSL_PATH]))

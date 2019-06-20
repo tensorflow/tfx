@@ -25,7 +25,9 @@ from tfx.tools.cli.cmd.pipeline import pipeline_group
 def cli_group():
   click.echo('CLI')
 
+cli_group.add_command(pipeline_group)
+
 if __name__ == '__main__':
   cli_group()
 
-cli_group.add_command(pipeline_group)
+

@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
+import tempfile
 import tensorflow as tf
 from typing import Any, Dict, Optional, Text
 
@@ -52,6 +54,16 @@ class _FakeComponent(base_component.BaseComponent):
 
 
 class PipelineTest(tf.test.TestCase):
+
+  def setUp(self):
+    self._tmp_file = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName, tempfile.mkstemp(prefix='cli_tmp_')[1])
+    self._original_tmp_value = os.environ.get(
+        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
+
+  def tearDown(self):
+    os.environ['TFX_TMP_DIR'] = self._original_tmp_value
 
   def test_pipeline(self):
     component_a = _FakeComponent('component_a', {})
@@ -143,6 +155,22 @@ class PipelineTest(tf.test.TestCase):
         'log_root': 'c'
     })
 
+  def test_pipeline_save_pipeline_args(self):
+    os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
+    pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[_FakeComponent('component_a', {})])
+    self.assertTrue(tf.io.gfile.exists(self._tmp_file))
+
+  def test_pipeline_no_tmp_folder(self):
+    pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        components=[_FakeComponent('component_a', {})])
+    self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
 if __name__ == '__main__':
   tf.test.main()

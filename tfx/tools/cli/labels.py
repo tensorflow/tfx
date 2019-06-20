@@ -14,5 +14,7 @@
 """Common Flags."""
 
 ENGINE_FLAG = 'engine'
-PIPELINE_PATH_FLAG = 'pipeline_path'
-PIPELINE_NAME_FLAG = 'pipeline_name'
+PIPELINE_DSL_PATH = 'pipeline_dsl_path'
+PIPELINE_NAME = 'pipeline_name'
+TFX_JSON_EXPORT_PIPELINE_ARGS_PATH = 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'
+

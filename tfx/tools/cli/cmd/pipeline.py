@@ -31,6 +31,7 @@ def pipeline_group() -> None:
   pass
 
 
+# TODO(b/132286477): Add support for requirements file.
 @pipeline_group.command('create', help='Create a pipeline')
 @pass_context
 @click.option(
@@ -40,13 +41,12 @@ def pipeline_group() -> None:
     'pipeline_path',
     required=True,
     type=str,
-    help='Path to Python DSL file')
-def create_pipeline(ctx: Context, engine: Text,
-                    pipeline_path: Text) -> None:
+    help='Path to Python DSL.')
+def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
   """Command definition to create a pipeline."""
   click.echo('Creating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
-  ctx.flags_dict[labels.PIPELINE_PATH_FLAG] = pipeline_path
+  ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   handler_factory.create_handler(ctx.flags_dict).create_pipeline()
 
 
@@ -60,12 +60,11 @@ def create_pipeline(ctx: Context, engine: Text,
     required=True,
     type=str,
     help='Path to Python DSL file')
-def update_pipeline(ctx: Context, engine: Text,
-                    pipeline_path: Text) -> None:
+def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
   """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
-  ctx.flags_dict[labels.PIPELINE_PATH_FLAG] = pipeline_path
+  ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   handler_factory.create_handler(ctx.flags_dict).update_pipeline()
 
 
@@ -79,12 +78,11 @@ def update_pipeline(ctx: Context, engine: Text,
     required=True,
     type=str,
     help='Name of the pipeline')
-def run_pipeline(ctx: Context, pipeline_name: Text,
-                 engine: Text) -> None:
+def run_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
   """Command definition to run a pipeline."""
   click.echo('Triggering pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
-  ctx.flags_dict[labels.PIPELINE_NAME_FLAG] = pipeline_name
+  ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
   handler_factory.create_handler(ctx.flags_dict).run_pipeline()
 
 
@@ -98,12 +96,11 @@ def run_pipeline(ctx: Context, pipeline_name: Text,
     required=True,
     type=str,
     help='Name of the pipeline')
-def delete_pipeline(ctx: Context, pipeline_name: Text,
-                    engine: Text) -> None:
+def delete_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
   """Command definition to delete a pipeline."""
   click.echo('Deleting pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
-  ctx.flags_dict[labels.PIPELINE_NAME_FLAG] = pipeline_name
+  ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
   handler_factory.create_handler(ctx.flags_dict).delete_pipeline()
 
 
