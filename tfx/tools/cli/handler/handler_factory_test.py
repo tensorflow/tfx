@@ -47,12 +47,13 @@ class HandlerFactoryTest(tf.test.TestCase):
     with self.assertRaises(Exception) as err:
       handler_factory.create_handler(self.flags_dict)
     self.assertEqual(
-        str(err.exception), 'Orchestrator '+self.flags_dict[labels.ENGINE_FLAG]+
-        ' missing in the environment.')
+        str(err.exception),
+        'Orchestrator {} missing in the environment.'
+        .format(self.flags_dict[labels.ENGINE_FLAG]))
 
   def test_create_handler_other(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'beam'
-    with self.assertRaises(RuntimeError) as err:
+    with self.assertRaises(Exception) as err:
       handler_factory.create_handler(self.flags_dict)
     self.assertEqual(
         str(err.exception), 'Engine {} is not supported.'.format(

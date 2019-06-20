@@ -30,8 +30,7 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   """Detect handler from the environment.
 
   Args:
-    flags_dict: A dictionary containing the flags of a command and additional
-    properties.
+    flags_dict: A dictionary containing the flags of a command.
 
   Returns: Corrosponding Handler object.
   """
@@ -43,8 +42,7 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   """Retrieve handler from the environment using the --engine flag.
 
   Args:
-    flags_dict: A dictionary containing the flags of a command and additional
-    properties.
+    flags_dict: A dictionary containing the flags of a command.
 
   Raises:
     RuntimeError: When engine is not supported by TFX.
