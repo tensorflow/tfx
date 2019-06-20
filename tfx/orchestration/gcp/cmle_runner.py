@@ -179,7 +179,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
     api.projects().models().create(body=body, parent=parent).execute()
   except errors.HttpError as e:
     # If the error is to create an already existing model, it's ok to ignore.
-    if e.resp.status == 409:
+    if e.resp.status == '409':
       tf.logging.warn('Model {} already exists'.format(model_name))
     else:
       raise RuntimeError('CMLE Push failed: {}'.format(e))
