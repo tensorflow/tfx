@@ -119,8 +119,8 @@ class Executor(base_executor.BaseExecutor):
                       unrecognized_text),
                   thread=ts)
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxType]],
-         output_dict: Dict[Text, List[types.TfxType]],
+  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
+         output_dict: Dict[Text, List[types.TfxArtifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Get human review result on a model through Slack channel.
 

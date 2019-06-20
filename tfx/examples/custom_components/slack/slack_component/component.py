@@ -89,7 +89,7 @@ class SlackComponent(base_component.BaseComponent):
     Returns:
       ComponentOutputs object containing the dict of [Text -> Channel]
     """
-    slack_blessing_output = [types.TfxType('ModelBlessingPath')]
+    slack_blessing_output = [types.TfxArtifact('ModelBlessingPath')]
     return base_component.ComponentOutputs({
         'slack_blessing':
             channel.Channel(
