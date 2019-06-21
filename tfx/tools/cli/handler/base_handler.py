@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import re
 import sys
 
 from six import with_metaclass
@@ -67,3 +68,15 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_DSL_PATH]):
       sys.exit('Invalid pipeline path: {}'
                .format(self.flags_dict[labels.PIPELINE_DSL_PATH]))
+
+  def _check_dsl_runner(self) -> None:
+    """Check if runner in dsl is same as engine flag."""
+    engine_flag = self.flags_dict[labels.ENGINE_FLAG]
+    with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
+      dsl_contents = f.read()
+      regexes = {'airflow': r'AirflowDAGRunner\(.*\)',
+                 'kubeflow': r'KubeflowRunner\(.*\)'}
+      match = re.search(regexes[engine_flag], dsl_contents)
+      if not match:
+        sys.exit('{} runner not found in dsl.'.format(engine_flag))
+

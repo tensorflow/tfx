@@ -42,6 +42,7 @@ class AirflowHandler(base_handler.BaseHandler):
   def create_pipeline(self) -> None:
     """Creates pipeline in Airflow."""
     self._check_pipeline_dsl_path()
+    self._check_dsl_runner()
     pipeline_args = self._extract_pipeline_args()
 
     # Path to pipeline folder in airflow.
@@ -147,4 +148,3 @@ class AirflowHandler(base_handler.BaseHandler):
     """
     # Path to pipeline folder in airflow.
     return os.path.join(self._handler_home_dir, 'dags', pipeline_name)
-

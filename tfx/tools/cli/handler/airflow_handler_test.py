@@ -41,7 +41,7 @@ class AirflowHandlerTest(tf.test.TestCase):
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                      'taxi_pipeline_simple.py')
+                                      'test_pipeline.py')
 
     # Pipeline args for mocking subprocess
     self.pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
@@ -93,10 +93,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler_pipeline_path = handler._get_handler_pipeline_path(
         self.pipeline_args[labels.PIPELINE_NAME])
     self.assertTrue(tf.io.gfile.exists(os.path.join(
-        handler_pipeline_path, 'taxi_pipeline_simple.py')))
+        handler_pipeline_path, 'test_pipeline.py')))
     self.assertTrue(tf.io.gfile.exists(os.path.join(
         handler_pipeline_path, 'pipeline_args.json')))
-
 
 if __name__ == '__main__':
   tf.test.main()
