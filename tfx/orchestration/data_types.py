@@ -31,8 +31,8 @@ class ExecutionDecision(object):
       actual execution.
     exec_properties: Updated dict of other execution properties that will be
       used by actual execution.
-    execution_id: Registered execution_id for the upcoming execution. If None,
-      then no execution needed.
+    execution_id: Registered execution_id for the upcoming execution.
+    execution_needed: Whether or not a new execution is needed.
   """
 
   def __init__(self,
@@ -44,6 +44,16 @@ class ExecutionDecision(object):
     self.output_dict = output_dict
     self.exec_properties = exec_properties
     self.execution_id = execution_id
+
+  @property
+  def execution_needed(self) -> bool:
+    """Indicates whether a new execution is needed.
+
+    Returns:
+      true if execution_id exists
+      false if execution_id does not exist
+    """
+    return self.execution_id is not None
 
 
 class DriverArgs(object):
