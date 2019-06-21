@@ -19,54 +19,55 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx.components.base import base_component
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.utils import channel
 
 
-class BigQueryExampleGen(component.ExampleGen):
+class BigQueryExampleGen(component._ExampleGen):  # pylint: disable=protected-access
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train
   and eval examples for downsteam components.
-
-  Args:
-    query: BigQuery sql string, query result will be treated as a single split,
-      can be overwritten by input_config.
-    input_config: An example_gen_pb2.Input instance with Split.pattern as
-      BigQuery sql string. If set, it overwrites the 'query' arg, and allows
-      different queries per split.
-    output_config: An example_gen_pb2.Output instance, providing output
-      configuration. If unset, default splits will be 'train' and 'eval' with
-      size 2:1.
-    name: Optional unique name. Necessary if multiple BigQueryExampleGen
-      components are declared in the same pipeline.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - examples: A channel of 'ExamplesPath' with train and eval examples.
-  Raises:
-    RuntimeError: Only one of query and input_config should be set.
   """
+
+  EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
                query: Optional[Text] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               example_artifacts: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Constructs a BigQueryExampleGen component.
+
+    Args:
+      query: BigQuery sql string, query result will be treated as a single
+        split, can be overwritten by input_config.
+      input_config: An example_gen_pb2.Input instance with Split.pattern as
+        BigQuery sql string. If set, it overwrites the 'query' arg, and allows
+        different queries per split.
+      output_config: An example_gen_pb2.Output instance, providing output
+        configuration. If unset, default splits will be 'train' and 'eval' with
+        size 2:1.
+      example_artifacts: Optional channel of 'ExamplesPath' for output train and
+        eval examples.
+      name: Optional unique name. Necessary if multiple BigQueryExampleGen
+        components are declared in the same pipeline.
+
+    Raises:
+      RuntimeError: Only one of query and input_config should be set.
+    """
     if bool(query) == bool(input_config):
-      raise RuntimeError('Only one of query and input_config should be set.')
+      raise RuntimeError('Exactly one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
     output_config = output_config or utils.make_default_output_config(
         input_config)
     super(BigQueryExampleGen, self).__init__(
-        executor=executor.Executor,
-        input_base=None,
         input_config=input_config,
         output_config=output_config,
         component_name='BigQueryExampleGen',
-        unique_name=name,
-        outputs=outputs)
+        example_artifacts=example_artifacts,
+        name=name)

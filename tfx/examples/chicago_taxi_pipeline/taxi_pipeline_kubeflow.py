@@ -143,7 +143,8 @@ def _create_pipeline():
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs.output, schema=infer_schema.outputs.output)
+      stats=statistics_gen.outputs.output,
+      schema=infer_schema.outputs.output)
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(

@@ -20,11 +20,30 @@ from typing import Any, Dict, Optional, Text, Type
 
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base.base_component import ChannelParameter
+from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.utils import channel
 from tfx.utils import types
-from google.protobuf import json_format
+
+
+class PusherSpec(base_component.ComponentSpec):
+  """Pusher component spec."""
+
+  COMPONENT_NAME = 'Pusher'
+  PARAMETERS = {
+      'push_destination': ExecutionParameter(type=pusher_pb2.PushDestination,
+                                             optional=True),
+      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+  }
+  INPUTS = {
+      'model_export': ChannelParameter(type_name='ModelExportPath'),
+      'model_blessing': ChannelParameter(type_name='ModelBlessingPath'),
+  }
+  OUTPUTS = {
+      'model_push': ChannelParameter(type_name='ModelPushPath'),
+  }
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
@@ -34,87 +53,52 @@ class Pusher(base_component.BaseComponent):
   The `Pusher` component can be used to push an validated SavedModel from output
   of `Trainer` to tensorflow Serving (tf.serving). If the model is not blessed
   by `ModelValidator`, no push will happen.
-
-  Args:
-    model_export: A Channel of 'ModelExportPath' type, usually produced by
-      Trainer component.
-    model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-      ModelValidator component.
-    push_destination: A pusher_pb2.PushDestination instance, providing
-      info for tensorflow serving to load models. Optional if executor_class
-      doesn't require push_destination.
-    name: Optional unique name. Necessary if multiple Pusher components are
-      declared in the same pipeline.
-    custom_config: A dict which contains the deployment job parameters to be
-      passed to Google Cloud ML Engine.  For the full set of parameters
-      supported by Google Cloud ML Engine, refer to
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
-    executor_class: Optional custom python executor class.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - model_push: A channel of 'ModelPushPath' with result of push.
   """
+
+  SPEC_CLASS = PusherSpec
+  EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
                model_export: channel.Channel,
                model_blessing: channel.Channel,
                push_destination: Optional[pusher_pb2.PushDestination] = None,
-               name: Text = None,
                custom_config: Optional[Dict[Text, Any]] = None,
                executor_class: Optional[Type[
-                   base_executor.BaseExecutor]] = executor.Executor,
-               outputs: base_component.ComponentOutputs = None):
-    component_name = 'Pusher'
-    input_dict = {
-        'model_export': channel.as_channel(model_export),
-        'model_blessing': channel.as_channel(model_blessing),
-    }
-    exec_properties = {
-        'custom_config': custom_config,
-    }
-
-    if push_destination is None:
-      if executor_class == executor.Executor:
-        raise ValueError('push_destination is required unless custom '
-                         'executor_class is supplied that does not require it.')
-    else:
-      exec_properties['push_destination'] = (
-          json_format.MessageToJson(push_destination))
-
-    super(Pusher, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        executor=executor_class,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Pusher.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    model_push_artifact_collection = [types.TfxArtifact('ModelPushPath',)]
-    return base_component.ComponentOutputs({
-        'model_push':
-            channel.Channel(
-                type_name='ModelPushPath',
-                static_artifact_collection=model_push_artifact_collection),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
+                   base_executor.BaseExecutor]] = None,
+               model_push: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a Pusher component.
 
     Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
+      model_export: A Channel of 'ModelExportPath' type, usually produced by
+        Trainer component.
+      model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
+        ModelValidator component.
+      push_destination: A pusher_pb2.PushDestination instance, providing
+        info for tensorflow serving to load models. Optional if executor_class
+        doesn't require push_destination.
+      custom_config: A dict which contains the deployment job parameters to be
+        passed to Google Cloud ML Engine.  For the full set of parameters
+        supported by Google Cloud ML Engine, refer to
+        https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+      executor_class: Optional custom python executor class.
+      model_push: Optional output 'ModelPushPath' channel with result of push.
+      name: Optional unique name. Necessary if multiple Pusher components are
+        declared in the same pipeline.
     """
-    input_dict['model_export'].type_check('ModelExportPath')
-    input_dict['model_blessing'].type_check('ModelBlessingPath')
+    model_push = model_push or channel.Channel(
+        type_name='ModelPushPath',
+        static_artifact_collection=[types.TfxArtifact('ModelPushPath')])
+    if push_destination is None and not executor_class:
+      raise ValueError('push_destination is required unless a custom '
+                       'executor_class is supplied that does not require '
+                       'it.')
+    spec = PusherSpec(
+        model_export=channel.as_channel(model_export),
+        model_blessing=channel.as_channel(model_blessing),
+        push_destination=push_destination,
+        custom_config=custom_config,
+        model_push=model_push)
+    super(Pusher, self).__init__(spec=spec,
+                                 custom_executor_class=executor_class,
+                                 name=name)

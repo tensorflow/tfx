@@ -17,13 +17,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Optional, Text
 
 from tfx.components.base import base_component
+from tfx.components.base.base_component import ChannelParameter
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class ModelValidatorSpec(base_component.ComponentSpec):
+  """ModelValidator component spec."""
+
+  COMPONENT_NAME = 'ModelValidator'
+  PARAMETERS = {}
+  INPUTS = {
+      'examples': ChannelParameter(type_name='ExamplesPath'),
+      'model': ChannelParameter(type_name='ModelExportPath'),
+  }
+  OUTPUTS = {
+      'blessing': ChannelParameter(type_name='ModelBlessingPath'),
+  }
 
 
 class ModelValidator(base_component.BaseComponent):
@@ -34,69 +49,34 @@ class ModelValidator(base_component.BaseComponent):
   blessed model yet, model validator will just make sure the threshold passed.
 
   This component includes a custom driver to resolve last blessed model.
-
-  Args:
-    examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-      component.
-    model: A Channel of 'ModelExportPath' type, usually produced by Trainer
-      component.
-    name: Optional unique name. Necessary if multiple ModelValidator components
-      are declared in the same pipeline.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - blessing: A channel of 'ModelBlessingPath' with result of blessing.
   """
+
+  SPEC_CLASS = ModelValidatorSpec
+  EXECUTOR_CLASS = executor.Executor
+  DRIVER_CLASS = driver.Driver
 
   def __init__(self,
                examples: channel.Channel,
                model: channel.Channel,
-               name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
-    component_name = 'ModelValidator'
-    input_dict = {
-        'examples': channel.as_channel(examples),
-        'model': channel.as_channel(model),
-    }
-    exec_properties = {
-        'blessed_model': None,  # This will be set in driver.
-        'blessed_model_id': None,  # This will be set in driver.
-    }
-    super(ModelValidator, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        driver=driver.Driver,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for ModelValidator.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    blessing_artifact_collection = [types.TfxArtifact('ModelBlessingPath')]
-    return base_component.ComponentOutputs({
-        'blessing':
-            channel.Channel(
-                type_name='ModelBlessingPath',
-                static_artifact_collection=blessing_artifact_collection),
-
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
+               blessing: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a ModelValidator component.
 
     Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
+      examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
+        component.
+      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
+        component.
+      blessing: Optional output channel of 'ModelBlessingPath' for result of
+        blessing.
+      name: Optional unique name. Necessary if multiple ModelValidator
+        components are declared in the same pipeline.
     """
-    input_dict['examples'].type_check('ExamplesPath')
-    input_dict['model'].type_check('ModelExportPath')
+    blessing = blessing or channel.Channel(
+        type_name='ModelBlessingPath',
+        static_artifact_collection=[types.TfxArtifact('ModelBlessingPath')])
+    spec = ModelValidatorSpec(
+        examples=channel.as_channel(examples),
+        model=channel.as_channel(model),
+        blessing=blessing)
+    super(ModelValidator, self).__init__(spec=spec, name=name)

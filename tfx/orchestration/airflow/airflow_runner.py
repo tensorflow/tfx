@@ -24,11 +24,9 @@ class AirflowDAGRunner(tfx_runner.TfxRunner):
     super(AirflowDAGRunner, self).__init__()
     self._config = config or {}
 
-  def _prepare_input_dict(self, input_dict):
-    return dict((k, v.get()) for k, v in input_dict.items())
-
-  def _prepare_output_dict(self, outputs):
-    return dict((k, v.get()) for k, v in outputs.get_all().items())
+  def _prepare_dict(self, dictionary):
+    """Materializes artifact values in input channel dictionary."""
+    return dict((k, v.get()) for k, v in dictionary.get_all().items())
 
   def run(self, pipeline):
     """Deploys given logical pipeline on Airflow.
@@ -49,11 +47,11 @@ class AirflowDAGRunner(tfx_runner.TfxRunner):
       airflow_component.Component(
           airflow_dag,
           component_name=component.component_name,
-          unique_name=component.unique_name,
-          driver=component.driver,
-          executor=component.executor,
-          input_dict=self._prepare_input_dict(component.input_dict),
-          output_dict=self._prepare_output_dict(component.outputs),
+          unique_name=component.name,
+          driver=component.driver_class,
+          executor=component.executor_class,
+          input_dict=self._prepare_dict(component.inputs),
+          output_dict=self._prepare_dict(component.outputs),
           exec_properties=component.exec_properties)
 
     return airflow_dag

@@ -16,11 +16,30 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Optional, Text
 from tfx.components.base import base_component
+from tfx.components.base.base_component import ChannelParameter
+from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.transform import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class TransformSpec(base_component.ComponentSpec):
+  """Transform component spec."""
+
+  COMPONENT_NAME = 'Transform'
+  PARAMETERS = {
+      'module_file': ExecutionParameter(type=(str, Text)),
+  }
+  INPUTS = {
+      'input_data': ChannelParameter(type_name='ExamplesPath'),
+      'schema': ChannelParameter(type_name='SchemaPath'),
+  }
+  OUTPUTS = {
+      'transform_output': ChannelParameter(type_name='TransformPath'),
+      'transformed_examples': ChannelParameter(type_name='ExamplesPath'),
+  }
 
 
 class Transform(base_component.BaseComponent):
@@ -33,83 +52,49 @@ class Transform(base_component.BaseComponent):
   transform function and transformed examples to orchestrator desired locations.
 
   Please see https://www.tensorflow.org/tfx/transform for more details.
-
-  Args:
-    input_data: A Channel of 'ExamplesPath' type. This should contain two splits
-      'train' and 'eval'.
-    schema: A Channel of 'SchemaPath' type. This should contain a single schema
-      artifact.
-    module_file: The file path to a python module file, from which the
-      'preprocessing_fn' function will be loaded.
-    name: Optional unique name. Necessary iff multiple transform components are
-      declared in the same pipeline.
-    output: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - transform_output: Output of 'tf.Transform', which includes an exported
-        Tensorflow graph suitable for both training and serving;
-      - transformed_examples: Materialized transformed examples, which includes
-        both 'train' and 'eval' splits.
   """
 
+  SPEC_CLASS = TransformSpec
+  EXECUTOR_CLASS = executor.Executor
+
   def __init__(self,
-               input_data: channel.Channel,
-               schema: channel.Channel,
-               module_file: Text,
-               name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
-    component_name = 'Transform'
-    input_dict = {
-        'input_data': channel.as_channel(input_data),
-        'schema': channel.as_channel(schema)
-    }
-    exec_properties = {
-        'module_file': module_file,
-    }
-    super(Transform, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Transform.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    transform_output_artifact_collection = [types.TfxArtifact('TransformPath',)]
-    transformed_examples_artifact_collection = [
-        types.TfxArtifact('ExamplesPath', split=split)
-        for split in types.DEFAULT_EXAMPLE_SPLITS
-    ]
-    return base_component.ComponentOutputs({
-        'transform_output':
-            channel.Channel(
-                type_name='TransformPath',
-                static_artifact_collection=transform_output_artifact_collection
-            ),
-        'transformed_examples':
-            channel.Channel(
-                type_name='ExamplesPath',
-                static_artifact_collection=transformed_examples_artifact_collection
-            ),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
+               input_data: channel.Channel = None,
+               schema: channel.Channel = None,
+               module_file: Text = None,
+               transform_output: Optional[channel.Channel] = None,
+               transformed_examples: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a Transform component.
 
     Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unchecked right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
+      input_data: A Channel of 'ExamplesPath' type. This should contain two
+        splits 'train' and 'eval'.
+      schema: A Channel of 'SchemaPath' type. This should contain a single
+        schema artifact.
+      module_file: The file path to a python module file, from which the
+        'preprocessing_fn' function will be loaded.
+      transform_output: Optional output 'TransformPath' channel for output of
+        'tf.Transform', which includes an exported Tensorflow graph suitable for
+        both training and serving;
+      transformed_examples: Optional output 'ExamplesPath' channel for
+        materialized transformed examples, which includes both 'train' and
+        'eval' splits.
+      name: Optional unique name. Necessary iff multiple transform components
+        are declared in the same pipeline.
     """
-    del exec_properties
-    input_dict['input_data'].type_check('ExamplesPath')
-    input_dict['schema'].type_check('SchemaPath')
+    transform_output = transform_output or channel.Channel(
+        type_name='TransformPath',
+        static_artifact_collection=[types.TfxArtifact('TransformPath')])
+    transformed_examples = transformed_examples or channel.Channel(
+        type_name='ExamplesPath',
+        static_artifact_collection=[
+            types.TfxArtifact('ExamplesPath', split=split)
+            for split in types.DEFAULT_EXAMPLE_SPLITS
+        ])
+    spec = TransformSpec(
+        input_data=channel.as_channel(input_data),
+        schema=channel.as_channel(schema),
+        module_file=module_file,
+        transform_output=transform_output,
+        transformed_examples=transformed_examples)
+    super(Transform, self).__init__(spec=spec, name=name)

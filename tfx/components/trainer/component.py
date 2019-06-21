@@ -20,12 +20,33 @@ from typing import Any, Dict, Optional, Text, Type
 
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base.base_component import ChannelParameter
+from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
 from tfx.utils import channel
 from tfx.utils import types
-from google.protobuf import json_format
+
+
+class TrainerSpec(base_component.ComponentSpec):
+  """Trainer component spec."""
+
+  COMPONENT_NAME = 'Trainer'
+  PARAMETERS = {
+      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
+      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
+      'module_file': ExecutionParameter(type=(str, Text)),
+      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+  }
+  INPUTS = {
+      'transformed_examples': ChannelParameter(type_name='ExamplesPath'),
+      'transform_output': ChannelParameter(type_name='TransformPath'),
+      'schema': ChannelParameter(type_name='SchemaPath'),
+  }
+  OUTPUTS = {
+      'output': ChannelParameter(type_name='ModelExportPath')
+  }
 
 
 class Trainer(base_component.BaseComponent):
@@ -41,93 +62,60 @@ class Trainer(base_component.BaseComponent):
   - A custom executor (in
     tfx.extensions.google_cloud_ai_platform.trainer.executor.py) provides
     training on Google Cloud AI Platform.
-
-  Args:
-    transformed_examples: A Channel of 'ExamplesPath' type, serving as the
-      source of transformed examples. This is usually an output of Transform.
-    transform_output: A Channel of 'TransformPath' type, serving as the input
-      transform graph.
-    schema:  A Channel of 'SchemaPath' type, serving as the schema of training
-      and eval data.
-    module_file: A python module file containing UDF model definition.
-    train_args: A trainer_pb2.TrainArgs instance, containing args used for
-      training. Current only num_steps is available.
-    eval_args: A trainer_pb2.EvalArgs instance, containing args used for
-      eval. Current only num_steps is available.
-    custom_config: A dict which contains the training job parameters to be
-      passed to Google Cloud ML Engine.  For the full set of parameters
-      supported by Google Cloud ML Engine, refer to
-      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
-    name: Optional unique name. Necessary iff multiple Trainer components are
-      declared in the same pipeline.
-    executor_class: Optional custom executor class.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following members:
-      - output: A channel of 'ModelExportPath' with result of exported models.
   """
 
+  SPEC_CLASS = TrainerSpec
+  EXECUTOR_CLASS = executor.Executor
+  DRIVER_CLASS = driver.Driver
+
   def __init__(self,
-               transformed_examples: channel.Channel,
-               transform_output: channel.Channel,
-               schema: channel.Channel,
-               module_file: Text,
-               train_args: trainer_pb2.TrainArgs,
-               eval_args: trainer_pb2.EvalArgs,
+               transformed_examples: channel.Channel = None,
+               transform_output: channel.Channel = None,
+               schema: channel.Channel = None,
+               module_file: Text = None,
+               train_args: trainer_pb2.TrainArgs = None,
+               eval_args: trainer_pb2.EvalArgs = None,
                custom_config: Optional[Dict[Text, Any]] = None,
-               name: Optional[Text] = None,
                executor_class: Optional[Type[
-                   base_executor.BaseExecutor]] = executor.Executor,
-               outputs: Optional[channel.Channel] = None):
-    component_name = 'Trainer'
-    input_dict = {
-        'transformed_examples': channel.as_channel(transformed_examples),
-        'transform_output': channel.as_channel(transform_output),
-        'schema': channel.as_channel(schema),
-    }
-    exec_properties = {
-        'train_args': json_format.MessageToJson(train_args),
-        'eval_args': json_format.MessageToJson(eval_args),
-        'module_file': module_file,
-        'custom_config': custom_config,
-    }
-    super(Trainer, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        driver=driver.Driver,
-        executor=executor_class,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for Trainer.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    output_artifact_collection = [
-        types.TfxArtifact('ModelExportPath'),
-    ]
-    return base_component.ComponentOutputs({
-        'output':
-            channel.Channel(
-                type_name='ModelExportPath',
-                static_artifact_collection=output_artifact_collection),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
+                   base_executor.BaseExecutor]] = None,
+               output: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a Trainer component.
 
     Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError: if the type_name of given Channel is different from expected.
+      transformed_examples: A Channel of 'ExamplesPath' type, serving as the
+        source of transformed examples. This is usually an output of Transform.
+      transform_output: A Channel of 'TransformPath' type, serving as the input
+        transform graph.
+      schema:  A Channel of 'SchemaPath' type, serving as the schema of training
+        and eval data.
+      module_file: A python module file containing UDF model definition.
+      train_args: A trainer_pb2.TrainArgs instance, containing args used for
+        training. Current only num_steps is available.
+      eval_args: A trainer_pb2.EvalArgs instance, containing args used for
+        eval. Current only num_steps is available.
+      custom_config: A dict which contains the training job parameters to be
+        passed to Google Cloud ML Engine.  For the full set of parameters
+        supported by Google Cloud ML Engine, refer to
+        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
+      executor_class: Optional custom executor class.
+      output: Optional 'ModelExportPath' channel for result of exported models.
+      name: Optional unique name. Necessary iff multiple Trainer components are
+        declared in the same pipeline.
     """
-    input_dict['transformed_examples'].type_check('ExamplesPath')
-    input_dict['transform_output'].type_check('TransformPath')
-    input_dict['schema'].type_check('SchemaPath')
+    output = output or channel.Channel(
+        type_name='ModelExportPath',
+        static_artifact_collection=[types.TfxArtifact('ModelExportPath')])
+    spec = TrainerSpec(
+        transformed_examples=channel.as_channel(transformed_examples),
+        transform_output=channel.as_channel(transform_output),
+        schema=channel.as_channel(schema),
+        train_args=train_args,
+        eval_args=eval_args,
+        module_file=module_file,
+        custom_config=custom_config,
+        output=output)
+    super(Trainer, self).__init__(
+        spec=spec,
+        custom_executor_class=executor_class,
+        name=name)
