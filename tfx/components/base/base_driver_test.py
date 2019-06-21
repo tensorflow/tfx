@@ -22,7 +22,6 @@ import os
 import tensorflow as tf
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -57,9 +56,6 @@ class BaseDriverTest(tf.test.TestCase):
         base_output_dir=self._base_output_dir,
         enable_cache=True)
     self._execution_id = 100
-    log_root = os.path.join(self._base_output_dir, 'log_dir')
-    logger_config = logging_utils.LoggerConfig(log_root=log_root)
-    self._logger = logging_utils.get_logger(logger_config)
 
   def _check_output(self, execution_decision):
     output_dict = execution_decision.output_dict
@@ -87,8 +83,7 @@ class BaseDriverTest(tf.test.TestCase):
 
     self._mock_metadata.previous_run.return_value = None
     self._mock_metadata.prepare_execution.return_value = self._execution_id
-    driver = base_driver.BaseDriver(logger=self._logger,
-                                    metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(input_dict, output_dict,
                                                   exec_properties,
                                                   self._driver_args)
@@ -109,8 +104,7 @@ class BaseDriverTest(tf.test.TestCase):
         tf.gfile.MakeDirs(artifact.uri)
     self._mock_metadata.previous_run.return_value = self._execution_id
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(logger=self._logger,
-                                    metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(input_dict, output_dict,
                                                   exec_properties,
                                                   self._driver_args)
@@ -135,7 +129,7 @@ class BaseDriverTest(tf.test.TestCase):
 
     self._mock_metadata.previous_run.return_value = self._execution_id
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(self._logger, self._mock_metadata)
+    driver = base_driver.BaseDriver(self._mock_metadata)
     with self.assertRaises(RuntimeError):
       driver.prepare_execution(input_dict, output_dict, exec_properties,
                                driver_options)
@@ -157,8 +151,7 @@ class BaseDriverTest(tf.test.TestCase):
     actual_execution_id = self._execution_id + 1
     self._mock_metadata.prepare_execution.return_value = actual_execution_id
 
-    driver = base_driver.BaseDriver(logger=self._logger,
-                                    metadata_handler=self._mock_metadata)
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.prepare_execution(input_dict, output_dict,
                                                   exec_properties,
                                                   self._driver_args)
