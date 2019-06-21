@@ -19,47 +19,47 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx.components.base import base_component
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 
 
-class CsvExampleGen(component.ExampleGen):
+class CsvExampleGen(component._FileBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX CsvExampleGen component.
 
   The csv examplegen component takes csv data, and generates train
   and eval examples for downsteam components.
-
-  Args:
-    input_base: A Channel of 'ExternalPath' type, which includes one artifact
-      whose uri is an external directory with csv files inside.
-    input_config: An example_gen_pb2.Input instance, providing input
-      configuration. If unset, the files under input_base will be treated as a
-      single split.
-    output_config: An example_gen_pb2.Output instance, providing output
-      configuration. If unset, default splits will be 'train' and 'eval' with
-      size 2:1.
-    name: Optional unique name. Necessary if multiple CsvExampleGen components
-      are declared in the same pipeline.
-    outputs: Optional dict from name to output channel.
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - examples: A channel of 'ExamplesPath' with train and eval examples.
   """
+
+  EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
                input_base: channel.Channel,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               name: Optional[Text] = None,
-               outputs: Optional[base_component.ComponentOutputs] = None):
+               example_artifacts: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a CsvExampleGen component.
+
+    Args:
+      input_base: A Channel of 'ExternalPath' type, which includes one artifact
+        whose uri is an external directory with csv files inside.
+      input_config: An example_gen_pb2.Input instance, providing input
+        configuration. If unset, the files under input_base will be treated as a
+        single split.
+      output_config: An example_gen_pb2.Output instance, providing output
+        configuration. If unset, default splits will be 'train' and 'eval' with
+        size 2:1.
+      example_artifacts: Optional channel of 'ExamplesPath' for output train and
+        eval examples.
+      name: Optional unique name. Necessary if multiple CsvExampleGen components
+        are declared in the same pipeline.
+    """
     super(CsvExampleGen, self).__init__(
-        executor=executor.Executor,
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
         component_name='CsvExampleGen',
-        unique_name=name,
-        outputs=outputs)
+        example_artifacts=example_artifacts,
+        name=name)

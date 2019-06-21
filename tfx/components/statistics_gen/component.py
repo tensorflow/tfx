@@ -16,12 +16,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Optional, Text
 
 from tfx.components.base import base_component
+from tfx.components.base.base_component import ChannelParameter
 from tfx.components.statistics_gen import executor
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class StatisticsGenSpec(base_component.ComponentSpec):
+  """StatisticsGen component spec."""
+
+  COMPONENT_NAME = 'StatisticsGen'
+  PARAMETERS = {}
+  INPUTS = {
+      'input_data': ChannelParameter(type_name='ExamplesPath'),
+  }
+  OUTPUTS = {
+      'output': ChannelParameter(type_name='ExampleStatisticsPath'),
+  }
 
 
 class StatisticsGen(base_component.BaseComponent):
@@ -29,70 +43,31 @@ class StatisticsGen(base_component.BaseComponent):
 
   The StatisticsGen component wraps Tensorflow Data Validation (tfdv) to
   generate stats for every slice of input examples.
-
-
-  Attributes:
-    outputs: A ComponentOutputs including following keys:
-      - output: A channel of 'ExampleStatisticsPath' with statistics for every
-        split in input examples.
   """
 
+  SPEC_CLASS = StatisticsGenSpec
+  EXECUTOR_CLASS = executor.Executor
+
   def __init__(self,
-               input_data: channel.Channel,
-               name: Text = None,
-               outputs: Dict[Text, channel.Channel] = None):
-    """Constructs a StatisticsGen component.
+               input_data: channel.Channel = None,
+               output: Optional[channel.Channel] = None,
+               name: Optional[Text] = None):
+    """Construct a StatisticsGen component.
 
     Args:
       input_data: A Channel of 'ExamplesPath' type. This should contain two
-        splits 'train' and 'eval'.
+        splits 'train' and 'eval' (required if spec is not passed).
+      output: Optional 'ExampleStatisticsPath' channel for statistics of each
+        split provided in input examples.
       name: Optional unique name. Necessary iff multiple StatisticsGen
         components are declared in the same pipeline.
-      outputs: Optional dict from name to output channel.
     """
-    component_name = 'StatisticsGen'
-    input_dict = {'input_data': channel.as_channel(input_data)}
-    exec_properties = {}
-    super(StatisticsGen, self).__init__(
-        component_name=component_name,
-        unique_name=name,
-        executor=executor.Executor,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties=exec_properties)
-
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    """Creates outputs for StatisticsGen.
-
-    Returns:
-      ComponentOutputs object containing the dict of [Text -> Channel]
-    """
-    # pylint: disable=g-complex-comprehension
-    output_artifact_collection = [
-        types.TfxArtifact(
-            'ExampleStatisticsPath',
-            split=split,
-        ) for split in types.DEFAULT_EXAMPLE_SPLITS
-    ]
-    # pylint: enable=g-complex-comprehension
-    return base_component.ComponentOutputs({
-        'output':
-            channel.Channel(
-                type_name='ExampleStatisticsPath',
-                static_artifact_collection=output_artifact_collection)
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    """Does type checking for the inputs and exec_properties.
-
-    Args:
-      input_dict: A Dict[Text, Channel] as the inputs of the Component.
-      exec_properties: A Dict[Text, Any] as the execution properties of the
-        component. Unused right now.
-
-    Raises:
-      TypeError if the type_name of given Channel is different from expected.
-    """
-    del exec_properties
-    input_dict['input_data'].type_check('ExamplesPath')
+    output = output or channel.Channel(
+        type_name='ExampleStatisticsPath',
+        static_artifact_collection=[
+            types.TfxArtifact('ExampleStatisticsPath', split=split)
+            for split in types.DEFAULT_EXAMPLE_SPLITS])
+    spec = StatisticsGenSpec(
+        input_data=channel.as_channel(input_data),
+        output=output)
+    super(StatisticsGen, self).__init__(spec=spec, name=name)

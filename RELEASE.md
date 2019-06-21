@@ -36,9 +36,27 @@
     * use 'tf.data.TFRecordDataset' instead of the deprecated function
       'tf.TFRecordReader'
     * add test to train, evaluate and export.
+*   Component definition streamlined with explicit ComponentSpec and new style
+    for defining component classes.
 
 ## Breaking changes
-
+*   Component class definitions have been simplified; existing custom components
+    need to specify a ComponentSpec contract and conform to new class definition
+    style (see `base_component.BaseComponent`).
+*   The "outputs" argument, which is used to override the automatically-
+    generated output Channels for each component class has been removed; the
+    equivalent overriding functionality is now available by specifying
+    optional keyword arguments (see each component class definition for
+    details).
+*   The optional arguments "executor" and "unique_name" of component classes
+    have been uniformly renamed to "executor_class" and "name", respectively.
+    The "driver" optional argument of component classes is no longer available:
+    users who need to override the driver for a component should subclass the
+    component and override the DRIVER_CLASS field.
+*   The "input" and "output" exec_properties fields for ExampleGen executors
+    have been renamed to "input_config" and "output_config", respectively.
+*   The `base_component.ComponentOutputs` class has been renamed to
+    `base_component._PropertyDictWrapper`.
 
 # Version 0.13.0
 

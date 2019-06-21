@@ -19,8 +19,9 @@ from __future__ import print_function
 
 import mock
 import tensorflow as tf
-from typing import Any, Dict, Optional, Text
 from tfx.components.base import base_component
+from tfx.components.base import base_executor
+from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_runner
 from tfx.utils import channel
@@ -34,30 +35,63 @@ class _FakeComponentAsDoFn(beam_runner._ComponentAsDoFn):
     _executed_components.append(self._name)
 
 
-# TODO(jyzhao): move to a separate file to reduce duplication.
+# We define fake component spec classes below for testing. Note that we can't
+# programmatically generate component using anonymous classes for testing
+# because of a limitation in the "dill" pickler component used by Apache Beam.
+# An alternative we considered but rejected here was to write a function that
+# returns anonymous classes within that function's closure (as is done in
+# tfx/orchestration/pipeline_test.py), but that strategy does not work here
+# as these anonymous classes cannot be used with Beam, since they cannot be
+# pickled with the "dill" library.
+class _FakeComponentSpecA(base_component.ComponentSpec):
+  COMPONENT_NAME = 'component_a'
+  PARAMETERS = {}
+  INPUTS = {}
+  OUTPUTS = {'output': ChannelParameter(type_name='a')}
+
+
+class _FakeComponentSpecB(base_component.ComponentSpec):
+  COMPONENT_NAME = 'component_b'
+  PARAMETERS = {}
+  INPUTS = {'a': ChannelParameter(type_name='a')}
+  OUTPUTS = {'output': ChannelParameter(type_name='b')}
+
+
+class _FakeComponentSpecC(base_component.ComponentSpec):
+  COMPONENT_NAME = 'component_c'
+  PARAMETERS = {}
+  INPUTS = {'a': ChannelParameter(type_name='a')}
+  OUTPUTS = {'output': ChannelParameter(type_name='c')}
+
+
+class _FakeComponentSpecD(base_component.ComponentSpec):
+  COMPONENT_NAME = 'component_d'
+  PARAMETERS = {}
+  INPUTS = {
+      'b': ChannelParameter(type_name='b'),
+      'c': ChannelParameter(type_name='c'),
+  }
+  OUTPUTS = {'output': ChannelParameter(type_name='d')}
+
+
+class _FakeComponentSpecE(base_component.ComponentSpec):
+  COMPONENT_NAME = 'component_e'
+  PARAMETERS = {}
+  INPUTS = {
+      'a': ChannelParameter(type_name='a'),
+      'b': ChannelParameter(type_name='b'),
+      'd': ChannelParameter(type_name='d'),
+  }
+  OUTPUTS = {'output': ChannelParameter(type_name='e')}
+
+
 class _FakeComponent(base_component.BaseComponent):
 
-  def __init__(self,
-               name: Text,
-               input_dict: Dict[Text, channel.Channel],
-               outputs: Optional[base_component.ComponentOutputs] = None):
-    super(_FakeComponent, self).__init__(
-        component_name=name,
-        driver=None,
-        executor=None,
-        input_dict=input_dict,
-        outputs=outputs,
-        exec_properties={})
-    self.name = name
+  SPEC_CLASS = base_component.ComponentSpec
+  EXECUTOR_CLASS = base_executor.BaseExecutor
 
-  def _create_outputs(self) -> base_component.ComponentOutputs:
-    return base_component.ComponentOutputs({
-        'output': channel.Channel(type_name=self.component_name),
-    })
-
-  def _type_check(self, input_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]) -> None:
-    return None
+  def __init__(self, spec: base_component.ComponentSpec):
+    super(_FakeComponent, self).__init__(spec=spec)
 
 
 class BeamRunnerTest(tf.test.TestCase):
@@ -67,21 +101,23 @@ class BeamRunnerTest(tf.test.TestCase):
       _ComponentAsDoFn=_FakeComponentAsDoFn,
   )
   def test_run(self):
-    component_a = _FakeComponent('component_a', {})
-    component_b = _FakeComponent('component_b',
-                                 {'a': component_a.outputs.output})
-    component_c = _FakeComponent('component_c',
-                                 {'a': component_a.outputs.output})
-    component_d = _FakeComponent('component_d', {
-        'b': component_b.outputs.output,
-        'c': component_c.outputs.output
-    })
-    component_e = _FakeComponent(
-        'component_e', {
-            'a': component_a.outputs.output,
-            'b': component_b.outputs.output,
-            'd': component_d.outputs.output
-        })
+    component_a = _FakeComponent(_FakeComponentSpecA(
+        output=channel.Channel(type_name='a')))
+    component_b = _FakeComponent(_FakeComponentSpecB(
+        a=component_a.outputs.output,
+        output=channel.Channel(type_name='b')))
+    component_c = _FakeComponent(_FakeComponentSpecC(
+        a=component_a.outputs.output,
+        output=channel.Channel(type_name='c')))
+    component_d = _FakeComponent(_FakeComponentSpecD(
+        b=component_b.outputs.output,
+        c=component_c.outputs.output,
+        output=channel.Channel(type_name='d')))
+    component_e = _FakeComponent(_FakeComponentSpecE(
+        a=component_a.outputs.output,
+        b=component_b.outputs.output,
+        d=component_d.outputs.output,
+        output=channel.Channel(type_name='e')))
 
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',

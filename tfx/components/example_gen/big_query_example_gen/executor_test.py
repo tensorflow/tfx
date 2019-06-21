@@ -111,13 +111,13 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create exe properties.
     exec_properties = {
-        'input':
+        'input_config':
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='bq', pattern='SELECT i, f, s FROM `fake`'),
                 ])),
-        'output':
+        'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[

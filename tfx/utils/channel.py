@@ -88,8 +88,8 @@ class Channel(object):
       TypeError if the type_name of given Channel is different from expected.
     """
     if self.type_name != expected_type_name:
-      raise TypeError('Expects {} but found {}'.format(expected_type_name,
-                                                       str(self.type_name)))
+      raise TypeError('Expected {} but found {}.'.format(expected_type_name,
+                                                         str(self.type_name)))
 
 
 def as_channel(source: Union[Channel, Iterable[types.TfxArtifact]]) -> Channel:
