@@ -21,6 +21,7 @@ import copy
 import os
 import tensorflow as tf
 from tfx.components.base import base_driver
+from tfx.orchestration import data_types
 from tfx.utils import logging_utils
 from tfx.utils import types
 
@@ -51,7 +52,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._base_output_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
         self._testMethodName, 'base_output_dir')
-    self._driver_options = base_driver.DriverOptions(
+    self._driver_args = data_types.DriverArgs(
         worker_name='worker_name',
         base_output_dir=self._base_output_dir,
         enable_cache=True)
@@ -88,8 +89,9 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata.prepare_execution.return_value = self._execution_id
     driver = base_driver.BaseDriver(logger=self._logger,
                                     metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(
-        input_dict, output_dict, exec_properties, self._driver_options)
+    execution_decision = driver.prepare_execution(input_dict, output_dict,
+                                                  exec_properties,
+                                                  self._driver_args)
     self.assertEqual(self._execution_id, execution_decision.execution_id)
     self._check_output(execution_decision)
 
@@ -109,8 +111,9 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
     driver = base_driver.BaseDriver(logger=self._logger,
                                     metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(
-        input_dict, output_dict, exec_properties, self._driver_options)
+    execution_decision = driver.prepare_execution(input_dict, output_dict,
+                                                  exec_properties,
+                                                  self._driver_args)
     self.assertIsNone(execution_decision.execution_id)
     self._check_output(execution_decision)
 
@@ -119,7 +122,7 @@ class BaseDriverTest(tf.test.TestCase):
     input_dict['input_data'][0].uri = 'should/not/exist'
     output_dict = copy.deepcopy(self._output_dict)
     exec_properties = copy.deepcopy(self._exec_properties)
-    driver_options = copy.deepcopy(self._driver_options)
+    driver_options = copy.deepcopy(self._driver_args)
     driver_options.enable_cache = False
 
     cached_output_dict = copy.deepcopy(self._output_dict)
@@ -156,8 +159,9 @@ class BaseDriverTest(tf.test.TestCase):
 
     driver = base_driver.BaseDriver(logger=self._logger,
                                     metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(
-        input_dict, output_dict, exec_properties, self._driver_options)
+    execution_decision = driver.prepare_execution(input_dict, output_dict,
+                                                  exec_properties,
+                                                  self._driver_args)
     self.assertEqual(actual_execution_id, execution_decision.execution_id)
     self._check_output(execution_decision)
 

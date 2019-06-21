@@ -28,7 +28,7 @@ class AirflowAdapter(object):
 
   # TODO(khaas): pytypes here
   def __init__(self, component_name, input_dict, output_dict, exec_properties,
-               driver_options, driver_class, executor_class,
+               driver_args, driver_class, executor_class,
                additional_pipeline_args, metadata_connection_config,
                logger_config):
     """Constructs an AirflowAdaptor.
@@ -38,8 +38,8 @@ class AirflowAdapter(object):
       input_dict: a dict from key name to a list of TfxArtifact artifacts.
       output_dict: a dict from key name to a list of TfxArtifact artifacts.
       exec_properties: a dict of execution properties.
-      driver_options: an instance of base_driver.DriverOptions to communicate
-        with driver;
+      driver_args: an instance of orchestration.data_types.DriverArgs to
+        serve as additional args to driver;
       driver_class: Python class of driver;
       executor_class: Python class of executor;
       additional_pipeline_args: a dict of additional pipeline args. Currently
@@ -51,7 +51,7 @@ class AirflowAdapter(object):
     self._input_dict = dict((k, v) for k, v in input_dict.items() if v)
     self._output_dict = output_dict
     self._exec_properties = exec_properties
-    self._driver_options = driver_options
+    self._driver_args = driver_args
     self._driver_class = driver_class
     self._executor_class = executor_class
     self._logger = logging_utils.get_logger(logger_config)
@@ -110,9 +110,10 @@ class AirflowAdapter(object):
                            self._logger) as m:
       driver = self._driver_class(logger=self._logger,
                                   metadata_handler=m)
-      execution_decision = driver.prepare_execution(
-          self._input_dict, self._output_dict, self._exec_properties,
-          self._driver_options)
+      execution_decision = driver.prepare_execution(self._input_dict,
+                                                    self._output_dict,
+                                                    self._exec_properties,
+                                                    self._driver_args)
       if not execution_decision.execution_id:
         self._logger.info(
             'All artifacts found. Publishing to pipeline and skipping executor.'

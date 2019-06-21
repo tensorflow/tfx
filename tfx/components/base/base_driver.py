@@ -22,51 +22,9 @@ import tensorflow as tf
 
 from typing import Any, Dict, List, Optional, Text
 
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.utils import types
-
-
-class ExecutionDecision(object):
-  """ExecutionDecision records how executor should perform next execution.
-
-  Attributes:
-    input_dict: Updated key -> TfxArtifact for inputs that will be used by
-      actual execution.
-    output_dict: Updated key -> TfxArtifact for outputs that will be used by
-      actual execution.
-    exec_properties: Updated dict of other execution properties that will be
-      used by actual execution.
-    execution_id: Registered execution_id for the upcoming execution. If
-      None, then no execution needed.
-  """
-
-  def __init__(self,
-               input_dict: Dict[Text, List[types.TfxArtifact]],
-               output_dict: Dict[Text, List[types.TfxArtifact]],
-               exec_properties: Dict[Text, Any],
-               execution_id: Optional[int] = None):
-    self.input_dict = input_dict
-    self.output_dict = output_dict
-    self.exec_properties = exec_properties
-    self.execution_id = execution_id
-
-
-class DriverOptions(object):
-  """Options to driver from orchestration system.
-
-  Args:
-    worker_name: orchestrator specific instance name for the worker running
-      current component.
-    base_output_dir: common base directory shared by all components in current
-      pipeline execution.
-    enable_cache: whether cache is enabled in current execution.
-  """
-
-  def __init__(self, worker_name: Text, base_output_dir: Text,
-               enable_cache: bool):
-    self.worker_name = worker_name
-    self.base_output_dir = base_output_dir
-    self.enable_cache = enable_cache
 
 
 class BaseDriver(object):
@@ -75,9 +33,9 @@ class BaseDriver(object):
   This can also be used as the default driver of a component if no custom logic
   is needed.
 
-  Args:
-    logger: A logging.Logger
-    metadata_handler: An instance of Metadata.
+  Attributes:
+    _logger: A logging.Logger
+    _metadata_handler: An instance of Metadata.
   """
 
   # TODO(b/131703697): Remove the need for constructor to make driver stateless.
@@ -103,11 +61,11 @@ class BaseDriver(object):
       input_dict: Dict[Text, List[types.TfxArtifact]],
       output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
-      driver_options: DriverOptions,
+      driver_args: data_types.DriverArgs,
   ) -> Optional[Dict[Text, List[types.TfxArtifact]]]:
     """Returns outputs from previous identical execution if found."""
     previous_execution_id = self._metadata_handler.previous_run(
-        type_name=driver_options.worker_name,
+        type_name=driver_args.worker_name,
         input_dict=input_dict,
         exec_properties=exec_properties)
     if previous_execution_id:
@@ -116,7 +74,7 @@ class BaseDriver(object):
       for output_list in final_output.values():
         for single_output in output_list:
           if not single_output.uri or not tf.gfile.Exists(single_output.uri):
-            self._logger.warn(
+            self._logger.warning(
                 'URI of cached artifact %s does not exist, forcing new execution',
                 single_output)
             return None
@@ -149,21 +107,21 @@ class BaseDriver(object):
       input_dict: Dict[Text, List[types.TfxArtifact]],
       output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
-      driver_options: DriverOptions,
-  ) -> ExecutionDecision:
+      driver_args: data_types.DriverArgs,
+  ) -> data_types.ExecutionDecision:
     """Check cache for desired and applicable identical execution."""
-    enable_cache = driver_options.enable_cache
-    base_output_dir = driver_options.base_output_dir
-    worker_name = driver_options.worker_name
+    enable_cache = driver_args.enable_cache
+    base_output_dir = driver_args.base_output_dir
+    worker_name = driver_args.worker_name
 
     # If caching is enabled, try to get previous execution results and directly
     # use as output.
     if enable_cache:
       output_result = self._get_output_from_previous_run(
-          input_dict, output_dict, exec_properties, driver_options)
+          input_dict, output_dict, exec_properties, driver_args)
       if output_result:
         self._logger.info('Found cache from previous run.')
-        return ExecutionDecision(
+        return data_types.ExecutionDecision(
             input_dict=input_dict,
             output_dict=output_result,
             exec_properties=exec_properties)
@@ -206,7 +164,7 @@ class BaseDriver(object):
         # Defaults to make the output span the max of input span.
         output_artifact.span = max_input_span
 
-    return ExecutionDecision(
+    return data_types.ExecutionDecision(
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties,
@@ -217,8 +175,8 @@ class BaseDriver(object):
       input_dict: Dict[Text, List[types.TfxArtifact]],
       output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
-      driver_options: DriverOptions,
-  ) -> ExecutionDecision:
+      driver_args: data_types.DriverArgs,
+  ) -> data_types.ExecutionDecision:
     """Prepares inputs, outputs and execution properties for actual execution.
 
     This method could be overridden by custom drivers if they have a different
@@ -232,18 +190,19 @@ class BaseDriver(object):
       output_dict: key -> TfxArtifact for outputs. Uris of the outputs are not
         assigned. It's subclasses' responsibility to set the real output uris.
       exec_properties: Dict of other execution properties.
-      driver_options: An instance of DriverOptions class.
+      driver_args: An instance of DriverArgs class.
 
     Returns:
-      ExecutionDecision object.
+      data_types.ExecutionDecision object.
 
     Raises:
       RuntimeError: if any input as an empty uri.
     """
     self._logger.info('Enter driver.')
     self._log_properties(input_dict, output_dict, exec_properties)
-    execution_decision = self._default_caching_handling(
-        input_dict, output_dict, exec_properties, driver_options)
+    execution_decision = self._default_caching_handling(input_dict, output_dict,
+                                                        exec_properties,
+                                                        driver_args)
     self._logger.info('Prepared execution.')
     self._log_properties(execution_decision.input_dict,
                          execution_decision.output_dict,
