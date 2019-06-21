@@ -20,6 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text, Tuple
 from tfx.components.base import base_driver
+from tfx.orchestration import data_types
 from tfx.utils import types
 
 
@@ -42,15 +43,15 @@ class Driver(base_driver.BaseDriver):
           last_blessed_model.custom_properties['current_model'].string_value,
           last_blessed_model.custom_properties['current_model_id'].int_value)
     else:
-      return (None, None)
+      return None, None
 
   def prepare_execution(
       self,
       input_dict: Dict[Text, List[types.TfxArtifact]],
       output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
-      driver_options: base_driver.DriverOptions,
-  ) -> base_driver.ExecutionDecision:
+      driver_options: data_types.DriverArgs,
+  ) -> data_types.ExecutionDecision:
     """Extends BaseDriver by resolving last blessed model."""
     execution_decision = self._default_caching_handling(
         input_dict, output_dict, exec_properties, driver_options)

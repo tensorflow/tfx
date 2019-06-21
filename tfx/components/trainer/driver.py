@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_driver
+from tfx.orchestration import data_types
 from tfx.utils import types
 
 
@@ -42,8 +43,8 @@ class Driver(base_driver.BaseDriver):
       input_dict: Dict[Text, List[types.TfxArtifact]],
       output_dict: Dict[Text, List[types.TfxArtifact]],
       exec_properties: Dict[Text, Any],
-      driver_options: base_driver.DriverOptions,
-  ) -> base_driver.ExecutionDecision:
+      driver_options: data_types.DriverArgs,
+  ) -> data_types.ExecutionDecision:
     """Extends BaseDriver.prepare_execution() for potential warm starting."""
 
     execution_decision = self._default_caching_handling(

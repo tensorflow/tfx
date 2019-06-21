@@ -22,6 +22,7 @@ import mock
 import tensorflow as tf
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
+from tfx.orchestration import data_types
 from tfx.orchestration.airflow import airflow_adapter
 from tfx.orchestration.airflow import airflow_component
 from tfx.utils import logging_utils
@@ -53,7 +54,7 @@ class AirflowAdapterTest(tf.test.TestCase):
     input_dict = {u'input_one': [self.input_one]}
     output_dict = {u'output_one': [self.output_one]}
     exec_properties = {}
-    driver_options = {}
+    driver_args = {}
 
     adapter = airflow_adapter.AirflowAdapter(
         component_name='TfxComponent',
@@ -62,12 +63,12 @@ class AirflowAdapterTest(tf.test.TestCase):
         exec_properties=exec_properties,
         driver_class=base_driver.BaseDriver,
         executor_class=base_executor.BaseExecutor,
-        driver_options=driver_options,
+        driver_args=driver_args,
         additional_pipeline_args=None,
         metadata_connection_config='metadata_connection_config',
         logger_config=self._logger_config)
 
-    return adapter, input_dict, output_dict, exec_properties, driver_options
+    return adapter, input_dict, output_dict, exec_properties, driver_args
 
   def _setup_mock_metadata(self, mock_metadata_class):
     mock_metadata = mock.Mock()
@@ -111,12 +112,12 @@ class AirflowAdapterTest(tf.test.TestCase):
                             mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
                       mock_executor_class, mock_get_logger)
-    adapter, input_dict, output_dict, exec_properties, driver_options = self._setup_adapter_and_args(
+    adapter, input_dict, output_dict, exec_properties, driver_args = self._setup_adapter_and_args(
     )
 
     self.mock_task_instance.xcom_pull.side_effect = [self.input_one_json]
 
-    self.mock_driver.prepare_execution.return_value = base_driver.ExecutionDecision(
+    self.mock_driver.prepare_execution.return_value = data_types.ExecutionDecision(
         input_dict, output_dict, exec_properties)
 
     check_result = adapter.check_cache_and_maybe_prepare_execution(
@@ -127,8 +128,8 @@ class AirflowAdapterTest(tf.test.TestCase):
     mock_get_logger.assert_called_with(self._logger_config)
     mock_driver_class.assert_called_with(
         logger=mock.ANY, metadata_handler=self.mock_metadata)
-    self.mock_driver.prepare_execution.called_with(
-        input_dict, output_dict, exec_properties, driver_options)
+    self.mock_driver.prepare_execution.called_with(input_dict, output_dict,
+                                                   exec_properties, driver_args)
     self.mock_task_instance.xcom_pull.assert_called_with(
         dag_id='input_one_component_id', key='input_one_key')
     self.mock_task_instance.xcom_push.assert_called_with(
@@ -145,12 +146,12 @@ class AirflowAdapterTest(tf.test.TestCase):
                          mock_executor_class, mock_get_logger):
     self._setup_mocks(mock_metadata_class, mock_driver_class,
                       mock_executor_class, mock_get_logger)
-    adapter, input_dict, output_dict, exec_properties, driver_options = self._setup_adapter_and_args(
+    adapter, input_dict, output_dict, exec_properties, driver_args = self._setup_adapter_and_args(
     )
 
     self.mock_task_instance.xcom_pull.side_effect = [self.input_one_json]
 
-    self.mock_driver.prepare_execution.return_value = base_driver.ExecutionDecision(
+    self.mock_driver.prepare_execution.return_value = data_types.ExecutionDecision(
         input_dict, output_dict, exec_properties, execution_id=12345)
 
     check_result = adapter.check_cache_and_maybe_prepare_execution(
@@ -160,8 +161,8 @@ class AirflowAdapterTest(tf.test.TestCase):
 
     mock_driver_class.assert_called_with(
         logger=mock.ANY, metadata_handler=self.mock_metadata)
-    self.mock_driver.prepare_execution.called_with(
-        input_dict, output_dict, exec_properties, driver_options)
+    self.mock_driver.prepare_execution.called_with(input_dict, output_dict,
+                                                   exec_properties, driver_args)
     self.mock_task_instance.xcom_pull.assert_called_with(
         dag_id='input_one_component_id', key='input_one_key')
 

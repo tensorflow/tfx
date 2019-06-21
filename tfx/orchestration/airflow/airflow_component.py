@@ -21,7 +21,7 @@ from airflow.operators import dummy_operator
 from airflow.operators import python_operator
 from airflow.operators import subdag_operator
 
-from tfx.components.base import base_driver
+from tfx.orchestration import data_types
 from tfx.orchestration.airflow import airflow_adapter
 from tfx.utils import logging_utils
 
@@ -49,11 +49,10 @@ class _TfxWorker(models.DAG):
           artifact exists.
   """
 
-  def __init__(self,
-               component_name, task_id, parent_dag, input_dict, output_dict,
-               exec_properties, driver_options, driver_class, executor_class,
-               additional_pipeline_args, metadata_connection_config,
-               logger_config):
+  def __init__(self, component_name, task_id, parent_dag, input_dict,
+               output_dict, exec_properties, driver_args, driver_class,
+               executor_class, additional_pipeline_args,
+               metadata_connection_config, logger_config):
     super(_TfxWorker, self).__init__(
         dag_id=task_id,
         schedule_interval=None,
@@ -64,7 +63,7 @@ class _TfxWorker(models.DAG):
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties,
-        driver_options=driver_options,
+        driver_args=driver_args,
         driver_class=driver_class,
         executor_class=executor_class,
         additional_pipeline_args=additional_pipeline_args,
@@ -141,7 +140,7 @@ class Component(object):
         log_level=parent_dag.logger_config.log_level,
         pipeline_name=parent_dag.logger_config.pipeline_name,
         worker_name=worker_name)
-    driver_options = base_driver.DriverOptions(
+    driver_args = data_types.DriverArgs(
         worker_name=worker_name,
         base_output_dir=output_dir,
         enable_cache=parent_dag.enable_cache)
@@ -153,7 +152,7 @@ class Component(object):
         input_dict=input_dict,
         output_dict=output_dict,
         exec_properties=exec_properties,
-        driver_options=driver_options,
+        driver_args=driver_args,
         driver_class=driver,
         executor_class=executor,
         additional_pipeline_args=parent_dag.additional_pipeline_args,

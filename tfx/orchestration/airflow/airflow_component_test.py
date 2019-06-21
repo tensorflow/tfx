@@ -60,7 +60,7 @@ class AirflowComponentTest(tf.test.TestCase):
     self.input_dict = {'i': [TfxArtifact('i')]}
     self.output_dict = {'o': [TfxArtifact('o')]}
     self.exec_properties = {'e': 'e'}
-    self.driver_options = {'d': 'd'}
+    self.driver_args = {'d': 'd'}
 
   @mock.patch('airflow.operators.python_operator.BranchPythonOperator')
   @mock.patch('airflow.operators.python_operator.PythonOperator')
@@ -88,7 +88,7 @@ class AirflowComponentTest(tf.test.TestCase):
         input_dict=self.input_dict,
         output_dict=self.output_dict,
         exec_properties=self.exec_properties,
-        driver_options=self.driver_options,
+        driver_args=self.driver_args,
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
@@ -108,7 +108,7 @@ class AirflowComponentTest(tf.test.TestCase):
         input_dict=self.input_dict,
         output_dict=self.output_dict,
         exec_properties=self.exec_properties,
-        driver_options=self.driver_options,
+        driver_args=self.driver_args,
         driver_class=None,
         executor_class=None,
         additional_pipeline_args=None,
