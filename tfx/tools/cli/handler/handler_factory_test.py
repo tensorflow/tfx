@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
@@ -42,15 +43,6 @@ class HandlerFactoryTest(tf.test.TestCase):
         handler_factory.create_handler(self.flags_dict),
         kubeflow_handler.KubeflowHandler)
 
-  def test_create_handler_auto(self):
-    self.flags_dict[labels.ENGINE_FLAG] = 'auto'
-    with self.assertRaises(Exception) as err:
-      handler_factory.create_handler(self.flags_dict)
-    self.assertEqual(
-        str(err.exception),
-        'Orchestrator {} missing in the environment.'
-        .format(self.flags_dict[labels.ENGINE_FLAG]))
-
   def test_create_handler_other(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'beam'
     with self.assertRaises(Exception) as err:
@@ -59,6 +51,42 @@ class HandlerFactoryTest(tf.test.TestCase):
         str(err.exception), 'Engine {} is not supported.'.format(
             self.flags_dict[labels.ENGINE_FLAG]))
 
+  def _MockSubprocessAirflow(self):
+    return b'absl-py==0.7.1\nalembic==0.9.10\napache-airflow==1.10.3\n'
+
+  @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
+  def test_detect_handler_airflow(self):
+    self.flags_dict[labels.ENGINE_FLAG] = 'auto'
+    self.assertIsInstance(
+        handler_factory.detect_handler(self.flags_dict),
+        airflow_handler.AirflowHandler)
+
+  def _MockSubprocessNoEngine(self):
+    return b'absl-py==0.7.1\nalembic==0.9.10\n'
+
+  @mock.patch('subprocess.check_output', _MockSubprocessNoEngine)
+  def test_detect_handler_missing(self):
+    self.flags_dict[labels.ENGINE_FLAG] = 'auto'
+    with self.assertRaises(SystemExit) as cm:
+      handler_factory.detect_handler(self.flags_dict)
+    self.assertEqual(
+        str(cm.exception),
+        'Orchestrator missing in the environment.'
+        )
+
+  def _MockSubprocessMultipleEngines(self):
+    return 'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\nkfp==0.1\n'
+
+  @mock.patch('subprocess.check_output', _MockSubprocessMultipleEngines)
+  def test_detect_handler_multiple(self):
+    self.flags_dict[labels.ENGINE_FLAG] = 'auto'
+    with self.assertRaises(SystemExit) as cm:
+      handler_factory.detect_handler(self.flags_dict)
+    self.assertEqual(
+        str(cm.exception),
+        'Multiple orchestrators found. Choose one using --engine flag.'
+        )
 
 if __name__ == '__main__':
   tf.test.main()
+

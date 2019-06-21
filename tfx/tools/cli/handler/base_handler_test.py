@@ -49,7 +49,7 @@ class BaseHandlerTest(tf.test.TestCase):
     self.chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                      'taxi_pipeline_simple.py')
+                                      'test_pipeline.py')
 
   def test_check_pipeline_dsl_path_invalid(self):
     flags_dict = {labels.ENGINE_FLAG: self.engine,
@@ -60,5 +60,17 @@ class BaseHandlerTest(tf.test.TestCase):
     self.assertEqual(str(err.exception), 'Invalid pipeline path: {}'
                      .format(flags_dict[labels.PIPELINE_DSL_PATH]))
 
+  def test_check_dsl_runner_wrong_engine(self):
+    flags_dict = {labels.ENGINE_FLAG: 'kubeflow',
+                  labels.PIPELINE_DSL_PATH: self.pipeline_path}
+    handler = FakeHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler._check_dsl_runner()
+    self.assertEqual(str(err.exception),
+                     '{} runner not found in dsl.'
+                     .format(flags_dict[labels.ENGINE_FLAG]))
+
+
 if __name__ == '__main__':
   tf.test.main()
+

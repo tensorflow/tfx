@@ -17,8 +17,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Text, Any
+import subprocess
+import sys
+import click
 
+from typing import Dict, Text, Any
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.tools.cli.handler import base_handler
@@ -26,16 +29,34 @@ from tfx.tools.cli.handler import kubeflow_handler
 
 
 def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
-  # TODO(b/132286477):Autodetect engine from environment
   """Detect handler from the environment.
+
+  Details:
+    When the engine flag is set to 'auto', this method first finds all the
+    packages in the local environment. The environment is first checked
+    for multiple orchestrators and if true the user must rerun the command with
+    required engine. If only one orchestrator is present, the engine is set to
+    that.
 
   Args:
     flags_dict: A dictionary containing the flags of a command.
 
-  Returns: Corrosponding Handler object.
+  Returns:
+    Corrosponding Handler object.
   """
-  raise NotImplementedError('Orchestrator '+flags_dict['engine']+
-                            ' missing in the environment.')
+  packages_list = str(subprocess.check_output(['pip', 'freeze', '--local']))
+  if labels.AIRFLOW_PACKAGE_NAME in packages_list and labels.KUBEFLOW_PACKAGE_NAME in packages_list:
+    sys.exit('Multiple orchestrators found. Choose one using --engine flag.')
+  if labels.AIRFLOW_PACKAGE_NAME in packages_list:
+    click.echo('Detected Airflow.')
+    flags_dict[labels.ENGINE_FLAG] = 'airflow'
+    return airflow_handler.AirflowHandler(flags_dict)
+  elif labels.KUBEFLOW_PACKAGE_NAME in packages_list:
+    click.echo('Detected Kubeflow.')
+    flags_dict[labels.ENGINE_FLAG] = 'kubeflow'
+    return kubeflow_handler.KubeflowHandler(flags_dict)
+  # TODO(b/132286477):Update to beam runner later.
+  sys.exit('Orchestrator missing in the environment.')
 
 
 def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
@@ -60,3 +81,4 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
     return detect_handler(flags_dict)
   else:
     raise RuntimeError('Engine {} is not supported.'.format(engine))
+
