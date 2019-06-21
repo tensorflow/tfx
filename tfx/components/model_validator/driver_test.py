@@ -17,25 +17,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import tensorflow as tf
 from tfx.components.model_validator import driver
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 
 class DriverTest(tf.test.TestCase):
 
   def test_fetch_last_blessed_model(self):
-    output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-    self._logger_config = logging_utils.LoggerConfig(
-        log_root=os.path.join(output_data_dir, 'log_dir'))
-
     # Mock metadata.
     mock_metadata = tf.test.mock.Mock()
-    model_validator_driver = driver.Driver(self._logger_config, mock_metadata)
+    model_validator_driver = driver.Driver(mock_metadata)
 
     # No blessed model.
     mock_metadata.get_all_artifacts.return_value = []

@@ -126,8 +126,7 @@ class AirflowAdapterTest(tf.test.TestCase):
         ti=self.mock_task_instance)
 
     mock_get_logger.assert_called_with(self._logger_config)
-    mock_driver_class.assert_called_with(
-        logger=mock.ANY, metadata_handler=self.mock_metadata)
+    mock_driver_class.assert_called_with(metadata_handler=self.mock_metadata)
     self.mock_driver.prepare_execution.called_with(input_dict, output_dict,
                                                    exec_properties, driver_args)
     self.mock_task_instance.xcom_pull.assert_called_with(
@@ -159,8 +158,7 @@ class AirflowAdapterTest(tf.test.TestCase):
         'uncached_branch',
         ti=self.mock_task_instance)
 
-    mock_driver_class.assert_called_with(
-        logger=mock.ANY, metadata_handler=self.mock_metadata)
+    mock_driver_class.assert_called_with(metadata_handler=self.mock_metadata)
     self.mock_driver.prepare_execution.called_with(input_dict, output_dict,
                                                    exec_properties, driver_args)
     self.mock_task_instance.xcom_pull.assert_called_with(

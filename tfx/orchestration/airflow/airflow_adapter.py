@@ -108,8 +108,7 @@ class AirflowAdapter(object):
 
     with metadata.Metadata(self._metadata_connection_config,
                            self._logger) as m:
-      driver = self._driver_class(logger=self._logger,
-                                  metadata_handler=m)
+      driver = self._driver_class(metadata_handler=m)
       execution_decision = driver.prepare_execution(self._input_dict,
                                                     self._output_dict,
                                                     self._exec_properties,

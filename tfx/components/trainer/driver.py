@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
@@ -55,7 +56,7 @@ class Driver(base_driver.BaseDriver):
         'warm_starting', None):
       execution_decision.exec_properties[
           'warm_start_from'] = self._fetch_latest_model()
-      self._logger.debug('Model directory to warm start from: {}'.format(
+      tf.logging.debug('Model directory to warm start from: {}'.format(
           execution_decision.exec_properties['warm_start_from']))
 
     return execution_decision

@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import logging
 import os
 import tensorflow as tf
 
@@ -34,27 +33,24 @@ class BaseDriver(object):
   is needed.
 
   Attributes:
-    _logger: A logging.Logger
     _metadata_handler: An instance of Metadata.
   """
 
   # TODO(b/131703697): Remove the need for constructor to make driver stateless.
-  def __init__(self, logger: logging.Logger,
-               metadata_handler: metadata.Metadata):
+  def __init__(self, metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
-    self._logger = logger
 
   def _log_properties(self, input_dict: Dict[Text, List[types.TfxArtifact]],
                       output_dict: Dict[Text, List[types.TfxArtifact]],
                       exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
-    self._logger.info('Starting %s driver.', self.__class__.__name__)
-    self._logger.info('Inputs for {} is: {}'.format(self.__class__.__name__,
-                                                    input_dict))
-    self._logger.info('Execution properties for {} is: {}'.format(
+    tf.logging.info('Starting %s driver.', self.__class__.__name__)
+    tf.logging.info('Inputs for {} is: {}'.format(self.__class__.__name__,
+                                                  input_dict))
+    tf.logging.info('Execution properties for {} is: {}'.format(
         self.__class__.__name__, exec_properties))
-    self._logger.info('Outputs for {} is: {}'.format(self.__class__.__name__,
-                                                     output_dict))
+    tf.logging.info('Outputs for {} is: {}'.format(self.__class__.__name__,
+                                                   output_dict))
 
   def _get_output_from_previous_run(
       self,
@@ -74,19 +70,19 @@ class BaseDriver(object):
       for output_list in final_output.values():
         for single_output in output_list:
           if not single_output.uri or not tf.gfile.Exists(single_output.uri):
-            self._logger.warning(
+            tf.logging.warning(
                 'URI of cached artifact %s does not exist, forcing new execution',
                 single_output)
             return None
-      self._logger.info(
+      tf.logging.info(
           'Reusing previous execution {} output artifacts {}'.format(
               previous_execution_id, final_output))
       return final_output
     else:
       return None
 
-  def _verify_inputs(
-      self, input_dict: Dict[Text, List[types.TfxArtifact]]) -> None:
+  def _verify_inputs(self,
+                     input_dict: Dict[Text, List[types.TfxArtifact]]) -> None:
     """Verify input exist.
 
     Args:
@@ -120,7 +116,7 @@ class BaseDriver(object):
       output_result = self._get_output_from_previous_run(
           input_dict, output_dict, exec_properties, driver_args)
       if output_result:
-        self._logger.info('Found cache from previous run.')
+        tf.logging.info('Found cache from previous run.')
         return data_types.ExecutionDecision(
             input_dict=input_dict,
             output_dict=output_result,
@@ -130,7 +126,7 @@ class BaseDriver(object):
     # Registers execution in metadata.
     execution_id = self._metadata_handler.prepare_execution(
         worker_name, exec_properties)
-    self._logger.info('Preparing new execution.')
+    tf.logging.info('Preparing new execution.')
 
     # Checks inputs exist and have valid states and locks them to avoid GC half
     # way
@@ -198,12 +194,12 @@ class BaseDriver(object):
     Raises:
       RuntimeError: if any input as an empty uri.
     """
-    self._logger.info('Enter driver.')
+    tf.logging.info('Enter driver.')
     self._log_properties(input_dict, output_dict, exec_properties)
     execution_decision = self._default_caching_handling(input_dict, output_dict,
                                                         exec_properties,
                                                         driver_args)
-    self._logger.info('Prepared execution.')
+    tf.logging.info('Prepared execution.')
     self._log_properties(execution_decision.input_dict,
                          execution_decision.output_dict,
                          execution_decision.exec_properties)
