@@ -39,7 +39,7 @@ class AirflowHandler(base_handler.BaseHandler):
     self._handler_home_dir = self._get_handler_home()
 
   # TODO(b/132286477): Update comments after updating methods.
-  def create_pipeline(self) -> None:
+  def create_pipeline(self, overwrite: bool = False):
     """Creates pipeline in Airflow."""
     self._check_pipeline_dsl_path()
     self._check_dsl_runner()
@@ -49,16 +49,22 @@ class AirflowHandler(base_handler.BaseHandler):
     handler_pipeline_path = self._get_handler_pipeline_path(
         pipeline_args[labels.PIPELINE_NAME])
 
-    # Check if pipeline already exists.
-    if tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} already exists.'
-               .format(pipeline_args[labels.PIPELINE_NAME]))
+    if overwrite:
+      # For update, check if pipeline exists.
+      if not tf.io.gfile.exists(handler_pipeline_path):
+        sys.exit('Pipeline {} does not exist.'
+                 .format(pipeline_args[labels.PIPELINE_NAME]))
+    else:
+      # For create, verify that pipeline does not exist.
+      if tf.io.gfile.exists(handler_pipeline_path):
+        sys.exit('Pipeline {} already exists.'
+                 .format(pipeline_args[labels.PIPELINE_NAME]))
 
     self._save_pipeline(pipeline_args)
 
-  def update_pipeline(self) -> None:
-    """Updates pipeline in Airflow."""
-    click.echo('Updating pipeline in Airflow')
+  def update_pipeline(self):
+    # Set overwrite to true for update to make sure pipeline exists.
+    self.create_pipeline(overwrite=True)
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
