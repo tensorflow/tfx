@@ -68,11 +68,28 @@ class AirflowHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    click.echo('List of pipelines in Airflow')
+    dags_folder = os.path.join(self._handler_home_dir, 'dags', '')
+    if not tf.io.gfile.exists(dags_folder):
+      click.echo('No pipelines to display.')
+      return
+    pipelines_list = tf.io.gfile.listdir(dags_folder)
+    # Print every pipeline name in a new line.
+    click.echo('\n'.join('{}' for _ in range(len(pipelines_list)))
+               .format(*pipelines_list))
 
   def delete_pipeline(self) -> None:
     """Delete pipeline in Airflow."""
-    click.echo('Deleting pipeline in Airflow')
+    # Path to pipeline folder in airflow.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        self.flags_dict[labels.PIPELINE_NAME])
+
+    # Check if pipeline exists.
+    if not tf.io.gfile.exists(handler_pipeline_path):
+      sys.exit('Pipeline {} does not exist.'
+               .format(self.flags_dict[labels.PIPELINE_NAME]))
+
+    # Delete pipeline folder.
+    io_utils.delete_dir(handler_pipeline_path)
 
   def run_pipeline(self) -> None:
     """Trigger DAG in Airflow."""
