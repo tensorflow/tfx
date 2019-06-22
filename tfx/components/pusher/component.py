@@ -88,7 +88,7 @@ class Pusher(base_component.BaseComponent):
     """
     model_push = model_push or channel.Channel(
         type_name='ModelPushPath',
-        static_artifact_collection=[types.TfxArtifact('ModelPushPath')])
+        artifacts=[types.TfxArtifact('ModelPushPath')])
     if push_destination is None and not executor_class:
       raise ValueError('push_destination is required unless a custom '
                        'executor_class is supplied that does not require '

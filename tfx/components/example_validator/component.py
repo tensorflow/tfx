@@ -66,7 +66,7 @@ class ExampleValidator(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ExampleValidationPath',
-        static_artifact_collection=[
+        artifacts=[
             types.TfxArtifact('ExampleValidationPath')])
     spec = ExampleValidatorSpec(
         stats=channel.as_channel(stats),

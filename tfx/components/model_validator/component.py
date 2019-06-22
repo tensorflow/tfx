@@ -74,7 +74,7 @@ class ModelValidator(base_component.BaseComponent):
     """
     blessing = blessing or channel.Channel(
         type_name='ModelBlessingPath',
-        static_artifact_collection=[types.TfxArtifact('ModelBlessingPath')])
+        artifacts=[types.TfxArtifact('ModelBlessingPath')])
     spec = ModelValidatorSpec(
         examples=channel.as_channel(examples),
         model=channel.as_channel(model),

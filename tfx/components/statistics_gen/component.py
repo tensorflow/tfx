@@ -64,7 +64,7 @@ class StatisticsGen(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ExampleStatisticsPath',
-        static_artifact_collection=[
+        artifacts=[
             types.TfxArtifact('ExampleStatisticsPath', split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS])
     spec = StatisticsGenSpec(

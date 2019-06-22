@@ -62,6 +62,9 @@
     have been renamed to "input_config" and "output_config", respectively.
 *   The `base_component.ComponentOutputs` class has been renamed to
     `base_component._PropertyDictWrapper`.
+*   The utils.types.TfxType class has been renamed to utils.types.TfxArtifact.
+*   The "static_artifact_collection" argument to utils.channel.Channel has been
+    renamed to "artifacts".
 
 # Version 0.13.0
 

@@ -84,10 +84,10 @@ class Transform(base_component.BaseComponent):
     """
     transform_output = transform_output or channel.Channel(
         type_name='TransformPath',
-        static_artifact_collection=[types.TfxArtifact('TransformPath')])
+        artifacts=[types.TfxArtifact('TransformPath')])
     transformed_examples = transformed_examples or channel.Channel(
         type_name='ExamplesPath',
-        static_artifact_collection=[
+        artifacts=[
             types.TfxArtifact('ExamplesPath', split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS
         ])

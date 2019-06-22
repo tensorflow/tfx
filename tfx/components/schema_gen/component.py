@@ -64,7 +64,7 @@ class SchemaGen(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='SchemaPath',
-        static_artifact_collection=[types.TfxArtifact('SchemaPath')])
+        artifacts=[types.TfxArtifact('SchemaPath')])
     spec = SchemaGenSpec(
         stats=channel.as_channel(stats),
         output=output)
