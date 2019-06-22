@@ -53,6 +53,11 @@
     The "driver" optional argument of component classes is no longer available:
     users who need to override the driver for a component should subclass the
     component and override the DRIVER_CLASS field.
+*   The `example_gen.component.ExampleGen` class has been refactored into the
+    `example_gen.component._ExampleGen` and
+    `example_gen.component._FileBasedExampleGen` abstract classes. Users should
+    use their concrete subclasses instead of using these abstract components
+    directly.
 *   The "input" and "output" exec_properties fields for ExampleGen executors
     have been renamed to "input_config" and "output_config", respectively.
 *   The `base_component.ComponentOutputs` class has been renamed to
