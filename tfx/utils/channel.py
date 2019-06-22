@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import collections
 from typing import Iterable
+from typing import Optional
 from typing import Text
 from typing import Union
 from tfx.utils import types
@@ -39,33 +40,33 @@ class Channel(object):
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(self,
                type_name: Text,
-               static_artifact_collection: Iterable[types.TfxArtifact] = None):
+               artifacts: Optional[Iterable[types.TfxArtifact]] = None):
     """Initialization of Channel.
 
     Args:
       type_name: Name of the type that should be fed into or read from the
         Channel.
-      static_artifact_collection: (Optional) A collection of artifacts as the
+      artifacts: (Optional) A collection of artifacts as the
         values that can be read from the Channel. This is used to construct a
         static Channel.
     """
 
     self.type_name = type_name
-    self._static_artifact_collection = static_artifact_collection or []
+    self._artifacts = artifacts or []
     self._validate_type()
 
   def __str__(self):
     return 'Channel<{}: {}>'.format(self.type_name,
-                                    self._static_artifact_collection)
+                                    self._artifacts)
 
   def __repr__(self):
     return self.__str__()
 
   def _validate_type(self) -> None:
-    for artifact in self._static_artifact_collection:
+    for artifact in self._artifacts:
       if artifact.type_name != self.type_name:
         raise ValueError(
-            'Static artifact collection with different artifact type than {}'
+            "Artifacts provided do not match Channel's artifact type {}"
             .format(self.type_name))
 
   def get(self) -> Iterable[types.TfxArtifact]:
@@ -76,7 +77,7 @@ class Channel(object):
     """
     # TODO(b/125037186): We should support dynamic query against a Channel
     #  instead of a static Artifact collection.
-    return self._static_artifact_collection
+    return self._artifacts
 
   def type_check(self, expected_type_name: Text) -> None:
     """Checks whether a Channel has the expected type name.
@@ -113,7 +114,7 @@ def as_channel(source: Union[Channel, Iterable[types.TfxArtifact]]) -> Channel:
       if isinstance(first_element, types.TfxArtifact):
         return Channel(
             type_name=first_element.type_name,
-            static_artifact_collection=source)
+            artifacts=source)
       else:
         raise ValueError('Invalid source to be a channel: {}'.format(source))
     except StopIteration:

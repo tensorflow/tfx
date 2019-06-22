@@ -90,7 +90,7 @@ class SlackComponent(base_component.BaseComponent):
     """
     slack_blessing = slack_blessing or channel.Channel(
         type_name='ModelBlessingPath',
-        static_artifact_collection=[types.TfxArtifact('ModelBlessingPath')])
+        artifacts=[types.TfxArtifact('ModelBlessingPath')])
     spec = SlackComponentSpec(
         slack_token=slack_token,
         channel_id=channel_id,

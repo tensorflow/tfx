@@ -76,7 +76,7 @@ class Evaluator(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ModelEvalPath',
-        static_artifact_collection=[types.TfxArtifact('ModelEvalPath')])
+        artifacts=[types.TfxArtifact('ModelEvalPath')])
     spec = EvaluatorSpec(
         examples=channel.as_channel(examples),
         model_exports=channel.as_channel(model_exports),

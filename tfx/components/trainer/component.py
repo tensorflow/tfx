@@ -105,7 +105,7 @@ class Trainer(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ModelExportPath',
-        static_artifact_collection=[types.TfxArtifact('ModelExportPath')])
+        artifacts=[types.TfxArtifact('ModelExportPath')])
     spec = TrainerSpec(
         transformed_examples=channel.as_channel(transformed_examples),
         transform_output=channel.as_channel(transform_output),
