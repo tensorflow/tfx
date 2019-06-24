@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import os
 import apache_beam as beam
 import numpy as np
@@ -587,11 +586,14 @@ class Executor(base_executor.BaseExecutor):
     tf.logging.info(
         'Outputs to executor.Transform function: {}'.format(outputs))
 
+    feature_spec = schema_utils.schema_as_feature_spec(
+        input_dataset_metadata.schema).feature_spec
+
     # NOTE: We disallow an empty schema, which we detect by testing the
     # number of columns.  While in principal an empty schema is valid, in
     # practice this is a sign of a user error, and this is a convenient
     # place to catch that error.
-    if (not input_dataset_metadata.schema.as_feature_spec() and
+    if (not feature_spec and
         not self._ShouldDecodeAsRawExample(raw_examples_data_format)):
       raise ValueError(messages.SCHEMA_EMPTY)
 
@@ -599,8 +601,6 @@ class Executor(base_executor.BaseExecutor):
 
     materialize_output_paths = common.GetValues(
         outputs, labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL)
-
-    feature_spec = input_dataset_metadata.schema.as_feature_spec()
 
     # Inspecting the preprocessing_fn even if we know we need a full pass in
     # order to fail faster if it fails.
@@ -676,7 +676,8 @@ class Executor(base_executor.BaseExecutor):
                     list(enumerate(materialize_output_paths)))
     tf.logging.info('Transform output path: %s', transform_output_path)
 
-    feature_spec = input_dataset_metadata.schema.as_feature_spec()
+    feature_spec = schema_utils.schema_as_feature_spec(
+        input_dataset_metadata.schema).feature_spec
     try:
       analyze_input_columns = tft.get_analyze_input_columns(
           preprocessing_fn, feature_spec)
@@ -692,16 +693,18 @@ class Executor(base_executor.BaseExecutor):
     if compute_statistics:
       analyze_input_columns = list(
           set(list(analyze_input_columns) + list(transform_input_columns)))
-    analyze_input_dataset_metadata = copy.deepcopy(input_dataset_metadata)
-    transform_input_dataset_metadata = copy.deepcopy(input_dataset_metadata)
-    if input_dataset_metadata.schema is not _RAW_EXAMPLE_SCHEMA:
-      analyze_input_dataset_metadata.schema = dataset_schema.from_feature_spec(
-          {feature: feature_spec[feature] for feature in analyze_input_columns})
-      transform_input_dataset_metadata.schema = (
-          dataset_schema.from_feature_spec({
-              feature: feature_spec[feature]
-              for feature in transform_input_columns
-          }))
+    if input_dataset_metadata.schema is _RAW_EXAMPLE_SCHEMA:
+      analyze_input_dataset_metadata = input_dataset_metadata
+      transform_input_dataset_metadata = input_dataset_metadata
+    else:
+      analyze_input_dataset_metadata = dataset_metadata.DatasetMetadata(
+          schema_utils.schema_from_feature_spec(
+              {feature: feature_spec[feature]
+               for feature in analyze_input_columns}))
+      transform_input_dataset_metadata = dataset_metadata.DatasetMetadata(
+          schema_utils.schema_from_feature_spec(
+              {feature: feature_spec[feature]
+               for feature in transform_input_columns}))
 
     can_process_jointly = not bool(per_set_stats_output_paths or
                                    materialize_output_paths)
@@ -772,11 +775,7 @@ class Executor(base_executor.BaseExecutor):
                 transform_output_path,
                 tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
 
-            # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
-            # schema. Currently input dataset schema only contains dtypes,
-            # and other metadata is dropped due to roundtrip to tensors.
-            schema_proto = schema_utils.schema_from_feature_spec(
-                analyze_input_dataset_metadata.schema.as_feature_spec())
+            schema_proto = analyze_input_dataset_metadata.schema
             ([
                 dataset.decoded if stats_use_tfdv else dataset.encoded
                 for dataset in analyze_data_list
@@ -826,8 +825,7 @@ class Executor(base_executor.BaseExecutor):
             # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
             # schema. Currently input dataset schema only contains dtypes,
             # and other metadata is dropped due to roundtrip to tensors.
-            transformed_schema_proto = schema_utils.schema_from_feature_spec(
-                metadata.schema.as_feature_spec())
+            transformed_schema_proto = metadata.schema
 
             ([(dataset.transformed
                if stats_use_tfdv else dataset.transformed_and_encoded)
@@ -891,7 +889,7 @@ class Executor(base_executor.BaseExecutor):
       with tf.Session(graph=graph) as sess:
 
         input_signature = impl_helper.feature_spec_as_batched_placeholders(
-            metadata.schema.as_feature_spec())
+            schema_utils.schema_as_feature_spec(metadata.schema).feature_spec)
 
         # In order to avoid a bug where import_graph_def fails when the
         # input_map and return_elements of an imported graph are the same
