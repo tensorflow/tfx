@@ -20,11 +20,24 @@ from __future__ import print_function
 import json
 import os
 import sys
+import click
 import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
+
+
+def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
+  # Store pipeline_args in a pickle file
+  pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
+  pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
+  with open(pipeline_args_path, 'w') as f:
+    json.dump(pipeline_args, f)
+
+
+def _MockSubprocess2(cmd):  # pylint: disable=invalid-name, unused-argument
+  click.echo(cmd)
 
 
 class AirflowHandlerTest(tf.test.TestCase):
@@ -52,13 +65,6 @@ class AirflowHandlerTest(tf.test.TestCase):
   def tearDown(self):
     os.environ['HOME'] = self._original_home_value
     os.environ['AIRFLOW_HOME'] = self._original_airflow_home_value
-
-  def _MockSubprocess(self, env):
-    # Store pipeline_args in a pickle file
-    pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-    pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
-    with open(pipeline_args_path, 'w') as f:
-      json.dump(pipeline_args, f)
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def test_extract_pipeline_args(self):
@@ -200,6 +206,35 @@ class AirflowHandlerTest(tf.test.TestCase):
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
+
+  @mock.patch('subprocess.call', _MockSubprocess2)
+  def test_run_pipeline(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'],
+                                         'dags',
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+
+    # Now run the pipeline
+    flags_dict = {labels.ENGINE_FLAG: self.engine,
+                  labels.PIPELINE_NAME: self.pipeline_name}
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.run_pipeline()
+    self.assertIn("['airflow', 'unpause', '" + self.pipeline_name + "']",
+                  captured.contents())
+    self.assertIn("['airflow', 'trigger_dag', '" + self.pipeline_name + "']",
+                  captured.contents())
+
+  def test_run_pipeline_no_pipeline(self):
+    # Run pipeline without creating one.
+    flags_dict = {labels.ENGINE_FLAG: self.engine,
+                  labels.PIPELINE_NAME: self.pipeline_name}
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.run_pipeline()
+    self.assertEqual(str(err.exception), 'Pipeline {} does not exist.'
+                     .format(flags_dict[labels.PIPELINE_NAME]))
 
 if __name__ == '__main__':
   tf.test.main()

@@ -93,7 +93,17 @@ class AirflowHandler(base_handler.BaseHandler):
 
   def run_pipeline(self) -> None:
     """Trigger DAG in Airflow."""
-    click.echo('Triggering pipeline in Airflow')
+    # Check if pipeline exists.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        self.flags_dict[labels.PIPELINE_NAME])
+    if not tf.io.gfile.exists(handler_pipeline_path):
+      sys.exit('Pipeline {} does not exist.'
+               .format(self.flags_dict[labels.PIPELINE_NAME]))
+    # Unpause and trigger DAG.
+    subprocess.call(['airflow', 'unpause',
+                     self.flags_dict[labels.PIPELINE_NAME]])
+    subprocess.call(['airflow', 'trigger_dag',
+                     self.flags_dict[labels.PIPELINE_NAME]])
 
   # TODO(b/132286477): Shift get_handler_home to base_handler later if needed.
   def _get_handler_home(self) -> Text:
