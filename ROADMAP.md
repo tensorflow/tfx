@@ -40,32 +40,31 @@ new contributions.
 orchestrators, and data representations.
 
 ##### Performance
-*   Better single machine (vertical) scaling.
-*   Better distributed processing (horizontal) scaling through
-[Apache Flink](https://flink.apache.org/) and
-[Apache Spark](https://spark.apache.org/) support.
 *   Better distributed training support
 ([DistributionStrategy](https://www.tensorflow.org/guide/distribute_strategy)).
 
 ##### Usability
-*   Support of TensorFlow 2.0 ease of use.
-*   Integration with Tensorboard and Jupyter notebooks.
+*   Support of TensorFlow 2.0, starting with Keras.
+*   Integration with TensorBoard and Jupyter notebooks.
 *   A unified command line interface (CLI) for users to perform critical user
 journeys in different environments.
 *   Improving the testing capabilities for OSS developers.
+*   Lightweight local orchestrator.
+*   Increased interoperability with Kubeflow Pipelines.
 
 ##### Education
-*   Improved introductory TFX materials.
-*   More pipeline code examples.
-*   TFX video tutorials.
+*   More pipeline code examples, including DIY orchestrators and custom
+components.
+*   Incorporate community feedback (RFCs) to the TFX design review process.
 
-##### Innovation and Collaboration
-*   TFX Community group.
+##### Innovation and collaboration
 *   Formalize Special Interest Groups (SIGs) for specific aspects of TFX to
 accelerate community innovation and collaboration.
-*   Early Access to new features.
+*   Early access to new features.
 
 #### History
+*   Q2 2019: Support for python3; spark and flink runners (with examples);
+and custom executors (with examples).
 *   Q1 2019: [TFX](https://www.tensorflow.org/tfx/guide) end-to-end pipeline,
 config, and orchestration initial release.
 *   Q1 2019: [ml.metadata](https://www.tensorflow.org/tfx/guide/mlmd) initial
