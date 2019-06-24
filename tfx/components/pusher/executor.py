@@ -21,7 +21,7 @@ import os
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
-from tfx.orchestration.gcp import cmle_runner
+from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import pusher_pb2
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -143,5 +143,5 @@ class Executor(base_executor.BaseExecutor):
             '\'cmle_serving_args\' is deprecated, please use custom executor '
             'in tfx.extensions.google_cloud_ai_platform.pusher instead'
         )
-        return cmle_runner.deploy_model_for_cmle_serving(
+        return runner.deploy_model_for_cmle_serving(
             serving_path, model_version, cmle_serving_args)

@@ -20,7 +20,7 @@ import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
-from tfx.orchestration.gcp import cmle_runner
+from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.utils import types
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -63,6 +63,5 @@ class Executor(base_executor.BaseExecutor):
                                           {}).pop('ai_platform_training_args')
     executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
                                      tfx_trainer_executor.Executor.__name__)
-    return cmle_runner.start_cmle_training(input_dict, output_dict,
-                                           exec_properties, executor_class_path,
-                                           training_inputs)
+    return runner.start_cmle_training(input_dict, output_dict, exec_properties,
+                                      executor_class_path, training_inputs)

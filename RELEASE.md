@@ -38,6 +38,8 @@
     * add test to train, evaluate and export.
 *   Component definition streamlined with explicit ComponentSpec and new style
     for defining component classes.
+*   Moved tfx.orchestration.gcp.cmle_runner to
+    tfx.extensions.google_cloud_ai_platform.runner.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components

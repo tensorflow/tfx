@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.gcp.cmle_runner."""
+"""Tests for tfx.extensions.google_cloud_ai_platform.runner."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,11 +22,11 @@ import os
 import mock
 import tensorflow as tf
 
-from tfx.orchestration.gcp import cmle_runner
+from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.utils import io_utils
 
 
-class CmleRunnerTest(tf.test.TestCase):
+class RunnerTest(tf.test.TestCase):
 
   def setUp(self):
     self._output_data_dir = os.path.join(
@@ -53,9 +53,12 @@ class CmleRunnerTest(tf.test.TestCase):
         'project_id': self._project_id,
     }
 
-  @mock.patch('tfx.orchestration.gcp.cmle_runner.deps_utils'
-             )
-  @mock.patch('tfx.orchestration.gcp.cmle_runner.discovery')
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.deps_utils'
+  )
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
+  )
   def testStartCMLETraining(self, mock_discovery, mock_deps_utils):
     mock_discovery.build.return_value = self._mock_api_client
     mock_create = mock.Mock()
@@ -69,9 +72,9 @@ class CmleRunnerTest(tf.test.TestCase):
 
     class_path = 'foo.bar.class'
 
-    cmle_runner.start_cmle_training(self._inputs, self._outputs,
-                                    self._exec_properties, class_path,
-                                    self._training_inputs)
+    runner.start_cmle_training(self._inputs, self._outputs,
+                               self._exec_properties, class_path,
+                               self._training_inputs)
 
     mock_deps_utils.build_ephemeral_package.assert_called_with()
 
@@ -81,7 +84,7 @@ class CmleRunnerTest(tf.test.TestCase):
     body = kwargs['body']
     self.assertDictContainsSubset(
         {
-            'pythonVersion': cmle_runner._get_caip_python_version(),
+            'pythonVersion': runner._get_caip_python_version(),
             'runtimeVersion': '.'.join(tf.__version__.split('.')[0:2]),
             'jobDir': self._job_dir,
             'args': [
@@ -94,7 +97,9 @@ class CmleRunnerTest(tf.test.TestCase):
     self.assertStartsWith(body['jobId'], 'tfx_')
     mock_get.execute.assert_called_with()
 
-  @mock.patch('tfx.orchestration.gcp.cmle_runner.discovery')
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
+  )
   def testDeployModelForCMLEServing(self, mock_discovery):
     serving_path = os.path.join(self._output_data_dir, 'serving_path')
     model_version = 'model_version'
@@ -109,8 +114,8 @@ class CmleRunnerTest(tf.test.TestCase):
         'done': 'Done',
     }
 
-    cmle_runner.deploy_model_for_cmle_serving(serving_path, model_version,
-                                              self._cmle_serving_args)
+    runner.deploy_model_for_cmle_serving(serving_path, model_version,
+                                         self._cmle_serving_args)
 
     mock_create.assert_called_with(
         body=mock.ANY,
@@ -121,8 +126,8 @@ class CmleRunnerTest(tf.test.TestCase):
         {
             'name': 'v{}'.format(model_version),
             'deployment_uri': serving_path,
-            'runtime_version': cmle_runner._get_tf_runtime_version(),
-            'python_version': cmle_runner._get_caip_python_version(),
+            'runtime_version': runner._get_tf_runtime_version(),
+            'python_version': runner._get_caip_python_version(),
         }, body)
     mock_get.assert_called_with(name='op_name')
 

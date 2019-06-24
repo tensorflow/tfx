@@ -27,7 +27,7 @@ from typing import Text
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.base import base_executor
-from tfx.orchestration.gcp import cmle_runner
+from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import trainer_pb2
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -112,9 +112,9 @@ class Executor(base_executor.BaseExecutor):
             'please use extension executor at '
             'tfx.extensions.google_cloud_ai_platform.trainer.executor instead')
 
-        return cmle_runner.start_cmle_training(input_dict, output_dict,
-                                               exec_properties,
-                                               executor_class_path, cmle_args)
+        return runner.start_cmle_training(input_dict, output_dict,
+                                          exec_properties, executor_class_path,
+                                          cmle_args)
 
     trainer_fn = io_utils.import_func(exec_properties['module_file'],
                                       'trainer_fn')
