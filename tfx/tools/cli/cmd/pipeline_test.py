@@ -52,7 +52,6 @@ class PipelineTest(tf.test.TestCase):
   def test_pipeline_run(self):
     result = self.runner.invoke(
         pipeline_group, ['run', '--name', 'chicago', '--engine', 'airflow'])
-    self.assertEqual(0, result.exit_code)
     self.assertIn('Triggering pipeline', result.output)
 
   def test_pipeline_delete(self):
