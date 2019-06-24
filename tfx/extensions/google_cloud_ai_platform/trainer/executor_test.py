@@ -46,14 +46,14 @@ class ExecutorTest(tf.test.TestCase):
     }
 
   @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.trainer.executor.cmle_runner'
+      'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
   )
-  def testDo(self, mock_cmle_runner):
+  def testDo(self, mock_runner):
     executor = Executor()
     executor.Do(self._inputs, self._outputs, self._exec_properties)
     executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
                                      tfx_trainer_executor.Executor.__name__)
-    mock_cmle_runner.start_cmle_training.assert_called_with(
+    mock_runner.start_cmle_training.assert_called_with(
         self._inputs,
         self._outputs,
         self._exec_properties,
