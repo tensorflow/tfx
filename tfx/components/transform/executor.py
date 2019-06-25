@@ -162,6 +162,25 @@ class _Dataset(object):
     self._transformed_and_encoded = val
 
 
+def _GetSchemaProto(
+    metadata: dataset_metadata.DatasetMetadata) -> schema_pb2.Schema:
+  """Gets the schema proto associated with a DatasetMetadata.
+
+  This is needed because tensorflow_transform 0.13 and tensorflow_transform 0.14
+  have a different API for DatasetMetadata.
+
+  Args:
+    metadata: A dataset_metadata.DatasetMetadata.
+
+  Returns:
+    A schema_pb2.Schema.
+  """
+  # `schema` is either a Schema proto or dataset_schema.Schema.
+  schema = metadata.schema
+  # In the case where it's a dataset_schema.Schema, fetch the schema proto.
+  return getattr(schema, '_schema_proto', schema)
+
+
 class Executor(base_executor.BaseExecutor):
   """Transform executor."""
 
@@ -587,7 +606,7 @@ class Executor(base_executor.BaseExecutor):
         'Outputs to executor.Transform function: {}'.format(outputs))
 
     feature_spec = schema_utils.schema_as_feature_spec(
-        input_dataset_metadata.schema).feature_spec
+        _GetSchemaProto(input_dataset_metadata)).feature_spec
 
     # NOTE: We disallow an empty schema, which we detect by testing the
     # number of columns.  While in principal an empty schema is valid, in
@@ -677,7 +696,7 @@ class Executor(base_executor.BaseExecutor):
     tf.logging.info('Transform output path: %s', transform_output_path)
 
     feature_spec = schema_utils.schema_as_feature_spec(
-        input_dataset_metadata.schema).feature_spec
+        _GetSchemaProto(input_dataset_metadata)).feature_spec
     try:
       analyze_input_columns = tft.get_analyze_input_columns(
           preprocessing_fn, feature_spec)
@@ -698,11 +717,11 @@ class Executor(base_executor.BaseExecutor):
       transform_input_dataset_metadata = input_dataset_metadata
     else:
       analyze_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-          schema_utils.schema_from_feature_spec(
+          dataset_schema.from_feature_spec(
               {feature: feature_spec[feature]
                for feature in analyze_input_columns}))
       transform_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-          schema_utils.schema_from_feature_spec(
+          dataset_schema.from_feature_spec(
               {feature: feature_spec[feature]
                for feature in transform_input_columns}))
 
@@ -775,7 +794,7 @@ class Executor(base_executor.BaseExecutor):
                 transform_output_path,
                 tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
 
-            schema_proto = analyze_input_dataset_metadata.schema
+            schema_proto = _GetSchemaProto(analyze_input_dataset_metadata)
             ([
                 dataset.decoded if stats_use_tfdv else dataset.encoded
                 for dataset in analyze_data_list
@@ -825,7 +844,7 @@ class Executor(base_executor.BaseExecutor):
             # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
             # schema. Currently input dataset schema only contains dtypes,
             # and other metadata is dropped due to roundtrip to tensors.
-            transformed_schema_proto = metadata.schema
+            transformed_schema_proto = _GetSchemaProto(metadata)
 
             ([(dataset.transformed
                if stats_use_tfdv else dataset.transformed_and_encoded)
@@ -889,7 +908,8 @@ class Executor(base_executor.BaseExecutor):
       with tf.Session(graph=graph) as sess:
 
         input_signature = impl_helper.feature_spec_as_batched_placeholders(
-            schema_utils.schema_as_feature_spec(metadata.schema).feature_spec)
+            schema_utils.schema_as_feature_spec(
+                _GetSchemaProto(metadata)).feature_spec)
 
         # In order to avoid a bug where import_graph_def fails when the
         # input_map and return_elements of an imported graph are the same
