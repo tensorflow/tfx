@@ -27,15 +27,21 @@ from tfx.utils import types
 class Driver(base_driver.BaseDriver):
   """Custom driver for model validator."""
 
-  def _fetch_last_blessed_model(self) -> Tuple[Optional[Text], Optional[int]]:
+  def _fetch_last_blessed_model(
+      self,
+      component_unique_name: Text,
+  ) -> Tuple[Optional[Text], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     # TODO(b/122970393): This is a temporary solution since ML metadata not
     # support get artifacts by type.
-    previous_blessed_models = [
-        x for x in self._metadata_handler.get_all_artifacts()
-        if (x.properties['type_name'].string_value == 'ModelBlessingPath' and
-            x.custom_properties['blessed'].int_value == 1)
-    ]
+    previous_blessed_models = []
+    for a in self._metadata_handler.get_all_artifacts():
+      if (a.properties['type_name'].string_value == 'ModelBlessingPath' and
+          a.custom_properties['blessed'].int_value == 1 and
+          a.custom_properties['component_unique_name'].string_value ==
+          component_unique_name):
+        previous_blessed_models.append(a)
+
     if previous_blessed_models:
       last_blessed_model = max(
           previous_blessed_models, key=lambda m: m.properties['span'].int_value)
@@ -53,14 +59,17 @@ class Driver(base_driver.BaseDriver):
       driver_options: data_types.DriverArgs,
   ) -> data_types.ExecutionDecision:
     """Extends BaseDriver by resolving last blessed model."""
-    execution_decision = self._default_caching_handling(
-        input_dict, output_dict, exec_properties, driver_options)
+    execution_decision = self._default_caching_handling(input_dict, output_dict,
+                                                        exec_properties,
+                                                        driver_options)
 
     # If current model isn't blessed before (no caching).
+    component_unique_name = execution_decision.exec_properties[
+        'component_unique_name']
     if execution_decision.execution_id:
       (execution_decision.exec_properties['blessed_model'],
        execution_decision.exec_properties['blessed_model_id']
-      ) = self._fetch_last_blessed_model()
+      ) = self._fetch_last_blessed_model(component_unique_name)
       tf.logging.info('Resolved last blessed model {}'.format(
           execution_decision.exec_properties['blessed_model']))
 
