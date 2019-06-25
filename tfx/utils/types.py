@@ -68,8 +68,6 @@ class TfxArtifact(object):
     artifact_type = metadata_store_pb2.ArtifactType()
     artifact_type.name = type_name
     artifact_type.properties['type_name'] = metadata_store_pb2.STRING
-    # This is a temporary solution due to b/123435989.
-    artifact_type.properties['name'] = metadata_store_pb2.STRING
     # This indicates the state of an artifact. A state can be any of the
     # followings: PENDING, PUBLISHED, MISSING, DELETING, DELETED
     # TODO(ruoyu): Maybe switch to artifact top-level state if it's supported.
@@ -80,6 +78,15 @@ class TfxArtifact(object):
     # Comma separated splits recognized. Empty string means artifact has no
     # split.
     artifact_type.properties['split'] = metadata_store_pb2.STRING
+    # TODO(b/135056715): Rely on MLMD context for pipeline grouping for
+    # artifacts once it's ready.
+    # The name of the pipeline that produces the artifact.
+    artifact_type.properties['pipeline_name'] = metadata_store_pb2.STRING
+    # The name of the component that produces the artifact.
+    artifact_type.properties['producer_component'] = metadata_store_pb2.STRING
+    # The name of the artifact, used to differentiate same type of artifact
+    # produced by the same component.
+    artifact_type.properties['name'] = metadata_store_pb2.STRING
 
     self.artifact_type = artifact_type
 
@@ -181,6 +188,37 @@ class TfxArtifact(object):
     """Set state of the underlying artifact."""
     self.artifact.properties['split'].string_value = split
 
+  @property
+  def pipeline_name(self) -> Text:
+    """Name of the pipeline that produce the artifact."""
+    return self.artifact.properties['pipeline_name'].string_value
+
+  @pipeline_name.setter
+  def pipeline_name(self, pipeline_name: Text):
+    """Set name of the pipeline that produce the artifact."""
+    self.artifact.properties['pipeline_name'].string_value = pipeline_name
+
+  @property
+  def producer_component(self) -> Text:
+    """Producer component of the artifact."""
+    return self.artifact.properties['producer_component'].string_value
+
+  @producer_component.setter
+  def producer_component(self, producer_component: Text):
+    """Set producer component of the artifact."""
+    self.artifact.properties[
+        'producer_component'].string_value = producer_component
+
+  @property
+  def name(self) -> Text:
+    """Name of the artifact."""
+    return self.artifact.properties['name'].string_value
+
+  @name.setter
+  def name(self, name: Text):
+    """Set the name of the artifact."""
+    self.artifact.properties['name'].string_value = name
+
   def set_artifact(self, artifact: metadata_store_pb2.Artifact):
     """Set entire artifact in this object."""
     self.artifact = artifact
@@ -200,8 +238,7 @@ class TfxArtifact(object):
 
 
 @deprecation.deprecated(
-    None,
-    'TfxType has been renamed to TfxArtifact as of TFX 0.14.0.')
+    None, 'TfxType has been renamed to TfxArtifact as of TFX 0.14.0.')
 class TfxType(TfxArtifact):
   pass
 

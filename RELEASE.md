@@ -67,6 +67,8 @@
 *   The utils.types.TfxType class has been renamed to utils.types.TfxArtifact.
 *   The "static_artifact_collection" argument to utils.channel.Channel has been
     renamed to "artifacts".
+*   ArtifactType for artifacts will have two new properties: pipeline_name and
+    producer_component.
 
 # Version 0.13.0
 
