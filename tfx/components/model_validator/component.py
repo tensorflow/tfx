@@ -21,6 +21,7 @@ from typing import Optional, Text
 
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
+from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.utils import channel
@@ -31,7 +32,9 @@ class ModelValidatorSpec(base_component.ComponentSpec):
   """ModelValidator component spec."""
 
   COMPONENT_NAME = 'ModelValidator'
-  PARAMETERS = {}
+  PARAMETERS = {
+      'component_unique_name': ExecutionParameter(type=str),
+  }
   INPUTS = {
       'examples': ChannelParameter(type_name='ExamplesPath'),
       'model': ChannelParameter(type_name='ModelExportPath'),
@@ -75,8 +78,10 @@ class ModelValidator(base_component.BaseComponent):
     blessing = blessing or channel.Channel(
         type_name='ModelBlessingPath',
         artifacts=[types.TfxArtifact('ModelBlessingPath')])
+    name = name or ''
     spec = ModelValidatorSpec(
         examples=channel.as_channel(examples),
         model=channel.as_channel(model),
+        component_unique_name=name,
         blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, name=name)

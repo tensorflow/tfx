@@ -33,6 +33,7 @@ class ExecutorTest(tf.test.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
+    self.component_name = 'test_component'
 
     # Create input dict.
     eval_examples = types.TfxArtifact(type_name='ExamplesPath', split='eval')
@@ -64,6 +65,8 @@ class ExecutorTest(tf.test.TestCase):
             os.path.join(self._source_data_dir, 'trainer/blessed/'),
         'blessed_model_id':
             123,
+        'component_unique_name':
+            self.component_name,
     }
 
     # Run executor.
@@ -81,6 +84,7 @@ class ExecutorTest(tf.test.TestCase):
     exec_properties = {
         'blessed_model': None,
         'blessed_model_id': None,
+        'component_unique_name': self.component_name,
     }
 
     # Run executor.
