@@ -31,7 +31,7 @@ ability for users to inject callbacks for TFX executors, create custom
 executors, components and pipelines.  Encourage the discovery and reuse of these
 new contributions.
 *   Participate in and extend support for other OSS efforts, initially:
-[Apache Beam](https://beam.apache.org/)
+[Apache Beam](https://beam.apache.org/),
 [ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd),
 [Kubeflow](https://www.kubeflow.org/),
 [Tensorboard](https://www.tensorflow.org/guide/summaries_and_tensorboard), and
