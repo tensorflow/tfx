@@ -22,6 +22,7 @@ import os
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration import data_types
 from tfx.orchestration.metadata import Metadata
 from tfx.utils import logging_utils
 from tfx.utils import types
@@ -37,8 +38,7 @@ class MetadataTest(tf.test.TestCase):
     self._logger = logging_utils.get_logger(logger_config)
 
   def test_empty_artifact(self):
-    with Metadata(
-        connection_config=self._connection_config, logger=self._logger) as m:
+    with Metadata(connection_config=self._connection_config) as m:
       m.publish_artifacts([])
       eid = m.prepare_execution('Test', {})
       m.publish_execution(eid, {}, {})
@@ -55,8 +55,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
   def test_artifact(self):
-    with Metadata(
-        connection_config=self._connection_config, logger=self._logger) as m:
+    with Metadata(connection_config=self._connection_config) as m:
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
@@ -97,8 +96,7 @@ class MetadataTest(tf.test.TestCase):
                         types.ARTIFACT_STATE_PUBLISHED)
 
   def test_execution(self):
-    with Metadata(
-        connection_config=self._connection_config, logger=self._logger) as m:
+    with Metadata(connection_config=self._connection_config) as m:
 
       # Test prepare_execution.
       exec_properties = {}
@@ -131,7 +129,7 @@ class MetadataTest(tf.test.TestCase):
       events = m.store.get_events_by_execution_ids([eid])
       self.assertEqual(2, len(events))
       self.assertEqual(input_artifact.id, events[0].artifact_id)
-      self.assertEqual(metadata_store_pb2.Event.DECLARED_INPUT, events[0].type)
+      self.assertEqual(metadata_store_pb2.Event.INPUT, events[0].type)
       self.assertProtoEquals(
           """
           steps {
@@ -141,7 +139,7 @@ class MetadataTest(tf.test.TestCase):
             index: 0
           }""", events[0].path)
       self.assertEqual(output_artifact.id, events[1].artifact_id)
-      self.assertEqual(metadata_store_pb2.Event.DECLARED_OUTPUT, events[1].type)
+      self.assertEqual(metadata_store_pb2.Event.OUTPUT, events[1].type)
       self.assertProtoEquals(
           """
           steps {
@@ -152,8 +150,7 @@ class MetadataTest(tf.test.TestCase):
           }""", events[1].path)
 
   def test_fetch_previous_result(self):
-    with Metadata(
-        connection_config=self._connection_config, logger=self._logger) as m:
+    with Metadata(connection_config=self._connection_config) as m:
 
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}
@@ -187,8 +184,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(previous_artifact.type_id, current_artifact.type_id)
 
   def test_get_cached_execution_ids(self):
-    with Metadata(
-        connection_config=self._connection_config, logger=self._logger) as m:
+    with Metadata(connection_config=self._connection_config) as m:
       mock_store = mock.Mock()
       mock_store.get_events_by_execution_ids.side_effect = [
           [
@@ -223,6 +219,31 @@ class MetadataTest(tf.test.TestCase):
       }
 
       self.assertEqual(1, m._get_cached_execution_id(input_dict, [3, 2, 1]))
+
+  def test_search_artifacts(self):
+    with Metadata(connection_config=self._connection_config) as m:
+      pipeline_info = data_types.PipelineInfo(
+          pipeline_name='mypipeline', pipeline_root='root', run_id='run_id_0')
+      component_info = data_types.ComponentInfo(
+          component_type='a.b.c', component_id='my_component_id')
+      exec_properties = {'log_root': 'path'}
+      eid = m.register_execution(
+          exec_properties=exec_properties,
+          pipeline_info=pipeline_info,
+          component_info=component_info)
+      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      m.publish_artifacts([input_artifact])
+      output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')
+      output_artifact.uri = 'my/uri'
+      input_dict = {'input': [input_artifact]}
+      output_dict = {'output': [output_artifact]}
+      m.publish_execution(eid, input_dict, output_dict)
+      [artifact] = m.search_artifacts(
+          artifact_name='output',
+          pipeline_name='mypipeline',
+          run_id='run_id_0',
+          producer_component_id='my_component_id')
+      self.assertEqual(artifact.uri, output_artifact.uri)
 
 
 if __name__ == '__main__':

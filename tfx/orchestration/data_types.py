@@ -32,19 +32,25 @@ class ExecutionDecision(object):
     exec_properties: Updated dict of other execution properties that will be
       used by actual execution.
     execution_id: Registered execution_id for the upcoming execution.
-    execution_needed: Whether or not a new execution is needed.
+    use_cached_results: Whether or not to use a cached result.
   """
 
-  def __init__(self,
-               input_dict: Dict[Text, List[types.TfxArtifact]],
-               output_dict: Dict[Text, List[types.TfxArtifact]],
-               exec_properties: Dict[Text, Any],
-               execution_id: Optional[int] = None):
+  def __init__(
+      self,
+      input_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.TfxArtifact]],
+      exec_properties: Dict[Text, Any],
+      # TODO(ruoyu): Make this required once finish Airflow migration.
+      execution_id: Optional[int] = None,
+      use_cached_results: Optional[bool] = False):
     self.input_dict = input_dict
     self.output_dict = output_dict
     self.exec_properties = exec_properties
     self.execution_id = execution_id
+    self.use_cached_results = use_cached_results
 
+  # TODO(ruoyu): Deprecate this in favor of use_cached_results once finishing
+  # migration to go/tfx-oss-artifact-passing.
   @property
   def execution_needed(self) -> bool:
     """Indicates whether a new execution is needed.
@@ -69,6 +75,42 @@ class DriverArgs(object):
 
   def __init__(self, worker_name: Text, base_output_dir: Text,
                enable_cache: bool):
+    # TODO(ruoyu): Remove worker_name and base_output_dir once migration to
+    # go/tfx-oss-artifact-passing finishes.
     self.worker_name = worker_name
     self.base_output_dir = base_output_dir
     self.enable_cache = enable_cache
+
+
+class PipelineInfo(object):
+  """Pipeline info from orchestration system.
+
+  Attributes:
+    pipeline_name: name of the pipeline. We expect this to be unique for
+      different pipelines.
+    pipeline_root: root directory of the pipeline. We expect this to be unique
+      for different pipelines.
+    run_id: optional uuid for a single run of the pipeline.
+  """
+
+  def __init__(self,
+               pipeline_name: Text,
+               pipeline_root: Text,
+               run_id: Optional[Text] = None):
+    self.pipeline_name = pipeline_name
+    self.pipeline_root = pipeline_root
+    self.run_id = run_id
+
+
+class ComponentInfo(object):
+  """Component info.
+
+  Attributes:
+    component_type: type of the component. Usually determined by the executor
+      python path or image uri of.
+    component_id: a unique identifier of the component instance within pipeline.
+  """
+
+  def __init__(self, component_type, component_id):
+    self.component_type = component_type
+    self.component_id = component_id

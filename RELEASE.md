@@ -15,6 +15,8 @@
     that can be applied to each pipeline step.
 *   Added scripts and instructions to run on Spark via Beam to the Chicago Taxi
     examples
+*   Introduced new mechanism of artifact info passing between component that
+    solely rely on ML Metadata
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
