@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Text
 
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.utils import channel
 from tfx.utils import types
 
 
@@ -81,22 +82,44 @@ class BaseDriver(object):
     else:
       return None
 
-  def _verify_inputs(self,
-                     input_dict: Dict[Text, List[types.TfxArtifact]]) -> None:
-    """Verify input exist.
+  def _verify_artifacts(self,
+                        artifacts_dict: Dict[Text, List[types.TfxArtifact]]
+                       ) -> None:
+    """Verify that all artifacts have existing uri.
 
     Args:
-      input_dict: key -> TfxArtifact for inputs.
+      artifacts_dict: key -> TfxArtifact for inputs.
 
     Raises:
-      RuntimeError: if any input as an empty uri.
+      RuntimeError: if any input as an empty or non-existing uri.
     """
-    for single_input_list in input_dict.values():
-      for single_input in single_input_list:
-        if not single_input.uri:
-          raise RuntimeError('Input {} not available'.format(single_input))
-        if not tf.gfile.Exists(os.path.dirname(single_input.uri)):
-          raise RuntimeError('Input {} is missing'.format(single_input))
+    for single_artifacts_list in artifacts_dict.values():
+      for artifact in single_artifacts_list:
+        if not artifact.uri:
+          raise RuntimeError('Artifact {} does not have uri'.format(artifact))
+        if not tf.gfile.Exists(os.path.dirname(artifact.uri)):
+          raise RuntimeError('Artifact uri {} is missing'.format(artifact.uri))
+
+  def _generate_output_uri(self, artifact: types.TfxArtifact,
+                           base_output_dir: Text, name: Text,
+                           execution_id: int) -> Text:
+    """Generate uri for output artifact."""
+
+    # Generates outputs uri based on execution id and optional split.
+    # Last empty string forces this be to a directory.
+    uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
+                       '')
+    if tf.gfile.Exists(uri):
+      msg = 'Output artifact uri {} already exists'.format(uri)
+      tf.logging.error(msg)
+      raise RuntimeError(msg)
+    else:
+      # TODO(zhitaoli): Consider refactoring this out into something
+      # which can handle permission bits.
+      tf.logging.info('Creating output artifact uri %s as directory', uri)
+      tf.gfile.MakeDirs(uri)
+
+    return uri
 
   def _default_caching_handling(
       self,
@@ -130,35 +153,13 @@ class BaseDriver(object):
 
     # Checks inputs exist and have valid states and locks them to avoid GC half
     # way
-    self._verify_inputs(input_dict)
+    self._verify_artifacts(input_dict)
 
     # Updates output.
-    max_input_span = 0
-    for input_list in input_dict.values():
-      for single_input in input_list:
-        max_input_span = max(max_input_span, single_input.span)
-    # TODO(ruoyu): This location is dangerous because this function is not
-    # guaranteed to be called on custom driver.
-    for output_name, output_list in output_dict.items():
-      for output_artifact in output_list:
-        # Updates outputs uri based on execution id and optional split.
-        # Last empty string forces this be to a directory.
-        output_artifact.uri = os.path.join(base_output_dir, output_name,
-                                           str(execution_id),
-                                           output_artifact.split, '')
-        if tf.gfile.Exists(output_artifact.uri):
-          msg = 'Output artifact uri {} already exists'.format(
-              output_artifact.uri)
-          tf.logging.error(msg)
-          raise RuntimeError(msg)
-        else:
-          # TODO(zhitaoli): Consider refactoring this out into something
-          # which can handle permission bits.
-          tf.logging.info('Creating output artifact uri %s as directory',
-                          output_artifact.uri)
-          tf.gfile.MakeDirs(output_artifact.uri)
-        # Defaults to make the output span the max of input span.
-        output_artifact.span = max_input_span
+    for name, output_list in output_dict.items():
+      for artifact in output_list:
+        artifact.uri = self._generate_output_uri(artifact, base_output_dir,
+                                                 name, execution_id)
 
     return data_types.ExecutionDecision(
         input_dict=input_dict,
@@ -166,6 +167,8 @@ class BaseDriver(object):
         exec_properties=exec_properties,
         execution_id=execution_id)
 
+  # TODO(ruoyu): Deprecate this in favor of pre_execution() once migration to
+  # go/tfx-oss-artifact-passing finishes.
   def prepare_execution(
       self,
       input_dict: Dict[Text, List[types.TfxArtifact]],
@@ -204,3 +207,161 @@ class BaseDriver(object):
                          execution_decision.output_dict,
                          execution_decision.exec_properties)
     return execution_decision
+
+  def resolve_input_artifacts(
+      self,
+      input_dict: Dict[Text, channel.Channel],
+      pipeline_info: data_types.PipelineInfo,
+  ) -> Dict[Text, List[types.TfxArtifact]]:
+    """Resolve input artifacts from metadata.
+
+    Subclasses might override this function for customized artifact properties
+    resoultion logic.
+
+    Args:
+      input_dict: key -> Channel mapping for inputs generated in logical
+        pipeline.
+      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
+        related properties including component_type and component_id.
+
+    Returns:
+      Final execution properties that will be used in execution.
+
+    Raises:
+      RuntimeError: for Channels that do not contain any artifact. This will be
+      reverted once we support Channel-based input resolution.
+    """
+    input_artifacts = {}
+    for name, input_channel in input_dict.items():
+      artifacts = list(input_channel.get())
+      # TODO(ruoyu): Remove once channel-based input resolution is supported.
+      if not artifacts:
+        raise RuntimeError('Channel-based input resolution is not supported.')
+      input_artifacts[name] = self._metadata_handler.search_artifacts(
+          artifacts[0].name, pipeline_info.pipeline_name, pipeline_info.run_id,
+          artifacts[0].producer_component)
+    return input_artifacts
+
+  def resolve_exec_properties(
+      self,
+      exec_properties: Dict[Text, Any],
+      component_info: data_types.ComponentInfo,  # pylint: disable=unused-argument
+  ) -> Dict[Text, Any]:
+    """Resolve execution properties.
+
+    Subclasses might override this function for customized execution properties
+    resoultion logic.
+
+    Args:
+      exec_properties: Original execution properties passed in.
+      component_info: An instance of data_types.ComponentInfo, holding component
+        related properties including component_type and component_id.
+
+    Returns:
+      Final execution properties that will be used in execution.
+    """
+    return exec_properties
+
+  def _prepare_output_artifacts(
+      self,
+      output_dict: Dict[Text, channel.Channel],
+      execution_id: int,
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+  ) -> Dict[Text, List[types.TfxArtifact]]:
+    """Prepare output artifacts by assigning uris to each artifact."""
+    output_artifacts_dict = dict(
+        (k, list(v.get())) for k, v in output_dict.items())
+    base_output_dir = os.path.join(pipeline_info.pipeline_root,
+                                   component_info.component_id)
+    for name, output_list in output_artifacts_dict.items():
+      for artifact in output_list:
+        artifact.uri = self._generate_output_uri(artifact, base_output_dir,
+                                                 name, execution_id)
+    return output_artifacts_dict
+
+  def _fetch_cached_artifacts(self, output_dict: Dict[Text, channel.Channel],
+                              cached_execution_id: int
+                             ) -> Dict[Text, List[types.TfxArtifact]]:
+    """Fetch cached output artifacts."""
+    output_artifacts_dict = dict(
+        (k, list(v.get())) for k, v in output_dict.items())
+    return self._metadata_handler.fetch_previous_result_artifacts(
+        output_artifacts_dict, cached_execution_id)
+
+  def pre_execution(
+      self,
+      input_dict: Dict[Text, channel.Channel],
+      output_dict: Dict[Text, channel.Channel],
+      exec_properties: Dict[Text, Any],
+      driver_args: data_types.DriverArgs,
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+  ) -> data_types.ExecutionDecision:
+    """Handle pre-execution logic.
+
+    There are four steps:
+      1. Fetches input artifacts from metadata and checks whether uri exists.
+      2. Registers execution.
+      3. Decides whether a new execution is needed.
+      4a. If (3), prepare output artifacts.
+      4b. If not (3), fetch cached output artifacts.
+
+    Args:
+      input_dict: key -> Channel for inputs.
+      output_dict: key -> Channel for outputs. Uris of the outputs are not
+        assigned.
+      exec_properties: Dict of other execution properties.
+      driver_args: An instance of data_types.DriverArgs class.
+      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
+        related properties including pipeline_name, pipeline_root and run_id
+      component_info: An instance of data_types.ComponentInfo, holding component
+        related properties including component_type and component_id.
+
+    Returns:
+      data_types.ExecutionDecision object.
+
+    Raises:
+      RuntimeError: if any input as an empty uri.
+    """
+
+    # Step 1. Fetch inputs from metadata.
+    input_artifacts = self.resolve_input_artifacts(input_dict, pipeline_info)
+    # Step 2. Register execution in metadata.
+    execution_id = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info)
+    output_artifacts = {}
+    use_cached_results = False
+
+    if driver_args.enable_cache:
+      # TODO(b/136031301): Combine Step 3 and Step 4b after finish migration to
+      # go/tfx-oss-artifact-passing.
+      # Step 3. Decide whether a new execution is needed.
+      cached_execution_id = self._metadata_handler.previous_execution(
+          input_artifacts=input_artifacts,
+          exec_properties=exec_properties,
+          pipeline_info=pipeline_info,
+          component_info=component_info)
+      if cached_execution_id:
+        # Step 4b. New execution not needed. Fetch cached output artifacts.
+        try:
+          output_artifacts = self._fetch_cached_artifacts(
+              output_dict=output_dict, cached_execution_id=cached_execution_id)
+          use_cached_results = True
+        except RuntimeError:
+          use_cached_results = False
+    if not use_cached_results:
+      # Step 4a. New execution is needed. Prepare output artifacts.
+      output_artifacts = self._prepare_output_artifacts(
+          output_dict=output_dict,
+          execution_id=execution_id,
+          pipeline_info=pipeline_info,
+          component_info=component_info)
+      exec_properties = self.resolve_exec_properties(exec_properties,
+                                                     component_info)
+
+    return data_types.ExecutionDecision(input_artifacts, output_artifacts,
+                                        exec_properties, execution_id,
+                                        use_cached_results)

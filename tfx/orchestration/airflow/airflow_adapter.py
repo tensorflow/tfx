@@ -87,8 +87,7 @@ class AirflowAdapter(object):
         input_list[index] = TfxArtifact.parse_from_json_dict(resolved_json_dict)
 
   def _publish_execution_to_metadata(self):
-    with metadata.Metadata(self._metadata_connection_config,
-                           self._logger) as m:
+    with metadata.Metadata(self._metadata_connection_config) as m:
       return m.publish_execution(self._execution_id, self._input_dict,
                                  self._output_dict)
 
@@ -106,8 +105,7 @@ class AirflowAdapter(object):
     task_instance = kwargs['ti']
     self._update_input_dict_from_xcom(task_instance)
 
-    with metadata.Metadata(self._metadata_connection_config,
-                           self._logger) as m:
+    with metadata.Metadata(self._metadata_connection_config) as m:
       driver = self._driver_class(metadata_handler=m)
       execution_decision = driver.prepare_execution(self._input_dict,
                                                     self._output_dict,

@@ -22,6 +22,7 @@ import os
 import tensorflow as tf
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.utils import channel
 from tfx.utils import types
 
 
@@ -157,6 +158,98 @@ class BaseDriverTest(tf.test.TestCase):
                                                   self._driver_args)
     self.assertEqual(actual_execution_id, execution_decision.execution_id)
     self._check_output(execution_decision)
+
+  def test_pre_execution_new_execution(self):
+    input_dict = {
+        'input_a':
+            channel.Channel(
+                type_name='input_a',
+                artifacts=[types.TfxArtifact(type_name='input_a')])
+    }
+    output_dict = {
+        'output_a':
+            channel.Channel(
+                type_name='output_a',
+                artifacts=[
+                    types.TfxArtifact(type_name='output_a', split='split')
+                ])
+    }
+    execution_id = 1
+    exec_properties = copy.deepcopy(self._exec_properties)
+    driver_args = data_types.DriverArgs(
+        worker_name='worker_name', base_output_dir='base', enable_cache=True)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline_name',
+        pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
+        run_id='my_run_id')
+    component_info = data_types.ComponentInfo(
+        component_type='a.b.c', component_id='my_component_id')
+    self._mock_metadata.get_artifacts_by_info.side_effect = list(
+        input_dict['input_a'].get())
+    self._mock_metadata.register_execution.side_effect = [execution_id]
+    self._mock_metadata.previous_execution.side_effect = [None]
+
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    execution_decision = driver.pre_execution(
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        driver_args=driver_args,
+        pipeline_info=pipeline_info,
+        component_info=component_info)
+    self.assertFalse(execution_decision.use_cached_results)
+    self.assertEqual(execution_decision.execution_id, 1)
+    self.assertItemsEqual(execution_decision.exec_properties, exec_properties)
+    self.assertEqual(
+        execution_decision.output_dict['output_a'][0].uri,
+        os.path.join(pipeline_info.pipeline_root, component_info.component_id,
+                     'output_a', str(execution_id), 'split', ''))
+
+  def test_pre_execution_cached(self):
+    input_dict = {
+        'input_a':
+            channel.Channel(
+                type_name='input_a',
+                artifacts=[types.TfxArtifact(type_name='input_a')])
+    }
+    output_dict = {
+        'output_a':
+            channel.Channel(
+                type_name='output_a',
+                artifacts=[
+                    types.TfxArtifact(type_name='output_a', split='split')
+                ])
+    }
+    execution_id = 1
+    exec_properties = copy.deepcopy(self._exec_properties)
+    driver_args = data_types.DriverArgs(
+        worker_name='worker_name', base_output_dir='base', enable_cache=True)
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline_name',
+        pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
+        run_id='my_run_id')
+    component_info = data_types.ComponentInfo(
+        component_type='a.b.c', component_id='my_component_id')
+    self._mock_metadata.get_artifacts_by_info.side_effect = list(
+        input_dict['input_a'].get())
+    self._mock_metadata.register_execution.side_effect = [execution_id]
+    self._mock_metadata.previous_execution.side_effect = [2]
+    self._mock_metadata.fetch_previous_result_artifacts.side_effect = [
+        self._output_dict
+    ]
+
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
+    execution_decision = driver.pre_execution(
+        input_dict=input_dict,
+        output_dict=output_dict,
+        exec_properties=exec_properties,
+        driver_args=driver_args,
+        pipeline_info=pipeline_info,
+        component_info=component_info)
+    self.assertTrue(execution_decision.use_cached_results)
+    self.assertEqual(execution_decision.execution_id, 1)
+    self.assertItemsEqual(execution_decision.exec_properties, exec_properties)
+    self.assertItemsEqual(execution_decision.output_dict, self._output_dict)
 
 
 if __name__ == '__main__':
