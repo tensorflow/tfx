@@ -42,6 +42,7 @@
     for defining component classes.
 *   Moved tfx.orchestration.gcp.cmle_runner to
     tfx.extensions.google_cloud_ai_platform.runner.
+*   Depends on `pyarrow>=0.11.1,<0.12.0`
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
