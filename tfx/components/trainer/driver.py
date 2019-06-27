@@ -39,6 +39,20 @@ class Driver(base_driver.BaseDriver):
 
     return None
 
+  def resolve_exec_properties(
+      self,
+      exec_properties: Dict[Text, Any],
+      component_info: data_types.ComponentInfo
+  ) -> Dict[Text, Any]:
+    """Overrides BaseDriver.resolve_exec_properties()."""
+    if exec_properties.get('warm_starting', None):
+      exec_properties['warm_start_from'] = self._fetch_latest_model()
+      tf.logging.debug('Model directory to warm start from: {}'.format(
+          exec_properties['warm_start_from']))
+    return exec_properties
+
+  # TODO(ruoyu): Deprecate this in favor of pre_execution once migration to
+  # go/tfx-oss-artifacts-passing finishes.
   def prepare_execution(
       self,
       input_dict: Dict[Text, List[types.TfxArtifact]],

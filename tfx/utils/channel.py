@@ -18,7 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+from typing import Dict
 from typing import Iterable
+from typing import List
 from typing import Optional
 from typing import Text
 from typing import Union
@@ -46,9 +48,8 @@ class Channel(object):
     Args:
       type_name: Name of the type that should be fed into or read from the
         Channel.
-      artifacts: (Optional) A collection of artifacts as the
-        values that can be read from the Channel. This is used to construct a
-        static Channel.
+      artifacts: (Optional) A collection of artifacts as the values that can be
+        read from the Channel. This is used to construct a static Channel.
     """
 
     self.type_name = type_name
@@ -56,8 +57,7 @@ class Channel(object):
     self._validate_type()
 
   def __str__(self):
-    return 'Channel<{}: {}>'.format(self.type_name,
-                                    self._artifacts)
+    return 'Channel<{}: {}>'.format(self.type_name, self._artifacts)
 
   def __repr__(self):
     return self.__str__()
@@ -66,8 +66,8 @@ class Channel(object):
     for artifact in self._artifacts:
       if artifact.type_name != self.type_name:
         raise ValueError(
-            "Artifacts provided do not match Channel's artifact type {}"
-            .format(self.type_name))
+            "Artifacts provided do not match Channel's artifact type {}".format(
+                self.type_name))
 
   def get(self) -> Iterable[types.TfxArtifact]:
     """Returns all artifacts that can be get from this Channel.
@@ -89,8 +89,8 @@ class Channel(object):
       TypeError if the type_name of given Channel is different from expected.
     """
     if self.type_name != expected_type_name:
-      raise TypeError('Expected {} but found {}.'.format(expected_type_name,
-                                                         str(self.type_name)))
+      raise TypeError('Expected {} but found {}.'.format(
+          expected_type_name, str(self.type_name)))
 
 
 def as_channel(source: Union[Channel, Iterable[types.TfxArtifact]]) -> Channel:
@@ -112,12 +112,23 @@ def as_channel(source: Union[Channel, Iterable[types.TfxArtifact]]) -> Channel:
     try:
       first_element = next(iter(source))
       if isinstance(first_element, types.TfxArtifact):
-        return Channel(
-            type_name=first_element.type_name,
-            artifacts=source)
+        return Channel(type_name=first_element.type_name, artifacts=source)
       else:
         raise ValueError('Invalid source to be a channel: {}'.format(source))
     except StopIteration:
       raise ValueError('Cannot convert empty artifact collection into Channel')
   else:
     raise ValueError('Invalid source to be a channel: {}'.format(source))
+
+
+def unwrap_channel_dict(channel_dict: Dict[Text, Channel]
+                       ) -> Dict[Text, List[types.TfxArtifact]]:
+  """Unwrap dict of channels to dict of lists of TfxArtifact.
+
+  Args:
+    channel_dict: a dict of Text -> Channel
+
+  Returns:
+    a dict of Text -> List[TfxArtifact]
+  """
+  return dict((k, list(v.get())) for k, v in channel_dict.items())

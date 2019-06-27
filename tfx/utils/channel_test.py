@@ -75,6 +75,15 @@ class ChannelTest(tf.test.TestCase):
     with self.assertRaises(TypeError):
       chnl.type_check('AnotherTypeName')
 
+  def test_unwrap_channel_dict(self):
+    instance_a = types.TfxArtifact('MyTypeName')
+    instance_b = types.TfxArtifact('MyTypeName')
+    channel_dict = {
+        'id': channel.Channel('MyTypeName', artifacts=[instance_a, instance_b])
+    }
+    result = channel.unwrap_channel_dict(channel_dict)
+    self.assertDictEqual(result, {'id': [instance_a, instance_b]})
+
 
 if __name__ == '__main__':
   tf.test.main()
