@@ -325,11 +325,14 @@ class BaseDriver(object):
 
     # Step 1. Fetch inputs from metadata.
     input_artifacts = self.resolve_input_artifacts(input_dict, pipeline_info)
+    tf.logging.info('Resolved input artifacts are: {}'.format(input_artifacts))
     # Step 2. Register execution in metadata.
     execution_id = self._metadata_handler.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info)
+    tf.logging.info('Execution id of the upcoming component execution is %s',
+                    execution_id)
     output_artifacts = {}
     use_cached_results = False
 
@@ -343,22 +346,31 @@ class BaseDriver(object):
           pipeline_info=pipeline_info,
           component_info=component_info)
       if cached_execution_id:
+        tf.logging.info('Found cached_execution: %s', cached_execution_id)
         # Step 4b. New execution not needed. Fetch cached output artifacts.
         try:
           output_artifacts = self._fetch_cached_artifacts(
               output_dict=output_dict, cached_execution_id=cached_execution_id)
+          tf.logging.info('Cached output artifacts are: %s', output_artifacts)
           use_cached_results = True
         except RuntimeError:
+          tf.logging.warning('Error when trying to get cached output artifacts')
           use_cached_results = False
     if not use_cached_results:
+      tf.logging.info('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           output_dict=output_dict,
           execution_id=execution_id,
           pipeline_info=pipeline_info,
           component_info=component_info)
+      tf.logging.info(
+          'Output artifacts skeleton for the upcoming execution are: %s',
+          output_artifacts)
       exec_properties = self.resolve_exec_properties(exec_properties,
                                                      component_info)
+      tf.logging.info('Execution properties for the upcoming execution are: %s',
+                      exec_properties)
 
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, execution_id,
