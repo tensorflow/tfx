@@ -51,6 +51,21 @@ class Driver(base_driver.BaseDriver):
     else:
       return None, None
 
+  def resolve_exec_properties(
+      self,
+      exec_properties: Dict[Text, Any],
+      component_info: data_types.ComponentInfo
+  ) -> Dict[Text, Any]:
+    """Overrides BaseDriver.resolve_exec_properties()."""
+    (exec_properties['blessed_model'],
+     exec_properties['blessed_model_id']) = self._fetch_last_blessed_model(
+         component_info.component_id)
+    tf.logging.info('Resolved last blessed model {}'.format(
+        exec_properties['blessed_model']))
+    return exec_properties
+
+  # TODO(ruoyu): Deprecate this in favor of pre_execution once migration to
+  # go/tfx-oss-artifacts-passing finishes.
   def prepare_execution(
       self,
       input_dict: Dict[Text, List[types.TfxArtifact]],

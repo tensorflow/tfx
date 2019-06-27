@@ -231,16 +231,16 @@ class BaseDriver(object):
       RuntimeError: for Channels that do not contain any artifact. This will be
       reverted once we support Channel-based input resolution.
     """
-    input_artifacts = {}
+    result = {}
     for name, input_channel in input_dict.items():
       artifacts = list(input_channel.get())
       # TODO(ruoyu): Remove once channel-based input resolution is supported.
       if not artifacts:
         raise RuntimeError('Channel-based input resolution is not supported.')
-      input_artifacts[name] = self._metadata_handler.search_artifacts(
+      result[name] = self._metadata_handler.search_artifacts(
           artifacts[0].name, pipeline_info.pipeline_name, pipeline_info.run_id,
           artifacts[0].producer_component)
-    return input_artifacts
+    return result
 
   def resolve_exec_properties(
       self,
@@ -270,22 +270,20 @@ class BaseDriver(object):
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.TfxArtifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
-    output_artifacts_dict = dict(
-        (k, list(v.get())) for k, v in output_dict.items())
+    result = channel.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
-    for name, output_list in output_artifacts_dict.items():
+    for name, output_list in result.items():
       for artifact in output_list:
         artifact.uri = self._generate_output_uri(artifact, base_output_dir,
                                                  name, execution_id)
-    return output_artifacts_dict
+    return result
 
   def _fetch_cached_artifacts(self, output_dict: Dict[Text, channel.Channel],
                               cached_execution_id: int
                              ) -> Dict[Text, List[types.TfxArtifact]]:
     """Fetch cached output artifacts."""
-    output_artifacts_dict = dict(
-        (k, list(v.get())) for k, v in output_dict.items())
+    output_artifacts_dict = channel.unwrap_channel_dict(output_dict)
     return self._metadata_handler.fetch_previous_result_artifacts(
         output_artifacts_dict, cached_execution_id)
 

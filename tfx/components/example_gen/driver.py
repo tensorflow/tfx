@@ -21,6 +21,7 @@ import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.utils import channel
 from tfx.utils import types
 
 
@@ -31,6 +32,8 @@ class Driver(base_driver.BaseDriver):
   an artifact, e.g., for CsvExampleGen and ImportExampleGen.
   """
 
+  # TODO(ruoyu): Deprecate this in favor of resolve_input_artifacts once
+  # migration to go/tfx-oss-artifacts-passing finishes.
   def _prepare_input_for_processing(
       self, input_dict: Dict[Text, List[types.TfxArtifact]]
       ) -> Dict[Text, List[types.TfxArtifact]]:
@@ -68,6 +71,15 @@ class Driver(base_driver.BaseDriver):
           single_input.set_artifact(new_artifact)
 
     return input_dict
+
+  def resolve_input_artifacts(
+      self,
+      input_dict: Dict[Text, channel.Channel],
+      pipeline_info: data_types.PipelineInfo,
+  ) -> Dict[Text, List[types.TfxArtifact]]:
+    """Overrides BaseDriver.resolve_input_artifacts()."""
+    return self._prepare_input_for_processing(
+        channel.unwrap_channel_dict(input_dict))
 
   def prepare_execution(
       self,
