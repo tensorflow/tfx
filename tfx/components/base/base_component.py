@@ -37,13 +37,28 @@ from tfx.utils import channel
 
 
 class _PropertyDictWrapper(object):
-  """Helper class to wrap outputs from TFX components."""
+  """Helper class to wrap inputs/outputs from TFX components.
 
-  def __init__(self, d: Dict[Text, channel.Channel]):
-    self.__dict__ = d
+  Currently, this class is read-only (setting properties is not implemented).
+  """
+
+  def __init__(self, data: Dict[Text, channel.Channel]):
+    self._data = data
+
+  def __getitem__(self, key):
+    return self._data[key]
+
+  def __getattr__(self, key):
+    try:
+      return self._data[key]
+    except KeyError:
+      raise AttributeError
+
+  def __repr__(self):
+    return repr(self._data)
 
   def get_all(self) -> Dict[Text, channel.Channel]:
-    return self.__dict__
+    return self._data
 
 
 def _abstract_property() -> Any:
