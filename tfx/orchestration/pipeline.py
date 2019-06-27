@@ -23,8 +23,10 @@ import json
 import os
 
 from typing import List, Optional, Text
+from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
+from tfx.orchestration import data_types
 
 
 @deprecation.deprecated(
@@ -63,29 +65,46 @@ class Pipeline(object):
       - pipeline_name: Required. The unique name of this pipeline.
       - pipeline_root: Required. The root of the pipeline outputs.
     components: logical components of this pipeline.
+    pipeline_info: An instance of data_types.PipelineInfo that contains basic
+      properties of the pipeline.
+    enable_cache: whether or not cache is enabled for this run.
+    metadata_connection_config: the config to connect to ML metadata.
+    additional_pipeline_args: other pipeline args. e.g. beam runner args.
   """
 
   def __init__(self,
                pipeline_name: Text,
                pipeline_root: Text,
+               metadata_connection_config: Optional[
+                   metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_component.BaseComponent]] = None,
+               enable_cache: Optional[bool] = False,
                **kwargs):
     """Initialize pipeline.
 
     Args:
       pipeline_name: name of the pipeline;
       pipeline_root: path to root directory of the pipeline;
+      metadata_connection_config: the config to connect to ML metadata.
       components: a list of components in the pipeline (optional only for
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
+      enable_cache: whether or not cache is enabled for this run.
       **kwargs: additional kwargs forwarded as pipeline args.
     """
-    # TODO(b/126565661): Add more documentation on this.
-    self.pipeline_args = kwargs
+    # TODO(ruoyu): Deprecate pipeline args once finish migration to
+    # go/tfx-oss-artifact-passing
+    self.pipeline_args = dict(kwargs)
     self.pipeline_args.update({
         'pipeline_name': pipeline_name,
-        'pipeline_root': pipeline_root
+        'pipeline_root': pipeline_root,
     })
+
+    self.pipeline_info = data_types.PipelineInfo(
+        pipeline_name=pipeline_name, pipeline_root=pipeline_root)
+    self.enable_cache = enable_cache
+    self.metadata_connection_config = metadata_connection_config
+    self.additional_pipeline_args = kwargs or {}
 
     # Store pipeline_args in a json file only when temp file exists.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
@@ -115,7 +134,7 @@ class Pipeline(object):
         # Fill in detailed artifact properties.
         for artifact in output_channel.get():
           artifact.name = key
-          artifact.pipeline_name = self.pipeline_args['pipeline_name']
+          artifact.pipeline_name = self.pipeline_info.pipeline_name
           artifact.producer_component = component.component_id
 
     # Connects nodes based on producer map.

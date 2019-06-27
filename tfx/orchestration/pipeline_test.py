@@ -28,6 +28,7 @@ from typing import Any, Dict, Text
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.utils import channel
 from tfx.utils import types
@@ -69,6 +70,8 @@ class PipelineTest(tf.test.TestCase):
         tempfile.mkstemp(prefix='cli_tmp_')[1])
     self._original_tmp_value = os.environ.get(
         'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
+    self._metadata_connection_config = metadata.filed_based_metadata_connection_config(
+        os.path.join(self._tmp_file, 'metadata'))
 
   def tearDown(self):
     os.environ['TFX_TMP_DIR'] = self._original_tmp_value
@@ -93,23 +96,28 @@ class PipelineTest(tf.test.TestCase):
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        log_root='c',
         components=[
             component_d, component_c, component_a, component_b, component_e,
             component_a
-        ])
+        ],
+        enable_cache=True,
+        metadata_connection_config=self._metadata_connection_config)
     self.assertItemsEqual(
         my_pipeline.components,
         [component_a, component_b, component_c, component_d, component_e])
     self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
-    self.assertDictEqual(
-        my_pipeline.pipeline_args, {
-            'pipeline_name': 'a',
-            'pipeline_root': 'b',
-            'log_root': 'c',
-        })
+    self.assertDictEqual(my_pipeline.pipeline_args, {
+        'pipeline_name': 'a',
+        'pipeline_root': 'b',
+    })
+    self.assertEqual(my_pipeline.pipeline_info.pipeline_name, 'a')
+    self.assertEqual(my_pipeline.pipeline_info.pipeline_root, 'b')
+    self.assertEqual(my_pipeline.metadata_connection_config,
+                     self._metadata_connection_config)
+    self.assertTrue(my_pipeline.enable_cache)
+    self.assertEmpty(my_pipeline.additional_pipeline_args)
 
   def test_pipeline_with_loop(self):
     channel_one = channel.Channel(type_name='channel_one')
@@ -142,30 +150,25 @@ class PipelineTest(tf.test.TestCase):
       pipeline.Pipeline(
           pipeline_name='a',
           pipeline_root='b',
-          log_root='c',
-          components=[component_c, component_d, component_b, component_a])
+          components=[component_c, component_d, component_b, component_a],
+          metadata_connection_config=self._metadata_connection_config)
 
   def test_pipeline_with_artifact_info(self):
     artifacts_collection = [types.TfxArtifact('channel_one')]
     channel_one = channel.Channel(
-        type_name='channel_one',
-        artifacts=artifacts_collection)
+        type_name='channel_one', artifacts=artifacts_collection)
     component_a = _make_fake_component_instance(
-        name='component_a',
-        inputs={},
-        outputs={'one': channel_one})
+        name='component_a', inputs={}, outputs={'one': channel_one})
     component_b = _make_fake_component_instance(
-        name='component_b',
-        inputs={
+        name='component_b', inputs={
             'a': component_a.outputs.one,
-        },
-        outputs={})
+        }, outputs={})
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',
-        log_root='c',
-        components=[component_b, component_a])
+        components=[component_b, component_a],
+        metadata_connection_config=self._metadata_connection_config)
     expected_artifact = types.TfxArtifact('channel_one')
     expected_artifact.name = 'one'
     expected_artifact.pipeline_name = 'a'
@@ -184,7 +187,10 @@ class PipelineTest(tf.test.TestCase):
   def test_pipeline_decorator(self):
 
     @pipeline.PipelineDecorator(
-        pipeline_name='a', pipeline_root='b', log_root='c')
+        pipeline_name='a',
+        pipeline_root='b',
+        log_root='c',
+        metadata_connection_config=self._metadata_connection_config)
     def create_pipeline():
       self.component_a = _make_fake_component_instance('component_a', {}, {})
       self.component_b = _make_fake_component_instance('component_b', {}, {})
@@ -194,12 +200,11 @@ class PipelineTest(tf.test.TestCase):
 
     self.assertItemsEqual(my_pipeline.components,
                           [self.component_a, self.component_b])
-    self.assertDictEqual(
-        my_pipeline.pipeline_args, {
-            'pipeline_name': 'a',
-            'pipeline_root': 'b',
-            'log_root': 'c',
-        })
+    self.assertDictEqual(my_pipeline.pipeline_args, {
+        'pipeline_name': 'a',
+        'pipeline_root': 'b',
+        'log_root': 'c',
+    })
 
   def test_pipeline_save_pipeline_args(self):
     os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
@@ -207,7 +212,8 @@ class PipelineTest(tf.test.TestCase):
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})])
+        components=[_make_fake_component_instance('component_a', {}, {})],
+        metadata_connection_config=self._metadata_connection_config)
     self.assertTrue(tf.io.gfile.exists(self._tmp_file))
 
   def test_pipeline_no_tmp_folder(self):
@@ -215,7 +221,8 @@ class PipelineTest(tf.test.TestCase):
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})])
+        components=[_make_fake_component_instance('component_a', {}, {})],
+        metadata_connection_config=self._metadata_connection_config)
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
 
