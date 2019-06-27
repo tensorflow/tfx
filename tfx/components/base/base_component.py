@@ -376,9 +376,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
           (self.__class__, self.__class__.SPEC_CLASS, spec))
 
   def __repr__(self):
-    return '%s(spec: %s, executor_class: %s, driver_class: %s, name: %s)' % (
-        self.__class__.__name__, self.spec, self.executor_class,
-        self.driver_class, self.name)
+    return ('%s(spec: %s, executor_class: %s, driver_class: %s, name: %s, '
+            'inputs: %s, outputs: %s)') % (
+                self.__class__.__name__, self.spec, self.executor_class,
+                self.driver_class, self.name, self.inputs, self.outputs)
 
   @property
   def component_name(self) -> Text:
