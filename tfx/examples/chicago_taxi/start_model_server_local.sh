@@ -28,7 +28,7 @@ echo Pulling the Docker image: $DOCKER_IMAGE_NAME
 docker pull $DOCKER_IMAGE_NAME
 
 # Dir for model exported for serving
-LOCAL_MODEL_DIR=$(pwd)/data/train/local_chicago_taxi_output/serving_model_dir/export/chicago-taxi
+LOCAL_MODEL_DIR=${LOCAL_MODEL_DIR:-$(pwd)/data/train/local_chicago_taxi_output/serving_model_dir/export/chicago-taxi}
 # Make sure the trained model is available
 if ! [ -d "$LOCAL_MODEL_DIR" ]; then
   echo "ERROR: Could not find the exported model directory $LOCAL_MODEL_DIR"

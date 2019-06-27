@@ -196,21 +196,23 @@ ls $TAXI_DIR/serving_model/taxi_simple
 
 
 To serve the model with [TensorFlow Serving](https://www.tensorflow.org/serving)
-please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following path changes before running the scripts:
+please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following environment variables:
 
-In start_model_server_local.sh, change:
+For start_model_server_local.sh:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-LOCAL_MODEL_DIR=$TAXI_DIR/serving_model/taxi_simple
+LOCAL_MODEL_DIR=$TAXI_DIR/serving_model/taxi_simple \
+start_model_server_local.sh
 </pre>
 
 This will pick up the latest model under above path.
 
-In classify_local.sh (must run under examples/chicago_taxi/), change:
+For classify_local.sh:
 
 <pre class="devsite-terminal devsite-click-to-copy">
---examples_file ~/taxi/data/simple/data.csv \
---schema_file ~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt \
+EXAMPLES_FILE=~/taxi/data/simple/data.csv \
+SCHEMA_FILE=~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt \
+classify_local.sh
 </pre>
 
 # Chicago Taxi Flink Example (python 2.7 only, python 3 WIP)

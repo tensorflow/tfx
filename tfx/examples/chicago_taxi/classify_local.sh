@@ -16,8 +16,11 @@ set -u
 
 echo Running local inference...
 
+EXAMPLES_FILE=${EXAMPLES_FILE:-./data/train/data.csv}
+SCHEMA_FILE=${SCHEMA_FILE:-./data/local_tfdv_output/schema.pbtxt}
+
 python chicago_taxi_client.py \
   --num_examples 3 \
-  --examples_file ./data/train/data.csv \
-  --schema_file ./data/local_tfdv_output/schema.pbtxt \
+  --examples_file ${EXAMPLES_FILE} \
+  --schema_file ${SCHEMA_FILE} \
   --server 127.0.0.1:9000
