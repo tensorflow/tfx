@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import copy
 import hashlib
+import os
 import types
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Set, Text, Type
@@ -32,6 +33,24 @@ from tfx.utils.types import TfxArtifact
 
 # Maximum number of executions we look at for previous result.
 MAX_EXECUTIONS_FOR_CACHE = 100
+
+
+def filed_based_metadata_connection_config(
+    metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
+  """Convenient function to create file based metadata connection config.
+
+  Args:
+    metadata_db_uri: uri to metadata db.
+
+  Returns:
+    A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
+  """
+  tf.gfile.MakeDirs(os.path.dirname(metadata_db_uri))
+  connection_config = metadata_store_pb2.ConnectionConfig()
+  connection_config.sqlite.filename_uri = metadata_db_uri
+  connection_config.sqlite.connection_mode = \
+    metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+  return connection_config
 
 
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
