@@ -23,9 +23,6 @@ from typing import Dict, List, Text
 from tfx.orchestration import metadata
 from tfx.utils import types
 
-EXECUTION_STATE_SKIPPED = 'skipped'
-EXECUTION_STATE_COMPLETED = 'completed'
-
 
 class Publisher(object):
   """Publish execution to metadata.
@@ -65,7 +62,7 @@ class Publisher(object):
     tf.logging.info('Inputs: %s', input_dict)
     tf.logging.info('Outputs: %s', output_dict)
 
-    final_execution_state = EXECUTION_STATE_SKIPPED if use_cached_results else EXECUTION_STATE_COMPLETED
+    final_execution_state = metadata.EXECUTION_STATE_CACHED if use_cached_results else metadata.EXECUTION_STATE_COMPLETE
     return self._metadata_handler.publish_execution(
         execution_id=execution_id,
         input_dict=input_dict,

@@ -23,7 +23,7 @@ import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import data_types
-from tfx.orchestration.metadata import Metadata
+from tfx.orchestration import metadata
 from tfx.utils import logging_utils
 from tfx.utils import types
 
@@ -38,7 +38,7 @@ class MetadataTest(tf.test.TestCase):
     self._logger = logging_utils.get_logger(logger_config)
 
   def test_empty_artifact(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
       m.publish_artifacts([])
       eid = m.prepare_execution('Test', {})
       m.publish_execution(eid, {}, {})
@@ -55,7 +55,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
   def test_artifact(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
@@ -96,7 +96,7 @@ class MetadataTest(tf.test.TestCase):
                         types.ARTIFACT_STATE_PUBLISHED)
 
   def test_execution(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
 
       # Test prepare_execution.
       exec_properties = {}
@@ -124,7 +124,8 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(types.ARTIFACT_STATE_PUBLISHED, output_artifact.state)
       # Make sure execution state are changed.
       [execution] = m.store.get_executions_by_id([eid])
-      self.assertEqual('complete', execution.properties['state'].string_value)
+      self.assertEqual(metadata.EXECUTION_STATE_COMPLETE,
+                       execution.properties['state'].string_value)
       # Make sure events are published.
       events = m.store.get_events_by_execution_ids([eid])
       self.assertEqual(2, len(events))
@@ -150,7 +151,7 @@ class MetadataTest(tf.test.TestCase):
           }""", events[1].path)
 
   def test_fetch_previous_result(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
 
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}
@@ -184,7 +185,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(previous_artifact.type_id, current_artifact.type_id)
 
   def test_get_cached_execution_ids(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
       mock_store = mock.Mock()
       mock_store.get_events_by_execution_ids.side_effect = [
           [
@@ -221,7 +222,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(1, m._get_cached_execution_id(input_dict, [3, 2, 1]))
 
   def test_search_artifacts(self):
-    with Metadata(connection_config=self._connection_config) as m:
+    with metadata.Metadata(connection_config=self._connection_config) as m:
       pipeline_info = data_types.PipelineInfo(
           pipeline_name='mypipeline', pipeline_root='root', run_id='run_id_0')
       component_info = data_types.ComponentInfo(
@@ -244,6 +245,28 @@ class MetadataTest(tf.test.TestCase):
           run_id='run_id_0',
           producer_component_id='my_component_id')
       self.assertEqual(artifact.uri, output_artifact.uri)
+
+  def test_publish_skipped_execution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      pipeline_info = data_types.PipelineInfo(
+          pipeline_name='mypipeline', pipeline_root='root', run_id='run_id_0')
+      component_info = data_types.ComponentInfo(
+          component_type='a.b.c', component_id='my_component_id')
+      exec_properties = {'log_root': 'path'}
+      eid = m.register_execution(
+          exec_properties=exec_properties,
+          pipeline_info=pipeline_info,
+          component_info=component_info)
+      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      m.publish_artifacts([input_artifact])
+      output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')
+      output_artifact.uri = 'my/uri'
+      [published_artifact] = m.publish_artifacts([output_artifact])
+      output_artifact.artifact = published_artifact
+      input_dict = {'input': [input_artifact]}
+      output_dict = {'output': [output_artifact]}
+      m.publish_execution(
+          eid, input_dict, output_dict, state=metadata.EXECUTION_STATE_CACHED)
 
 
 if __name__ == '__main__':
