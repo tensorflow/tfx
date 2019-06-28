@@ -44,7 +44,7 @@ class ComponentTest(tf.test.TestCase):
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='push_destination')))
-    self.assertEqual('ModelPushPath', pusher.outputs.model_push.type_name)
+    self.assertEqual('ModelPushPath', pusher.outputs['model_push'].type_name)
 
   def test_construct_no_destination(self):
     with self.assertRaises(ValueError):
@@ -59,7 +59,7 @@ class ComponentTest(tf.test.TestCase):
         model_blessing=self.model_blessing,
         executor_class=self._MyCustomPusherExecutor,
     )
-    self.assertEqual('ModelPushPath', pusher.outputs.model_push.type_name)
+    self.assertEqual('ModelPushPath', pusher.outputs['model_push'].type_name)
 
 
 if __name__ == '__main__':

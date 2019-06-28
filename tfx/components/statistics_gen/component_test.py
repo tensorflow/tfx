@@ -31,7 +31,7 @@ class ComponentTest(tf.test.TestCase):
     statistics_gen = component.StatisticsGen(
         input_data=channel.as_channel([train_examples, eval_examples]))
     self.assertEqual('ExampleStatisticsPath',
-                     statistics_gen.outputs.output.type_name)
+                     statistics_gen.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

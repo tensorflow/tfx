@@ -30,7 +30,7 @@ class SchemaGenTest(tf.test.TestCase):
         stats=channel.as_channel(
             [types.TfxArtifact(type_name='ExampleStatisticsPath',
                                split='train')]))
-    self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
+    self.assertEqual('SchemaPath', schema_gen.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

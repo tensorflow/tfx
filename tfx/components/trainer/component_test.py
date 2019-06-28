@@ -37,7 +37,7 @@ class ComponentTest(tf.test.TestCase):
         schema=channel.as_channel([schema]),
         train_args=trainer_pb2.TrainArgs(num_steps=100),
         eval_args=trainer_pb2.EvalArgs(num_steps=50))
-    self.assertEqual('ModelExportPath', trainer.outputs.output.type_name)
+    self.assertEqual('ModelExportPath', trainer.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

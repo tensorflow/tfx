@@ -79,18 +79,18 @@ class PipelineTest(tf.test.TestCase):
   def test_pipeline(self):
     component_a = _make_fake_component_instance('component_a', {}, {})
     component_b = _make_fake_component_instance(
-        'component_b', {'a': component_a.outputs.output}, {})
+        'component_b', {'a': component_a.outputs['output']}, {})
     component_c = _make_fake_component_instance(
-        'component_c', {'a': component_a.outputs.output}, {})
+        'component_c', {'a': component_a.outputs['output']}, {})
     component_d = _make_fake_component_instance('component_d', {
-        'b': component_b.outputs.output,
-        'c': component_c.outputs.output
+        'b': component_b.outputs['output'],
+        'c': component_c.outputs['output']
     }, {})
     component_e = _make_fake_component_instance(
         'component_e', {
-            'a': component_a.outputs.output,
-            'b': component_b.outputs.output,
-            'd': component_d.outputs.output
+            'a': component_a.outputs['output'],
+            'b': component_b.outputs['output'],
+            'd': component_d.outputs['output']
         }, {})
 
     my_pipeline = pipeline.Pipeline(
@@ -127,21 +127,21 @@ class PipelineTest(tf.test.TestCase):
     component_b = _make_fake_component_instance(
         name='component_b',
         inputs={
-            'a': component_a.outputs.output,
+            'a': component_a.outputs['output'],
             'one': channel_one
         },
         outputs={'two': channel_two})
     component_c = _make_fake_component_instance(
         name='component_b',
         inputs={
-            'a': component_a.outputs.output,
+            'a': component_a.outputs['output'],
             'two': channel_two
         },
         outputs={'three': channel_three})
     component_d = _make_fake_component_instance(
         name='component_b',
         inputs={
-            'a': component_a.outputs.output,
+            'a': component_a.outputs['output'],
             'three': channel_three
         },
         outputs={'one': channel_one})
@@ -160,9 +160,11 @@ class PipelineTest(tf.test.TestCase):
     component_a = _make_fake_component_instance(
         name='component_a', inputs={}, outputs={'one': channel_one})
     component_b = _make_fake_component_instance(
-        name='component_b', inputs={
-            'a': component_a.outputs.one,
-        }, outputs={})
+        name='component_b',
+        inputs={
+            'a': component_a.outputs['one'],
+        },
+        outputs={})
 
     my_pipeline = pipeline.Pipeline(
         pipeline_name='a',
@@ -175,14 +177,16 @@ class PipelineTest(tf.test.TestCase):
     expected_artifact.pipeline_timestamp_ms = 0
     expected_artifact.producer_component = 'component_a'
     self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
-    self.assertEqual(component_a.outputs.one._artifacts[0].pipeline_name, 'a')
-    self.assertEqual(component_a.outputs.one._artifacts[0].producer_component,
+    self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,
+                     'a')
+    self.assertEqual(
+        component_a.outputs['one']._artifacts[0].producer_component,
+        component_a.component_id)
+    self.assertEqual(component_a.outputs['one']._artifacts[0].name, 'one')
+    self.assertEqual(component_b.inputs['a']._artifacts[0].pipeline_name, 'a')
+    self.assertEqual(component_b.inputs['a']._artifacts[0].producer_component,
                      component_a.component_id)
-    self.assertEqual(component_a.outputs.one._artifacts[0].name, 'one')
-    self.assertEqual(component_b.inputs.a._artifacts[0].pipeline_name, 'a')
-    self.assertEqual(component_b.inputs.a._artifacts[0].producer_component,
-                     component_a.component_id)
-    self.assertEqual(component_b.inputs.a._artifacts[0].name, 'one')
+    self.assertEqual(component_b.inputs['a']._artifacts[0].name, 'one')
 
   def test_pipeline_decorator(self):
 

@@ -30,8 +30,8 @@ class ComponentTest(tf.test.TestCase):
     csv_example_gen = component.CsvExampleGen(
         input_base=channel.as_channel([input_base]))
     self.assertEqual('ExamplesPath',
-                     csv_example_gen.outputs.examples.type_name)
-    artifact_collection = csv_example_gen.outputs.examples.get()
+                     csv_example_gen.outputs['examples'].type_name)
+    artifact_collection = csv_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 

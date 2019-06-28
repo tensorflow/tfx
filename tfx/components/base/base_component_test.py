@@ -97,8 +97,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
     # Verify other properties.
     self.assertEqual(10, spec.exec_properties['folds'])
-    self.assertIs(spec.inputs.input, input_channel)
-    self.assertIs(spec.outputs.output, output_channel)
+    self.assertIs(spec.inputs['input'], input_channel)
+    self.assertIs(spec.outputs['output'], output_channel)
 
     with self.assertRaisesRegexp(
         TypeError,
@@ -283,9 +283,9 @@ class ComponentTest(tf.test.TestCase):
   def test_component_basic(self):
     input_channel = channel.Channel(type_name='InputType')
     component = _BasicComponent(folds=10, input=input_channel)
-    self.assertIs(input_channel, component.inputs.input)
-    self.assertIsInstance(component.outputs.output, channel.Channel)
-    self.assertEqual(component.outputs.output.type_name, 'OutputType')
+    self.assertIs(input_channel, component.inputs['input'])
+    self.assertIsInstance(component.outputs['output'], channel.Channel)
+    self.assertEqual(component.outputs['output'].type_name, 'OutputType')
 
   def test_component_spec_type(self):
 
