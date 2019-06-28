@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import tensorflow as tf
 from typing import Dict, List, Text
 
 from tfx.orchestration import metadata
@@ -59,6 +60,11 @@ class Publisher(object):
     Returns:
       A dict containing output artifacts.
     """
+    tf.logging.info('Whether cached results are used: %s', use_cached_results)
+    tf.logging.info('Execution id: %s', execution_id)
+    tf.logging.info('Inputs: %s', input_dict)
+    tf.logging.info('Outputs: %s', output_dict)
+
     final_execution_state = EXECUTION_STATE_SKIPPED if use_cached_results else EXECUTION_STATE_COMPLETED
     return self._metadata_handler.publish_execution(
         execution_id=execution_id,

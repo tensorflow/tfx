@@ -91,6 +91,8 @@ class Pipeline(object):
         PipelineDecorator).
       enable_cache: whether or not cache is enabled for this run.
       **kwargs: additional kwargs forwarded as pipeline args.
+        - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+            Executor will use beam DirectRunner as Default.
     """
     # TODO(ruoyu): Deprecate pipeline args once finish migration to
     # go/tfx-oss-artifact-passing

@@ -21,10 +21,11 @@ import datetime
 import os
 import apache_beam as beam
 import tensorflow as tf
-from typing import Any, Dict, Iterable, List, Optional, Text
+from typing import Any, Iterable, List, Optional, Text
 
 from tfx.components.base import base_component
 from tfx.orchestration import component_runner
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 
@@ -36,23 +37,25 @@ class _ComponentAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
   def __init__(self, component: base_component.BaseComponent,
-               pipeline_run_id: Text, pipeline_args: Dict[Text, Any]):
+               tfx_pipeline: pipeline.Pipeline):
     """Initialize the _ComponentAsDoFn.
 
     Args:
       component: Component that to be executed.
-      pipeline_run_id: The unique id of current pipeline run.
-      pipeline_args: args dict that contains the following items,
-        - pipeline_name: The unique name of this pipeline.
-        - pipeline_root: The root path of the pipeline outputs.
-        - metadata_connection_config: ML metadata connection config.
-        - enable_cache: Whether to enable cache functionality.
-        - additional_pipeline_args: Additional pipeline args, includes,
-          - beam_pipeline_args: Beam pipeline args for beam jobs within
-            executor. Executor will use beam DirectRunner as Default.
+      tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
+    # TODO(ruoyu): refactor DriverArgs, drop duplicated base dir and name.
+    driver_args = data_types.DriverArgs(
+        worker_name=component.component_id,
+        base_output_dir=os.path.join(tfx_pipeline.pipeline_info.pipeline_root,
+                                     component.component_id, ''),
+        enable_cache=tfx_pipeline.enable_cache)
     self._component_runner = component_runner.ComponentRunner(
-        component, pipeline_run_id, **pipeline_args)
+        component=component,
+        pipeline_info=tfx_pipeline.pipeline_info,
+        driver_args=driver_args,
+        metadata_connection_config=tfx_pipeline.metadata_connection_config,
+        additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
     self._name = component.component_name
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -92,20 +95,7 @@ class BeamRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
-    pipeline_run_id = datetime.datetime.now().isoformat()
-    # TODO(jyzhao): remove after driver is supported.
-    # Setup output uri in a similar way as Kubeflow before we have driver ready.
-    for component in tfx_pipeline.components:
-      output_dict = dict(
-          (k, v.get()) for k, v in component.outputs.get_all().items())
-      for output_name, output_list in output_dict.items():
-        for output_artifact in output_list:
-          # Last empty string forces this be to a directory.
-          output_artifact.uri = os.path.join(
-              tfx_pipeline.pipeline_args.get('pipeline_root'),
-              tfx_pipeline.pipeline_args.get('pipeline_name'),
-              component.component_name, output_name, pipeline_run_id,
-              output_artifact.split, '')
+    tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
     with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
       # Uses for triggering the component DoFns.
@@ -132,7 +122,6 @@ class BeamRunner(tfx_runner.TfxRunner):
         signal_map[component] = (
             root
             | 'Run[%s]' % name >> beam.ParDo(
-                _ComponentAsDoFn(component, pipeline_run_id,
-                                 tfx_pipeline.pipeline_args),
+                _ComponentAsDoFn(component, tfx_pipeline),
                 *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
         tf.logging.info('Component %s is scheduled.', name)
