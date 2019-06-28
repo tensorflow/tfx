@@ -24,7 +24,7 @@ import tensorflow as tf
 from typing import Any, Iterable, List, Optional, Text
 
 from tfx.components.base import base_component
-from tfx.orchestration import component_runner
+from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
@@ -50,7 +50,7 @@ class _ComponentAsDoFn(beam.DoFn):
         base_output_dir=os.path.join(tfx_pipeline.pipeline_info.pipeline_root,
                                      component.component_id, ''),
         enable_cache=tfx_pipeline.enable_cache)
-    self._component_runner = component_runner.ComponentRunner(
+    self._component_launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
@@ -71,7 +71,7 @@ class _ComponentAsDoFn(beam.DoFn):
 
   def _run_component(self) -> None:
     tf.logging.info('Component %s is running.', self._name)
-    self._component_runner.run()
+    self._component_launcher.run()
     tf.logging.info('Component %s is finished.', self._name)
 
 

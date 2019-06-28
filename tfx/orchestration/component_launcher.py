@@ -30,15 +30,15 @@ from tfx.utils import channel
 from tfx.utils import types
 
 
-class ComponentRunner(object):
-  """Runner for component."""
+class ComponentLauncher(object):
+  """Responsible for launching driver, executor and publisher of component."""
 
   def __init__(self, component: base_component.BaseComponent,
                pipeline_info: data_types.PipelineInfo,
                driver_args: data_types.DriverArgs,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
                additional_pipeline_args: Dict[Text, Any]):
-    """Initialize a ComponentRunner.
+    """Initialize a ComponentLauncher.
 
     Args:
       component: Component that to be executed.
