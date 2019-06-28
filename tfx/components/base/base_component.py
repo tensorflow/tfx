@@ -211,7 +211,9 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
       value = self._raw_args[arg_name]
       if (inspect.isclass(arg.type) and
           issubclass(arg.type, message.Message) and value):
-        value = json_format.MessageToJson(value)
+        # Create deterministic json string as it will be stored in metadata for
+        # cache check.
+        value = json_format.MessageToJson(value, sort_keys=True)
       self.exec_properties[arg_name] = value
     for arg_name, arg in self.INPUTS.items():
       value = self._raw_args[arg_name]
