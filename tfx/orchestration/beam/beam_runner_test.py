@@ -122,6 +122,7 @@ class BeamRunnerTest(tf.test.TestCase):
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',
         pipeline_root='y',
+        metadata_connection_config=None,
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])

@@ -18,14 +18,39 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import mock
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
+from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
+from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.orchestration import component_runner
+from tfx.orchestration import data_types
+from tfx.orchestration import publisher
 from tfx.utils import channel
 from tfx.utils import types
+
+
+class _FakeDriver(base_driver.BaseDriver):
+
+  def pre_execution(
+      self,
+      input_dict: Dict[Text, channel.Channel],
+      output_dict: Dict[Text, channel.Channel],
+      exec_properties: Dict[Text, Any],
+      driver_args: data_types.DriverArgs,
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+  ) -> data_types.ExecutionDecision:
+    input_artifacts = channel.unwrap_channel_dict(input_dict)
+    output_artifacts = channel.unwrap_channel_dict(output_dict)
+    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
+    types.get_single_instance(output_artifacts['output']).uri = os.path.join(
+        pipeline_info.pipeline_root, 'output')
+    return data_types.ExecutionDecision(input_artifacts, output_artifacts,
+                                        exec_properties, 123, False)
 
 
 class _FakeExecutor(base_executor.BaseExecutor):
@@ -48,6 +73,7 @@ class _FakeComponentSpec(base_component.ComponentSpec):
 class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = _FakeComponentSpec
   EXECUTOR_CLASS = _FakeExecutor
+  DRIVER_CLASS = _FakeDriver
 
   def __init__(self,
                name: Text,
@@ -61,13 +87,19 @@ class _FakeComponent(base_component.BaseComponent):
 
 class ComponentRunnerTest(tf.test.TestCase):
 
-  def test_run(self):
+  @mock.patch.object(publisher, 'Publisher')
+  def test_run(self, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.SetInParent()
+
+    pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    output_path = os.path.join(test_dir, 'output')
     tf.gfile.MakeDirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
@@ -78,16 +110,22 @@ class ComponentRunnerTest(tf.test.TestCase):
         name='FakeComponent',
         input_channel=channel.as_channel([input_artifact]))
 
-    # TODO(jyzhao): remove after driver is supported.
-    types.get_single_instance(
-        component.outputs.get_all()['output'].get()).uri = output_path
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id=123)
+
+    driver_args = data_types.DriverArgs(
+        worker_name=component.component_id,
+        base_output_dir=os.path.join(pipeline_root, component.component_id),
+        enable_cache=True)
 
     component_runner.ComponentRunner(
         component=component,
-        pipeline_run_id=123,
-        pipeline_name='Test',
-        pipeline_root=test_dir).run()
+        pipeline_info=pipeline_info,
+        driver_args=driver_args,
+        metadata_connection_config=connection_config,
+        additional_pipeline_args={}).run()
 
+    output_path = os.path.join(pipeline_root, 'output')
     self.assertTrue(tf.gfile.Exists(output_path))
     contents = file_io.read_file_to_string(output_path)
     self.assertEqual('test', contents)
