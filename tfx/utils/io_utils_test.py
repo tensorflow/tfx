@@ -102,6 +102,19 @@ class IoUtilsTest(tf.test.TestCase):
     column_names = io_utils.load_csv_column_names(test_file)
     self.assertListEqual(['a', 'b', 'c', 'd'], column_names)
 
+  def testGeneratesFingerprint(self):
+    d1_path = os.path.join(self._base_dir, 'fp', 'data1')
+    io_utils.write_string_file(d1_path, 'testing')
+    os.utime(d1_path, (0, 1))
+    d2_path = os.path.join(self._base_dir, 'fp', 'data2')
+    io_utils.write_string_file(d2_path, 'testing2')
+    os.utime(d2_path, (0, 3))
+    fingerprint = io_utils.generate_fingerprint(
+        'split', os.path.join(self._base_dir, 'fp', '*'))
+    self.assertEqual(
+        'split:split,num_files:2,total_bytes:15,xor_checksum:2,sum_checksum:4',
+        fingerprint)
+
 
 if __name__ == '__main__':
   tf.test.main()

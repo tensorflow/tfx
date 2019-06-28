@@ -29,6 +29,10 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+# Nano seconds per second.
+NANO_PER_SEC = 1000 * 1000 * 1000
+
+
 def import_func(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
   """Imports a function from a module provided as source file."""
 
@@ -136,6 +140,27 @@ def load_csv_column_names(csv_file: Text) -> List[Text]:
 def all_files_pattern(file_pattern: Text) -> Text:
   """Returns file pattern suitable for Beam to locate multiple files."""
   return '{}*'.format(file_pattern)
+
+
+def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
+  """Generates a fingerprint for all files that match the pattern."""
+  files = tf.io.gfile.glob(file_pattern)
+  total_bytes = 0
+  # Checksum used here is based on timestamp (mtime).
+  # Checksums are xor'ed and sum'ed over the files so that they are order-
+  # independent.
+  xor_checksum = 0
+  sum_checksum = 0
+  for f in files:
+    stat = tf.io.gfile.stat(f)
+    total_bytes += stat.length
+    # Take mtime only up to second-granularity.
+    mtime = int(stat.mtime_nsec / NANO_PER_SEC)
+    xor_checksum ^= mtime
+    sum_checksum += mtime
+
+  return 'split:%s,num_files:%d,total_bytes:%d,xor_checksum:%d,sum_checksum:%d' % (
+      split_name, len(files), total_bytes, xor_checksum, sum_checksum)
 
 
 class SchemaReader(object):
