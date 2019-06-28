@@ -111,6 +111,8 @@ class ComponentInfo(object):
     component_id: a unique identifier of the component instance within pipeline.
   """
 
-  def __init__(self, component_type, component_id):
+  def __init__(self,
+               component_type: Text,
+               component_id: Text):
     self.component_type = component_type
     self.component_id = component_id
