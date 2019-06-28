@@ -528,32 +528,32 @@ def create_pipeline():
   """Implements the example pipeline with TFX."""
   examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
   example_gen = CsvExampleGen(input_data=examples)
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs.output)
-  infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+  statistics_gen = StatisticsGen(input_data=example_gen.outputs['output'])
+  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
   validate_stats = ExampleValidator(  # pylint: disable=unused-variable
-      stats=statistics_gen.outputs.output,
-      schema=infer_schema.outputs.output)
+      stats=statistics_gen.outputs['output'],
+      schema=infer_schema.outputs['output'])
   transform = Transform(
-      input_data=example_gen.outputs.output,
-      schema=infer_schema.outputs.output,
+      input_data=example_gen.outputs['output'],
+      schema=infer_schema.outputs['output'],
       module_file=transforms)
   trainer = Trainer(
       module_file=model,
-      transformed_examples=transform.outputs.transformed_examples,
-      schema=infer_schema.outputs.output,
-      transform_output=transform.outputs.transform_output,
+      transformed_examples=transform.outputs['transformed_examples'],
+      schema=infer_schema.outputs['output'],
+      transform_output=transform.outputs['transform_output'],
       train_steps=10000,
       eval_steps=5000,
       warm_starting=True)
   model_analyzer = Evaluator(
-      examples=example_gen.outputs.output,
-      model_exports=trainer.outputs.output)
+      examples=example_gen.outputs['output'],
+      model_exports=trainer.outputs['output'])
   model_validator = ModelValidator(
-      examples=example_gen.outputs.output,
-      model=trainer.outputs.output)
+      examples=example_gen.outputs['output'],
+      model=trainer.outputs['output'])
   pusher = Pusher(
-      model_export=trainer.outputs.output,
-      model_blessing=model_validator.outputs.blessing,
+      model_export=trainer.outputs['output'],
+      model_blessing=model_validator.outputs['blessing'],
       serving_model_dir=serving_model_dir)
 
   return [

@@ -40,9 +40,9 @@ class TransformTest(tf.test.TestCase):
         module_file=preprocessing_fn_file,
     )
     self.assertEqual('TransformPath',
-                     transform.outputs.transform_output.type_name)
+                     transform.outputs['transform_output'].type_name)
     self.assertEqual('ExamplesPath',
-                     transform.outputs.transformed_examples.type_name)
+                     transform.outputs['transformed_examples'].type_name)
 
 
 if __name__ == '__main__':

@@ -30,8 +30,8 @@ class ComponentTest(tf.test.TestCase):
     import_example_gen = component.ImportExampleGen(
         input_base=channel.as_channel([input_base]))
     self.assertEqual('ExamplesPath',
-                     import_example_gen.outputs.examples.type_name)
-    artifact_collection = import_example_gen.outputs.examples.get()
+                     import_example_gen.outputs['examples'].type_name)
+    artifact_collection = import_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 

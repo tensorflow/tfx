@@ -31,6 +31,6 @@ import tensorflow_model_analysis as tfma
 taxi_mv_spec = [tfma.SingleSliceSpec()]
 
 model_validator = components.ModelValidator(
-      examples=examples_gen.outputs.output,
-      model=trainer.outputs.output)
+      examples=examples_gen.outputs['output'],
+      model=trainer.outputs['output'])
 ```
