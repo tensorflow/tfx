@@ -19,7 +19,9 @@ from __future__ import print_function
 
 import json
 
+import mock
 import tensorflow as tf
+from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -70,6 +72,24 @@ class ComponentSpecTest(tf.test.TestCase):
       OUTPUTS = {}
 
     _ = EmptyComponentSpec()
+
+  def test_componentspec_attributeaccess_deprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+
+      proto = example_gen_pb2.Input()
+      input_channel = channel.Channel(type_name='InputType')
+      output_channel = channel.Channel(type_name='OutputType')
+      spec = _BasicComponentSpec(folds=10,
+                                 proto=proto,
+                                 input=input_channel,
+                                 output=output_channel)
+      spec.outputs.output  # pylint: disable=pointless-statement
+
+      warn_mock.assert_called_once()
+      self.assertIn('The previous attribute accessor style',
+                    warn_mock.call_args[0][5])
 
   def test_componentspec_basic(self):
     proto = example_gen_pb2.Input()

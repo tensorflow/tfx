@@ -74,7 +74,7 @@
     producer_component.
 *   The recommended method of accessing an input/output of a ComponentSpec has
     changed from `spec.outputs.output_name` to `spec.outputs['output_name']`.
-    The previous style will be deprecated soon.
+    The previous style is deprecated and will be removed in a later version.
 
 # Version 0.13.0
 

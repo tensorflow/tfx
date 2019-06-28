@@ -31,6 +31,7 @@ from typing import Type
 
 from google.protobuf import json_format
 from google.protobuf import message
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.utils import channel
@@ -48,6 +49,12 @@ class _PropertyDictWrapper(object):
   def __getitem__(self, key):
     return self._data[key]
 
+  @deprecation.deprecated(
+      None,
+      'As of TFX 0.14.0, the recommended way to access inputs / outputs of a '
+      'component object is `component.outputs[\'output_name\']`. The previous '
+      'attribute accessor style (i.e. `components.outputs.output_name`) is '
+      'deprecated and will be removed in a later version.')
   def __getattr__(self, key):
     try:
       return self._data[key]
