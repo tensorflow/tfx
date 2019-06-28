@@ -70,7 +70,7 @@ class PipelineTest(tf.test.TestCase):
         tempfile.mkstemp(prefix='cli_tmp_')[1])
     self._original_tmp_value = os.environ.get(
         'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
-    self._metadata_connection_config = metadata.filed_based_metadata_connection_config(
+    self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
         os.path.join(self._tmp_file, 'metadata'))
 
   def tearDown(self):
