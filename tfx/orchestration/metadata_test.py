@@ -60,12 +60,13 @@ class MetadataTest(tf.test.TestCase):
 
       # Test publish artifact.
       artifact = types.TfxArtifact(type_name='ExamplesPath')
+      artifact.uri = 'uri'
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
       self.assertProtoEquals(
           """id: 1
         type_id: 1
-        uri: ""
+        uri: "uri"
         properties {
           key: "split"
           value {
@@ -87,6 +88,7 @@ class MetadataTest(tf.test.TestCase):
 
       # Test get artifact.
       self.assertListEqual([artifact], m.get_all_artifacts())
+      self.assertListEqual([artifact], m.get_artifacts_by_uri('uri'))
 
       # Test artifact state.
       m.check_artifact_state(artifact, types.ARTIFACT_STATE_PUBLISHED)
