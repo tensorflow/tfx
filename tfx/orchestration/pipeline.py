@@ -165,3 +165,11 @@ class Pipeline(object):
     # has all its dependencies visited.
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
+
+  def set_run_id(self, run_id: Text):
+    """Set pipeline run_id in PipelineInfo and component outputs."""
+    self.pipeline_info.run_id = run_id
+    for component in self.components:
+      for unused_name, output_channel in component.outputs.get_all().items():
+        for artifact in output_channel.get():
+          artifact.run_id = run_id

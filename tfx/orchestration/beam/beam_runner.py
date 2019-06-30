@@ -95,7 +95,7 @@ class BeamRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
-    tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
+    tfx_pipeline.set_run_id(datetime.datetime.now().isoformat())
 
     with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
       # Uses for triggering the component DoFns.

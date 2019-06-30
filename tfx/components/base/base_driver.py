@@ -233,15 +233,19 @@ class BaseDriver(object):
       RuntimeError: for Channels that do not contain any artifact. This will be
       reverted once we support Channel-based input resolution.
     """
+    del pipeline_info  # unused
     result = {}
     for name, input_channel in input_dict.items():
       artifacts = list(input_channel.get())
       # TODO(ruoyu): Remove once channel-based input resolution is supported.
       if not artifacts:
         raise RuntimeError('Channel-based input resolution is not supported.')
+      # Use the properties from a single artifact to retrieve the authoritative
+      # list of all artifacts from ML Metadata.
+      artifact = artifacts[0]
       result[name] = self._metadata_handler.search_artifacts(
-          artifacts[0].name, pipeline_info.pipeline_name, pipeline_info.run_id,
-          artifacts[0].producer_component)
+          artifact.name, artifact.pipeline_name, artifact.run_id,
+          artifact.producer_component)
     return result
 
   def resolve_exec_properties(

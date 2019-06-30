@@ -84,6 +84,8 @@ class TfxArtifact(object):
     artifact_type.properties['pipeline_name'] = metadata_store_pb2.STRING
     # The name of the component that produces the artifact.
     artifact_type.properties['producer_component'] = metadata_store_pb2.STRING
+    # The run id of the execution that produced this artifact.
+    artifact_type.properties['run_id'] = metadata_store_pb2.STRING
     # The name of the artifact, used to differentiate same type of artifact
     # produced by the same component.
     artifact_type.properties['name'] = metadata_store_pb2.STRING
@@ -208,6 +210,16 @@ class TfxArtifact(object):
     """Set producer component of the artifact."""
     self.artifact.properties[
         'producer_component'].string_value = producer_component
+
+  @property
+  def run_id(self) -> Text:
+    """Producer run id of the artifact."""
+    return self.artifact.properties['run_id'].string_value
+
+  @run_id.setter
+  def run_id(self, run_id: Text):
+    """Set producer run id of the artifact."""
+    self.artifact.properties['run_id'].string_value = run_id
 
   @property
   def name(self) -> Text:
