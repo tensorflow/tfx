@@ -17,6 +17,7 @@
     examples
 *   Introduced new mechanism of artifact info passing between component that
     solely rely on ML Metadata
+*   Driver and execution logging are now unified to go through tf.logging.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on

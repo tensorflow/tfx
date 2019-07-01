@@ -123,7 +123,7 @@ class ComponentRunnerTest(tf.test.TestCase):
         pipeline_info=pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=connection_config,
-        additional_pipeline_args={}).run()
+        additional_pipeline_args={}).launch()
 
     output_path = os.path.join(pipeline_root, 'output')
     self.assertTrue(tf.gfile.Exists(output_path))

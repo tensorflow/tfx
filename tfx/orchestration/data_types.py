@@ -73,8 +73,10 @@ class DriverArgs(object):
     enable_cache: whether cache is enabled in current execution.
   """
 
-  def __init__(self, worker_name: Text, base_output_dir: Text,
-               enable_cache: bool):
+  def __init__(self,
+               enable_cache: bool,
+               worker_name: Optional[Text] = '',
+               base_output_dir: Optional[Text] = ''):
     # TODO(ruoyu): Remove worker_name and base_output_dir once migration to
     # go/tfx-oss-artifact-passing finishes.
     self.worker_name = worker_name

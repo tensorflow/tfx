@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import os
 import apache_beam as beam
 import tensorflow as tf
 from typing import Any, Iterable, List, Optional, Text
@@ -44,12 +43,7 @@ class _ComponentAsDoFn(beam.DoFn):
       component: Component that to be executed.
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
-    # TODO(ruoyu): refactor DriverArgs, drop duplicated base dir and name.
-    driver_args = data_types.DriverArgs(
-        worker_name=component.component_id,
-        base_output_dir=os.path.join(tfx_pipeline.pipeline_info.pipeline_root,
-                                     component.component_id, ''),
-        enable_cache=tfx_pipeline.enable_cache)
+    driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
     self._component_launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
@@ -71,7 +65,7 @@ class _ComponentAsDoFn(beam.DoFn):
 
   def _run_component(self) -> None:
     tf.logging.info('Component %s is running.', self._name)
-    self._component_launcher.run()
+    self._component_launcher.launch()
     tf.logging.info('Component %s is finished.', self._name)
 
 
