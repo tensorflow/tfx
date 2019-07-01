@@ -121,7 +121,7 @@ class ComponentLauncher(object):
           output_dict=output_dict,
           use_cached_results=use_cached_results)
 
-  def run(self) -> None:
+  def launch(self) -> None:
     """Execute the component, includes driver, executor and publisher."""
     execution_decision = self._run_driver(self._input_dict, self._output_dict,
                                           self._exec_properties)

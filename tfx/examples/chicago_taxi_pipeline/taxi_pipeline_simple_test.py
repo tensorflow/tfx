@@ -19,11 +19,11 @@ from __future__ import print_function
 
 import datetime
 import os
+from airflow import models
 
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
-from tfx.orchestration.airflow.airflow_pipeline import AirflowPipeline
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
 
 
@@ -44,7 +44,7 @@ class TaxiPipelineSimpleTest(tf.test.TestCase):
     logical_pipeline = taxi_pipeline_simple._create_pipeline()
     self.assertEqual(9, len(logical_pipeline.components))
     pipeline = TfxRunner(airflow_config).run(logical_pipeline)
-    self.assertIsInstance(pipeline, AirflowPipeline)
+    self.assertIsInstance(pipeline, models.DAG)
 
 
 if __name__ == '__main__':

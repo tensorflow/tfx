@@ -23,7 +23,6 @@ import os
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_portable_beam
-from tfx.orchestration.airflow.airflow_pipeline import AirflowPipeline
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
 
 
@@ -43,8 +42,7 @@ class TaxiPipelinePortableBeamTest(tf.test.TestCase):
     }
     logical_pipeline = taxi_pipeline_portable_beam._create_pipeline()
     self.assertEqual(9, len(logical_pipeline.components))
-    pipeline = TfxRunner(airflow_config).run(logical_pipeline)
-    self.assertIsInstance(pipeline, AirflowPipeline)
+    TfxRunner(airflow_config).run(logical_pipeline)
 
 
 if __name__ == '__main__':
