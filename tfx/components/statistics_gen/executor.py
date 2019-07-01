@@ -84,4 +84,5 @@ class Executor(base_executor.BaseExecutor):
                 shard_name_template='',
                 coder=beam.coders.ProtoCoder(
                     statistics_pb2.DatasetFeatureStatisticsList)))
-      tf.logging.info('Statistics written to {}.'.format(output_uri))
+        tf.logging.info('Statistics for split {} written to {}.'.format(
+            split, output_uri))
