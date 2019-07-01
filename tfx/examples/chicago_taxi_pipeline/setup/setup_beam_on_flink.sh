@@ -46,12 +46,19 @@ function setup_flink() {
 
 function start_flink() {
   echo "Starting flink at $WORK_DIR/$FLINK_NAME"
+  local parallelism=$(get_parallelism)
+  local flink_conf=$WORK_DIR/$FLINK_NAME/conf/flink-conf.yaml
+  sed -i "s/taskmanager.numberOfTaskSlots: [0-9]*/taskmanager.numberOfTaskSlots: $parallelism/g" $flink_conf
+  # TODO(FLINK-10672) Remove workaround
+  # Increase taskmanager heap size to reduce back pressure
+  sed -i "s/taskmanager.heap.size: [0-9]*m/taskmanager.heap.size: 2048m/g" $flink_conf
   cd $WORK_DIR/$FLINK_NAME && ./bin/stop-cluster.sh && ./bin/start-cluster.sh
   echo "Flink running from $WORK_DIR/$FLINK_NAME"
 }
 
+# TODO(b/139747527) Start the job server through the SDK automatically
 function start_job_server() {
-  echo "Starting Beam jobserver"
+  echo "Starting Beam Flink jobserver"
   cd $BEAM_DIR
   ./gradlew :runners:flink:1.8:job-server:runShadow -PflinkMasterUrl=localhost:8081
 }

@@ -18,7 +18,7 @@ WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
-BEAM_BRANCH="release-2.14.0"
+BEAM_BRANCH="release-2.16.0"
 
 
 # TODO(BEAM-2530): Support Java 11 when BEAM-2530 is done.
@@ -62,4 +62,15 @@ function update_beam(){
     echo "Using $GIT_COMMAND to update Beam source code."
     cd $BEAM_DIR && $GIT_COMMAND checkout $BEAM_BRANCH && $GIT_COMMAND pull --rebase
   fi
+}
+
+function get_parallelism(){
+   python -c "
+import multiprocessing
+try:
+  parallelism = multiprocessing.cpu_count()
+except NotImplementedError:
+  parallelism = 1
+print parallelism
+"
 }
