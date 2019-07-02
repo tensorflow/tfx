@@ -111,19 +111,23 @@ class ComponentRunnerTest(tf.test.TestCase):
         input_channel=channel.as_channel([input_artifact]))
 
     pipeline_info = data_types.PipelineInfo(
-        pipeline_name='Test', pipeline_root=pipeline_root, run_id=123)
+        pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
 
     driver_args = data_types.DriverArgs(
         worker_name=component.component_id,
         base_output_dir=os.path.join(pipeline_root, component.component_id),
         enable_cache=True)
 
-    component_launcher.ComponentLauncher(
+    launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=connection_config,
-        additional_pipeline_args={}).launch()
+        additional_pipeline_args={})
+    self.assertEqual(
+        launcher._component_info.component_type,
+        '.'.join([_FakeComponent.__module__, _FakeComponent.__name__]))
+    launcher.launch()
 
     output_path = os.path.join(pipeline_root, 'output')
     self.assertTrue(tf.gfile.Exists(output_path))

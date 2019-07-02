@@ -53,7 +53,8 @@ class ComponentLauncher(object):
     """
     self._pipeline_info = pipeline_info
     self._component_info = data_types.ComponentInfo(
-        component_type=component.__class__.__name__,
+        component_type='.'.join(
+            [component.__class__.__module__, component.__class__.__name__]),
         component_id=component.component_id)
     self._driver_args = driver_args
 
