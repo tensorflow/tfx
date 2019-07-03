@@ -26,7 +26,7 @@ from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 
 
-class BigQueryExampleGen(component._ExampleGen):  # pylint: disable=protected-access
+class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train
@@ -63,8 +63,6 @@ class BigQueryExampleGen(component._ExampleGen):  # pylint: disable=protected-ac
     if bool(query) == bool(input_config):
       raise RuntimeError('Exactly one of query and input_config should be set.')
     input_config = input_config or utils.make_default_input_config(query)
-    output_config = output_config or utils.make_default_output_config(
-        input_config)
     super(BigQueryExampleGen, self).__init__(
         input_config=input_config,
         output_config=output_config,

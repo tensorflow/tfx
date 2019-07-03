@@ -36,6 +36,7 @@ def external_input(uri: Text) -> channel.Channel:
   return channel.as_channel([instance])
 
 
+# TODO(b/136598840): deprecate this, use external_input.
 def csv_input(uri: Text) -> channel.Channel:
   """Helper function to declare input for csv_example_gen component.
 
@@ -48,6 +49,7 @@ def csv_input(uri: Text) -> channel.Channel:
   return external_input(uri)
 
 
+# TODO(b/136598840): deprecate this, use external_input.
 def tfrecord_input(uri: Text) -> channel.Channel:
   """Helper function to declare input for import_example_gen component.
 

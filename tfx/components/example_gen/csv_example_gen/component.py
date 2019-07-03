@@ -25,7 +25,7 @@ from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 
 
-class CsvExampleGen(component._FileBasedExampleGen):  # pylint: disable=protected-access
+class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX CsvExampleGen component.
 
   The csv examplegen component takes csv data, and generates train

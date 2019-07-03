@@ -33,24 +33,24 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
     pass
 
 
-class TestExampleGenComponent(component._ExampleGen):
+class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
 
   EXECUTOR_CLASS = TestExampleGenExecutor
 
   def __init__(self,
-               input_config=None,
+               input_config,
                output_config=None,
                name=None,
                example_artifacts=None):
-    super(TestExampleGenComponent, self).__init__(
+    super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        component_name='TestExampleGenComponent',
+        component_name='TestQueryBasedExampleGenComponent',
         example_artifacts=example_artifacts,
         name=name)
 
 
-class TestFileBasedExampleGenComponent(component._FileBasedExampleGen):
+class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
   EXECUTOR_CLASS = TestExampleGenExecutor
 
@@ -71,25 +71,12 @@ class TestFileBasedExampleGenComponent(component._FileBasedExampleGen):
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
-    example_gen = component._ExampleGen(input_config=None)
-    self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
-    artifact_collection = example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-
-  def test_construct_file_based(self):
-    input_base = types.TfxArtifact(type_name='ExternalPath')
-    example_gen = component._FileBasedExampleGen(
-        input_base=channel.as_channel([input_base]))
-    self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
-    artifact_collection = example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-
-  def test_construct_subclass(self):
-    example_gen = TestExampleGenComponent()
+  def test_construct_subclass_query_based(self):
+    example_gen = TestQueryBasedExampleGenComponent(
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='query'),
+        ]))
+    self.assertEqual({}, example_gen.inputs.get_all())
     self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
     artifact_collection = example_gen.outputs.examples.get()
@@ -107,9 +94,20 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 
+  def test_construct_custom_executor(self):
+    input_base = types.TfxArtifact(type_name='ExternalPath')
+    example_gen = component.FileBasedExampleGen(
+        input_base=channel.as_channel([input_base]),
+        executor_class=TestExampleGenExecutor)
+    self.assertEqual(driver.Driver, example_gen.driver_class)
+    self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
+    artifact_collection = example_gen.outputs.examples.get()
+    self.assertEqual('train', artifact_collection[0].split)
+    self.assertEqual('eval', artifact_collection[1].split)
+
   def test_construct_with_output_config(self):
     input_base = types.TfxArtifact(type_name='ExternalPath')
-    example_gen = component._FileBasedExampleGen(
+    example_gen = TestFileBasedExampleGenComponent(
         input_base=channel.as_channel([input_base]),
         output_config=example_gen_pb2.Output(
             split_config=example_gen_pb2.SplitConfig(splits=[
@@ -125,7 +123,7 @@ class ComponentTest(tf.test.TestCase):
 
   def test_construct_with_input_config(self):
     input_base = types.TfxArtifact(type_name='ExternalPath')
-    example_gen = component._FileBasedExampleGen(
+    example_gen = TestFileBasedExampleGenComponent(
         input_base=channel.as_channel([input_base]),
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='train', pattern='train/*'),
@@ -137,18 +135,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
-
-  def test_construct_without_input_base(self):
-    example_gen = component._ExampleGen(
-        input_config=example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='single', pattern='query'),
-        ]))
-    self.assertEqual({}, example_gen.inputs.get_all())
-    self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
-    artifact_collection = example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
 
 
 if __name__ == '__main__':
