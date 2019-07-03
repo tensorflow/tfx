@@ -58,6 +58,15 @@ sudo apt-get install python-dev  \
 
 ### MacOS Environment
 
+If you do not have Python 3 already installed, you can install Python using
+the [Homebrew](https://brew.sh/) package manager:
+
+```bash
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install
+export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
+brew update
+brew install python
+```
 MacOS sometimes has problems forking threads when running Airflow, depending on
 the configuration. To avoid those problems you should edit your
 `~/.bash_profile` and add the following line to the end of the file:
