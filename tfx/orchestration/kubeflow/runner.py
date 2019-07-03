@@ -116,8 +116,7 @@ class KubeflowRunner(tfx_runner.TfxRunner):
     Args:
       pipeline: The logical TFX pipeline to base the construction on.
     """
-    output_dir = os.path.join(pipeline.pipeline_args['pipeline_root'],
-                              pipeline.pipeline_args['pipeline_name'])
+    output_dir = pipeline.pipeline_args['pipeline_root']
     beam_pipeline_args = []
     tfx_image = None
     if 'additional_pipeline_args' in pipeline.pipeline_args:

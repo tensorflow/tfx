@@ -73,6 +73,8 @@
     renamed to "artifacts".
 *   ArtifactType for artifacts will have two new properties: pipeline_name and
     producer_component.
+*   pipeline_root passed to pipeline.Pipeline is now the root to the running
+    pipeline instead of the root of all pipelines.
 
 # Version 0.13.0
 

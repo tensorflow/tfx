@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import logging
 import os
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -29,13 +28,12 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.orchestration import metadata
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
-from tfx.orchestration.pipeline import PipelineDecorator
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import csv_input
-
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
@@ -52,9 +50,9 @@ _serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_simple')
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
-_pipeline_root = os.path.join(_tfx_root, 'pipelines')
-_metadata_db_root = os.path.join(_tfx_root, 'metadata')
-_log_root = os.path.join(_tfx_root, 'logs')
+_pipeline_name = 'chicago_taxi_portable_beam'
+_pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
+_metadata_db_root = os.path.join(_tfx_root, 'metadata', _pipeline_name)
 
 # Airflow-specific configs; these will be passed directly to airflow
 _airflow_config = {
@@ -62,48 +60,7 @@ _airflow_config = {
     'start_date': datetime.datetime(2019, 1, 1),
 }
 
-# Logging overrides
-logger_overrides = {
-    'log_root': _log_root,
-    'log_level': logging.INFO
-}
 
-
-# TODO(b/124066911): Centralize tfx related config into one place.
-@PipelineDecorator(
-    pipeline_name='chicago_taxi_portable_beam',
-    enable_cache=True,
-    metadata_db_root=_metadata_db_root,
-    pipeline_root=_pipeline_root,
-    additional_pipeline_args={
-        'logger_args':
-            logger_overrides,
-        # LINT.IfChange
-        'beam_pipeline_args': [
-            # ----- Beam Args -----.
-            '--runner=PortableRunner',
-            # Points to the job server started in setup_beam_on_(flink|spark).sh
-            '--job_endpoint=localhost:8099',
-            '--environment_type=LOOPBACK',
-            # TODO(BEAM-6754): Utilize multicore in LOOPBACK environment.  # pylint: disable=g-bad-todo
-            # TODO(BEAM-5167): Use concurrency information from SDK Harness.  # pylint: disable=g-bad-todo
-            # Note; We use 100 worker threads to mitigate the issue with
-            # scheduling work between the Beam runner and SDK harness. Flink and
-            # Spark can process unlimited work items concurrently while
-            # SdkHarness can only process 1 work item per worker thread. Having
-            # 100 threads will let 100 tasks execute concurrently avoiding
-            # scheduling issue in most cases. In case the threads are exhausted,
-            # beam print the relevant message in the log.
-            '--experiments=worker_threads=100',
-            # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
-            '--experiments=pre_optimize=all',
-            # ----- Flink runner-specific Args -----.
-            # TODO(b/126725506): Set the task parallelism based on cpu cores.
-            # TODO(FLINK-10672): Obviate setting BATCH_FORCED.
-            '--execution_mode_for_batch=BATCH_FORCED',
-        ],
-        # LINT.ThenChange(tfx/examples/chicago_taxi/setup_beam_on_portable_beam.sh)
-    })
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
   examples = csv_input(_data_root)
@@ -158,10 +115,45 @@ def _create_pipeline():
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=_serving_model_dir)))
 
-  return [
-      example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      trainer, model_analyzer, model_validator, pusher
-  ]
+  return pipeline.Pipeline(
+      pipeline_name=_pipeline_name,
+      pipeline_root=_pipeline_root,
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          _metadata_db_root),
+      components=[
+          example_gen, statistics_gen, infer_schema, validate_stats, transform,
+          trainer, model_analyzer, model_validator, pusher
+      ],
+      additional_pipeline_args={
+          # LINT.IfChange
+          'beam_pipeline_args': [
+              # ----- Beam Args -----.
+              '--runner=PortableRunner',
+              # Points to the job server started in
+              # setup_beam_on_(flink|spark).sh
+              '--job_endpoint=localhost:8099',
+              '--environment_type=LOOPBACK',
+              # TODO(BEAM-6754): Utilize multicore in LOOPBACK environment.  # pylint: disable=g-bad-todo
+              # TODO(BEAM-5167): Use concurrency information from SDK Harness.  # pylint: disable=g-bad-todo
+              # Note; We use 100 worker threads to mitigate the issue with
+              # scheduling work between the Beam runner and SDK harness. Flink
+              # and Spark can process unlimited work items concurrently while
+              # SdkHarness can only process 1 work item per worker thread.
+              # Having 100 threads will let 100 tasks execute concurrently
+              # avoiding scheduling issue in most cases. In case the threads are
+              # exhausted, beam print the relevant message in the log.
+              '--experiments=worker_threads=100',
+              # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
+              '--experiments=pre_optimize=all',
+              # ----- Flink runner-specific Args -----.
+              # TODO(b/126725506): Set the task parallelism based on cpu cores.
+              # TODO(FLINK-10672): Obviate setting BATCH_FORCED.
+              '--execution_mode_for_batch=BATCH_FORCED',
+          ],
+          # LINT.ThenChange(tfx/examples/chicago_taxi/setup_beam_on_portable_beam.sh)
+      },
+  )
 
 
 pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())

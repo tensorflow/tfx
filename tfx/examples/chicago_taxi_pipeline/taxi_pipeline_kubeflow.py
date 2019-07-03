@@ -36,7 +36,9 @@ from tfx.proto import trainer_pb2
 # Directory and data locations (uses Google Cloud Storage).
 _input_bucket = 'gs://my-bucket'
 _output_bucket = 'gs://my-bucket'
-_pipeline_root = os.path.join(_output_bucket, 'tfx')
+_tfx_root = os.path.join(_output_bucket, 'tfx')
+_pipeline_name = 'chicago_taxi_pipeline_kubeflow'
+_pipeline_root = os.path.join(_tfx_root, _pipeline_name)
 
 # Google Cloud Platform project id to use when deploying this pipeline.
 _project_id = 'my-gcp-project'
@@ -211,11 +213,11 @@ def _create_pipeline():
                 base_directory=_serving_model_dir)))
 
   return pipeline.Pipeline(
-      pipeline_name='chicago_taxi_pipeline_kubeflow',
+      pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats,
-          transform, trainer, model_analyzer, model_validator, pusher
+          example_gen, statistics_gen, infer_schema, validate_stats, transform,
+          trainer, model_analyzer, model_validator, pusher
       ],
       additional_pipeline_args={
           'beam_pipeline_args': [
