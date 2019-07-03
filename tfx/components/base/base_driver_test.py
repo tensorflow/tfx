@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import copy
 import os
+import mock
 import tensorflow as tf
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
@@ -31,135 +32,42 @@ class BaseDriverTest(tf.test.TestCase):
   def setUp(self):
     self._mock_metadata = tf.test.mock.Mock()
     self._input_dict = {
-        'input_data': [types.TfxArtifact(type_name='InputType')],
+        'input_data':
+            channel.Channel(
+                type_name='input_data',
+                artifacts=[types.TfxArtifact(type_name='input_data')])
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
         self._testMethodName, 'input_dir')
     # valid input artifacts must have a uri pointing to an existing directory.
-    for key, input_list in self._input_dict.items():
-      for index, artifact in enumerate(input_list):
+    for key, input_channel in self._input_dict.items():
+      for index, artifact in enumerate(input_channel.get()):
         artifact.id = index + 1
         uri = os.path.join(input_dir, key, str(artifact.id), '')
         artifact.uri = uri
         tf.gfile.MakeDirs(uri)
     self._output_dict = {
+        'output_data':
+            channel.Channel(
+                type_name='output_data',
+                artifacts=[
+                    types.TfxArtifact(type_name='output_data', split='split')
+                ])
+    }
+    self._input_artifacts = channel.unwrap_channel_dict(self._input_dict)
+    self._output_artifacts = {
         'output_data': [types.TfxArtifact(type_name='OutputType')],
     }
     self._exec_properties = {
         'key': 'value',
     }
-    self._base_output_dir = os.path.join(
-        os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        self._testMethodName, 'base_output_dir')
-    self._driver_args = data_types.DriverArgs(
-        worker_name='worker_name',
-        base_output_dir=self._base_output_dir,
-        enable_cache=True)
     self._execution_id = 100
 
-  def _check_output(self, execution_decision):
-    output_dict = execution_decision.output_dict
-    self.assertEqual(self._output_dict.keys(), output_dict.keys())
-    for name, output_list in output_dict.items():
-      for (original_output, output) in zip(self._output_dict[name],
-                                           output_list):
-        if execution_decision.execution_id:
-          # Uncached results should have a newly created uri.
-          self.assertEqual(
-              os.path.join(self._base_output_dir, name,
-                           str(execution_decision.execution_id), ''),
-              output.uri)
-        else:
-          # Cached results have a different set of uri.
-          self.assertEqual(
-              os.path.join(self._base_output_dir, name, str(self._execution_id),
-                           ''), output.uri)
-        self.assertEqual(original_output.split, output.split)
-
-  def test_prepare_execution(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    output_dict = copy.deepcopy(self._output_dict)
-    exec_properties = copy.deepcopy(self._exec_properties)
-
-    self._mock_metadata.previous_run.return_value = None
-    self._mock_metadata.prepare_execution.return_value = self._execution_id
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(input_dict, output_dict,
-                                                  exec_properties,
-                                                  self._driver_args)
-    self.assertEqual(self._execution_id, execution_decision.execution_id)
-    self._check_output(execution_decision)
-
-  def test_cached_execution(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    output_dict = copy.deepcopy(self._output_dict)
-    exec_properties = copy.deepcopy(self._exec_properties)
-
-    cached_output_dict = copy.deepcopy(self._output_dict)
-    for key, artifact_list in cached_output_dict.items():
-      for artifact in artifact_list:
-        artifact.uri = os.path.join(self._base_output_dir, key,
-                                    str(self._execution_id), '')
-        # valid cached artifacts must have an existing uri.
-        tf.gfile.MakeDirs(artifact.uri)
-    self._mock_metadata.previous_run.return_value = self._execution_id
-    self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(input_dict, output_dict,
-                                                  exec_properties,
-                                                  self._driver_args)
-    self.assertIsNone(execution_decision.execution_id)
-    self._check_output(execution_decision)
-
-  def test_artifact_missing(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    input_dict['input_data'][0].uri = 'should/not/exist'
-    output_dict = copy.deepcopy(self._output_dict)
-    exec_properties = copy.deepcopy(self._exec_properties)
-    driver_options = copy.deepcopy(self._driver_args)
-    driver_options.enable_cache = False
-
-    cached_output_dict = copy.deepcopy(self._output_dict)
-    for key, artifact_list in cached_output_dict.items():
-      for artifact in artifact_list:
-        artifact.uri = os.path.join(self._base_output_dir, key,
-                                    str(self._execution_id), '')
-        # valid cached artifacts must have an existing uri.
-        tf.gfile.MakeDirs(artifact.uri)
-
-    self._mock_metadata.previous_run.return_value = self._execution_id
-    self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    driver = base_driver.BaseDriver(self._mock_metadata)
-    with self.assertRaises(RuntimeError):
-      driver.prepare_execution(input_dict, output_dict, exec_properties,
-                               driver_options)
-
-  def test_no_cache_on_missing_uri(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    output_dict = copy.deepcopy(self._output_dict)
-    exec_properties = copy.deepcopy(self._exec_properties)
-
-    cached_output_dict = copy.deepcopy(self._output_dict)
-    for key, artifact_list in cached_output_dict.items():
-      for artifact in artifact_list:
-        artifact.uri = os.path.join(self._base_output_dir, key,
-                                    str(self._execution_id), '')
-        # Non existing output uri will force a cache miss.
-        self.assertFalse(tf.gfile.Exists(artifact.uri))
-    self._mock_metadata.previous_run.return_value = self._execution_id
-    self._mock_metadata.fetch_previous_result_artifacts.return_value = cached_output_dict
-    actual_execution_id = self._execution_id + 1
-    self._mock_metadata.prepare_execution.return_value = actual_execution_id
-
-    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
-    execution_decision = driver.prepare_execution(input_dict, output_dict,
-                                                  exec_properties,
-                                                  self._driver_args)
-    self.assertEqual(actual_execution_id, execution_decision.execution_id)
-    self._check_output(execution_decision)
-
-  def test_pre_execution_new_execution(self):
+  @mock.patch(
+      'tfx.components.base.base_driver._verify_input_artifacts'
+  )
+  def test_pre_execution_new_execution(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
             channel.Channel(
@@ -176,8 +84,7 @@ class BaseDriverTest(tf.test.TestCase):
     }
     execution_id = 1
     exec_properties = copy.deepcopy(self._exec_properties)
-    driver_args = data_types.DriverArgs(
-        worker_name='worker_name', base_output_dir='base', enable_cache=True)
+    driver_args = data_types.DriverArgs(enable_cache=True)
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='my_pipeline_name',
         pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -205,7 +112,10 @@ class BaseDriverTest(tf.test.TestCase):
         os.path.join(pipeline_info.pipeline_root, component_info.component_id,
                      'output_a', str(execution_id), 'split', ''))
 
-  def test_pre_execution_cached(self):
+  @mock.patch(
+      'tfx.components.base.base_driver._verify_input_artifacts'
+  )
+  def test_pre_execution_cached(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
             channel.Channel(
@@ -222,8 +132,7 @@ class BaseDriverTest(tf.test.TestCase):
     }
     execution_id = 1
     exec_properties = copy.deepcopy(self._exec_properties)
-    driver_args = data_types.DriverArgs(
-        worker_name='worker_name', base_output_dir='base', enable_cache=True)
+    driver_args = data_types.DriverArgs(enable_cache=True)
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='my_pipeline_name',
         pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -235,7 +144,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata.register_execution.side_effect = [execution_id]
     self._mock_metadata.previous_execution.side_effect = [2]
     self._mock_metadata.fetch_previous_result_artifacts.side_effect = [
-        self._output_dict
+        self._output_artifacts
     ]
 
     driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
@@ -249,7 +158,16 @@ class BaseDriverTest(tf.test.TestCase):
     self.assertTrue(execution_decision.use_cached_results)
     self.assertEqual(execution_decision.execution_id, 1)
     self.assertItemsEqual(execution_decision.exec_properties, exec_properties)
-    self.assertItemsEqual(execution_decision.output_dict, self._output_dict)
+    self.assertItemsEqual(execution_decision.output_dict,
+                          self._output_artifacts)
+
+  def test_verify_input_artifacts_ok(self):
+    base_driver._verify_input_artifacts(self._input_artifacts)
+
+  def test_verify_input_artifacts_not_exists(self):
+    with self.assertRaises(RuntimeError):
+      base_driver._verify_input_artifacts(
+          {'artifact': [types.TfxArtifact(type_name='input_data')]})
 
 
 if __name__ == '__main__':

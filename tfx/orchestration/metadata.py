@@ -37,10 +37,11 @@ MAX_EXECUTIONS_FOR_CACHE = 100
 # ready.
 EXECUTION_STATE_CACHED = 'cached'
 EXECUTION_STATE_COMPLETE = 'complete'
+EXECUTION_STATE_NEW = 'new'
 
 
-def sqlite_metadata_connection_config(
-    metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
+def sqlite_metadata_connection_config(metadata_db_uri: Text
+                                     ) -> metadata_store_pb2.ConnectionConfig:
   """Convenient function to create file based metadata connection config.
 
   Args:
@@ -102,7 +103,7 @@ class Metadata(object):
   def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
                             new_state: Text) -> None:
     if not artifact.id:
-      raise ValueError('Artifact id missing for {}'.format(artifact))
+      raise ValueError('Artifact id missing for %s' % artifact)
     artifact.properties['state'].string_value = new_state
     self._store.put_artifacts([artifact])
 
@@ -111,14 +112,14 @@ class Metadata(object):
   def check_artifact_state(self, artifact: metadata_store_pb2.Artifact,
                            expected_states: Set[Text]) -> None:
     if not artifact.id:
-      raise ValueError('Artifact id missing for {}'.format(artifact))
+      raise ValueError('Artifact id missing for %s' % artifact)
     [artifact_in_metadata] = self._store.get_artifacts_by_id([artifact.id])
     current_artifact_state = artifact_in_metadata.properties[
         'state'].string_value
     if current_artifact_state not in expected_states:
       raise RuntimeError(
-          'Artifact state for {} is {}, but one of {} expected'.format(
-              artifact_in_metadata, current_artifact_state, expected_states))
+          'Artifact state for %s is %s, but one of %s expected' %
+          (artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
   def publish_artifacts(self, raw_artifact_list: List[TfxArtifact]
@@ -167,7 +168,7 @@ class Metadata(object):
     try:
       execution_type = self._store.get_execution_type(type_name)
       if execution_type is None:
-        raise RuntimeError('Execution type is None for {}.'.format(type_name))
+        raise RuntimeError('Execution type is None for %s.' % type_name)
       return execution_type.id
     except tf.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
@@ -188,15 +189,15 @@ class Metadata(object):
   # to go/tfx-oss-artifact-passing finishes.
   def _prepare_execution(
       self,
-      type_name: Text,
       state: Text,
       exec_properties: Dict[Text, Any],
-      pipeline_info: Optional[data_types.PipelineInfo] = None,
-      component_info: Optional[data_types.ComponentInfo] = None
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
   ) -> metadata_store_pb2.Execution:
     """Create a new execution with given type and state."""
     execution = metadata_store_pb2.Execution()
-    execution.type_id = self._prepare_execution_type(type_name, exec_properties)
+    execution.type_id = self._prepare_execution_type(
+        component_info.component_type, exec_properties)
     execution.properties['state'].string_value = tf.compat.as_text(state)
     for k, v in exec_properties.items():
       # We always convert execution properties to unicode.
@@ -229,32 +230,6 @@ class Metadata(object):
     execution.properties['state'].string_value = tf.compat.as_text(new_state)
     self._store.put_executions([execution])
 
-  # TODO(ruoyu): Deprecate this in favor of register_execution() once migration
-  # to go/tfx-oss-artifact-passing finishes.
-  def prepare_execution(
-      self,
-      type_name: Text,
-      exec_properties: Dict[Text, Any],
-      pipeline_info: Optional[data_types.PipelineInfo] = None,
-      component_info: Optional[data_types.ComponentInfo] = None) -> int:
-    """Create a new execution in metadata.
-
-    This will be superseded by register_execution().
-
-    Args:
-      type_name: the type name of the execution.
-      exec_properties: the execution properties of the execution
-      pipeline_info: optional pipeline info of the execution
-      component_info: optional component info of the execution
-
-    Returns:
-      execution id of the new execution
-    """
-    execution = self._prepare_execution(type_name, 'new', exec_properties,
-                                        pipeline_info, component_info)
-    [execution_id] = self._store.put_executions([execution])
-    return execution_id
-
   def register_execution(self, exec_properties: Dict[Text, Any],
                          pipeline_info: data_types.PipelineInfo,
                          component_info: data_types.ComponentInfo) -> int:
@@ -268,9 +243,10 @@ class Metadata(object):
     Returns:
       execution id of the new execution
     """
-    return self.prepare_execution(component_info.component_type,
-                                  exec_properties, pipeline_info,
-                                  component_info)
+    execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
+                                        pipeline_info, component_info)
+    [execution_id] = self._store.put_executions([execution])
+    return execution_id
 
   def publish_execution(
       self,
@@ -297,16 +273,14 @@ class Metadata(object):
     [execution] = self._store.get_executions_by_id([execution_id])
     self._update_execution_state(execution, state)
 
-    tf.logging.info(
-        'Publishing execution {}, with inputs {} and outputs {}'.format(
-            execution, input_dict, output_dict))
+    tf.logging.info('Publishing execution %s, with inputs %s and outputs %s' %
+                    (execution, input_dict, output_dict))
     events = []
     if input_dict:
       for key, input_list in input_dict.items():
         for index, single_input in enumerate(input_list):
           if not single_input.artifact.id:
-            raise ValueError(
-                'input artifact {} has missing id'.format(single_input))
+            raise ValueError('input artifact %s has missing id' % single_input)
           events.append(
               self._prepare_event(
                   execution_id=execution_id,
@@ -324,8 +298,8 @@ class Metadata(object):
                   single_output)
           elif state == EXECUTION_STATE_COMPLETE:
             if single_output.artifact.id:
-              raise RuntimeError(
-                  'output artifact {} already has an id'.format(single_output))
+              raise RuntimeError('output artifact %s already has an id' %
+                                 single_output)
             [published_artifact] = self.publish_artifacts([single_output])  # pylint: disable=unbalanced-tuple-unpacking
             single_output.set_artifact(published_artifact)
           else:
@@ -339,8 +313,7 @@ class Metadata(object):
                   event_type=metadata_store_pb2.Event.OUTPUT))
     if events:
       self._store.put_events(events)
-    tf.logging.info(
-        'Published execution with final outputs {}'.format(output_dict))
+    tf.logging.info('Published execution with final outputs %s' % output_dict)
     return output_dict
 
   def _get_cached_execution_id(self, input_dict: Dict[Text, List[TfxArtifact]],
@@ -371,8 +344,8 @@ class Metadata(object):
       ])
       if input_ids == execution_input_ids:
         tf.logging.info(
-            'Found matching execution with all input artifacts: {}'.format(
-                execution_id))
+            'Found matching execution with all input artifacts: %s' %
+            execution_id)
         return execution_id
       else:
         tf.logging.debug('Execution %d does not match desired input artifacts',
@@ -407,48 +380,20 @@ class Metadata(object):
     Returns:
       Execution id of previous run that takes the input dict. None if not found.
     """
-    return self.previous_run(
-        component_info.component_type,
-        input_artifacts,
-        exec_properties,
-        pipeline_info=pipeline_info,
-        component_info=component_info)
-
-  # TODO(ruoyu): Deprecate this in favor of previous_execution() once migration
-  def previous_run(self,
-                   type_name: Text,
-                   input_dict: Dict[Text, List[TfxArtifact]],
-                   exec_properties: Dict[Text, Any],
-                   pipeline_info: Optional[data_types.PipelineInfo] = None,
-                   component_info: Optional[data_types.ComponentInfo] = None
-                  ) -> Optional[int]:
-    """Gets previous run of same type that takes current set of input.
-
-    Args:
-      type_name: the type of run.
-      input_dict: inputs used by the run.
-      exec_properties: execution properties used by the run.
-      pipeline_info: optional pipeline info.
-      component_info: optional component info.
-
-    Returns:
-      Execution id of previous run that takes the input dict. None if not found.
-    """
-
     tf.logging.info(
-        'Checking previous run for execution_type_name {} and input_dict {}'
-        .format(type_name, input_dict))
+        'Checking previous run for execution_type_name %s and input_artifacts %s',
+        component_info.component_type, input_artifacts)
 
     # Ids of candidate executions which share the same execution property as
     # current.
     candidate_execution_ids = []
     expected_previous_execution = self._prepare_execution(
-        type_name,
         EXECUTION_STATE_COMPLETE,
         exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info)
-    for execution in self._store.get_executions_by_type(type_name):
+    for execution in self._store.get_executions_by_type(
+        component_info.component_type):
       if self._is_eligible_previous_execution(
           copy.deepcopy(expected_previous_execution), copy.deepcopy(execution)):
         candidate_execution_ids.append(execution.id)
@@ -456,7 +401,8 @@ class Metadata(object):
     candidate_execution_ids = candidate_execution_ids[0:min(
         len(candidate_execution_ids), MAX_EXECUTIONS_FOR_CACHE)]
 
-    return self._get_cached_execution_id(input_dict, candidate_execution_ids)
+    return self._get_cached_execution_id(input_artifacts,
+                                         candidate_execution_ids)
 
   # TODO(b/136031301): This should be merged with previous_run.
   def fetch_previous_result_artifacts(
@@ -487,9 +433,8 @@ class Metadata(object):
         raise RuntimeError('Unmatched output name from previous execution.')
       index_to_artifacts = name_to_index_to_artifacts[output_name]
       if len(output_list) != len(index_to_artifacts):
-        raise RuntimeError(
-            'Output name expected {} items but {} retrieved'.format(
-                len(output_list), len(index_to_artifacts)))
+        raise RuntimeError('Output name expected %s items but %s retrieved' %
+                           (len(output_list), len(index_to_artifacts)))
       for index, output in enumerate(output_list):
         output.set_artifact(index_to_artifacts[index])
     return dict(output_dict)
@@ -522,9 +467,9 @@ class Metadata(object):
           producer_component_id):
         producer_execution = execution
     if not producer_execution:
-      raise RuntimeError('Cannot find matching execution with pipeline name {},'
-                         'run id {} and component id {}'.format(
-                             pipeline_name, run_id, producer_component_id))
+      raise RuntimeError('Cannot find matching execution with pipeline name %s,'
+                         'run id %s and component id %s' %
+                         (pipeline_name, run_id, producer_component_id))
     for event in self._store.get_events_by_execution_ids(
         [producer_execution.id]):
       if (event.type == metadata_store_pb2.Event.OUTPUT and

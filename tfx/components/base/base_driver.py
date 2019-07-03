@@ -19,12 +19,51 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Text
 
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.utils import channel
 from tfx.utils import types
+
+
+def _verify_input_artifacts(artifacts_dict: Dict[Text, List[types.TfxArtifact]]
+                           ) -> None:
+  """Verify that all artifacts have existing uri.
+
+  Args:
+    artifacts_dict: key -> TfxArtifact for inputs.
+
+  Raises:
+    RuntimeError: if any input as an empty or non-existing uri.
+  """
+  for single_artifacts_list in artifacts_dict.values():
+    for artifact in single_artifacts_list:
+      if not artifact.uri:
+        raise RuntimeError('Artifact %s does not have uri' % artifact)
+      if not tf.gfile.Exists(os.path.dirname(artifact.uri)):
+        raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
+
+
+def _generate_output_uri(artifact: types.TfxArtifact, base_output_dir: Text,
+                         name: Text, execution_id: int) -> Text:
+  """Generate uri for output artifact."""
+
+  # Generates outputs uri based on execution id and optional split.
+  # Last empty string forces this be to a directory.
+  uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
+                     '')
+  if tf.gfile.Exists(uri):
+    msg = 'Output artifact uri %s already exists' % uri
+    tf.logging.error(msg)
+    raise RuntimeError(msg)
+  else:
+    # TODO(zhitaoli): Consider refactoring this out into something
+    # which can handle permission bits.
+    tf.logging.info('Creating output artifact uri %s as directory', uri)
+    tf.gfile.MakeDirs(uri)
+
+  return uri
 
 
 class BaseDriver(object):
@@ -37,7 +76,6 @@ class BaseDriver(object):
     _metadata_handler: An instance of Metadata.
   """
 
-  # TODO(b/131703697): Remove the need for constructor to make driver stateless.
   def __init__(self, metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
 
@@ -46,167 +84,11 @@ class BaseDriver(object):
                       exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting %s driver.', self.__class__.__name__)
-    tf.logging.info('Inputs for {} is: {}'.format(self.__class__.__name__,
-                                                  input_dict))
-    tf.logging.info('Execution properties for {} is: {}'.format(
-        self.__class__.__name__, exec_properties))
-    tf.logging.info('Outputs for {} is: {}'.format(self.__class__.__name__,
-                                                   output_dict))
-
-  def _get_output_from_previous_run(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_args: data_types.DriverArgs,
-  ) -> Optional[Dict[Text, List[types.TfxArtifact]]]:
-    """Returns outputs from previous identical execution if found."""
-    previous_execution_id = self._metadata_handler.previous_run(
-        type_name=driver_args.worker_name,
-        input_dict=input_dict,
-        exec_properties=exec_properties)
-    if previous_execution_id:
-      final_output = self._metadata_handler.fetch_previous_result_artifacts(
-          output_dict, previous_execution_id)
-      for output_list in final_output.values():
-        for single_output in output_list:
-          if not single_output.uri or not tf.gfile.Exists(single_output.uri):
-            tf.logging.warning(
-                'URI of cached artifact %s does not exist, forcing new execution',
-                single_output)
-            return None
-      tf.logging.info(
-          'Reusing previous execution {} output artifacts {}'.format(
-              previous_execution_id, final_output))
-      return final_output
-    else:
-      return None
-
-  def _verify_artifacts(self,
-                        artifacts_dict: Dict[Text, List[types.TfxArtifact]]
-                       ) -> None:
-    """Verify that all artifacts have existing uri.
-
-    Args:
-      artifacts_dict: key -> TfxArtifact for inputs.
-
-    Raises:
-      RuntimeError: if any input as an empty or non-existing uri.
-    """
-    for single_artifacts_list in artifacts_dict.values():
-      for artifact in single_artifacts_list:
-        if not artifact.uri:
-          raise RuntimeError('Artifact {} does not have uri'.format(artifact))
-        if not tf.gfile.Exists(os.path.dirname(artifact.uri)):
-          raise RuntimeError('Artifact uri {} is missing'.format(artifact.uri))
-
-  def _generate_output_uri(self, artifact: types.TfxArtifact,
-                           base_output_dir: Text, name: Text,
-                           execution_id: int) -> Text:
-    """Generate uri for output artifact."""
-
-    # Generates outputs uri based on execution id and optional split.
-    # Last empty string forces this be to a directory.
-    uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
-                       '')
-    if tf.gfile.Exists(uri):
-      msg = 'Output artifact uri {} already exists'.format(uri)
-      tf.logging.error(msg)
-      raise RuntimeError(msg)
-    else:
-      # TODO(zhitaoli): Consider refactoring this out into something
-      # which can handle permission bits.
-      tf.logging.info('Creating output artifact uri %s as directory', uri)
-      tf.gfile.MakeDirs(uri)
-
-    return uri
-
-  def _default_caching_handling(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_args: data_types.DriverArgs,
-  ) -> data_types.ExecutionDecision:
-    """Check cache for desired and applicable identical execution."""
-    enable_cache = driver_args.enable_cache
-    base_output_dir = driver_args.base_output_dir
-    worker_name = driver_args.worker_name
-
-    # If caching is enabled, try to get previous execution results and directly
-    # use as output.
-    if enable_cache:
-      output_result = self._get_output_from_previous_run(
-          input_dict, output_dict, exec_properties, driver_args)
-      if output_result:
-        tf.logging.info('Found cache from previous run.')
-        return data_types.ExecutionDecision(
-            input_dict=input_dict,
-            output_dict=output_result,
-            exec_properties=exec_properties)
-
-    # Previous run is not available, prepare execution.
-    # Registers execution in metadata.
-    execution_id = self._metadata_handler.prepare_execution(
-        worker_name, exec_properties)
-    tf.logging.info('Preparing new execution.')
-
-    # Checks inputs exist and have valid states and locks them to avoid GC half
-    # way
-    self._verify_artifacts(input_dict)
-
-    # Updates output.
-    for name, output_list in output_dict.items():
-      for artifact in output_list:
-        artifact.uri = self._generate_output_uri(artifact, base_output_dir,
-                                                 name, execution_id)
-
-    return data_types.ExecutionDecision(
-        input_dict=input_dict,
-        output_dict=output_dict,
-        exec_properties=exec_properties,
-        execution_id=execution_id)
-
-  # TODO(ruoyu): Deprecate this in favor of pre_execution() once migration to
-  # go/tfx-oss-artifact-passing finishes.
-  def prepare_execution(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_args: data_types.DriverArgs,
-  ) -> data_types.ExecutionDecision:
-    """Prepares inputs, outputs and execution properties for actual execution.
-
-    This method could be overridden by custom drivers if they have a different
-    logic. The default behavior is to check ml.metadata for an existing
-    execution of same inputs and exec_properties, and use previous outputs
-    instead of a new execution if found.
-
-    Args:
-      input_dict: key -> TfxArtifact for inputs. One can expect every input
-        already registered in ML metadata except ExamplesGen.
-      output_dict: key -> TfxArtifact for outputs. Uris of the outputs are not
-        assigned. It's subclasses' responsibility to set the real output uris.
-      exec_properties: Dict of other execution properties.
-      driver_args: An instance of DriverArgs class.
-
-    Returns:
-      data_types.ExecutionDecision object.
-
-    Raises:
-      RuntimeError: if any input as an empty uri.
-    """
-    tf.logging.info('Enter driver.')
-    self._log_properties(input_dict, output_dict, exec_properties)
-    execution_decision = self._default_caching_handling(input_dict, output_dict,
-                                                        exec_properties,
-                                                        driver_args)
-    tf.logging.info('Prepared execution.')
-    self._log_properties(execution_decision.input_dict,
-                         execution_decision.output_dict,
-                         execution_decision.exec_properties)
-    return execution_decision
+    tf.logging.info('Inputs for %s is: %s', self.__class__.__name__, input_dict)
+    tf.logging.info('Execution properties for %s is: %s',
+                    self.__class__.__name__, exec_properties)
+    tf.logging.info('Outputs for %s is: %s', self.__class__.__name__,
+                    output_dict)
 
   def resolve_input_artifacts(
       self,
@@ -217,7 +99,9 @@ class BaseDriver(object):
     """Resolve input artifacts from metadata.
 
     Subclasses might override this function for customized artifact properties
-    resoultion logic.
+    resolution logic. However please note that this function is supposed to be
+    called in normal cases (except head of the pipeline) since it handles
+    artifact info passing from upstream components.
 
     Args:
       input_dict: key -> Channel mapping for inputs generated in logical
@@ -252,7 +136,7 @@ class BaseDriver(object):
     """Resolve execution properties.
 
     Subclasses might override this function for customized execution properties
-    resoultion logic.
+    resolution logic.
 
     Args:
       exec_properties: Original execution properties passed in.
@@ -277,8 +161,8 @@ class BaseDriver(object):
                                    component_info.component_id)
     for name, output_list in result.items():
       for artifact in output_list:
-        artifact.uri = self._generate_output_uri(artifact, base_output_dir,
-                                                 name, execution_id)
+        artifact.uri = _generate_output_uri(artifact, base_output_dir, name,
+                                            execution_id)
     return result
 
   def _fetch_cached_artifacts(self, output_dict: Dict[Text, channel.Channel],
@@ -328,7 +212,8 @@ class BaseDriver(object):
     # Step 1. Fetch inputs from metadata.
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    pipeline_info)
-    tf.logging.info('Resolved input artifacts are: {}'.format(input_artifacts))
+    _verify_input_artifacts(artifacts_dict=input_artifacts)
+    tf.logging.info('Resolved input artifacts are: %s' % input_artifacts)
     # Step 2. Register execution in metadata.
     execution_id = self._metadata_handler.register_execution(
         exec_properties=exec_properties,

@@ -66,21 +66,10 @@ class DriverArgs(object):
   """Args to driver from orchestration system.
 
   Attributes:
-    worker_name: orchestrator specific instance name for the worker running
-      current component.
-    base_output_dir: common base directory shared by all components in current
-      pipeline execution.
     enable_cache: whether cache is enabled in current execution.
   """
 
-  def __init__(self,
-               enable_cache: bool,
-               worker_name: Optional[Text] = '',
-               base_output_dir: Optional[Text] = ''):
-    # TODO(ruoyu): Remove worker_name and base_output_dir once migration to
-    # go/tfx-oss-artifact-passing finishes.
-    self.worker_name = worker_name
-    self.base_output_dir = base_output_dir
+  def __init__(self, enable_cache: bool):
     self.enable_cache = enable_cache
 
 
@@ -113,8 +102,6 @@ class ComponentInfo(object):
     component_id: a unique identifier of the component instance within pipeline.
   """
 
-  def __init__(self,
-               component_type: Text,
-               component_id: Text):
+  def __init__(self, component_type: Text, component_id: Text):
     self.component_type = component_type
     self.component_id = component_id
