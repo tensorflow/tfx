@@ -39,7 +39,7 @@ class Publisher(object):
                         output_dict: Dict[Text, List[types.TfxArtifact]],
                         use_cached_results: bool
                        ) -> Dict[Text, List[types.TfxArtifact]]:
-    """Publish an component execution to metadata.
+    """Publishes a component execution to metadata.
 
     This function will do two things:
     1. update the execution that was previously registered before execution to
