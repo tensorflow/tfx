@@ -17,14 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 # Standard Imports
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.utils import logging_utils
 from tfx.utils import types
 
 
@@ -33,14 +31,18 @@ class MetadataTest(tf.test.TestCase):
   def setUp(self):
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
-    log_root = os.path.join(self.get_temp_dir(), 'log_dir')
-    logger_config = logging_utils.LoggerConfig(log_root=log_root)
-    self._logger = logging_utils.get_logger(logger_config)
+    self._component_info = data_types.ComponentInfo(
+        component_type='a.b.c', component_id='my_component')
+    self._pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
 
   def test_empty_artifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       m.publish_artifacts([])
-      eid = m.prepare_execution('Test', {})
+      eid = m.register_execution(
+          exec_properties={},
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
       m.publish_execution(eid, {}, {})
       [execution] = m.store.get_executions_by_id([eid])
       self.assertProtoEquals(
@@ -51,6 +53,30 @@ class MetadataTest(tf.test.TestCase):
           key: "state"
           value {
             string_value: "complete"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
           }
         }""", execution)
 
@@ -101,8 +127,11 @@ class MetadataTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=self._connection_config) as m:
 
       # Test prepare_execution.
-      exec_properties = {}
-      eid = m.prepare_execution('Test', exec_properties)
+      exec_properties = {'arg_one': 1}
+      eid = m.register_execution(
+          exec_properties=exec_properties,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
       [execution] = m.store.get_executions()
       self.assertProtoEquals(
           """
@@ -112,6 +141,36 @@ class MetadataTest(tf.test.TestCase):
           key: "state"
           value {
             string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
           }
         }""", execution)
 
@@ -157,20 +216,47 @@ class MetadataTest(tf.test.TestCase):
 
       # Create an 'previous' execution.
       exec_properties = {'log_root': 'path'}
-      eid = m.prepare_execution('Test', exec_properties)
+      eid = m.register_execution(
+          exec_properties=exec_properties,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
       input_artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
       output_artifact = types.TfxArtifact(type_name='ExamplesPath')
-      input_dict = {'input': [input_artifact]}
-      output_dict = {'output': [output_artifact]}
-      m.publish_execution(eid, input_dict, output_dict)
+      input_artifacts = {'input': [input_artifact]}
+      output_artifacts = {'output': [output_artifact]}
+      m.publish_execution(eid, input_artifacts, output_artifacts)
 
       # Test previous_run.
-      self.assertEqual(None, m.previous_run('Test', input_dict, {}))
-      self.assertEqual(None, m.previous_run('Test', {}, exec_properties))
-      self.assertEqual(None, m.previous_run('Test2', input_dict,
-                                            exec_properties))
-      self.assertEqual(eid, m.previous_run('Test', input_dict, exec_properties))
+      self.assertEqual(
+          None,
+          m.previous_execution(
+              input_artifacts=input_artifacts,
+              exec_properties={},
+              pipeline_info=self._pipeline_info,
+              component_info=self._component_info))
+      self.assertEqual(
+          None,
+          m.previous_execution(
+              input_artifacts={},
+              exec_properties=exec_properties,
+              pipeline_info=self._pipeline_info,
+              component_info=self._component_info))
+      self.assertEqual(
+          None,
+          m.previous_execution(
+              input_artifacts=input_artifacts,
+              exec_properties=exec_properties,
+              pipeline_info=self._pipeline_info,
+              component_info=data_types.ComponentInfo(
+                  component_id='unique', component_type='a.b.c')))
+      self.assertEqual(
+          eid,
+          m.previous_execution(
+              input_artifacts=input_artifacts,
+              exec_properties=exec_properties,
+              pipeline_info=self._pipeline_info,
+              component_info=self._component_info))
 
       # Test fetch_previous_result_artifacts.
       new_output_artifact = types.TfxArtifact(type_name='ExamplesPath')
@@ -179,7 +265,7 @@ class MetadataTest(tf.test.TestCase):
       new_output_dict = {'output': [new_output_artifact]}
       updated_output_dict = m.fetch_previous_result_artifacts(
           new_output_dict, eid)
-      previous_artifact = output_dict['output'][-1].artifact
+      previous_artifact = output_artifacts['output'][-1].artifact
       current_artifact = updated_output_dict['output'][-1].artifact
       self.assertEqual(types.ARTIFACT_STATE_PUBLISHED,
                        current_artifact.properties['state'].string_value)
@@ -225,15 +311,11 @@ class MetadataTest(tf.test.TestCase):
 
   def test_search_artifacts(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      pipeline_info = data_types.PipelineInfo(
-          pipeline_name='mypipeline', pipeline_root='root', run_id='run_id_0')
-      component_info = data_types.ComponentInfo(
-          component_type='a.b.c', component_id='my_component_id')
       exec_properties = {'log_root': 'path'}
       eid = m.register_execution(
           exec_properties=exec_properties,
-          pipeline_info=pipeline_info,
-          component_info=component_info)
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
       input_artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
       output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')
@@ -243,22 +325,18 @@ class MetadataTest(tf.test.TestCase):
       m.publish_execution(eid, input_dict, output_dict)
       [artifact] = m.search_artifacts(
           artifact_name='output',
-          pipeline_name='mypipeline',
-          run_id='run_id_0',
-          producer_component_id='my_component_id')
+          pipeline_name=self._pipeline_info.pipeline_name,
+          run_id=self._pipeline_info.run_id,
+          producer_component_id=self._component_info.component_id)
       self.assertEqual(artifact.uri, output_artifact.uri)
 
   def test_publish_skipped_execution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      pipeline_info = data_types.PipelineInfo(
-          pipeline_name='mypipeline', pipeline_root='root', run_id='run_id_0')
-      component_info = data_types.ComponentInfo(
-          component_type='a.b.c', component_id='my_component_id')
       exec_properties = {'log_root': 'path'}
       eid = m.register_execution(
           exec_properties=exec_properties,
-          pipeline_info=pipeline_info,
-          component_info=component_info)
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
       input_artifact = types.TfxArtifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
       output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')

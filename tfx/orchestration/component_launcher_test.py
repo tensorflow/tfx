@@ -113,10 +113,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
 
-    driver_args = data_types.DriverArgs(
-        worker_name=component.component_id,
-        base_output_dir=os.path.join(pipeline_root, component.component_id),
-        enable_cache=True)
+    driver_args = data_types.DriverArgs(enable_cache=True)
 
     launcher = component_launcher.ComponentLauncher(
         component=component,

@@ -18,10 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from typing import Any, Dict, List, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Text, Tuple
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
-from tfx.utils import types
 
 
 class Driver(base_driver.BaseDriver):
@@ -63,29 +62,3 @@ class Driver(base_driver.BaseDriver):
     tf.logging.info('Resolved last blessed model {}'.format(
         exec_properties['blessed_model']))
     return exec_properties
-
-  # TODO(ruoyu): Deprecate this in favor of pre_execution once migration to
-  # go/tfx-oss-artifacts-passing finishes.
-  def prepare_execution(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_options: data_types.DriverArgs,
-  ) -> data_types.ExecutionDecision:
-    """Extends BaseDriver by resolving last blessed model."""
-    execution_decision = self._default_caching_handling(input_dict, output_dict,
-                                                        exec_properties,
-                                                        driver_options)
-
-    # If current model isn't blessed before (no caching).
-    component_unique_name = execution_decision.exec_properties[
-        'component_unique_name']
-    if execution_decision.execution_id:
-      (execution_decision.exec_properties['blessed_model'],
-       execution_decision.exec_properties['blessed_model_id']
-      ) = self._fetch_last_blessed_model(component_unique_name)
-      tf.logging.info('Resolved last blessed model {}'.format(
-          execution_decision.exec_properties['blessed_model']))
-
-    return execution_decision

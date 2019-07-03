@@ -18,10 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, Text
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
-from tfx.utils import types
 
 
 class Driver(base_driver.BaseDriver):
@@ -50,27 +49,3 @@ class Driver(base_driver.BaseDriver):
       tf.logging.debug('Model directory to warm start from: {}'.format(
           exec_properties['warm_start_from']))
     return exec_properties
-
-  # TODO(ruoyu): Deprecate this in favor of pre_execution once migration to
-  # go/tfx-oss-artifacts-passing finishes.
-  def prepare_execution(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_options: data_types.DriverArgs,
-  ) -> data_types.ExecutionDecision:
-    """Extends BaseDriver.prepare_execution() for potential warm starting."""
-
-    execution_decision = self._default_caching_handling(
-        input_dict, output_dict, exec_properties, driver_options)
-
-    # Fetch latest model dir for warms-tarting if needed.
-    if execution_decision.execution_id and execution_decision.exec_properties.get(
-        'warm_starting', None):
-      execution_decision.exec_properties[
-          'warm_start_from'] = self._fetch_latest_model()
-      tf.logging.debug('Model directory to warm start from: {}'.format(
-          execution_decision.exec_properties['warm_start_from']))
-
-    return execution_decision

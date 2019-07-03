@@ -103,16 +103,3 @@ class Driver(base_driver.BaseDriver):
     """Overrides BaseDriver.resolve_input_artifacts()."""
     return self._prepare_input_for_processing(
         channel.unwrap_channel_dict(input_dict), exec_properties)
-
-  def prepare_execution(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      driver_options: data_types.DriverArgs,
-  ) -> data_types.ExecutionDecision:
-    """Extends BaseDriver by resolving external inputs."""
-    updated_input_dict = self._prepare_input_for_processing(
-        input_dict, exec_properties)
-    return self._default_caching_handling(updated_input_dict, output_dict,
-                                          exec_properties, driver_options)
