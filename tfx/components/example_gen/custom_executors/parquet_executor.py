@@ -120,13 +120,14 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   Example usage:
 
     from tfx.components.example_gen.component import
-    ExampleGen
+    FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
     parquet_executor
     from tfx.utils.dsl_utils import external_input
 
-    example_gen = ExampleGen(executor=parquet_executor.Executor,
-                             input_base=external_input(parquet_dir_path))
+    example_gen = FileBasedExampleGen(
+        input_base=external_input(parquet_dir_path),
+        executor_class=parquet_executor.Executor)
   """
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:

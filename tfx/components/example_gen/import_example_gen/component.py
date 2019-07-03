@@ -25,7 +25,7 @@ from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 
 
-class ImportExampleGen(component._FileBasedExampleGen):  # pylint: disable=protected-access
+class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX ImportExampleGen component.
 
   The ImportExampleGen component takes TFRecord files with TF Example data

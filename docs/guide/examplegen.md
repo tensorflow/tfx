@@ -111,10 +111,11 @@ Then, you can either create a simple component with above executor, for example,
 or use the new Executor with a standard ExampleGen component like this:
 
 ```python
-from tfx.components.example_gen.component import ExampleGen
+from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen import executor
-from tfx.utils.dsl_utils import csv_input
+from tfx.utils.dsl_utils import external_input
 
-examples = csv_input(os.path.join(base_dir, 'data/simple'))
-example_gen = ExampleGen(executor=executor.Executor, input_base=examples)
+examples = external_input(os.path.join(base_dir, 'data/simple'))
+example_gen = FileBasedExampleGen(input_base=examples,
+                                  executor_class=executor.Executor)
 ```

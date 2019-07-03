@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Optional
 from typing import Text
+from typing import Type
 
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -31,8 +32,8 @@ from tfx.utils import channel
 from tfx.utils import types
 
 
-class ExampleGenSpec(base_component.ComponentSpec):
-  """ExampleGen component spec."""
+class QueryBasedExampleGenSpec(base_component.ComponentSpec):
+  """Query-based ExampleGen component spec."""
 
   COMPONENT_NAME = 'ExampleGen'
   PARAMETERS = {
@@ -61,14 +62,14 @@ class FileBasedExampleGenSpec(base_component.ComponentSpec):
   }
 
 
-class _ExampleGen(base_component.BaseComponent):
-  """Official TFX ExampleGen component base class.
+class _QueryBasedExampleGen(base_component.BaseComponent):
+  """TFX query-based ExampleGen component base class.
 
   ExampleGen component takes input data source, and generates train
   and eval example splits (or custom splits) for downsteam components.
   """
 
-  SPEC_CLASS = ExampleGenSpec
+  SPEC_CLASS = QueryBasedExampleGenSpec
   # EXECUTOR_CLASS should be overridden by subclasses.
   EXECUTOR_CLASS = base_executor.BaseExecutor
 
@@ -78,7 +79,7 @@ class _ExampleGen(base_component.BaseComponent):
                component_name: Optional[Text] = 'ExampleGen',
                example_artifacts: Optional[channel.Channel] = None,
                name: Optional[Text] = None):
-    """Construct an ExampleGen component.
+    """Construct an QueryBasedExampleGen component.
 
     Args:
       input_config: An example_gen_pb2.Input instance, providing input
@@ -92,23 +93,22 @@ class _ExampleGen(base_component.BaseComponent):
         eval examples.
       name: Unique name for every component class instance.
     """
-    # Configure inputs and outputs.
-    input_config = input_config or utils.make_default_input_config()
+    # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel.as_channel(
         [types.TfxArtifact('ExamplesPath', split=split_name)
          for split_name in utils.generate_output_split_names(
              input_config, output_config)])
-    spec = ExampleGenSpec(
+    spec = QueryBasedExampleGenSpec(
         component_name=component_name,
         input_config=input_config,
         output_config=output_config,
         examples=example_artifacts)
-    super(_ExampleGen, self).__init__(spec=spec, name=name)
+    super(_QueryBasedExampleGen, self).__init__(spec=spec, name=name)
 
 
-class _FileBasedExampleGen(base_component.BaseComponent):
+class FileBasedExampleGen(base_component.BaseComponent):
   """TFX file-based ExampleGen component base class.
 
   ExampleGen component takes input data source, and generates train
@@ -120,13 +120,15 @@ class _FileBasedExampleGen(base_component.BaseComponent):
   EXECUTOR_CLASS = base_executor.BaseExecutor
   DRIVER_CLASS = driver.Driver
 
-  def __init__(self,
-               input_base: channel.Channel,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               component_name: Optional[Text] = 'ExampleGen',
-               example_artifacts: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_base: channel.Channel,
+      input_config: Optional[example_gen_pb2.Input] = None,
+      output_config: Optional[example_gen_pb2.Output] = None,
+      component_name: Optional[Text] = 'ExampleGen',
+      example_artifacts: Optional[channel.Channel] = None,
+      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
@@ -142,6 +144,8 @@ class _FileBasedExampleGen(base_component.BaseComponent):
         class. Default to 'ExampleGen', can be overwritten by sub-classes.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
+      executor_class: Optional custom executor class overriding the default
+        executor specified in the component attribute.
       name: Unique name for every component class instance.
     """
     # Configure inputs and outputs.
@@ -158,4 +162,5 @@ class _FileBasedExampleGen(base_component.BaseComponent):
         input_config=input_config,
         output_config=output_config,
         examples=example_artifacts)
-    super(_FileBasedExampleGen, self).__init__(spec=spec, name=name)
+    super(FileBasedExampleGen, self).__init__(
+        spec=spec, custom_executor_class=executor_class, name=name)
