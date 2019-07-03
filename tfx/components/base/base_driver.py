@@ -161,6 +161,8 @@ class BaseDriver(object):
                                    component_info.component_id)
     for name, output_list in result.items():
       for artifact in output_list:
+        assert not artifact.uri, ('artifact has non-empty uri {}'.format(
+            artifact.uri))
         artifact.uri = _generate_output_uri(artifact, base_output_dir, name,
                                             execution_id)
     return result
