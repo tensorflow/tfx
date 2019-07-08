@@ -201,6 +201,9 @@ In a shell:
 # Open a new terminal window, and in that window ...
 source ~/tfx-env/bin/activate
 airflow webserver -p 8080
+# If you are seeing ModuleNotFoundError: No module named 'werkzeug.wrappers.json';
+#'werkzeug.wrappers' is not a package, then run pip install -U Werkzeug followed
+#by airflow initdb
 
 # Open another new terminal window, and in that window ...
 source ~/tfx-env/bin/activate
