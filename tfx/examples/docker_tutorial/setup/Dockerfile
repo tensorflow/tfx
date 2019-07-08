@@ -1,11 +1,10 @@
 FROM tensorflow/tfx
 
-RUN pip install --no-cache \
-    tensorflow==1.13.1 \
-    tfx==0.13.0 \
-    apache-airflow \
-    jupyter
+COPY requirements.txt . 
 
+RUN pip install --no-cache -r requirements.txt
+
+# removing base script
 RUN rm -rf * 
 
 WORKDIR /home
