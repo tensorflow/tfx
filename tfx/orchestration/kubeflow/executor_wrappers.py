@@ -115,8 +115,8 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
     """Runs the wrapped Executor, and writes metadata of output artifacts.
 
     Args:
-      output_basedir: Base directory to which output artifacts metadata
-                      is written. Useful for unit tests.
+      output_basedir: Base directory to which output artifacts metadata is
+        written. Useful for unit tests.
     """
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
@@ -293,8 +293,8 @@ class ModelValidatorWrapper(KubeflowExecutorWrapper):
     self._set_outputs()
 
     # TODO(ajaygopinathan): Implement latest blessed model determination.
-    self._exec_properties['latest_blessed_model'] = None
-    self._exec_properties['latest_blessed_model_id'] = None
+    self._exec_properties['blessed_model'] = None
+    self._exec_properties['blessed_model_id'] = None
 
 
 class PusherWrapper(KubeflowExecutorWrapper):
