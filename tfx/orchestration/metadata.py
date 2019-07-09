@@ -42,7 +42,7 @@ EXECUTION_STATE_NEW = 'new'
 
 def sqlite_metadata_connection_config(metadata_db_uri: Text
                                      ) -> metadata_store_pb2.ConnectionConfig:
-  """Convenient function to create file based metadata connection config.
+  """Convenience function to create file based metadata connection config.
 
   Args:
     metadata_db_uri: uri to metadata db.
@@ -56,6 +56,30 @@ def sqlite_metadata_connection_config(metadata_db_uri: Text
   connection_config.sqlite.connection_mode = \
     metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
   return connection_config
+
+
+def mysql_metadata_connection_config(host: Text, port: int, database: Text,
+                                     username: Text, password: Text
+                                    ) -> metadata_store_pb2.ConnectionConfig:
+  """Convenience function to create mysql-based metadata connection config.
+
+  Args:
+    host: The name or network address of the instance of MySQL to connect to.
+    port: The port MySQL is using to listen for connections.
+    database: The name of the database to use.
+    username: The MySQL login account being used.
+    password: The password for the MySQL account being used.
+
+  Returns:
+    A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
+  """
+  return metadata_store_pb2.ConnectionConfig(
+      mysql=metadata_store_pb2.MySQLDatabaseConfig(
+          host=host,
+          port=port,
+          database=database,
+          user=username,
+          password=password))
 
 
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
