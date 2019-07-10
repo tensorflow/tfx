@@ -55,7 +55,9 @@ pip install docker
 printf "${GREEN}Preparing environment for Airflow${NORMAL}\n"
 export SLUGIFY_USES_TEXT_UNIDECODE=yes
 printf "${GREEN}Installing Airflow${NORMAL}\n"
-pip install apache-airflow
+# TODO(b/136777165): Remove pinned version of Flask and Werkzeug
+# after newer version of Airflow: see AIRFLOW-4900.
+pip install apache-airflow==1.10.3 Flask==1.0.4 Werkzeug==0.14.1
 printf "${GREEN}Initializing Airflow database${NORMAL}\n"
 airflow initdb
 
