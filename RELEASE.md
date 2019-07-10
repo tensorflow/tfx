@@ -11,6 +11,7 @@
 *   Updated tfx docker image to use Python 3.
 *   Added example for how to define and add a custom component.
 *   Added Parquet executor for ExampleGen component.
+*   Added Avro executor for ExampleGen component.
 *   Enables Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
     that can be applied to each pipeline step.
 *   Added scripts and instructions to run on Spark via Beam to the Chicago Taxi

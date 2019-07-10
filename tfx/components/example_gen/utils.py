@@ -17,8 +17,51 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
+import six
+import tensorflow as tf
+from typing import Any, Dict, List, Text
 from tfx.proto import example_gen_pb2
+
+
+_DEFAULT_ENCODING = 'utf-8'
+
+
+def dict_to_example(instance: Dict[Text, Any]) -> tf.train.Example:
+  """Converts dict to tf example."""
+  feature = {}
+  for key, value in instance.items():
+    # TODO(jyzhao): support more types.
+    if value is None:
+      feature[key] = tf.train.Feature()
+    elif isinstance(value, six.integer_types):
+      feature[key] = tf.train.Feature(
+          int64_list=tf.train.Int64List(value=[value]))
+    elif isinstance(value, float):
+      feature[key] = tf.train.Feature(
+          float_list=tf.train.FloatList(value=[value]))
+    elif isinstance(value, six.text_type) or isinstance(value, str):
+      feature[key] = tf.train.Feature(
+          bytes_list=tf.train.BytesList(
+              value=[value.encode(_DEFAULT_ENCODING)]))
+    elif isinstance(value, list):
+      if not value:
+        feature[key] = tf.train.Feature()
+      elif isinstance(value[0], six.integer_types):
+        feature[key] = tf.train.Feature(
+            int64_list=tf.train.Int64List(value=value))
+      elif isinstance(value[0], float):
+        feature[key] = tf.train.Feature(
+            float_list=tf.train.FloatList(value=value))
+      elif isinstance(value[0], six.text_type) or isinstance(value[0], str):
+        feature[key] = tf.train.Feature(
+            bytes_list=tf.train.BytesList(
+                value=[v.encode(_DEFAULT_ENCODING) for v in value]))
+      else:
+        raise RuntimeError('Column type `list of {}` is not supported.'.format(
+            type(value[0])))
+    else:
+      raise RuntimeError('Column type {} is not supported.'.format(type(value)))
+  return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
 def generate_output_split_names(input_config: example_gen_pb2.Input,

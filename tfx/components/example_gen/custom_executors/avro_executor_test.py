@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.example_gen.custom_executors.parquet_executor."""
+"""Tests for tfx.components.example_gen.custom_executos.avro_executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,7 +21,7 @@ import os
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tfx.components.example_gen.custom_executors import parquet_executor
+from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.proto import example_gen_pb2
 from tfx.utils import types
 from google.protobuf import json_format
@@ -38,14 +38,14 @@ class ExecutorTest(tf.test.TestCase):
     input_base.uri = os.path.join(input_data_dir, 'external')
     self._input_dict = {'input_base': [input_base]}
 
-  def testParquetToExample(self):
+  def testAvroToExample(self):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline
-          | 'ToTFExample' >> parquet_executor._ParquetToExample(
+          | 'ToTFExample' >> avro_executor._AvroToExample(
               input_dict=self._input_dict,
               exec_properties={},
-              split_pattern='parquet/*'))
+              split_pattern='avro/*.avro'))
 
       def check_result(got):
         # We use Python assertion here to avoid Beam serialization error in
@@ -73,7 +73,7 @@ class ExecutorTest(tf.test.TestCase):
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='parquet', pattern='parquet/*'),
+                        name='avro', pattern='avro/*.avro'),
                 ])),
         'output_config':
             json_format.MessageToJson(
@@ -87,10 +87,10 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Run executor.
-    parquet_example_gen = parquet_executor.Executor()
-    parquet_example_gen.Do(self._input_dict, output_dict, exec_properties)
+    avro_example_gen = avro_executor.Executor()
+    avro_example_gen.Do(self._input_dict, output_dict, exec_properties)
 
-    # Check Parquet example gen outputs.
+    # Check Avro example gen outputs.
     train_output_file = os.path.join(train_examples.uri,
                                      'data_tfrecord-00000-of-00001.gz')
     eval_output_file = os.path.join(eval_examples.uri,
