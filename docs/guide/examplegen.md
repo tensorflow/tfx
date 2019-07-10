@@ -98,7 +98,7 @@ Note: this feature is only available after TFX 0.14.
 
 If the currently available ExampleGen components don't fit your needs, you can
 create a custom ExampleGen, which will include a new executor extended from
-BaseExampleGenExecutor. Here's how to create a new file based ExampleGen:
+BaseExampleGenExecutor. Here's how to create a new file-based ExampleGen:
 
 First, extend BaseExampleGenExecutor with a custom Beam PTransform, which
 provides the conversion from your train/eval input split to TF examples. For
@@ -106,9 +106,7 @@ example, the
 [CsvExampleGen executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/executor.py)
 provides the conversion from an input CSV split to TF examples.
 
-Then, you can either create a simple component with above executor, for example,
-[CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py),
-or use the new Executor with a standard ExampleGen component like this:
+Then, you can either create a simple component with above executor. [CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py) shows how. Alternatively, you can pass a custom executor into the standard ExampleGen component as shown below.
 
 ```python
 from tfx.components.example_gen.component import FileBasedExampleGen
@@ -119,3 +117,5 @@ examples = external_input(os.path.join(base_dir, 'data/simple'))
 example_gen = FileBasedExampleGen(input_base=examples,
                                   executor_class=executor.Executor)
 ```
+
+ Now, we also support reading Avro and Parquet files using this [method](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/avro_component_test.py).

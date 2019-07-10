@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Parquet based TFX example gen executor."""
+"""Avro based TFX example gen executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -29,19 +29,19 @@ from tfx.utils import types
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
-def _ParquetToExample(  # pylint: disable=invalid-name
+def _AvroToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
     input_dict: Dict[Text, List[types.TfxArtifact]],
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
-  """Read Parquet files and transform to TF examples.
+  """Read Avro files and transform to TF examples.
 
   Note that each input split will be transformed by this function separately.
 
   Args:
     pipeline: beam pipeline.
     input_dict: Input dict from input key to a list of Artifacts.
-      - input_base: input dir that contains Parquet data.
+      - input_base: input dir that contains Avro data.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
@@ -50,18 +50,17 @@ def _ParquetToExample(  # pylint: disable=invalid-name
     PCollection of TF examples.
   """
   input_base_uri = types.get_single_uri(input_dict['input_base'])
-  parquet_pattern = os.path.join(input_base_uri, split_pattern)
+  avro_pattern = os.path.join(input_base_uri, split_pattern)
   tf.logging.info(
-      'Processing input parquet data {} to TFExample.'.format(parquet_pattern))
+      'Processing input avro data {} to TFExample.'.format(avro_pattern))
 
   return (pipeline
-          # TODO(jyzhao): support per column read by input_config.
-          | 'ReadFromParquet' >> beam.io.ReadFromParquet(parquet_pattern)
+          | 'ReadFromAvro' >> beam.io.ReadFromAvro(avro_pattern)
           | 'ToTFExample' >> beam.Map(dict_to_example))
 
 
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
-  """TFX example gen executor for processing parquet format.
+  """TFX example gen executor for processing avro format.
 
   Data type conversion:
     integer types will be converted to tf.train.Feature with tf.train.Int64List.
@@ -72,7 +71,6 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     Note that,
       Single value will be converted to a list of that single value.
       Missing value will be converted to empty tf.train.Feature().
-      Parquet data might lose precision, e.g., int96.
 
     For details, check the dict_to_example function in example_gen.utils.
 
@@ -82,14 +80,14 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     from tfx.components.example_gen.component import
     FileBasedExampleGen
     from tfx.components.example_gen.custom_executors import
-    parquet_executor
+    avro_executor
     from tfx.utils.dsl_utils import external_input
 
     example_gen = FileBasedExampleGen(
-        input_base=external_input(parquet_dir_path),
-        executor_class=parquet_executor.Executor)
+        input_base=external_input(avro_dir_path),
+        executor_class=avro_executor.Executor)
   """
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
-    """Returns PTransform for parquet to TF examples."""
-    return _ParquetToExample
+    """Returns PTransform for avro to TF examples."""
+    return _AvroToExample
