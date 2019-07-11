@@ -20,10 +20,13 @@ from __future__ import print_function
 import codecs
 import locale
 import os
+import sys
 
 from click.testing import CliRunner
+import mock
 import tensorflow as tf
-from tfx.tools.cli.cmd.pipeline import pipeline_group
+
+from tfx.tools.cli.commands.pipeline import pipeline_group
 
 
 class PipelineTest(tf.test.TestCase):
@@ -31,15 +34,16 @@ class PipelineTest(tf.test.TestCase):
   def setUp(self):
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
+    super(PipelineTest, self).setUp()
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
     self.runner = CliRunner()
+    sys.modules['handler_factory'] = mock.Mock()
 
   # TODO(b/132286477):Change tests after writing default_handler()
   def test_pipeline_create_auto(self):
     result = self.runner.invoke(pipeline_group,
                                 ['create', '--path', 'chicago.py'])
-    self.assertNotEqual(0, result.exit_code)
     self.assertIn('Creating pipeline', result.output)
 
   def test_pipeline_update(self):

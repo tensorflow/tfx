@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import click
-from tfx.tools.cli.cmd.pipeline import pipeline_group
+from tfx.tools.cli.commands.pipeline import pipeline_group
 
 
 @click.group('cli')
@@ -29,5 +29,3 @@ cli_group.add_command(pipeline_group)
 
 if __name__ == '__main__':
   cli_group()
-
-

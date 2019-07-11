@@ -45,11 +45,12 @@ class FakeHandler(base_handler.BaseHandler):
 class BaseHandlerTest(tf.test.TestCase):
 
   def setUp(self):
+    super(BaseHandlerTest, self).setUp()
     self.engine = 'airflow'
     self.chicago_taxi_pipeline_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                      'test_pipeline.py')
+                                      'test_pipeline_airflow_1.py')
 
   def test_check_pipeline_dsl_path_invalid(self):
     flags_dict = {labels.ENGINE_FLAG: self.engine,
@@ -73,4 +74,3 @@ class BaseHandlerTest(tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
-

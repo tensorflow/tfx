@@ -23,9 +23,7 @@ import click
 
 from typing import Dict, Text, Any
 from tfx.tools.cli import labels
-from tfx.tools.cli.handler import airflow_handler
 from tfx.tools.cli.handler import base_handler
-from tfx.tools.cli.handler import kubeflow_handler
 
 
 def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
@@ -50,10 +48,12 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   if labels.AIRFLOW_PACKAGE_NAME in packages_list:
     click.echo('Detected Airflow.')
     flags_dict[labels.ENGINE_FLAG] = 'airflow'
+    from tfx.tools.cli.handler import airflow_handler  # pylint: disable=g-import-not-at-top
     return airflow_handler.AirflowHandler(flags_dict)
   elif labels.KUBEFLOW_PACKAGE_NAME in packages_list:
     click.echo('Detected Kubeflow.')
     flags_dict[labels.ENGINE_FLAG] = 'kubeflow'
+    from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     return kubeflow_handler.KubeflowHandler(flags_dict)
   # TODO(b/132286477):Update to beam runner later.
   sys.exit('Orchestrator missing in the environment.')
@@ -74,11 +74,12 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   """
   engine = flags_dict[labels.ENGINE_FLAG]
   if engine == 'airflow':
+    from tfx.tools.cli.handler import airflow_handler  # pylint: disable=g-import-not-at-top
     return airflow_handler.AirflowHandler(flags_dict)
   elif engine == 'kubeflow':
+    from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     return kubeflow_handler.KubeflowHandler(flags_dict)
   elif engine == 'auto':
     return detect_handler(flags_dict)
   else:
     raise RuntimeError('Engine {} is not supported.'.format(engine))
-
