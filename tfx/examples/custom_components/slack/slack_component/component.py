@@ -60,6 +60,23 @@ class SlackComponent(base_component.BaseComponent):
       started by SlackComponent with 'lgtm' or 'approve'.
     * To reject the model, a user need to reply the thread sent out by the bot
       started by SlackComponent with 'decline' or 'reject'.
+
+  If the model is approved, an artifact will be created in ML metadata. It will
+  be materialized as a file named 'BLESSED' in the directory specified by the
+  URI of 'slack_blessing' artifact.
+  If the model is rejected, an artifact will be created in ML metadata. It will
+  be materialized as a file named 'NOT_BLESSED' in the directory specified by
+  the URI of 'slack_blessing' channel.
+  If no message indicating approve or reject was is received within given within
+  timeout_sec, component will error out. This ensures that model will not be
+  pushed and the validation is still retry-able.
+
+  The output artifact might contain the following custom properties:
+    - blessed: integer value indicating whether the model is blessed
+    - slack_decision_maker: the user id that made the decision.
+    - slack_decision_message: the message of the decision
+    - slack_decision_channel: the slack channel the decision is made on
+    - slack_decision_thread: the slack thread the decision is made on
   """
 
   SPEC_CLASS = SlackComponentSpec
