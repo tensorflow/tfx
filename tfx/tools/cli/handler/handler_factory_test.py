@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import sys
 import mock
 import tensorflow as tf
 
@@ -29,7 +30,9 @@ from tfx.tools.cli.handler import kubeflow_handler
 class HandlerFactoryTest(tf.test.TestCase):
 
   def setUp(self):
+    super(HandlerFactoryTest, self).setUp()
     self.flags_dict = {}
+    sys.modules['kfp'] = mock.Mock()
 
   def test_create_handler_airflow(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
@@ -89,4 +92,3 @@ class HandlerFactoryTest(tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
-
