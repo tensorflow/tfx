@@ -19,9 +19,7 @@ from __future__ import print_function
 import os
 import six
 import tensorflow as tf
-from typing import Callable
-from typing import List
-from typing import Text
+from typing import Callable, List, Text
 
 from google.protobuf import text_format
 from google.protobuf.message import Message

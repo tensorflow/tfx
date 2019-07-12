@@ -23,11 +23,7 @@ import itertools
 
 from six import with_metaclass
 
-from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Text
-from typing import Type
+from typing import Any, Dict, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message

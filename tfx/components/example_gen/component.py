@@ -17,9 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional
-from typing import Text
-from typing import Type
+from typing import Optional, Text, Type
 
 from tfx.components.base import base_component
 from tfx.components.base import base_executor

@@ -22,9 +22,8 @@ import functools
 from airflow import models
 from airflow.operators import python_operator
 
-from typing import Any
-from typing import Dict
-from typing import Text
+from typing import Any, Dict, Text
+
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.orchestration import component_launcher
