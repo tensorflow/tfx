@@ -21,7 +21,7 @@ import codecs
 import locale
 import os
 
-from click.testing import CliRunner
+from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli.cli_main import cli_group
 
@@ -34,10 +34,14 @@ class CliTest(tf.test.TestCase):
     super(CliTest, self).setUp()
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
-    self.runner = CliRunner()
+    self.runner = click_testing.CliRunner()
 
   def test_cli_pipeline(self):
     result = self.runner.invoke(cli_group, ['pipeline'])
+    self.assertIn('CLI', result.output)
+
+  def test_cli_run(self):
+    result = self.runner.invoke(cli_group, ['run'])
     self.assertIn('CLI', result.output)
 
   def test_cli_invalid_command(self):

@@ -22,7 +22,7 @@ import locale
 import os
 import sys
 
-from click.testing import CliRunner
+from click import testing as click_testing
 import mock
 import tensorflow as tf
 
@@ -37,7 +37,7 @@ class PipelineTest(tf.test.TestCase):
     super(PipelineTest, self).setUp()
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
-    self.runner = CliRunner()
+    self.runner = click_testing.CliRunner()
     sys.modules['handler_factory'] = mock.Mock()
 
   # TODO(b/132286477):Change tests after writing default_handler()
@@ -53,11 +53,6 @@ class PipelineTest(tf.test.TestCase):
     self.assertEqual(0, result.exit_code)
     self.assertIn('Updating pipeline', result.output)
 
-  def test_pipeline_run(self):
-    result = self.runner.invoke(
-        pipeline_group, ['run', '--name', 'chicago', '--engine', 'airflow'])
-    self.assertIn('Triggering pipeline', result.output)
-
   def test_pipeline_delete(self):
     result = self.runner.invoke(
         pipeline_group, ['delete', '--name', 'chicago', '--engine', 'airflow'])
@@ -66,6 +61,12 @@ class PipelineTest(tf.test.TestCase):
   def test_pipeline_list(self):
     result = self.runner.invoke(pipeline_group, ['list', '--engine', 'airflow'])
     self.assertIn('Listing all pipelines', result.output)
+
+  def test_pipeline_compile(self):
+    result = self.runner.invoke(
+        pipeline_group,
+        ['compile', '--path', 'chicago.py', '--engine', 'kubeflow'])
+    self.assertIn('Compiling pipeline', result.output)
 
   def test_pipeline_invalid_flag(self):
     result = self.runner.invoke(pipeline_group,
@@ -78,7 +79,7 @@ class PipelineTest(tf.test.TestCase):
     self.assertNotEqual(0, result.exit_code)
 
   def test_pipeline_missing_flag(self):
-    result = self.runner.invoke(pipeline_group, ['run'])
+    result = self.runner.invoke(pipeline_group, ['update'])
     self.assertIn('Missing option', result.output)
     self.assertNotEqual(0, result.exit_code)
 
