@@ -101,23 +101,31 @@ class PipelineTest(tf.test.TestCase):
             component_a
         ],
         enable_cache=True,
-        metadata_connection_config=self._metadata_connection_config)
+        metadata_connection_config=self._metadata_connection_config,
+        additional_pipeline_args={
+            'beam_pipeline_args': ['--runner=PortableRunner'],
+        })
     self.assertItemsEqual(
         my_pipeline.components,
         [component_a, component_b, component_c, component_d, component_e])
     self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
-    self.assertDictEqual(my_pipeline.pipeline_args, {
-        'pipeline_name': 'a',
-        'pipeline_root': 'b',
-    })
+    self.assertDictEqual(
+        my_pipeline.pipeline_args, {
+            'pipeline_name': 'a',
+            'pipeline_root': 'b',
+            'additional_pipeline_args': {
+                'beam_pipeline_args': ['--runner=PortableRunner']
+            },
+        })
     self.assertEqual(my_pipeline.pipeline_info.pipeline_name, 'a')
     self.assertEqual(my_pipeline.pipeline_info.pipeline_root, 'b')
     self.assertEqual(my_pipeline.metadata_connection_config,
                      self._metadata_connection_config)
     self.assertTrue(my_pipeline.enable_cache)
-    self.assertEmpty(my_pipeline.additional_pipeline_args)
+    self.assertDictEqual(my_pipeline.additional_pipeline_args,
+                         {'beam_pipeline_args': ['--runner=PortableRunner']})
 
   def test_pipeline_with_loop(self):
     channel_one = channel.Channel(type_name='channel_one')

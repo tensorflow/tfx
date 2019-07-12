@@ -106,7 +106,8 @@ class Pipeline(object):
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
     self.metadata_connection_config = metadata_connection_config
-    self.additional_pipeline_args = kwargs or {}
+    self.additional_pipeline_args = self.pipeline_args.get(
+        'additional_pipeline_args', {})
 
     # Store pipeline_args in a json file only when temp file exists.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
