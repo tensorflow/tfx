@@ -20,10 +20,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Text
+from typing import Any, Dict, List, Text
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.base import base_executor

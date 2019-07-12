@@ -20,11 +20,7 @@ from __future__ import print_function
 import json
 import builtins
 
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Text
+from typing import Any, Dict, List, Optional, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import

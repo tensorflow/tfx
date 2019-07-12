@@ -18,12 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Text
-from typing import Union
+from typing import Dict, Iterable, List, Optional, Text, Union
+
 from tfx.utils import types
 
 
