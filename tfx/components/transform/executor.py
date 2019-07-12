@@ -356,25 +356,27 @@ class Executor(base_executor.BaseExecutor):
     schema_reader = io_utils.SchemaReader()
     return schema_reader.read(schema_path)
 
-  def _ReadSchema(self, data_format: Text,
-                  schema_path: Text) -> dataset_schema.Schema:
-    """Returns a TFT schema for the input data.
+  def _ReadMetadata(self, data_format: Text,
+                    schema_path: Text) -> dataset_metadata.DatasetMetadata:
+    """Returns a dataset_metadata.DatasetMetadata for the input data.
 
     Args:
       data_format: name of the input data format.
       schema_path: path to schema file.
 
     Returns:
-      A schema representing the provided set of columns.
+      A dataset_metadata.DatasetMetadata representing the provided set of
+          columns.
     """
 
     if self._ShouldDecodeAsRawExample(data_format):
-      return _RAW_EXAMPLE_SCHEMA
-    schema = self._GetSchema(schema_path)
-    # TODO(b/77351671): Remove this conversion to tf.Transform's internal
-    # schema format.
-    feature_spec = schema_utils.schema_as_feature_spec(schema).feature_spec
-    return dataset_schema.from_feature_spec(feature_spec)
+      return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
+    schema_proto = self._GetSchema(schema_path)
+    # For compatibility with tensorflow_transform 0.13 and 0.14, we create and
+    # then update a DatasetMetadata.
+    result = dataset_metadata.DatasetMetadata(dataset_schema.Schema({}))
+    _GetSchemaProto(result).CopyFrom(schema_proto)
+    return result
 
   @staticmethod
   @beam.ptransform_fn
@@ -597,9 +599,8 @@ class Executor(base_executor.BaseExecutor):
     raw_examples_data_format = common.GetSoleValue(
         inputs, labels.EXAMPLES_DATA_FORMAT_LABEL)
     schema = common.GetSoleValue(inputs, labels.SCHEMA_PATH_LABEL)
-    input_dataset_schema = self._ReadSchema(raw_examples_data_format, schema)
-    input_dataset_metadata = dataset_metadata.DatasetMetadata(
-        input_dataset_schema)
+    input_dataset_metadata = self._ReadMetadata(raw_examples_data_format,
+                                                schema)
 
     tf.logging.info('Inputs to executor.Transform function: {}'.format(inputs))
     tf.logging.info(
