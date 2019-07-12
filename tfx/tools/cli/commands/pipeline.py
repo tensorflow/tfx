@@ -50,7 +50,7 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
   handler_factory.create_handler(ctx.flags_dict).create_pipeline()
 
 
-@pipeline_group.command('update', help='Update an existing pipeline.')
+@pipeline_group.command('update', help='Update an existing pipeline')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
@@ -68,25 +68,7 @@ def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
   handler_factory.create_handler(ctx.flags_dict).update_pipeline()
 
 
-@pipeline_group.command('run', help='Create a new run for a pipeline.')
-@pass_context
-@click.option(
-    '--engine', default='auto', type=str, help='Orchestrator for pipelines')
-@click.option(
-    '--name',
-    'pipeline_name',
-    required=True,
-    type=str,
-    help='Name of the pipeline')
-def run_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
-  """Command definition to run a pipeline."""
-  click.echo('Triggering pipeline')
-  ctx.flags_dict[labels.ENGINE_FLAG] = engine
-  ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
-  handler_factory.create_handler(ctx.flags_dict).run_pipeline()
-
-
-@pipeline_group.command('delete', help='Delete a pipeline.')
+@pipeline_group.command('delete', help='Delete a pipeline')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
@@ -104,7 +86,7 @@ def delete_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
   handler_factory.create_handler(ctx.flags_dict).delete_pipeline()
 
 
-@pipeline_group.command('list', help='List all the pipelines.')
+@pipeline_group.command('list', help='List all the pipelines')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='orchestrator for pipelines')
@@ -115,3 +97,19 @@ def list_pipelines(ctx: Context, engine: Text) -> None:
   handler_factory.create_handler(ctx.flags_dict).list_pipelines()
 
 
+# TODO(b/132286477) Add compile_pipeline method to all handlers.
+@pipeline_group.command('compile', help='Compile a pipeline')
+@pass_context
+@click.option(
+    '--engine', default='auto', type=str, help='Orchestrator for pipelines')
+@click.option(
+    '--path',
+    'pipeline_path',
+    required=True,
+    type=str,
+    help='Path to Python DSL.')
+def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
+  """Command definition to create a pipeline."""
+  click.echo('Compiling pipeline')
+  ctx.flags_dict[labels.ENGINE_FLAG] = engine
+  ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
