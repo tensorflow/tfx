@@ -27,6 +27,8 @@ toc:
   style: divider
 - title: "Apache Airflow"
   path: /tfx/guide/airflow
+- title: "Apache Beam"
+  path: /tfx/guide/beam_orchestrator
 - title: "Kubeflow Pipelines"
   path: /tfx/guide/kubeflow
 
