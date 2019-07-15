@@ -2,7 +2,7 @@
 
 ## Custom Orchestrator
 
-TFX is designed to be highly portable to multiple environments and orchestration
+TFX is designed to be portable to multiple environments and orchestration
 frameworks. Developers can create custom orchestrators or add additional
 orchestrators in addition to the default orchestrators that are supported by
 TFX, namely [Airflow](airflow.md) and [Kubeflow](kubeflow.md).
