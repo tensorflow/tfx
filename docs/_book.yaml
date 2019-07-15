@@ -17,10 +17,6 @@ upper_tabs:
     - name: "Guide"
       contents:
       - include: /tfx/guide/_toc.yaml
-    # - name: "Examples"
-    #   contents:
-    #   - title: "Examples"
-    #     path: /tfx/examples/
     - name: API
       skip_translation: true
       contents:
