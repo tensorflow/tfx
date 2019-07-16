@@ -61,9 +61,8 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 
 
 # TODO(b/137289334): rename this as simple after DAG visualization is done.
-# TODO(b/137289910): refacter airflow and kubeflow create_pipeline to take args.
-def _create_pipeline(pipeline_name: Text, data_root: Text, module_file: Text,
-                     serving_model_dir: Text, pipeline_root: Text,
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                     module_file: Text, serving_model_dir: Text,
                      metadata_path: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   examples = external_input(data_root)
@@ -140,8 +139,8 @@ if __name__ == '__main__':
   BeamRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
+          pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          pipeline_root=_pipeline_root,
           metadata_path=_metadata_path))

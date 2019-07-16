@@ -18,8 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
 import tensorflow as tf
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow
+from tfx.orchestration.kubeflow.runner import KubeflowRunner
 
 
 class TaxiPipelineKubeflowTest(tf.test.TestCase):
@@ -34,11 +35,20 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     os.chdir(self._olddir)
 
   def test_taxi_pipeline_construction_and_definition_file_exists(self):
-    # Import creates the pipeline.
-    from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow  # pylint: disable=g-import-not-at-top
-    logical_pipeline = taxi_pipeline_kubeflow._create_pipeline()
+    logical_pipeline = taxi_pipeline_kubeflow._create_pipeline(
+        pipeline_name=taxi_pipeline_kubeflow._pipeline_name,
+        pipeline_root=taxi_pipeline_kubeflow._pipeline_root,
+        query=taxi_pipeline_kubeflow._query,
+        module_file=taxi_pipeline_kubeflow._module_file,
+        serving_model_dir=taxi_pipeline_kubeflow._serving_model_dir,
+        beam_pipeline_args=taxi_pipeline_kubeflow._beam_pipeline_args,
+        ai_platform_training_args=taxi_pipeline_kubeflow
+        ._ai_platform_training_args,
+        ai_platform_serving_args=taxi_pipeline_kubeflow
+        ._ai_platform_serving_args)
     self.assertEqual(9, len(logical_pipeline.components))
 
+    KubeflowRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))

@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import datetime
 import os
+from typing import Text
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_validator.component import ExampleValidator
@@ -29,30 +30,34 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration import metadata
+from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import csv_input
+from tfx.utils.dsl_utils import external_input
+
+_pipeline_name = 'chicago_taxi_portable_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-_data_root = os.path.join(_taxi_root, 'data/simple')
+_data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_taxi_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
-_serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_simple')
+_serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the chicago taxi
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
-_pipeline_name = 'chicago_taxi_portable_beam'
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-_metadata_db_root = os.path.join(_tfx_root, 'metadata', _pipeline_name)
+# Sqlite ML-metadata db path.
+_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                              'metadata.db')
 
 # Airflow-specific configs; these will be passed directly to airflow
 _airflow_config = {
@@ -61,9 +66,11 @@ _airflow_config = {
 }
 
 
-def _create_pipeline():
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                     module_file: Text, serving_model_dir: Text,
+                     metadata_path: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-  examples = csv_input(_data_root)
+  examples = external_input(data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=examples)
@@ -82,11 +89,11 @@ def _create_pipeline():
   transform = Transform(
       input_data=example_gen.outputs.examples,
       schema=infer_schema.outputs.output,
-      module_file=_taxi_module_file)
+      module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
-      module_file=_taxi_module_file,
+      module_file=module_file,
       transformed_examples=transform.outputs.transformed_examples,
       schema=infer_schema.outputs.output,
       transform_output=transform.outputs.transform_output,
@@ -113,18 +120,18 @@ def _create_pipeline():
       model_blessing=model_validator.outputs.blessing,
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=_serving_model_dir)))
+              base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
-      pipeline_name=_pipeline_name,
-      pipeline_root=_pipeline_root,
-      enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          _metadata_db_root),
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher
       ],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
       additional_pipeline_args={
           # LINT.IfChange
           'beam_pipeline_args': [
@@ -152,8 +159,15 @@ def _create_pipeline():
               '--execution_mode_for_batch=BATCH_FORCED',
           ],
           # LINT.ThenChange(tfx/examples/chicago_taxi/setup_beam_on_portable_beam.sh)
-      },
-  )
+      })
 
 
-pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())
+# TODO(jyzhao): consider using beam orchestrator after b/137294896.
+airflow_pipeline = AirflowDAGRunner(_airflow_config).run(
+    _create_pipeline(
+        pipeline_name=_pipeline_name,
+        pipeline_root=_pipeline_root,
+        data_root=_data_root,
+        module_file=_module_file,
+        serving_model_dir=_serving_model_dir,
+        metadata_path=_metadata_path))

@@ -24,26 +24,31 @@ from airflow import models
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
-from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
+from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
 
 
 class TaxiPipelineSimpleTest(tf.test.TestCase):
 
   def setUp(self):
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = '/tmp'
-
-  def tearDown(self):
-    os.environ['HOME'] = self._original_home_value
+    super(TaxiPipelineSimpleTest, self).setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
 
   def test_taxi_pipeline_check_dag_construction(self):
     airflow_config = {
         'schedule_interval': None,
         'start_date': datetime.datetime(2019, 1, 1),
     }
-    logical_pipeline = taxi_pipeline_simple._create_pipeline()
+    logical_pipeline = taxi_pipeline_simple._create_pipeline(
+        pipeline_name='Test',
+        pipeline_root=self._test_dir,
+        data_root=self._test_dir,
+        module_file=self._test_dir,
+        serving_model_dir=self._test_dir,
+        metadata_path=self._test_dir)
     self.assertEqual(9, len(logical_pipeline.components))
-    pipeline = TfxRunner(airflow_config).run(logical_pipeline)
+    pipeline = AirflowDAGRunner(airflow_config).run(logical_pipeline)
     self.assertIsInstance(pipeline, models.DAG)
 
 
