@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 # Standard Imports
+import mock
 
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -30,27 +31,22 @@ class IoUtilsTest(tf.test.TestCase):
   def setUp(self):
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     file_io.create_dir(self._base_dir)
+    super(IoUtilsTest, self).setUp()
 
   def tearDown(self):
     file_io.delete_recursively(self._base_dir)
+    super(IoUtilsTest, self).tearDown()
 
-  def testImportFunc(self):
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
-    test_fn = io_utils.import_func(test_fn_file, 'test_fn')
-    self.assertEqual(10, test_fn([1, 2, 3, 4]))
+  def testEnsureLocal(self):
+    file_path = os.path.join(
+        os.path.dirname(__file__), 'testdata', 'test_fn.py')
+    self.assertEqual(file_path, io_utils.ensure_local(file_path))
 
-  def testImportFuncMissingFile(self):
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'non_existing.py')
-    with self.assertRaises(IOError):
-      io_utils.import_func(test_fn_file, 'test_fn')
-
-  def testImportFuncMissingFunction(self):
-    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
-    with self.assertRaises(AttributeError):
-      io_utils.import_func(test_fn_file, 'non_existing')
+  @mock.patch.object(io_utils, 'copy_file')
+  def testEnsureLocalFromGCS(self, mock_copy_file):
+    file_path = 'gs://path/to/testdata/test_fn.py'
+    self.assertEqual('test_fn.py', io_utils.ensure_local(file_path))
+    mock_copy_file.assert_called_once_with(file_path, 'test_fn.py', True)
 
   def testCopyFile(self):
     file_path = os.path.join(self._base_dir, 'temp_file')

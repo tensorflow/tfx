@@ -42,6 +42,7 @@ from tfx.components.base import base_executor
 from tfx.components.transform import common
 from tfx.components.transform import labels
 from tfx.components.transform import messages
+from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import types
 
@@ -553,7 +554,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       User defined function.
     """
-    return io_utils.import_func(
+    return import_utils.import_func_from_source(
         common.GetSoleValue(inputs, labels.PREPROCESSING_FN),
         'preprocessing_fn')
 
