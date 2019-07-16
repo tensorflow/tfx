@@ -17,9 +17,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import six
 import tensorflow as tf
-from typing import Callable, List, Text
+from typing import List, Text
 
 from google.protobuf import text_format
 from google.protobuf.message import Message
@@ -30,30 +29,18 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 # Nano seconds per second.
 NANO_PER_SEC = 1000 * 1000 * 1000
 
+# If path starts with one of those, consider files are in remote filesystem.
+_REMOTE_FS_PREFIX = ['gs://', 'hdfs://', 's3://']
 
-def import_func(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
-  """Imports a function from a module provided as source file."""
 
-  # If a GCS bucket (gs://...), download to local filesystem first as
-  # importlib can't import from GCS
-  if module_path.startswith('gs://'):
-    module_filename = os.path.basename(module_path)
-    copy_file(module_path, module_filename, True)
-    module_path = module_filename
+def ensure_local(file_path: Text) -> Text:
+  """Ensures that the given file path is made available locally."""
+  if not any([file_path.startswith(prefix) for prefix in _REMOTE_FS_PREFIX]):
+    return file_path
 
-  try:
-    if six.PY2:
-      import imp  # pylint: disable=g-import-not-at-top
-      user_module = imp.load_source('user_module', module_path)
-    else:
-      import importlib.util  # pylint: disable=g-import-not-at-top
-      spec = importlib.util.spec_from_file_location('user_module', module_path)
-      user_module = importlib.util.module_from_spec(spec)
-      spec.loader.exec_module(user_module)  # pytype: disable=attribute-error
-  except IOError:
-    raise IOError('{} not found in import_func()'.format(module_path))
-
-  return getattr(user_module, fn_name)
+  local_path = os.path.basename(file_path)
+  copy_file(file_path, local_path, True)
+  return local_path
 
 
 def copy_file(src: Text, dst: Text, overwrite: bool = False):

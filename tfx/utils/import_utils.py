@@ -17,7 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Text, Type
+import importlib
+import six
+
+from typing import Any, Callable, Text, Type
+
+from tfx.utils import io_utils
 
 
 def import_class_by_path(class_path: Text) -> Type[Any]:
@@ -31,5 +36,42 @@ def import_class_by_path(class_path: Text) -> Type[Any]:
   """
   classname = class_path.split('.')[-1]
   modulename = '.'.join(class_path.split('.')[0:-1])
-  mod = __import__(modulename, fromlist=[classname])
+  mod = importlib.import_module(modulename)
   return getattr(mod, classname)
+
+
+def import_func_from_source(source_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
+  """Imports a function from a module provided as source file."""
+
+  # If module path is not local, download to local file-system first,
+  # because importlib can't import from GCS
+  source_path = io_utils.ensure_local(source_path)
+
+  try:
+    if six.PY2:
+      import imp  # pylint: disable=g-import-not-at-top
+      try:
+        user_module = imp.load_source('user_module', source_path)
+        return getattr(user_module, fn_name)
+      except IOError:
+        raise
+
+    else:
+      spec = importlib.util.spec_from_file_location('user_module', source_path)
+
+      if not spec:
+        raise ImportError()
+
+      user_module = importlib.util.module_from_spec(spec)
+      spec.loader.exec_module(user_module)  # pytype: disable=attribute-error
+      return getattr(user_module, fn_name)
+
+  except IOError:
+    raise ImportError('{} in {} not found in import_func_from_source()'.format(
+        fn_name, source_path))
+
+
+def import_func_from_module(module_path: Text, fn_name: Text) -> Callable:  # pylint: disable=g-bare-generic
+  """Imports a function from a module provided as source file or module path."""
+  user_module = importlib.import_module(module_path)
+  return getattr(user_module, fn_name)
