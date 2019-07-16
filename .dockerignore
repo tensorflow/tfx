@@ -128,4 +128,8 @@ dmypy.json
 
 # pb2.py files
 *_pb2.py
-# LINT.ThenChange(.dockerignore)
+# LINT.ThenChange(.gitignore)
+
+# .dockerignore and Dockerfile themselves are not needed by docker build.
+.dockerignore
+tfx/tools/docker/Dockerfile*
