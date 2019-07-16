@@ -25,20 +25,21 @@ landing_page:
         the latest videos and updates.
       </p>
     items:
-    - heading: "TFX Overview and Pre-training Workflow "
-      description: "Presented at TF Dev Summit 2019"
+      - heading: "TFX: ML Pipelines and Understanding"
+      description: "Google I/O 2019"
+      youtube_id: drYM04t57tU
+      buttons:
+      - label: Watch the video
+        path: https://www.youtube.com/watch?v=drYM04t57tU
+    - heading: "TFX Overview and Pre-training Workflow"
+      description: "TF Dev Summit 2019"
       youtube_id: A5wiwT1qFjc
       buttons:
       - label: Watch the video
         path: https://www.youtube.com/watch?v=A5wiwT1qFjc
-    - heading: "TFX Post-training Workflow"
-      description: "Presented at TF Dev Summit 2019"
-      youtube_id: 0O201IQlkxc
+    - heading: "TFX and Apache Beam"
+      description: "Beam Summit Europe 2019"
+      youtube_id: 6p8UXjNg1oc
       buttons:
       - label: Watch the video
-        path: https://www.youtube.com/watch?v=0O201IQlkxc
-    - heading: "TFX and TF Hub"
-      youtube_id: wjTAQkzn7m8
-      buttons:
-      - label: Watch the video
-        path: https://www.youtube.com/watch?v=wjTAQkzn7m8
+        path: https://www.youtube.com/watch?v=6p8UXjNg1oc
