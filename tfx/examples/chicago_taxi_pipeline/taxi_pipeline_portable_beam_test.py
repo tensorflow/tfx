@@ -17,32 +17,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
 import os
-
 import tensorflow as tf
-
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_portable_beam
-from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner as TfxRunner
 
 
 class TaxiPipelinePortableBeamTest(tf.test.TestCase):
 
   def setUp(self):
-    self._original_home_value = os.environ.get('HOME', '')
-    os.environ['HOME'] = '/tmp'
-
-  def tearDown(self):
-    os.environ['HOME'] = self._original_home_value
+    super(TaxiPipelinePortableBeamTest, self).setUp()
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
 
   def test_taxi_pipeline_check_dag_construction(self):
-    airflow_config = {
-        'schedule_interval': None,
-        'start_date': datetime.datetime(2019, 1, 1),
-    }
-    logical_pipeline = taxi_pipeline_portable_beam._create_pipeline()
+    logical_pipeline = taxi_pipeline_portable_beam._create_pipeline(
+        pipeline_name='Test',
+        pipeline_root=self._test_dir,
+        data_root=self._test_dir,
+        module_file=self._test_dir,
+        serving_model_dir=self._test_dir,
+        metadata_path=self._test_dir)
     self.assertEqual(9, len(logical_pipeline.components))
-    TfxRunner(airflow_config).run(logical_pipeline)
 
 
 if __name__ == '__main__':

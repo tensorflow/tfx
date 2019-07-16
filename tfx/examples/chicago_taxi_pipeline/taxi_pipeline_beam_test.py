@@ -33,10 +33,10 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
   def test_taxi_pipeline_check_dag_construction(self):
     logical_pipeline = taxi_pipeline_beam._create_pipeline(
         pipeline_name='Test',
+        pipeline_root=self._test_dir,
         data_root=self._test_dir,
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
-        pipeline_root=self._test_dir,
         metadata_path=self._test_dir)
     self.assertEqual(9, len(logical_pipeline.components))
 
