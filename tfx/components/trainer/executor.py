@@ -76,8 +76,9 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
-        - transformed_examples: Transformed example.
-        - transform_output: Input transform graph.
+        - examples: Examples used for training, must include 'train' and 'eval'
+          splits.
+        - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: Exported model.
@@ -120,12 +121,13 @@ class Executor(base_executor.BaseExecutor):
     # Set up training parameters
     train_files = [
         _all_files_pattern(
-            types.get_split_uri(input_dict['transformed_examples'], 'train'))
+            types.get_split_uri(input_dict['examples'], 'train'))
     ]
-    transform_output = types.get_single_uri(input_dict['transform_output'])
+    transform_output = types.get_single_uri(
+        input_dict['transform_output']
+    ) if input_dict['transform_output'] else None
     eval_files = [
-        _all_files_pattern(
-            types.get_split_uri(input_dict['transformed_examples'], 'eval'))
+        _all_files_pattern(types.get_split_uri(input_dict['examples'], 'eval'))
     ]
     schema_file = io_utils.get_only_uri_in_dir(
         types.get_single_uri(input_dict['schema']))
@@ -160,7 +162,8 @@ class Executor(base_executor.BaseExecutor):
     hparams = tf.contrib.training.HParams(
         # A list of uris for train files.
         train_files=train_files,
-        # A single uri for transform graph produced by TFT.
+        # An optional single uri for transform graph produced by TFT. Will be
+        # None if not specified.
         transform_output=transform_output,
         # A single uri for the output directory of the serving model.
         serving_model_dir=serving_model_dir,

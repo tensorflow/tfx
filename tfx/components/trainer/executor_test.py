@@ -49,7 +49,7 @@ class ExecutorTest(tf.test.TestCase):
     schema.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     input_dict = {
-        'transformed_examples': [train_examples, eval_examples],
+        'examples': [train_examples, eval_examples],
         'transform_output': [transform_output],
         'schema': [schema],
     }

@@ -40,13 +40,14 @@ class TrainerSpec(base_component.ComponentSpec):
       'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
   }
   INPUTS = {
-      'transformed_examples': ChannelParameter(type_name='ExamplesPath'),
-      'transform_output': ChannelParameter(type_name='TransformPath'),
-      'schema': ChannelParameter(type_name='SchemaPath'),
+      'examples':
+          ChannelParameter(type_name='ExamplesPath'),
+      'transform_output':
+          ChannelParameter(type_name='TransformPath', optional=True),
+      'schema':
+          ChannelParameter(type_name='SchemaPath'),
   }
-  OUTPUTS = {
-      'output': ChannelParameter(type_name='ModelExportPath')
-  }
+  OUTPUTS = {'output': ChannelParameter(type_name='ModelExportPath')}
 
 
 class Trainer(base_component.BaseComponent):
@@ -68,32 +69,34 @@ class Trainer(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
   DRIVER_CLASS = driver.Driver
 
-  def __init__(self,
-               transformed_examples: channel.Channel = None,
-               transform_output: channel.Channel = None,
-               schema: channel.Channel = None,
-               module_file: Text = None,
-               train_args: trainer_pb2.TrainArgs = None,
-               eval_args: trainer_pb2.EvalArgs = None,
-               custom_config: Optional[Dict[Text, Any]] = None,
-               executor_class: Optional[Type[
-                   base_executor.BaseExecutor]] = None,
-               output: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+  def __init__(
+      self,
+      examples: channel.Channel = None,
+      transformed_examples: channel.Channel = None,
+      transform_output: Optional[channel.Channel] = None,
+      schema: channel.Channel = None,
+      module_file: Text = None,
+      train_args: trainer_pb2.TrainArgs = None,
+      eval_args: trainer_pb2.EvalArgs = None,
+      custom_config: Optional[Dict[Text, Any]] = None,
+      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      output: Optional[channel.Channel] = None,
+      name: Optional[Text] = None):
     """Construct a Trainer component.
 
     Args:
-      transformed_examples: A Channel of 'ExamplesPath' type, serving as the
-        source of transformed examples. This is usually an output of Transform.
-      transform_output: A Channel of 'TransformPath' type, serving as the input
-        transform graph.
+      examples: A Channel of 'ExamplesPath' type, serving as the source of
+        examples that are used in training.
+      transformed_examples: Deprecated field. Please set 'examples' instead.
+      transform_output: An optional Channel of 'TransformPath' type, serving as
+        the input transform graph if present.
       schema:  A Channel of 'SchemaPath' type, serving as the schema of training
         and eval data.
       module_file: A python module file containing UDF model definition.
       train_args: A trainer_pb2.TrainArgs instance, containing args used for
         training. Current only num_steps is available.
-      eval_args: A trainer_pb2.EvalArgs instance, containing args used for
-        eval. Current only num_steps is available.
+      eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
+        Current only num_steps is available.
       custom_config: A dict which contains the training job parameters to be
         passed to Google Cloud ML Engine.  For the full set of parameters
         supported by Google Cloud ML Engine, refer to
@@ -106,9 +109,19 @@ class Trainer(base_component.BaseComponent):
     output = output or channel.Channel(
         type_name='ModelExportPath',
         artifacts=[types.TfxArtifact('ModelExportPath')])
+    assert bool(examples) ^ bool(
+        transformed_examples
+    ), 'Exactly one of example or transformed_example should be set.'
+    if transformed_examples:
+      assert bool(
+          transform_output
+      ), 'If transformed_examples is set, transform_output should be set too.'
+    examples = examples or transformed_examples
+    transform_output_channel = channel.as_channel(
+        transform_output) if transform_output else None
     spec = TrainerSpec(
-        transformed_examples=channel.as_channel(transformed_examples),
-        transform_output=channel.as_channel(transform_output),
+        examples=channel.as_channel(examples),
+        transform_output=transform_output_channel,
         schema=channel.as_channel(schema),
         train_args=train_args,
         eval_args=eval_args,
@@ -116,6 +129,4 @@ class Trainer(base_component.BaseComponent):
         custom_config=custom_config,
         output=output)
     super(Trainer, self).__init__(
-        spec=spec,
-        custom_executor_class=executor_class,
-        name=name)
+        spec=spec, custom_executor_class=executor_class, name=name)

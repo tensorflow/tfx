@@ -32,8 +32,19 @@ class ComponentTest(tf.test.TestCase):
     schema = types.TfxArtifact(type_name='SchemaPath')
     trainer = component.Trainer(
         module_file='/path/to/module/file',
-        transformed_examples=channel.as_channel([transformed_examples]),
+        examples=channel.as_channel([transformed_examples]),
         transform_output=channel.as_channel([transform_output]),
+        schema=channel.as_channel([schema]),
+        train_args=trainer_pb2.TrainArgs(num_steps=100),
+        eval_args=trainer_pb2.EvalArgs(num_steps=50))
+    self.assertEqual('ModelExportPath', trainer.outputs.output.type_name)
+
+  def test_construct_without_transform_output(self):
+    transformed_examples = types.TfxArtifact(type_name='ExamplesPath')
+    schema = types.TfxArtifact(type_name='SchemaPath')
+    trainer = component.Trainer(
+        module_file='/path/to/module/file',
+        examples=channel.as_channel([transformed_examples]),
         schema=channel.as_channel([schema]),
         train_args=trainer_pb2.TrainArgs(num_steps=100),
         eval_args=trainer_pb2.EvalArgs(num_steps=50))
