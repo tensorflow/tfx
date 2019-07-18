@@ -43,6 +43,10 @@ class ContainerImageEndToEndTest(unittest.TestCase):
         path=repo_base,
         dockerfile='tfx/tools/docker/Dockerfile',
         tag=self._image_tag,
+        buildargs={
+            # Skip license gathering for tests.
+            'gather_third_party_licenses': 'false',
+        },
     )
 
   def tearDown(self):
