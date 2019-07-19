@@ -400,6 +400,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     return self.spec.component_name
 
   @property
+  def component_type(self) -> Text:
+    return '.'.join([self.__class__.__module__, self.__class__.__name__])
+
+  @property
   def inputs(self) -> _PropertyDictWrapper:
     return self.spec.inputs
 
@@ -423,13 +427,13 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     If unique name is available, component_id will be:
       <component_name>.<unique_name>
     otherwise, component_id will be:
-      <component_name>.default
+      <component_name>
 
     Returns:
       component id.
     """
     if self.name:
-      return '{}.{}'.format(self.component_name, self.name or 'default')
+      return '{}.{}'.format(self.component_name, self.name)
     else:
       return self.component_name
 

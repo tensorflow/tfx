@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import collections
 import functools
 import json
 import os
@@ -92,7 +93,7 @@ class Pipeline(object):
       enable_cache: whether or not cache is enabled for this run.
       **kwargs: additional kwargs forwarded as pipeline args.
         - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-            Executor will use beam DirectRunner as Default.
+          Executor will use beam DirectRunner as Default.
     """
     # TODO(ruoyu): Deprecate pipeline args once finish migration to
     # go/tfx-oss-artifact-passing
@@ -127,9 +128,17 @@ class Pipeline(object):
   def components(self, components: List[base_component.BaseComponent]):
     deduped_components = set(components)
     producer_map = {}
+    instances_per_component_type = collections.defaultdict(set)
 
     # Fills in producer map.
     for component in deduped_components:
+      # Guarantees every component of a component type has unique component_id.
+      if component.component_id in instances_per_component_type[
+          component.component_type]:
+        raise RuntimeError('Duplicated component_id %s for component type %s' %
+                           (component.component_id, component.component_type))
+      instances_per_component_type[component.component_type].add(
+          component.component_id)
       for key, output_channel in component.outputs.get_all().items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
@@ -149,6 +158,7 @@ class Pipeline(object):
 
     self._components = []
     visited = set()
+
     # Finds the nodes with indegree 0.
     current_layer = [c for c in deduped_components if not c.upstream_nodes]
     # Sorts component in topological order.

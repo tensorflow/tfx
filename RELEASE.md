@@ -49,6 +49,7 @@
 *   Introduced 'examples' to Trainer component API. It's recommended to use this
     field instead of 'transformed_examples' going forward.
 *   Allowed Trainer to run without transform_output.
+*   Added check for duplicated component ids within a pipeline.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
