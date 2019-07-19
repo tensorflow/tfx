@@ -55,7 +55,7 @@ def _make_fake_component_instance(name: Text,
     def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(
           output=channel.Channel(type_name=name), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec, name=name)
+      super(_FakeComponent, self).__init__(spec=spec)
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
   return _FakeComponent(name, spec_kwargs)
@@ -159,6 +159,18 @@ class PipelineTest(tf.test.TestCase):
           pipeline_name='a',
           pipeline_root='b',
           components=[component_c, component_d, component_b, component_a],
+          metadata_connection_config=self._metadata_connection_config)
+
+  def test_pipeline_with_duplicated_component_id(self):
+    component_a = _make_fake_component_instance('component_a', {}, {})
+    component_b = _make_fake_component_instance('component_a', {}, {})
+    component_c = _make_fake_component_instance('component_a', {}, {})
+
+    with self.assertRaises(RuntimeError):
+      pipeline.Pipeline(
+          pipeline_name='a',
+          pipeline_root='b',
+          components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
   def test_pipeline_with_artifact_info(self):
