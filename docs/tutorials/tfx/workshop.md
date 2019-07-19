@@ -182,12 +182,10 @@ virtualenv -p python3 tfx-env
 source ~/tfx-env/bin/activate
 mkdir tfx; cd tfx
 
-pip install tensorflow==1.13.1
-pip install tfx==0.13.0
 git clone https://github.com/tensorflow/tfx.git
+cd ~/tfx/tfx/tfx/examples/workshop/setup
 # Use same release branch of 'tfx==0.13.0' to discover examples and setup.
 git checkout -f origin/r0.13
-cd ~/tfx/tfx/tfx/examples/workshop/setup
 ./setup_demo.sh
 ```
 
