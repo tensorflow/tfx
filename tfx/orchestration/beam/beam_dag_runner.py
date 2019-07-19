@@ -69,18 +69,18 @@ class _ComponentAsDoFn(beam.DoFn):
     tf.logging.info('Component %s is finished.', self._name)
 
 
-class BeamRunner(tfx_runner.TfxRunner):
+class BeamDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Beam."""
 
   def __init__(self, beam_orchestrator_args: Optional[List[Text]] = None):
-    """Initializes BeamRunner as a TFX orchestrator.
+    """Initializes BeamDagRunner as a TFX orchestrator.
 
     Args:
       beam_orchestrator_args: beam args for the beam orchestrator. Note that
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
     """
-    super(BeamRunner, self).__init__()
+    super(BeamDagRunner, self).__init__()
     self._beam_orchestrator_args = beam_orchestrator_args
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:

@@ -80,6 +80,9 @@
     producer_component.
 *   pipeline_root passed to pipeline.Pipeline is now the root to the running
     pipeline instead of the root of all pipelines.
+*   airflow_runner.AirflowDAGRunner is renamed to
+    airflow_dag_runner.AirflowDagRunner.
+*   runner.KubeflowRunner is renamed to kubeflow_dag_runner.KubeflowDagRunner.
 
 # Version 0.13.0
 

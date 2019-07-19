@@ -74,9 +74,10 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     engine_flag = self.flags_dict[labels.ENGINE_FLAG]
     with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
       dsl_contents = f.read()
-      regexes = {'airflow': r'AirflowDAGRunner\(.*\)',
-                 'kubeflow': r'KubeflowRunner\(.*\)'}
+      regexes = {
+          'airflow': r'AirflowDagRunner\(.*\)',
+          'kubeflow': r'KubeflowDagRunner\(.*\)'
+      }
       match = re.search(regexes[engine_flag], dsl_contents)
       if not match:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))
-

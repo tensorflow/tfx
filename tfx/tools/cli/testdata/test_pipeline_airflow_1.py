@@ -24,7 +24,7 @@ from tfx.components.example_validator.component import ExampleValidator
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.utils.dsl_utils import csv_input
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
@@ -75,4 +75,4 @@ def _create_pipeline():
   )
 
 
-airflow_pipeline = AirflowDAGRunner(_airflow_config).run(_create_pipeline())
+airflow_pipeline = AirflowDagRunner(_airflow_config).run(_create_pipeline())
