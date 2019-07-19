@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.kubeflow.runner."""
+"""Tests for tfx.orchestration.kubeflow.kubeflow_dag_runner."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,7 +28,7 @@ import yaml
 from tfx.components.example_gen.big_query_example_gen import component as big_query_example_gen_component
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow import runner
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
 
 
 # 2-step pipeline under test.
@@ -45,7 +45,7 @@ def _two_step_pipeline():
   return [example_gen, statistics_gen]
 
 
-class RunnerTest(tf.test.TestCase):
+class KubeflowDagRunnerTest(tf.test.TestCase):
 
   def setUp(self):
     self.test_dir = tempfile.mkdtemp()
@@ -57,7 +57,7 @@ class RunnerTest(tf.test.TestCase):
   def test_two_step_pipeline(self):
     """Sanity-checks the construction and dependencies for a 2-step pipeline.
     """
-    runner.KubeflowRunner().run(_two_step_pipeline())
+    kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 
@@ -110,7 +110,7 @@ class RunnerTest(tf.test.TestCase):
       }, dag[0]['dag'])
 
   def test_default_pipeline_operator_funcs(self):
-    runner.KubeflowRunner().run(_two_step_pipeline())
+    kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 
@@ -148,10 +148,11 @@ class RunnerTest(tf.test.TestCase):
     mount_volume_op = onprem.mount_pvc('my-persistent-volume-claim',
                                        'my-volume-name',
                                        '/mnt/volume-mount-path')
-    config = runner.KubeflowRunnerConfig(
+    config = kubeflow_dag_runner.KubeflowRunnerConfig(
         pipeline_operator_funcs=[mount_volume_op])
 
-    runner.KubeflowRunner(config=config).run(_two_step_pipeline())
+    kubeflow_dag_runner.KubeflowDagRunner(config=config).run(
+        _two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
 

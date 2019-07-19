@@ -22,7 +22,7 @@ import tensorflow as tf
 from typing import Text
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.orchestration import metadata
-from tfx.orchestration.beam.beam_runner import BeamRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
 class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
@@ -65,7 +65,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Transform')
 
   def test_taxi_pipeline_beam(self):
-    BeamRunner().run(
+    BeamDagRunner().run(
         taxi_pipeline_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
@@ -87,7 +87,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Run pipeline again.
-    BeamRunner().run(
+    BeamDagRunner().run(
         taxi_pipeline_beam._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,

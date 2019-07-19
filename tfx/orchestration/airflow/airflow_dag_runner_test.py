@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.airflow.airflow_runner."""
+"""Tests for tfx.orchestration.airflow.airflow_dag_runner."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -23,7 +23,7 @@ import tensorflow as tf
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow import airflow_runner
+from tfx.orchestration.airflow import airflow_dag_runner
 from tfx.utils import channel
 
 
@@ -81,14 +81,14 @@ class _FakeComponent(base_component.BaseComponent):
     super(_FakeComponent, self).__init__(spec=spec)
 
 
-class AirflowRunnerTest(tf.test.TestCase):
+class AirflowDagRunnerTest(tf.test.TestCase):
 
   @mock.patch(
       'tfx.orchestration.airflow.airflow_component.AirflowComponent'
   )
   @mock.patch('airflow.models.DAG')
-  def test_airflow_runner(self, mock_airflow_dag_class,
-                          mock_airflow_component_class):
+  def test_airflow_dag_runner(self, mock_airflow_dag_class,
+                              mock_airflow_component_class):
     mock_airflow_dag_class.return_value = 'DAG'
     mock_airflow_component_a = mock.Mock()
     mock_airflow_component_b = mock.Mock()
@@ -135,7 +135,7 @@ class AirflowRunnerTest(tf.test.TestCase):
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])
-    runner = airflow_runner.AirflowDAGRunner(config=airflow_config)
+    runner = airflow_dag_runner.AirflowDagRunner(config=airflow_config)
     runner.run(test_pipeline)
 
     mock_airflow_component_a.set_upstream.assert_not_called()

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.beam.runner."""
+"""Tests for tfx.orchestration.beam.beam_dag_runner."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,13 +23,13 @@ from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam import beam_runner
+from tfx.orchestration.beam import beam_dag_runner
 from tfx.utils import channel
 
 _executed_components = []
 
 
-class _FakeComponentAsDoFn(beam_runner._ComponentAsDoFn):
+class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 
   def _run_component(self):
     _executed_components.append(self._name)
@@ -94,10 +94,10 @@ class _FakeComponent(base_component.BaseComponent):
     super(_FakeComponent, self).__init__(spec=spec)
 
 
-class BeamRunnerTest(tf.test.TestCase):
+class BeamDagRunnerTest(tf.test.TestCase):
 
   @mock.patch.multiple(
-      beam_runner,
+      beam_dag_runner,
       _ComponentAsDoFn=_FakeComponentAsDoFn,
   )
   def test_run(self):
@@ -127,7 +127,7 @@ class BeamRunnerTest(tf.test.TestCase):
             component_d, component_c, component_a, component_b, component_e
         ])
 
-    beam_runner.BeamRunner().run(test_pipeline)
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
     self.assertItemsEqual(_executed_components, [
         'component_a', 'component_b', 'component_c', 'component_d',
         'component_e'

@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 
 import abc
 from six import with_metaclass
+from typing import Any, Optional
 
 
 class TfxRunner(with_metaclass(abc.ABCMeta, object)):
@@ -30,13 +31,13 @@ class TfxRunner(with_metaclass(abc.ABCMeta, object)):
   """
 
   @abc.abstractmethod
-  def run(self, pipeline):
+  def run(self, pipeline) -> Optional[Any]:
     """Runs logical TFX pipeline on specific platform.
 
     Args:
       pipeline: logical TFX pipeline definition.
 
     Returns:
-      Platform-specific pipeline object.
+      Platform-specific object.
     """
     pass

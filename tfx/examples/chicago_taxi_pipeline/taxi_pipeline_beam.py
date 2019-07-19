@@ -31,7 +31,7 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam.beam_runner import BeamRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -136,7 +136,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 #   $python taxi_pipeline_beam.py
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
-  BeamRunner().run(
+  BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
