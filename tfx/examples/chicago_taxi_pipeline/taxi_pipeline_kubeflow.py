@@ -102,7 +102,7 @@ _beam_pipeline_args = [
     '--project=' + _project_id,
     '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
     '--region=' + _gcp_region,
-],
+]
 
 # The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.
 # The full taxi dataset is > 120M record.  In the interest of resource
