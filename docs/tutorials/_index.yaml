@@ -1,5 +1,6 @@
 book_path: /tfx/_book.yaml
 project_path: /tfx/_project.yaml
+title: TFX tutorials
 description: <!--no description-->
 landing_page:
   nav: left
@@ -25,7 +26,7 @@ landing_page:
         the latest videos and updates.
       </p>
     items:
-      - heading: "TFX: ML Pipelines and Understanding"
+    - heading: "TFX: ML Pipelines and Understanding"
       description: "Google I/O 2019"
       youtube_id: drYM04t57tU
       buttons:
