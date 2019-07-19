@@ -53,9 +53,11 @@ class TfxArtifact(object):
   def __init__(self, type_name: Text, split: Optional[Text] = ''):
     """Construct an instance of TfxArtifact.
 
-    Each instance of TfxArtifact wraps an Artifact and its type internally.
-    When first created, the artifact will have an empty URI (which will be
-    filled by the orchestration system before first usage).
+    Used by TFX internal implementation: create an empty TfxArtifact with
+    type_name and optional split info specified. The remaining info will be
+    filled in during compiling and running time. The TfxArtifact should be
+    transparent to end users and should not be initiated directly by pipeline
+    users.
 
     Args:
       type_name: Name of underlying ArtifactType.
