@@ -72,11 +72,11 @@ _ai_platform_training_args = {
     # Starting from TFX 0.14, 'runtimeVersion' is not relevant anymore.
     # Instead, it will be populated by TFX as <major>.<minor> version of
     # the imported TensorFlow package;
-    'runtimeVersion': '1.12',
+    'runtimeVersion': '1.13',
     # Starting from TFX 0.14, 'pythonVersion' is not relevant anymore.
     # Instead, it will be populated by TFX as the <major>.<minor> version
     # of the running Python interpreter;
-    'pythonVersion': '2.7',
+    'pythonVersion': '3.5',
     # 'pythonModule' will be populated by TFX;
     # 'args' will be populated by TFX;
     # If 'packageUris' is not empty, AI Platform trainer will assume this
@@ -91,8 +91,10 @@ _ai_platform_training_args = {
 _ai_platform_serving_args = {
     'model_name': 'chicago_taxi',
     'project_id': _project_id,
-    # 'runtimeVersion' will be populated by TFX as <major>.<minor> version of
-    #   the imported TensorFlow package;
+    # Starting from TFX 0.14, 'runtime_version' is not relevant anymore.
+    # Instead, it will be populated by TFX as <major>.<minor> version of
+    # the imported TensorFlow package;
+    'runtime_version': '1.13',
 }
 
 # Beam args to run data processing on DataflowRunner.
