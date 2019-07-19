@@ -146,7 +146,8 @@ def preprocessing_fn(inputs):
   return outputs
 
 
-def _build_estimator(config, hidden_units=None, warm_start_from=None):
+def _build_estimator(config, hidden_units=None, warm_start_from=None):  # pylint: disable= unused-argument
+  # TODO(chavoshi): Implement keras_model_path for warm start.
   """Build an estimator for predicting the tipping behavior of taxi riders.
 
   Args:
@@ -184,12 +185,82 @@ def _build_estimator(config, hidden_units=None, warm_start_from=None):
               _transformed_names(_CATEGORICAL_FEATURE_KEYS),
               _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
-  return tf.estimator.DNNLinearCombinedClassifier(
+
+  indicator_column = [tf.feature_column.indicator_column(categorical_column)
+                      for categorical_column in categorical_columns]
+
+  model = _wide_and_deep_classifier(
+      # TODO(b/139668410) replace with premade wide_and_deep keras model
+      wide_columns=indicator_column,
+      deep_columns=real_valued_columns,
+      dnn_hidden_units=hidden_units or [100, 70, 50, 25])
+
+  return tf.keras.estimator.model_to_estimator(
+      keras_model=model,
       config=config,
-      linear_feature_columns=categorical_columns,
-      dnn_feature_columns=real_valued_columns,
-      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
-      warm_start_from=warm_start_from)
+      )
+
+
+def _wide_and_deep_classifier(wide_columns,
+                              deep_columns,
+                              dnn_hidden_units):
+  """Build a simple keras wide and deep model.
+
+  Args:
+    wide_columns: Feature columns wrapped in indicator_column for wide
+    (linear) part of the model.
+    deep_columns: Feature columns for deep part of the model.
+    dnn_hidden_units: [int], the layer sizes of the hidden DNN.
+
+  Returns:
+    A Wide and Deep Keras model
+  """
+  # Following values are hard coded for simplicity in this example,
+  # However prefarably they should be passsed in as hparams.
+
+  # Keras needs the feature definitions at compile time.
+  input_layers = {
+      colname: tf.keras.layers.Input(name=colname, shape=(), dtype=tf.float32)
+      for colname in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
+  }
+  input_layers.update({
+      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      for colname in _transformed_names(_VOCAB_FEATURE_KEYS)
+  })
+  input_layers.update({
+      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      for colname in _transformed_names(_BUCKET_FEATURE_KEYS)
+  })
+  input_layers.update({
+      colname: tf.keras.layers.Input(name=colname, shape=(), dtype='int32')
+      for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
+  })
+
+  deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
+  for numnodes in dnn_hidden_units:
+    deep = tf.keras.layers.Dense(numnodes)(deep)
+
+  wide = tf.keras.layers.DenseFeatures(wide_columns)(input_layers)
+  output = tf.keras.layers.Dense(1, activation='sigmoid')(
+      tf.keras.layers.concatenate([deep, wide]))
+  output = tf.squeeze(output, -1)
+  result_model = tf.keras.Model(input_layers, output)
+  metrics = [
+      tf.keras.metrics.FalseNegatives(name='fn'),
+      tf.keras.metrics.FalsePositives(name='fp'),
+      tf.keras.metrics.TrueNegatives(name='tn'),
+      tf.keras.metrics.TruePositives(name='tp'),
+      tf.keras.metrics.Precision(name='precision'),
+      tf.keras.metrics.Recall(name='recall'),
+      'accuracy',
+      'mse'
+  ]
+  result_model.compile(
+      optimizer='adam',
+      loss='binary_crossentropy',
+      metrics=metrics
+      )
+  return result_model
 
 
 def _example_serving_receiver_fn(tf_transform_output, schema):
@@ -210,8 +281,7 @@ def _example_serving_receiver_fn(tf_transform_output, schema):
   serving_input_receiver = raw_input_fn()
 
   transformed_features = tf_transform_output.transform_raw_features(
-      serving_input_receiver.features)
-
+      serving_input_receiver.features, drop_unused_features=True)
   return tf.estimator.export.ServingInputReceiver(
       transformed_features, serving_input_receiver.receiver_tensors)
 
@@ -250,12 +320,11 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
 
   # NOTE: Model is driven by transformed features (since training works on the
   # materialized output of TFT, but slicing will happen on raw features.
-  features.update(transformed_features)
 
   return tfma.export.EvalInputReceiver(
-      features=features,
+      features=transformed_features,
       receiver_tensors=receiver_tensors,
-      labels=transformed_features[_transformed_name(_LABEL_KEY)])
+      labels=transformed_features.pop(_transformed_name(_LABEL_KEY)))
 
 
 def _input_fn(filenames, tf_transform_output, batch_size=200):

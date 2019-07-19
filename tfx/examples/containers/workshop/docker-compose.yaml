@@ -14,14 +14,12 @@ services:
     volumes:
     # Note: You should create the `airflow` directory BEFORE running `docker-compose up`, and
     #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on
-    #       your system.  In the container, it will be mounted as /root/airflow.  The default
-    #       Airflow directory is under your home directory, and you're running in the container
-    #       as root, so the directory will be /root/airflow
-    - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/root/airflow"
+    #       your system.  In the container, it will be mounted as /home/tfx_user/airflow
+    - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/home/tfx/airflow"
 
     # Note: You should clone the TFX repo BEFORE running `docker-compose up`, and
     #       edit the TFX_PATH_ON_YOUR_HOST below to point to where you cloned the repo on your
-    # .     system.  In the container, it will be mounted as /home/tfx/tfx
+    # .     system.  In the container, it will be mounted as /home/tfx_user/tfx
     - "TFX_PATH_ON_YOUR_HOST/tfx:/home/tfx/tfx"
 
     stdin_open: true

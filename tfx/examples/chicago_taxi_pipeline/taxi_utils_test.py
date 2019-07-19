@@ -141,8 +141,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     eval_spec = training_spec['eval_spec']
     eval_input_receiver_fn = training_spec['eval_input_receiver_fn']
 
-    self.assertIsInstance(estimator,
-                          tf.estimator.DNNLinearCombinedClassifier)
+    self.assertIsInstance(estimator, tf.estimator.Estimator)
     self.assertIsInstance(train_spec, tf.estimator.TrainSpec)
     self.assertIsInstance(eval_spec, tf.estimator.EvalSpec)
     self.assertIsInstance(eval_input_receiver_fn, types.FunctionType)
