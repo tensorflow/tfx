@@ -50,22 +50,23 @@ following a typical ML development process.  Here are the steps:
 Depending on your environment you may need to install several packages:
 
 ```bash
-sudo apt-get install python-dev  \
+sudo apt-get install python3-dev  \
     build-essential libssl-dev libffi-dev \
     libxml2-dev libxslt1-dev zlib1g-dev \
-    python-pip
+    python3-pip git
 ```
 
 ### MacOS Environment
 
-If you do not have Python 3 already installed, you can install Python using
-the [Homebrew](https://brew.sh/) package manager:
+If you do not have Python 3 and git already installed, you can install them
+using the [Homebrew](https://brew.sh/) package manager:
 
 ```bash
 /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install"
 export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
 brew update
 brew install python
+brew install git
 ```
 
 MacOS sometimes has problems forking threads when running Airflow, depending on
