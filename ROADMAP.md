@@ -1,7 +1,7 @@
 ### TFX OSS roadmap
-This highlights the main OSS efforts for the TFX team in 2019.  If you're
+This highlights the main OSS efforts for the TFX team in 2019. If you're
 interested in contributing in one of these areas,
-[contributions](https://github.com/tensorflow/tfx/blob/master/tfx/CONTRIBUTING.md)
+[contributions](https://github.com/tensorflow/tfx/blob/master/CONTRIBUTING.md)
 are always welcome, especially in areas that extend TFX into infrastructure
 currently not widely in use at Google.
 
