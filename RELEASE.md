@@ -50,6 +50,8 @@
     field instead of 'transformed_examples' going forward.
 *   Allowed Trainer to run without transform_output.
 *   Added check for duplicated component ids within a pipeline.
+*   String representations for Channel and TfxArtifact (TfxType) classes were
+    improved.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components

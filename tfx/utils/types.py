@@ -94,11 +94,9 @@ class TfxArtifact(object):
 
     self.artifact = artifact
 
-  def __str__(self):
-    return '{}:{}.{}'.format(self.artifact_type.name, self.uri, str(self.id))
-
   def __repr__(self):
-    return self.__str__()
+    return 'TfxArtifact(type_name: {}, uri: {}, split: {}, id: {})'.format(
+        self.artifact_type.name, self.uri, str(self.split), str(self.id))
 
   def json_dict(self) -> Dict[Text, Any]:
     """Returns a dict suitable for json serialization."""

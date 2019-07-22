@@ -70,7 +70,9 @@ class TypesTest(tf.test.TestCase):
         'string_value',
         instance.artifact.custom_properties['string_key'].string_value)
 
-    self.assertEqual('MyTypeName:/tmp/uri2.1', str(instance))
+    self.assertEqual(
+        'TfxArtifact(type_name: MyTypeName, uri: /tmp/uri2, split: , id: 1)',
+        str(instance))
 
     # Test json serialization.
     json_dict = instance.json_dict()
