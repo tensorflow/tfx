@@ -52,11 +52,10 @@ class Channel(object):
     self._artifacts = artifacts or []
     self._validate_type()
 
-  def __str__(self):
-    return 'Channel<{}: {}>'.format(self.type_name, self._artifacts)
-
   def __repr__(self):
-    return self.__str__()
+    artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)
+    return 'Channel(\n    type_name: {}\n    artifacts: [{}]\n)'.format(
+        self.type_name, artifacts_str)
 
   def _validate_type(self) -> None:
     for artifact in self._artifacts:
