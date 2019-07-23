@@ -18,12 +18,19 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import json
+import os
 import re
+import subprocess
 import sys
+import tempfile
 
 from six import with_metaclass
 import tensorflow as tf
+from typing import Any, Dict, Text
+
 from tfx.tools.cli import labels
+from tfx.utils import io_utils
 
 
 class BaseHandler(with_metaclass(abc.ABCMeta, object)):
@@ -58,8 +65,33 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     pass
 
   @abc.abstractmethod
-  def run_pipeline(self) -> None:
+  def compile_pipeline(self) -> None:
+    """Compiles pipeline for the handler."""
+    pass
+
+  @abc.abstractmethod
+  def create_run(self) -> None:
     """Runs a pipeline for the handler."""
+    pass
+
+  @abc.abstractmethod
+  def delete_run(self) -> None:
+    """Deletes a run."""
+    pass
+
+  @abc.abstractmethod
+  def terminate_run(self) -> None:
+    """Stops a run."""
+    pass
+
+  @abc.abstractmethod
+  def list_runs(self) -> None:
+    """Lists all runs of a pipeline."""
+    pass
+
+  @abc.abstractmethod
+  def get_run(self) -> None:
+    """Checks run status."""
     pass
 
   def _check_pipeline_dsl_path(self) -> None:
@@ -81,3 +113,45 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       match = re.search(regexes[engine_flag], dsl_contents)
       if not match:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))
+
+  def _extract_pipeline_args(self) -> Dict[Text, Any]:
+    """Get pipeline args from the DSL."""
+    if os.path.isdir(self.flags_dict[labels.PIPELINE_DSL_PATH]):
+      sys.exit('Provide dsl file path.')
+
+    # Create an environment for subprocess.
+    temp_env = os.environ.copy()
+
+    # Create temp file to store pipeline_args from pipeline dsl.
+    temp_file = tempfile.mkstemp(prefix='cli_tmp_', suffix='_pipeline_args')[1]
+
+    # Store temp_file path in temp_env.
+    temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
+
+    # Run dsl with mock environment to store pipeline args in temp_file.
+    subprocess.call(['python', self.flags_dict[labels.PIPELINE_DSL_PATH]],
+                    env=temp_env)
+
+    # Load pipeline_args from temp_file
+    with open(temp_file, 'r') as f:
+      pipeline_args = json.load(f)
+
+    # Delete temp file
+    io_utils.delete_dir(temp_file)
+
+    return pipeline_args
+
+  def _get_handler_home(self, home_dir) -> Text:
+    """Sets handler home.
+
+    Args:
+      home_dir: directory name to store pipelines
+
+    Returns:
+      Path to handler home directory.
+    """
+    engine_flag = self.flags_dict[labels.ENGINE_FLAG]
+    handler_home_dir = engine_flag.upper() + '_HOME'
+    if handler_home_dir in os.environ:
+      return os.environ[handler_home_dir]
+    return os.path.join(os.environ['HOME'], home_dir, '')

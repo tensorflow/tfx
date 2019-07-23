@@ -23,6 +23,7 @@ from typing import Text
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_context import Context
 from tfx.tools.cli.cli_context import pass_context
+from tfx.tools.cli.handler import handler_factory
 
 
 @click.group('run')
@@ -36,7 +37,6 @@ def run_group() -> None:
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
     '--pipeline_name',
-    'pipeline_name',
     required=True,
     type=str,
     help='Name of the pipeline')
@@ -45,18 +45,21 @@ def create_run(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   click.echo('Creating a run for pipeline:' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  handler_factory.create_handler(ctx.flags_dict).create_run()
 
 
 @run_group.command('terminate', help='Stop a run')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
-@click.option('--run_id', required=True, type=str, help='Unique ID for the run')
+@click.option(
+    '--run_id', required=True, type=str, help='Unique ID for the run.)')
 def terminate_run(ctx: Context, engine: Text, run_id: Text) -> None:
   """Command definition to stop a run."""
   click.echo('Terminating run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
+  handler_factory.create_handler(ctx.flags_dict).terminate_run()
 
 
 @run_group.command('list', help='List all the runs of a pipeline')
@@ -65,7 +68,6 @@ def terminate_run(ctx: Context, engine: Text, run_id: Text) -> None:
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
     '--pipeline_name',
-    'pipeline_name',
     required=True,
     type=str,
     help='Name of the pipeline')
@@ -74,27 +76,36 @@ def list_runs(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   click.echo('Listing all runs of pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  handler_factory.create_handler(ctx.flags_dict).list_runs()
 
 
 @run_group.command('status', help='Get the status of a run.')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
-@click.option('--run_id', required=True, type=str, help='Unique ID for the run')
-def get_run(ctx: Context, engine: Text, run_id: Text) -> None:
+@click.option(
+    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+@click.option(
+    '--run_id', required=True, type=str, help='Unique ID for the run.')
+def get_run(ctx: Context, engine: Text, pipeline_name: Text,
+            run_id: Text) -> None:
   """Command definition to stop a run."""
   click.echo('Retrieving run status.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
+  ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  handler_factory.create_handler(ctx.flags_dict).get_run()
 
 
 @run_group.command('delete', help='Delete a run')
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
-@click.option('--run_id', required=True, type=str, help='Unique ID for the run')
+@click.option(
+    '--run_id', required=True, type=str, help='Unique ID for the run.')
 def delete_run(ctx: Context, engine: Text, run_id: Text) -> None:
   """Command definition to delete a run."""
   click.echo('Deleting run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
+  handler_factory.create_handler(ctx.flags_dict).delete_run()

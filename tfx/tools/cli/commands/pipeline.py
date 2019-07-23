@@ -113,3 +113,4 @@ def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
   click.echo('Compiling pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
+  handler_factory.create_handler(ctx.flags_dict).compile_pipeline()
