@@ -31,7 +31,6 @@ from tfx.utils import types
 class EvaluatorSpec(base_component.ComponentSpec):
   """Evaluator component spec."""
 
-  COMPONENT_NAME = 'Evaluator'
   PARAMETERS = {
       'feature_slicing_spec': ExecutionParameter(
           type=evaluator_pb2.FeatureSlicingSpec),

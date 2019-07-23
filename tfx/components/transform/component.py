@@ -28,7 +28,6 @@ from tfx.utils import types
 class TransformSpec(base_component.ComponentSpec):
   """Transform component spec."""
 
-  COMPONENT_NAME = 'Transform'
   PARAMETERS = {
       'module_file': ExecutionParameter(type=(str, Text)),
   }

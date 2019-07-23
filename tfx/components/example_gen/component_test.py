@@ -45,7 +45,6 @@ class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        component_name='TestQueryBasedExampleGenComponent',
         example_artifacts=example_artifacts,
         name=name)
 
@@ -64,7 +63,6 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        component_name='TestFileBasedExampleGenComponent',
         example_artifacts=example_artifacts,
         name=name)
 

@@ -68,7 +68,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
   Components should have a corresponding ComponentSpec inheriting from this
   class and must override:
 
-    - COMPONENT_NAME (as a string),
     - PARAMETERS (as a dict of string keys and ExecutionParameter values),
     - INPUTS (as a dict of string keys and ChannelParameter values) and
     - OUTPUTS (also a dict of string keys and ChannelParameter values).
@@ -76,7 +75,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
   Here is an example of how a ComponentSpec may be defined:
 
   class MyCustomComponentSpec(ComponentSpec):
-    COMPONENT_NAME = 'MyCustomComponent'
     PARAMETERS = {
         'internal_option': ExecutionParameter(type=str),
     }
@@ -95,32 +93,23 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
       input_examples=input_examples_channel,
       output_examples=output_examples_channel)
 
-  Optionally, the name of the component may be overridden by passing the
-  component_name kwarg.
-
   Attributes:
-    COMPONENT_NAME: name of this component, as a string.
     PARAMETERS: a dict of string keys and ExecutionParameter values.
     INPUTS: a dict of string keys and ChannelParameter values.
     OUTPUTS: a dict of string keys and ChannelParameter values.
   """
 
-  COMPONENT_NAME = _abstract_property()
   PARAMETERS = _abstract_property()
   INPUTS = _abstract_property()
   OUTPUTS = _abstract_property()
 
-  def __init__(self, component_name: Optional[Text] = None, **kwargs):
+  def __init__(self, **kwargs):
     """Initialize a ComponentSpec.
 
     Args:
-      component_name: Optional component name to use for this instance of the
-        component spec, instead of the default one for this ComponentSpec
-        subclass.
       **kwargs: Any inputs, outputs and execution parameters for this instance
         of the component spec.
     """
-    self.component_name = component_name or self.COMPONENT_NAME
     self._raw_args = kwargs
     self._validate_spec()
     self._verify_parameter_types()
@@ -128,13 +117,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
 
   def _validate_spec(self):
     """Check the parameters and types passed to this ComponentSpec."""
-    # Verify that the ComponentSpec subclass has overridden arguments of the
-    # correct type.
-    if not isinstance(self.COMPONENT_NAME,
-                      (str, Text)):  # str needed for Python2 compatibility.
-      raise TypeError(
-          ('Subclass %s of ComponentSpec must override COMPONENT_NAME with a '
-           'string; got %s instead.') % (self.__class__, self.COMPONENT_NAME))
     for param_name, param in [('PARAMETERS', self.PARAMETERS),
                               ('INPUTS', self.INPUTS),
                               ('OUTPUTS', self.OUTPUTS)]:
@@ -307,6 +289,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   list of all valid ComponentSpec subclasses that this base component accepts.
 
   Attributes:
+    COMPONENT_NAME: the name of this component, as a string (optional). If not
+      specified, the name of the component class will be used.
     SPEC_CLASS: a subclass of ComponentSpec used by this component (required).
     EXECUTOR_CLASS: a subclass of base_executor.BaseExecutor used to execute
       this component (required).
@@ -314,6 +298,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       this component (optional, defaults to base_driver.BaseDriver).
   """
 
+  # Subclasses may optionally override this component name property, which
+  # would otherwise default to the component class name. This is used for
+  # tracking component instances in pipelines and display in the UI.
+  COMPONENT_NAME = None
   # Subclasses must override this property (by specifying a ComponentSpec class,
   # e.g. "SPEC_CLASS = MyComponentSpec").
   SPEC_CLASS = _abstract_property()
@@ -327,7 +315,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       self,
       spec: ComponentSpec,
       custom_executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      name: Optional[Text] = None):
+      name: Optional[Text] = None,
+      component_name: Optional[Text] = None):
     """Initialize a component.
 
     Args:
@@ -337,6 +326,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       name: Optional unique identifying name for this instance of the component
         in the pipeline. Required if two instances of the same component is used
         in the pipeline.
+      component_name: Optional component name override for this instance of the
+        component. This will override the class-level COMPONENT_NAME attribute
+        and the name of the class (which would otherwise be used as the
+        component name).
     """
     self.spec = spec
     if custom_executor_class:
@@ -348,6 +341,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     self.executor_class = (
         custom_executor_class or self.__class__.EXECUTOR_CLASS)
     self.driver_class = self.__class__.DRIVER_CLASS
+    self.component_name = (component_name
+                           or self.__class__.COMPONENT_NAME
+                           or self.__class__.__name__)
     self.name = name
     self._upstream_nodes = set()
     self._downstream_nodes = set()
@@ -394,10 +390,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
             'inputs: %s, outputs: %s)') % (
                 self.__class__.__name__, self.spec, self.executor_class,
                 self.driver_class, self.name, self.inputs, self.outputs)
-
-  @property
-  def component_name(self) -> Text:
-    return self.spec.component_name
 
   @property
   def component_type(self) -> Text:
