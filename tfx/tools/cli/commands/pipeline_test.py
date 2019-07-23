@@ -50,7 +50,6 @@ class PipelineTest(tf.test.TestCase):
     result = self.runner.invoke(
         pipeline_group,
         ['update', '--path', 'chicago.py', '--engine', 'kubeflow'])
-    self.assertEqual(0, result.exit_code)
     self.assertIn('Updating pipeline', result.output)
 
   def test_pipeline_delete(self):

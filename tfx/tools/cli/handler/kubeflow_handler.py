@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import click
 
 from tfx.tools.cli.handler import base_handler
 
@@ -29,20 +28,40 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def create_pipeline(self) -> None:
     """Creates pipeline in Kubeflow."""
-    click.echo('Creating pipeline in Kubeflow')
+    pass
 
   def update_pipeline(self) -> None:
     """Updates pipeline in Kubeflow."""
-    click.echo('Updating pipeline in Kubeflow')
+    pass
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    click.echo('List of pipelines in Kubeflow')
+    pass
 
   def delete_pipeline(self) -> None:
     """Delete pipeline in Kubeflow."""
-    click.echo('Deleting pipeline in Kubeflow')
+    pass
 
-  def run_pipeline(self) -> None:
-    """Run pipeline in Kubeflow."""
-    click.echo('Triggering pipeline in Kubeflow')
+  def compile_pipeline(self) -> None:
+    """Compiles pipeline in Kubeflow."""
+    pass
+
+  def create_run(self) -> None:
+    """Runs a pipeline in Kubeflow."""
+    pass
+
+  def delete_run(self) -> None:
+    """Deletes a run."""
+    pass
+
+  def terminate_run(self) -> None:
+    """Stops a run."""
+    pass
+
+  def list_runs(self) -> None:
+    """Lists all runs of a pipeline."""
+    pass
+
+  def get_run(self) -> None:
+    """Checks run status."""
+    pass
