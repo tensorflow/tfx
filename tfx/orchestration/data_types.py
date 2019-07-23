@@ -53,10 +53,16 @@ class DriverArgs(object):
 
   Attributes:
     enable_cache: whether cache is enabled in current execution.
+    interactive_resolution: whether to skip MLMD channel artifact resolution,
+      if artifacts are already resolved for a channel when running in
+      interactive mode.
   """
 
-  def __init__(self, enable_cache: bool):
+  def __init__(self,
+               enable_cache: bool = True,
+               interactive_resolution: bool = False):
     self.enable_cache = enable_cache
+    self.interactive_resolution = interactive_resolution
 
 
 class PipelineInfo(object):
