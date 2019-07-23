@@ -28,7 +28,6 @@ from tfx.utils import types
 class StatisticsGenSpec(base_component.ComponentSpec):
   """StatisticsGen component spec."""
 
-  COMPONENT_NAME = 'StatisticsGen'
   PARAMETERS = {}
   INPUTS = {
       'input_data': ChannelParameter(type_name='ExamplesPath'),
@@ -51,7 +50,7 @@ class StatisticsGen(base_component.BaseComponent):
   def __init__(self,
                input_data: channel.Channel = None,
                output: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -59,7 +58,7 @@ class StatisticsGen(base_component.BaseComponent):
         splits 'train' and 'eval' (required if spec is not passed).
       output: Optional 'ExampleStatisticsPath' channel for statistics of each
         split provided in input examples.
-      name: Optional unique name. Necessary iff multiple StatisticsGen
+      label: Optional unique label. Necessary iff multiple StatisticsGen
         components are declared in the same pipeline.
     """
     output = output or channel.Channel(
@@ -70,4 +69,4 @@ class StatisticsGen(base_component.BaseComponent):
     spec = StatisticsGenSpec(
         input_data=channel.as_channel(input_data),
         output=output)
-    super(StatisticsGen, self).__init__(spec=spec, name=name)
+    super(StatisticsGen, self).__init__(spec=spec, label=label)

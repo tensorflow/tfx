@@ -31,7 +31,6 @@ from tfx.utils import types
 class EvaluatorSpec(base_component.ComponentSpec):
   """Evaluator component spec."""
 
-  COMPONENT_NAME = 'Evaluator'
   PARAMETERS = {
       'feature_slicing_spec': ExecutionParameter(
           type=evaluator_pb2.FeatureSlicingSpec),
@@ -60,7 +59,7 @@ class Evaluator(base_component.BaseComponent):
       model_exports: channel.Channel,
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
       output: Optional[channel.Channel] = None,
-      name: Optional[Text] = None):
+      label: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -71,8 +70,8 @@ class Evaluator(base_component.BaseComponent):
       feature_slicing_spec: Optional evaluator_pb2.FeatureSlicingSpec instance,
         providing the way to slice the data.
       output: Optional channel of 'ModelEvalPath' for result of evaluation.
-      name: Optional unique name. Necessary if multiple Evaluator components are
-        declared in the same pipeline.
+      label: Optional unique name. Necessary if multiple Evaluator components
+        are declared in the same pipeline.
     """
     output = output or channel.Channel(
         type_name='ModelEvalPath',
@@ -83,4 +82,4 @@ class Evaluator(base_component.BaseComponent):
         feature_slicing_spec=(
             feature_slicing_spec or evaluator_pb2.FeatureSlicingSpec()),
         output=output)
-    super(Evaluator, self).__init__(spec=spec, name=name)
+    super(Evaluator, self).__init__(spec=spec, label=label)

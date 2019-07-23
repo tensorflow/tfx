@@ -28,7 +28,6 @@ from tfx.utils import types
 class ExampleValidatorSpec(base_component.ComponentSpec):
   """ExampleValidator component spec."""
 
-  COMPONENT_NAME = 'ExampleValidator'
   PARAMETERS = {}
   INPUTS = {
       'stats': ChannelParameter(type_name='ExampleStatisticsPath'),
@@ -53,7 +52,7 @@ class ExampleValidator(base_component.BaseComponent):
                stats: channel.Channel,
                schema: channel.Channel,
                output: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -61,7 +60,7 @@ class ExampleValidator(base_component.BaseComponent):
         least 'eval' split. Other splits are ignored currently.
       schema: A Channel of "SchemaPath' type.
       output: Optional output channel of 'ExampleValidationPath' type.
-      name: Optional unique name. Necessary iff multiple ExampleValidator
+      label: Optional unique label. Necessary iff multiple ExampleValidator
         components are declared in the same pipeline.
     """
     output = output or channel.Channel(
@@ -72,4 +71,4 @@ class ExampleValidator(base_component.BaseComponent):
         stats=channel.as_channel(stats),
         schema=channel.as_channel(schema),
         output=output)
-    super(ExampleValidator, self).__init__(spec=spec, name=name)
+    super(ExampleValidator, self).__init__(spec=spec, label=label)

@@ -28,7 +28,6 @@ from tfx.utils import types
 class TransformSpec(base_component.ComponentSpec):
   """Transform component spec."""
 
-  COMPONENT_NAME = 'Transform'
   PARAMETERS = {
       'module_file': ExecutionParameter(type=(str, Text)),
   }
@@ -63,7 +62,7 @@ class Transform(base_component.BaseComponent):
                module_file: Text = None,
                transform_output: Optional[channel.Channel] = None,
                transformed_examples: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
@@ -79,7 +78,7 @@ class Transform(base_component.BaseComponent):
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
-      name: Optional unique name. Necessary iff multiple transform components
+      label: Optional unique label. Necessary iff multiple transform components
         are declared in the same pipeline.
     """
     transform_output = transform_output or channel.Channel(
@@ -97,4 +96,4 @@ class Transform(base_component.BaseComponent):
         module_file=module_file,
         transform_output=transform_output,
         transformed_examples=transformed_examples)
-    super(Transform, self).__init__(spec=spec, name=name)
+    super(Transform, self).__init__(spec=spec, label=label)

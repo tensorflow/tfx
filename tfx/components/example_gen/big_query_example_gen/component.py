@@ -40,7 +40,7 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -54,7 +54,7 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
         size 2:1.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      name: Optional unique name. Necessary if multiple BigQueryExampleGen
+      label: Optional unique label. Necessary if multiple BigQueryExampleGen
         components are declared in the same pipeline.
 
     Raises:
@@ -66,6 +66,5 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
     super(BigQueryExampleGen, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        component_name='BigQueryExampleGen',
         example_artifacts=example_artifacts,
-        name=name)
+        label=label)

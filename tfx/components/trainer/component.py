@@ -32,7 +32,6 @@ from tfx.utils import types
 class TrainerSpec(base_component.ComponentSpec):
   """Trainer component spec."""
 
-  COMPONENT_NAME = 'Trainer'
   PARAMETERS = {
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
@@ -81,7 +80,7 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
       output: Optional[channel.Channel] = None,
-      name: Optional[Text] = None):
+      label: Optional[Text] = None):
     """Construct a Trainer component.
 
     Args:
@@ -103,8 +102,8 @@ class Trainer(base_component.BaseComponent):
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       executor_class: Optional custom executor class.
       output: Optional 'ModelExportPath' channel for result of exported models.
-      name: Optional unique name. Necessary iff multiple Trainer components are
-        declared in the same pipeline.
+      label: Optional unique label. Necessary iff multiple Trainer components
+        are declared in the same pipeline.
     """
     output = output or channel.Channel(
         type_name='ModelExportPath',
@@ -129,4 +128,4 @@ class Trainer(base_component.BaseComponent):
         custom_config=custom_config,
         output=output)
     super(Trainer, self).__init__(
-        spec=spec, custom_executor_class=executor_class, name=name)
+        spec=spec, custom_executor_class=executor_class, label=label)

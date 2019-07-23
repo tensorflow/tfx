@@ -31,7 +31,6 @@ from tfx.utils import types
 class PusherSpec(base_component.ComponentSpec):
   """Pusher component spec."""
 
-  COMPONENT_NAME = 'Pusher'
   PARAMETERS = {
       'push_destination': ExecutionParameter(type=pusher_pb2.PushDestination,
                                              optional=True),
@@ -66,7 +65,7 @@ class Pusher(base_component.BaseComponent):
                executor_class: Optional[Type[
                    base_executor.BaseExecutor]] = None,
                model_push: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:
@@ -83,7 +82,7 @@ class Pusher(base_component.BaseComponent):
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
       executor_class: Optional custom python executor class.
       model_push: Optional output 'ModelPushPath' channel with result of push.
-      name: Optional unique name. Necessary if multiple Pusher components are
+      label: Optional unique label. Necessary if multiple Pusher components are
         declared in the same pipeline.
     """
     model_push = model_push or channel.Channel(
@@ -101,4 +100,4 @@ class Pusher(base_component.BaseComponent):
         model_push=model_push)
     super(Pusher, self).__init__(spec=spec,
                                  custom_executor_class=executor_class,
-                                 name=name)
+                                 label=label)

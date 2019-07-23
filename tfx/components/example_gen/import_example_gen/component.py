@@ -41,7 +41,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct an ImportExampleGen component.
 
     Args:
@@ -55,13 +55,12 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         size 2:1.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      name: Optional unique name. Necessary if multiple ImportExampleGen
+      label: Optional unique label. Necessary if multiple ImportExampleGen
         components are declared in the same pipeline.
     """
     super(ImportExampleGen, self).__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        component_name='ImportExampleGen',
         example_artifacts=example_artifacts,
-        name=name)
+        label=label)

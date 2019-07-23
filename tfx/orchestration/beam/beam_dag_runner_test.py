@@ -44,28 +44,24 @@ class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 # as these anonymous classes cannot be used with Beam, since they cannot be
 # pickled with the "dill" library.
 class _FakeComponentSpecA(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_a'
   PARAMETERS = {}
   INPUTS = {}
   OUTPUTS = {'output': ChannelParameter(type_name='a')}
 
 
 class _FakeComponentSpecB(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_b'
   PARAMETERS = {}
   INPUTS = {'a': ChannelParameter(type_name='a')}
   OUTPUTS = {'output': ChannelParameter(type_name='b')}
 
 
 class _FakeComponentSpecC(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_c'
   PARAMETERS = {}
   INPUTS = {'a': ChannelParameter(type_name='a')}
   OUTPUTS = {'output': ChannelParameter(type_name='c')}
 
 
 class _FakeComponentSpecD(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_d'
   PARAMETERS = {}
   INPUTS = {
       'b': ChannelParameter(type_name='b'),
@@ -75,7 +71,6 @@ class _FakeComponentSpecD(base_component.ComponentSpec):
 
 
 class _FakeComponentSpecE(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_e'
   PARAMETERS = {}
   INPUTS = {
       'a': ChannelParameter(type_name='a'),
@@ -91,7 +86,10 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_CLASS = base_executor.BaseExecutor
 
   def __init__(self, spec: base_component.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    component_name = spec.__class__.__name__.replace(
+        '_FakeComponentSpec', 'component_').lower()
+    super(_FakeComponent, self).__init__(spec=spec,
+                                         component_name=component_name)
 
 
 class BeamDagRunnerTest(tf.test.TestCase):

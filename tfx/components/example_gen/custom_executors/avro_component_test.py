@@ -60,7 +60,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
         input_base=external_input(self.avro_dir_path),
         input_config=self.input_config,
         output_config=self.output_config,
-        name='AvroExampleGenComponent')
+        label='AvroExampleGenComponent')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -90,7 +90,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Get output paths.
-    component_id = '.'.join([example_gen.component_name, example_gen.name])
+    component_id = '.'.join([example_gen.component_name, example_gen.label])
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
     train_examples = types.TfxArtifact(type_name='ExamplesPath', split='train')
     train_examples.uri = os.path.join(output_path, 'train')

@@ -63,7 +63,7 @@
     optional keyword arguments (see each component class definition for
     details).
 *   The optional arguments "executor" and "unique_name" of component classes
-    have been uniformly renamed to "executor_class" and "name", respectively.
+    have been uniformly renamed to "executor_class" and "label", respectively.
     The "driver" optional argument of component classes is no longer available:
     users who need to override the driver for a component should subclass the
     component and override the DRIVER_CLASS field.

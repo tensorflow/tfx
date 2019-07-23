@@ -28,7 +28,6 @@ from tfx.utils import types
 class SchemaGenSpec(base_component.ComponentSpec):
   """SchemaGen component spec."""
 
-  COMPONENT_NAME = 'SchemaGen'
   PARAMETERS = {}
   INPUTS = {
       'stats': ChannelParameter(type_name='ExampleStatisticsPath'),
@@ -51,7 +50,7 @@ class SchemaGen(base_component.BaseComponent):
   def __init__(self,
                stats: channel.Channel,
                output: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -59,7 +58,7 @@ class SchemaGen(base_component.BaseComponent):
         passed). This should contain at least a 'train' split. Other splits are
         currently ignored.
       output: Optional output 'SchemaPath' channel for schema result.
-      name: Optional unique name. Necessary iff multiple SchemaGen components
+      label: Optional unique label. Necessary iff multiple SchemaGen components
         are declared in the same pipeline.
     """
     output = output or channel.Channel(
@@ -68,4 +67,4 @@ class SchemaGen(base_component.BaseComponent):
     spec = SchemaGenSpec(
         stats=channel.as_channel(stats),
         output=output)
-    super(SchemaGen, self).__init__(spec=spec, name=name)
+    super(SchemaGen, self).__init__(spec=spec, label=label)

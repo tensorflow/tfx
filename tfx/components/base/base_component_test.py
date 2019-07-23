@@ -20,6 +20,7 @@ from __future__ import print_function
 import json
 
 import tensorflow as tf
+from typing import Optional, Text
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -30,7 +31,6 @@ from tfx.utils import channel
 
 class _BasicComponentSpec(base_component.ComponentSpec):
 
-  COMPONENT_NAME = '_BasicComponent'
   PARAMETERS = {
       'folds': ExecutionParameter(type=int),
       'proto': ExecutionParameter(type=example_gen_pb2.Input, optional=True),
@@ -45,18 +45,20 @@ class _BasicComponentSpec(base_component.ComponentSpec):
 
 class _BasicComponent(base_component.BaseComponent):
 
+  COMPONENT_NAME = 'MyBasicComponent'
   SPEC_CLASS = _BasicComponentSpec
   EXECUTOR_CLASS = base_executor.BaseExecutor
 
   def __init__(self,
                spec: base_component.ComponentSpec = None,
                folds: int = None,
-               input: channel.Channel = None):  # pylint: disable=redefined-builtin
+               input: channel.Channel = None,  # pylint: disable=redefined-builtin
+               label: Optional[Text] = None):
     if not spec:
       output = channel.Channel(type_name='OutputType')
       spec = _BasicComponentSpec(
           folds=folds, input=input, output=output)
-    super(_BasicComponent, self).__init__(spec=spec)
+    super(_BasicComponent, self).__init__(spec=spec, label=label)
 
 
 class ComponentSpecTest(tf.test.TestCase):
@@ -64,7 +66,6 @@ class ComponentSpecTest(tf.test.TestCase):
   def test_componentspec_empty(self):
 
     class EmptyComponentSpec(base_component.ComponentSpec):
-      COMPONENT_NAME = 'EmptyComponent'
       PARAMETERS = {}
       INPUTS = {}
       OUTPUTS = {}
@@ -125,86 +126,60 @@ class ComponentSpecTest(tf.test.TestCase):
 
     with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
       class InvalidComponentSpecA(base_component.ComponentSpec):
-        # Missing COMPONENT_NAME.
-        PARAMETERS = {}
-        INPUTS = {}
-        OUTPUTS = {}
-
-      InvalidComponentSpecA()
-
-    with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
-      class InvalidComponentSpecB(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentB'
         # Missing PARAMETERS.
         INPUTS = {}
         OUTPUTS = {}
 
-      InvalidComponentSpecB()
+      InvalidComponentSpecA()
 
     with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
-      class InvalidComponentSpecC(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentC'
+      class InvalidComponentSpecB(base_component.ComponentSpec):
         PARAMETERS = {}
         # Missing INPUTS.
         OUTPUTS = {}
 
-      InvalidComponentSpecC()
+      InvalidComponentSpecB()
 
     with self.assertRaisesRegexp(TypeError, "Can't instantiate abstract class"):
-      class InvalidComponentSpecD(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentD'
+      class InvalidComponentSpecC(base_component.ComponentSpec):
         PARAMETERS = {}
         INPUTS = {}
         # Missing OUTPUTS.
 
-      InvalidComponentSpecD()
+      InvalidComponentSpecC()
 
   def test_invalid_componentspec_wrong_properties(self):
 
     with self.assertRaisesRegexp(TypeError,
-                                 'must override COMPONENT_NAME with a string'):
+                                 'must override PARAMETERS with a dict'):
       class InvalidComponentSpecA(base_component.ComponentSpec):
-        COMPONENT_NAME = object()
-        PARAMETERS = {}
+        PARAMETERS = object()
         INPUTS = {}
         OUTPUTS = {}
 
       InvalidComponentSpecA()
 
     with self.assertRaisesRegexp(TypeError,
-                                 'must override PARAMETERS with a dict'):
+                                 'must override INPUTS with a dict'):
       class InvalidComponentSpecB(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentB'
-        PARAMETERS = object()
-        INPUTS = {}
+        PARAMETERS = {}
+        INPUTS = object()
         OUTPUTS = {}
 
       InvalidComponentSpecB()
 
     with self.assertRaisesRegexp(TypeError,
-                                 'must override INPUTS with a dict'):
-      class InvalidComponentSpecC(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentC'
-        PARAMETERS = {}
-        INPUTS = object()
-        OUTPUTS = {}
-
-      InvalidComponentSpecC()
-
-    with self.assertRaisesRegexp(TypeError,
                                  'must override OUTPUTS with a dict'):
-      class InvalidComponentSpecD(base_component.ComponentSpec):
-        COMPONENT_NAME = 'InvalidComponentD'
+      class InvalidComponentSpecC(base_component.ComponentSpec):
         PARAMETERS = {}
         INPUTS = {}
         OUTPUTS = object()
 
-      InvalidComponentSpecD()
+      InvalidComponentSpecC()
 
   def test_invalid_componentspec_wrong_type(self):
 
     class WrongTypeComponentSpecA(base_component.ComponentSpec):
-      COMPONENT_NAME = 'WrongTypeComponentA'
       PARAMETERS = {'x': object()}
       INPUTS = {}
       OUTPUTS = {}
@@ -214,7 +189,6 @@ class ComponentSpecTest(tf.test.TestCase):
       _ = WrongTypeComponentSpecA()
 
     class WrongTypeComponentSpecB(base_component.ComponentSpec):
-      COMPONENT_NAME = 'WrongTypeComponentB'
       PARAMETERS = {'x': ChannelParameter(type_name='X')}
       INPUTS = {}
       OUTPUTS = {}
@@ -224,7 +198,6 @@ class ComponentSpecTest(tf.test.TestCase):
       _ = WrongTypeComponentSpecB()
 
     class WrongTypeComponentSpecC(base_component.ComponentSpec):
-      COMPONENT_NAME = 'WrongTypeComponentC'
       PARAMETERS = {}
       INPUTS = {'x': ExecutionParameter(type=int)}
       OUTPUTS = {}
@@ -234,7 +207,6 @@ class ComponentSpecTest(tf.test.TestCase):
       _ = WrongTypeComponentSpecC()
 
     class WrongTypeComponentSpecD(base_component.ComponentSpec):
-      COMPONENT_NAME = 'WrongTypeComponentD'
       PARAMETERS = {}
       INPUTS = {'x': ExecutionParameter(type=int)}
       OUTPUTS = {}
@@ -246,7 +218,6 @@ class ComponentSpecTest(tf.test.TestCase):
   def test_invalid_componentspec_duplicate_property(self):
 
     class DuplicatePropertyComponentSpec(base_component.ComponentSpec):
-      COMPONENT_NAME = 'DuplicatePropertyComponent'
       PARAMETERS = {'x': ExecutionParameter(type=int)}
       INPUTS = {'x': ChannelParameter(type_name='X')}
       OUTPUTS = {}
@@ -258,7 +229,6 @@ class ComponentSpecTest(tf.test.TestCase):
   def test_componentspec_missing_arguments(self):
 
     class SimpleComponentSpec(base_component.ComponentSpec):
-      COMPONENT_NAME = 'SimpleComponent'
       PARAMETERS = {
           'x': ExecutionParameter(type=int),
           'y': ExecutionParameter(type=int, optional=True),
@@ -283,6 +253,7 @@ class ComponentTest(tf.test.TestCase):
   def test_component_basic(self):
     input_channel = channel.Channel(type_name='InputType')
     component = _BasicComponent(folds=10, input=input_channel)
+    self.assertEqual(component.component_name, 'MyBasicComponent')
     self.assertIs(input_channel, component.inputs.input)
     self.assertIsInstance(component.outputs.output, channel.Channel)
     self.assertEqual(component.outputs.output.type_name, 'OutputType')
@@ -353,7 +324,6 @@ class ComponentTest(tf.test.TestCase):
   def test_component_custom_executor(self):
 
     class EmptyComponentSpec(base_component.ComponentSpec):
-      COMPONENT_NAME = 'EmptyComponent'
       PARAMETERS = {}
       INPUTS = {}
       OUTPUTS = {}

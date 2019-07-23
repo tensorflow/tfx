@@ -64,7 +64,6 @@ class _FakeExecutor(base_executor.BaseExecutor):
 
 
 class _FakeComponentSpec(base_component.ComponentSpec):
-  COMPONENT_NAME = 'fake_component'
   PARAMETERS = {}
   INPUTS = {'input': base_component.ChannelParameter(type_name='InputPath')}
   OUTPUTS = {'output': base_component.ChannelParameter(type_name='OutputPath')}
@@ -82,7 +81,7 @@ class _FakeComponent(base_component.BaseComponent):
     output_channel = output_channel or channel.Channel(
         type_name='OutputPath', artifacts=[types.TfxArtifact('OutputPath')])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(spec=spec, name=name)
+    super(_FakeComponent, self).__init__(spec=spec)
 
 
 class ComponentRunnerTest(tf.test.TestCase):

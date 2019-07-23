@@ -34,7 +34,6 @@ from tfx.utils import types
 class SlackComponentSpec(base_component.ComponentSpec):
   """ComponentSpec for Custom TFX Slack Component."""
 
-  COMPONENT_NAME = 'SlackComponent'
   PARAMETERS = {
       'slack_token': ExecutionParameter(type=Text),
       'channel_id': ExecutionParameter(type=Text),
@@ -89,7 +88,7 @@ class SlackComponent(base_component.BaseComponent):
                channel_id: Text,
                timeout_sec: int,
                slack_blessing: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct a SlackComponent.
 
     Args:
@@ -102,8 +101,8 @@ class SlackComponent(base_component.BaseComponent):
       timeout_sec: Seconds to wait for response before default to reject.
       slack_blessing: Optional output channel of 'ModelBlessingPath' with result
         of blessing; will be created for you if not specified.
-      name: Optional unique name. Necessary if multiple Pusher components are
-        declared in the same pipeline.
+      label: Optional unique label. Required if multiple instances of the same
+        component are declared in the same pipeline.
     """
     slack_blessing = slack_blessing or channel.Channel(
         type_name='ModelBlessingPath',
@@ -115,4 +114,4 @@ class SlackComponent(base_component.BaseComponent):
         model_export=model_export,
         model_blessing=model_blessing,
         slack_blessing=slack_blessing)
-    super(SlackComponent, self).__init__(spec=spec, name=name)
+    super(SlackComponent, self).__init__(spec=spec, label=label)

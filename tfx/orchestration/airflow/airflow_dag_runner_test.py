@@ -28,21 +28,18 @@ from tfx.utils import channel
 
 
 class _FakeComponentSpecA(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_a'
   PARAMETERS = {}
   INPUTS = {}
   OUTPUTS = {'output': base_component.ChannelParameter(type_name='a')}
 
 
 class _FakeComponentSpecB(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_b'
   PARAMETERS = {}
   INPUTS = {'a': base_component.ChannelParameter(type_name='a')}
   OUTPUTS = {'output': base_component.ChannelParameter(type_name='b')}
 
 
 class _FakeComponentSpecC(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_c'
   PARAMETERS = {}
   INPUTS = {
       'a': base_component.ChannelParameter(type_name='a'),
@@ -52,7 +49,6 @@ class _FakeComponentSpecC(base_component.ComponentSpec):
 
 
 class _FakeComponentSpecD(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_d'
   PARAMETERS = {}
   INPUTS = {
       'b': base_component.ChannelParameter(type_name='b'),
@@ -62,7 +58,6 @@ class _FakeComponentSpecD(base_component.ComponentSpec):
 
 
 class _FakeComponentSpecE(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component_e'
   PARAMETERS = {}
   INPUTS = {
       'a': base_component.ChannelParameter(type_name='a'),
@@ -78,7 +73,10 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_CLASS = base_executor.BaseExecutor
 
   def __init__(self, spec: base_component.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+    component_name = spec.__class__.__name__.replace(
+        '_FakeComponentSpec', '_FakeComponent')
+    super(_FakeComponent, self).__init__(
+        spec=spec, component_name=component_name)
 
 
 class AirflowDagRunnerTest(tf.test.TestCase):

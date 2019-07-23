@@ -32,7 +32,6 @@ from tfx.utils import channel
 
 
 class _FakeComponentSpec(base_component.ComponentSpec):
-  COMPONENT_NAME = 'component'
   PARAMETERS = {}
   INPUTS = {
       'input': base_component.ChannelParameter(type_name='type_a'),

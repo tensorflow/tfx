@@ -40,14 +40,13 @@ class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
   def __init__(self,
                input_config,
                output_config=None,
-               name=None,
+               label=None,
                example_artifacts=None):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        component_name='TestQueryBasedExampleGenComponent',
         example_artifacts=example_artifacts,
-        name=name)
+        label=label)
 
 
 class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
@@ -58,15 +57,14 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
                input_base,
                input_config=None,
                output_config=None,
-               name=None,
+               label=None,
                example_artifacts=None):
     super(TestFileBasedExampleGenComponent, self).__init__(
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        component_name='TestFileBasedExampleGenComponent',
         example_artifacts=example_artifacts,
-        name=name)
+        label=label)
 
 
 class ComponentTest(tf.test.TestCase):

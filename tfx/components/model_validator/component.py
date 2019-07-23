@@ -31,7 +31,6 @@ from tfx.utils import types
 class ModelValidatorSpec(base_component.ComponentSpec):
   """ModelValidator component spec."""
 
-  COMPONENT_NAME = 'ModelValidator'
   PARAMETERS = {
       'component_unique_name': ExecutionParameter(type=str),
   }
@@ -62,7 +61,7 @@ class ModelValidator(base_component.BaseComponent):
                examples: channel.Channel,
                model: channel.Channel,
                blessing: Optional[channel.Channel] = None,
-               name: Optional[Text] = None):
+               label: Optional[Text] = None):
     """Construct a ModelValidator component.
 
     Args:
@@ -72,16 +71,15 @@ class ModelValidator(base_component.BaseComponent):
         component.
       blessing: Optional output channel of 'ModelBlessingPath' for result of
         blessing.
-      name: Optional unique name. Necessary if multiple ModelValidator
+      label: Optional unique label. Necessary if multiple ModelValidator
         components are declared in the same pipeline.
     """
     blessing = blessing or channel.Channel(
         type_name='ModelBlessingPath',
         artifacts=[types.TfxArtifact('ModelBlessingPath')])
-    name = name or ''
     spec = ModelValidatorSpec(
         examples=channel.as_channel(examples),
         model=channel.as_channel(model),
-        component_unique_name=name,
+        component_unique_name=label or '',
         blessing=blessing)
-    super(ModelValidator, self).__init__(spec=spec, name=name)
+    super(ModelValidator, self).__init__(spec=spec, label=label)
