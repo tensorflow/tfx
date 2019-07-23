@@ -17,7 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
+import mock
+
 import tensorflow as tf
 
 from tfx.tools.cli import labels
@@ -38,8 +41,31 @@ class FakeHandler(base_handler.BaseHandler):
   def delete_pipeline(self) -> None:
     pass
 
-  def run_pipeline(self) -> None:
+  def compile_pipeline(self) -> None:
     pass
+
+  def create_run(self) -> None:
+    pass
+
+  def delete_run(self) -> None:
+    pass
+
+  def terminate_run(self) -> None:
+    pass
+
+  def list_runs(self) -> None:
+    pass
+
+  def get_run(self) -> None:
+    pass
+
+
+def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
+  # Store pipeline_args in a pickle file
+  pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
+  pipeline_args = {'pipeline_name': 'pipeline_test_name'}
+  with open(pipeline_args_path, 'w') as f:
+    json.dump(pipeline_args, f)
 
 
 class BaseHandlerTest(tf.test.TestCase):
@@ -70,6 +96,36 @@ class BaseHandlerTest(tf.test.TestCase):
     self.assertEqual(str(err.exception),
                      '{} runner not found in dsl.'
                      .format(flags_dict[labels.ENGINE_FLAG]))
+
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def test_extract_pipeline_args(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: 'engine',
+        labels.PIPELINE_DSL_PATH: 'path_to_pipeline_dsl'
+    }
+    handler = FakeHandler(flags_dict)
+    pipeline_args = handler._extract_pipeline_args()
+    self.assertEqual(pipeline_args, {'pipeline_name': 'pipeline_test_name'})
+
+  def test_get_handler_home(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: 'engine',
+        labels.PIPELINE_DSL_PATH: 'path_to_pipeline_dsl'
+    }
+    handler = FakeHandler(flags_dict)
+    self.assertEqual(
+        os.path.join(os.environ['HOME'], 'home_dir', ''),
+        handler._get_handler_home('home_dir'))
+
+  def test_check_dsl_runner_airflow(self):
+    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                 'test_pipeline_airflow_1.py')
+    flags_dict = {
+        labels.ENGINE_FLAG: 'airflow',
+        labels.PIPELINE_DSL_PATH: pipeline_path
+    }
+    handler = FakeHandler(flags_dict)
+    self.assertIsNone(handler._check_dsl_runner())
 
 
 if __name__ == '__main__':
