@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional, Text, Type
 
 from tfx.utils import types
 
@@ -35,31 +35,17 @@ class ExecutionDecision(object):
     use_cached_results: Whether or not to use a cached result.
   """
 
-  def __init__(
-      self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
-      exec_properties: Dict[Text, Any],
-      # TODO(ruoyu): Make this required once finish Airflow migration.
-      execution_id: Optional[int] = None,
-      use_cached_results: Optional[bool] = False):
+  def __init__(self,
+               input_dict: Dict[Text, List[types.TfxArtifact]],
+               output_dict: Dict[Text, List[types.TfxArtifact]],
+               exec_properties: Dict[Text, Any],
+               execution_id: int = None,
+               use_cached_results: Optional[bool] = False):
     self.input_dict = input_dict
     self.output_dict = output_dict
     self.exec_properties = exec_properties
     self.execution_id = execution_id
     self.use_cached_results = use_cached_results
-
-  # TODO(ruoyu): Deprecate this in favor of use_cached_results once finishing
-  # migration to go/tfx-oss-artifact-passing.
-  @property
-  def execution_needed(self) -> bool:
-    """Indicates whether a new execution is needed.
-
-    Returns:
-      true if execution_id exists
-      false if execution_id does not exist
-    """
-    return self.execution_id is not None
 
 
 class DriverArgs(object):
@@ -105,3 +91,24 @@ class ComponentInfo(object):
   def __init__(self, component_type: Text, component_id: Text):
     self.component_type = component_type
     self.component_id = component_id
+
+
+class RuntimeParameter(object):
+  """Runtime parameter.
+
+  Attributes:
+    name: The name of the runtime parameter
+    ptype: The type of the runtime parameter
+    description: Description of the usage of the parameter
+  """
+
+  def __init__(
+      self,
+      name: Text,
+      ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
+      description: Optional[Text] = None):
+    if ptype and ptype not in [int, float, bool, Text]:
+      raise RuntimeError('Only str and scalar runtime parameters are supported')
+    self.name = name
+    self.ptype = ptype
+    self.description = description
