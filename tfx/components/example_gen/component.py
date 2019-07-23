@@ -33,7 +33,6 @@ from tfx.utils import types
 class QueryBasedExampleGenSpec(base_component.ComponentSpec):
   """Query-based ExampleGen component spec."""
 
-  COMPONENT_NAME = 'ExampleGen'
   PARAMETERS = {
       'input_config': ExecutionParameter(type=example_gen_pb2.Input),
       'output_config': ExecutionParameter(type=example_gen_pb2.Output),
@@ -47,7 +46,6 @@ class QueryBasedExampleGenSpec(base_component.ComponentSpec):
 class FileBasedExampleGenSpec(base_component.ComponentSpec):
   """File-based ExampleGen component spec."""
 
-  COMPONENT_NAME = 'ExampleGen'
   PARAMETERS = {
       'input_config': ExecutionParameter(type=example_gen_pb2.Input),
       'output_config': ExecutionParameter(type=example_gen_pb2.Output),
@@ -74,7 +72,6 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
   def __init__(self,
                input_config: example_gen_pb2.Input,
                output_config: Optional[example_gen_pb2.Output] = None,
-               component_name: Optional[Text] = 'ExampleGen',
                example_artifacts: Optional[channel.Channel] = None,
                name: Optional[Text] = None):
     """Construct an QueryBasedExampleGen component.
@@ -85,8 +82,6 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
         size 2:1.
-      component_name: Name of the component, should be unique per component
-        class. Default to 'ExampleGen', can be overwritten by sub-classes.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       name: Unique name for every component class instance.
@@ -99,7 +94,6 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
          for split_name in utils.generate_output_split_names(
              input_config, output_config)])
     spec = QueryBasedExampleGenSpec(
-        component_name=component_name,
         input_config=input_config,
         output_config=output_config,
         examples=example_artifacts)
@@ -123,7 +117,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
       input_base: channel.Channel,
       input_config: Optional[example_gen_pb2.Input] = None,
       output_config: Optional[example_gen_pb2.Output] = None,
-      component_name: Optional[Text] = 'ExampleGen',
       example_artifacts: Optional[channel.Channel] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
       name: Optional[Text] = None):
@@ -138,8 +131,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
       output_config: An optional example_gen_pb2.Output instance, providing
         output configuration. If unset, default splits will be 'train' and
         'eval' with size 2:1.
-      component_name: Name of the component, should be unique per component
-        class. Default to 'ExampleGen', can be overwritten by sub-classes.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       executor_class: Optional custom executor class overriding the default
@@ -155,7 +146,6 @@ class FileBasedExampleGen(base_component.BaseComponent):
          for split_name in utils.generate_output_split_names(
              input_config, output_config)])
     spec = FileBasedExampleGenSpec(
-        component_name=component_name,
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,

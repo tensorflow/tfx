@@ -28,7 +28,6 @@ from tfx.utils import types
 class StatisticsGenSpec(base_component.ComponentSpec):
   """StatisticsGen component spec."""
 
-  COMPONENT_NAME = 'StatisticsGen'
   PARAMETERS = {}
   INPUTS = {
       'input_data': ChannelParameter(type_name='ExamplesPath'),

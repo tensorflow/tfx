@@ -39,7 +39,6 @@ def _make_fake_component_instance(name: Text,
                                   outputs: Dict[Text, channel.Channel]):
 
   class _FakeComponentSpec(base_component.ComponentSpec):
-    COMPONENT_NAME = name
     PARAMETERS = {}
     INPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
                    for arg, channel in inputs.items()])
@@ -55,7 +54,7 @@ def _make_fake_component_instance(name: Text,
     def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(
           output=channel.Channel(type_name=name), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec)
+      super(_FakeComponent, self).__init__(spec=spec, component_name=name)
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
   return _FakeComponent(name, spec_kwargs)

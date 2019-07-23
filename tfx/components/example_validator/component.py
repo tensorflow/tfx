@@ -28,7 +28,6 @@ from tfx.utils import types
 class ExampleValidatorSpec(base_component.ComponentSpec):
   """ExampleValidator component spec."""
 
-  COMPONENT_NAME = 'ExampleValidator'
   PARAMETERS = {}
   INPUTS = {
       'stats': ChannelParameter(type_name='ExampleStatisticsPath'),

@@ -64,7 +64,6 @@ class _FakeExecutor(base_executor.BaseExecutor):
 
 
 class _FakeComponentSpec(base_component.ComponentSpec):
-  COMPONENT_NAME = 'fake_component'
   PARAMETERS = {}
   INPUTS = {'input': base_component.ChannelParameter(type_name='InputPath')}
   OUTPUTS = {'output': base_component.ChannelParameter(type_name='OutputPath')}

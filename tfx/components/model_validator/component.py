@@ -31,7 +31,6 @@ from tfx.utils import types
 class ModelValidatorSpec(base_component.ComponentSpec):
   """ModelValidator component spec."""
 
-  COMPONENT_NAME = 'ModelValidator'
   PARAMETERS = {
       'component_unique_name': ExecutionParameter(type=str),
   }

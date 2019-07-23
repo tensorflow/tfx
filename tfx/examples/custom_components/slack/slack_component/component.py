@@ -34,7 +34,6 @@ from tfx.utils import types
 class SlackComponentSpec(base_component.ComponentSpec):
   """ComponentSpec for Custom TFX Slack Component."""
 
-  COMPONENT_NAME = 'SlackComponent'
   PARAMETERS = {
       'slack_token': ExecutionParameter(type=Text),
       'channel_id': ExecutionParameter(type=Text),

@@ -60,6 +60,5 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        component_name='CsvExampleGen',
         example_artifacts=example_artifacts,
         name=name)

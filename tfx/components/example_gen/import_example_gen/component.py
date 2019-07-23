@@ -62,6 +62,5 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         input_base=input_base,
         input_config=input_config,
         output_config=output_config,
-        component_name='ImportExampleGen',
         example_artifacts=example_artifacts,
         name=name)

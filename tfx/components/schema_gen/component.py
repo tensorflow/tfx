@@ -28,7 +28,6 @@ from tfx.utils import types
 class SchemaGenSpec(base_component.ComponentSpec):
   """SchemaGen component spec."""
 
-  COMPONENT_NAME = 'SchemaGen'
   PARAMETERS = {}
   INPUTS = {
       'stats': ChannelParameter(type_name='ExampleStatisticsPath'),

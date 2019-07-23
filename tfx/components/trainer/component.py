@@ -32,7 +32,6 @@ from tfx.utils import types
 class TrainerSpec(base_component.ComponentSpec):
   """Trainer component spec."""
 
-  COMPONENT_NAME = 'Trainer'
   PARAMETERS = {
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),

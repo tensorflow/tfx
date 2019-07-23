@@ -31,7 +31,6 @@ from tfx.utils import types
 class PusherSpec(base_component.ComponentSpec):
   """Pusher component spec."""
 
-  COMPONENT_NAME = 'Pusher'
   PARAMETERS = {
       'push_destination': ExecutionParameter(type=pusher_pb2.PushDestination,
                                              optional=True),

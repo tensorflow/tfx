@@ -66,6 +66,5 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
     super(BigQueryExampleGen, self).__init__(
         input_config=input_config,
         output_config=output_config,
-        component_name='BigQueryExampleGen',
         example_artifacts=example_artifacts,
         name=name)
