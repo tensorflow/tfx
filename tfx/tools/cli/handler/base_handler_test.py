@@ -127,6 +127,16 @@ class BaseHandlerTest(tf.test.TestCase):
     handler = FakeHandler(flags_dict)
     self.assertIsNone(handler._check_dsl_runner())
 
+  def test_check_dsl_runner_beam(self):
+    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                 'test_pipeline_beam_1.py')
+    flags_dict = {
+        labels.ENGINE_FLAG: 'beam',
+        labels.PIPELINE_DSL_PATH: pipeline_path
+    }
+    handler = FakeHandler(flags_dict)
+    self.assertIsNone(handler._check_dsl_runner())
+
 
 if __name__ == '__main__':
   tf.test.main()
