@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
+
 import apache_beam as beam
 import tensorflow as tf
 from typing import Any, Iterable, List, Optional, Text
@@ -89,6 +91,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
+    # For CLI, while creating or updating pipeline, pipeline_args are extracted
+    # and hence we avoid deploying the pipeline.
+    if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
+      return
+
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
     with beam.Pipeline(argv=self._beam_orchestrator_args) as p:

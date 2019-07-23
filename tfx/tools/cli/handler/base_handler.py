@@ -108,7 +108,8 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       dsl_contents = f.read()
       regexes = {
           'airflow': r'AirflowDagRunner\(.*\)',
-          'kubeflow': r'KubeflowDagRunner\(.*\)'
+          'kubeflow': r'KubeflowDagRunner\(.*\)',
+          'beam': r'BeamDagRunner\(.*\)'
       }
       match = re.search(regexes[engine_flag], dsl_contents)
       if not match:
@@ -155,3 +156,4 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if handler_home_dir in os.environ:
       return os.environ[handler_home_dir]
     return os.path.join(os.environ['HOME'], home_dir, '')
+
