@@ -181,6 +181,65 @@ class BeamHandlerTest(tf.test.TestCase):
         str(err.exception),
         'Unable to compile pipeline. Check your pipeline dsl.')
 
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def test_delete_pipeline(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.create_pipeline()
+
+    # Now delete the pipeline created aand check if pipeline folder is deleted.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    handler.delete_pipeline()
+    handler_pipeline_path = handler._get_handler_pipeline_path(
+        self.pipeline_args[labels.PIPELINE_NAME])
+    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def test_delete_pipeline_non_existent_pipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.delete_pipeline()
+    self.assertEqual(
+        str(err.exception),
+        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+
+  def test_list_pipelines_non_empty(self):
+    # First create two pipelines in the dags folder.
+    handler_pipeline_path_1 = os.path.join(os.environ['BEAM_HOME'],
+                                           'pipeline_1')
+    handler_pipeline_path_2 = os.path.join(os.environ['BEAM_HOME'],
+                                           'pipeline_2')
+    tf.io.gfile.makedirs(handler_pipeline_path_1)
+    tf.io.gfile.makedirs(handler_pipeline_path_2)
+
+    # Now, list the pipelines
+    flags_dict = {labels.ENGINE_FLAG: self.engine}
+    handler = beam_handler.BeamHandler(flags_dict)
+
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_pipelines()
+    self.assertIn('pipeline_1', captured.contents())
+    self.assertIn('pipeline_2', captured.contents())
+
+  def test_list_pipelines_empty(self):
+    flags_dict = {labels.ENGINE_FLAG: self.engine}
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_pipelines()
+    self.assertIn('No pipelines to display.', captured.contents())
+
 
 if __name__ == '__main__':
   tf.test.main()

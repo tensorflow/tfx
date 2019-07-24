@@ -66,11 +66,29 @@ class BeamHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    pass
+    if not tf.io.gfile.exists(self._handler_home_dir):
+      click.echo('No pipelines to display.')
+      return
+    pipelines_list = tf.io.gfile.listdir(self._handler_home_dir)
+
+    # Print every pipeline name in a new line.
+    click.echo('-' * 30)
+    click.echo('\n'.join(pipelines_list))
+    click.echo('-' * 30)
 
   def delete_pipeline(self) -> None:
     """Deletes pipeline in Beam."""
-    pass
+    # Path to pipeline folder.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        self.flags_dict[labels.PIPELINE_NAME])
+
+    # Check if pipeline exists.
+    if not tf.io.gfile.exists(handler_pipeline_path):
+      sys.exit('Pipeline {} does not exist.'.format(
+          self.flags_dict[labels.PIPELINE_NAME]))
+
+    # Delete pipeline folder.
+    io_utils.delete_dir(handler_pipeline_path)
 
   def compile_pipeline(self) -> Dict[Text, Any]:
     """Compiles pipeline in Beam."""
@@ -132,5 +150,5 @@ class BeamHandler(base_handler.BaseHandler):
     Returns:
       Path to pipeline folder in beam.
     """
-    # Path to pipeline folder in airflow.
+    # Path to pipeline folder in beam.
     return os.path.join(self._handler_home_dir, pipeline_name)

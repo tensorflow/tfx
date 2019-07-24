@@ -33,6 +33,9 @@ from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
 
+# TODO(b/132286477): Check if _check_pipeline_folder, _get_handler_home and
+# _get_handler_pipeline_path can be shifted to base_handler after all handlers
+# are implemented.
 class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   """Base Handler for CLI.
 
@@ -156,4 +159,3 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if handler_home_dir in os.environ:
       return os.environ[handler_home_dir]
     return os.path.join(os.environ['HOME'], home_dir, '')
-
