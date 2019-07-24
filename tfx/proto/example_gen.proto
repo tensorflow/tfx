@@ -15,6 +15,8 @@ syntax = "proto3";
 
 package tfx.components.example_gen;
 
+import "google/protobuf/any.proto";
+
 message Input {
   // List of split name and input glob pattern pairs.
   //
@@ -28,6 +30,11 @@ message Input {
     string pattern = 2;
   }
   repeated Split splits = 1;
+}
+
+// Optional specified configuration for example gen.
+message CustomConfig{
+  google.protobuf.Any custom_config = 1;
 }
 
 // Specification of the output of the example gen.

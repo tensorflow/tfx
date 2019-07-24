@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from google.protobuf import any_pb2
+from google.protobuf import json_format
 from tfx.components.base import base_driver
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
@@ -40,8 +42,8 @@ class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
   def __init__(self,
                input_config,
                output_config=None,
-               name=None,
-               example_artifacts=None):
+               example_artifacts=None,
+               name=None):
     super(TestQueryBasedExampleGenComponent, self).__init__(
         input_config=input_config,
         output_config=output_config,
@@ -57,8 +59,8 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
                input_base,
                input_config=None,
                output_config=None,
-               name=None,
-               example_artifacts=None):
+               example_artifacts=None,
+               name=None):
     super(TestFileBasedExampleGenComponent, self).__init__(
         input_base=input_base,
         input_config=input_config,
@@ -77,6 +79,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual({}, example_gen.inputs.get_all())
     self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
+    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs.examples.get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
@@ -88,6 +91,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertIn('input_base', example_gen.inputs.get_all())
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
+    self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs.examples.get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
@@ -133,6 +137,19 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
+
+  def test_construct_with_custom_config(self):
+    input_base = types.TfxArtifact(type_name='ExternalPath')
+    custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
+    example_gen = component.FileBasedExampleGen(
+        input_base=channel.as_channel([input_base]),
+        custom_config=custom_config,
+        executor_class=TestExampleGenExecutor)
+
+    stored_custom_config = example_gen_pb2.CustomConfig()
+    json_format.Parse(example_gen.exec_properties['custom_config'],
+                      stored_custom_config)
+    self.assertEqual(custom_config, stored_custom_config)
 
 
 if __name__ == '__main__':
