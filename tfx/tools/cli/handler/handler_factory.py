@@ -56,7 +56,11 @@ def detect_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
     from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     return kubeflow_handler.KubeflowHandler(flags_dict)
   # TODO(b/132286477):Update to beam runner later.
-  sys.exit('Orchestrator missing in the environment.')
+  else:
+    click.echo('Detected Beam.')
+    flags_dict[labels.ENGINE_FLAG] = 'beam'
+    from tfx.tools.cli.handler import beam_handler  # pylint: disable=g-import-not-at-top
+    return beam_handler.BeamHandler(flags_dict)
 
 
 def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
@@ -79,6 +83,9 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
   elif engine == 'kubeflow':
     from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     return kubeflow_handler.KubeflowHandler(flags_dict)
+  elif engine == 'beam':
+    from tfx.tools.cli.handler import beam_handler  # pylint: disable=g-import-not-at-top
+    return beam_handler.BeamHandler(flags_dict)
   elif engine == 'auto':
     return detect_handler(flags_dict)
   else:

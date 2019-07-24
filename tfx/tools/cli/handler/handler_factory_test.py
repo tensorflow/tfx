@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
+from tfx.tools.cli.handler import beam_handler
 from tfx.tools.cli.handler import handler_factory
 from tfx.tools.cli.handler import kubeflow_handler
 
@@ -46,8 +47,14 @@ class HandlerFactoryTest(tf.test.TestCase):
         handler_factory.create_handler(self.flags_dict),
         kubeflow_handler.KubeflowHandler)
 
-  def test_create_handler_other(self):
+  def test_create_handler_beam(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'beam'
+    self.assertIsInstance(
+        handler_factory.create_handler(self.flags_dict),
+        beam_handler.BeamHandler)
+
+  def test_create_handler_other(self):
+    self.flags_dict[labels.ENGINE_FLAG] = 'flink'
     with self.assertRaises(Exception) as err:
       handler_factory.create_handler(self.flags_dict)
     self.assertEqual(
@@ -55,7 +62,7 @@ class HandlerFactoryTest(tf.test.TestCase):
             self.flags_dict[labels.ENGINE_FLAG]))
 
   def _MockSubprocessAirflow(self):
-    return b'absl-py==0.7.1\nalembic==0.9.10\napache-airflow==1.10.3\n'
+    return b'absl-py==0.7.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\n'
 
   @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
   def test_detect_handler_airflow(self):
@@ -65,17 +72,14 @@ class HandlerFactoryTest(tf.test.TestCase):
         airflow_handler.AirflowHandler)
 
   def _MockSubprocessNoEngine(self):
-    return b'absl-py==0.7.1\nalembic==0.9.10\n'
+    return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\n'
 
   @mock.patch('subprocess.check_output', _MockSubprocessNoEngine)
   def test_detect_handler_missing(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'auto'
-    with self.assertRaises(SystemExit) as cm:
-      handler_factory.detect_handler(self.flags_dict)
-    self.assertEqual(
-        str(cm.exception),
-        'Orchestrator missing in the environment.'
-        )
+    self.assertIsInstance(
+        handler_factory.detect_handler(self.flags_dict),
+        beam_handler.BeamHandler)
 
   def _MockSubprocessMultipleEngines(self):
     return 'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\nkfp==0.1\n'
