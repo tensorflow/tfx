@@ -22,6 +22,12 @@ NORMAL=$(tput sgr0)
 
 printf "${GREEN}Installing TFX workshop${NORMAL}\n\n"
 
+printf "${GREEN}Refreshing setuptools to avoid _NamespacePath issues${NORMAL}\n"
+pip uninstall setuptools -y && pip install setuptools
+
+printf "${GREEN}Installing httplib2 for Beam compatibility${NORMAL}\n"
+pip install httplib2==0.12.0
+
 # TODO(b/135470014): Use range or pin for pip installs.
 # TF/TFX prereqs
 printf "${GREEN}Installing TensorFlow${NORMAL}\n"

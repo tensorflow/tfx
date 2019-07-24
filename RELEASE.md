@@ -55,6 +55,7 @@
 *   Added check for duplicated component ids within a pipeline.
 *   String representations for Channel and TfxArtifact (TfxType) classes were
     improved.
+*   Updated workshop/setup/setup_demo.sh to fix version incompatibilities
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
