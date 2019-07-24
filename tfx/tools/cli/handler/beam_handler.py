@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import json
 import os
+import subprocess
 import sys
 import click
 import tensorflow as tf
@@ -42,7 +43,7 @@ class BeamHandler(base_handler.BaseHandler):
     # Compile pipeline to check if pipeline_args are extracted successfully.
     pipeline_args = self.compile_pipeline()
 
-    # Path to pipeline folder in airflow.
+    # Path to pipeline folder in beam.
     handler_pipeline_path = self._get_handler_pipeline_path(
         pipeline_args[labels.PIPELINE_NAME])
 
@@ -102,23 +103,38 @@ class BeamHandler(base_handler.BaseHandler):
 
   def create_run(self) -> None:
     """Runs a pipeline in Beam."""
-    pass
+    # Check if pipeline exists.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        self.flags_dict[labels.PIPELINE_NAME])
+    if not tf.io.gfile.exists(handler_pipeline_path):
+      sys.exit('Pipeline {} does not exist.'.format(
+          self.flags_dict[labels.PIPELINE_NAME]))
+
+    # Get dsl path from pipeline args.
+    pipeline_args_path = os.path.join(self._handler_home_dir,
+                                      self.flags_dict[labels.PIPELINE_NAME],
+                                      'pipeline_args.json')
+    with open(pipeline_args_path, 'r') as f:
+      pipeline_args = json.load(f)
+
+    # Run pipeline dsl.
+    subprocess.call(['python', str(pipeline_args[labels.PIPELINE_DSL_PATH])])
 
   def delete_run(self) -> None:
     """Deletes a run."""
-    pass
+    click.echo('Not supported for Beam.')
 
   def terminate_run(self) -> None:
     """Stops a run."""
-    pass
+    click.echo('Not supported for Beam.')
 
   def list_runs(self) -> None:
     """Lists all runs of a pipeline."""
-    pass
+    click.echo('Not supported for Beam.')
 
   def get_run(self) -> None:
     """Checks run status."""
-    pass
+    click.echo('Not supported for Beam.')
 
   def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""

@@ -20,7 +20,7 @@ from __future__ import print_function
 import json
 import os
 import sys
-
+import click
 import mock
 import tensorflow as tf
 
@@ -42,6 +42,10 @@ def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+
+
+def _MockSubprocess3(cmd):
+  click.echo(cmd)
 
 
 class BeamHandlerTest(tf.test.TestCase):
@@ -66,7 +70,10 @@ class BeamHandlerTest(tf.test.TestCase):
     self.run_id = 'dummyID'
 
     # Pipeline args for mocking subprocess
-    self.pipeline_args = {'pipeline_name': 'chicago_taxi_beam'}
+    self.pipeline_args = {
+        'pipeline_name': 'chicago_taxi_beam',
+        'pipeline_dsl_path': self.pipeline_path
+    }
 
   def tearDown(self):
     super(BeamHandlerTest, self).tearDown()
@@ -145,7 +152,7 @@ class BeamHandlerTest(tf.test.TestCase):
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def test_update_pipeline_no_pipeline(self):
-    # Update pipeline without craeting one.
+    # Update pipeline without creating one.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path
@@ -239,6 +246,92 @@ class BeamHandlerTest(tf.test.TestCase):
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.list_pipelines()
     self.assertIn('No pipelines to display.', captured.contents())
+
+  @mock.patch('subprocess.call', _MockSubprocess3)
+  def test_create_run(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+    with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
+              'w') as f:
+      json.dump(self.pipeline_args, f)
+
+    # Now run the pipeline
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.create_run()
+    self.assertIn("['python', '" + self.pipeline_path + "']",
+                  captured.contents())
+
+  def test_create_run_no_pipeline(self):
+    # Run pipeline without creating one.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name
+    }
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.create_run()
+    self.assertEqual(
+        str(err.exception),
+        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+
+  def test_delete_run(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+
+    # Now run the pipeline
+    flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.delete_run()
+    self.assertIn('Not supported for Beam.', captured.contents())
+
+  def test_terminate_run(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], 'dags',
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+
+    # Now run the pipeline
+    flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.terminate_run()
+    self.assertIn('Not supported for Beam.', captured.contents())
+
+  def test_list_runs(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+
+    # Now run the pipeline
+    flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_runs()
+    self.assertIn('Not supported for Beam.', captured.contents())
+
+  def test_get_run(self):
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
+    tf.io.gfile.makedirs(handler_pipeline_path)
+
+    # Now run the pipeline
+    flags_dict = {labels.ENGINE_FLAG: self.engine, labels.RUN_ID: self.run_id}
+    handler = beam_handler.BeamHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_run()
+    self.assertIn('Not supported for Beam.', captured.contents())
 
 
 if __name__ == '__main__':
