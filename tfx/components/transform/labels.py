@@ -25,6 +25,7 @@ TFT_STATISTICS_USE_TFDV_LABEL = 'tft_statistics_use_tfdv'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
+CACHE_INPUT_PATH_LABEL = 'cache_input_path'
 
 # Output labels.
 # TODO(b/72214804): Ideally per-set stats and materialization output paths
@@ -34,6 +35,7 @@ PER_SET_STATS_OUTPUT_PATHS_LABEL = 'per_set_stats_output_paths'
 TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL = (
     'transform_materialize_output_paths')
 TRANSFORM_METADATA_OUTPUT_PATH_LABEL = 'transform_output_path'
+CACHE_OUTPUT_PATH_LABEL = 'cache_output_path'
 TEMP_OUTPUT_LABEL = 'temp_path'
 
 # Transform Data Format
