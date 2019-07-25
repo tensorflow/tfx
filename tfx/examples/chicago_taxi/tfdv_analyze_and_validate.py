@@ -24,6 +24,7 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 
 from tensorflow_data_validation.coders import csv_decoder
+from tensorflow_data_validation.utils import batch_util
 
 from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -110,6 +111,11 @@ def compute_stats(input_handle,
           | 'ConvertToTFDVInput' >> beam.Map(
               lambda x: {key: np.asarray([x[key]])  # pylint: disable=g-long-lambda
                          for key in x if x[key] is not None}))
+      # TODO(pachristopher): Remove this once TFDV 0.14 is released.
+      (major, minor, _) = tfdv.__version__.split('.')
+      if int(major) > 0 or int(minor) >= 14:
+        raw_data |= ('BatchExamplesToArrowTables' >>
+                     batch_util.BatchExamplesToArrowTables())
 
     _ = (
         raw_data

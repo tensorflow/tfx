@@ -23,6 +23,7 @@ import numpy as np
 import six
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
+from tensorflow_data_validation.utils import batch_util
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
@@ -473,9 +474,19 @@ class Executor(base_executor.BaseExecutor):
 
       return result
 
-    return (pcollection
-            | 'EncodeTFDV' >> beam.Map(
-                EncodeTFDV, feature_specs=feature_specs_from_schema)
+    result = (pcollection
+              # TODO(kestert): Remove encoding and batching steps once TFT
+              # supports Arrow tables.
+              | 'EncodeTFDV' >> beam.Map(
+                  EncodeTFDV, feature_specs=feature_specs_from_schema))
+
+    # TODO(pachristopher): Remove this once TFDV 0.14 is released.
+    (major, minor, _) = tfdv.__version__.split('.')
+    if int(major) > 0 or int(minor) >= 14:
+      result |= ('BatchExamplesToArrowTables' >>
+                 batch_util.BatchExamplesToArrowTables())
+
+    return (result
             | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
                 tfdv.StatsOptions(schema=schema)))
 
