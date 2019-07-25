@@ -57,6 +57,8 @@
 *   String representations for Channel and TfxArtifact (TfxType) classes were
     improved.
 *   Updated workshop/setup/setup_demo.sh to fix version incompatibilities
+*   Updated workshop.  Adding note and instructions to fix issue with GCC
+    version when starting `airflow webserver`.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
