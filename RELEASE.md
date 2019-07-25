@@ -59,7 +59,6 @@
 *   Updated workshop/setup/setup_demo.sh to fix version incompatibilities
 *   Updated workshop.  Adding note and instructions to fix issue with GCC
     version when starting `airflow webserver`.
-*   Added 'click>=7.0,<8' as a dependency to support CLI.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components

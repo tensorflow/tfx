@@ -27,7 +27,6 @@ from tensorflow_data_validation.utils import batch_util
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
-from tensorflow_transform.beam import analyzer_cache
 from tensorflow_transform.beam import common as tft_beam_common
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
@@ -583,7 +582,12 @@ class Executor(base_executor.BaseExecutor):
   ) -> Tuple[Dict[Text, Optional[_Dataset]], Dict[Text, Dict[
       Text, beam.pvalue.PCollection]], bool]:
     """Utilizes TFT cache if applicable and removes unused datasets."""
-
+    # TODO(zhitaoli): Move import to top after TFT 0.14 release.
+    (major, minor, _) = tft.__version__.split('.')
+    if int(major) == 0 and int(minor) < 14:
+      raise NotImplementedError(
+          'analyze_cache is only available after tensorflow-transform 0.14')
+    from tensorflow_transform.beam import analyzer_cache  # pylint: disable=g-import-not-at-top
     analysis_key_to_dataset = {
         analyzer_cache.make_dataset_key(dataset.file_pattern_suffix): dataset
         for dataset in analyze_data_list
@@ -843,51 +847,73 @@ class Executor(base_executor.BaseExecutor):
                 len(feature_spec.keys()), len(analyze_input_columns),
                 len(transform_input_columns)))
 
-        (new_analyze_data_dict, input_cache, flat_data_required) = (
-            p | self._OptimizeRun(input_cache_dir, output_cache_dir,
-                                  analyze_data_list, feature_spec,
-                                  preprocessing_fn, self._GetCacheSource()))
-        # Removing unneeded datasets if they won't be needed for
-        # materialization. This means that these datasets won't be included in
-        # the statistics computation or profiling either.
-        if not materialize_output_paths:
-          analyze_data_list = [
-              d for d in new_analyze_data_dict.values() if d is not None
-          ]
+        # TODO(zhitaoli): Clean up non cache analyze branch after TFT 0.14.0.
+        (major, minor, _) = tft.__version__.split('.')
+        if int(major) == 0 and int(minor) < 14:
+          analyze_decode_fn = (
+              self._GetDecodeFunction(raw_examples_data_format,
+                                      analyze_input_dataset_metadata.schema))
 
-        analyze_decode_fn = (
-            self._GetDecodeFunction(raw_examples_data_format,
-                                    analyze_input_dataset_metadata.schema))
+          for (idx, dataset) in enumerate(analyze_data_list):
+            dataset.encoded = (
+                p | 'ReadAnalysisDataset[{}]'.format(idx) >>
+                self._ReadExamples(dataset))
+            dataset.decoded = (
+                dataset.encoded
+                | 'DecodeAnalysisDataset[{}]'.format(idx) >>
+                self._DecodeInputs(analyze_decode_fn))
 
-        for (idx, dataset) in enumerate(analyze_data_list):
-          dataset.encoded = (
-              p | 'ReadAnalysisDataset[{}]'.format(idx) >>
-              self._ReadExamples(dataset))
-          dataset.decoded = (
-              dataset.encoded
-              | 'DecodeAnalysisDataset[{}]'.format(idx) >>
-              self._DecodeInputs(analyze_decode_fn))
-
-        input_analysis_data = {}
-        for key, dataset in six.iteritems(new_analyze_data_dict):
-          if dataset is None:
-            input_analysis_data[key] = None
-          else:
-            input_analysis_data[key] = dataset.decoded
-
-        if flat_data_required:
-          flat_input_analysis_data = (
+          input_analysis_data = (
               [dataset.decoded for dataset in analyze_data_list]
-              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=p))
-        else:
-          flat_input_analysis_data = None
-        if input_cache:
-          tf.logging.info('Analyzing data with cache.')
-        transform_fn, cache_output = (
-            (flat_input_analysis_data, input_analysis_data, input_cache,
-             input_dataset_metadata)
-            | 'AnalyzeDataset' >> tft_beam.AnalyzeDatasetWithCache(
-                preprocessing_fn, pipeline=p))
+              | 'FlattenAnalysisDatasets' >> beam.Flatten())
+          transform_fn = (
+              (input_analysis_data, input_dataset_metadata)
+              | 'AnalyzeDataset' >> tft_beam.AnalyzeDataset(preprocessing_fn))
+        else:  # if int(major) == 0 and int(minor) < 14
+          (new_analyze_data_dict, input_cache, flat_data_required) = (
+              p | self._OptimizeRun(input_cache_dir, output_cache_dir,
+                                    analyze_data_list, feature_spec,
+                                    preprocessing_fn, self._GetCacheSource()))
+          # Removing unneeded datasets if they won't be needed for
+          # materialization. This means that these datasets won't be included in
+          # the statistics computation or profiling either.
+          if not materialize_output_paths:
+            analyze_data_list = [
+                d for d in new_analyze_data_dict.values() if d is not None
+            ]
+          analyze_decode_fn = (
+              self._GetDecodeFunction(raw_examples_data_format,
+                                      analyze_input_dataset_metadata.schema))
+
+          for (idx, dataset) in enumerate(analyze_data_list):
+            dataset.encoded = (
+                p | 'ReadAnalysisDataset[{}]'.format(idx) >>
+                self._ReadExamples(dataset))
+            dataset.decoded = (
+                dataset.encoded
+                | 'DecodeAnalysisDataset[{}]'.format(idx) >>
+                self._DecodeInputs(analyze_decode_fn))
+          input_analysis_data = {}
+          for key, dataset in six.iteritems(new_analyze_data_dict):
+            if dataset is None:
+              input_analysis_data[key] = None
+            else:
+              input_analysis_data[key] = dataset.decoded
+
+          if flat_data_required:
+            flat_input_analysis_data = (
+                [dataset.decoded for dataset in analyze_data_list]
+                | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=p))
+          else:
+            flat_input_analysis_data = None
+          if input_cache:
+            tf.logging.info('Analyzing data with cache.')
+          transform_fn, cache_output = (
+              (flat_input_analysis_data, input_analysis_data, input_cache,
+               input_dataset_metadata)
+              | 'AnalyzeDataset' >> tft_beam.AnalyzeDatasetWithCache(
+                  preprocessing_fn, pipeline=p))
+        # end of `if int(major) == 0 and int(minor) < 14`
 
         # Write the raw/input metadata.
         (input_dataset_metadata
@@ -900,8 +926,11 @@ class Executor(base_executor.BaseExecutor):
         # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
         (transform_fn |
          'WriteTransformFn' >> tft_beam.WriteTransformFn(transform_output_path))
-
-        if output_cache_dir is not None and cache_output is not None:
+        # TODO(zhitaoli): Clean up non cache analyze branch after TFT 0.14.0.
+        (major, minor, _) = tft.__version__.split('.')
+        if (int(major) > 0 or int(minor) >= 14) and \
+            output_cache_dir is not None and cache_output is not None:
+          from tensorflow_transform.beam import analyzer_cache  # pylint: disable=g-import-not-at-top
           # TODO(b/37788560): Possibly make this part of the beam graph.
           tf.io.gfile.makedirs(output_cache_dir)
           tf.logging.info('Using existing cache in: %s', input_cache_dir)
@@ -915,7 +944,6 @@ class Executor(base_executor.BaseExecutor):
               if tf.io.gfile.isdir(full_span_cache_dir):
                 self._CopyCache(full_span_cache_dir,
                                 os.path.join(output_cache_dir, span_cache_dir))
-
           (cache_output
            | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
                p, output_cache_dir, sink=self._GetCacheSink()))

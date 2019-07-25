@@ -97,6 +97,10 @@ class ExecutorTest(tf.test.TestCase):
     self.assertTrue(tf.gfile.Exists(path_to_saved_model))
 
   def test_do_with_cache(self):
+    (major, minor, _) = tft.__version__.split('.')
+    if int(major) == 0 and int(minor) < 14:
+      tf.logging.info('Skipping cache test before tensorflow-transform 0.14')
+      return
     source_data_dir = self._get_source_data_dir()
     output_data_dir = self._get_output_data_dir('1st_run')
 

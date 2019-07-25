@@ -21,7 +21,6 @@ def make_required_install_packages():
   return [
       'absl-py>=0.1.6,<1',
       'apache-beam[gcp]>=2.12,<3',
-      'click>=7.0,<8',
       'google-api-python-client>=1.7.8,<2',
       'ml-metadata>=0.13.2,<0.14',
       'protobuf>=3.7,<4',
