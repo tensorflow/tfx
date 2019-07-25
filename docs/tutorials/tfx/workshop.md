@@ -50,10 +50,40 @@ following a typical ML development process.  Here are the steps:
 Depending on your environment you may need to install several packages:
 
 ```bash
-sudo apt-get install python3-dev  \
+sudo apt-get install \
     build-essential libssl-dev libffi-dev \
     libxml2-dev libxslt1-dev zlib1g-dev \
-    python3-pip git
+    python3-pip git software-properties-common
+```
+
+If you are running Python 3.6 you should install python3.6-dev:
+
+```bash
+sudo apt-get install python3.6-dev
+```
+
+If you are running Python 3.7 you should install python3.7-dev:
+
+```bash
+sudo apt-get install python3.7-dev
+```
+
+In addition, if your system has a GCC version < 7 you should update GCC.
+Otherwise you will see errors when running `airflow webserver`. You can check
+your current version with:
+
+```bash
+gcc --version
+```
+
+If you need to update GCC, you can run this:
+
+```bash
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install gcc-7
+sudo apt install g++-7
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
 ```
 
 ### MacOS Environment
