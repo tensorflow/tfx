@@ -245,7 +245,7 @@ class TrainerWrapper(KubeflowExecutorWrapper):
         executor_class_path=args.executor_class_path,
         name='Trainer',
         input_dict={
-            'transformed_examples': parse_tfx_type(args.transformed_examples),
+            'examples': parse_tfx_type(args.examples),
             'transform_output': parse_tfx_type(args.transform_output),
             'schema': parse_tfx_type(args.schema),
         },

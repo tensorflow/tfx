@@ -73,7 +73,7 @@ def main():
   subparser.set_defaults(executor=wrappers.TransformWrapper)
 
   subparser = subparsers.add_parser('Trainer')
-  subparser.add_argument('--transformed_examples', type=str, required=True)
+  subparser.add_argument('--examples', type=str, required=True)
   subparser.add_argument('--transform_output', type=str, required=True)
   subparser.add_argument('--schema', type=str, required=True)
   subparser.set_defaults(executor=wrappers.TrainerWrapper)
