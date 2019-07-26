@@ -15,8 +15,13 @@
 
 ENGINE_FLAG = 'engine'
 PIPELINE_DSL_PATH = 'pipeline_dsl_path'
+PIPELINE_PACKAGE_PATH = 'pipeline_package_path'
 PIPELINE_NAME = 'pipeline_name'
 TFX_JSON_EXPORT_PIPELINE_ARGS_PATH = 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'
 AIRFLOW_PACKAGE_NAME = 'apache-airflow'
 KUBEFLOW_PACKAGE_NAME = 'kfp'
 RUN_ID = 'run'
+IAP_CLIENT_ID = 'iap_client_id'
+ENDPOINT = 'endpoint'
+NAMESPACE = 'namespace'
+PIPELINE_ID = 'pipeline_id'

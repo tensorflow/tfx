@@ -99,7 +99,6 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
   def _check_pipeline_dsl_path(self) -> None:
     """Check if pipeline dsl path exists."""
-    # Check if dsl exists.
     if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_DSL_PATH]):
       sys.exit('Invalid pipeline path: {}'
                .format(self.flags_dict[labels.PIPELINE_DSL_PATH]))
@@ -135,17 +134,24 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     # Run dsl with mock environment to store pipeline args in temp_file.
     subprocess.call(['python', self.flags_dict[labels.PIPELINE_DSL_PATH]],
                     env=temp_env)
-
-    # Load pipeline_args from temp_file
-    with open(temp_file, 'r') as f:
-      pipeline_args = json.load(f)
+    if os.stat(temp_file).st_size != 0:
+      # Load pipeline_args from temp_file for TFX pipelines
+      with open(temp_file, 'r') as f:
+        pipeline_args = json.load(f)
+    else:
+      # For non-TFX pipelines, extract pipeline name from the dsl filename.
+      pipeline_args = {
+          labels.PIPELINE_NAME:
+              os.path.basename(self.flags_dict[labels.PIPELINE_DSL_PATH]
+                              ).split('.')[0]
+      }
 
     # Delete temp file
     io_utils.delete_dir(temp_file)
 
     return pipeline_args
 
-  def _get_handler_home(self, home_dir) -> Text:
+  def _get_handler_home(self, home_dir: Text) -> Text:
     """Sets handler home.
 
     Args:

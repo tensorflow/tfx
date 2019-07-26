@@ -17,7 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
+import os
+import tempfile
+
 import mock
 import tensorflow as tf
 
@@ -28,12 +30,18 @@ from tfx.tools.cli.handler import handler_factory
 from tfx.tools.cli.handler import kubeflow_handler
 
 
+class _MockClientClass(object):
+
+  def __init__(self, host, client_id, namespace):
+    config = {'host': host, 'client_id': client_id, 'namespace': namespace}  # pylint: disable=invalid-name, unused-variable
+    self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
+
+
 class HandlerFactoryTest(tf.test.TestCase):
 
   def setUp(self):
     super(HandlerFactoryTest, self).setUp()
     self.flags_dict = {}
-    sys.modules['kfp'] = mock.Mock()
 
   def test_create_handler_airflow(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
@@ -41,10 +49,16 @@ class HandlerFactoryTest(tf.test.TestCase):
         handler_factory.create_handler(self.flags_dict),
         airflow_handler.AirflowHandler)
 
+  @mock.patch('kfp.Client', _MockClientClass)
   def test_create_handler_kubeflow(self):
-    self.flags_dict[labels.ENGINE_FLAG] = 'kubeflow'
+    flags_dict = {
+        labels.ENGINE_FLAG: 'kubeflow',
+        labels.ENDPOINT: 'dummyEndpoint',
+        labels.IAP_CLIENT_ID: 'dummyID',
+        labels.NAMESPACE: 'kubeflow',
+    }
     self.assertIsInstance(
-        handler_factory.create_handler(self.flags_dict),
+        handler_factory.create_handler(flags_dict),
         kubeflow_handler.KubeflowHandler)
 
   def test_create_handler_beam(self):
