@@ -11,4 +11,4 @@ services:
     - "8000:8000" # jupyter notebook
     volumes:
     - "./data:/home/data"
-    - "/home/felipe/git/tfx/tfx/examples/docker_tutorial/airflow_data:/home/airflow"
+    - "./airflow_data:/home/airflow"
