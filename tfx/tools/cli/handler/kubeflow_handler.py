@@ -17,8 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
+import os
+import sys
 
+import click
+import kfp
+import tensorflow as tf
+
+from typing import Text, Dict, Any
+from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
+from tfx.utils import io_utils
 
 
 class KubeflowHandler(base_handler.BaseHandler):
@@ -26,13 +36,51 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   # TODO(b/132286477): Update comments after updating methods.
 
-  def create_pipeline(self) -> None:
+  def __init__(self, flags_dict):
+    self.flags_dict = flags_dict
+    self._handler_home_dir = self._get_handler_home('kubeflow_pipelines')
+
+    # TODO(b/132286477): Change to setup config instead of flags if needed.
+    # Create client.
+    self._client = kfp.Client(
+        host=self.flags_dict[labels.ENDPOINT],
+        client_id=self.flags_dict[labels.IAP_CLIENT_ID],
+        namespace=self.flags_dict[labels.NAMESPACE])
+
+  def create_pipeline(self, overwrite: bool = False) -> None:
     """Creates pipeline in Kubeflow."""
-    pass
+    self._check_pipeline_dsl_path()
+    pipeline_args = self._extract_pipeline_args()
+    self._check_pipeline_package_path()
+
+    # Path to pipeline folder in kubeflow.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        pipeline_args[labels.PIPELINE_NAME])
+
+    if overwrite:
+      # For update, check if pipeline exists.
+      if not tf.io.gfile.exists(handler_pipeline_path):
+        sys.exit('Pipeline {} does not exist.'.format(
+            pipeline_args[labels.PIPELINE_NAME]))
+    else:
+      # For create, verify that pipeline does not exist.
+      if tf.io.gfile.exists(handler_pipeline_path):
+        sys.exit('Pipeline {} already exists.'.format(
+            pipeline_args[labels.PIPELINE_NAME]))
+
+    self._save_pipeline(pipeline_args)
+
+    if overwrite:
+      click.echo('Pipeline {} updated successfully.'.format(
+          pipeline_args[labels.PIPELINE_NAME]))
+    else:
+      click.echo('Pipeline {} created successfully.'.format(
+          pipeline_args[labels.PIPELINE_NAME]))
 
   def update_pipeline(self) -> None:
     """Updates pipeline in Kubeflow."""
-    pass
+    # Set overwrite to true for update to make sure pipeline exists.
+    self.create_pipeline(overwrite=True)
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
@@ -65,3 +113,63 @@ class KubeflowHandler(base_handler.BaseHandler):
   def get_run(self) -> None:
     """Checks run status."""
     pass
+
+  def _get_handler_pipeline_path(self, pipeline_name: Text) -> Text:
+    """Path to pipeline folder in Kubeflow.
+
+    Args:
+      pipeline_name: name of the pipeline
+
+    Returns:
+      Path to pipeline folder in Kubeflow.
+    """
+    # Path to pipeline folder in Kubeflow.
+    return os.path.join(self._handler_home_dir, pipeline_name, '')
+
+  def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
+    """Creates/updates pipeline folder in the handler directory."""
+
+    # Path to pipeline folder in Kubeflow.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        pipeline_args[labels.PIPELINE_NAME])
+
+    # Path to pipeline_args.json .
+    pipeline_args_path = os.path.join(handler_pipeline_path,
+                                      'pipeline_args.json')
+
+    # When updating pipeline delete pipeline from server and home dir.
+    if tf.io.gfile.exists(handler_pipeline_path):
+
+      # Get pipeline_id from pipeline_args.json
+      with open(pipeline_args_path, 'r') as f:
+        pipeline_args = json.load(f)
+      pipeline_id = pipeline_args[labels.PIPELINE_ID]
+
+      # Delete pipeline for home directory.
+      io_utils.delete_dir(handler_pipeline_path)
+
+      # Delete pipeline for kfp server.
+      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
+
+    # Now upload pipeline to server.
+    upload_response = self._client.upload_pipeline(
+        pipeline_package_path=self.flags_dict[labels.PIPELINE_PACKAGE_PATH],
+        pipeline_name=pipeline_args[labels.PIPELINE_NAME])
+    click.echo(upload_response)
+
+    # Add pipeline_id and pipeline_name to pipeline_args.
+    pipeline_args[labels.PIPELINE_NAME] = upload_response.name
+    pipeline_args[labels.PIPELINE_ID] = upload_response.id
+
+    # Copy pipeline_args to pipeline folder.
+    tf.io.gfile.makedirs(handler_pipeline_path)
+    with open(pipeline_args_path, 'w') as f:
+      json.dump(pipeline_args, f)
+
+  def _check_pipeline_package_path(self):
+    if not self.flags_dict[labels.PIPELINE_PACKAGE_PATH]:
+      sys.exit('Provide the output workflow package path.')
+
+    if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_PACKAGE_PATH]):
+      sys.exit('Pipeline package not found: {}'.format(
+          self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
