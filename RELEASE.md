@@ -2,45 +2,45 @@
 
 ## Major Features and Improvements
 *   Added support for Google Cloud ML Engine Training and Serving as extension.
-*   Supported pre-split input for ExampleGen components
-*   Added ImportExampleGen component for importing tfrecord files with
-    TF Example data format
-*   Added a generic ExampleGen component to reduce the work of custom ExampleGen
-*   Released Python 3 type hints.
-*   Added an Airflow integration test for chicago_taxi_simple example.
-*   Updated tfx docker image to use Python 3.
-*   Added example for how to define and add a custom component.
-*   Added Parquet executor for ExampleGen component.
-*   Added Avro executor for ExampleGen component.
-*   Enables Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
+*   Added support for pre-split input in ExampleGen components
+*   Added the ImportExampleGen component for importing tf.Example records from
+    the TFRecord file format.
+*   Added a generic ExampleGen component to reduce the work needed to customize
+    ExampleGen.
+*   Added Python 3 type hints.
+*   Added an Airflow integration test for the chicago_taxi_simple example.
+*   Updated the TFX docker image to use Python 3.
+*   Added an example for defining and adding a custom component.
+*   Added Parquet executor for the ExampleGen component.
+*   Added Avro executor for the ExampleGen component.
+*   Enabled Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
     that can be applied to each pipeline step.
-*   Added scripts and instructions to run on Spark via Beam to the Chicago Taxi
-    examples
-*   Introduced new mechanism of artifact info passing between component that
-    solely rely on ML Metadata
-*   Driver and execution logging are now unified to go through tf.logging.
-*   Supported Beam as an orchestrator.
+*   Added scripts and instructions for running the TFX Chicago Taxi example
+    on Spark (via Apache Beam).
+*   Introduced a new mechanism of artifact info passing between components that
+    relies solely on ML Metadata.
+*   Unified driver and execution logging to go through tf.logging.
+*   Added support for Beam as an orchestrator.
 *   Introduced the experimental InteractiveContext environment for iterative
-    notebook development, as well as an example Chicago Taxi notebook example
+    notebook development, as well as an example Chicago Taxi notebook
     in this environment.
-*   Added support for `tf.Transform` analyzer cache optimization utilization.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
     pusher deprecated. User should use the `trainer/pusher` executors in
     tfx.extensions.google_cloud_ai_platform module instead.
-*   Update components and code samples to use `tft.TFTransformOutput` (
+*   Updated components and code samples to use `tft.TFTransformOutput` (
     introduced in tensorflow_transform 0.8).  This avoids directly accessing the
     DatasetSchema object which may be removed in tensorflow_transform 0.14 or
     0.15.
-*   Fixes issue #113 to have consistent type of train_files and eval_files
+*   Fixed issue #113 to have consistent type of train_files and eval_files
     passed to trainer user module.
 *   TfxType has been renamed to TfxArtifact.
-*   Fixes issue #185 preventing the Airflow UI from visualizing the component's
+*   Fixed issue #185 preventing the Airflow UI from visualizing the component's
     subdag operators and logs.
-*   Fixes issue #201 so GCP credentials are optional.
-*   Bumped dependency to kfp (Kubeflow Pipelines SDK) version to be at later
-    than 0.1.18.
+*   Fixed issue #201 to make GCP credentials optional.
+*   Bumped dependency to kfp (Kubeflow Pipelines SDK) to be at version at least
+    0.1.18.
 *   Updated code example to
     * use 'tf.data.TFRecordDataset' instead of the deprecated function
       'tf.TFRecordReader'
@@ -49,16 +49,18 @@
     for defining component classes.
 *   Moved tfx.orchestration.gcp.cmle_runner to
     tfx.extensions.google_cloud_ai_platform.runner.
-*   Depends on `pyarrow>=0.11.1,<0.12.0`.
-*   Introduced 'examples' to Trainer component API. It's recommended to use this
-    field instead of 'transformed_examples' going forward.
-*   Allowed Trainer to run without transform_output.
+*   TFX now depends on `pyarrow>=0.11.1,<0.12.0` (through its dependency on
+    `tensorflow-data-validation`).
+*   Introduced 'examples' to the Trainer component API. It's recommended to use
+    this field instead of 'transformed_examples' going forward.
+*   Trainer can now run without the 'transform_output' input.
 *   Added check for duplicated component ids within a pipeline.
 *   String representations for Channel and TfxArtifact (TfxType) classes were
     improved.
 *   Updated workshop/setup/setup_demo.sh to fix version incompatibilities
-*   Updated workshop.  Adding note and instructions to fix issue with GCC
+*   Updated workshop. Added note and instructions to fix issue with GCC
     version when starting `airflow webserver`.
+*   Prepared support for analyzer cache optimization in transform executor.
 *   Added 'click>=7.0,<8' as a dependency to support CLI.
 
 ## Breaking changes
