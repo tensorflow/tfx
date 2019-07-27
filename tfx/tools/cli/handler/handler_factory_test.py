@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
 import tempfile
 
 import mock
@@ -27,7 +28,6 @@ from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.tools.cli.handler import beam_handler
 from tfx.tools.cli.handler import handler_factory
-from tfx.tools.cli.handler import kubeflow_handler
 
 
 class _MockClientClass(object):
@@ -42,6 +42,7 @@ class HandlerFactoryTest(tf.test.TestCase):
   def setUp(self):
     super(HandlerFactoryTest, self).setUp()
     self.flags_dict = {}
+    sys.modules['kfp'] = mock.Mock()
 
   def test_create_handler_airflow(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
@@ -57,6 +58,7 @@ class HandlerFactoryTest(tf.test.TestCase):
         labels.IAP_CLIENT_ID: 'dummyID',
         labels.NAMESPACE: 'kubeflow',
     }
+    from tfx.tools.cli.handler import kubeflow_handler  # pylint: disable=g-import-not-at-top
     self.assertIsInstance(
         handler_factory.create_handler(flags_dict),
         kubeflow_handler.KubeflowHandler)
