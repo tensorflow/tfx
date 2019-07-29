@@ -17,14 +17,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 import abc
 import json
 import os
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
-from tfx.utils import deps_utils
 from tfx.utils import types
+from tfx.utils import deps_utils
 
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
