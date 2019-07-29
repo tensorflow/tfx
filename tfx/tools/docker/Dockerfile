@@ -26,6 +26,7 @@ RUN apt-get update -y && \
   ca-certificates \
   libsnappy-dev \
   protobuf-compiler \
+  libprotobuf-dev \
   python3.5-dev \
   python3-pip \
   python3-setuptools \
