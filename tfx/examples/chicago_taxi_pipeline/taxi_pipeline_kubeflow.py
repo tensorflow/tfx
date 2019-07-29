@@ -29,7 +29,7 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow.runner import KubeflowRunner
+from tfx.orchestration.kubeflow.runner import KubeflowDagRunner
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -249,7 +249,7 @@ def _create_pipeline(
 
 
 if __name__ == '__main__':
-  KubeflowRunner().run(
+  KubeflowDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

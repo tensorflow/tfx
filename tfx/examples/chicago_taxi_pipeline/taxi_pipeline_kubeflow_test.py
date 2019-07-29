@@ -20,18 +20,20 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow
-from tfx.orchestration.kubeflow.runner import KubeflowRunner
+from tfx.orchestration.kubeflow.runner import KubeflowDagRunner
 
 
 class TaxiPipelineKubeflowTest(tf.test.TestCase):
 
   def setUp(self):
+    super(TaxiPipelineKubeflowTest, self).setUp()
     self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
                                    self.get_temp_dir())
     self._olddir = os.getcwd()
     os.chdir(self._tmp_dir)
 
   def tearDown(self):
+    super(TaxiPipelineKubeflowTest, self).tearDown()
     os.chdir(self._olddir)
 
   def test_taxi_pipeline_construction_and_definition_file_exists(self):
@@ -48,7 +50,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
         ._ai_platform_serving_args)
     self.assertEqual(9, len(logical_pipeline.components))
 
-    KubeflowRunner().run(logical_pipeline)
+    KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
