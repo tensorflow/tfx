@@ -17,14 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import abc
 import json
 import os
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
-from tfx.utils import types
+from tfx import types
+from tfx.types import artifact_utils
 from tfx.utils import deps_utils
 
 
@@ -49,8 +49,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
   @abc.abstractmethod
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation.
 
@@ -96,14 +96,14 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       tf.gfile.MakeDirs(tmp_path)
     return tmp_path
 
-  def _log_startup(self, inputs: Dict[Text, List[types.TfxArtifact]],
-                   outputs: Dict[Text, List[types.TfxArtifact]],
+  def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],
+                   outputs: Dict[Text, List[types.Artifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting {} execution.'.format(self.__class__.__name__))
     tf.logging.info('Inputs for {} is: {}'.format(
-        self.__class__.__name__, types.jsonify_tfx_type_dict(inputs)))
+        self.__class__.__name__, artifact_utils.jsonify_artifact_dict(inputs)))
     tf.logging.info('Outputs for {} is: {}'.format(
-        self.__class__.__name__, types.jsonify_tfx_type_dict(outputs)))
+        self.__class__.__name__, artifact_utils.jsonify_artifact_dict(outputs)))
     tf.logging.info('Execution properties for {} is: {}'.format(
         self.__class__.__name__, json.dumps(exec_properties)))

@@ -18,15 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.example_gen.csv_example_gen import component
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    input_base = types.TfxArtifact(type_name='ExternalPath')
+    input_base = types.Artifact(type_name='ExternalPath')
     csv_example_gen = component.CsvExampleGen(
         input_base=channel.as_channel([input_base]))
     self.assertEqual('ExamplesPath',

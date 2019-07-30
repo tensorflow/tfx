@@ -24,11 +24,11 @@ from slack_component import executor
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class SlackComponentSpec(base_component.ComponentSpec):
@@ -106,7 +106,7 @@ class SlackComponent(base_component.BaseComponent):
     """
     slack_blessing = slack_blessing or channel.Channel(
         type_name='ModelBlessingPath',
-        artifacts=[types.TfxArtifact('ModelBlessingPath')])
+        artifacts=[types.Artifact('ModelBlessingPath')])
     spec = SlackComponentSpec(
         slack_token=slack_token,
         channel_id=channel_id,

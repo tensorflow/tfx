@@ -18,11 +18,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.schema_gen import executor
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class SchemaGenSpec(base_component.ComponentSpec):
@@ -62,8 +62,7 @@ class SchemaGen(base_component.BaseComponent):
         are declared in the same pipeline.
     """
     output = output or channel.Channel(
-        type_name='SchemaPath',
-        artifacts=[types.TfxArtifact('SchemaPath')])
+        type_name='SchemaPath', artifacts=[types.Artifact('SchemaPath')])
     spec = SchemaGenSpec(
         stats=channel.as_channel(stats),
         output=output)

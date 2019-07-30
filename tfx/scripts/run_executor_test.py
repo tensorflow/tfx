@@ -18,12 +18,14 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.scripts import run_executor
-from tfx.utils import types
+from tfx.types import artifact_utils
 
 
 class ArgsCapture(object):
@@ -39,8 +41,8 @@ class ArgsCapture(object):
 
 class FakeExecutor(base_executor.BaseExecutor):
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Overrides BaseExecutor.Do()."""
     args_capture = ArgsCapture.instance
@@ -53,21 +55,23 @@ class RunExecutorTest(tf.test.TestCase):
 
   def testMainEmptyInputs(self):
     """Test executor class import under empty inputs/outputs."""
-    inputs = {'x': [types.TfxArtifact(type_name='X'),
-                    types.TfxArtifact(type_name='X')]}
-    outputs = {'y': [types.TfxArtifact(type_name='Y')]}
+    inputs = {
+        'x': [types.Artifact(type_name='X'),
+              types.Artifact(type_name='X')]
+    }
+    outputs = {'y': [types.Artifact(type_name='Y')]}
     exec_properties = {'a': 'b'}
     args = [
         '--executor_class_path=%s.%s' %
         (FakeExecutor.__module__, FakeExecutor.__name__),
-        '--inputs=%s' % types.jsonify_tfx_type_dict(inputs),
-        '--outputs=%s' % types.jsonify_tfx_type_dict(outputs),
+        '--inputs=%s' % artifact_utils.jsonify_artifact_dict(inputs),
+        '--outputs=%s' % artifact_utils.jsonify_artifact_dict(outputs),
         '--exec-properties=%s' % json.dumps(exec_properties),
     ]
     with ArgsCapture() as args_capture:
       run_executor.main(args)
-      # TODO(b/131417512): Add equal comparison to TfxArtifact class so we can
-      # use asserters.
+      # TODO(b/131417512): Add equal comparison to types.Artifact class so we
+      # can use asserters.
       self.assertSetEqual(
           set(args_capture.input_dict.keys()), set(inputs.keys()))
       self.assertSetEqual(

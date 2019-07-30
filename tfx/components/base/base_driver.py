@@ -21,18 +21,18 @@ import tensorflow as tf
 
 from typing import Any, Dict, List, Text
 
+from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.utils import channel
-from tfx.utils import types
 
 
-def _verify_input_artifacts(artifacts_dict: Dict[Text, List[types.TfxArtifact]]
-                           ) -> None:
+def _verify_input_artifacts(
+    artifacts_dict: Dict[Text, List[types.Artifact]]) -> None:
   """Verify that all artifacts have existing uri.
 
   Args:
-    artifacts_dict: key -> TfxArtifact for inputs.
+    artifacts_dict: key -> types.Artifact for inputs.
 
   Raises:
     RuntimeError: if any input as an empty or non-existing uri.
@@ -45,7 +45,7 @@ def _verify_input_artifacts(artifacts_dict: Dict[Text, List[types.TfxArtifact]]
         raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
 
-def _generate_output_uri(artifact: types.TfxArtifact, base_output_dir: Text,
+def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
                          name: Text, execution_id: int) -> Text:
   """Generate uri for output artifact."""
 
@@ -79,8 +79,8 @@ class BaseDriver(object):
   def __init__(self, metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
 
-  def _log_properties(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-                      output_dict: Dict[Text, List[types.TfxArtifact]],
+  def _log_properties(self, input_dict: Dict[Text, List[types.Artifact]],
+                      output_dict: Dict[Text, List[types.Artifact]],
                       exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
     tf.logging.info('Starting %s driver.', self.__class__.__name__)
@@ -96,7 +96,7 @@ class BaseDriver(object):
       exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
-  ) -> Dict[Text, List[types.TfxArtifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Resolve input artifacts from metadata.
 
     Subclasses might override this function for customized artifact properties
@@ -171,7 +171,7 @@ class BaseDriver(object):
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-  ) -> Dict[Text, List[types.TfxArtifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
     result = channel.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
@@ -182,9 +182,9 @@ class BaseDriver(object):
                                             execution_id)
     return result
 
-  def _fetch_cached_artifacts(self, output_dict: Dict[Text, channel.Channel],
-                              cached_execution_id: int
-                             ) -> Dict[Text, List[types.TfxArtifact]]:
+  def _fetch_cached_artifacts(
+      self, output_dict: Dict[Text, channel.Channel],
+      cached_execution_id: int) -> Dict[Text, List[types.Artifact]]:
     """Fetch cached output artifacts."""
     output_artifacts_dict = channel.unwrap_channel_dict(output_dict)
     return self._metadata_handler.fetch_previous_result_artifacts(

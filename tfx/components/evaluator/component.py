@@ -19,13 +19,13 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class EvaluatorSpec(base_component.ComponentSpec):
@@ -74,8 +74,7 @@ class Evaluator(base_component.BaseComponent):
         declared in the same pipeline.
     """
     output = output or channel.Channel(
-        type_name='ModelEvalPath',
-        artifacts=[types.TfxArtifact('ModelEvalPath')])
+        type_name='ModelEvalPath', artifacts=[types.Artifact('ModelEvalPath')])
     spec = EvaluatorSpec(
         examples=channel.as_channel(examples),
         model_exports=channel.as_channel(model_exports),

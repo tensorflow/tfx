@@ -24,8 +24,8 @@ import tensorflow as tf
 
 from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import import_utils
-from tfx.utils import types
 
 
 def _run_executor(args, pipeline_args) -> None:
@@ -87,8 +87,8 @@ def _run_executor(args, pipeline_args) -> None:
                            args.exec_properties or
                            base64.b64decode(args.exec_properties_base64))
 
-  inputs = types.parse_tfx_type_dict(inputs_str)
-  outputs = types.parse_tfx_type_dict(outputs_str)
+  inputs = artifact_utils.parse_artifact_dict(inputs_str)
+  outputs = artifact_utils.parse_artifact_dict(outputs_str)
   exec_properties = json.loads(exec_properties_str)
   tf.logging.info(
       'Executor {} do: inputs: {}, outputs: {}, exec_properties: {}'.format(
@@ -104,7 +104,7 @@ def _run_executor(args, pipeline_args) -> None:
 
   # The last line of stdout will be pushed to xcom by Airflow.
   if args.write_outputs_stdout:
-    print(types.jsonify_tfx_type_dict(outputs))
+    print(artifact_utils.jsonify_artifact_dict(outputs))
 
 
 def main(argv):

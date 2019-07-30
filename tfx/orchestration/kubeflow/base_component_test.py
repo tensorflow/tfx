@@ -21,8 +21,9 @@ import collections
 import json
 from kfp import dsl
 import tensorflow as tf
+from tfx import types
 from tfx.orchestration.kubeflow import base_component
-from tfx.utils import types
+from tfx.types import artifact_utils
 
 
 class BaseComponentTest(tf.test.TestCase):
@@ -30,7 +31,7 @@ class BaseComponentTest(tf.test.TestCase):
 
   def setUp(self):
     self._output_dict = {
-        'output_name': [types.TfxArtifact(type_name='ExamplesPath')]
+        'output_name': [types.Artifact(type_name='ExamplesPath')]
     }
     self._pipeline_properties = base_component.PipelineProperties(
         output_dir='output_dir',
@@ -64,7 +65,7 @@ class BaseComponentTest(tf.test.TestCase):
 
     self.assertEqual(self.component.container_op.arguments[2:], [
         '--outputs',
-        types.jsonify_tfx_type_dict(self._output_dict),
+        artifact_utils.jsonify_artifact_dict(self._output_dict),
         '--executor_class_path',
         'some.executor.Class',
         'TFXComponent',

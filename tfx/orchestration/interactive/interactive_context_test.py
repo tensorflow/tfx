@@ -20,11 +20,11 @@ from __future__ import print_function
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration.interactive import interactive_context
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class InteractiveContextTest(tf.test.TestCase):
@@ -40,8 +40,8 @@ class InteractiveContextTest(tf.test.TestCase):
     class _FakeExecutor(base_executor.BaseExecutor):
       CALLED = False
 
-      def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-             output_dict: Dict[Text, List[types.TfxArtifact]],
+      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+             output_dict: Dict[Text, List[types.Artifact]],
              exec_properties: Dict[Text, Any]) -> None:
         _FakeExecutor.CALLED = True
 
@@ -70,8 +70,8 @@ class InteractiveContextTest(tf.test.TestCase):
     class _FakeExecutor(base_executor.BaseExecutor):
       CALLED = False
 
-      def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-             output_dict: Dict[Text, List[types.TfxArtifact]],
+      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+             output_dict: Dict[Text, List[types.Artifact]],
              exec_properties: Dict[Text, Any]) -> None:
         _FakeExecutor.CALLED = True
 
@@ -83,9 +83,7 @@ class InteractiveContextTest(tf.test.TestCase):
         super(_FakeComponent, self).__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
-    foo = channel.Channel(
-        type_name='Foo',
-        artifacts=[types.TfxArtifact('Foo')])
+    foo = channel.Channel(type_name='Foo', artifacts=[types.Artifact('Foo')])
     component = _FakeComponent(_FakeComponentSpec(input=foo))
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)

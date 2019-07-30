@@ -26,9 +26,10 @@ from googleapiclient import errors
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 
+from tfx import types
+from tfx.types import artifact_utils
 from tfx.utils import deps_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -51,11 +52,11 @@ def _get_caip_python_version() -> Text:
   return {2: '2.7', 3: '3.5'}[sys.version_info.major]
 
 
-def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
-                        output_dict: Dict[Text, List[types.TfxArtifact]],
+def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
+                        output_dict: Dict[Text, List[types.Artifact]],
                         exec_properties: Dict[Text, Any],
-                        executor_class_path: Text,
-                        training_inputs: Dict[Text, Any]):
+                        executor_class_path: Text, training_inputs: Dict[Text,
+                                                                         Any]):
   """Start a trainer job on CMLE.
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -82,9 +83,9 @@ def start_cmle_training(input_dict: Dict[Text, List[types.TfxArtifact]],
     if gaip_training_key in exec_properties.get('custom_config'):
       exec_properties['custom_config'].pop(gaip_training_key)
 
-  json_inputs = types.jsonify_tfx_type_dict(input_dict)
+  json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
   tf.logging.info('json_inputs=\'%s\'.', json_inputs)
-  json_outputs = types.jsonify_tfx_type_dict(output_dict)
+  json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
   tf.logging.info('json_outputs=\'%s\'.', json_outputs)
   json_exec_properties = json.dumps(exec_properties)
   tf.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)

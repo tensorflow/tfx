@@ -17,12 +17,12 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Optional, Text
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.transform import executor
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class TransformSpec(base_component.ComponentSpec):
@@ -82,12 +82,11 @@ class Transform(base_component.BaseComponent):
         are declared in the same pipeline.
     """
     transform_output = transform_output or channel.Channel(
-        type_name='TransformPath',
-        artifacts=[types.TfxArtifact('TransformPath')])
+        type_name='TransformPath', artifacts=[types.Artifact('TransformPath')])
     transformed_examples = transformed_examples or channel.Channel(
         type_name='ExamplesPath',
         artifacts=[
-            types.TfxArtifact('ExamplesPath', split=split)
+            types.Artifact('ExamplesPath', split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = TransformSpec(

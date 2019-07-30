@@ -18,16 +18,16 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Type
 
-from tfx.utils import types
+from tfx import types
 
 
 class ExecutionDecision(object):
   """ExecutionDecision records how executor should perform next execution.
 
   Attributes:
-    input_dict: Updated key -> TfxArtifact for inputs that will be used by
+    input_dict: Updated key -> types.Artifact for inputs that will be used by
       actual execution.
-    output_dict: Updated key -> TfxArtifact for outputs that will be used by
+    output_dict: Updated key -> types.Artifact for outputs that will be used by
       actual execution.
     exec_properties: Updated dict of other execution properties that will be
       used by actual execution.
@@ -36,8 +36,8 @@ class ExecutionDecision(object):
   """
 
   def __init__(self,
-               input_dict: Dict[Text, List[types.TfxArtifact]],
-               output_dict: Dict[Text, List[types.TfxArtifact]],
+               input_dict: Dict[Text, List[types.Artifact]],
+               output_dict: Dict[Text, List[types.Artifact]],
                exec_properties: Dict[Text, Any],
                execution_id: int = None,
                use_cached_results: Optional[bool] = False):

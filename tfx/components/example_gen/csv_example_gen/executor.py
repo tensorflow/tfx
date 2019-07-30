@@ -24,9 +24,10 @@ import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.coders import csv_decoder
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 
 def _dict_to_example(instance: tfdv.types.Example) -> tf.train.Example:
@@ -52,7 +53,7 @@ def _dict_to_example(instance: tfdv.types.Example) -> tf.train.Example:
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxArtifact]],
+    input_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read CSV files and transform to TF examples.
@@ -74,7 +75,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Raises:
     RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = types.get_single_uri(input_dict['input_base'])
+  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
   csv_pattern = os.path.join(input_base_uri, split_pattern)
   tf.logging.info(
       'Processing input csv data {} to TFExample.'.format(csv_pattern))

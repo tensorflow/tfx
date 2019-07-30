@@ -18,6 +18,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Type
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -26,7 +27,6 @@ from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class TrainerSpec(base_component.ComponentSpec):
@@ -107,7 +107,7 @@ class Trainer(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ModelExportPath',
-        artifacts=[types.TfxArtifact('ModelExportPath')])
+        artifacts=[types.Artifact('ModelExportPath')])
     assert bool(examples) ^ bool(
         transformed_examples
     ), 'Exactly one of example or transformed_example should be set.'

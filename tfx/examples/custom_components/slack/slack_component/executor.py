@@ -27,9 +27,10 @@ from slackclient import SlackClient
 
 import tensorflow as tf
 from typing import Any, Dict, List, NamedTuple, Text
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 # Case-insensitive text messages that are accepted as signal for approving a
 # model.
@@ -146,8 +147,8 @@ class Executor(base_executor.BaseExecutor):
                     unrecognized_text),
                 thread=ts)
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Get human review result on a model through Slack channel.
 
@@ -180,11 +181,13 @@ class Executor(base_executor.BaseExecutor):
     timeout_sec = exec_properties['timeout_sec']
 
     # Fetch input URIs from input_dict.
-    model_export_uri = types.get_single_uri(input_dict['model_export'])
-    model_blessing_uri = types.get_single_uri(input_dict['model_blessing'])
+    model_export_uri = artifact_utils.get_single_uri(input_dict['model_export'])
+    model_blessing_uri = artifact_utils.get_single_uri(
+        input_dict['model_blessing'])
 
     # Fetch output artifact from output_dict.
-    slack_blessing = types.get_single_instance(output_dict['slack_blessing'])
+    slack_blessing = artifact_utils.get_single_instance(
+        output_dict['slack_blessing'])
 
     # We only consider a model as blessed if both of the following conditions
     # are met:

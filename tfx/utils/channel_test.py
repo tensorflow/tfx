@@ -21,38 +21,38 @@ from __future__ import unicode_literals
 # Standard Imports
 
 import tensorflow as tf
+from tfx import types
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ChannelTest(tf.test.TestCase):
 
   def test_valid_channel(self):
-    instance_a = types.TfxArtifact('MyTypeName')
-    instance_b = types.TfxArtifact('MyTypeName')
+    instance_a = types.Artifact('MyTypeName')
+    instance_b = types.Artifact('MyTypeName')
     chnl = channel.Channel(
         'MyTypeName', artifacts=[instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
   def test_invalid_channel_type(self):
-    instance_a = types.TfxArtifact('MyTypeName')
-    instance_b = types.TfxArtifact('MyTypeName')
+    instance_a = types.Artifact('MyTypeName')
+    instance_b = types.Artifact('MyTypeName')
     with self.assertRaises(ValueError):
       channel.Channel(
           'AnotherTypeName',
           artifacts=[instance_a, instance_b])
 
   def test_artifact_collection_as_channel(self):
-    instance_a = types.TfxArtifact('MyTypeName')
-    instance_b = types.TfxArtifact('MyTypeName')
+    instance_a = types.Artifact('MyTypeName')
+    instance_b = types.Artifact('MyTypeName')
     chnl = channel.as_channel([instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
   def test_channel_as_channel_success(self):
-    instance_a = types.TfxArtifact('MyTypeName')
-    instance_b = types.TfxArtifact('MyTypeName')
+    instance_a = types.Artifact('MyTypeName')
+    instance_b = types.Artifact('MyTypeName')
     chnl_original = channel.Channel(
         'MyTypeName', artifacts=[instance_a, instance_b])
     chnl_result = channel.as_channel(chnl_original)
@@ -76,8 +76,8 @@ class ChannelTest(tf.test.TestCase):
       chnl.type_check('AnotherTypeName')
 
   def test_unwrap_channel_dict(self):
-    instance_a = types.TfxArtifact('MyTypeName')
-    instance_b = types.TfxArtifact('MyTypeName')
+    instance_a = types.Artifact('MyTypeName')
+    instance_b = types.Artifact('MyTypeName')
     channel_dict = {
         'id': channel.Channel('MyTypeName', artifacts=[instance_a, instance_b])
     }

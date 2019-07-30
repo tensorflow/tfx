@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.trainer import driver
-from tfx.utils import types
 
 
 class DriverTest(tf.test.TestCase):
@@ -28,7 +28,7 @@ class DriverTest(tf.test.TestCase):
     mock_metadata = tf.test.mock.Mock()
     artifacts = []
     for span in [3, 2, 1]:
-      model = types.TfxArtifact(type_name='ModelExportPath')
+      model = types.Artifact(type_name='ModelExportPath')
       model.span = span
       model.uri = 'uri-%d' % span
       artifacts.append(model.artifact)

@@ -18,11 +18,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.example_validator import executor
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ExampleValidatorSpec(base_component.ComponentSpec):
@@ -65,8 +65,7 @@ class ExampleValidator(base_component.BaseComponent):
     """
     output = output or channel.Channel(
         type_name='ExampleValidationPath',
-        artifacts=[
-            types.TfxArtifact('ExampleValidationPath')])
+        artifacts=[types.Artifact('ExampleValidationPath')])
     spec = ExampleValidatorSpec(
         stats=channel.as_channel(stats),
         schema=channel.as_channel(schema),

@@ -40,13 +40,14 @@ from tensorflow.core.example import example_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 # pylint: enable=g-direct-tensorflow-import
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.transform import common
 from tfx.components.transform import labels
 from tfx.components.transform import messages
+from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 
 RAW_EXAMPLE_KEY = 'raw_example'
@@ -193,8 +194,8 @@ def _GetSchemaProto(
 class Executor(base_executor.BaseExecutor):
   """Transform executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow Transform executor entrypoint.
 
@@ -222,14 +223,17 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    train_data_uri = types.get_split_uri(input_dict['input_data'], 'train')
-    eval_data_uri = types.get_split_uri(input_dict['input_data'], 'eval')
+    train_data_uri = artifact_utils.get_split_uri(input_dict['input_data'],
+                                                  'train')
+    eval_data_uri = artifact_utils.get_split_uri(input_dict['input_data'],
+                                                 'eval')
     schema_file = io_utils.get_only_uri_in_dir(
-        types.get_single_uri(input_dict['schema']))
-    transform_output = types.get_single_uri(output_dict['transform_output'])
-    transformed_train_output = types.get_split_uri(
+        artifact_utils.get_single_uri(input_dict['schema']))
+    transform_output = artifact_utils.get_single_uri(
+        output_dict['transform_output'])
+    transformed_train_output = artifact_utils.get_split_uri(
         output_dict['transformed_examples'], 'train')
-    transformed_eval_output = types.get_split_uri(
+    transformed_eval_output = artifact_utils.get_split_uri(
         output_dict['transformed_examples'], 'eval')
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     tf.logging.debug('Using temp path %s for tft.beam', temp_path)
@@ -238,7 +242,7 @@ class Executor(base_executor.BaseExecutor):
       if label not in params_dict:
         return None
       else:
-        return types.get_single_uri(params_dict[label])
+        return artifact_utils.get_single_uri(params_dict[label])
 
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:

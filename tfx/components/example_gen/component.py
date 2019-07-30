@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, Text, Type
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -27,7 +28,6 @@ from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class QueryBasedExampleGenSpec(base_component.ComponentSpec):
@@ -104,7 +104,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel.as_channel([
-        types.TfxArtifact('ExamplesPath', split=split_name)
+        types.Artifact('ExamplesPath', split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])
@@ -164,7 +164,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel.as_channel([
-        types.TfxArtifact('ExamplesPath', split=split_name)
+        types.Artifact('ExamplesPath', split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])

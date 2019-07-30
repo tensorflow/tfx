@@ -27,12 +27,14 @@ from __future__ import print_function
 
 import collections
 import json
+
 from kfp import dsl
 from kubernetes import client as k8s_client
 from typing import Any, Dict, List, Optional, Text
 
+from tfx import types
 from tfx import version
-from tfx.utils import types
+from tfx.types import artifact_utils
 
 
 # Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
@@ -73,7 +75,7 @@ class BaseComponent(object):
       cls,
       component_name: Text,
       input_dict: Dict[Text, Any],
-      output_dict: Dict[Text, List[types.TfxArtifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any],
       executor_class_path: Text,
       pipeline_properties: PipelineProperties,
@@ -104,7 +106,7 @@ class BaseComponent(object):
         '--exec_properties',
         json.dumps(exec_properties),
         '--outputs',
-        types.jsonify_tfx_type_dict(output_dict),
+        artifact_utils.jsonify_artifact_dict(output_dict),
         '--executor_class_path',
         executor_class_path,
         component_name,

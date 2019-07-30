@@ -25,10 +25,11 @@ import apache_beam as beam
 from six import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
-from tfx.utils import types
+from tfx.types import artifact_utils
 from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
@@ -66,7 +67,7 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
 @beam.typehints.with_output_types(bytes)
 def _InputToSerializedExample(pipeline: beam.Pipeline,
                               input_to_example: beam.PTransform,
-                              input_dict: Dict[Text, List[types.TfxArtifact]],
+                              input_dict: Dict[Text, List[types.Artifact]],
                               exec_properties: Dict[Text, Any],
                               split_pattern: Text) -> beam.pvalue.PCollection:
   """Converts input to serialized TF examples."""
@@ -117,16 +118,16 @@ class BaseExampleGenExecutor(
       @beam.typehints.with_output_types(tf.train.Example)
       def ExamplePTransform(
           pipeline: beam.Pipeline,
-          input_dict: Dict[Text, List[types.TfxArtifact]],
+          input_dict: Dict[Text, List[types.Artifact]],
           exec_properties: Dict[Text, Any],
           split_pattern: Text) -> beam.pvalue.PCollection
     """
     pass
 
-  def GenerateExamplesByBeam(self, pipeline: beam.Pipeline,
-                             input_dict: Dict[Text, List[types.TfxArtifact]],
-                             exec_properties: Dict[Text, Any]
-                            ) -> Dict[Text, beam.pvalue.PCollection]:
+  def GenerateExamplesByBeam(
+      self, pipeline: beam.Pipeline, input_dict: Dict[Text,
+                                                      List[types.Artifact]],
+      exec_properties: Dict[Text, Any]) -> Dict[Text, beam.pvalue.PCollection]:
     """Converts input source to TF example splits based on configs.
 
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
@@ -192,8 +193,8 @@ class BaseExampleGenExecutor(
       result[split_names[index]] = example_split
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Take input data source and generates TF Example splits.
 
@@ -223,7 +224,7 @@ class BaseExampleGenExecutor(
       for split_name, example_split in example_splits.items():
         (example_split
          | 'WriteSplit' + split_name >> _WriteSplit(
-             types.get_split_uri(output_dict['examples'], split_name)))
+             artifact_utils.get_split_uri(output_dict['examples'], split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     tf.logging.info('Examples generated.')

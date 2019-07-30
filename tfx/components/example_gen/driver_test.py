@@ -22,10 +22,10 @@ import os
 import tensorflow as tf
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+from tfx import types
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
 from tfx.utils import io_utils
-from tfx.utils import types
 
 
 class DriverTest(tf.test.TestCase):
@@ -63,7 +63,7 @@ class DriverTest(tf.test.TestCase):
       artifacts.append(artifact)
 
     # Create input dict.
-    input_base = types.TfxArtifact(type_name='ExternalPath')
+    input_base = types.Artifact(type_name='ExternalPath')
     input_base.uri = input_base_path
     input_dict = {'input_base': [input_base]}
     # Create exec proterties.

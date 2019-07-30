@@ -18,25 +18,25 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.evaluator import component
 from tfx.proto import evaluator_pb2
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    examples = types.TfxArtifact(type_name='ExamplesPath')
-    model_exports = types.TfxArtifact(type_name='ModelExportPath')
+    examples = types.Artifact(type_name='ExamplesPath')
+    model_exports = types.Artifact(type_name='ModelExportPath')
     evaluator = component.Evaluator(
         examples=channel.as_channel([examples]),
         model_exports=channel.as_channel([model_exports]))
     self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
 
   def test_construct_with_slice_spec(self):
-    examples = types.TfxArtifact(type_name='ExamplesPath')
-    model_exports = types.TfxArtifact(type_name='ModelExportPath')
+    examples = types.Artifact(type_name='ExamplesPath')
+    model_exports = types.Artifact(type_name='ModelExportPath')
     evaluator = component.Evaluator(
         examples=channel.as_channel([examples]),
         model_exports=channel.as_channel([model_exports]),

@@ -25,9 +25,10 @@ from unittest.mock import patch
 import tensorflow as tf
 from typing import Text
 
+from tfx import types
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.orchestration.kubeflow import executor_wrappers
-from tfx.utils import types
+from tfx.types import artifact_utils
 
 
 def _locate_setup_file_dir() -> Text:
@@ -50,27 +51,26 @@ class ExecutorWrappersTest(tf.test.TestCase):
         'output': json.dumps({}),
         'output_dir': '/path/to/output',
     }
-    self.examples = [types.TfxArtifact(type_name='ExamplesPath', split='dummy')]
+    self.examples = [types.Artifact(type_name='ExamplesPath', split='dummy')]
     self.output_basedir = tempfile.mkdtemp()
 
     os.environ['WORKFLOW_ID'] = 'mock_workflow_id'
     os.environ['TFX_SRC_DIR'] = _locate_setup_file_dir()
 
   def testCsvExampleGenWrapper(self):
-    input_base = types.TfxArtifact(type_name='ExternalPath', split='')
+    input_base = types.Artifact(type_name='ExternalPath', split='')
     input_base.uri = '/path/to/dataset'
 
     with patch.object(executor, 'Executor', autospec=True) as _:
       wrapper = executor_wrappers.CsvExampleGenWrapper(
           argparse.Namespace(
               exec_properties=json.dumps(self.exec_properties),
-              outputs=types.jsonify_tfx_type_dict({'examples': self.examples}),
+              outputs=artifact_utils.jsonify_artifact_dict(
+                  {'examples': self.examples}),
               executor_class_path=(
                   'tfx.components.example_gen.csv_example_gen.executor.Executor'
               ),
-              input_base=json.dumps([input_base.json_dict()])
-          ),
-      )
+              input_base=json.dumps([input_base.json_dict()])),)
       wrapper.run(output_basedir=self.output_basedir)
 
       # TODO(b/133011207): Validate arguments for executor and Do() method.
@@ -78,7 +78,7 @@ class ExecutorWrappersTest(tf.test.TestCase):
       metadata_file = os.path.join(
           self.output_basedir, 'output/ml_metadata/examples')
 
-      expected_output_examples = types.TfxArtifact(
+      expected_output_examples = types.Artifact(
           type_name='ExamplesPath', split='dummy')
       # Expect that span and path are resolved.
       expected_output_examples.span = 1

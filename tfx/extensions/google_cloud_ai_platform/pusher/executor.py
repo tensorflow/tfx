@@ -22,11 +22,12 @@ import tempfile
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from google.protobuf import json_format
+from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import pusher_pb2
+from tfx.types import artifact_utils
 from tfx.utils import path_utils
-from tfx.utils import types
 
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -43,8 +44,8 @@ class Executor(tfx_pusher_executor.Executor):
             base_directory=temp_dir))
     return json_format.MessageToJson(push_destination)
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]):
     """Overrides the tfx_pusher_executor.
 
@@ -72,10 +73,12 @@ class Executor(tfx_pusher_executor.Executor):
     if not self.CheckBlessing(input_dict, output_dict):
       return
 
-    model_export = types.get_single_instance(input_dict['model_export'])
+    model_export = artifact_utils.get_single_instance(
+        input_dict['model_export'])
     model_export_uri = model_export.uri
-    model_blessing_uri = types.get_single_uri(input_dict['model_blessing'])
-    model_push = types.get_single_instance(output_dict['model_push'])
+    model_blessing_uri = artifact_utils.get_single_uri(
+        input_dict['model_blessing'])
+    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
     if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)

@@ -23,13 +23,14 @@ import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import trainer_pb2
+from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx.utils import types
 from google.protobuf import json_format
 
 
@@ -64,8 +65,8 @@ class Executor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
 
@@ -121,16 +122,17 @@ class Executor(base_executor.BaseExecutor):
     # Set up training parameters
     train_files = [
         _all_files_pattern(
-            types.get_split_uri(input_dict['examples'], 'train'))
+            artifact_utils.get_split_uri(input_dict['examples'], 'train'))
     ]
-    transform_output = types.get_single_uri(
+    transform_output = artifact_utils.get_single_uri(
         input_dict['transform_output']
     ) if input_dict['transform_output'] else None
     eval_files = [
-        _all_files_pattern(types.get_split_uri(input_dict['examples'], 'eval'))
+        _all_files_pattern(
+            artifact_utils.get_split_uri(input_dict['examples'], 'eval'))
     ]
     schema_file = io_utils.get_only_uri_in_dir(
-        types.get_single_uri(input_dict['schema']))
+        artifact_utils.get_single_uri(input_dict['schema']))
 
     train_args = trainer_pb2.TrainArgs()
     eval_args = trainer_pb2.EvalArgs()
@@ -144,7 +146,7 @@ class Executor(base_executor.BaseExecutor):
     train_steps = train_args.num_steps or None
     eval_steps = eval_args.num_steps or None
 
-    output_path = types.get_single_uri(output_dict['output'])
+    output_path = artifact_utils.get_single_uri(output_dict['output'])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
 

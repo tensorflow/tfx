@@ -25,13 +25,13 @@ import tempfile
 import tensorflow as tf
 from typing import Any, Dict, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.utils import channel
-from tfx.utils import types
 
 
 def _make_fake_component_instance(name: Text,
@@ -173,7 +173,7 @@ class PipelineTest(tf.test.TestCase):
           metadata_connection_config=self._metadata_connection_config)
 
   def test_pipeline_with_artifact_info(self):
-    artifacts_collection = [types.TfxArtifact('channel_one')]
+    artifacts_collection = [types.Artifact('channel_one')]
     channel_one = channel.Channel(
         type_name='channel_one', artifacts=artifacts_collection)
     component_a = _make_fake_component_instance(
@@ -188,7 +188,7 @@ class PipelineTest(tf.test.TestCase):
         pipeline_root='b',
         components=[component_b, component_a],
         metadata_connection_config=self._metadata_connection_config)
-    expected_artifact = types.TfxArtifact('channel_one')
+    expected_artifact = types.Artifact('channel_one')
     expected_artifact.name = 'one'
     expected_artifact.pipeline_name = 'a'
     expected_artifact.pipeline_timestamp_ms = 0

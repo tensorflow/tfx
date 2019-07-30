@@ -21,9 +21,9 @@ from __future__ import print_function
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.utils import types
 
 
 class MetadataTest(tf.test.TestCase):
@@ -85,7 +85,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
-      artifact = types.TfxArtifact(type_name='ExamplesPath')
+      artifact = types.Artifact(type_name='ExamplesPath')
       artifact.uri = 'uri'
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
@@ -175,9 +175,9 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
       # Test publish_execution.
-      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      input_artifact = types.Artifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      output_artifact = types.Artifact(type_name='ExamplesPath')
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(eid, input_dict, output_dict)
@@ -220,9 +220,9 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      input_artifact = types.Artifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      output_artifact = types.Artifact(type_name='ExamplesPath')
       input_artifacts = {'input': [input_artifact]}
       output_artifacts = {'output': [output_artifact]}
       m.publish_execution(eid, input_artifacts, output_artifacts)
@@ -259,7 +259,7 @@ class MetadataTest(tf.test.TestCase):
               component_info=self._component_info))
 
       # Test fetch_previous_result_artifacts.
-      new_output_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      new_output_artifact = types.Artifact(type_name='ExamplesPath')
       self.assertNotEqual(types.ARTIFACT_STATE_PUBLISHED,
                           new_output_artifact.state)
       new_output_dict = {'output': [new_output_artifact]}
@@ -297,9 +297,9 @@ class MetadataTest(tf.test.TestCase):
       ]
       m._store = mock_store
 
-      input_one = types.TfxArtifact(type_name='ExamplesPath')
+      input_one = types.Artifact(type_name='ExamplesPath')
       input_one.id = 1
-      input_two = types.TfxArtifact(type_name='ExamplesPath')
+      input_two = types.Artifact(type_name='ExamplesPath')
       input_two.id = 2
 
       input_dict = {
@@ -316,9 +316,9 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      input_artifact = types.Artifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')
+      output_artifact = types.Artifact(type_name='MyOutputArtifact')
       output_artifact.uri = 'my/uri'
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
@@ -337,9 +337,9 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.TfxArtifact(type_name='ExamplesPath')
+      input_artifact = types.Artifact(type_name='ExamplesPath')
       m.publish_artifacts([input_artifact])
-      output_artifact = types.TfxArtifact(type_name='MyOutputArtifact')
+      output_artifact = types.Artifact(type_name='MyOutputArtifact')
       output_artifact.uri = 'my/uri'
       [published_artifact] = m.publish_artifacts([output_artifact])
       output_artifact.artifact = published_artifact

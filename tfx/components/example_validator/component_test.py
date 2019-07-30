@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.example_validator import component
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ExampleValidatorTest(tf.test.TestCase):
@@ -28,9 +28,8 @@ class ExampleValidatorTest(tf.test.TestCase):
   def test_construct(self):
     example_validator = component.ExampleValidator(
         stats=channel.as_channel(
-            [types.TfxArtifact(type_name='ExampleStatisticsPath',
-                               split='eval')]),
-        schema=channel.as_channel([types.TfxArtifact(type_name='SchemaPath')]),
+            [types.Artifact(type_name='ExampleStatisticsPath', split='eval')]),
+        schema=channel.as_channel([types.Artifact(type_name='SchemaPath')]),
     )
     self.assertEqual('ExampleValidationPath',
                      example_validator.outputs.output.type_name)

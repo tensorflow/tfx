@@ -35,7 +35,6 @@
     0.15.
 *   Fixed issue #113 to have consistent type of train_files and eval_files
     passed to trainer user module.
-*   TfxType has been renamed to TfxArtifact.
 *   Fixed issue #185 preventing the Airflow UI from visualizing the component's
     subdag operators and logs.
 *   Fixed issue #201 to make GCP credentials optional.
@@ -55,7 +54,7 @@
     this field instead of 'transformed_examples' going forward.
 *   Trainer can now run without the 'transform_output' input.
 *   Added check for duplicated component ids within a pipeline.
-*   String representations for Channel and TfxArtifact (TfxType) classes were
+*   String representations for Channel and Artifact (TfxType) classes were
     improved.
 *   Updated workshop/setup/setup_demo.sh to fix version incompatibilities
 *   Updated workshop. Added note and instructions to fix issue with GCC
@@ -86,7 +85,8 @@
     have been renamed to "input_config" and "output_config", respectively.
 *   The `base_component.ComponentOutputs` class has been renamed to
     `base_component._PropertyDictWrapper`.
-*   The utils.types.TfxType class has been renamed to utils.types.TfxArtifact.
+*   The tfx.utils.types.TfxType class has been renamed to
+    tfx.types.artifact.Artifact.
 *   The "static_artifact_collection" argument to utils.channel.Channel has been
     renamed to "artifacts".
 *   ArtifactType for artifacts will have two new properties: pipeline_name and

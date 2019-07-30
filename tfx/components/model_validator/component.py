@@ -19,13 +19,13 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ModelValidatorSpec(base_component.ComponentSpec):
@@ -76,7 +76,7 @@ class ModelValidator(base_component.BaseComponent):
     """
     blessing = blessing or channel.Channel(
         type_name='ModelBlessingPath',
-        artifacts=[types.TfxArtifact('ModelBlessingPath')])
+        artifacts=[types.Artifact('ModelBlessingPath')])
     name = name or ''
     spec = ModelValidatorSpec(
         examples=channel.as_channel(examples),

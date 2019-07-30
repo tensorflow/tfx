@@ -21,9 +21,10 @@ import os
 import apache_beam as beam
 import tensorflow as tf
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen.utils import dict_to_example
-from tfx.utils import types
+from tfx.types import artifact_utils
 
 
 @beam.ptransform_fn
@@ -31,7 +32,7 @@ from tfx.utils import types
 @beam.typehints.with_output_types(tf.train.Example)
 def _ParquetToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxArtifact]],
+    input_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read Parquet files and transform to TF examples.
@@ -49,7 +50,7 @@ def _ParquetToExample(  # pylint: disable=invalid-name
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = types.get_single_uri(input_dict['input_base'])
+  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
   parquet_pattern = os.path.join(input_base_uri, split_pattern)
   tf.logging.info(
       'Processing input parquet data {} to TFExample.'.format(parquet_pattern))

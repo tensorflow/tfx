@@ -20,8 +20,8 @@ from __future__ import print_function
 import tensorflow as tf
 from typing import Dict, List, Text
 
+from tfx import types
 from tfx.orchestration import metadata
-from tfx.utils import types
 
 
 class Publisher(object):
@@ -34,11 +34,10 @@ class Publisher(object):
   def __init__(self, metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
 
-  def publish_execution(self, execution_id: int,
-                        input_dict: Dict[Text, List[types.TfxArtifact]],
-                        output_dict: Dict[Text, List[types.TfxArtifact]],
-                        use_cached_results: bool
-                       ) -> Dict[Text, List[types.TfxArtifact]]:
+  def publish_execution(
+      self, execution_id: int, input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      use_cached_results: bool) -> Dict[Text, List[types.Artifact]]:
     """Publishes a component execution to metadata.
 
     This function will do two things:
