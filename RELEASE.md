@@ -24,6 +24,8 @@
 *   Introduced the experimental InteractiveContext environment for iterative
     notebook development, as well as an example Chicago Taxi notebook
     in this environment.
+*   Introduced concepts.md, to document and clarify core concepts that TFX
+    defines, implements and utilizes.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on
