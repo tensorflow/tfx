@@ -21,10 +21,10 @@ import copy
 import os
 import mock
 import tensorflow as tf
+from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class BaseDriverTest(tf.test.TestCase):
@@ -35,7 +35,7 @@ class BaseDriverTest(tf.test.TestCase):
         'input_data':
             channel.Channel(
                 type_name='input_data',
-                artifacts=[types.TfxArtifact(type_name='input_data')])
+                artifacts=[types.Artifact(type_name='input_data')])
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -52,12 +52,12 @@ class BaseDriverTest(tf.test.TestCase):
             channel.Channel(
                 type_name='output_data',
                 artifacts=[
-                    types.TfxArtifact(type_name='output_data', split='split')
+                    types.Artifact(type_name='output_data', split='split')
                 ])
     }
     self._input_artifacts = channel.unwrap_channel_dict(self._input_dict)
     self._output_artifacts = {
-        'output_data': [types.TfxArtifact(type_name='OutputType')],
+        'output_data': [types.Artifact(type_name='OutputType')],
     }
     self._exec_properties = {
         'key': 'value',
@@ -72,15 +72,13 @@ class BaseDriverTest(tf.test.TestCase):
         'input_a':
             channel.Channel(
                 type_name='input_a',
-                artifacts=[types.TfxArtifact(type_name='input_a')])
+                artifacts=[types.Artifact(type_name='input_a')])
     }
     output_dict = {
         'output_a':
             channel.Channel(
                 type_name='output_a',
-                artifacts=[
-                    types.TfxArtifact(type_name='output_a', split='split')
-                ])
+                artifacts=[types.Artifact(type_name='output_a', split='split')])
     }
     execution_id = 1
     exec_properties = copy.deepcopy(self._exec_properties)
@@ -120,15 +118,13 @@ class BaseDriverTest(tf.test.TestCase):
         'input_a':
             channel.Channel(
                 type_name='input_a',
-                artifacts=[types.TfxArtifact(type_name='input_a')])
+                artifacts=[types.Artifact(type_name='input_a')])
     }
     output_dict = {
         'output_a':
             channel.Channel(
                 type_name='output_a',
-                artifacts=[
-                    types.TfxArtifact(type_name='output_a', split='split')
-                ])
+                artifacts=[types.Artifact(type_name='output_a', split='split')])
     }
     execution_id = 1
     exec_properties = copy.deepcopy(self._exec_properties)
@@ -167,7 +163,7 @@ class BaseDriverTest(tf.test.TestCase):
   def test_verify_input_artifacts_not_exists(self):
     with self.assertRaises(RuntimeError):
       base_driver._verify_input_artifacts(
-          {'artifact': [types.TfxArtifact(type_name='input_data')]})
+          {'artifact': [types.Artifact(type_name='input_data')]})
 
 
 if __name__ == '__main__':

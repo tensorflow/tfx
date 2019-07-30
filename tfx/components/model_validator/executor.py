@@ -22,10 +22,11 @@ import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx.utils import types
 
 # Path to store model eval results for validation.
 CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model/'
@@ -129,8 +130,8 @@ class Executor(base_executor.BaseExecutor):
       tf.logging.info('Current model worse than blessed model.')
       return False
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Validate current model against last blessed model.
 
@@ -151,11 +152,12 @@ class Executor(base_executor.BaseExecutor):
     self._temp_path = self._get_tmp_dir()
     tf.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 
-    eval_examples_uri = types.get_split_uri(input_dict['examples'], 'eval')
-    blessing = types.get_single_instance(output_dict['blessing'])
+    eval_examples_uri = artifact_utils.get_split_uri(input_dict['examples'],
+                                                     'eval')
+    blessing = artifact_utils.get_single_instance(output_dict['blessing'])
 
     # Current model.
-    current_model = types.get_single_instance(input_dict['model'])
+    current_model = artifact_utils.get_single_instance(input_dict['model'])
     tf.logging.info('Using {} as current model.'.format(current_model.uri))
     blessing.set_string_custom_property('current_model', current_model.uri)
     blessing.set_int_custom_property('current_model_id', current_model.id)

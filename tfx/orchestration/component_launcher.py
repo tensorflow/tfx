@@ -21,13 +21,13 @@ import os
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from ml_metadata.proto import metadata_store_pb2
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ComponentLauncher(object):
@@ -89,8 +89,8 @@ class ComponentLauncher(object):
 
   # TODO(jyzhao): consider returning an execution result.
   def _run_executor(self, execution_id: int,
-                    input_dict: Dict[Text, List[types.TfxArtifact]],
-                    output_dict: Dict[Text, List[types.TfxArtifact]],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
     tf.logging.info('Run executor for %s', self._component_info.component_id)
@@ -108,8 +108,8 @@ class ComponentLauncher(object):
     executor.Do(input_dict, output_dict, exec_properties)
 
   def _run_publisher(self, use_cached_results: bool, execution_id: int,
-                     input_dict: Dict[Text, List[types.TfxArtifact]],
-                     output_dict: Dict[Text, List[types.TfxArtifact]]) -> None:
+                     input_dict: Dict[Text, List[types.Artifact]],
+                     output_dict: Dict[Text, List[types.Artifact]]) -> None:
     """Publish execution result to ml metadata."""
     tf.logging.info('Run publisher for %s', self._component_info.component_id)
 

@@ -18,18 +18,18 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.trainer import component
 from tfx.proto import trainer_pb2
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    transformed_examples = types.TfxArtifact(type_name='ExamplesPath')
-    transform_output = types.TfxArtifact(type_name='TransformPath')
-    schema = types.TfxArtifact(type_name='SchemaPath')
+    transformed_examples = types.Artifact(type_name='ExamplesPath')
+    transform_output = types.Artifact(type_name='TransformPath')
+    schema = types.Artifact(type_name='SchemaPath')
     trainer = component.Trainer(
         module_file='/path/to/module/file',
         examples=channel.as_channel([transformed_examples]),
@@ -40,8 +40,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('ModelExportPath', trainer.outputs.output.type_name)
 
   def test_construct_without_transform_output(self):
-    transformed_examples = types.TfxArtifact(type_name='ExamplesPath')
-    schema = types.TfxArtifact(type_name='SchemaPath')
+    transformed_examples = types.Artifact(type_name='ExamplesPath')
+    schema = types.Artifact(type_name='SchemaPath')
     trainer = component.Trainer(
         module_file='/path/to/module/file',
         examples=channel.as_channel([transformed_examples]),

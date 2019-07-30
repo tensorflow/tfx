@@ -20,12 +20,13 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import pusher_pb2
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx.utils import types
 from google.protobuf import json_format
 
 
@@ -47,8 +48,8 @@ class Executor(base_executor.BaseExecutor):
   please refer to https://www.tensorflow.org/tfx/guide/serving.
   """
 
-  def CheckBlessing(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-                    output_dict: Dict[Text, List[types.TfxArtifact]]) -> bool:
+  def CheckBlessing(self, input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]]) -> bool:
     """Check that model is blessed by upstream ModelValidator, or update output.
 
     Args:
@@ -62,8 +63,9 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if the model is blessed by validator.
     """
-    model_blessing_uri = types.get_single_uri(input_dict['model_blessing'])
-    model_push = types.get_single_instance(output_dict['model_push'])
+    model_blessing_uri = artifact_utils.get_single_uri(
+        input_dict['model_blessing'])
+    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
     if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
@@ -71,8 +73,8 @@ class Executor(base_executor.BaseExecutor):
       return False
     return True
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Push model to target directory if blessed.
 
@@ -95,9 +97,10 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
     if not self.CheckBlessing(input_dict, output_dict):
       return
-    model_push = types.get_single_instance(output_dict['model_push'])
+    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     model_push_uri = model_push.uri
-    model_export = types.get_single_instance(input_dict['model_export'])
+    model_export = artifact_utils.get_single_instance(
+        input_dict['model_export'])
     model_export_uri = model_export.uri
     tf.logging.info('Model pushing.')
     # Copy the model we are pushing into

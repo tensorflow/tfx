@@ -21,9 +21,10 @@ import os
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 # Default file name for generated schema file.
 _DEFAULT_FILE_NAME = 'schema.pbtxt'
@@ -32,8 +33,8 @@ _DEFAULT_FILE_NAME = 'schema.pbtxt'
 class Executor(base_executor.BaseExecutor):
   """Generic TFX schema_gen executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow SchemaGen executor entrypoint.
 
@@ -54,9 +55,10 @@ class Executor(base_executor.BaseExecutor):
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
     train_stats_uri = io_utils.get_only_uri_in_dir(
-        types.get_split_uri(input_dict['stats'], 'train'))
+        artifact_utils.get_split_uri(input_dict['stats'], 'train'))
     output_uri = os.path.join(
-        types.get_single_uri(output_dict['output']), _DEFAULT_FILE_NAME)
+        artifact_utils.get_single_uri(output_dict['output']),
+        _DEFAULT_FILE_NAME)
 
     infer_feature_shape = False
     tf.logging.info('Infering schema from statistics.')

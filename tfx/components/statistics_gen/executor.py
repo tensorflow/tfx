@@ -25,9 +25,10 @@ from tensorflow_data_validation.coders import tf_example_decoder
 from tensorflow_data_validation.statistics import stats_options as options
 from typing import Any, Dict, List, Text
 from tensorflow_metadata.proto.v0 import statistics_pb2
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 # Default file name for stats generated.
 _DEFAULT_FILE_NAME = 'stats_tfrecord'
@@ -44,8 +45,8 @@ class Executor(base_executor.BaseExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L75.
   """
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Computes stats for each split of input using tensorflow_data_validation.
 
@@ -70,7 +71,7 @@ class Executor(base_executor.BaseExecutor):
       for split, instance in split_to_instance.items():
         tf.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(instance.uri)
-        output_uri = types.get_split_uri(output_dict['output'], split)
+        output_uri = artifact_utils.get_split_uri(output_dict['output'], split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         _ = (
             p

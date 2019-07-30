@@ -18,11 +18,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.statistics_gen import executor
 from tfx.utils import channel
-from tfx.utils import types
 
 
 class StatisticsGenSpec(base_component.ComponentSpec):
@@ -64,8 +64,9 @@ class StatisticsGen(base_component.BaseComponent):
     output = output or channel.Channel(
         type_name='ExampleStatisticsPath',
         artifacts=[
-            types.TfxArtifact('ExampleStatisticsPath', split=split)
-            for split in types.DEFAULT_EXAMPLE_SPLITS])
+            types.Artifact('ExampleStatisticsPath', split=split)
+            for split in types.DEFAULT_EXAMPLE_SPLITS
+        ])
     spec = StatisticsGenSpec(
         input_data=channel.as_channel(input_data),
         output=output)

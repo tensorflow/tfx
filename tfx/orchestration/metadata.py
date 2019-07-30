@@ -28,8 +28,8 @@ from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
-from tfx.utils.types import ARTIFACT_STATE_PUBLISHED
-from tfx.utils.types import TfxArtifact
+from tfx.types.artifact import Artifact
+from tfx.types.artifact import ARTIFACT_STATE_PUBLISHED
 
 # Maximum number of executions we look at for previous result.
 MAX_EXECUTIONS_FOR_CACHE = 100
@@ -146,8 +146,9 @@ class Metadata(object):
           (artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(self, raw_artifact_list: List[TfxArtifact]
-                       ) -> List[metadata_store_pb2.Artifact]:
+  def publish_artifacts(
+      self,
+      raw_artifact_list: List[Artifact]) -> List[metadata_store_pb2.Artifact]:
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
     for raw_artifact in raw_artifact_list:
@@ -275,10 +276,10 @@ class Metadata(object):
   def publish_execution(
       self,
       execution_id: int,
-      input_dict: Dict[Text, List[TfxArtifact]],
-      output_dict: Dict[Text, List[TfxArtifact]],
+      input_dict: Dict[Text, List[Artifact]],
+      output_dict: Dict[Text, List[Artifact]],
       state: Optional[Text] = EXECUTION_STATE_COMPLETE,
-  ) -> Dict[Text, List[TfxArtifact]]:
+  ) -> Dict[Text, List[Artifact]]:
     """Publish an execution with input and output artifacts info.
 
     Args:
@@ -340,9 +341,9 @@ class Metadata(object):
     tf.logging.info('Published execution with final outputs %s' % output_dict)
     return output_dict
 
-  def _get_cached_execution_id(self, input_dict: Dict[Text, List[TfxArtifact]],
-                               candidate_execution_ids: List[int]
-                              ) -> Optional[int]:
+  def _get_cached_execution_id(
+      self, input_dict: Dict[Text, List[Artifact]],
+      candidate_execution_ids: List[int]) -> Optional[int]:
     """Gets common execution ids that are related to all the artifacts in input.
 
     Args:
@@ -385,11 +386,10 @@ class Metadata(object):
     currrent_execution.id = target_execution.id
     return currrent_execution == target_execution
 
-  def previous_execution(self, input_artifacts: Dict[Text, List[TfxArtifact]],
-                         exec_properties: Dict[Text, Any],
-                         pipeline_info: data_types.PipelineInfo,
-                         component_info: data_types.ComponentInfo
-                        ) -> Optional[int]:
+  def previous_execution(
+      self, input_artifacts: Dict[Text, List[Artifact]],
+      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo) -> Optional[int]:
     """Gets eligible previous execution that takes the same inputs.
 
     An eligible execution should take the same inputs, execution properties and
@@ -430,12 +430,12 @@ class Metadata(object):
 
   # TODO(b/136031301): This should be merged with previous_run.
   def fetch_previous_result_artifacts(
-      self, output_dict: Dict[Text, List[TfxArtifact]],
-      execution_id: int) -> Dict[Text, List[TfxArtifact]]:
+      self, output_dict: Dict[Text, List[Artifact]],
+      execution_id: int) -> Dict[Text, List[Artifact]]:
     """Fetches output with artifact ids produced by a previous run.
 
     Args:
-      output_dict: a dict from name to a list of output TfxArtifact objects.
+      output_dict: a dict from name to a list of output Artifact objects.
       execution_id: the id of the execution that produced the outputs.
 
     Returns:
@@ -465,7 +465,7 @@ class Metadata(object):
 
   def search_artifacts(self, artifact_name: Text, pipeline_name: Text,
                        run_id: Text,
-                       producer_component_id: Text) -> List[TfxArtifact]:
+                       producer_component_id: Text) -> List[Artifact]:
     """Search artifacts that matches given info.
 
     Args:
@@ -477,7 +477,7 @@ class Metadata(object):
       producer_component_id: the id of the component that produces the artifact
 
     Returns:
-      A list of TfxArtifacts that matches the given info
+      A list of Artifacts that matches the given info
 
     Raises:
       RuntimeError: when no matching execution is found given producer info.
@@ -502,7 +502,7 @@ class Metadata(object):
 
     result_artifacts = []
     for a in self._store.get_artifacts_by_id(list(matching_artifact_ids)):
-      tfx_artifact = TfxArtifact(a.properties['type_name'].string_value)
+      tfx_artifact = Artifact(a.properties['type_name'].string_value)
       tfx_artifact.artifact = a
       result_artifacts.append(tfx_artifact)
     return result_artifacts

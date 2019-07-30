@@ -21,12 +21,14 @@ import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
+
+from google.protobuf import json_format
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.proto import evaluator_pb2
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx.utils import types
-from google.protobuf import json_format
 
 
 class Executor(base_executor.BaseExecutor):
@@ -53,8 +55,8 @@ class Executor(base_executor.BaseExecutor):
       result.append(tfma.slicer.SingleSliceSpec())
     return result
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Runs a batch job to evaluate the eval_model against the given input.
 
@@ -81,7 +83,8 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     # Extract input artifacts
-    model_exports_uri = types.get_single_uri(input_dict['model_exports'])
+    model_exports_uri = artifact_utils.get_single_uri(
+        input_dict['model_exports'])
 
     feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
     json_format.Parse(exec_properties['feature_slicing_spec'],
@@ -89,7 +92,7 @@ class Executor(base_executor.BaseExecutor):
     slice_spec = self._get_slice_spec_from_feature_slicing_spec(
         feature_slicing_spec)
 
-    output_uri = types.get_single_uri(output_dict['output'])
+    output_uri = artifact_utils.get_single_uri(output_dict['output'])
 
     eval_model_path = path_utils.eval_model_path(model_exports_uri)
 
@@ -103,7 +106,7 @@ class Executor(base_executor.BaseExecutor):
       (pipeline
        | 'ReadData' >> beam.io.ReadFromTFRecord(
            file_pattern=io_utils.all_files_pattern(
-               types.get_split_uri(input_dict['examples'], 'eval')))
+               artifact_utils.get_split_uri(input_dict['examples'], 'eval')))
        |
        'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
            eval_shared_model=eval_shared_model,

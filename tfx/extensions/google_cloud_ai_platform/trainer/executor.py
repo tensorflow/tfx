@@ -18,10 +18,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform import runner
-from tfx.utils import types
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -29,8 +29,8 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 class Executor(base_executor.BaseExecutor):
   """Start a trainer job on Google Cloud AI Platform (GAIP)."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]):
     """Starts a trainer job on Google Cloud AI Platform.
 

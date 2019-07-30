@@ -21,8 +21,8 @@ import os
 import tempfile
 import tensorflow as tf
 import tensorflow_transform as tft
+from tfx import types
 from tfx.components.transform import executor
-from tfx.utils import types
 
 
 # TODO(b/122478841): Add more detailed tests.
@@ -40,24 +40,23 @@ class ExecutorTest(tf.test.TestCase):
     return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
-    train_artifact = types.TfxArtifact('ExamplesPath', split='train')
+    train_artifact = types.Artifact('ExamplesPath', split='train')
     train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
-    eval_artifact = types.TfxArtifact('ExamplesPath', split='eval')
+    eval_artifact = types.Artifact('ExamplesPath', split='eval')
     eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
-    schema_artifact = types.TfxArtifact('Schema')
+    schema_artifact = types.Artifact('Schema')
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     module_file = os.path.join(source_data_dir,
                                'module_file/transform_module.py')
 
-    transformed_output = types.TfxArtifact('TransformPath')
+    transformed_output = types.Artifact('TransformPath')
     transformed_output.uri = os.path.join(output_data_dir, 'transformed_output')
-    transformed_train_examples = types.TfxArtifact('ExamplesPath',
-                                                   split='train')
+    transformed_train_examples = types.Artifact('ExamplesPath', split='train')
     transformed_train_examples.uri = os.path.join(output_data_dir, 'train')
-    transformed_eval_examples = types.TfxArtifact('ExamplesPath', split='eval')
+    transformed_eval_examples = types.Artifact('ExamplesPath', split='eval')
     transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    temp_path_output = types.TfxArtifact('TempPath')
+    temp_path_output = types.Artifact('TempPath')
     temp_path_output.uri = tempfile.mkdtemp()
 
     input_dict = {
@@ -104,7 +103,7 @@ class ExecutorTest(tf.test.TestCase):
      exec_properties) = self._make_base_do_params(source_data_dir,
                                                   output_data_dir)
 
-    output_cache_artifact = types.TfxArtifact('OutputCache')
+    output_cache_artifact = types.Artifact('OutputCache')
     output_cache_artifact.uri = os.path.join(output_data_dir, 'CACHE/')
 
     output_dict['cache_output_path'] = [output_cache_artifact]
@@ -122,10 +121,10 @@ class ExecutorTest(tf.test.TestCase):
      exec_properties) = self._make_base_do_params(source_data_dir,
                                                   output_data_dir)
 
-    input_cache_artifact = types.TfxArtifact('InputCache')
+    input_cache_artifact = types.Artifact('InputCache')
     input_cache_artifact.uri = output_cache_artifact.uri
 
-    output_cache_artifact = types.TfxArtifact('OutputCache')
+    output_cache_artifact = types.Artifact('OutputCache')
     output_cache_artifact.uri = os.path.join(output_data_dir, 'CACHE/')
 
     input_dict['cache_input_path'] = [input_cache_artifact]

@@ -19,9 +19,9 @@ from __future__ import print_function
 
 import copy
 import tensorflow as tf
+from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
-from tfx.utils import types
 
 
 class PublisherTest(tf.test.TestCase):
@@ -30,10 +30,10 @@ class PublisherTest(tf.test.TestCase):
     self._mock_metadata = tf.test.mock.Mock()
     self._mock_metadata.publish_execution = tf.test.mock.Mock()
     self._input_dict = {
-        'input_data': [types.TfxArtifact(type_name='InputType')],
+        'input_data': [types.Artifact(type_name='InputType')],
     }
     self._output_dict = {
-        'output_data': [types.TfxArtifact(type_name='OutputType')],
+        'output_data': [types.Artifact(type_name='OutputType')],
     }
     self._execution_id = 100
 

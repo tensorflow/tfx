@@ -21,8 +21,8 @@ import apache_beam as beam
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from google.cloud import bigquery
+from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
-from tfx.utils import types
 
 
 class _BigQueryConverter(object):
@@ -76,7 +76,7 @@ def _ReadFromBigQuery(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(tf.train.Example)
 def _BigQueryToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxArtifact]],  # pylint: disable=unused-argument
+    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to TF examples.

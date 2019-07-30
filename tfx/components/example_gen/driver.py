@@ -21,12 +21,12 @@ import os
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from google.protobuf import json_format
+from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.utils import channel
 from tfx.utils import io_utils
-from tfx.utils import types
 
 # Fingerprint custom property.
 FINGERPRINT = 'input_fingerprint'
@@ -43,9 +43,9 @@ class Driver(base_driver.BaseDriver):
   # migration to go/tfx-oss-artifacts-passing finishes.
   def _prepare_input_for_processing(
       self,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
+      input_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any],
-  ) -> Dict[Text, List[types.TfxArtifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Resolves artifacts for external inputs."""
     input_config = example_gen_pb2.Input()
     json_format.Parse(exec_properties['input_config'], input_config)
@@ -100,7 +100,7 @@ class Driver(base_driver.BaseDriver):
       exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
-  ) -> Dict[Text, List[types.TfxArtifact]]:
+  ) -> Dict[Text, List[types.Artifact]]:
     """Overrides BaseDriver.resolve_input_artifacts()."""
     del driver_args  # unused
     return self._prepare_input_for_processing(

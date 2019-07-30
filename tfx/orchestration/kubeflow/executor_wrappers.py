@@ -28,9 +28,10 @@ from typing import Any, Dict, List, Text
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import import_utils
-from tfx.utils import types
 
 
 def parse_tfx_type(json_str: Text):
@@ -39,7 +40,7 @@ def parse_tfx_type(json_str: Text):
 
   tfx_types = []
   for json_artifact in json_artifact_list:
-    tfx_type = types.TfxArtifact.parse_from_json_dict(json_artifact)
+    tfx_type = types.Artifact.parse_from_json_dict(json_artifact)
     tfx_types.append(tfx_type)
 
   return tfx_types
@@ -57,12 +58,12 @@ class KubeflowExecutorWrapper(utils.with_metaclass(abc.ABCMeta), object):
       self,
       executor_class_path: Text,
       name: Text,
-      input_dict: Dict[Text, List[types.TfxArtifact]],
+      input_dict: Dict[Text, List[types.Artifact]],
       outputs: Text,
       exec_properties: Dict[Text, Any],
   ):
     self._input_dict = input_dict
-    self._output_dict = types.parse_tfx_type_dict(outputs)
+    self._output_dict = artifact_utils.parse_artifact_dict(outputs)
     self._component_name = to_snake_case(name)
     self._exec_properties = exec_properties
     self._output_dir = self._exec_properties['output_dir']

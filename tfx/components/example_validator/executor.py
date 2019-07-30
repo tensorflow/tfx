@@ -21,9 +21,10 @@ import os
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from typing import Any, Dict, List, Text
+from tfx import types
 from tfx.components.base import base_executor
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
-from tfx.utils import types
 
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'anomalies.pbtxt'
@@ -32,8 +33,8 @@ DEFAULT_FILE_NAME = 'anomalies.pbtxt'
 class Executor(base_executor.BaseExecutor):
   """TensorFlow ExampleValidator component executor."""
 
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow ExampleValidator executor entrypoint.
 
@@ -58,11 +59,11 @@ class Executor(base_executor.BaseExecutor):
     tf.logging.info('Validating schema against the computed statistics.')
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
-            types.get_single_uri(input_dict['schema'])))
+            artifact_utils.get_single_uri(input_dict['schema'])))
     stats = tfdv.load_statistics(
         io_utils.get_only_uri_in_dir(
-            types.get_split_uri(input_dict['stats'], 'eval')))
-    output_uri = types.get_single_uri(output_dict['output'])
+            artifact_utils.get_split_uri(input_dict['stats'], 'eval')))
+    output_uri = artifact_utils.get_single_uri(output_dict['output'])
     anomalies = tfdv.validate_statistics(stats, schema)
     io_utils.write_pbtxt_file(
         os.path.join(output_uri, DEFAULT_FILE_NAME), anomalies)
