@@ -217,6 +217,8 @@ git clone https://github.com/tensorflow/tfx.git
 # Use same release branch of 'tfx==0.13.0' to discover examples and setup.
 cd ~/tfx/tfx
 git checkout -f origin/r0.13
+pip uninstall setuptools -y && pip install setuptools
+pip install httplib2==0.12.0
 cd ~/tfx/tfx/tfx/examples/workshop/setup
 ./setup_demo.sh
 ```
