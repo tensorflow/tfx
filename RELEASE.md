@@ -91,6 +91,8 @@
     renamed to "artifacts".
 *   ArtifactType for artifacts will have two new properties: pipeline_name and
     producer_component.
+*   The ARTIFACT_STATE_* constants were consolidated into the
+    types.artifacts.ArtifactState enum class.
 *   pipeline_root passed to pipeline.Pipeline is now the root to the running
     pipeline instead of the root of all pipelines.
 *   airflow_runner.AirflowDAGRunner is renamed to

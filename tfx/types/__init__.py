@@ -14,9 +14,4 @@
 """Subpackage for TFX pipeline types."""
 
 from tfx.types.artifact import Artifact
-from tfx.types.artifact import ARTIFACT_STATE_DELETED
-from tfx.types.artifact import ARTIFACT_STATE_MARKED_FOR_DELETION
-from tfx.types.artifact import ARTIFACT_STATE_MISSING
-from tfx.types.artifact import ARTIFACT_STATE_PENDING
-from tfx.types.artifact import ARTIFACT_STATE_PUBLISHED
 from tfx.types.artifact import DEFAULT_EXAMPLE_SPLITS

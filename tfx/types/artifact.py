@@ -25,16 +25,21 @@ from typing import Any, Dict, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import json_format
 
-# Indicating there is an execution producing it.
-ARTIFACT_STATE_PENDING = 'pending'
-# Indicating artifact ready to be consumed.
-ARTIFACT_STATE_PUBLISHED = 'published'
-# Indicating no data in artifact uri although it's not marked as deleted.
-ARTIFACT_STATE_MISSING = 'missing'
-# Indicating artifact should be garbage collected.
-ARTIFACT_STATE_MARKED_FOR_DELETION = 'MARKED_FOR_DELETION'
-# Indicating artifact being garbage collected.
-ARTIFACT_STATE_DELETED = 'deleted'
+
+class ArtifactState(object):
+  """Enumeration of possible Artifact states."""
+
+  # Indicates that there is a pending execution producing the artifact.
+  PENDING = 'pending'
+  # Indicates that the artifact ready to be consumed.
+  PUBLISHED = 'published'
+  # Indicates that the no data at the artifact uri, though the artifact is not
+  # marked as deleted.
+  MISSING = 'missing'
+  # Indicates that the artifact should be garbage collected.
+  MARKED_FOR_DELETION = 'MARKED_FOR_DELETION'
+  # Indicates that the artifact has been garbage collected.
+  DELETED = 'deleted'
 
 # Default split of examples data.
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']

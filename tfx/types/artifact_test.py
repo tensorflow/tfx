@@ -50,8 +50,8 @@ class ArtifactTest(tf.test.TestCase):
     instance.type_id = 2
     self.assertEqual(2, instance.type_id)
 
-    instance.state = artifact.ARTIFACT_STATE_DELETED
-    self.assertEqual(artifact.ARTIFACT_STATE_DELETED, instance.state)
+    instance.state = artifact.ArtifactState.DELETED
+    self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
 
     instance.split = ''
     self.assertEqual('', instance.split)
