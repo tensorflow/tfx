@@ -34,12 +34,8 @@ class MetadataTest(tf.test.TestCase):
     self._connection_config.sqlite.SetInParent()
     self._component_info = data_types.ComponentInfo(
         component_type='a.b.c', component_id='my_component')
-    self._component_info2 = data_types.ComponentInfo(
-        component_type='a.b.d', component_id='my_component_2')
     self._pipeline_info = data_types.PipelineInfo(
         pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
-    self._pipeline_info2 = data_types.PipelineInfo(
-        pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id2')
 
   def test_empty_artifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -352,32 +348,6 @@ class MetadataTest(tf.test.TestCase):
       output_dict = {'output': [output_artifact]}
       m.publish_execution(
           eid, input_dict, output_dict, state=metadata.EXECUTION_STATE_CACHED)
-
-  def test_get_execution_states(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      eid = m.register_execution(
-          exec_properties={},
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info)
-      m.publish_execution(eid, {}, {})
-      m.register_execution(
-          exec_properties={},
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info2)
-      m.register_execution(
-          exec_properties={},
-          pipeline_info=self._pipeline_info2,
-          component_info=self._component_info)
-      states = m.get_execution_states(
-          pipeline_name=self._pipeline_info.pipeline_name,
-          run_id=self._pipeline_info.run_id)
-      self.assertDictEqual(
-          {
-              self._component_info.component_id:
-                  metadata.EXECUTION_STATE_COMPLETE,
-              self._component_info2.component_id:
-                  metadata.EXECUTION_STATE_NEW,
-          }, states)
 
 
 if __name__ == '__main__':

@@ -60,12 +60,6 @@ class BeamHandler(base_handler.BaseHandler):
 
     self._save_pipeline(pipeline_args)
 
-    if overwrite:
-      click.echo('Pipeline {} updated successfully.'.format(
-          pipeline_args[labels.PIPELINE_NAME]))
-    click.echo('Pipeline {} created successfully.'.format(
-        pipeline_args[labels.PIPELINE_NAME]))
-
   def update_pipeline(self) -> None:
     """Updates pipeline in Beam."""
     # Set overwrite to true for update to make sure pipeline exists.
@@ -96,8 +90,6 @@ class BeamHandler(base_handler.BaseHandler):
 
     # Delete pipeline folder.
     io_utils.delete_dir(handler_pipeline_path)
-    click.echo('Pipeline {} deleted successfully.'.format(
-        self.flags_dict[labels.PIPELINE_NAME]))
 
   def compile_pipeline(self) -> Dict[Text, Any]:
     """Compiles pipeline in Beam."""

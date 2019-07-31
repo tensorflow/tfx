@@ -23,7 +23,6 @@ from typing import Text
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.utils.dsl_utils import external_input
@@ -33,13 +32,10 @@ _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-# Sqlite ML-metadata db path.
-_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
-                              'metadata.db')
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
+                     data_root: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -57,17 +53,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=[example_gen, statistics_gen, infer_schema],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
       additional_pipeline_args={},
   )
 
 
+# To run this pipeline from the python CLI:
+#   $python taxi_pipeline_beam.py
 if __name__ == '__main__':
   tf.logging.set_verbosity(tf.logging.INFO)
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
-          data_root=_data_root,
-          metadata_path=_metadata_path))
+          data_root=_data_root))
