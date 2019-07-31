@@ -44,7 +44,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   """
   # TODO(b/132286477): Update comments after finalizing return types.
 
-  def __init__(self, flags_dict):
+  def __init__(self, flags_dict: Dict[Text, Any]):
     self.flags_dict = flags_dict
 
   @abc.abstractmethod

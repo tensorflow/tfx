@@ -31,12 +31,14 @@ from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
 
+# TODO(b/132286477): Change generated api methods to client methods after SDK is
+# updated.
 class KubeflowHandler(base_handler.BaseHandler):
   """Helper methods for Kubeflow Handler."""
 
   # TODO(b/132286477): Update comments after updating methods.
 
-  def __init__(self, flags_dict):
+  def __init__(self, flags_dict: Dict[Text, Any]):
     self.flags_dict = flags_dict
     self._handler_home_dir = self._get_handler_home('kubeflow_pipelines')
 
@@ -49,9 +51,9 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def create_pipeline(self, overwrite: bool = False) -> None:
     """Creates pipeline in Kubeflow."""
-    self._check_pipeline_dsl_path()
-    pipeline_args = self._extract_pipeline_args()
-    self._check_pipeline_package_path()
+
+    # Compile pipeline to check if pipeline_args are extracted successfully.
+    pipeline_args = self.compile_pipeline()
 
     # Path to pipeline folder in kubeflow.
     handler_pipeline_path = self._get_handler_pipeline_path(
@@ -84,15 +86,47 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    pass
+    response = self._client.list_pipelines()
+    if response.pipelines:
+      click.echo(response.pipelines)
+    else:
+      click.echo('No pipelines to display.')
 
   def delete_pipeline(self) -> None:
     """Delete pipeline in Kubeflow."""
-    pass
+    # Check if pipeline exists.
+    try:
+      pipeline_id = self._get_pipeline_id(self.flags_dict[labels.PIPELINE_NAME])
+      self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
+    except (IOError, RuntimeError):
+      sys.exit('Pipeline {} does not exist.'.format(
+          self.flags_dict[labels.PIPELINE_NAME]))
 
-  def compile_pipeline(self) -> None:
+    # Path to pipeline folder.
+    handler_pipeline_path = self._get_handler_pipeline_path(
+        self.flags_dict[labels.PIPELINE_NAME])
+
+    # Delete pipeline for kfp server.
+    pipeline_id = self._get_pipeline_id(self.flags_dict[labels.PIPELINE_NAME])
+    self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
+
+    # Delete pipeline for home directory.
+    io_utils.delete_dir(handler_pipeline_path)
+
+    click.echo('Pipeline ' + self.flags_dict[labels.PIPELINE_NAME] +
+               ' deleted successfully.')
+
+  def compile_pipeline(self) -> Dict[Text, Any]:
     """Compiles pipeline in Kubeflow."""
-    pass
+    self._check_pipeline_dsl_path()
+    pipeline_args = self._extract_pipeline_args()
+    self._check_pipeline_package_path()
+    if not pipeline_args:
+      sys.exit('Unable to compile pipeline. Check your pipeline dsl.')
+    click.echo('Pipeline compiled successfully.')
+    click.echo('Pipeline package path: {}'.format(
+        self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
+    return pipeline_args
 
   def create_run(self) -> None:
     """Runs a pipeline in Kubeflow."""
@@ -133,23 +167,19 @@ class KubeflowHandler(base_handler.BaseHandler):
     handler_pipeline_path = self._get_handler_pipeline_path(
         pipeline_args[labels.PIPELINE_NAME])
 
-    # Path to pipeline_args.json .
-    pipeline_args_path = os.path.join(handler_pipeline_path,
-                                      'pipeline_args.json')
-
     # When updating pipeline delete pipeline from server and home dir.
     if tf.io.gfile.exists(handler_pipeline_path):
 
-      # Get pipeline_id from pipeline_args.json
-      with open(pipeline_args_path, 'r') as f:
-        pipeline_args = json.load(f)
-      pipeline_id = pipeline_args[labels.PIPELINE_ID]
+      # Delete pipeline for kfp server.
+      pipeline_id = self._get_pipeline_id(pipeline_args[labels.PIPELINE_NAME])
+      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
 
       # Delete pipeline for home directory.
       io_utils.delete_dir(handler_pipeline_path)
 
-      # Delete pipeline for kfp server.
-      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
+      # Path to pipeline_args.json .
+    pipeline_args_path = os.path.join(handler_pipeline_path,
+                                      'pipeline_args.json')
 
     # Now upload pipeline to server.
     upload_response = self._client.upload_pipeline(
@@ -173,3 +203,16 @@ class KubeflowHandler(base_handler.BaseHandler):
     if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_PACKAGE_PATH]):
       sys.exit('Pipeline package not found: {}'.format(
           self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
+
+  def _get_pipeline_id(self, pipeline_name: Text) -> Text:
+    # Path to pipeline folder in Kubeflow.
+    handler_pipeline_path = self._get_handler_pipeline_path(pipeline_name)
+
+    # Path to pipeline_args.json .
+    pipeline_args_path = os.path.join(handler_pipeline_path,
+                                      'pipeline_args.json')
+    # Get pipeline_id from pipeline_args.json
+    with open(pipeline_args_path, 'r') as f:
+      pipeline_args = json.load(f)
+    pipeline_id = pipeline_args[labels.PIPELINE_ID]
+    return pipeline_id
