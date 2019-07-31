@@ -29,7 +29,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
 from tfx.types.artifact import Artifact
-from tfx.types.artifact import ARTIFACT_STATE_PUBLISHED
+from tfx.types.artifact import ArtifactState
 
 # Maximum number of executions we look at for previous result.
 MAX_EXECUTIONS_FOR_CACHE = 100
@@ -155,7 +155,7 @@ class Metadata(object):
       artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
       raw_artifact.set_artifact_type(artifact_type)
       if not raw_artifact.artifact.id:
-        raw_artifact.state = ARTIFACT_STATE_PUBLISHED
+        raw_artifact.state = ArtifactState.PUBLISHED
         [artifact_id] = self._store.put_artifacts([raw_artifact.artifact])
         raw_artifact.id = artifact_id
       artifact_list.append(raw_artifact.artifact)

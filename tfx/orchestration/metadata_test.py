@@ -24,6 +24,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types.artifact import ArtifactState
 
 
 class MetadataTest(tf.test.TestCase):
@@ -117,11 +118,11 @@ class MetadataTest(tf.test.TestCase):
       self.assertListEqual([artifact], m.get_artifacts_by_uri('uri'))
 
       # Test artifact state.
-      m.check_artifact_state(artifact, types.ARTIFACT_STATE_PUBLISHED)
-      m.update_artifact_state(artifact, types.ARTIFACT_STATE_DELETED)
-      m.check_artifact_state(artifact, types.ARTIFACT_STATE_DELETED)
+      m.check_artifact_state(artifact, ArtifactState.PUBLISHED)
+      m.update_artifact_state(artifact, ArtifactState.DELETED)
+      m.check_artifact_state(artifact, ArtifactState.DELETED)
       self.assertRaises(RuntimeError, m.check_artifact_state, artifact,
-                        types.ARTIFACT_STATE_PUBLISHED)
+                        ArtifactState.PUBLISHED)
 
   def test_execution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -182,7 +183,7 @@ class MetadataTest(tf.test.TestCase):
       output_dict = {'output': [output_artifact]}
       m.publish_execution(eid, input_dict, output_dict)
       # Make sure artifacts in output_dict are published.
-      self.assertEqual(types.ARTIFACT_STATE_PUBLISHED, output_artifact.state)
+      self.assertEqual(ArtifactState.PUBLISHED, output_artifact.state)
       # Make sure execution state are changed.
       [execution] = m.store.get_executions_by_id([eid])
       self.assertEqual(metadata.EXECUTION_STATE_COMPLETE,
@@ -260,14 +261,14 @@ class MetadataTest(tf.test.TestCase):
 
       # Test fetch_previous_result_artifacts.
       new_output_artifact = types.Artifact(type_name='ExamplesPath')
-      self.assertNotEqual(types.ARTIFACT_STATE_PUBLISHED,
+      self.assertNotEqual(ArtifactState.PUBLISHED,
                           new_output_artifact.state)
       new_output_dict = {'output': [new_output_artifact]}
       updated_output_dict = m.fetch_previous_result_artifacts(
           new_output_dict, eid)
       previous_artifact = output_artifacts['output'][-1].artifact
       current_artifact = updated_output_dict['output'][-1].artifact
-      self.assertEqual(types.ARTIFACT_STATE_PUBLISHED,
+      self.assertEqual(ArtifactState.PUBLISHED,
                        current_artifact.properties['state'].string_value)
       self.assertEqual(previous_artifact.id, current_artifact.id)
       self.assertEqual(previous_artifact.type_id, current_artifact.type_id)
