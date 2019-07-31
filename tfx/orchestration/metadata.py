@@ -506,3 +506,23 @@ class Metadata(object):
       tfx_artifact.artifact = a
       result_artifacts.append(tfx_artifact)
     return result_artifacts
+
+  def get_execution_states(self, pipeline_name: Text,
+                           run_id: Text) -> Dict[Text, Text]:
+    """Get components execution states.
+
+    Args:
+      pipeline_name: name of the pipeline.
+      run_id: identifier of the target pipeline run.
+
+    Returns:
+      A Dict of component id to its state mapping.
+    """
+    result = {}
+    # TODO(b/138747820): query in a more efficient way.
+    for execution in self._store.get_executions():
+      if (execution.properties['pipeline_name'].string_value == pipeline_name
+          and execution.properties['run_id'].string_value == run_id):
+        result[execution.properties['component_id']
+               .string_value] = execution.properties['state'].string_value
+    return result
