@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago taxi example using TFX on Beam."""
+"""Chicago taxi example using TFX."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,15 +21,30 @@ import os
 import tensorflow as tf
 from typing import Text
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.utils.dsl_utils import external_input
 
+_pipeline_name = 'chicago_taxi_beam_v2'
 
-_pipeline_name = 'chicago_taxi_beam'
+# This example assumes that the taxi data is stored in ~/taxi/data and the
+# taxi utility function is in ~/taxi.  Feel free to customize this as needed.
 _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
+# Python module file to inject customized logic into the TFX components. The
+# Transform and Trainer both require user-defined functions to run successfully.
+_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
+_serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
+
+# Directory and data locations.  This example assumes all of the chicago taxi
+# example code and metadata library is relative to $HOME, but you can store
+# these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 # Sqlite ML-metadata db path.
@@ -45,10 +60,21 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input_base=examples)
 
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
+
+  # Performs anomaly detection based on statistics and data schema.
+  validate_stats = ExampleValidator(
+      stats=statistics_gen.outputs['output'],
+      schema=infer_schema.outputs['output'])
+
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[example_gen],
+      components=[example_gen, statistics_gen, infer_schema, validate_stats],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
