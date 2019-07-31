@@ -38,6 +38,7 @@ class AirflowHandler(base_handler.BaseHandler):
     self._handler_home_dir = self._get_handler_home('airflow')
 
   # TODO(b/132286477): Update comments after updating methods.
+  # TODO(b/136201266): Update log messages similar to beam.
   def create_pipeline(self, overwrite: bool = False):
     """Creates pipeline in Airflow."""
 

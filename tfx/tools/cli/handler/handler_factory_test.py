@@ -77,16 +77,6 @@ class HandlerFactoryTest(tf.test.TestCase):
         str(err.exception), 'Engine {} is not supported.'.format(
             self.flags_dict[labels.ENGINE_FLAG]))
 
-  def _MockSubprocessAirflow(self):
-    return b'absl-py==0.7.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\n'
-
-  @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
-  def test_detect_handler_airflow(self):
-    self.flags_dict[labels.ENGINE_FLAG] = 'auto'
-    self.assertIsInstance(
-        handler_factory.detect_handler(self.flags_dict),
-        airflow_handler.AirflowHandler)
-
   def _MockSubprocessNoEngine(self):
     return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\n'
 
