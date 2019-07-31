@@ -37,14 +37,9 @@ def pipeline_group() -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--path',
-    'pipeline_path',
-    required=True,
-    type=str,
-    help='Path to Python DSL.')
+    '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
 @click.option(
     '--package_path',
-    'package_path',
     type=str,
     help='Path to the pipeline output workflow file.')
 @click.option(
@@ -64,7 +59,7 @@ def pipeline_group() -> None:
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
 def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
-                    endpoint: Text, iap_client_id: Text, package_path: Text,
+                    package_path: Text, endpoint: Text, iap_client_id: Text,
                     namespace: Text) -> None:
   """Command definition to create a pipeline."""
   click.echo('Creating pipeline')
@@ -82,14 +77,9 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--path',
-    'pipeline_path',
-    required=True,
-    type=str,
-    help='Path to Python DSL file')
+    '--pipeline_path', required=True, type=str, help='Path to Python DSL file')
 @click.option(
     '--package_path',
-    'package_path',
     type=str,
     help='Path to the output workflow tar.gz file.')
 @click.option(
@@ -109,7 +99,7 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
 def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
-                    endpoint: Text, iap_client_id: Text, package_path: Text,
+                    package_path: Text, endpoint: Text, iap_client_id: Text,
                     namespace: Text) -> None:
   """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
@@ -127,16 +117,33 @@ def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--name',
-    'pipeline_name',
-    required=True,
+    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+@click.option(
+    '--endpoint',
+    default='',
     type=str,
-    help='Name of the pipeline')
-def delete_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def delete_pipeline(ctx: Context, engine: Text, pipeline_name: Text,
+                    endpoint: Text, iap_client_id: Text,
+                    namespace: Text) -> None:
   """Command definition to delete a pipeline."""
   click.echo('Deleting pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).delete_pipeline()
 
 
@@ -144,10 +151,30 @@ def delete_pipeline(ctx: Context, pipeline_name: Text, engine: Text) -> None:
 @pass_context
 @click.option(
     '--engine', default='auto', type=str, help='orchestrator for pipelines')
-def list_pipelines(ctx: Context, engine: Text) -> None:
+@click.option(
+    '--endpoint',
+    default='',
+    type=str,
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
+                   iap_client_id: Text, namespace: Text) -> None:
   """Command definition to list pipelines."""
   click.echo('Listing all pipelines')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).list_pipelines()
 
 
@@ -157,14 +184,34 @@ def list_pipelines(ctx: Context, engine: Text) -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--path',
-    'pipeline_path',
-    required=True,
+    '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
+@click.option(
+    '--package_path', type=str, help='Path to the output workflow tar.gz file.')
+@click.option(
+    '--endpoint',
+    default='',
     type=str,
-    help='Path to Python DSL.')
-def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text) -> None:
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
+                     package_path: Text, endpoint: Text, iap_client_id: Text,
+                     namespace: Text) -> None:
   """Command definition to create a pipeline."""
   click.echo('Compiling pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
+  ctx.flags_dict[labels.PIPELINE_PACKAGE_PATH] = package_path
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).compile_pipeline()

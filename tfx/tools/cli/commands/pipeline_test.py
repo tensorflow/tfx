@@ -43,18 +43,21 @@ class PipelineTest(tf.test.TestCase):
   # TODO(b/132286477):Change tests after writing default_handler()
   def test_pipeline_create_auto(self):
     result = self.runner.invoke(pipeline_group,
-                                ['create', '--path', 'chicago.py'])
+                                ['create', '--pipeline_path', 'chicago.py'])
     self.assertIn('Creating pipeline', result.output)
 
   def test_pipeline_update(self):
-    result = self.runner.invoke(
-        pipeline_group,
-        ['update', '--path', 'chicago.py', '--engine', 'kubeflow'])
+    result = self.runner.invoke(pipeline_group, [
+        'update', '--pipeline_path', 'chicago.py', '--engine', 'kubeflow',
+        '--package_path', 'chicago.tar.gz', '--iap_client_id', 'fake_id',
+        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+    ])
     self.assertIn('Updating pipeline', result.output)
 
   def test_pipeline_delete(self):
     result = self.runner.invoke(
-        pipeline_group, ['delete', '--name', 'chicago', '--engine', 'airflow'])
+        pipeline_group,
+        ['delete', '--pipeline_name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Deleting pipeline', result.output)
 
   def test_pipeline_list(self):
@@ -62,19 +65,22 @@ class PipelineTest(tf.test.TestCase):
     self.assertIn('Listing all pipelines', result.output)
 
   def test_pipeline_compile(self):
-    result = self.runner.invoke(
-        pipeline_group,
-        ['compile', '--path', 'chicago.py', '--engine', 'kubeflow'])
+    result = self.runner.invoke(pipeline_group, [
+        'compile', '--pipeline_path', 'chicago.py', '--engine', 'kubeflow',
+        '--package_path', 'chicago.tar.gz', '--iap_client_id', 'fake_id',
+        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+    ])
     self.assertIn('Compiling pipeline', result.output)
 
   def test_pipeline_invalid_flag(self):
     result = self.runner.invoke(pipeline_group,
-                                ['create', '--name', 'chicago.py'])
+                                ['create', '--pipeline_name', 'chicago.py'])
     self.assertIn('no such option', result.output)
     self.assertNotEqual(0, result.exit_code)
 
   def test_pipeline_invalid_flag_type(self):
-    result = self.runner.invoke(pipeline_group, ['update', '--name', 1])
+    result = self.runner.invoke(pipeline_group,
+                                ['update', '--pipeline_name', 1])
     self.assertNotEqual(0, result.exit_code)
 
   def test_pipeline_missing_flag(self):
@@ -88,7 +94,7 @@ class PipelineTest(tf.test.TestCase):
     self.assertNotEqual(0, result.exit_code)
 
   def test_pipeline_empty_flag_value(self):
-    result = self.runner.invoke(pipeline_group, ['create', '--path'])
+    result = self.runner.invoke(pipeline_group, ['create', '--pipeline_path'])
     self.assertIn('option requires an argument', result.output)
     self.assertNotEqual(0, result.exit_code)
 
