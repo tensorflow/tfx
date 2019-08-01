@@ -23,7 +23,7 @@ import itertools
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Callable, Dict, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message
@@ -349,6 +349,27 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
     self._downstream_nodes = set()
     self._validate_component_class()
     self._validate_spec(spec)
+
+  def apply(self, change_func: Callable[['BaseComponent'],
+                                        None]) -> 'BaseComponent':
+    """Apply a change funtion on the component.
+
+    Use the function to apply additional changes to component. For example:
+
+    comp.apply(pod_executor.configure(pod_spec))
+    comp.apply(api_platofrm.set_trainer_args(...))
+
+    Args:
+      change_func: The callable function which applies the change to the
+        component.
+
+    Returns:
+      The component itself.
+    """
+    if not change_func:
+      raise ValueError('change_func must be a callable function.')
+    change_func(self)
+    return self
 
   @classmethod
   def _validate_component_class(cls):
