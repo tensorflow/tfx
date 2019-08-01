@@ -2,18 +2,18 @@
 
 ## Major Features and Improvements
 *   Added support for Google Cloud ML Engine Training and Serving as extension.
-*   Added support for pre-split input in ExampleGen components
-*   Added the ImportExampleGen component for importing tf.Example records from
-    the TFRecord file format.
-*   Added a generic ExampleGen component to reduce the work needed to customize
-    ExampleGen.
-*   Added Python 3 type hints.
-*   Added an Airflow integration test for the chicago_taxi_simple example.
-*   Updated the TFX docker image to use Python 3.
-*   Added an example for defining and adding a custom component.
-*   Added Parquet executor for the ExampleGen component.
-*   Added Avro executor for the ExampleGen component.
-*   Enabled Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
+*   Supported pre-split input for ExampleGen components
+*   Added ImportExampleGen component for importing tfrecord files with
+    TF Example data format
+*   Added a generic ExampleGen component to reduce the work of custom ExampleGen
+*   Released Python 3 type hints.
+*   Added an Airflow integration test for chicago_taxi_simple example.
+*   Updated tfx docker image to use Python 3.
+*   Added example for how to define and add a custom component.
+*   Added PrestoExampleGen component.
+*   Added Parquet executor for ExampleGen component.
+*   Added Avro executor for ExampleGen component.
+*   Enables Kubeflow Pipelines users to specify arbitrary ContainerOp decorators
     that can be applied to each pipeline step.
 *   Added scripts and instructions for running the TFX Chicago Taxi example
     on Spark (via Apache Beam).
