@@ -585,48 +585,26 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
   def _OptimizeRun(
-      pipeline: beam.Pipeline, input_cache_dir: Text, output_cache_dir: Text,
-      analyze_data_list: List[_Dataset], feature_spec: Mapping[Text, Any],
-      preprocessing_fn: Any, cache_source: beam.PTransform
-  ) -> Tuple[Dict[Text, Optional[_Dataset]], Dict[Text, Dict[
-      Text, beam.pvalue.PCollection]], bool]:
+      pipeline: beam.Pipeline,
+      input_cache: Dict[Text, Dict[Text, beam.pvalue.PCollection]],
+      analyze_data_dict: Dict[Text, Optional[_Dataset]],
+      feature_spec: Mapping[Text, Any],
+      preprocessing_fn: Any
+  ) -> Tuple[Dict[Text, Optional[_Dataset]], bool]:
     """Utilizes TFT cache if applicable and removes unused datasets."""
-
-    analysis_key_to_dataset = {
-        analyzer_cache.make_dataset_key(dataset.file_pattern_suffix): dataset
-        for dataset in analyze_data_list
-    }
-    if input_cache_dir is not None:
-      input_cache = pipeline | analyzer_cache.ReadAnalysisCacheFromFS(
-          input_cache_dir,
-          list(analysis_key_to_dataset.keys()),
-          source=cache_source)
-    elif output_cache_dir is not None:
-      input_cache = {}
-    else:
-      # Using None here to indicate that this pipeline will not read or write
-      # cache.
-      input_cache = None
-
-    if input_cache is None:
-      # Cache is disabled so we won't be filtering out any datasets, and will
-      # always perform a flatten over all of them.
-      filtered_analysis_dataset_keys = list(analysis_key_to_dataset.keys())
-      flat_data_required = True
-    else:
-      filtered_analysis_dataset_keys, flat_data_required = (
-          tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
-              preprocessing_fn, feature_spec,
-              list(analysis_key_to_dataset.keys()), input_cache))
+    filtered_analysis_dataset_keys, flat_data_required = (
+        tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
+            preprocessing_fn, feature_spec,
+            list(analyze_data_dict.keys()), input_cache))
 
     new_analyze_data_dict = {}
-    for key, dataset in six.iteritems(analysis_key_to_dataset):
+    for key, dataset in six.iteritems(analyze_data_dict):
       if key in filtered_analysis_dataset_keys:
         new_analyze_data_dict[key] = dataset
       else:
         new_analyze_data_dict[key] = None
 
-    return (new_analyze_data_dict, input_cache, flat_data_required)
+    return (new_analyze_data_dict, flat_data_required)
 
   def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
                           unused_outputs: Mapping[Text, Any]) -> Any:
@@ -867,10 +845,32 @@ class Executor(base_executor.BaseExecutor):
                 len(feature_spec.keys()), len(analyze_input_columns),
                 len(transform_input_columns)))
 
-        (new_analyze_data_dict, input_cache, flat_data_required) = (
-            p | self._OptimizeRun(input_cache_dir, output_cache_dir,
-                                  analyze_data_list, feature_spec,
-                                  preprocessing_fn, self._GetCacheSource()))
+        analyze_data_dict = {
+            analyzer_cache.make_dataset_key(
+                dataset.file_pattern_suffix): dataset
+            for dataset in analyze_data_list
+        }
+        if input_cache_dir is not None:
+          input_cache = p | analyzer_cache.ReadAnalysisCacheFromFS(
+              input_cache_dir,
+              list(analyze_data_dict.keys()),
+              source=self._GetCacheSource())
+        elif output_cache_dir is not None:
+          input_cache = {}
+        else:
+          # Using None here to indicate that this pipeline will not read or
+          # write cache.
+          input_cache = None
+
+        if input_cache is not None:
+          new_analyze_data_dict, flat_data_required = (
+              p | self._OptimizeRun(input_cache, analyze_data_dict,
+                                    feature_spec, preprocessing_fn))
+        else:
+          new_analyze_data_dict = analyze_data_dict
+          # Cache is disabled so we won't be filtering out any datasets, and
+          # will always perform a flatten over all of them.
+          flat_data_required = True
         # Removing unneeded datasets if they won't be needed for statistics or
         # materialization.
         if not materialize_output_paths and not compute_statistics:
