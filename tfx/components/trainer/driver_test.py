@@ -32,7 +32,7 @@ class DriverTest(tf.test.TestCase):
       model.span = span
       model.uri = 'uri-%d' % span
       artifacts.append(model.artifact)
-    mock_metadata.get_all_artifacts.return_value = artifacts
+    mock_metadata.get_artifacts_by_type.return_value = artifacts
     trainer_driver = driver.Driver(mock_metadata)
     result = trainer_driver._fetch_latest_model()
     self.assertEqual('uri-3', result)

@@ -174,6 +174,13 @@ class Metadata(object):
     except tf.errors.NotFoundError:
       return []
 
+  def get_artifacts_by_type(
+      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
+    try:
+      return self._store.get_artifacts_by_type(type_name)
+    except tf.errors.NotFoundError:
+      return []
+
   def _prepare_event(self, execution_id: int, artifact_id: int, key: Text,
                      index: int, event_type: Any) -> metadata_store_pb2.Event:
     """Commits a single event to the repository."""

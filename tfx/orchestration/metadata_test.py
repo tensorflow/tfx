@@ -120,6 +120,7 @@ class MetadataTest(tf.test.TestCase):
       # Test get artifact.
       self.assertListEqual([artifact], m.get_all_artifacts())
       self.assertListEqual([artifact], m.get_artifacts_by_uri('uri'))
+      self.assertListEqual([artifact], m.get_artifacts_by_type('ExamplesPath'))
 
       # Test artifact state.
       m.check_artifact_state(artifact, ArtifactState.PUBLISHED)

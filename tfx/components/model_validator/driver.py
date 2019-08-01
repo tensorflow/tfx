@@ -31,12 +31,9 @@ class Driver(base_driver.BaseDriver):
       component_unique_name: Text,
   ) -> Tuple[Optional[Text], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
-    # TODO(b/122970393): This is a temporary solution since ML metadata not
-    # support get artifacts by type.
     previous_blessed_models = []
-    for a in self._metadata_handler.get_all_artifacts():
-      if (a.properties['type_name'].string_value == 'ModelBlessingPath' and
-          a.custom_properties['blessed'].int_value == 1 and
+    for a in self._metadata_handler.get_artifacts_by_type('ModelBlessingPath'):
+      if (a.custom_properties['blessed'].int_value == 1 and
           a.custom_properties['component_unique_name'].string_value ==
           component_unique_name):
         previous_blessed_models.append(a)

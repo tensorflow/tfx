@@ -27,10 +27,8 @@ class Driver(base_driver.BaseDriver):
   """Custom driver for Trainer."""
 
   def _fetch_latest_model(self):
-    previous_models = [
-        x for x in self._metadata_handler.get_all_artifacts()
-        if x.properties['type_name'].string_value == 'ModelExportPath'
-    ]
+    previous_models = self._metadata_handler.get_artifacts_by_type(
+        'ModelExportPath')
     if previous_models:
       latest_model = max(
           previous_models, key=lambda m: m.properties['span'].int_value)
