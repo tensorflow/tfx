@@ -11,11 +11,11 @@ and shuffles the dataset for ML best practice.
 ## ExampleGen and Other Components
 
 ExampleGen provides data to components that make use of the
-[TensorFlow Data Validation](tfdv.md) library, such as [SchemaGen](schemagen.md),
-[StatisticsGen](statsgen.md), and [Example Validator](exampleval.md).  It also
-provides data to [Transform](transform.md), which makes use of the
-[TensorFlow Transform](tft.md) library, and ultimately to deployment targets
-during inference.
+[TensorFlow Data Validation](tfdv.md) library, such as
+[SchemaGen](schemagen.md), [StatisticsGen](statsgen.md), and
+[Example Validator](exampleval.md). It also provides data to
+[Transform](transform.md), which makes use of the [TensorFlow Transform](tft.md)
+library, and ultimately to deployment targets during inference.
 
 ## How to use an ExampleGen Component
 
@@ -81,12 +81,13 @@ examples = csv_input(input_dir)
 example_gen = CsvExampleGen(input_base=examples, input_config=input)
 ```
 
-For file based example gen, e.g., CsvExampleGen and ImportExampleGen, `pattern`
+For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
 is a glob relative file pattern that maps to input files with root directory
-given by input base path. For BigQueryExampleGen, `pattern` is BigQuery SQL.
+given by input base path. For query-based example gen (e.g. BigQueryExampleGen,
+PrestoExampleGen), `pattern` is a SQL query.
 
-By default, we treat the entire input base dir as a single input split, and
-generate train and eval output split with size 2:1.
+By default, the entire input base dir is treated as a single input split, and
+the train and eval output split is generated with a 2:1 ratio.
 
 Please refer to
 [proto/example_gen.proto](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
@@ -96,9 +97,10 @@ for details.
 
 Note: this feature is only available after TFX 0.14.
 
-If the currently available ExampleGen components don't fit your needs, you can
-create a custom ExampleGen, which will include a new executor extended from
-BaseExampleGenExecutor. Here's how to create a new file-based ExampleGen:
+If the currently available ExampleGen components don't fit your needs, create
+a custom ExampleGen, which will include a new executor extended from BaseExampleGenExecutor.
+
+### File-Based ExampleGen
 
 First, extend BaseExampleGenExecutor with a custom Beam PTransform, which
 provides the conversion from your train/eval input split to TF examples. For
@@ -106,7 +108,9 @@ example, the
 [CsvExampleGen executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/executor.py)
 provides the conversion from an input CSV split to TF examples.
 
-Then, you can either create a simple component with above executor. [CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py) shows how. Alternatively, you can pass a custom executor into the standard ExampleGen component as shown below.
+Then, create a component with above executor, as done in [CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py).
+Alternatively, pass a custom executor into the standard
+ExampleGen component as shown below.
 
 ```python
 from tfx.components.example_gen.component import FileBasedExampleGen
@@ -118,4 +122,33 @@ example_gen = FileBasedExampleGen(input_base=examples,
                                   executor_class=executor.Executor)
 ```
 
- Now, we also support reading Avro and Parquet files using this [method](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/avro_component_test.py).
+Now, we also support reading Avro and Parquet files using this
+[method](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/custom_executors/avro_component_test.py).
+
+### Query-Based ExampleGen
+
+First, extend BaseExampleGenExecutor with a custom Beam PTransform, which reads
+from the external data source. Then, create a simple component by
+extending QueryBasedExampleGen.
+
+This may or may not require additional connection configurations. For example,
+the
+[BigQuery executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/big_query_example_gen/executor.py)
+reads using a default beam.io connector, which abstracts the connection
+configuration details. The
+[Presto executor](https://github.com/tensorflow/tfx/blob/master/tfx/examples/custom_components/presto_example_gen/presto_component/executor.py),
+requires a custom Beam PTransform and a
+[custom connection configuration protobuf](https://github.com/tensorflow/tfx/blob/master/tfx/examples/custom_components/presto_example_gen/proto/presto_config.proto)
+as input.
+
+If a connection configuration is required for a custom ExampleGen component, create
+a new protobuf and pass it in through custom_config, which is now an optional
+execution parameter. Below is an example of how to use a configured component.
+
+```python
+from tfx.examples.custom_components.presto_example_gen.proto import presto_config_pb2
+from tfx.examples.custom_components.presto_example_gen.presto_component.component import PrestoExampleGen
+
+presto_config = presto_config_pb2.PrestoConnConfig(host='localhost', port=8080)
+example_gen = PrestoExampleGen(presto_config, query='SELECT * FROM chicago_taxi_trips')
+```

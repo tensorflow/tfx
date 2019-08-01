@@ -1,0 +1,43 @@
+// Copyright 2019 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package third_party.tfx.examples.custom_components.presto_example_gen;
+
+message PrestoConnConfig {
+  // Based off official prestodb-python-client library
+  // https://github.com/prestodb/presto-python-client
+  string host = 1; // required
+  oneof opt_port { uint32 port = 2; }
+  oneof opt_user { string user = 3; }
+  oneof opt_source { string source = 4; }
+  oneof opt_catalog { string catalog = 5; }
+  oneof opt_schema { string schema = 6; }
+  // TODO session_properties = 7
+  // TODO http_headers = 8
+  oneof opt_http_scheme { string http_scheme = 9; }
+  oneof opt_auth {
+    BasicAuthConfig basic_auth = 10; // prestodb.auth.BasicAuthentication class
+    // TODO KerberosAuthConfig kerberos_auth = 11
+  }
+  // TODO redirect_handler = 12
+  oneof opt_max_attempts { uint32 max_attempts = 13; }
+  oneof opt_request_timeout { uint32 request_timeout = 14; }
+  // TODO isolation_level = 15
+
+  message BasicAuthConfig {
+    string username = 1; // required
+    string password = 2; // required
+  }
+}
