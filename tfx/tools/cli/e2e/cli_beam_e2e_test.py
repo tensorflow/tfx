@@ -204,7 +204,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
         'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_2
     ])
     self.assertIn('CLI', result.output)
-    self.assertIn('Creating a run for pipeline:{}'.format(pipeline_name_2),
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
                   result.output)
     self.assertIn('Pipeline {} does not exist.'.format(pipeline_name_2),
                   result.output)
