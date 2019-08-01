@@ -43,7 +43,7 @@ class DriverTest(tf.test.TestCase):
     component_unique_name = 'test_component'
 
     # No blessed model.
-    mock_metadata.get_all_artifacts.return_value = []
+    mock_metadata.get_artifacts_by_type.return_value = []
     self.assertEqual(
         (None, None),
         model_validator_driver._fetch_last_blessed_model(component_unique_name))
@@ -59,7 +59,7 @@ class DriverTest(tf.test.TestCase):
     model_blessing = self._create_mock_artifact(True, 5, 'different_component')
     artifacts.append(model_blessing.artifact)
 
-    mock_metadata.get_all_artifacts.return_value = artifacts
+    mock_metadata.get_artifacts_by_type.return_value = artifacts
     self.assertEqual(
         ('uri-3', 3),
         model_validator_driver._fetch_last_blessed_model(component_unique_name))
