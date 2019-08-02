@@ -38,8 +38,9 @@ class Driver(base_driver.BaseDriver):
         previous_blessed_models.append(a)
 
     if previous_blessed_models:
+      # TODO(b/138845899): consider use span instead of id.
       last_blessed_model = max(
-          previous_blessed_models, key=lambda m: m.properties['span'].int_value)
+          previous_blessed_models, key=lambda artifact: artifact.id)
       return (
           last_blessed_model.custom_properties['current_model'].string_value,
           last_blessed_model.custom_properties['current_model_id'].int_value)

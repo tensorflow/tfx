@@ -27,10 +27,10 @@ class DriverTest(tf.test.TestCase):
   def test_fetch_warm_starting_model(self):
     mock_metadata = tf.test.mock.Mock()
     artifacts = []
-    for span in [3, 2, 1]:
+    for aid in [3, 2, 1]:
       model = types.Artifact(type_name='ModelExportPath')
-      model.span = span
-      model.uri = 'uri-%d' % span
+      model.id = aid
+      model.uri = 'uri-%d' % aid
       artifacts.append(model.artifact)
     mock_metadata.get_artifacts_by_type.return_value = artifacts
     trainer_driver = driver.Driver(mock_metadata)

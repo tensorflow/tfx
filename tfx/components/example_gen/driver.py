@@ -74,6 +74,7 @@ class Driver(base_driver.BaseDriver):
             matched_artifacts.append(artifact)
 
         if matched_artifacts:
+          # TODO(b/138845899): consider use span instead of id.
           # If there are multiple matches, get the latest one for caching.
           # Using id because spans are the same for matched artifacts.
           latest_artifact = max(
@@ -84,8 +85,6 @@ class Driver(base_driver.BaseDriver):
 
           single_input.set_artifact(latest_artifact)
         else:
-          # TODO(jyzhao): support span.
-          single_input.span = 1
           # TODO(jyzhao): whether driver should be read-only for metadata.
           [new_artifact] = self._metadata_handler.publish_artifacts(
               [single_input])  # pylint: disable=unbalanced-tuple-unpacking
