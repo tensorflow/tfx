@@ -25,12 +25,12 @@ from tfx.components.model_validator import driver
 
 class DriverTest(tf.test.TestCase):
 
-  def _create_mock_artifact(self, is_blessed: bool, span: int,
+  def _create_mock_artifact(self, aid: int, is_blessed: bool,
                             component_id: Text):
     model_blessing = types.Artifact(type_name='ModelBlessingPath')
-    model_blessing.span = span
-    model_blessing.set_string_custom_property('current_model', 'uri-%d' % span)
-    model_blessing.set_int_custom_property('current_model_id', span)
+    model_blessing.id = aid
+    model_blessing.set_string_custom_property('current_model', 'uri-%d' % aid)
+    model_blessing.set_int_custom_property('current_model_id', aid)
     model_blessing.set_string_custom_property('component_id', component_id)
     model_blessing.set_int_custom_property('blessed', is_blessed)
     return model_blessing
@@ -49,8 +49,8 @@ class DriverTest(tf.test.TestCase):
 
     # Mock blessing artifacts.
     artifacts = []
-    for span in [4, 3, 2, 1]:
-      model_blessing = self._create_mock_artifact(span % 2, span, component_id)
+    for aid in [4, 3, 2, 1]:
+      model_blessing = self._create_mock_artifact(aid, aid % 2, component_id)
       artifacts.append(model_blessing.artifact)
 
     # Mock blessing artifact produced by another component.
