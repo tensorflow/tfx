@@ -26,13 +26,12 @@ from tfx.components.model_validator import driver
 class DriverTest(tf.test.TestCase):
 
   def _create_mock_artifact(self, is_blessed: bool, span: int,
-                            component_unique_name: Text):
+                            component_id: Text):
     model_blessing = types.Artifact(type_name='ModelBlessingPath')
     model_blessing.span = span
     model_blessing.set_string_custom_property('current_model', 'uri-%d' % span)
     model_blessing.set_int_custom_property('current_model_id', span)
-    model_blessing.set_string_custom_property('component_unique_name',
-                                              component_unique_name)
+    model_blessing.set_string_custom_property('component_id', component_id)
     model_blessing.set_int_custom_property('blessed', is_blessed)
     return model_blessing
 
@@ -40,19 +39,18 @@ class DriverTest(tf.test.TestCase):
     # Mock metadata.
     mock_metadata = tf.test.mock.Mock()
     model_validator_driver = driver.Driver(mock_metadata)
-    component_unique_name = 'test_component'
+    component_id = 'test_component'
 
     # No blessed model.
     mock_metadata.get_artifacts_by_type.return_value = []
     self.assertEqual(
         (None, None),
-        model_validator_driver._fetch_last_blessed_model(component_unique_name))
+        model_validator_driver._fetch_last_blessed_model(component_id))
 
     # Mock blessing artifacts.
     artifacts = []
     for span in [4, 3, 2, 1]:
-      model_blessing = self._create_mock_artifact(span % 2, span,
-                                                  component_unique_name)
+      model_blessing = self._create_mock_artifact(span % 2, span, component_id)
       artifacts.append(model_blessing.artifact)
 
     # Mock blessing artifact produced by another component.
@@ -62,7 +60,7 @@ class DriverTest(tf.test.TestCase):
     mock_metadata.get_artifacts_by_type.return_value = artifacts
     self.assertEqual(
         ('uri-3', 3),
-        model_validator_driver._fetch_last_blessed_model(component_unique_name))
+        model_validator_driver._fetch_last_blessed_model(component_id))
 
 
 if __name__ == '__main__':
