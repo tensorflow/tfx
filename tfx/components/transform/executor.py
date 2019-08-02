@@ -614,12 +614,6 @@ class Executor(base_executor.BaseExecutor):
           tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
               preprocessing_fn, feature_spec,
               list(analysis_key_to_dataset.keys()), input_cache))
-    if len(filtered_analysis_dataset_keys) < len(analysis_key_to_dataset):
-      tf.logging.info('Not reading the following datasets due to cache: %s', [
-          v.file_pattern_suffix
-          for k, v in analysis_key_to_dataset.items()
-          if k not in filtered_analysis_dataset_keys
-      ])
 
     new_analyze_data_dict = {}
     for key, dataset in six.iteritems(analysis_key_to_dataset):
@@ -851,13 +845,19 @@ class Executor(base_executor.BaseExecutor):
             p | self._OptimizeRun(input_cache_dir, output_cache_dir,
                                   analyze_data_list, feature_spec,
                                   preprocessing_fn, self._GetCacheSource()))
-        # Removing unneeded datasets if they won't be needed for
-        # materialization. This means that these datasets won't be included in
-        # the statistics computation or profiling either.
-        if not materialize_output_paths:
+        # Removing unneeded datasets if they won't be needed for statistics or
+        # materialization.
+        if not materialize_output_paths and not compute_statistics:
           analyze_data_list = [
               d for d in new_analyze_data_dict.values() if d is not None
           ]
+          if len(analyze_data_list) < len(new_analyze_data_dict):
+            tf.logging.info(
+                'Not reading the following datasets due to cache: %s', [
+                    dataset.file_pattern_suffix
+                    for dataset in analyze_data_list
+                    if dataset not in new_analyze_data_dict.values()
+                ])
 
         analyze_decode_fn = (
             self._GetDecodeFunction(raw_examples_data_format,
