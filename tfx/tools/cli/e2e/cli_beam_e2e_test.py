@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.tools.cli."""
+"""E2E Beam tests for CLI."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -204,17 +204,17 @@ class CliBeamEndToEndTest(tf.test.TestCase):
         'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_2
     ])
     self.assertIn('CLI', result.output)
-    self.assertIn('Creating a run for pipeline:{}'.format(pipeline_name_2),
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
                   result.output)
     self.assertIn('Pipeline {} does not exist.'.format(pipeline_name_2),
                   result.output)
 
     # Now run the pipeline
     result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_1
+        'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_2
     ])
     self.assertIn('CLI', result.output)
-    self.assertIn('Creating a run for pipeline:' + pipeline_name_1,
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
                   result.output)
 
 

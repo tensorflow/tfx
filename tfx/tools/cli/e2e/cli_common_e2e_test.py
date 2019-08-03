@@ -86,26 +86,33 @@ class CliCommonEndToEndTest(tf.test.TestCase):
   def test_pipeline_create_invalid_pipeline_path(self):
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                  'test_pipeline.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'create', '--engine', 'airflow', '--pipeline_path',
-        pipeline_path
-    ])
+    result = self.runner.invoke(
+        cli_group, ['pipeline', 'create', '--pipeline_path', pipeline_path])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
                   result.output)
 
-  def test_pipeline_create_auto_detect_beam(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_beam_1.py')
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
-        pipeline_path
-    ])
+  def test_missing_required_flag(self):
+    pipeline_name_1 = 'chicago_taxi_simple'
+
+    # Missing flag for pipeline create.
+    result = self.runner.invoke(cli_group,
+                                ['pipeline', 'create', '--engine', 'beam'])
     self.assertIn('CLI', result.output)
-    self.assertIn(
-        'Use --engine flag if you intend to use a different orchestrator.',
-        result.output)
+    self.assertIn('Missing option "--pipeline_path"', result.output)
+
+    # Missing flag for run create.
+    result = self.runner.invoke(cli_group,
+                                ['run', 'create', '--engine', 'airflow'])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Missing option "--pipeline_name"', result.output)
+
+    # Missing flag for run status.
+    result = self.runner.invoke(
+        cli_group, ['run', 'status', '--pipeline_name', pipeline_name_1])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Missing option "--run_id"', result.output)
 
 
 if __name__ == '__main__':

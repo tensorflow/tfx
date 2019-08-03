@@ -30,6 +30,7 @@ from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
 
+# TODO(b/132286477): Improve error messages for subprocess calls.
 class AirflowHandler(base_handler.BaseHandler):
   """Helper methods for Airflow Handler."""
 
@@ -38,7 +39,6 @@ class AirflowHandler(base_handler.BaseHandler):
     self._handler_home_dir = self._get_handler_home('airflow')
 
   # TODO(b/132286477): Update comments after updating methods.
-  # TODO(b/136201266): Update log messages similar to beam.
   def create_pipeline(self, overwrite: bool = False):
     """Creates pipeline in Airflow."""
 
@@ -62,6 +62,13 @@ class AirflowHandler(base_handler.BaseHandler):
 
     self._save_pipeline(pipeline_args)
 
+    if overwrite:
+      click.echo('Pipeline {} updated successfully.'.format(
+          pipeline_args[labels.PIPELINE_NAME]))
+    else:
+      click.echo('Pipeline {} created successfully.'.format(
+          pipeline_args[labels.PIPELINE_NAME]))
+
   def update_pipeline(self):
     # Set overwrite to true for update to make sure pipeline exists.
     self.create_pipeline(overwrite=True)
@@ -73,9 +80,11 @@ class AirflowHandler(base_handler.BaseHandler):
       click.echo('No pipelines to display.')
       return
     pipelines_list = tf.io.gfile.listdir(dags_folder)
+
     # Print every pipeline name in a new line.
-    click.echo('\n'.join('{}' for _ in range(len(pipelines_list)))
-               .format(*pipelines_list))
+    click.echo('-' * 30)
+    click.echo('\n'.join(pipelines_list))
+    click.echo('-' * 30)
 
   def delete_pipeline(self) -> None:
     """Delete pipeline in Airflow."""
@@ -90,6 +99,8 @@ class AirflowHandler(base_handler.BaseHandler):
 
     # Delete pipeline folder.
     io_utils.delete_dir(handler_pipeline_path)
+    click.echo('Pipeline {} deleted successfully.'.format(
+        self.flags_dict[labels.PIPELINE_NAME]))
 
   def compile_pipeline(self) -> Dict[Text, Any]:
     """Compiles pipeline in Airflow."""
@@ -109,11 +120,16 @@ class AirflowHandler(base_handler.BaseHandler):
     if not tf.io.gfile.exists(handler_pipeline_path):
       sys.exit('Pipeline {} does not exist.'
                .format(self.flags_dict[labels.PIPELINE_NAME]))
-    # Unpause and trigger DAG.
+
+    # Unpause DAG.
     subprocess.call(['airflow', 'unpause',
                      self.flags_dict[labels.PIPELINE_NAME]])
+
+    # Trigger DAG.
     subprocess.call(
         ['airflow', 'trigger_dag', self.flags_dict[labels.PIPELINE_NAME]])
+    click.echo('Run created for pipeline: ' +
+               self.flags_dict[labels.PIPELINE_NAME])
 
   def delete_run(self) -> None:
     """Deletes a run in Airflow."""

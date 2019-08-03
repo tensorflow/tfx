@@ -74,5 +74,5 @@ def _create_pipeline():
       metadata_db_root=_metadata_db_root,
   )
 
-
+# Airflow checks 'DAG' keyword for finding the dag.
 airflow_pipeline = AirflowDagRunner(_airflow_config).run(_create_pipeline())

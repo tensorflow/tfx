@@ -44,12 +44,20 @@ class HandlerFactoryTest(tf.test.TestCase):
     self.flags_dict = {}
     sys.modules['kfp'] = mock.Mock()
 
+  def _MockSubprocessAirflow(self):
+    return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\napache-airflow==1.10.3\n'
+
+  @mock.patch('subprocess.check_output', _MockSubprocessAirflow)
   def test_create_handler_airflow(self):
     self.flags_dict[labels.ENGINE_FLAG] = 'airflow'
     self.assertIsInstance(
         handler_factory.create_handler(self.flags_dict),
         airflow_handler.AirflowHandler)
 
+  def _MockSubprocessKubeflow(self):
+    return b'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-beam==2.12.0\nkfp==0.1\n'
+
+  @mock.patch('subprocess.check_output', _MockSubprocessKubeflow)
   @mock.patch('kfp.Client', _MockClientClass)
   def test_create_handler_kubeflow(self):
     flags_dict = {
@@ -88,7 +96,7 @@ class HandlerFactoryTest(tf.test.TestCase):
         beam_handler.BeamHandler)
 
   def _MockSubprocessMultipleEngines(self):
-    return 'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\nkfp==0.1\n'
+    return b'absl-py==0.7.1\nadal==1.2.1\nalembic==0.9.10\napache-airflow==1.10.3\napache-beam==2.12.0\nkfp==0.1\n'
 
   @mock.patch('subprocess.check_output', _MockSubprocessMultipleEngines)
   def test_detect_handler_multiple(self):
