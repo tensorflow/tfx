@@ -42,7 +42,7 @@ def run_group() -> None:
     help='Name of the pipeline')
 def create_run(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   """Command definition to create a pipeline run."""
-  click.echo('Creating a run for pipeline:' + pipeline_name)
+  click.echo('Creating a run for pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
   handler_factory.create_handler(ctx.flags_dict).create_run()
