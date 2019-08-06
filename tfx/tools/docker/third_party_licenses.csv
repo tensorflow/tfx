@@ -39,7 +39,7 @@ chainermn,https://raw.githubusercontent.com/chainer/chainermn/master/LICENSE,MIT
 chainerrl,https://raw.githubusercontent.com/chainer/chainerrl/master/LICENSE,MIT
 chainerui,https://raw.githubusercontent.com/chainer/chainerui/master/LICENSE,MIT
 chardet,https://raw.githubusercontent.com/chardet/chardet/master/LICENSE,LGPL 2.1
-click,https://raw.githubusercontent.com/pallets/click/master/LICENSE,3-Clause BSD
+Click,https://raw.githubusercontent.com/pallets/click/master/LICENSE.rst,3-Clause BSD
 configparser,https://bitbucket.org/ambv/configparser/raw/78998f2ded2e840376adc712337545014fa9b622/README.rst,MIT
 crcmod,https://raw.githubusercontent.com/gsutil-mirrors/crcmod/master/LICENSE,MIT
 cryptography,https://raw.githubusercontent.com/pyca/cryptography/master/LICENSE,Apache or BSD
