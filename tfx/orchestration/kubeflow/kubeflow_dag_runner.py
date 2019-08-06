@@ -141,7 +141,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     # Assumption: There is a partial ordering of components in the list, i.e.,
     # if component A depends on component B and C, then A appears after B and C
     # in the list.
-    for component in pipeline.components:
+    # TODO(jyzhao): support Setup in KFP when metadata is supported.
+    for component in pipeline.components[1:]:
       input_dict = {}
       for input_name, input_channel in component.inputs.get_all().items():
         if input_channel in producers:

@@ -38,7 +38,7 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir)
-    self.assertEqual(9, len(logical_pipeline.components))
+    self.assertEqual(10, len(logical_pipeline.components))
 
 
 if __name__ == '__main__':

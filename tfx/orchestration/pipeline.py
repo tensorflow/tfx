@@ -27,6 +27,7 @@ from typing import List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
+from tfx.components.setup.component import Setup
 from tfx.orchestration import data_types
 
 
@@ -155,6 +156,13 @@ class Pipeline(object):
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)
+
+    # Adds Setup components.
+    setup_component = Setup()
+    for component in deduped_components:
+      component.add_upstream_node(setup_component)
+      setup_component.add_downstream_node(component)
+    deduped_components.add(setup_component)
 
     self._components = []
     visited = set()

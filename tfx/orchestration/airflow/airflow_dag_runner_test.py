@@ -88,15 +88,16 @@ class AirflowDagRunnerTest(tf.test.TestCase):
   def test_airflow_dag_runner(self, mock_airflow_dag_class,
                               mock_airflow_component_class):
     mock_airflow_dag_class.return_value = 'DAG'
+    mock_airflow_component_setup = mock.Mock()
     mock_airflow_component_a = mock.Mock()
     mock_airflow_component_b = mock.Mock()
     mock_airflow_component_c = mock.Mock()
     mock_airflow_component_d = mock.Mock()
     mock_airflow_component_e = mock.Mock()
     mock_airflow_component_class.side_effect = [
-        mock_airflow_component_a, mock_airflow_component_b,
-        mock_airflow_component_c, mock_airflow_component_d,
-        mock_airflow_component_e
+        mock_airflow_component_setup, mock_airflow_component_a,
+        mock_airflow_component_b, mock_airflow_component_c,
+        mock_airflow_component_d, mock_airflow_component_e
     ]
 
     airflow_config = {
@@ -135,20 +136,28 @@ class AirflowDagRunnerTest(tf.test.TestCase):
     runner = airflow_dag_runner.AirflowDagRunner(config=airflow_config)
     runner.run(test_pipeline)
 
-    mock_airflow_component_a.set_upstream.assert_not_called()
-    mock_airflow_component_b.set_upstream.assert_has_calls(
-        [mock.call(mock_airflow_component_a)])
+    mock_airflow_component_setup.set_upstream.assert_not_called()
+    mock_airflow_component_a.set_upstream.assert_has_calls(
+        [mock.call(mock_airflow_component_setup)])
+    mock_airflow_component_b.set_upstream.assert_has_calls([
+        mock.call(mock_airflow_component_setup),
+        mock.call(mock_airflow_component_a)
+    ],
+                                                           any_order=True)
     mock_airflow_component_c.set_upstream.assert_has_calls([
+        mock.call(mock_airflow_component_setup),
         mock.call(mock_airflow_component_a),
         mock.call(mock_airflow_component_b)
     ],
                                                            any_order=True)
     mock_airflow_component_d.set_upstream.assert_has_calls([
+        mock.call(mock_airflow_component_setup),
         mock.call(mock_airflow_component_b),
         mock.call(mock_airflow_component_c)
     ],
                                                            any_order=True)
     mock_airflow_component_e.set_upstream.assert_has_calls([
+        mock.call(mock_airflow_component_setup),
         mock.call(mock_airflow_component_a),
         mock.call(mock_airflow_component_b),
         mock.call(mock_airflow_component_d)

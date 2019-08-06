@@ -46,7 +46,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
         ._ai_platform_training_args,
         ai_platform_serving_args=taxi_pipeline_kubeflow
         ._ai_platform_serving_args)
-    self.assertEqual(9, len(logical_pipeline.components))
+    self.assertEqual(10, len(logical_pipeline.components))
 
     KubeflowRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,

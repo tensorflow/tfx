@@ -82,7 +82,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(9, execution_count)
+      self.assertEqual(10, execution_count)
 
     self.assertPipelineExecution()
 
@@ -100,8 +100,8 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      # 9 more cached executions.
-      self.assertEqual(18, len(m.store.get_executions()))
+      # 10 more cached executions.
+      self.assertEqual(20, len(m.store.get_executions()))
 
     self.assertPipelineExecution()
 

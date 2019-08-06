@@ -47,7 +47,7 @@ class TaxiPipelineSimpleTest(tf.test.TestCase):
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir)
-    self.assertEqual(9, len(logical_pipeline.components))
+    self.assertEqual(10, len(logical_pipeline.components))
     pipeline = AirflowDAGRunner(airflow_config).run(logical_pipeline)
     self.assertIsInstance(pipeline, models.DAG)
 

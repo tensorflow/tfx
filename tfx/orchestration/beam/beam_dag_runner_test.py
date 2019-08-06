@@ -129,12 +129,12 @@ class BeamDagRunnerTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
     self.assertItemsEqual(_executed_components, [
-        'component_a', 'component_b', 'component_c', 'component_d',
+        'Setup', 'component_a', 'component_b', 'component_c', 'component_d',
         'component_e'
     ])
-    self.assertEqual(_executed_components[0], 'component_a')
-    self.assertEqual(_executed_components[3], 'component_d')
-    self.assertEqual(_executed_components[4], 'component_e')
+    self.assertEqual(_executed_components[1], 'component_a')
+    self.assertEqual(_executed_components[4], 'component_d')
+    self.assertEqual(_executed_components[5], 'component_e')
 
 
 if __name__ == '__main__':

@@ -29,6 +29,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
+from tfx.components.setup.component import Setup
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 
@@ -102,10 +103,14 @@ class PipelineTest(tf.test.TestCase):
         additional_pipeline_args={
             'beam_pipeline_args': ['--runner=PortableRunner'],
         })
+    self.assertEqual(type(my_pipeline.components[0]), Setup)
     self.assertItemsEqual(
-        my_pipeline.components,
+        my_pipeline.components[1:],
         [component_a, component_b, component_c, component_d, component_e])
-    self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
+    self.assertItemsEqual(
+        my_pipeline.components[0].downstream_nodes,
+        [component_a, component_b, component_c, component_d, component_e])
+    self.assertItemsEqual(my_pipeline.components[1].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
     self.assertDictEqual(
@@ -191,7 +196,8 @@ class PipelineTest(tf.test.TestCase):
     expected_artifact.pipeline_name = 'a'
     expected_artifact.pipeline_timestamp_ms = 0
     expected_artifact.producer_component = 'component_a'
-    self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
+    self.assertItemsEqual(my_pipeline.components[1:],
+                          [component_a, component_b])
     self.assertEqual(component_a.outputs.one._artifacts[0].pipeline_name, 'a')
     self.assertEqual(component_a.outputs.one._artifacts[0].producer_component,
                      component_a.component_id)
@@ -215,7 +221,7 @@ class PipelineTest(tf.test.TestCase):
 
     my_pipeline = create_pipeline()
 
-    self.assertItemsEqual(my_pipeline.components,
+    self.assertItemsEqual(my_pipeline.components[1:],
                           [self.component_a, self.component_b])
     self.assertDictEqual(my_pipeline.pipeline_args, {
         'pipeline_name': 'a',

@@ -144,6 +144,7 @@ class AirflowEndToEndTest(unittest.TestCase):
     # but before current execution date.
     self._execution_date = '2019-02-01T01:01:01+01:01'
     self._all_tasks = [
+        'Setup',
         'CsvExampleGen',
         'Evaluator',
         'ExampleValidator',
