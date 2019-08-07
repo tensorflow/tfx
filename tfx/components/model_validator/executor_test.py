@@ -21,8 +21,8 @@ import os
 import tensorflow as tf
 # TODO(jyzhao): BucketizeWithInputBoundaries error without this.
 from tensorflow.contrib.boosted_trees.python.ops import quantile_ops  # pylint: disable=unused-import
-from tfx import types
 from tfx.components.model_validator import executor
+from tfx.types import standard_artifacts
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -36,10 +36,10 @@ class ExecutorTest(tf.test.TestCase):
     self.component_id = 'test_component'
 
     # Create input dict.
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(self._source_data_dir,
                                      'csv_example_gen/eval/')
-    model = types.Artifact(type_name='ModelExportPath')
+    model = standard_artifacts.Model()
     model.uri = os.path.join(self._source_data_dir, 'trainer/current/')
     self._input_dict = {
         'examples': [eval_examples],
@@ -47,7 +47,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    self._blessing = types.Artifact('ModelBlessingPath')
+    self._blessing = standard_artifacts.ModelBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
     self._output_dict = {
         'blessing': [self._blessing]

@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.trainer import component
 from tfx.proto import trainer_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -29,11 +29,10 @@ class ComponentTest(tf.test.TestCase):
   def setUp(self):
     super(ComponentTest, self).setUp()
 
-    self.examples = channel.as_channel(
-        [types.Artifact(type_name='ExamplesPath')])
+    self.examples = channel.as_channel([standard_artifacts.Examples()])
     self.transform_output = channel.as_channel(
-        [types.Artifact(type_name='TransformPath')])
-    self.schema = channel.as_channel([types.Artifact(type_name='SchemaPath')])
+        [standard_artifacts.TransformResult()])
+    self.schema = channel.as_channel([standard_artifacts.Schema()])
     self.train_args = trainer_pb2.TrainArgs(num_steps=100)
     self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
 

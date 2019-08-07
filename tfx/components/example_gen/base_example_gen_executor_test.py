@@ -21,9 +21,9 @@ import os
 import random
 import apache_beam as beam
 import tensorflow as tf
-from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
@@ -73,9 +73,9 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     self._output_dict = {'examples': [train_examples, eval_examples]}
 

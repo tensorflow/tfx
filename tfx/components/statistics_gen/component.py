@@ -22,6 +22,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.statistics_gen import executor
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -30,10 +31,10 @@ class StatisticsGenSpec(base_component.ComponentSpec):
 
   PARAMETERS = {}
   INPUTS = {
-      'input_data': ChannelParameter(type_name='ExamplesPath'),
+      'input_data': ChannelParameter(type=standard_artifacts.Examples),
   }
   OUTPUTS = {
-      'output': ChannelParameter(type_name='ExampleStatisticsPath'),
+      'output': ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
 
 
@@ -62,9 +63,9 @@ class StatisticsGen(base_component.BaseComponent):
         components are declared in the same pipeline.
     """
     output = output or channel.Channel(
-        type_name='ExampleStatisticsPath',
+        type=standard_artifacts.ExampleStatistics,
         artifacts=[
-            types.Artifact('ExampleStatisticsPath', split=split)
+            standard_artifacts.ExampleStatistics(split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = StatisticsGenSpec(

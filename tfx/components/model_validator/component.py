@@ -19,11 +19,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -32,11 +32,11 @@ class ModelValidatorSpec(base_component.ComponentSpec):
 
   PARAMETERS = {}
   INPUTS = {
-      'examples': ChannelParameter(type_name='ExamplesPath'),
-      'model': ChannelParameter(type_name='ModelExportPath'),
+      'examples': ChannelParameter(type=standard_artifacts.Examples),
+      'model': ChannelParameter(type=standard_artifacts.Model),
   }
   OUTPUTS = {
-      'blessing': ChannelParameter(type_name='ModelBlessingPath'),
+      'blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
 
 
@@ -72,8 +72,8 @@ class ModelValidator(base_component.BaseComponent):
         components are declared in the same pipeline.
     """
     blessing = blessing or channel.Channel(
-        type_name='ModelBlessingPath',
-        artifacts=[types.Artifact('ModelBlessingPath')])
+        type=standard_artifacts.ModelBlessing,
+        artifacts=[standard_artifacts.ModelBlessing()])
     spec = ModelValidatorSpec(
         examples=channel.as_channel(examples),
         model=channel.as_channel(model),

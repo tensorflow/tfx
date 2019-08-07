@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.schema_gen import component
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -28,7 +28,7 @@ class SchemaGenTest(tf.test.TestCase):
   def test_construct(self):
     schema_gen = component.SchemaGen(
         stats=channel.as_channel(
-            [types.Artifact(type_name='ExampleStatisticsPath', split='train')]))
+            [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
 
 

@@ -79,6 +79,32 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(instance.artifact, other_instance.artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 
+  def test_invalid_artifact(self):
+    with self.assertRaisesRegexp(ValueError,
+                                 'The "type_name" field must be passed'):
+      artifact.Artifact()
+
+    class MyBadArtifact(artifact.Artifact):
+      # No TYPE_NAME
+      pass
+
+    with self.assertRaisesRegexp(
+        ValueError,
+        'The Artifact subclass .* must override the TYPE_NAME attribute '):
+      MyBadArtifact()
+
+    class MyArtifact(artifact.Artifact):
+      TYPE_NAME = 'MyType'
+
+    # Okay without additional type_name argument.
+    MyArtifact()
+
+    # Not okay to pass type_name on subclass.
+    with self.assertRaisesRegexp(
+        ValueError,
+        'The "type_name" field must not be passed for Artifact subclass'):
+      MyArtifact(type_name='OtherType')
+
 
 if __name__ == '__main__':
   tf.test.main()

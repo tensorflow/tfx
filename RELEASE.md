@@ -72,6 +72,9 @@
 *   Component class definitions have been simplified; existing custom components
     need to specify a ComponentSpec contract and conform to new class definition
     style (see `base_component.BaseComponent`).
+*   Artifact definitions for standard TFX components have moved from using
+    string type names into being concrete Artifact classes (see each component's
+    ComponentSpec definition and `types.standard_artifacts`).
 *   The "outputs" argument, which is used to override the automatically-
     generated output Channels for each component class has been removed; the
     equivalent overriding functionality is now available by specifying

@@ -22,6 +22,7 @@ import tensorflow as tf
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tfx import types
 from tfx.components.example_validator import executor
+from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 
 
@@ -35,14 +36,14 @@ class ExecutorTest(tf.test.TestCase):
     eval_stats_artifact.uri = os.path.join(source_data_dir,
                                            'statistics_gen/eval/')
 
-    schema_artifact = types.Artifact('SchemaPath')
+    schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    validation_output = types.Artifact('ExampleValidationPath')
+    validation_output = standard_artifacts.ExampleValidationResult()
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {

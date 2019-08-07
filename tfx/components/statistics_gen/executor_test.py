@@ -23,8 +23,8 @@ import tempfile
 from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
-from tfx import types
 from tfx.components.statistics_gen import executor
+from tfx.types import standard_artifacts
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -53,15 +53,14 @@ class ExecutorTest(absltest.TestCase):
     tf.gfile.MakeDirs(output_data_dir)
 
     # Create input dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
 
-    train_stats = types.Artifact(
-        type_name='ExampleStatisticsPath', split='train')
+    train_stats = standard_artifacts.ExampleStatistics(split='train')
     train_stats.uri = os.path.join(output_data_dir, 'train', '')
-    eval_stats = types.Artifact(type_name='ExampleStatisticsPath', split='eval')
+    eval_stats = standard_artifacts.ExampleStatistics(split='eval')
     eval_stats.uri = os.path.join(output_data_dir, 'eval', '')
     input_dict = {
         'input_data': [train_examples, eval_examples],

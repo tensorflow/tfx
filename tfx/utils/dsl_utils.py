@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-from tfx import types
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -31,7 +31,7 @@ def external_input(uri: Text) -> channel.Channel:
   Returns:
     input channel.
   """
-  instance = types.Artifact(type_name='ExternalPath')
+  instance = standard_artifacts.ExternalArtifact()
   instance.uri = uri
   return channel.as_channel([instance])
 

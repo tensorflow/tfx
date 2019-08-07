@@ -18,10 +18,10 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.example_validator import executor
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -30,11 +30,12 @@ class ExampleValidatorSpec(base_component.ComponentSpec):
 
   PARAMETERS = {}
   INPUTS = {
-      'stats': ChannelParameter(type_name='ExampleStatisticsPath'),
-      'schema': ChannelParameter(type_name='SchemaPath'),
+      'stats': ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      'schema': ChannelParameter(type=standard_artifacts.Schema),
   }
   OUTPUTS = {
-      'output': ChannelParameter(type_name='ExampleValidationPath'),
+      'output':
+          ChannelParameter(type=standard_artifacts.ExampleValidationResult),
   }
 
 
@@ -64,8 +65,8 @@ class ExampleValidator(base_component.BaseComponent):
         components are declared in the same pipeline.
     """
     output = output or channel.Channel(
-        type_name='ExampleValidationPath',
-        artifacts=[types.Artifact('ExampleValidationPath')])
+        type=standard_artifacts.ExampleValidationResult,
+        artifacts=[standard_artifacts.ExampleValidationResult()])
     spec = ExampleValidatorSpec(
         stats=channel.as_channel(stats),
         schema=channel.as_channel(schema),

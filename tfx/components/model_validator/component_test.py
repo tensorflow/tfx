@@ -18,16 +18,16 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.model_validator import component
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
 class ComponentTest(tf.test.TestCase):
 
   def test_construct(self):
-    examples = types.Artifact(type_name='ExamplesPath')
-    model = types.Artifact(type_name='ModelExportPath')
+    examples = standard_artifacts.Examples()
+    model = standard_artifacts.Model()
     model_validator = component.ModelValidator(
         examples=channel.as_channel([examples]),
         model=channel.as_channel([model]))

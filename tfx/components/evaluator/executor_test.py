@@ -21,9 +21,9 @@ import os
 import tensorflow as tf
 # TODO(jyzhao): BucketizeWithInputBoundaries error without this.
 from tensorflow.contrib.boosted_trees.python.ops import quantile_ops  # pylint: disable=unused-import
-from tfx import types
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
+from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
@@ -37,10 +37,10 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    train_examples = standard_artifacts.Examples(split='train')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
-    model_exports = types.Artifact(type_name='ModelExportPath')
+    model_exports = standard_artifacts.Model()
     model_exports.uri = os.path.join(source_data_dir, 'trainer/current/')
     input_dict = {
         'examples': [train_examples, eval_examples],
@@ -48,7 +48,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    eval_output = types.Artifact('ModelEvalPath')
+    eval_output = standard_artifacts.ModelEvalResult()
     eval_output.uri = os.path.join(output_data_dir, 'eval_output')
     output_dict = {'output': [eval_output]}
 

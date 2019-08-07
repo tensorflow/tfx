@@ -20,13 +20,13 @@ import os
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
-from tfx import types
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
 from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
 
 
@@ -93,9 +93,9 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     # Get output paths.
     component_id = '.'.join([example_gen.component_name, example_gen.name])
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_path, 'train')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(output_path, 'eval')
 
     # Check parquet example gen outputs.

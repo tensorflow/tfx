@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.transform import component
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -28,10 +28,10 @@ class ComponentTest(tf.test.TestCase):
   def setUp(self):
     super(ComponentTest, self).setUp()
     self.input_data = channel.as_channel([
-        types.Artifact(type_name='ExamplesPath', split='train'),
-        types.Artifact(type_name='ExamplesPath', split='eval'),
+        standard_artifacts.Examples(split='train'),
+        standard_artifacts.Examples(split='eval'),
     ])
-    self.schema = channel.as_channel([types.Artifact(type_name='SchemaPath')])
+    self.schema = channel.as_channel([standard_artifacts.Schema()])
 
   def _verify_outputs(self, transform):
     self.assertEqual('TransformPath',

@@ -27,6 +27,7 @@ from typing import Any, Dict, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message
+from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.utils import channel
@@ -79,10 +80,10 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
         'internal_option': ExecutionParameter(type=str),
     }
     INPUTS = {
-        'input_examples': ChannelParameter(type_name='ExamplesPath'),
+        'input_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
     OUTPUTS = {
-        'output_examples': ChannelParameter(type_name='ExamplesPath'),
+        'output_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
 
   To create an instance of a subclass, call it directly with any execution
@@ -256,15 +257,31 @@ class ChannelParameter(_ComponentParameter):
   class MyCustomComponentSpec(ComponentSpec):
     # ...
     INPUTS = {
-        'input_examples': ChannelParameter(type_name='ExamplesPath'),
+        'input_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
     OUTPUTS = {
-        'output_examples': ChannelParameter(type_name='ExamplesPath'),
+        'output_examples': ChannelParameter(type=standard_artifacts.Examples),
     }
     # ...
   """
 
-  def __init__(self, type_name: Text = None, optional: Optional[bool] = False):
+  def __init__(
+      self,
+      type_name: Optional[Text] = None,
+      type: Optional[Type[types.Artifact]] = None,  # pylint: disable=redefined-builtin
+      optional: Optional[bool] = False):
+    # TODO(b/138664975): either deprecate or remove string-based artifact type
+    # definition before 0.14.0 release.
+    if bool(type_name) == bool(type):
+      raise ValueError(
+          'Exactly one of "type" or "type_name" must be passed to the '
+          'constructor of Channel.')
+    if type:
+      if not issubclass(type, types.Artifact):  # pytype: disable=wrong-arg-types
+        raise ValueError(
+            'Argument "type" of Channel constructor must be a subclass of'
+            'tfx.types.Artifact.')
+      type_name = type.TYPE_NAME  # pytype: disable=attribute-error
     self.type_name = type_name
     self.optional = optional
 
