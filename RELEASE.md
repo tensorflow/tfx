@@ -50,7 +50,7 @@
     for defining component classes.
 *   Moved tfx.orchestration.gcp.cmle_runner to
     tfx.extensions.google_cloud_ai_platform.runner.
-*   TFX now depends on `pyarrow>=0.11.1,<0.12.0` (through its dependency on
+*   TFX now depends on `pyarrow>=0.14.0,<0.15.0` (through its dependency on
     `tensorflow-data-validation`).
 *   Introduced 'examples' to the Trainer component API. It's recommended to use
     this field instead of 'transformed_examples' going forward.
