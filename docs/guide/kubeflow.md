@@ -14,4 +14,6 @@ help users develop, run, and manage complex ML pipelines at scale. The Kubeflow
 Pipelines SDK allows for creation and sharing of components and composition and
 of pipelines programmatically.
 
-See the [TFX example on Kubeflow Pipelines](https://github.com/kubeflow/pipelines/tree/master/samples/tfx-oss) for details on running TFX at scale.
+See the
+[TFX example on Kubeflow Pipelines](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss)
+for details on running TFX at scale.
