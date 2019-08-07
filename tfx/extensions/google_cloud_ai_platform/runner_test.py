@@ -54,12 +54,12 @@ class RunnerTest(tf.test.TestCase):
     }
 
   @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.deps_utils'
+      'tfx.extensions.google_cloud_ai_platform.runner.dependency_utils'
   )
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
-  def testStartCMLETraining(self, mock_discovery, mock_deps_utils):
+  def testStartCMLETraining(self, mock_discovery, mock_dependency_utils):
     mock_discovery.build.return_value = self._mock_api_client
     mock_create = mock.Mock()
     self._mock_api_client.projects().jobs().create = mock_create
@@ -68,7 +68,7 @@ class RunnerTest(tf.test.TestCase):
     mock_get.execute.return_value = {
         'state': 'SUCCEEDED',
     }
-    mock_deps_utils.build_ephemeral_package.return_value = self._fake_package
+    mock_dependency_utils.build_ephemeral_package.return_value = self._fake_package
 
     class_path = 'foo.bar.class'
 
@@ -76,7 +76,7 @@ class RunnerTest(tf.test.TestCase):
                                self._exec_properties, class_path,
                                self._training_inputs)
 
-    mock_deps_utils.build_ephemeral_package.assert_called_with()
+    mock_dependency_utils.build_ephemeral_package.assert_called_with()
 
     mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
