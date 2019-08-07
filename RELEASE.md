@@ -63,6 +63,10 @@
     version when starting `airflow webserver`.
 *   Prepared support for analyzer cache optimization in transform executor.
 *   Added 'click>=7.0,<8' as a dependency to support CLI.
+*   Depends on `apache-beam[gcp]>=2.14,<3`
+*   Depends on `tensorflow-data-validation>=0.14.0,<0.15`
+*   Depends on `tensorflow-model-analysis>=0.14.0,<0.15`
+*   Depends on `tensorflow-transform>=0.14.0,<0.15`
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
