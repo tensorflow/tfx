@@ -40,10 +40,18 @@ class RunTest(tf.test.TestCase):
     self.runner = click_testing.CliRunner()
     sys.modules['handler_factory'] = mock.Mock()
 
-  def test_run_trigger(self):
+  def test_run_create_airflow(self):
     result = self.runner.invoke(
         run_group,
-        ['trigger', '--pipeline_name', 'chicago', '--engine', 'airflow'])
+        ['create', '--pipeline_name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Creating a run for pipeline', result.output)
+
+  def test_run_create_kubeflow(self):
+    result = self.runner.invoke(run_group, [
+        'create', '--pipeline_name', 'chicago', '--engine', 'kubeflow',
+        '--iap_client_id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
+        'endpoint_url'
+    ])
     self.assertIn('Creating a run for pipeline', result.output)
 
   def test_run_list(self):
@@ -52,22 +60,33 @@ class RunTest(tf.test.TestCase):
         ['list', '--pipeline_name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Listing all runs of pipeline', result.output)
 
-  def test_run_status(self):
-    result = self.runner.invoke(
-        run_group,
-        ['status', '--run_id', 'airflow_run_id', '--engine', 'airflow'])
+  def test_run_status_airflow(self):
+    result = self.runner.invoke(run_group, [
+        'status', '--pipeline_name', 'chicago_taxi_pipeline', '--run_id',
+        'airflow_run_id', '--engine', 'airflow'
+    ])
+    self.assertIn('Retrieving run status', result.output)
+
+  def test_run_status_kubeflow(self):
+    result = self.runner.invoke(run_group, [
+        'status', '--pipeline_name', 'chicago_taxi_pipeline', '--run_id',
+        'kubeflow_run_id', '--engine', 'kubeflow', '--iap_client_id', 'fake_id',
+        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+    ])
     self.assertIn('Retrieving run status', result.output)
 
   def test_run_terminate(self):
     result = self.runner.invoke(
         run_group,
         ['terminate', '--run_id', 'airflow_run_id', '--engine', 'airflow'])
-    self.assertIn('Terminating run', result.output)
+    self.assertIn('Terminating run.', result.output)
 
   def test_run_delete(self):
-    result = self.runner.invoke(
-        run_group,
-        ['delete', '--run_id', 'kubeflow_run_id', '--engine', 'kubeflow'])
+    result = self.runner.invoke(run_group, [
+        'delete', '--run_id', 'kubeflow_run_id', '--engine', 'kubeflow',
+        '--iap_client_id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
+        'endpoint_url'
+    ])
     self.assertIn('Deleting run', result.output)
 
 

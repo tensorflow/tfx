@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import json
 import os
 import sys
@@ -48,7 +49,7 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
     tar.add(pipeline_path)
 
 
-class _MockResponse(object):
+class _MockUploadResponse(object):
   """Mock upload response object."""
 
   def __init__(self, config):
@@ -72,16 +73,33 @@ class _MockClientClass(object):
     }  # pylint: disable=invalid-name, unused-variable
     self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
     self._pipelines_api = _MockPipelineApi()
+    self._experiment_api = _MockExperimentApi()
+    self._run_api = _MockRunApi()
 
   def upload_pipeline(self, pipeline_package_path, pipeline_name):  # pylint: disable=invalid-name, unused-argument
     io_utils.copy_file(
         pipeline_package_path,
         os.path.join(self._output_dir, os.path.basename(pipeline_package_path)),
         overwrite=True)
-    return _MockResponse(self.config)
+    return _MockUploadResponse(self.config)
+
+  def create_experiment(self, name):
+    return self._experiment_api.create_experiment(name)
+
+  def get_experiment(self, experiment_id=None, experiment_name=None):  # pylint: disable=unused-argument
+    return self._experiment_api.get_experiment(experiment_id)
+
+  def run_pipeline(self, experiment_id, job_name, pipeline_id=None):  # pylint: disable=unused-argument
+    return self._pipelines_api.run_pipeline()
 
   def list_pipelines(self):
-    pass
+    return self._pipelines_api.list_pipelines()
+
+  def list_runs(self, experiment_id):
+    return self._run_api.list_runs(experiment_id)
+
+  def get_run(self, run_id):
+    return self._run_api.get_run(run_id)
 
 
 class _MockPipelineApi(object):
@@ -91,6 +109,62 @@ class _MockPipelineApi(object):
 
   def get_pipeline(self, id):  # pylint: disable=redefined-builtin, invalid-name
     return id
+
+  def list_pipelines(self):
+    pass
+
+  def run_pipeline(self):
+    return _MockRunResponse('run_id', 'Running', datetime.datetime.now())
+
+
+class _MockExperimentResponse(object):
+
+  def __init__(self, experiment_name, experiment_id):  # pylint: disable=redefined-builtin
+    self.name = experiment_name
+    self.id = experiment_id
+
+
+class _MockExperimentApi(object):
+
+  def create_experiment(self, name):
+    return _MockExperimentResponse(name, 'fake_id')
+
+  def get_experiment(self, id):  # pylint: disable=redefined-builtin
+    return _MockExperimentResponse('fake_name', id)
+
+  def delete_experiment(self, id):  # pylint: disable=redefined-builtin, invalid-name
+    pass
+
+
+class _MockRunResponse(object):
+
+  def __init__(self, run_id, status, created_at):
+    self.id = run_id
+    self.status = status
+    self.created_at = created_at
+
+
+class _Runs(object):
+
+  def __init__(self, runs):
+    self.runs = runs
+
+
+class _MockRunApi(object):
+
+  def delete_run(self, run_id):
+    pass
+
+  def terminate_run(self, run_id):
+    pass
+
+  def get_run(self, run_id):
+    return _MockRunResponse(run_id, 'Running', datetime.datetime.now())
+
+  def list_runs(self, experiment_id):  # pylint: disable=unused-argument
+    run_1 = _MockRunResponse('1', 'Success', datetime.datetime.now())
+    run_2 = _MockRunResponse('2', 'Failed', datetime.datetime.now())
+    return _Runs([run_1, run_2])
 
 
 class KubeflowHandlerTest(tf.test.TestCase):
@@ -259,6 +333,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
   def test_delete_pipeline(self):
+    # Create pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
@@ -270,6 +345,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler.create_pipeline()
 
+    # Delete pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
@@ -296,6 +372,95 @@ class KubeflowHandlerTest(tf.test.TestCase):
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
+    self.assertEqual(
+        str(err.exception),
+        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def test_create_run(self):
+    # Create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+        labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    # Run pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.create_run()
+    self.assertIn('Run created for pipeline: ', captured.contents())
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  def test_create_run_no_pipeline(self):
+    # Run pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.create_run()
+    self.assertEqual(
+        str(err.exception),
+        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def test_list_runs(self):
+    # Create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+        labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    # List pipelines.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.list_runs()
+    self.assertIn('pipeline_name', captured.contents())
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  def test_list_runs_no_pipeline(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.list_runs()
     self.assertEqual(
         str(err.exception),
         'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))

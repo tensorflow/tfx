@@ -36,15 +36,32 @@ def run_group() -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name',
-    required=True,
+    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+@click.option(
+    '--endpoint',
+    default='',
     type=str,
-    help='Name of the pipeline')
-def create_run(ctx: Context, engine: Text, pipeline_name: Text) -> None:
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def create_run(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
+               iap_client_id: Text, namespace: Text) -> None:
   """Command definition to create a pipeline run."""
   click.echo('Creating a run for pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).create_run()
 
 
@@ -54,11 +71,31 @@ def create_run(ctx: Context, engine: Text, pipeline_name: Text) -> None:
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
     '--run_id', required=True, type=str, help='Unique ID for the run.)')
-def terminate_run(ctx: Context, engine: Text, run_id: Text) -> None:
+@click.option(
+    '--endpoint',
+    default='',
+    type=str,
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def terminate_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
+                  iap_client_id: Text, namespace: Text) -> None:
   """Command definition to stop a run."""
   click.echo('Terminating run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).terminate_run()
 
 
@@ -67,15 +104,32 @@ def terminate_run(ctx: Context, engine: Text, run_id: Text) -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name',
-    required=True,
+    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+@click.option(
+    '--endpoint',
+    default='',
     type=str,
-    help='Name of the pipeline')
-def list_runs(ctx: Context, engine: Text, pipeline_name: Text) -> None:
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def list_runs(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
+              iap_client_id: Text, namespace: Text) -> None:
   """Command definition to list all runs of a pipeline."""
   click.echo('Listing all runs of pipeline: ' + pipeline_name)
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).list_runs()
 
 
@@ -87,13 +141,32 @@ def list_runs(ctx: Context, engine: Text, pipeline_name: Text) -> None:
     '--pipeline_name', required=True, type=str, help='Name of the pipeline')
 @click.option(
     '--run_id', required=True, type=str, help='Unique ID for the run.')
-def get_run(ctx: Context, engine: Text, pipeline_name: Text,
-            run_id: Text) -> None:
+@click.option(
+    '--endpoint',
+    default='',
+    type=str,
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def get_run(ctx: Context, engine: Text, pipeline_name: Text, run_id: Text,
+            endpoint: Text, iap_client_id: Text, namespace: Text) -> None:
   """Command definition to stop a run."""
   click.echo('Retrieving run status.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).get_run()
 
 
@@ -103,9 +176,29 @@ def get_run(ctx: Context, engine: Text, pipeline_name: Text,
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
     '--run_id', required=True, type=str, help='Unique ID for the run.')
-def delete_run(ctx: Context, engine: Text, run_id: Text) -> None:
+@click.option(
+    '--endpoint',
+    default='',
+    type=str,
+    help='Endpoint of the KFP API service to connect.')
+@click.option(
+    '--iap_client_id',
+    default='',
+    type=str,
+    help='Client ID for IAP protected endpoint.')
+@click.option(
+    '-n',
+    '--namespace',
+    default='kubeflow',
+    type=str,
+    help='Kubernetes namespace to connect to the KFP API.')
+def delete_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
+               iap_client_id: Text, namespace: Text) -> None:
   """Command definition to delete a run."""
   click.echo('Deleting run.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.RUN_ID] = run_id
+  ctx.flags_dict[labels.ENDPOINT] = endpoint
+  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
+  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).delete_run()
