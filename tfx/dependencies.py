@@ -20,15 +20,15 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
       'absl-py>=0.1.6,<1',
-      'apache-beam[gcp]>=2.12,<3',
+      'apache-beam[gcp]>=2.14,<3',
       'click>=7.0,<8',
       'google-api-python-client>=1.7.8,<2',
       'ml-metadata>=0.13.2,<0.14',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
-      'tensorflow-data-validation>=0.13.1,<0.14',
-      'tensorflow-model-analysis>=0.13.2,<0.14',
-      'tensorflow-transform>=0.13,<0.14',
+      'tensorflow-data-validation>=0.14,<0.15',
+      'tensorflow-model-analysis>=0.14,<0.15',
+      'tensorflow-transform>=0.14,<0.15',
   ]
 
 
@@ -38,7 +38,7 @@ def make_required_test_packages():
       'apache-airflow>=1.10,<2',
       'kfp>=0.1.18,<0.2; python_version >= "3.0"',
       'pytest>=4.4.1,<5',
-      'tensorflow>=1.13,<2',
+      'tensorflow>=1.14,<2',
       'tzlocal>=1.5,<2.0',
   ]
 
@@ -47,5 +47,5 @@ def make_extra_packages_docker_image():
   # Packages needed for tfx docker image.
   return [
       'python-snappy>=0.5,<0.6',
-      'tensorflow>=1.13,<2',
+      'tensorflow>=1.14,<2',
   ]
