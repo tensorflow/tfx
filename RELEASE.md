@@ -24,6 +24,8 @@
 *   Introduced the experimental InteractiveContext environment for iterative
     notebook development, as well as an example Chicago Taxi notebook
     in this environment.
+*   Enables Transform and Trainer components to specify user defined function
+    (UDF) module by Python module path in addition to path to a module file.
 
 ## Bug fixes and other changes
 *   Declared 'cmle_training_args' on trainer and 'cmle_serving_args' on

@@ -17,32 +17,64 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import tensorflow as tf
 from tfx import types
 from tfx.components.transform import component
 from tfx.utils import channel
 
 
-class TransformTest(tf.test.TestCase):
+class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
-    source_data_dir = os.path.join(
-        os.path.dirname(__file__), 'testdata', 'taxi')
-    preprocessing_fn_file = os.path.join(source_data_dir, 'module',
-                                         'preprocess.py')
-    transform = component.Transform(
-        input_data=channel.as_channel([
-            types.Artifact(type_name='ExamplesPath', split='train'),
-            types.Artifact(type_name='ExamplesPath', split='eval'),
-        ]),
-        schema=channel.as_channel([types.Artifact(type_name='SchemaPath')]),
-        module_file=preprocessing_fn_file,
-    )
+  def setUp(self):
+    super(ComponentTest, self).setUp()
+    self.input_data = channel.as_channel([
+        types.Artifact(type_name='ExamplesPath', split='train'),
+        types.Artifact(type_name='ExamplesPath', split='eval'),
+    ])
+    self.schema = channel.as_channel([types.Artifact(type_name='SchemaPath')])
+
+  def _verify_outputs(self, transform):
     self.assertEqual('TransformPath',
                      transform.outputs.transform_output.type_name)
     self.assertEqual('ExamplesPath',
                      transform.outputs.transformed_examples.type_name)
+
+  def test_construct_from_module_file(self):
+    module_file = '/path/to/preprocessing.py'
+    transform = component.Transform(
+        input_data=self.input_data,
+        schema=self.schema,
+        module_file=module_file,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(module_file, transform.spec.exec_properties['module_file'])
+
+  def test_construct_from_preprocessing_fn(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    transform = component.Transform(
+        input_data=self.input_data,
+        schema=self.schema,
+        preprocessing_fn=preprocessing_fn,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(preprocessing_fn,
+                     transform.spec.exec_properties['preprocessing_fn'])
+
+  def test_construct_missing_user_module(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          input_data=self.input_data,
+          schema=self.schema,
+      )
+
+  def test_construct_duplicate_user_module(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          input_data=self.input_data,
+          schema=self.schema,
+          module_file='/path/to/preprocessing.py',
+          preprocessing_fn='path.to.my_preprocessing_fn',
+      )
 
 
 if __name__ == '__main__':

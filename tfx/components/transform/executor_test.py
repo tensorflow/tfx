@@ -22,6 +22,7 @@ import tempfile
 import tensorflow as tf
 import tensorflow_transform as tft
 from tfx import types
+from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
 
 
@@ -36,10 +37,8 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         test_dir)
 
-  def _get_source_data_dir(self):
-    return os.path.join(os.path.dirname(os.path.dirname(__file__)), 'testdata')
-
   def _make_base_do_params(self, source_data_dir, output_data_dir):
+    # Create input dict.
     train_artifact = types.Artifact('ExamplesPath', split='train')
     train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
     eval_artifact = types.Artifact('ExamplesPath', split='eval')
@@ -47,93 +46,121 @@ class ExecutorTest(tf.test.TestCase):
     schema_artifact = types.Artifact('Schema')
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
-    module_file = os.path.join(source_data_dir,
-                               'module_file/transform_module.py')
-
-    transformed_output = types.Artifact('TransformPath')
-    transformed_output.uri = os.path.join(output_data_dir, 'transformed_output')
-    transformed_train_examples = types.Artifact('ExamplesPath', split='train')
-    transformed_train_examples.uri = os.path.join(output_data_dir, 'train')
-    transformed_eval_examples = types.Artifact('ExamplesPath', split='eval')
-    transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
-    temp_path_output = types.Artifact('TempPath')
-    temp_path_output.uri = tempfile.mkdtemp()
-
-    input_dict = {
+    self._input_dict = {
         'input_data': [train_artifact, eval_artifact],
         'schema': [schema_artifact],
     }
-    output_dict = {
-        'transform_output': [transformed_output],
+
+    # Create output dict.
+    self._transformed_output = types.Artifact('TransformPath')
+    self._transformed_output.uri = os.path.join(output_data_dir,
+                                                'transformed_output')
+    self._transformed_train_examples = types.Artifact(
+        'ExamplesPath', split='train')
+    self._transformed_train_examples.uri = os.path.join(output_data_dir,
+                                                        'train')
+    self._transformed_eval_examples = types.Artifact(
+        'ExamplesPath', split='eval')
+    self._transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
+    temp_path_output = types.Artifact('TempPath')
+    temp_path_output.uri = tempfile.mkdtemp()
+
+    self._output_dict = {
+        'transform_output': [self._transformed_output],
         'transformed_examples': [
-            transformed_train_examples, transformed_eval_examples
+            self._transformed_train_examples, self._transformed_eval_examples
         ],
         'temp_path': [temp_path_output],
     }
 
-    exec_properties = {
-        'module_file': module_file,
-    }
-    return input_dict, output_dict, exec_properties
+    # Create exec properties skeleton.
+    self._exec_properties = {}
 
-  def test_do(self):
-    source_data_dir = self._get_source_data_dir()
-    output_data_dir = self._get_output_data_dir()
+  def setUp(self):
+    super(ExecutorTest, self).setUp()
 
-    (input_dict, output_dict,
-     exec_properties) = self._make_base_do_params(source_data_dir,
-                                                  output_data_dir)
+    self._source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    self._output_data_dir = self._get_output_data_dir()
 
-    # Run executor
-    transform_executor = executor.Executor()
-    transform_executor.Do(input_dict, output_dict, exec_properties)
-    for examples in output_dict['transformed_examples']:
-      self.assertNotEqual(0, len(tf.gfile.ListDirectory(examples.uri)))
-    (transformed_output,) = output_dict['transform_output']
+    self._make_base_do_params(self._source_data_dir, self._output_data_dir)
+
+    # Create exec properties skeleton.
+    self._module_file = os.path.join(self._source_data_dir,
+                                     'module_file/transform_module.py')
+    self._preprocessing_fn = '%s.%s' % (
+        transform_module.preprocessing_fn.__module__,
+        transform_module.preprocessing_fn.__name__)
+
+    # Executor for test.
+    self._transform_executor = executor.Executor()
+
+  def _verify_transform_outputs(self):
+    self.assertNotEqual(
+        0, len(tf.gfile.ListDirectory(self._transformed_train_examples.uri)))
+    self.assertNotEqual(
+        0, len(tf.gfile.ListDirectory(self._transformed_eval_examples.uri)))
     path_to_saved_model = os.path.join(
-        transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
+        self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.constants.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.gfile.Exists(path_to_saved_model))
 
+  def test_do_with_module_file(self):
+    self._exec_properties['module_file'] = self._module_file
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs()
+
+  def test_do_with_preprocessing_fn(self):
+    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs()
+
+  def test_do_with_no_preprocessing_fn(self):
+    with self.assertRaises(ValueError):
+      self._transform_executor.Do(self._input_dict, self._output_dict,
+                                  self._exec_properties)
+
+  def test_do_with_duplicate_preprocessing_fn(self):
+    self._exec_properties['module_file'] = self._module_file
+    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    with self.assertRaises(ValueError):
+      self._transform_executor.Do(self._input_dict, self._output_dict,
+                                  self._exec_properties)
+
   def test_do_with_cache(self):
-    source_data_dir = self._get_source_data_dir()
-    output_data_dir = self._get_output_data_dir('1st_run')
-
-    (input_dict, output_dict,
-     exec_properties) = self._make_base_do_params(source_data_dir,
-                                                  output_data_dir)
-
+    # First run that creates cache.
     output_cache_artifact = types.Artifact('OutputCache')
-    output_cache_artifact.uri = os.path.join(output_data_dir, 'CACHE/')
+    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE/')
 
-    output_dict['cache_output_path'] = [output_cache_artifact]
+    self._output_dict['cache_output_path'] = [output_cache_artifact]
 
-    # Run executor
-    transform_executor = executor.Executor()
-    transform_executor.Do(input_dict, output_dict, exec_properties)
-
+    self._exec_properties['module_file'] = self._module_file
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs()
     self.assertNotEqual(0,
                         len(tf.gfile.ListDirectory(output_cache_artifact.uri)))
 
-    output_data_dir = self._get_output_data_dir('2nd_run')
-
-    (input_dict, output_dict,
-     exec_properties) = self._make_base_do_params(source_data_dir,
-                                                  output_data_dir)
-
+    # Second run from cache.
+    self._output_data_dir = self._get_output_data_dir('2nd_run')
     input_cache_artifact = types.Artifact('InputCache')
     input_cache_artifact.uri = output_cache_artifact.uri
 
     output_cache_artifact = types.Artifact('OutputCache')
-    output_cache_artifact.uri = os.path.join(output_data_dir, 'CACHE/')
+    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE/')
 
-    input_dict['cache_input_path'] = [input_cache_artifact]
-    output_dict['cache_output_path'] = [output_cache_artifact]
+    self._make_base_do_params(self._source_data_dir, self._output_data_dir)
 
-    # Run executor again
-    transform_executor = executor.Executor()
-    transform_executor.Do(input_dict, output_dict, exec_properties)
+    self._input_dict['cache_input_path'] = [input_cache_artifact]
+    self._output_dict['cache_output_path'] = [output_cache_artifact]
 
+    self._exec_properties['module_file'] = self._module_file
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+
+    self._verify_transform_outputs()
     self.assertNotEqual(0,
                         len(tf.gfile.ListDirectory(output_cache_artifact.uri)))
 

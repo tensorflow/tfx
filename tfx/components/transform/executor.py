@@ -215,9 +215,11 @@ class Executor(base_executor.BaseExecutor):
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
           includes both 'train' and 'eval' splits.
-      exec_properties: A dict of execution properties, including:
+      exec_properties: A dict of execution properties, including either one of:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
+        - preprocessing_fn: The module path to a python function that
+          implements 'preprocessing_fn'.
 
     Returns:
       None
@@ -257,8 +259,10 @@ class Executor(base_executor.BaseExecutor):
             io_utils.all_files_pattern(eval_data_uri),
         labels.TFT_STATISTICS_USE_TFDV_LABEL:
             True,
+        labels.MODULE_FILE:
+            exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
-            exec_properties['module_file'],
+            exec_properties.get('preprocessing_fn', None),
     }
     cache_input = _GetCachePath('cache_input_path', input_dict)
     if cache_input is not None:
@@ -634,10 +638,30 @@ class Executor(base_executor.BaseExecutor):
 
     Returns:
       User defined function.
+
+    Raises:
+      ValueError: When neither or both of MODULE_FILE and PREPROCESSING_FN
+        are present in inputs.
     """
-    return import_utils.import_func_from_source(
-        common.GetSoleValue(inputs, labels.PREPROCESSING_FN),
-        'preprocessing_fn')
+    has_module_file = bool(
+        common.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+    has_preprocessing_fn = bool(
+        common.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
+
+    if has_module_file == has_preprocessing_fn:
+      raise ValueError(
+          'Neither or both of MODULE_FILE and PREPROCESSING_FN have been '
+          'supplied in inputs.')
+
+    if has_module_file:
+      return import_utils.import_func_from_source(
+          common.GetSoleValue(inputs, labels.MODULE_FILE), 'preprocessing_fn')
+
+    preprocessing_fn_path_split = common.GetSoleValue(
+        inputs, labels.PREPROCESSING_FN).split('.')
+    return import_utils.import_func_from_module(
+        '.'.join(preprocessing_fn_path_split[0:-1]),
+        preprocessing_fn_path_split[-1])
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
@@ -660,7 +684,9 @@ class Executor(base_executor.BaseExecutor):
           only data.
         - labels.TFT_STATISTICS_USE_TFDV_LABEL: Whether use tfdv to compute
           statistics.
-        - labels.PREPROCESSING_FN: Path to a Python module that contains the
+        - labels.MODULE_FILE: Path to a Python module that contains the
+          preprocessing_fn, optional.
+        - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
       outputs: A dictionary of labelled output values, including:
         - labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: Paths to statistics output,
