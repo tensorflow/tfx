@@ -21,10 +21,10 @@ from presto_component import executor
 from proto import presto_config_pb2
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
-from tfx.utils import channel
 
 
 class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
@@ -40,7 +40,7 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
                query: Optional[Text] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[channel.Channel] = None,
+               example_artifacts: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Constructs a PrestoExampleGen component.
 

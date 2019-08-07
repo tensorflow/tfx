@@ -27,7 +27,6 @@ from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
-from tfx.utils import channel
 
 
 class ComponentLauncher(object):
@@ -67,10 +66,11 @@ class ComponentLauncher(object):
     self._metadata_connection_config = metadata_connection_config
     self._additional_pipeline_args = additional_pipeline_args
 
-  def _run_driver(self, input_dict: Dict[Text, channel.Channel],
-                  output_dict: Dict[Text, channel.Channel],
-                  exec_properties: Dict[Text, Any]
-                 ) -> data_types.ExecutionDecision:
+  def _run_driver(
+      self, input_dict: Dict[Text,
+                             types.Channel], output_dict: Dict[Text,
+                                                               types.Channel],
+      exec_properties: Dict[Text, Any]) -> data_types.ExecutionDecision:
     """Prepare inputs, outputs and execution properties for actual execution."""
     tf.logging.info('Run driver for %s', self._component_info.component_id)
 

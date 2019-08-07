@@ -22,8 +22,8 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.statistics_gen import executor
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class StatisticsGenSpec(base_component.ComponentSpec):
@@ -49,8 +49,8 @@ class StatisticsGen(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               input_data: channel.Channel = None,
-               output: Optional[channel.Channel] = None,
+               input_data: types.Channel = None,
+               output: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
@@ -62,13 +62,12 @@ class StatisticsGen(base_component.BaseComponent):
       name: Optional unique name. Necessary iff multiple StatisticsGen
         components are declared in the same pipeline.
     """
-    output = output or channel.Channel(
+    output = output or types.Channel(
         type=standard_artifacts.ExampleStatistics,
         artifacts=[
             standard_artifacts.ExampleStatistics(split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = StatisticsGenSpec(
-        input_data=channel.as_channel(input_data),
-        output=output)
+        input_data=channel_utils.as_channel(input_data), output=output)
     super(StatisticsGen, self).__init__(spec=spec, name=name)

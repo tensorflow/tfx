@@ -95,8 +95,10 @@
 *   The `base_component.ComponentOutputs` class has been renamed to
     `base_component._PropertyDictWrapper`.
 *   The tfx.utils.types.TfxType class has been renamed to
-    tfx.types.artifact.Artifact.
-*   The "static_artifact_collection" argument to utils.channel.Channel has been
+    tfx.types.Artifact.
+*   The tfx.utils.channel.Channel class has been moved to
+    tfx.types.Channel.
+*   The "static_artifact_collection" argument to types.Channel has been
     renamed to "artifacts".
 *   ArtifactType for artifacts will have two new properties: pipeline_name and
     producer_component.

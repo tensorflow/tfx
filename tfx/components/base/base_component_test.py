@@ -20,12 +20,12 @@ from __future__ import print_function
 import json
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.proto import example_gen_pb2
-from tfx.utils import channel
 
 
 class _BasicComponentSpec(base_component.ComponentSpec):
@@ -51,9 +51,9 @@ class _BasicComponent(base_component.BaseComponent):
   def __init__(self,
                spec: base_component.ComponentSpec = None,
                folds: int = None,
-               input: channel.Channel = None):  # pylint: disable=redefined-builtin
+               input: types.Channel = None):  # pylint: disable=redefined-builtin
     if not spec:
-      output = channel.Channel(type_name='OutputType')
+      output = types.Channel(type_name='OutputType')
       spec = _BasicComponentSpec(
           folds=folds, input=input, output=output)
     super(_BasicComponent, self).__init__(spec=spec)
@@ -76,8 +76,8 @@ class ComponentSpecTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='name1', pattern='pattern1'),
         example_gen_pb2.Input.Split(name='name2', pattern='pattern2'),
         example_gen_pb2.Input.Split(name='name3', pattern='pattern3'),])
-    input_channel = channel.Channel(type_name='InputType')
-    output_channel = channel.Channel(type_name='OutputType')
+    input_channel = types.Channel(type_name='InputType')
+    output_channel = types.Channel(type_name='OutputType')
     spec = _BasicComponentSpec(folds=10,
                                proto=proto,
                                input=input_channel,
@@ -109,16 +109,18 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaisesRegexp(
         TypeError,
         'Expected InputType but found WrongType'):
-      spec = _BasicComponentSpec(folds=10,
-                                 input=channel.Channel(type_name='WrongType'),
-                                 output=output_channel)
+      spec = _BasicComponentSpec(
+          folds=10,
+          input=types.Channel(type_name='WrongType'),
+          output=output_channel)
 
     with self.assertRaisesRegexp(
         TypeError,
         'Expected OutputType but found WrongType'):
-      spec = _BasicComponentSpec(folds=10,
-                                 input=input_channel,
-                                 output=channel.Channel(type_name='WrongType'))
+      spec = _BasicComponentSpec(
+          folds=10,
+          input=input_channel,
+          output=types.Channel(type_name='WrongType'))
 
   def test_invalid_componentspec_missing_properties(self):
 
@@ -240,20 +242,20 @@ class ComponentSpecTest(tf.test.TestCase):
 
     with self.assertRaisesRegexp(ValueError,
                                  'Missing argument'):
-      _ = SimpleComponentSpec(z=channel.Channel(type_name='Z'))
+      _ = SimpleComponentSpec(z=types.Channel(type_name='Z'))
 
     # Okay since y is optional.
-    _ = SimpleComponentSpec(x=10, z=channel.Channel(type_name='Z'))
+    _ = SimpleComponentSpec(x=10, z=types.Channel(type_name='Z'))
 
 
 class ComponentTest(tf.test.TestCase):
 
   def test_component_basic(self):
-    input_channel = channel.Channel(type_name='InputType')
+    input_channel = types.Channel(type_name='InputType')
     component = _BasicComponent(folds=10, input=input_channel)
     self.assertEqual(component.component_name, 'MyBasicComponent')
     self.assertIs(input_channel, component.inputs.input)
-    self.assertIsInstance(component.outputs.output, channel.Channel)
+    self.assertIsInstance(component.outputs.output, types.Channel)
     self.assertEqual(component.outputs.output.type_name, 'OutputType')
 
   def test_component_spec_type(self):

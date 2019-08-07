@@ -15,3 +15,4 @@
 
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import DEFAULT_EXAMPLE_SPLITS
+from tfx.types.channel import Channel

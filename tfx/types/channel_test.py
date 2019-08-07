@@ -11,29 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.example_gen.csv_example_gen.component."""
+"""Tests for tfx.utils.channel."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
+
+# Standard Imports
 
 import tensorflow as tf
-from tfx.components.example_gen.csv_example_gen import component
-from tfx.types import channel_utils
-from tfx.types import standard_artifacts
+from tfx.types.artifact import Artifact
+from tfx.types.channel import Channel
 
 
-class ComponentTest(tf.test.TestCase):
+class ChannelTest(tf.test.TestCase):
 
-  def test_construct(self):
-    input_base = standard_artifacts.ExternalArtifact()
-    csv_example_gen = component.CsvExampleGen(
-        input_base=channel_utils.as_channel([input_base]))
-    self.assertEqual('ExamplesPath',
-                     csv_example_gen.outputs.examples.type_name)
-    artifact_collection = csv_example_gen.outputs.examples.get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+  def test_valid_channel(self):
+    instance_a = Artifact('MyTypeName')
+    instance_b = Artifact('MyTypeName')
+    chnl = Channel('MyTypeName', artifacts=[instance_a, instance_b])
+    self.assertEqual(chnl.type_name, 'MyTypeName')
+    self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
+
+  def test_invalid_channel_type(self):
+    instance_a = Artifact('MyTypeName')
+    instance_b = Artifact('MyTypeName')
+    with self.assertRaises(ValueError):
+      Channel('AnotherTypeName', artifacts=[instance_a, instance_b])
 
 
 if __name__ == '__main__':

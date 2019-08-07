@@ -25,7 +25,7 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
-from tfx.utils import channel
+from tfx.types import channel_utils
 from tfx.utils import io_utils
 
 # Fingerprint custom property.
@@ -95,7 +95,7 @@ class Driver(base_driver.BaseDriver):
 
   def resolve_input_artifacts(
       self,
-      input_dict: Dict[Text, channel.Channel],
+      input_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
@@ -103,4 +103,4 @@ class Driver(base_driver.BaseDriver):
     """Overrides BaseDriver.resolve_input_artifacts()."""
     del driver_args  # unused
     return self._prepare_input_for_processing(
-        channel.unwrap_channel_dict(input_dict), exec_properties)
+        channel_utils.unwrap_channel_dict(input_dict), exec_properties)

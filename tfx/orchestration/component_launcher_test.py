@@ -31,22 +31,22 @@ from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 from tfx.types import artifact_utils
-from tfx.utils import channel
+from tfx.types import channel_utils
 
 
 class _FakeDriver(base_driver.BaseDriver):
 
   def pre_execution(
       self,
-      input_dict: Dict[Text, channel.Channel],
-      output_dict: Dict[Text, channel.Channel],
+      input_dict: Dict[Text, types.Channel],
+      output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
-    input_artifacts = channel.unwrap_channel_dict(input_dict)
-    output_artifacts = channel.unwrap_channel_dict(output_dict)
+    input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
+    output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
     tf.gfile.MakeDirs(pipeline_info.pipeline_root)
     artifact_utils.get_single_instance(
         output_artifacts['output']).uri = os.path.join(
@@ -78,9 +78,9 @@ class _FakeComponent(base_component.BaseComponent):
 
   def __init__(self,
                name: Text,
-               input_channel: channel.Channel,
-               output_channel: Optional[channel.Channel] = None):
-    output_channel = output_channel or channel.Channel(
+               input_channel: types.Channel,
+               output_channel: Optional[types.Channel] = None):
+    output_channel = output_channel or types.Channel(
         type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
     super(_FakeComponent, self).__init__(spec=spec, name=name)
@@ -109,7 +109,7 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     component = _FakeComponent(
         name='FakeComponent',
-        input_channel=channel.as_channel([input_artifact]))
+        input_channel=channel_utils.as_channel([input_artifact]))
 
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')

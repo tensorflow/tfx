@@ -25,8 +25,8 @@ from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -87,7 +87,7 @@ class ComponentTest(tf.test.TestCase):
   def test_construct_subclass_file_based(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel.as_channel([input_base]))
+        input_base=channel_utils.as_channel([input_base]))
     self.assertIn('input_base', example_gen.inputs.get_all())
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
@@ -99,7 +99,7 @@ class ComponentTest(tf.test.TestCase):
   def test_construct_custom_executor(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = component.FileBasedExampleGen(
-        input_base=channel.as_channel([input_base]),
+        input_base=channel_utils.as_channel([input_base]),
         executor_class=TestExampleGenExecutor)
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual('ExamplesPath', example_gen.outputs.examples.type_name)
@@ -110,7 +110,7 @@ class ComponentTest(tf.test.TestCase):
   def test_construct_with_output_config(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel.as_channel([input_base]),
+        input_base=channel_utils.as_channel([input_base]),
         output_config=example_gen_pb2.Output(
             split_config=example_gen_pb2.SplitConfig(splits=[
                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
@@ -126,7 +126,7 @@ class ComponentTest(tf.test.TestCase):
   def test_construct_with_input_config(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
-        input_base=channel.as_channel([input_base]),
+        input_base=channel_utils.as_channel([input_base]),
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='train', pattern='train/*'),
             example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
@@ -142,7 +142,7 @@ class ComponentTest(tf.test.TestCase):
     input_base = standard_artifacts.ExternalArtifact()
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
     example_gen = component.FileBasedExampleGen(
-        input_base=channel.as_channel([input_base]),
+        input_base=channel_utils.as_channel([input_base]),
         custom_config=custom_config,
         executor_class=TestExampleGenExecutor)
 

@@ -18,11 +18,12 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.schema_gen import executor
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class SchemaGenSpec(base_component.ComponentSpec):
@@ -48,8 +49,8 @@ class SchemaGen(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               stats: channel.Channel,
-               output: Optional[channel.Channel] = None,
+               stats: types.Channel,
+               output: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
@@ -61,9 +62,7 @@ class SchemaGen(base_component.BaseComponent):
       name: Optional unique name. Necessary iff multiple SchemaGen components
         are declared in the same pipeline.
     """
-    output = output or channel.Channel(
+    output = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
-    spec = SchemaGenSpec(
-        stats=channel.as_channel(stats),
-        output=output)
+    spec = SchemaGenSpec(stats=channel_utils.as_channel(stats), output=output)
     super(SchemaGen, self).__init__(spec=spec, name=name)

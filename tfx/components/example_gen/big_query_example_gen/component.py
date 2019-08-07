@@ -19,11 +19,11 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
-from tfx.utils import channel
 
 
 class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
@@ -39,7 +39,7 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
                query: Optional[Text] = None,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[channel.Channel] = None,
+               example_artifacts: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Constructs a BigQueryExampleGen component.
 

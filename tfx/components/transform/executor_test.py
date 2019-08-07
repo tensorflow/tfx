@@ -44,7 +44,7 @@ class ExecutorTest(tf.test.TestCase):
     train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
     eval_artifact = standard_artifacts.Examples(split='eval')
     eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
-    schema_artifact = types.Artifact('Schema')
+    schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     self._input_dict = {
@@ -53,15 +53,14 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    self._transformed_output = types.Artifact('TransformPath')
+    self._transformed_output = standard_artifacts.TransformResult()
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_output')
-    self._transformed_train_examples = types.Artifact(
-        'ExamplesPath', split='train')
+    self._transformed_train_examples = standard_artifacts.Examples(
+        split='train')
     self._transformed_train_examples.uri = os.path.join(output_data_dir,
                                                         'train')
-    self._transformed_eval_examples = types.Artifact(
-        'ExamplesPath', split='eval')
+    self._transformed_eval_examples = standard_artifacts.Examples(split='eval')
     self._transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
     temp_path_output = types.Artifact('TempPath')
     temp_path_output.uri = tempfile.mkdtemp()
