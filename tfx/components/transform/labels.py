@@ -20,6 +20,7 @@ SCHEMA_PATH_LABEL = 'schema_path'
 ANALYZE_AND_TRANSFORM_DATA_PATHS_LABEL = ('analyze_and_transform_data_paths')
 TRANSFORM_ONLY_DATA_PATHS_LABEL = 'transform_only_data_paths'
 COMPUTE_STATISTICS_LABEL = 'compute_statistics'
+MODULE_FILE = 'module_file'
 PREPROCESSING_FN = 'preprocessing_fn'
 TFT_STATISTICS_USE_TFDV_LABEL = 'tft_statistics_use_tfdv'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
