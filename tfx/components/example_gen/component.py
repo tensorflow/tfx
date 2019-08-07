@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from typing import Optional, Text, Type
 
-from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -27,6 +26,7 @@ from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -43,7 +43,7 @@ class QueryBasedExampleGenSpec(base_component.ComponentSpec):
   }
   INPUTS = {}
   OUTPUTS = {
-      'examples': ChannelParameter(type_name='ExamplesPath'),
+      'examples': ChannelParameter(type=standard_artifacts.Examples),
   }
 
 
@@ -59,10 +59,10 @@ class FileBasedExampleGenSpec(base_component.ComponentSpec):
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }
   INPUTS = {
-      'input_base': ChannelParameter(type_name='ExternalPath'),
+      'input_base': ChannelParameter(type=standard_artifacts.ExternalArtifact),
   }
   OUTPUTS = {
-      'examples': ChannelParameter(type_name='ExamplesPath'),
+      'examples': ChannelParameter(type=standard_artifacts.Examples),
   }
 
 
@@ -104,7 +104,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel.as_channel([
-        types.Artifact('ExamplesPath', split=split_name)
+        standard_artifacts.Examples(split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])
@@ -164,7 +164,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel.as_channel([
-        types.Artifact('ExamplesPath', split=split_name)
+        standard_artifacts.Examples(split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])

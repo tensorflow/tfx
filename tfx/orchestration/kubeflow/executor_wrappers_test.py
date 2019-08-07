@@ -25,10 +25,10 @@ from unittest.mock import patch
 import tensorflow as tf
 from typing import Text
 
-from tfx import types
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.orchestration.kubeflow import executor_wrappers
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 
 
 def _locate_setup_file_dir() -> Text:
@@ -51,14 +51,14 @@ class ExecutorWrappersTest(tf.test.TestCase):
         'output': json.dumps({}),
         'output_dir': '/path/to/output',
     }
-    self.examples = [types.Artifact(type_name='ExamplesPath', split='dummy')]
+    self.examples = [standard_artifacts.Examples(split='dummy')]
     self.output_basedir = tempfile.mkdtemp()
 
     os.environ['WORKFLOW_ID'] = 'mock_workflow_id'
     os.environ['TFX_SRC_DIR'] = _locate_setup_file_dir()
 
   def testCsvExampleGenWrapper(self):
-    input_base = types.Artifact(type_name='ExternalPath', split='')
+    input_base = standard_artifacts.ExternalArtifact(split='')
     input_base.uri = '/path/to/dataset'
 
     with patch.object(executor, 'Executor', autospec=True) as _:
@@ -78,8 +78,7 @@ class ExecutorWrappersTest(tf.test.TestCase):
       metadata_file = os.path.join(
           self.output_basedir, 'output/ml_metadata/examples')
 
-      expected_output_examples = types.Artifact(
-          type_name='ExamplesPath', split='dummy')
+      expected_output_examples = standard_artifacts.Examples(split='dummy')
       # Expect that span and path are resolved.
       expected_output_examples.span = 1
       expected_output_examples.uri = (

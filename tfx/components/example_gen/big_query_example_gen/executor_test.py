@@ -24,9 +24,9 @@ from apache_beam.testing import util
 import mock
 import tensorflow as tf
 from google.cloud import bigquery
-from tfx import types
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
@@ -103,9 +103,9 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 

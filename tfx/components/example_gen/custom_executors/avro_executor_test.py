@@ -21,9 +21,9 @@ import os
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from tfx import types
 from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
@@ -34,7 +34,7 @@ class ExecutorTest(tf.test.TestCase):
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
 
     # Create input dict.
-    input_base = types.Artifact(type_name='ExternalPath')
+    input_base = standard_artifacts.ExternalArtifact()
     input_base.uri = os.path.join(input_data_dir, 'external')
     self._input_dict = {'input_base': [input_base]}
 
@@ -61,9 +61,9 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_data_dir, 'train')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(output_data_dir, 'eval')
     output_dict = {'examples': [train_examples, eval_examples]}
 

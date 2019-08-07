@@ -18,10 +18,10 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.pusher import component
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -32,10 +32,9 @@ class ComponentTest(tf.test.TestCase):
     pass
 
   def setUp(self):
-    self.model_export = channel.as_channel(
-        [types.Artifact(type_name='ModelExportPath')])
+    self.model_export = channel.as_channel([standard_artifacts.Model()])
     self.model_blessing = channel.as_channel(
-        [types.Artifact(type_name='ModelBlessingPath')])
+        [standard_artifacts.ModelBlessing()])
 
   def test_construct(self):
     pusher = component.Pusher(

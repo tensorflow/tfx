@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx import types
 from tfx.components.trainer import driver
+from tfx.types import standard_artifacts
 
 
 class DriverTest(tf.test.TestCase):
@@ -28,7 +28,7 @@ class DriverTest(tf.test.TestCase):
     mock_metadata = tf.test.mock.Mock()
     artifacts = []
     for aid in [3, 2, 1]:
-      model = types.Artifact(type_name='ModelExportPath')
+      model = standard_artifacts.Model()
       model.id = aid
       model.uri = 'uri-%d' % aid
       artifacts.append(model.artifact)

@@ -21,6 +21,7 @@ import os
 import tensorflow as tf
 from tfx import types
 from tfx.components.schema_gen import executor
+from tfx.types import standard_artifacts
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -37,7 +38,7 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    schema_output = types.Artifact('SchemaPath')
+    schema_output = standard_artifacts.Schema()
     schema_output.uri = os.path.join(output_data_dir, 'schema_output')
 
     input_dict = {

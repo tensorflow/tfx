@@ -20,6 +20,7 @@ from __future__ import print_function
 from slack_component import component
 import tensorflow as tf
 from tfx import types
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -27,9 +28,9 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     self.model_export = channel.as_channel(
-        [types.Artifact(type_name='ModelExportPath')])
+        [types.Artifact(type=standard_artifacts.Model)])
     self.model_blessing = channel.as_channel(
-        [types.Artifact(type_name='ModelBlessingPath')])
+        [standard_artifacts.ModelBlessing()])
 
   def test_construct(self):
     slack_component = component.SlackComponent(

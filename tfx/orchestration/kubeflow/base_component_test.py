@@ -21,18 +21,16 @@ import collections
 import json
 from kfp import dsl
 import tensorflow as tf
-from tfx import types
 from tfx.orchestration.kubeflow import base_component
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 
 
 class BaseComponentTest(tf.test.TestCase):
   maxDiff = None  # pylint: disable=invalid-name
 
   def setUp(self):
-    self._output_dict = {
-        'output_name': [types.Artifact(type_name='ExamplesPath')]
-    }
+    self._output_dict = {'output_name': [standard_artifacts.Examples()]}
     self._pipeline_properties = base_component.PipelineProperties(
         output_dir='output_dir',
         log_root='log_root',

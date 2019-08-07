@@ -19,15 +19,15 @@ from __future__ import print_function
 
 import tensorflow as tf
 from typing import Text
-from tfx import types
 from tfx.components.model_validator import driver
+from tfx.types import standard_artifacts
 
 
 class DriverTest(tf.test.TestCase):
 
   def _create_mock_artifact(self, aid: int, is_blessed: bool,
                             component_id: Text):
-    model_blessing = types.Artifact(type_name='ModelBlessingPath')
+    model_blessing = standard_artifacts.ModelBlessing()
     model_blessing.id = aid
     model_blessing.set_string_custom_property('current_model', 'uri-%d' % aid)
     model_blessing.set_int_custom_property('current_model_id', aid)

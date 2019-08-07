@@ -20,10 +20,10 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
-from tfx import types
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
+from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
@@ -38,16 +38,16 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    train_examples = types.Artifact(type_name='ExamplesPath', split='train')
+    train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(self._source_data_dir,
                                       'transform/transformed_examples/train/')
-    eval_examples = types.Artifact(type_name='ExamplesPath', split='eval')
+    eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(self._source_data_dir,
                                      'transform/transformed_examples/eval/')
-    transform_output = types.Artifact(type_name='TransformPath')
+    transform_output = standard_artifacts.TransformResult()
     transform_output.uri = os.path.join(self._source_data_dir,
                                         'transform/transform_output/')
-    schema = types.Artifact(type_name='ExamplesPath')
+    schema = standard_artifacts.Examples()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen/')
 
     self._input_dict = {
@@ -57,7 +57,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    self._model_exports = types.Artifact(type_name='ModelExportPath')
+    self._model_exports = standard_artifacts.Model()
     self._model_exports.uri = os.path.join(self._output_data_dir,
                                            'model_export_path')
     self._output_dict = {'output': [self._model_exports]}

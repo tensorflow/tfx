@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-from typing import Dict, Iterable, List, Optional, Text, Union
+from typing import Dict, Iterable, List, Optional, Text, Type, Union
 
 from tfx import types
 
@@ -36,17 +36,31 @@ class Channel(object):
 
   # TODO(b/124763842): Consider replace type_name with ArtifactType.
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
-  def __init__(self,
-               type_name: Text,
-               artifacts: Optional[Iterable[types.Artifact]] = None):
+  def __init__(
+      self,
+      type_name: Optional[Text] = None,
+      type: Optional[Type[types.Artifact]] = None,  # pylint: disable=redefined-builtin
+      artifacts: Optional[Iterable[types.Artifact]] = None):
     """Initialization of Channel.
 
     Args:
       type_name: Name of the type that should be fed into or read from the
-        Channel.
+        Channel. If not specified, "type" must be specified instead.
+      type: Subclass of types.Artifact that represents the type of the Channel.
+        If not specified, "type_name" must be specified instead.
       artifacts: (Optional) A collection of artifacts as the values that can be
         read from the Channel. This is used to construct a static Channel.
     """
+    if bool(type_name) == bool(type):
+      raise ValueError(
+          'Exactly one of "type" or "type_name" must be passed to the '
+          'constructor of Channel.')
+    if type:
+      if not issubclass(type, types.Artifact):  # pytype: disable=wrong-arg-types
+        raise ValueError(
+            'Argument "type" of Channel constructor must be a subclass of'
+            'tfx.types.Artifact.')
+      type_name = type.TYPE_NAME  # pytype: disable=attribute-error
 
     self.type_name = type_name
     self._artifacts = artifacts or []

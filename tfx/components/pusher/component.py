@@ -18,13 +18,13 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Type
 
-from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -37,11 +37,11 @@ class PusherSpec(base_component.ComponentSpec):
       'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
   }
   INPUTS = {
-      'model_export': ChannelParameter(type_name='ModelExportPath'),
-      'model_blessing': ChannelParameter(type_name='ModelBlessingPath'),
+      'model_export': ChannelParameter(type=standard_artifacts.Model),
+      'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
   OUTPUTS = {
-      'model_push': ChannelParameter(type_name='ModelPushPath'),
+      'model_push': ChannelParameter(type=standard_artifacts.PushedModel),
   }
 
 
@@ -86,7 +86,8 @@ class Pusher(base_component.BaseComponent):
         declared in the same pipeline.
     """
     model_push = model_push or channel.Channel(
-        type_name='ModelPushPath', artifacts=[types.Artifact('ModelPushPath')])
+        type=standard_artifacts.PushedModel,
+        artifacts=[standard_artifacts.PushedModel()])
     if push_destination is None and not executor_class:
       raise ValueError('push_destination is required unless a custom '
                        'executor_class is supplied that does not require '

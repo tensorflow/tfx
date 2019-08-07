@@ -52,9 +52,20 @@ class Artifact(object):
   it wraps a tuple of (ml_metadata.proto.Artifact,
   ml_metadata.proto.ArtifactType) with additional property accessors for
   internal state.
+
+  A user may create a subclass of Artifact and override the TYPE_NAME property
+  with the type for this artifact subclass. Users of the subclass may then omit
+  the "type_name" field when construction the object.
+
+  Note: the behavior of this class is experimental, without backwards
+  compatibility guarantees, and may change in upcoming releases.
   """
 
-  def __init__(self, type_name: Text, split: Optional[Text] = ''):
+  TYPE_NAME = None
+
+  def __init__(self,
+               type_name: Optional[Text] = None,
+               split: Optional[Text] = ''):
     """Construct an instance of Artifact.
 
     Used by TFX internal implementation: create an empty Artifact with
@@ -64,9 +75,29 @@ class Artifact(object):
     users.
 
     Args:
-      type_name: Name of underlying ArtifactType.
-      split: Which split this instance of articact maps to.
+      type_name: Name of underlying ArtifactType (optional if the ARTIFACT_TYPE
+        field is provided for the Artifact subclass).
+      split: Which split this instance of artifact maps to.
     """
+    # TODO(b/138664975): either deprecate or remove string-based artifact type
+    # definition before 0.14.0 release.
+    if self.__class__ != Artifact:
+      if type_name:
+        raise ValueError(
+            ('The "type_name" field must not be passed for Artifact subclass '
+             '%s.') % self.__class__)
+      type_name = self.__class__.TYPE_NAME
+      if not (type_name and isinstance(type_name, (str, Text))):
+        raise ValueError(
+            ('The Artifact subclass %s must override the TYPE_NAME attribute '
+             'with a string type name identifier (got %r instead).') %
+            (self.__class__, type_name))
+
+    if not type_name:
+      raise ValueError(
+          'The "type_name" field must be passed to specify a type for this '
+          'Artifact.')
+
     artifact_type = metadata_store_pb2.ArtifactType()
     artifact_type.name = type_name
     artifact_type.properties['type_name'] = metadata_store_pb2.STRING

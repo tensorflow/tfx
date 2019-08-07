@@ -24,6 +24,7 @@ import tensorflow_transform as tft
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
+from tfx.types import standard_artifacts
 
 
 # TODO(b/122478841): Add more detailed tests.
@@ -39,9 +40,9 @@ class ExecutorTest(tf.test.TestCase):
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
     # Create input dict.
-    train_artifact = types.Artifact('ExamplesPath', split='train')
+    train_artifact = standard_artifacts.Examples(split='train')
     train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
-    eval_artifact = types.Artifact('ExamplesPath', split='eval')
+    eval_artifact = standard_artifacts.Examples(split='eval')
     eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
     schema_artifact = types.Artifact('Schema')
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')

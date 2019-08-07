@@ -19,12 +19,12 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
@@ -36,11 +36,11 @@ class EvaluatorSpec(base_component.ComponentSpec):
           type=evaluator_pb2.FeatureSlicingSpec),
   }
   INPUTS = {
-      'examples': ChannelParameter(type_name='ExamplesPath'),
-      'model_exports': ChannelParameter(type_name='ModelExportPath'),
+      'examples': ChannelParameter(type=standard_artifacts.Examples),
+      'model_exports': ChannelParameter(type=standard_artifacts.Model),
   }
   OUTPUTS = {
-      'output': ChannelParameter(type_name='ModelEvalPath'),
+      'output': ChannelParameter(type=standard_artifacts.ModelEvalResult),
   }
 
 
@@ -74,7 +74,8 @@ class Evaluator(base_component.BaseComponent):
         declared in the same pipeline.
     """
     output = output or channel.Channel(
-        type_name='ModelEvalPath', artifacts=[types.Artifact('ModelEvalPath')])
+        type=standard_artifacts.ModelEvalResult,
+        artifacts=[standard_artifacts.ModelEvalResult()])
     spec = EvaluatorSpec(
         examples=channel.as_channel(examples),
         model_exports=channel.as_channel(model_exports),

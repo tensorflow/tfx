@@ -24,6 +24,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
 
 
@@ -90,7 +91,7 @@ class MetadataTest(tf.test.TestCase):
       self.assertListEqual([], m.get_all_artifacts())
 
       # Test publish artifact.
-      artifact = types.Artifact(type_name='ExamplesPath')
+      artifact = standard_artifacts.Examples()
       artifact.uri = 'uri'
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
@@ -181,9 +182,9 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
       # Test publish_execution.
-      input_artifact = types.Artifact(type_name='ExamplesPath')
+      input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
-      output_artifact = types.Artifact(type_name='ExamplesPath')
+      output_artifact = standard_artifacts.Examples()
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(eid, input_dict, output_dict)
@@ -226,9 +227,9 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.Artifact(type_name='ExamplesPath')
+      input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
-      output_artifact = types.Artifact(type_name='ExamplesPath')
+      output_artifact = standard_artifacts.Examples()
       input_artifacts = {'input': [input_artifact]}
       output_artifacts = {'output': [output_artifact]}
       m.publish_execution(eid, input_artifacts, output_artifacts)
@@ -265,7 +266,7 @@ class MetadataTest(tf.test.TestCase):
               component_info=self._component_info))
 
       # Test fetch_previous_result_artifacts.
-      new_output_artifact = types.Artifact(type_name='ExamplesPath')
+      new_output_artifact = standard_artifacts.Examples()
       self.assertNotEqual(ArtifactState.PUBLISHED,
                           new_output_artifact.state)
       new_output_dict = {'output': [new_output_artifact]}
@@ -303,9 +304,9 @@ class MetadataTest(tf.test.TestCase):
       ]
       m._store = mock_store
 
-      input_one = types.Artifact(type_name='ExamplesPath')
+      input_one = standard_artifacts.Examples()
       input_one.id = 1
-      input_two = types.Artifact(type_name='ExamplesPath')
+      input_two = standard_artifacts.Examples()
       input_two.id = 2
 
       input_dict = {
@@ -322,7 +323,7 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.Artifact(type_name='ExamplesPath')
+      input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
       output_artifact = types.Artifact(type_name='MyOutputArtifact')
       output_artifact.uri = 'my/uri'
@@ -343,7 +344,7 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      input_artifact = types.Artifact(type_name='ExamplesPath')
+      input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
       output_artifact = types.Artifact(type_name='MyOutputArtifact')
       output_artifact.uri = 'my/uri'
