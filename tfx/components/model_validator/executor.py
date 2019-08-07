@@ -163,8 +163,9 @@ class Executor(base_executor.BaseExecutor):
     blessing.set_int_custom_property('current_model_id', current_model.id)
 
     # Denote model component_name.
-    component_id = exec_properties['component_id']
-    blessing.set_string_custom_property('component_id', component_id)
+    if exec_properties.get('component_id'):
+      blessing.set_string_custom_property('component_id',
+                                          exec_properties['component_id'])
 
     # Blessed model.
     blessed_model_dir = exec_properties['blessed_model']
