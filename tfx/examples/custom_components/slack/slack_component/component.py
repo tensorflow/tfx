@@ -24,11 +24,11 @@ from slack_component import executor
 
 from typing import Optional, Text
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class SlackComponentSpec(base_component.ComponentSpec):
@@ -82,12 +82,12 @@ class SlackComponent(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               model_export: channel.Channel,
-               model_blessing: channel.Channel,
+               model_export: types.Channel,
+               model_blessing: types.Channel,
                slack_token: Text,
                channel_id: Text,
                timeout_sec: int,
-               slack_blessing: Optional[channel.Channel] = None,
+               slack_blessing: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct a SlackComponent.
 
@@ -104,7 +104,7 @@ class SlackComponent(base_component.BaseComponent):
       name: Optional unique name. Necessary if multiple Pusher components are
         declared in the same pipeline.
     """
-    slack_blessing = slack_blessing or channel.Channel(
+    slack_blessing = slack_blessing or types.Channel(
         type=standard_artifacts.ModelBlessing,
         artifacts=[standard_artifacts.ModelBlessing()])
     spec = SlackComponentSpec(

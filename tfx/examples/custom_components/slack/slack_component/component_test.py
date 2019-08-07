@@ -20,16 +20,16 @@ from __future__ import print_function
 from slack_component import component
 import tensorflow as tf
 from tfx import types
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
-    self.model_export = channel.as_channel(
+    self.model_export = channel_utils.as_channel(
         [types.Artifact(type=standard_artifacts.Model)])
-    self.model_blessing = channel.as_channel(
+    self.model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
   def test_construct(self):

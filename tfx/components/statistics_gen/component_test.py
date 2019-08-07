@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.statistics_gen import component
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class ComponentTest(tf.test.TestCase):
@@ -29,7 +29,7 @@ class ComponentTest(tf.test.TestCase):
     train_examples = standard_artifacts.Examples(split='train')
     eval_examples = standard_artifacts.Examples(split='eval')
     statistics_gen = component.StatisticsGen(
-        input_data=channel.as_channel([train_examples, eval_examples]))
+        input_data=channel_utils.as_channel([train_examples, eval_examples]))
     self.assertEqual('ExampleStatisticsPath',
                      statistics_gen.outputs.output.type_name)
 

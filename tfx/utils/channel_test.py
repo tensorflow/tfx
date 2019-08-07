@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.utils.channel."""
+"""Tests for tfx.utils.types."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,69 +20,42 @@ from __future__ import unicode_literals
 
 # Standard Imports
 
+import mock
 import tensorflow as tf
-from tfx import types
+from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
+from tfx.types import standard_artifacts
 from tfx.utils import channel
 
 
 class ChannelTest(tf.test.TestCase):
 
-  def test_valid_channel(self):
-    instance_a = types.Artifact('MyTypeName')
-    instance_b = types.Artifact('MyTypeName')
-    chnl = channel.Channel(
-        'MyTypeName', artifacts=[instance_a, instance_b])
-    self.assertEqual(chnl.type_name, 'MyTypeName')
-    self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
+  def test_channel_deprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      channel.Channel(type_name='ExamplesPath')
+      warn_mock.assert_called_once()
+      self.assertIn(
+          'tfx.utils.channel.Channel has been renamed to tfx.types.Channel',
+          warn_mock.call_args[0][5])
 
-  def test_invalid_channel_type(self):
-    instance_a = types.Artifact('MyTypeName')
-    instance_b = types.Artifact('MyTypeName')
-    with self.assertRaises(ValueError):
-      channel.Channel(
-          'AnotherTypeName',
-          artifacts=[instance_a, instance_b])
+  def test_as_channel_deprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      channel.as_channel([standard_artifacts.Model()])
+      warn_mock.assert_called_once()
+      self.assertIn('tfx.utils.channel.as_channel has been renamed to',
+                    warn_mock.call_args[0][5])
 
-  def test_artifact_collection_as_channel(self):
-    instance_a = types.Artifact('MyTypeName')
-    instance_b = types.Artifact('MyTypeName')
-    chnl = channel.as_channel([instance_a, instance_b])
-    self.assertEqual(chnl.type_name, 'MyTypeName')
-    self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
-
-  def test_channel_as_channel_success(self):
-    instance_a = types.Artifact('MyTypeName')
-    instance_b = types.Artifact('MyTypeName')
-    chnl_original = channel.Channel(
-        'MyTypeName', artifacts=[instance_a, instance_b])
-    chnl_result = channel.as_channel(chnl_original)
-    self.assertEqual(chnl_original, chnl_result)
-
-  def test_empty_artifact_collection_as_channel_fail(self):
-    with self.assertRaises(ValueError):
-      channel.as_channel([])
-
-  def test_invalid_source_as_channel_fail(self):
-    with self.assertRaises(ValueError):
-      channel.as_channel(source='invalid source')
-
-  def test_type_check_success(self):
-    chnl = channel.Channel('MyTypeName')
-    chnl.type_check('MyTypeName')
-
-  def test_type_check_fail(self):
-    chnl = channel.Channel('MyTypeName')
-    with self.assertRaises(TypeError):
-      chnl.type_check('AnotherTypeName')
-
-  def test_unwrap_channel_dict(self):
-    instance_a = types.Artifact('MyTypeName')
-    instance_b = types.Artifact('MyTypeName')
-    channel_dict = {
-        'id': channel.Channel('MyTypeName', artifacts=[instance_a, instance_b])
-    }
-    result = channel.unwrap_channel_dict(channel_dict)
-    self.assertDictEqual(result, {'id': [instance_a, instance_b]})
+  def test_unwrap_channel_dict_deprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      channel.unwrap_channel_dict({})
+      warn_mock.assert_called_once()
+      self.assertIn('tfx.utils.channel.unwrap_channel_dict has been renamed to',
+                    warn_mock.call_args[0][5])
 
 
 if __name__ == '__main__':

@@ -30,7 +30,6 @@ from google.protobuf import message
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
-from tfx.utils import channel
 
 
 class _PropertyDictWrapper(object):
@@ -39,7 +38,7 @@ class _PropertyDictWrapper(object):
   Currently, this class is read-only (setting properties is not implemented).
   """
 
-  def __init__(self, data: Dict[Text, channel.Channel]):
+  def __init__(self, data: Dict[Text, types.Channel]):
     self._data = data
 
   def __getitem__(self, key):
@@ -54,7 +53,7 @@ class _PropertyDictWrapper(object):
   def __repr__(self):
     return repr(self._data)
 
-  def get_all(self) -> Dict[Text, channel.Channel]:
+  def get_all(self) -> Dict[Text, types.Channel]:
     return self._data
 
 
@@ -276,7 +275,7 @@ class ChannelParameter(_ComponentParameter):
       raise ValueError(
           'Exactly one of "type" or "type_name" must be passed to the '
           'constructor of Channel.')
-    if type:
+    if not type_name:
       if not issubclass(type, types.Artifact):  # pytype: disable=wrong-arg-types
         raise ValueError(
             'Argument "type" of Channel constructor must be a subclass of'
@@ -288,8 +287,8 @@ class ChannelParameter(_ComponentParameter):
   def __repr__(self):
     return 'ChannelParameter(type_name: %s)' % (self.type_name,)
 
-  def type_check(self, arg_name: Text, value: channel.Channel):
-    if not isinstance(value, channel.Channel):
+  def type_check(self, arg_name: Text, value: types.Channel):
+    if not isinstance(value, types.Channel):
       raise TypeError(
           'Argument %s should be a Channel of type_name %r (got %s).' %
           (arg_name, self.type_name, value))

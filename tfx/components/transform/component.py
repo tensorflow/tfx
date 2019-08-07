@@ -22,8 +22,8 @@ from tfx.components.base import base_component
 from tfx.components.base.base_component import ChannelParameter
 from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.transform import executor
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class TransformSpec(base_component.ComponentSpec):
@@ -61,12 +61,12 @@ class Transform(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               input_data: channel.Channel = None,
-               schema: channel.Channel = None,
+               input_data: types.Channel = None,
+               schema: types.Channel = None,
                module_file: Optional[Text] = None,
                preprocessing_fn: Optional[Text] = None,
-               transform_output: Optional[channel.Channel] = None,
-               transformed_examples: Optional[channel.Channel] = None,
+               transform_output: Optional[types.Channel] = None,
+               transformed_examples: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct a Transform component.
 
@@ -107,18 +107,18 @@ class Transform(base_component.BaseComponent):
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
 
-    transform_output = transform_output or channel.Channel(
+    transform_output = transform_output or types.Channel(
         type=standard_artifacts.TransformResult,
         artifacts=[standard_artifacts.TransformResult()])
-    transformed_examples = transformed_examples or channel.Channel(
+    transformed_examples = transformed_examples or types.Channel(
         type=standard_artifacts.Examples,
         artifacts=[
             standard_artifacts.Examples(split=split)
             for split in types.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = TransformSpec(
-        input_data=channel.as_channel(input_data),
-        schema=channel.as_channel(schema),
+        input_data=channel_utils.as_channel(input_data),
+        schema=channel_utils.as_channel(schema),
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
         transform_output=transform_output,

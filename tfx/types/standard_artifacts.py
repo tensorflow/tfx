@@ -11,12 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A set of standard TFX Artifact types.
-
-Note: the type definition mechanism here as well as the specific types listed
-here are a work in progress; specific artifact properties will be fleshed out
-in upcoming changes.
-"""
+"""A set of standard TFX Artifact types."""
 
 from tfx.types import artifact
 

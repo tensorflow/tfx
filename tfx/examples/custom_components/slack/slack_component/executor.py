@@ -114,7 +114,7 @@ class Executor(base_executor.BaseExecutor):
       tf.logging.error(msg)
       raise ConnectionError(msg)  # pylint: disable=undefined-variable
 
-    sc.rtm_send_message(channel=channel_id, message=msg)
+    sc.rtm_send_message(types.Channel_id, message=msg)
 
     while sc.server.connected:
       payload_list = sc.rtm_read()
@@ -142,7 +142,7 @@ class Executor(base_executor.BaseExecutor):
             unrecognized_text = payload.get('text')
             tf.logging.info('Unrecognized response: %s', unrecognized_text)
             sc.rtm_send_message(
-                channel=channel_id,
+                types.Channel_id,
                 message=_NOTIFY_CORRECT_REPLY_TEMPLATE.format(
                     unrecognized_text),
                 thread=ts)

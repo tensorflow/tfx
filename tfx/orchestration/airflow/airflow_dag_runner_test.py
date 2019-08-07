@@ -20,11 +20,11 @@ import datetime
 import mock
 import tensorflow as tf
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow import airflow_dag_runner
-from tfx.utils import channel
 
 
 class _FakeComponentSpecA(base_component.ComponentSpec):
@@ -104,27 +104,26 @@ class AirflowDagRunnerTest(tf.test.TestCase):
         'start_date': datetime.datetime(2019, 1, 1)
     }
     component_a = _FakeComponent(
-        _FakeComponentSpecA(output=channel.Channel(type_name='a')))
+        _FakeComponentSpecA(output=types.Channel(type_name='a')))
     component_b = _FakeComponent(
         _FakeComponentSpecB(
-            a=component_a.outputs.output,
-            output=channel.Channel(type_name='b')))
+            a=component_a.outputs.output, output=types.Channel(type_name='b')))
     component_c = _FakeComponent(
         _FakeComponentSpecC(
             a=component_a.outputs.output,
             b=component_b.outputs.output,
-            output=channel.Channel(type_name='c')))
+            output=types.Channel(type_name='c')))
     component_d = _FakeComponent(
         _FakeComponentSpecD(
             b=component_b.outputs.output,
             c=component_c.outputs.output,
-            output=channel.Channel(type_name='d')))
+            output=types.Channel(type_name='d')))
     component_e = _FakeComponent(
         _FakeComponentSpecE(
             a=component_a.outputs.output,
             b=component_b.outputs.output,
             d=component_d.outputs.output,
-            output=channel.Channel(type_name='e')))
+            output=types.Channel(type_name='e')))
 
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',

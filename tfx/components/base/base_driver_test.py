@@ -24,7 +24,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
-from tfx.utils import channel
+from tfx.types import channel_utils
 
 
 class BaseDriverTest(tf.test.TestCase):
@@ -33,7 +33,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata = tf.test.mock.Mock()
     self._input_dict = {
         'input_data':
-            channel.Channel(
+            types.Channel(
                 type_name='input_data',
                 artifacts=[types.Artifact(type_name='input_data')])
     }
@@ -49,13 +49,13 @@ class BaseDriverTest(tf.test.TestCase):
         tf.gfile.MakeDirs(uri)
     self._output_dict = {
         'output_data':
-            channel.Channel(
+            types.Channel(
                 type_name='output_data',
                 artifacts=[
                     types.Artifact(type_name='output_data', split='split')
                 ])
     }
-    self._input_artifacts = channel.unwrap_channel_dict(self._input_dict)
+    self._input_artifacts = channel_utils.unwrap_channel_dict(self._input_dict)
     self._output_artifacts = {
         'output_data': [types.Artifact(type_name='OutputType')],
     }
@@ -70,13 +70,13 @@ class BaseDriverTest(tf.test.TestCase):
   def test_pre_execution_new_execution(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
-            channel.Channel(
+            types.Channel(
                 type_name='input_a',
                 artifacts=[types.Artifact(type_name='input_a')])
     }
     output_dict = {
         'output_a':
-            channel.Channel(
+            types.Channel(
                 type_name='output_a',
                 artifacts=[types.Artifact(type_name='output_a', split='split')])
     }
@@ -116,13 +116,13 @@ class BaseDriverTest(tf.test.TestCase):
   def test_pre_execution_cached(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
-            channel.Channel(
+            types.Channel(
                 type_name='input_a',
                 artifacts=[types.Artifact(type_name='input_a')])
     }
     output_dict = {
         'output_a':
-            channel.Channel(
+            types.Channel(
                 type_name='output_a',
                 artifacts=[types.Artifact(type_name='output_a', split='split')])
     }

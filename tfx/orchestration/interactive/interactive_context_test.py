@@ -24,7 +24,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration.interactive import interactive_context
-from tfx.utils import channel
 
 
 class InteractiveContextTest(tf.test.TestCase):
@@ -83,7 +82,7 @@ class InteractiveContextTest(tf.test.TestCase):
         super(_FakeComponent, self).__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
-    foo = channel.Channel(type_name='Foo', artifacts=[types.Artifact('Foo')])
+    foo = types.Channel(type_name='Foo', artifacts=[types.Artifact('Foo')])
     component = _FakeComponent(_FakeComponentSpec(input=foo))
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)

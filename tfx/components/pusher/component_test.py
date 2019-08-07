@@ -21,8 +21,8 @@ import tensorflow as tf
 from tfx.components.pusher import component
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class ComponentTest(tf.test.TestCase):
@@ -32,8 +32,8 @@ class ComponentTest(tf.test.TestCase):
     pass
 
   def setUp(self):
-    self.model_export = channel.as_channel([standard_artifacts.Model()])
-    self.model_blessing = channel.as_channel(
+    self.model_export = channel_utils.as_channel([standard_artifacts.Model()])
+    self.model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
   def test_construct(self):

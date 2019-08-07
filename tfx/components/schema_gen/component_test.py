@@ -19,15 +19,15 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.schema_gen import component
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class SchemaGenTest(tf.test.TestCase):
 
   def test_construct(self):
     schema_gen = component.SchemaGen(
-        stats=channel.as_channel(
+        stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
 

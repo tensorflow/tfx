@@ -31,12 +31,10 @@ from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.utils import channel
 
 
-def _make_fake_component_instance(name: Text,
-                                  inputs: Dict[Text, channel.Channel],
-                                  outputs: Dict[Text, channel.Channel]):
+def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
+                                  outputs: Dict[Text, types.Channel]):
 
   class _FakeComponentSpec(base_component.ComponentSpec):
     PARAMETERS = {}
@@ -53,7 +51,7 @@ def _make_fake_component_instance(name: Text,
 
     def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(
-          output=channel.Channel(type_name=name), **spec_kwargs)
+          output=types.Channel(type_name=name), **spec_kwargs)
       super(_FakeComponent, self).__init__(spec=spec, component_name=name)
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
@@ -127,9 +125,9 @@ class PipelineTest(tf.test.TestCase):
                          {'beam_pipeline_args': ['--runner=PortableRunner']})
 
   def test_pipeline_with_loop(self):
-    channel_one = channel.Channel(type_name='channel_one')
-    channel_two = channel.Channel(type_name='channel_two')
-    channel_three = channel.Channel(type_name='channel_three')
+    channel_one = types.Channel(type_name='channel_one')
+    channel_two = types.Channel(type_name='channel_two')
+    channel_three = types.Channel(type_name='channel_three')
     component_a = _make_fake_component_instance('component_a', {}, {})
     component_b = _make_fake_component_instance(
         name='component_b',
@@ -174,7 +172,7 @@ class PipelineTest(tf.test.TestCase):
 
   def test_pipeline_with_artifact_info(self):
     artifacts_collection = [types.Artifact('channel_one')]
-    channel_one = channel.Channel(
+    channel_one = types.Channel(
         type_name='channel_one', artifacts=artifacts_collection)
     component_a = _make_fake_component_instance(
         name='component_a', inputs={}, outputs={'one': channel_one})

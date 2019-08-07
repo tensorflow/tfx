@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.utils import channel
+from tfx.types import channel_utils
 
 
 def _verify_input_artifacts(
@@ -92,7 +92,7 @@ class BaseDriver(object):
 
   def resolve_input_artifacts(
       self,
-      input_dict: Dict[Text, channel.Channel],
+      input_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,
@@ -167,13 +167,13 @@ class BaseDriver(object):
 
   def _prepare_output_artifacts(
       self,
-      output_dict: Dict[Text, channel.Channel],
+      output_dict: Dict[Text, types.Channel],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
-    result = channel.unwrap_channel_dict(output_dict)
+    result = channel_utils.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
     for name, output_list in result.items():
@@ -183,17 +183,17 @@ class BaseDriver(object):
     return result
 
   def _fetch_cached_artifacts(
-      self, output_dict: Dict[Text, channel.Channel],
+      self, output_dict: Dict[Text, types.Channel],
       cached_execution_id: int) -> Dict[Text, List[types.Artifact]]:
     """Fetch cached output artifacts."""
-    output_artifacts_dict = channel.unwrap_channel_dict(output_dict)
+    output_artifacts_dict = channel_utils.unwrap_channel_dict(output_dict)
     return self._metadata_handler.fetch_previous_result_artifacts(
         output_artifacts_dict, cached_execution_id)
 
   def pre_execution(
       self,
-      input_dict: Dict[Text, channel.Channel],
-      output_dict: Dict[Text, channel.Channel],
+      input_dict: Dict[Text, types.Channel],
+      output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       driver_args: data_types.DriverArgs,
       pipeline_info: data_types.PipelineInfo,

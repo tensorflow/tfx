@@ -23,12 +23,12 @@ from airflow import models
 import mock
 
 import tensorflow as tf
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.airflow import airflow_component
-from tfx.utils import channel
 
 
 class _FakeComponentSpec(base_component.ComponentSpec):
@@ -53,8 +53,8 @@ class AirflowComponentTest(tf.test.TestCase):
   def setUp(self):
     self._component = _FakeComponent(
         _FakeComponentSpec(
-            input=channel.Channel(type_name='type_a'),
-            output=channel.Channel(type_name='type_b')))
+            input=types.Channel(type_name='type_a'),
+            output=types.Channel(type_name='type_b')))
     self._pipeline_info = data_types.PipelineInfo('name', 'root')
     self._driver_args = data_types.DriverArgs(True)
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(

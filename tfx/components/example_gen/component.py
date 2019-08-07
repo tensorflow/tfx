@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, Text, Type
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -26,8 +27,8 @@ from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class QueryBasedExampleGenSpec(base_component.ComponentSpec):
@@ -82,7 +83,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
                output_config: Optional[example_gen_pb2.Output] = None,
                custom_config: Optional[example_gen_pb2.CustomConfig] = None,
                component_name: Optional[Text] = 'ExampleGen',
-               example_artifacts: Optional[channel.Channel] = None,
+               example_artifacts: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct an QueryBasedExampleGen component.
 
@@ -103,7 +104,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
         input_config)
-    example_artifacts = example_artifacts or channel.as_channel([
+    example_artifacts = example_artifacts or channel_utils.as_channel([
         standard_artifacts.Examples(split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
@@ -130,12 +131,12 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   def __init__(
       self,
-      input_base: channel.Channel,
+      input_base: types.Channel,
       input_config: Optional[example_gen_pb2.Input] = None,
       output_config: Optional[example_gen_pb2.Output] = None,
       custom_config: Optional[example_gen_pb2.CustomConfig] = None,
       component_name: Optional[Text] = 'ExampleGen',
-      example_artifacts: Optional[channel.Channel] = None,
+      example_artifacts: Optional[types.Channel] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
       name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
@@ -163,7 +164,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
         input_config)
-    example_artifacts = example_artifacts or channel.as_channel([
+    example_artifacts = example_artifacts or channel_utils.as_channel([
         standard_artifacts.Examples(split=split_name)
         for split_name in utils.generate_output_split_names(
             input_config, output_config)

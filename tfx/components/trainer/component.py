@@ -18,6 +18,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Type
 
+from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base.base_component import ChannelParameter
@@ -25,8 +26,9 @@ from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
+from tfx.types import channel
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import channel
 
 
 class TrainerSpec(base_component.ComponentSpec):
@@ -72,17 +74,17 @@ class Trainer(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples: channel.Channel = None,
-      transformed_examples: channel.Channel = None,
-      transform_output: Optional[channel.Channel] = None,
-      schema: channel.Channel = None,
+      examples: types.Channel = None,
+      transformed_examples: types.Channel = None,
+      transform_output: Optional[types.Channel] = None,
+      schema: types.Channel = None,
       module_file: Optional[Text] = None,
       trainer_fn: Optional[Text] = None,
       train_args: trainer_pb2.TrainArgs = None,
       eval_args: trainer_pb2.EvalArgs = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      output: Optional[channel.Channel] = None,
+      output: Optional[types.Channel] = None,
       name: Optional[Text] = None):
     """Construct a Trainer component.
 
@@ -144,16 +146,15 @@ class Trainer(base_component.BaseComponent):
     if transformed_examples and not transform_output:
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_output' must be supplied too.")
-
     examples = examples or transformed_examples
-    transform_output_channel = channel.as_channel(
+    transform_output_channel = channel_utils.as_channel(
         transform_output) if transform_output else None
     output = output or channel.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
     spec = TrainerSpec(
-        examples=channel.as_channel(examples),
+        examples=channel_utils.as_channel(examples),
         transform_output=transform_output_channel,
-        schema=channel.as_channel(schema),
+        schema=channel_utils.as_channel(schema),
         train_args=train_args,
         eval_args=eval_args,
         module_file=module_file,
