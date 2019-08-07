@@ -65,6 +65,25 @@ class Executor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
+  def _GetTrainerFn(self, exec_properties: Dict[Text, Any]) -> Any:
+    """Loads and returns user-defined trainer_fn."""
+
+    has_module_file = bool(exec_properties.get('module_file'))
+    has_trainer_fn = bool(exec_properties.get('trainer_fn'))
+
+    if has_module_file == has_trainer_fn:
+      raise ValueError(
+          "Neither or both of 'module_file' 'trainer_fn' have been supplied in "
+          "'exec_properties'.")
+
+    if has_module_file:
+      return import_utils.import_func_from_source(
+          exec_properties['module_file'], 'trainer_fn')
+
+    trainer_fn_path_split = exec_properties['trainer_fn'].split('.')
+    return import_utils.import_func_from_module(
+        '.'.join(trainer_fn_path_split[0:-1]), trainer_fn_path_split[-1])
+
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
@@ -97,7 +116,8 @@ class Executor(base_executor.BaseExecutor):
       None
 
     Raises:
-      None
+      ValueError: When neither or both of 'module_file' and 'trainer_fn'
+        are present in 'exec_properties'.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -116,8 +136,7 @@ class Executor(base_executor.BaseExecutor):
                                           exec_properties, executor_class_path,
                                           cmle_args)
 
-    trainer_fn = import_utils.import_func_from_source(
-        exec_properties['module_file'], 'trainer_fn')
+    trainer_fn = self._GetTrainerFn(exec_properties)
 
     # Set up training parameters
     train_files = [
