@@ -43,6 +43,7 @@ class HandlerFactoryTest(tf.test.TestCase):
     super(HandlerFactoryTest, self).setUp()
     self.flags_dict = {}
     sys.modules['kfp'] = mock.Mock()
+    sys.modules['kfp_server_api'] = mock.Mock()
 
   def _MockSubprocessAirflow(self):
     return b'absl-py==0.7.1\nalembic==0.9.10\napache-beam==2.12.0\napache-airflow==1.10.3\n'
