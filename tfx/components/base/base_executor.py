@@ -25,7 +25,7 @@ import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
 from tfx import types
 from tfx.types import artifact_utils
-from tfx.utils import deps_utils
+from tfx.utils import dependency_utils
 
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
@@ -77,7 +77,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     self._beam_pipeline_args = context.beam_pipeline_args if context else None
 
     if self._beam_pipeline_args:
-      self._beam_pipeline_args = deps_utils.make_beam_dependency_flags(
+      self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
           self._beam_pipeline_args)
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors

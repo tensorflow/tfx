@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.utils.deps_utils."""
+"""Tests for tfx.utils.dependency_utils."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,7 +23,7 @@ import sys
 import mock
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tfx.utils import deps_utils
+from tfx.utils import dependency_utils
 
 
 class DepsUtilsTest(tf.test.TestCase):
@@ -40,7 +40,7 @@ class DepsUtilsTest(tf.test.TestCase):
       # This test requires setuptools which is not available.
       tf.logging.info('Skipping testEphemeralPackage')
       return
-    package = deps_utils.build_ephemeral_package()
+    package = dependency_utils.build_ephemeral_package()
     self.assertRegexpMatches(
         os.path.basename(package), r'tfx_ephemeral-.*\.tar.gz')
 
@@ -63,13 +63,13 @@ class DepsUtilsTest(tf.test.TestCase):
 
     mock_subprocess_call.side_effect = side_effect
     mock_mkdtemp.return_value = self._tmp_dir
-    package = deps_utils.build_ephemeral_package()
+    package = dependency_utils.build_ephemeral_package()
     self.assertEqual(expected_package, os.path.basename(package))
 
   @mock.patch('tempfile.mkdtemp')
   def testRequirementFile(self, mock_mkdtemp):
     mock_mkdtemp.return_value = self._tmp_dir
-    requirements_file = deps_utils._build_requirements_file()
+    requirements_file = dependency_utils._build_requirements_file()
     content = file_io.read_file_to_string(requirements_file)
     self.assertRegexpMatches(content, 'tfx==.*')
 

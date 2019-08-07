@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.types import artifact_utils
-from tfx.utils import deps_utils
+from tfx.utils import dependency_utils
 from tfx.utils import io_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
@@ -113,7 +113,7 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
     tf.logging.info('Following packageUris \'%s\' are provided by user.',
                     package_uris)
   else:
-    local_package = deps_utils.build_ephemeral_package()
+    local_package = dependency_utils.build_ephemeral_package()
     # TODO(b/125451545): Use a safe temp dir instead of jobDir.
     cloud_package = os.path.join(training_inputs['jobDir'],
                                  os.path.basename(local_package))
