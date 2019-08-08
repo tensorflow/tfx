@@ -68,6 +68,7 @@
 *   Depends on `tensorflow-model-analysis>=0.14.0,<0.15`
 *   Depends on `tensorflow-transform>=0.14.0,<0.15`
 *   Added support for Python 3.6 and 3.7.
+*   Fixed issue #463 correcting syntax in SCHEMA_EMPTY message.
 
 ## Breaking changes
 *   Component class definitions have been simplified; existing custom components
