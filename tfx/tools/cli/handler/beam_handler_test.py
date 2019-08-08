@@ -34,6 +34,7 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {'pipeline_name': 'chicago_taxi_beam'}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+  return 0
 
 
 def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -42,10 +43,12 @@ def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+  return 0
 
 
-def _MockSubprocess3(cmd):
+def _MockSubprocess3(cmd, env):  # pylint: disable=unused-argument
   click.echo(cmd)
+  return 0
 
 
 class BeamHandlerTest(tf.test.TestCase):
@@ -120,7 +123,7 @@ class BeamHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.create_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline {} already exists.'.format(
+        str(err.exception), 'Pipeline "{}" already exists.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -161,7 +164,7 @@ class BeamHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.update_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline {} does not exist.'.format(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -219,8 +222,8 @@ class BeamHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   def testListPipelinesNonEmpty(self):
     # First create two pipelines in the dags folder.
@@ -278,8 +281,8 @@ class BeamHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.create_run()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   def testDeleteRun(self):
     # Create a pipeline in dags folder.

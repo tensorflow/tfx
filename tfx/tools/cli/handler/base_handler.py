@@ -27,7 +27,7 @@ import tempfile
 
 from six import with_metaclass
 import tensorflow as tf
-from typing import Any, Dict, Text
+from typing import Any, Dict, Text, List
 
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
@@ -132,8 +132,8 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
 
     # Run dsl with mock environment to store pipeline args in temp_file.
-    subprocess.call(['python', self.flags_dict[labels.PIPELINE_DSL_PATH]],
-                    env=temp_env)
+    self._subprocess_call(['python', self.flags_dict[labels.PIPELINE_DSL_PATH]],
+                          env=temp_env)
     if os.stat(temp_file).st_size != 0:
       # Load pipeline_args from temp_file for TFX pipelines
       with open(temp_file, 'r') as f:
@@ -165,3 +165,10 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     if handler_home_dir in os.environ:
       return os.environ[handler_home_dir]
     return os.path.join(os.environ['HOME'], home_dir, '')
+
+  def _subprocess_call(self,
+                       command: List[Text],
+                       env: Dict[Text, Any] = None) -> None:
+    return_code = subprocess.call(command, env=env)
+    if return_code != 0:
+      sys.exit('Error while running "{}" '.format(' '.join(command)))

@@ -34,10 +34,12 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+  return 0
 
 
-def _MockSubprocess2(cmd):  # pylint: disable=invalid-name, unused-argument
+def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
   click.echo(cmd)
+  return 0
 
 
 def _MockSubprocess3(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -46,6 +48,7 @@ def _MockSubprocess3(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+  return 0
 
 
 def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
@@ -121,8 +124,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     # Run create_pipeline again to test.
     with self.assertRaises(SystemExit) as err:
       handler.create_pipeline()
-    self.assertEqual(str(err.exception), 'Pipeline {} already exists.'
-                     .format(self.pipeline_args[labels.PIPELINE_NAME]))
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" already exists.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
@@ -157,8 +161,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.update_pipeline()
-    self.assertEqual(str(err.exception), 'Pipeline {} does not exist.'
-                     .format(self.pipeline_args[labels.PIPELINE_NAME]))
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def testDeletePipeline(self):
@@ -184,8 +189,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
-    self.assertEqual(str(err.exception), 'Pipeline {} does not exist.'
-                     .format(flags_dict[labels.PIPELINE_NAME]))
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   def testListPipelinesNonEmpty(self):
     # First create two pipelines in the dags folder.
@@ -264,8 +270,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler = airflow_handler.AirflowHandler(flags_dict)
     with self.assertRaises(SystemExit) as err:
       handler.create_run()
-    self.assertEqual(str(err.exception), 'Pipeline {} does not exist.'
-                     .format(flags_dict[labels.PIPELINE_NAME]))
+    self.assertEqual(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testListRuns(self):
@@ -295,8 +302,8 @@ class AirflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.list_runs()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.check_output', _MockSubprocess4)
   def testGetRun(self):
@@ -328,8 +335,8 @@ class AirflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.get_run()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testDeleteRun(self):

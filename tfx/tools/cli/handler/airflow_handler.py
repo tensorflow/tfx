@@ -30,7 +30,6 @@ from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
 
-# TODO(b/132286477): Improve error messages for subprocess calls.
 class AirflowHandler(base_handler.BaseHandler):
   """Helper methods for Airflow Handler."""
 
@@ -52,21 +51,21 @@ class AirflowHandler(base_handler.BaseHandler):
     if overwrite:
       # For update, check if pipeline exists.
       if not tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} does not exist.'
-                 .format(pipeline_args[labels.PIPELINE_NAME]))
+        sys.exit('Pipeline "{}" does not exist.'.format(
+            pipeline_args[labels.PIPELINE_NAME]))
     else:
       # For create, verify that pipeline does not exist.
       if tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} already exists.'
-                 .format(pipeline_args[labels.PIPELINE_NAME]))
+        sys.exit('Pipeline "{}" already exists.'.format(
+            pipeline_args[labels.PIPELINE_NAME]))
 
     self._save_pipeline(pipeline_args)
 
     if overwrite:
-      click.echo('Pipeline {} updated successfully.'.format(
+      click.echo('Pipeline "{}" updated successfully.'.format(
           pipeline_args[labels.PIPELINE_NAME]))
     else:
-      click.echo('Pipeline {} created successfully.'.format(
+      click.echo('Pipeline "{}" created successfully.'.format(
           pipeline_args[labels.PIPELINE_NAME]))
 
   def update_pipeline(self):
@@ -94,12 +93,12 @@ class AirflowHandler(base_handler.BaseHandler):
 
     # Check if pipeline exists.
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'
-               .format(self.flags_dict[labels.PIPELINE_NAME]))
+      sys.exit('Pipeline "{}" does not exist.'.format(
+          self.flags_dict[labels.PIPELINE_NAME]))
 
     # Delete pipeline folder.
     io_utils.delete_dir(handler_pipeline_path)
-    click.echo('Pipeline {} deleted successfully.'.format(
+    click.echo('Pipeline "{}" deleted successfully.'.format(
         self.flags_dict[labels.PIPELINE_NAME]))
 
   def compile_pipeline(self) -> Dict[Text, Any]:
@@ -118,16 +117,17 @@ class AirflowHandler(base_handler.BaseHandler):
     handler_pipeline_path = self._get_handler_pipeline_path(
         self.flags_dict[labels.PIPELINE_NAME])
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'
-               .format(self.flags_dict[labels.PIPELINE_NAME]))
+      sys.exit('Pipeline "{}" does not exist.'.format(
+          self.flags_dict[labels.PIPELINE_NAME]))
 
     # Unpause DAG.
-    subprocess.call(['airflow', 'unpause',
-                     self.flags_dict[labels.PIPELINE_NAME]])
+    self._subprocess_call(
+        ['airflow', 'unpause', self.flags_dict[labels.PIPELINE_NAME]])
 
     # Trigger DAG.
-    subprocess.call(
+    self._subprocess_call(
         ['airflow', 'trigger_dag', self.flags_dict[labels.PIPELINE_NAME]])
+
     click.echo('Run created for pipeline: ' +
                self.flags_dict[labels.PIPELINE_NAME])
 
@@ -145,9 +145,9 @@ class AirflowHandler(base_handler.BaseHandler):
     handler_pipeline_path = self._get_handler_pipeline_path(
         self.flags_dict[labels.PIPELINE_NAME])
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'.format(
+      sys.exit('Pipeline "{}" does not exist.'.format(
           self.flags_dict[labels.PIPELINE_NAME]))
-    subprocess.call(
+    self._subprocess_call(
         ['airflow', 'list_dag_runs', self.flags_dict[labels.PIPELINE_NAME]])
 
   def get_run(self) -> None:
@@ -156,7 +156,7 @@ class AirflowHandler(base_handler.BaseHandler):
     handler_pipeline_path = self._get_handler_pipeline_path(
         self.flags_dict[labels.PIPELINE_NAME])
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'.format(
+      sys.exit('Pipeline "{}" does not exist.'.format(
           self.flags_dict[labels.PIPELINE_NAME]))
     dag_runs_list = str(
         subprocess.check_output(
@@ -170,7 +170,7 @@ class AirflowHandler(base_handler.BaseHandler):
         click.echo('run_id :' + tokens[1])
         click.echo('state :' + tokens[2])
 
-  def _save_pipeline(self, pipeline_args) -> None:
+  def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""
 
     # Path to pipeline folder in airflow.
@@ -196,7 +196,7 @@ class AirflowHandler(base_handler.BaseHandler):
             )
         )
 
-  def _get_handler_pipeline_path(self, pipeline_name) -> Text:
+  def _get_handler_pipeline_path(self, pipeline_name: Text) -> Text:
     """Path to pipeline folder in airflow.
 
     Args:
