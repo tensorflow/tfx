@@ -28,6 +28,7 @@ from google.protobuf import json_format
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
+    super(ExecutorTest, self).setUp()
     self._source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self._output_data_dir = os.path.join(
@@ -61,7 +62,7 @@ class ExecutorTest(tf.test.TestCase):
     }
     self._executor = executor.Executor()
 
-  def test_do_blessed(self):
+  def testDoBlessed(self):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed/')
     self._executor.Do(self._input_dict, self._output_dict,
@@ -71,7 +72,7 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(
         1, self._model_push.artifact.custom_properties['pushed'].int_value)
 
-  def test_do_not_blessed(self):
+  def testDoNotBlessed(self):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/not_blessed/')
     self._executor.Do(self._input_dict, self._output_dict,

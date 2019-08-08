@@ -204,7 +204,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_save_pipeline(self):
+  def testSavePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
@@ -221,7 +221,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_create_pipeline(self):
+  def testCreatePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
@@ -239,7 +239,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_create_pipeline_existent_pipeline(self):
+  def testCreatePipelineExistentPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
@@ -259,7 +259,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_update_pipeline(self):
+  def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
                                    'test_pipeline_kubeflow_1.py')
@@ -296,7 +296,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_update_pipeline_no_pipeline(self):
+  def testUpdatePipelineNoPipeline(self):
     # Update pipeline without creating one.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -315,7 +315,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_compile_pipeline(self):
+  def testCompilePipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
@@ -332,7 +332,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_delete_pipeline(self):
+  def testDeletePipeline(self):
     # Create pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -361,7 +361,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_delete_pipeline_non_existent_pipeline(self):
+  def testDeletePipelineNonExistentPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,
@@ -378,7 +378,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_create_run(self):
+  def testCreateRun(self):
     # Create a pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -405,7 +405,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     self.assertIn('Run created for pipeline: ', captured.contents())
 
   @mock.patch('kfp.Client', _MockClientClass)
-  def test_create_run_no_pipeline(self):
+  def testCreateRunNoPipeline(self):
     # Run pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -423,7 +423,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
-  def test_list_runs(self):
+  def testListRuns(self):
     # Create a pipeline.
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
@@ -450,7 +450,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     self.assertIn('pipeline_name', captured.contents())
 
   @mock.patch('kfp.Client', _MockClientClass)
-  def test_list_runs_no_pipeline(self):
+  def testListRunsNoPipeline(self):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_NAME: self.pipeline_name,

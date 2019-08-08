@@ -30,7 +30,7 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-  def test_taxi_pipeline_check_dag_construction(self):
+  def testTaxiPipelineCheckDagConstruction(self):
     logical_pipeline = taxi_pipeline_beam._create_pipeline(
         pipeline_name='Test',
         pipeline_root=self._test_dir,

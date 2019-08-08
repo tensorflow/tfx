@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 
 class ExampleValidatorTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     example_validator = component.ExampleValidator(
         stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='eval')]),

@@ -29,7 +29,7 @@ from tfx.utils import channel
 
 class ChannelTest(tf.test.TestCase):
 
-  def test_channel_deprecated(self):
+  def testChannelDeprecated(self):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock
@@ -39,7 +39,7 @@ class ChannelTest(tf.test.TestCase):
           'tfx.utils.channel.Channel has been renamed to tfx.types.Channel',
           warn_mock.call_args[0][5])
 
-  def test_as_channel_deprecated(self):
+  def testAsChannelDeprecated(self):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock
@@ -48,7 +48,7 @@ class ChannelTest(tf.test.TestCase):
       self.assertIn('tfx.utils.channel.as_channel has been renamed to',
                     warn_mock.call_args[0][5])
 
-  def test_unwrap_channel_dict_deprecated(self):
+  def testUnwrapChannelDictDeprecated(self):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock

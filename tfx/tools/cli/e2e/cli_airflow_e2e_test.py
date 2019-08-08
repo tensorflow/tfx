@@ -108,7 +108,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
                   result.output)
 
-  def test_pipeline_create_auto_detect(self):
+  def testPipelineCreateAutoDetect(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
     pipeline_name = 'chicago_taxi_simple'
@@ -127,7 +127,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
                   result.output)
 
-  def test_pipeline_create(self):
+  def testPipelineCreate(self):
     # Create a pipeline.
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
@@ -144,7 +144,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertTrue('Pipeline {} already exists.'.format(pipeline_name),
                     result.output)
 
-  def test_pipeline_update(self):
+  def testPipelineUpdate(self):
     pipeline_name = 'chicago_taxi_simple'
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
@@ -179,7 +179,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
-  def test_pipeline_compile(self):
+  def testPipelineCompile(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_2.py')
     result = self.runner.invoke(cli_group, [
@@ -190,7 +190,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Pipeline compiled successfully', result.output)
 
-  def test_pipeline_delete(self):
+  def testPipelineDelete(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
     pipeline_name = 'chicago_taxi_simple'
@@ -222,7 +222,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline {} deleted successfully.'.format(pipeline_name),
                   result.output)
 
-  def test_pipeline_list(self):
+  def testPipelineList(self):
 
     # Try listing pipelines when there are none.
     result = self.runner.invoke(cli_group,
@@ -261,7 +261,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Run created for pipeline: {}'.format(pipeline_name),
                   result.output)
 
-  def test_run_create(self):
+  def testRunCreate(self):
     pipeline_name = 'chicago_taxi_simple'
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
@@ -282,7 +282,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Run pipeline.
     self._valid_run_and_check(pipeline_name)
 
-  def test_run_list(self):
+  def testRunList(self):
     pipeline_name = 'chicago_taxi_simple'
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
@@ -304,14 +304,14 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Listing all runs of pipeline: {}'.format(pipeline_name),
                   result.output)
 
-  def test_uninstalled_orchestrator_kubeflow(self):
+  def testUninstalledOrchestratorKubeflow(self):
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'list', '--engine', 'kubeflow'])
     self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
     self.assertIn('Kubeflow not found', result.output)
 
-  def test_incorrect_runner_airflow(self):
+  def testIncorrectRunnerAirflow(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_kubeflow_1.py')
     result = self.runner.invoke(

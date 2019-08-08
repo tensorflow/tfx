@@ -85,8 +85,8 @@ class AirflowDagRunnerTest(tf.test.TestCase):
       'tfx.orchestration.airflow.airflow_component.AirflowComponent'
   )
   @mock.patch('airflow.models.DAG')
-  def test_airflow_dag_runner(self, mock_airflow_dag_class,
-                              mock_airflow_component_class):
+  def testAirflowDagRunner(self, mock_airflow_dag_class,
+                           mock_airflow_component_class):
     mock_airflow_dag_class.return_value = 'DAG'
     mock_airflow_component_a = mock.Mock()
     mock_airflow_component_b = mock.Mock()

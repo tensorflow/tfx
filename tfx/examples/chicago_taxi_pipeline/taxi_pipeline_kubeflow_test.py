@@ -26,15 +26,17 @@ from tfx.orchestration.kubeflow.runner import KubeflowRunner
 class TaxiPipelineKubeflowTest(tf.test.TestCase):
 
   def setUp(self):
+    super(TaxiPipelineKubeflowTest, self).setUp()
     self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
                                    self.get_temp_dir())
     self._olddir = os.getcwd()
     os.chdir(self._tmp_dir)
 
   def tearDown(self):
+    super(TaxiPipelineKubeflowTest, self).tearDown()
     os.chdir(self._olddir)
 
-  def test_taxi_pipeline_construction_and_definition_file_exists(self):
+  def testTaxiPipelineConstructionAndDefinitionFileExists(self):
     logical_pipeline = taxi_pipeline_kubeflow._create_pipeline(
         pipeline_name=taxi_pipeline_kubeflow._pipeline_name,
         pipeline_root=taxi_pipeline_kubeflow._pipeline_root,

@@ -26,7 +26,7 @@ from tfx.types import standard_artifacts
 
 class ExecutorTest(tf.test.TestCase):
 
-  def test_do(self):
+  def testDo(self):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 

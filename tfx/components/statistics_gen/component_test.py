@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     train_examples = standard_artifacts.Examples(split='train')
     eval_examples = standard_artifacts.Examples(split='eval')
     statistics_gen = component.StatisticsGen(

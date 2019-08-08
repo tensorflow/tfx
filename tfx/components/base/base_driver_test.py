@@ -30,6 +30,7 @@ from tfx.types import channel_utils
 class BaseDriverTest(tf.test.TestCase):
 
   def setUp(self):
+    super(BaseDriverTest, self).setUp()
     self._mock_metadata = tf.test.mock.Mock()
     self._input_dict = {
         'input_data':
@@ -67,7 +68,7 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
       'tfx.components.base.base_driver._verify_input_artifacts'
   )
-  def test_pre_execution_new_execution(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
             types.Channel(
@@ -113,7 +114,7 @@ class BaseDriverTest(tf.test.TestCase):
   @mock.patch(
       'tfx.components.base.base_driver._verify_input_artifacts'
   )
-  def test_pre_execution_cached(self, mock_verify_input_artifacts_fn):
+  def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     input_dict = {
         'input_a':
             types.Channel(
@@ -157,10 +158,10 @@ class BaseDriverTest(tf.test.TestCase):
     self.assertItemsEqual(execution_decision.output_dict,
                           self._output_artifacts)
 
-  def test_verify_input_artifacts_ok(self):
+  def testVerifyInputArtifactsOk(self):
     base_driver._verify_input_artifacts(self._input_artifacts)
 
-  def test_verify_input_artifacts_not_exists(self):
+  def testVerifyInputArtifactsNotExists(self):
     with self.assertRaises(RuntimeError):
       base_driver._verify_input_artifacts(
           {'artifact': [types.Artifact(type_name='input_data')]})

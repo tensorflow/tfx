@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     input_base = standard_artifacts.ExternalArtifact()
     import_example_gen = component.ImportExampleGen(
         input_base=channel_utils.as_channel([input_base]))

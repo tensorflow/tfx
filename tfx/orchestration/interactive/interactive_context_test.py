@@ -28,7 +28,7 @@ from tfx.orchestration.interactive import interactive_context
 
 class InteractiveContextTest(tf.test.TestCase):
 
-  def test_basic_run(self):
+  def testBasicRun(self):
 
     class _FakeComponentSpec(base_component.ComponentSpec):
       COMPONENT_NAME = '_FakeComponent'
@@ -56,7 +56,7 @@ class InteractiveContextTest(tf.test.TestCase):
     c.run(component)
     self.assertTrue(_FakeExecutor.CALLED)
 
-  def test_unresolved_channel(self):
+  def testUnresolvedChannel(self):
 
     class _FakeComponentSpec(base_component.ComponentSpec):
       COMPONENT_NAME = '_FakeComponent'

@@ -35,7 +35,7 @@ class TaxiPipelineSimpleTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-  def test_taxi_pipeline_check_dag_construction(self):
+  def testTaxiPipelineCheckDagConstruction(self):
     airflow_config = {
         'schedule_interval': None,
         'start_date': datetime.datetime(2019, 1, 1),

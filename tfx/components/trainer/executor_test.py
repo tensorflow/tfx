@@ -88,7 +88,7 @@ class ExecutorTest(tf.test.TestCase):
         tf.gfile.Exists(
             os.path.join(self._model_exports.uri, 'serving_model_dir')))
 
-  def test_do_with_module_file(self):
+  def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file
     self._trainer_executor.Do(
         input_dict=self._input_dict,
@@ -96,7 +96,7 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
     self._verify_model_exports()
 
-  def test_do_with_trainer_fn(self):
+  def testDoWithTrainerFn(self):
     self._exec_properties['trainer_fn'] = self._trainer_fn
     self._trainer_executor.Do(
         input_dict=self._input_dict,
@@ -104,14 +104,14 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
     self._verify_model_exports()
 
-  def test_do_with_no_trainer_fn(self):
+  def testDoWithNoTrainerFn(self):
     with self.assertRaises(ValueError):
       self._trainer_executor.Do(
           input_dict=self._input_dict,
           output_dict=self._output_dict,
           exec_properties=self._exec_properties)
 
-  def test_do_with_duplicate_trainer_fn(self):
+  def testDoWithDuplicateTrainerFn(self):
     self._exec_properties['module_file'] = self._module_file
     self._exec_properties['trainer_fn'] = self._trainer_fn
     with self.assertRaises(ValueError):

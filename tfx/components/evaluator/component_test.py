@@ -26,7 +26,7 @@ from tfx.types import standard_artifacts
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     examples = standard_artifacts.Examples()
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
@@ -34,7 +34,7 @@ class ComponentTest(tf.test.TestCase):
         model_exports=channel_utils.as_channel([model_exports]))
     self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
 
-  def test_construct_with_slice_spec(self):
+  def testConstructWithSliceSpec(self):
     examples = standard_artifacts.Examples()
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(

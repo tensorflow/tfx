@@ -71,7 +71,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
                   result.output)
 
-  def test_pipeline_create(self):
+  def testPipelineCreate(self):
     # Create a pipeline.
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                  'test_pipeline_beam_1.py')
@@ -88,7 +88,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertTrue('Pipeline {} already exists.'.format(pipeline_name),
                     result.output)
 
-  def test_pipeline_update(self):
+  def testPipelineUpdate(self):
     pipeline_name = 'chicago_taxi_beam'
     handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
@@ -121,7 +121,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
-  def test_pipeline_compile(self):
+  def testPipelineCompile(self):
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                  'test_pipeline_beam_2.py')
     result = self.runner.invoke(cli_group, [
@@ -132,7 +132,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Pipeline compiled successfully', result.output)
 
-  def test_pipeline_delete(self):
+  def testPipelineDelete(self):
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                  'test_pipeline_beam_1.py')
     pipeline_name = 'chicago_taxi_beam'
@@ -163,7 +163,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline {} deleted successfully.'.format(pipeline_name),
                   result.output)
 
-  def test_pipeline_list(self):
+  def testPipelineList(self):
 
     # Try listing pipelines when there are none.
     result = self.runner.invoke(cli_group,
@@ -191,7 +191,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn(pipeline_name_1, result.output)
     self.assertIn(pipeline_name_2, result.output)
 
-  def test_run_create(self):
+  def testRunCreate(self):
     # Create a pipeline first.
     pipeline_name_1 = 'chicago_taxi_beam'
     pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,

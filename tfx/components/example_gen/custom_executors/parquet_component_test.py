@@ -53,7 +53,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
         ]))
 
   @mock.patch.object(publisher, 'Publisher')
-  def test_run(self, mock_publisher):
+  def testRun(self, mock_publisher):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     example_gen = FileBasedExampleGen(
