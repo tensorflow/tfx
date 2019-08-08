@@ -178,7 +178,6 @@ def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
   handler_factory.create_handler(ctx.flags_dict).list_pipelines()
 
 
-# TODO(b/132286477) Add compile_pipeline method to all handlers.
 @pipeline_group.command('compile', help='Compile a pipeline')
 @pass_context
 @click.option(

@@ -47,6 +47,7 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
                                  'chicago_taxi_pipeline_kubeflow.tar.gz')
   with tarfile.open(output_filename, 'w:gz') as tar:
     tar.add(pipeline_path)
+  return 0
 
 
 class _MockUploadResponse(object):
@@ -254,7 +255,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.create_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline {} already exists.'.format(
+        str(err.exception), 'Pipeline "{}" already exists.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('kfp.Client', _MockClientClass)
@@ -310,7 +311,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.update_pipeline()
     self.assertEqual(
-        str(err.exception), 'Pipeline {} does not exist.'.format(
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
             self.pipeline_args[labels.PIPELINE_NAME]))
 
   @mock.patch('kfp.Client', _MockClientClass)
@@ -373,8 +374,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.delete_pipeline()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -418,8 +419,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.create_run()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -462,8 +463,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     with self.assertRaises(SystemExit) as err:
       handler.list_runs()
     self.assertEqual(
-        str(err.exception),
-        'Pipeline {} does not exist.'.format(flags_dict[labels.PIPELINE_NAME]))
+        str(err.exception), 'Pipeline "{}" does not exist.'.format(
+            flags_dict[labels.PIPELINE_NAME]))
 
 
 if __name__ == '__main__':

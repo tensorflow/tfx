@@ -66,6 +66,7 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   pipeline_args = {'pipeline_name': 'pipeline_test_name'}
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
+  return 0
 
 
 class BaseHandlerTest(tf.test.TestCase):

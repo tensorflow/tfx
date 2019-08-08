@@ -22,12 +22,31 @@ import locale
 import os
 import subprocess
 import tempfile
+import time
 
 from click import testing as click_testing
 import tensorflow as tf
-
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+
+
+class AirflowSubprocess(object):
+  """Launch an Airflow command."""
+
+  def __init__(self, airflow_args):
+    self._args = ['airflow'] + airflow_args
+    self._sub_process = None
+
+  def __enter__(self):
+    self._sub_process = subprocess.Popen(self._args)
+
+    # Wait for new dags to be added to scheduler.
+    time.sleep(5)
+    return self
+
+  def __exit__(self, exception_type, exception_value, traceback):  # pylint: disable=unused-argument
+    if self._sub_process:
+      self._sub_process.terminate()
 
 
 class CliAirflowEndToEndTest(tf.test.TestCase):
@@ -50,6 +69,18 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     os.environ['HOME'] = self._airflow_home
     tf.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
                     self._airflow_home)
+
+    # Do not load examples to make this a bit faster.
+    os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
+    # Following environment variables make scheduler process dags faster.
+    os.environ['AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC'] = '1'
+    os.environ['AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC'] = '1'
+    os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
+    os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '1'
+    os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
+    # Using more than one thread results in a warning for sqlite backend.
+    # See https://github.com/tensorflow/tfx/issues/141
+    os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
 
     # Testdata path.
     self._testdata_dir = os.path.join(
@@ -79,17 +110,12 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
 
-    # Start scheduler.
-    self._scheduler = subprocess.Popen(['airflow', 'scheduler'])
-
   def tearDown(self):
     super(CliAirflowEndToEndTest, self).tearDown()
     if self._old_airflow_home:
       os.environ['AIRFLOW_HOME'] = self._old_airflow_home
     if self._old_home:
       os.environ['HOME'] = self._old_home
-    if self._scheduler:
-      self._scheduler.terminate()
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
@@ -105,7 +131,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-    self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineCreateAutoDetect(self):
@@ -124,7 +150,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-    self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineCreate(self):
@@ -141,7 +167,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue('Pipeline {} already exists.'.format(pipeline_name),
+    self.assertTrue('Pipeline "{}" already exists.'.format(pipeline_name),
                     result.output)
 
   def testPipelineUpdate(self):
@@ -158,7 +184,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
@@ -173,7 +199,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline {} updated successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
                   result.output)
     self.assertTrue(
         tf.io.gfile.exists(
@@ -204,7 +230,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
@@ -219,7 +245,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
-    self.assertIn('Pipeline {} deleted successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineList(self):
@@ -250,13 +276,15 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn(pipeline_name_2, result.output)
 
   def _valid_run_and_check(self, pipeline_name):
-    result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
-    ])
+    with AirflowSubprocess(['scheduler']):
+      result = self.runner.invoke(cli_group, [
+          'run', 'create', '--engine', 'airflow', '--pipeline_name',
+          pipeline_name
+      ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
                   result.output)
-    self.assertNotIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertNotIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                      result.output)
     self.assertIn('Run created for pipeline: {}'.format(pipeline_name),
                   result.output)
@@ -273,11 +301,22 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
                   result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
 
     # Now create a pipeline.
     self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try running without scheduler.
+    result = self.runner.invoke(cli_group, [
+        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
+                  result.output)
+    self.assertIn(
+        'Error while running "{}"'.format(' '.join(
+            ['airflow unpause', pipeline_name])), result.output)
 
     # Run pipeline.
     self._valid_run_and_check(pipeline_name)

@@ -68,7 +68,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-    self.assertIn('Pipeline {} created successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineCreate(self):
@@ -85,7 +85,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue('Pipeline {} already exists.'.format(pipeline_name),
+    self.assertTrue('Pipeline "{}" already exists.'.format(pipeline_name),
                     result.output)
 
   def testPipelineUpdate(self):
@@ -100,7 +100,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
@@ -115,7 +115,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline {} updated successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
                   result.output)
     self.assertTrue(
         tf.io.gfile.exists(
@@ -145,7 +145,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
                   result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
@@ -160,7 +160,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
-    self.assertIn('Pipeline {} deleted successfully.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineList(self):
@@ -206,7 +206,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
                   result.output)
-    self.assertIn('Pipeline {} does not exist.'.format(pipeline_name_2),
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name_2),
                   result.output)
 
     # Now run the pipeline

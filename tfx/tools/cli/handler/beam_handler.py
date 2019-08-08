@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import json
 import os
-import subprocess
 import sys
 import click
 import tensorflow as tf
@@ -50,20 +49,20 @@ class BeamHandler(base_handler.BaseHandler):
     if overwrite:
       # For update, check if pipeline exists.
       if not tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} does not exist.'.format(
+        sys.exit('Pipeline "{}" does not exist.'.format(
             pipeline_args[labels.PIPELINE_NAME]))
     else:
       # For create, verify that pipeline does not exist.
       if tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} already exists.'.format(
+        sys.exit('Pipeline "{}" already exists.'.format(
             pipeline_args[labels.PIPELINE_NAME]))
 
     self._save_pipeline(pipeline_args)
 
     if overwrite:
-      click.echo('Pipeline {} updated successfully.'.format(
+      click.echo('Pipeline "{}" updated successfully.'.format(
           pipeline_args[labels.PIPELINE_NAME]))
-    click.echo('Pipeline {} created successfully.'.format(
+    click.echo('Pipeline "{}" created successfully.'.format(
         pipeline_args[labels.PIPELINE_NAME]))
 
   def update_pipeline(self) -> None:
@@ -91,12 +90,12 @@ class BeamHandler(base_handler.BaseHandler):
 
     # Check if pipeline exists.
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'.format(
+      sys.exit('Pipeline "{}" does not exist.'.format(
           self.flags_dict[labels.PIPELINE_NAME]))
 
     # Delete pipeline folder.
     io_utils.delete_dir(handler_pipeline_path)
-    click.echo('Pipeline {} deleted successfully.'.format(
+    click.echo('Pipeline "{}" deleted successfully.'.format(
         self.flags_dict[labels.PIPELINE_NAME]))
 
   def compile_pipeline(self) -> Dict[Text, Any]:
@@ -111,11 +110,14 @@ class BeamHandler(base_handler.BaseHandler):
 
   def create_run(self) -> None:
     """Runs a pipeline in Beam."""
-    # Check if pipeline exists.
+
+    # Path to pipeline folder.
     handler_pipeline_path = self._get_handler_pipeline_path(
         self.flags_dict[labels.PIPELINE_NAME])
+
+    # Check if pipeline exists.
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'.format(
+      sys.exit('Pipeline "{}" does not exist.'.format(
           self.flags_dict[labels.PIPELINE_NAME]))
 
     # Get dsl path from pipeline args.
@@ -126,7 +128,8 @@ class BeamHandler(base_handler.BaseHandler):
       pipeline_args = json.load(f)
 
     # Run pipeline dsl.
-    subprocess.call(['python', str(pipeline_args[labels.PIPELINE_DSL_PATH])])
+    self._subprocess_call(
+        ['python', str(pipeline_args[labels.PIPELINE_DSL_PATH])])
 
   def delete_run(self) -> None:
     """Deletes a run."""

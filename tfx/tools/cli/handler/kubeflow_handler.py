@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import ast
 import json
 import os
 import sys
@@ -68,21 +67,21 @@ class KubeflowHandler(base_handler.BaseHandler):
     if overwrite:
       # For update, check if pipeline exists.
       if not tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} does not exist.'.format(
+        sys.exit('Pipeline "{}" does not exist.'.format(
             pipeline_args[labels.PIPELINE_NAME]))
     else:
       # For create, verify that pipeline does not exist.
       if tf.io.gfile.exists(handler_pipeline_path):
-        sys.exit('Pipeline {} already exists.'.format(
+        sys.exit('Pipeline "{}" already exists.'.format(
             pipeline_args[labels.PIPELINE_NAME]))
 
     self._save_pipeline(pipeline_args)
 
     if overwrite:
-      click.echo('Pipeline {} updated successfully.'.format(
+      click.echo('Pipeline "{}" updated successfully.'.format(
           pipeline_args[labels.PIPELINE_NAME]))
     else:
-      click.echo('Pipeline {} created successfully.'.format(
+      click.echo('Pipeline "{}" created successfully.'.format(
           pipeline_args[labels.PIPELINE_NAME]))
 
   def update_pipeline(self) -> None:
@@ -291,15 +290,13 @@ class KubeflowHandler(base_handler.BaseHandler):
       sys.exit('Pipeline package not found: {}'.format(
           self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
 
-# TODO(b/132286477): Add pipeline check in get_pipeline_id to avoid duplication.
-
   def _get_pipeline_id(self, pipeline_name: Text) -> Text:
     # Path to pipeline folder in Kubeflow.
     handler_pipeline_path = self._get_handler_pipeline_path(pipeline_name)
 
     # Check if pipeline exists.
     if not tf.io.gfile.exists(handler_pipeline_path):
-      sys.exit('Pipeline {} does not exist.'.format(
+      sys.exit('Pipeline "{}" does not exist.'.format(
           self.flags_dict[labels.PIPELINE_NAME]))
 
     # Path to pipeline_args.json .
@@ -320,7 +317,7 @@ class KubeflowHandler(base_handler.BaseHandler):
     click.echo(tabulate(data, headers=headers, tablefmt='grid'))
 
   def _print_error(self, error: kfp_server_api.rest.ApiException):
-    error = ast.literal_eval(error.body)
+    error = json.loads(error.body)
     click.echo('Error Code: {}'.format(str(error['code'])))
     click.echo('Error Type: {}'.format(error['details'][0]['@type']))
     click.echo('Error Message: {}'.format(error['message']))
