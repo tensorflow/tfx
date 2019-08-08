@@ -35,7 +35,7 @@ class DriverTest(tf.test.TestCase):
     model_blessing.set_int_custom_property('blessed', is_blessed)
     return model_blessing
 
-  def test_fetch_last_blessed_model(self):
+  def testFetchLastBlessedModel(self):
     # Mock metadata.
     mock_metadata = tf.test.mock.Mock()
     model_validator_driver = driver.Driver(mock_metadata)

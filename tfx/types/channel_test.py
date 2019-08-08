@@ -27,14 +27,14 @@ from tfx.types.channel import Channel
 
 class ChannelTest(tf.test.TestCase):
 
-  def test_valid_channel(self):
+  def testValidChannel(self):
     instance_a = Artifact('MyTypeName')
     instance_b = Artifact('MyTypeName')
     chnl = Channel('MyTypeName', artifacts=[instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
-  def test_invalid_channel_type(self):
+  def testInvalidChannelType(self):
     instance_a = Artifact('MyTypeName')
     instance_b = Artifact('MyTypeName')
     with self.assertRaises(ValueError):

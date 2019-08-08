@@ -30,7 +30,7 @@ from tfx.utils import io_utils
 
 class DriverTest(tf.test.TestCase):
 
-  def test_prepare_input_for_processing(self):
+  def testPrepareInputForProcessing(self):
     # Create input splits.
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

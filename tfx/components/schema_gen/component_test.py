@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 
 class SchemaGenTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     schema_gen = component.SchemaGen(
         stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))

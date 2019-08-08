@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct(self):
+  def testConstruct(self):
     examples = standard_artifacts.Examples()
     model = standard_artifacts.Model()
     model_validator = component.ModelValidator(

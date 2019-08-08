@@ -27,12 +27,13 @@ from tfx.types import standard_artifacts
 class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
+    super(ComponentTest, self).setUp()
     self.model_export = channel_utils.as_channel(
         [types.Artifact(type=standard_artifacts.Model)])
     self.model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
-  def test_construct(self):
+  def testConstruct(self):
     slack_component = component.SlackComponent(
         model_export=self.model_export,
         model_blessing=self.model_blessing,

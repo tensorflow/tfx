@@ -36,16 +36,17 @@ from tfx.utils import path_utils
 class TaxiUtilsTest(tf.test.TestCase):
 
   def setUp(self):
+    super(TaxiUtilsTest, self).setUp()
     self._testdata_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         'components/testdata')
 
-  def test_utils(self):
+  def testUtils(self):
     key = 'fare'
     xfm_key = taxi_utils._transformed_name(key)
     self.assertEqual(xfm_key, 'fare_xf')
 
-  def test_preprocessing_fn(self):
+  def testPreprocessingFn(self):
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     feature_spec = taxi_utils._get_raw_feature_spec(schema)
@@ -109,7 +110,7 @@ class TaxiUtilsTest(tf.test.TestCase):
       feature.ClearField('annotation')
     self.assertEqual(transformed_schema, expected_transformed_schema)
 
-  def test_trainer_fn(self):
+  def testTrainerFn(self):
     temp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)

@@ -64,7 +64,7 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def test_taxi_pipeline_beam(self):
+  def testTaxiPipelineBeam(self):
     BeamDagRunner().run(
         taxi_pipeline_beam._create_pipeline(
             pipeline_name=self._pipeline_name,

@@ -39,7 +39,7 @@ class ComponentTest(tf.test.TestCase):
   def _verify_outputs(self, trainer):
     self.assertEqual('ModelExportPath', trainer.outputs.output.type_name)
 
-  def test_construct_from_module_file(self):
+  def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
         module_file=module_file,
@@ -51,7 +51,7 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(trainer)
     self.assertEqual(module_file, trainer.spec.exec_properties['module_file'])
 
-  def test_construct_from_trainer_fn(self):
+  def testConstructFromTrainerFn(self):
     trainer_fn = 'path.to.my_trainer_fn'
     trainer = component.Trainer(
         trainer_fn=trainer_fn,
@@ -63,7 +63,7 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(trainer)
     self.assertEqual(trainer_fn, trainer.spec.exec_properties['trainer_fn'])
 
-  def test_construct_without_transform_output(self):
+  def testConstructWithoutTransformOutput(self):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
         module_file=module_file,
@@ -74,7 +74,7 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(trainer)
     self.assertEqual(module_file, trainer.spec.exec_properties['module_file'])
 
-  def test_construct_duplicate_examples(self):
+  def testConstructDuplicateExamples(self):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           module_file='/path/to/module/file',
@@ -84,7 +84,7 @@ class ComponentTest(tf.test.TestCase):
           train_args=self.train_args,
           eval_args=self.eval_args)
 
-  def test_construct_missing_transform_output(self):
+  def testConstructMissingTransformOutput(self):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           module_file='/path/to/module/file',
@@ -93,7 +93,7 @@ class ComponentTest(tf.test.TestCase):
           train_args=self.train_args,
           eval_args=self.eval_args)
 
-  def test_construct_missing_user_module(self):
+  def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           examples=self.examples,
@@ -102,7 +102,7 @@ class ComponentTest(tf.test.TestCase):
           train_args=self.train_args,
           eval_args=self.eval_args)
 
-  def test_construct_duplicate_user_module(self):
+  def testConstructDuplicateUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           module_file='/path/to/module/file',

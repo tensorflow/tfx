@@ -48,13 +48,15 @@ def _two_step_pipeline():
 class KubeflowDagRunnerTest(tf.test.TestCase):
 
   def setUp(self):
+    super(KubeflowDagRunnerTest, self).setUp()
     self.test_dir = tempfile.mkdtemp()
     os.chdir(self.test_dir)
 
   def tearDown(self):
+    super(KubeflowDagRunnerTest, self).tearDown()
     shutil.rmtree(self.test_dir)
 
-  def test_two_step_pipeline(self):
+  def testTwoStepPipeline(self):
     """Sanity-checks the construction and dependencies for a 2-step pipeline.
     """
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
@@ -109,7 +111,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
           }]
       }, dag[0]['dag'])
 
-  def test_default_pipeline_operator_funcs(self):
+  def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
@@ -144,7 +146,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       self.assertEqual('/secret/gcp-credentials/user-gcp-sa.json',
                        env[0]['value'])
 
-  def test_volume_mounting_pipeline_operator_funcs(self):
+  def testVolumeMountingPipelineOperatorFuncs(self):
     mount_volume_op = onprem.mount_pvc('my-persistent-volume-claim',
                                        'my-volume-name',
                                        '/mnt/volume-mount-path')

@@ -89,7 +89,7 @@ class _FakeComponent(base_component.BaseComponent):
 class ComponentRunnerTest(tf.test.TestCase):
 
   @mock.patch.object(publisher, 'Publisher')
-  def test_run(self, mock_publisher):
+  def testRun(self, mock_publisher):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     test_dir = os.path.join(

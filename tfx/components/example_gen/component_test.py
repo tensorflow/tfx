@@ -71,7 +71,7 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
 class ComponentTest(tf.test.TestCase):
 
-  def test_construct_subclass_query_based(self):
+  def testConstructSubclassQueryBased(self):
     example_gen = TestQueryBasedExampleGenComponent(
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='single', pattern='query'),
@@ -84,7 +84,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 
-  def test_construct_subclass_file_based(self):
+  def testConstructSubclassFileBased(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
         input_base=channel_utils.as_channel([input_base]))
@@ -96,7 +96,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 
-  def test_construct_custom_executor(self):
+  def testConstructCustomExecutor(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = component.FileBasedExampleGen(
         input_base=channel_utils.as_channel([input_base]),
@@ -107,7 +107,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 
-  def test_construct_with_output_config(self):
+  def testConstructWithOutputConfig(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
         input_base=channel_utils.as_channel([input_base]),
@@ -123,7 +123,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
 
-  def test_construct_with_input_config(self):
+  def testConstructWithInputConfig(self):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
         input_base=channel_utils.as_channel([input_base]),
@@ -138,7 +138,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
 
-  def test_construct_with_custom_config(self):
+  def testConstructWithCustomConfig(self):
     input_base = standard_artifacts.ExternalArtifact()
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
     example_gen = component.FileBasedExampleGen(

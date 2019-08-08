@@ -28,7 +28,7 @@ from tfx.types import artifact
 
 class ArtifactTest(tf.test.TestCase):
 
-  def test_artifact(self):
+  def testArtifact(self):
     instance = artifact.Artifact('MyTypeName', split='eval')
 
     # Test property getters.
@@ -79,7 +79,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(instance.artifact, other_instance.artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 
-  def test_invalid_artifact(self):
+  def testInvalidArtifact(self):
     with self.assertRaisesRegexp(ValueError,
                                  'The "type_name" field must be passed'):
       artifact.Artifact()

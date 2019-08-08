@@ -61,6 +61,7 @@ def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
 class PipelineTest(tf.test.TestCase):
 
   def setUp(self):
+    super(PipelineTest, self).setUp()
     self._tmp_file = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName,
@@ -71,9 +72,10 @@ class PipelineTest(tf.test.TestCase):
         os.path.join(self._tmp_file, 'metadata'))
 
   def tearDown(self):
+    super(PipelineTest, self).tearDown()
     os.environ['TFX_TMP_DIR'] = self._original_tmp_value
 
-  def test_pipeline(self):
+  def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', {}, {})
     component_b = _make_fake_component_instance(
         'component_b', {'a': component_a.outputs.output}, {})
@@ -124,7 +126,7 @@ class PipelineTest(tf.test.TestCase):
     self.assertDictEqual(my_pipeline.additional_pipeline_args,
                          {'beam_pipeline_args': ['--runner=PortableRunner']})
 
-  def test_pipeline_with_loop(self):
+  def testPipelineWithLoop(self):
     channel_one = types.Channel(type_name='channel_one')
     channel_two = types.Channel(type_name='channel_two')
     channel_three = types.Channel(type_name='channel_three')
@@ -158,7 +160,7 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_d, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def test_pipeline_with_duplicated_component_id(self):
+  def testPipelineWithDuplicatedComponentId(self):
     component_a = _make_fake_component_instance('component_a', {}, {})
     component_b = _make_fake_component_instance('component_a', {}, {})
     component_c = _make_fake_component_instance('component_a', {}, {})
@@ -170,7 +172,7 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def test_pipeline_with_artifact_info(self):
+  def testPipelineWithArtifactInfo(self):
     artifacts_collection = [types.Artifact('channel_one')]
     channel_one = types.Channel(
         type_name='channel_one', artifacts=artifacts_collection)
@@ -201,7 +203,7 @@ class PipelineTest(tf.test.TestCase):
                      component_a.component_id)
     self.assertEqual(component_b.inputs.a._artifacts[0].name, 'one')
 
-  def test_pipeline_decorator(self):
+  def testPipelineDecorator(self):
 
     @pipeline.PipelineDecorator(
         pipeline_name='a',
@@ -223,7 +225,7 @@ class PipelineTest(tf.test.TestCase):
         'log_root': 'c',
     })
 
-  def test_pipeline_save_pipeline_args(self):
+  def testPipelineSavePipelineArgs(self):
     os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
     pipeline.Pipeline(
         pipeline_name='a',
@@ -233,7 +235,7 @@ class PipelineTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config)
     self.assertTrue(tf.io.gfile.exists(self._tmp_file))
 
-  def test_pipeline_no_tmp_folder(self):
+  def testPipelineNoTmpFolder(self):
     pipeline.Pipeline(
         pipeline_name='a',
         pipeline_root='b',

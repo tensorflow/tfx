@@ -105,31 +105,31 @@ class ExecutorTest(tf.test.TestCase):
         tf.saved_model.constants.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.gfile.Exists(path_to_saved_model))
 
-  def test_do_with_module_file(self):
+  def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def test_do_with_preprocessing_fn(self):
+  def testDoWithPreprocessingFn(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def test_do_with_no_preprocessing_fn(self):
+  def testDoWithNoPreprocessingFn(self):
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
-  def test_do_with_duplicate_preprocessing_fn(self):
+  def testDoWithDuplicatePreprocessingFn(self):
     self._exec_properties['module_file'] = self._module_file
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
-  def test_do_with_cache(self):
+  def testDoWithCache(self):
     # First run that creates cache.
     output_cache_artifact = types.Artifact('OutputCache')
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE/')
