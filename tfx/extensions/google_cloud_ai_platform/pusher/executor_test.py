@@ -59,6 +59,7 @@ class ExecutorTest(tf.test.TestCase):
                 'project_id': 'project_id'
             },
         },
+        'push_destination': None,
     }
     self._executor = Executor()
 

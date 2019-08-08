@@ -82,7 +82,7 @@ class Executor(tfx_pusher_executor.Executor):
     # TODO(jyzhao): should this be in driver or executor.
     if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
-      tf.logging.info('Model on %s was not blessed',)
+      tf.logging.info('Model on %s was not blessed', model_blessing_uri)
       return
 
     exec_properties_copy = exec_properties.copy()
@@ -101,5 +101,5 @@ class Executor(tfx_pusher_executor.Executor):
     # Make sure artifacts are populated in a standard way by calling
     # tfx.pusher.executor.Executor.Do().
     exec_properties_copy['push_destination'] = exec_properties.get(
-        'push_destination', self._make_local_temp_destination())
+        'push_destination') or self._make_local_temp_destination()
     super(Executor, self).Do(input_dict, output_dict, exec_properties_copy)
