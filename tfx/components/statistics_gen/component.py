@@ -21,6 +21,7 @@ from typing import Optional, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.statistics_gen import executor
+from tfx.types import artifact
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
@@ -54,7 +55,7 @@ class StatisticsGen(base_component.BaseComponent):
         type=standard_artifacts.ExampleStatistics,
         artifacts=[
             standard_artifacts.ExampleStatistics(split=split)
-            for split in types.DEFAULT_EXAMPLE_SPLITS
+            for split in artifact.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = StatisticsGenSpec(
         input_data=channel_utils.as_channel(input_data), output=output)
