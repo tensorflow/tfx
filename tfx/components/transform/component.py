@@ -19,30 +19,10 @@ from __future__ import print_function
 from typing import Optional, Text
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.transform import executor
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class TransformSpec(base_component.ComponentSpec):
-  """Transform component spec."""
-
-  PARAMETERS = {
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'preprocessing_fn': ExecutionParameter(type=(str, Text), optional=True),
-  }
-  INPUTS = {
-      'input_data': ChannelParameter(type=standard_artifacts.Examples),
-      'schema': ChannelParameter(type=standard_artifacts.Schema),
-  }
-  OUTPUTS = {
-      'transform_output':
-          ChannelParameter(type=standard_artifacts.TransformResult),
-      'transformed_examples':
-          ChannelParameter(type=standard_artifacts.Examples),
-  }
+from tfx.types.standard_component_specs import TransformSpec
 
 
 class Transform(base_component.BaseComponent):

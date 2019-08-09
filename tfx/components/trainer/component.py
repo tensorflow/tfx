@@ -21,36 +21,12 @@ from typing import Any, Dict, Optional, Text, Type
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
-from tfx.types import channel
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class TrainerSpec(base_component.ComponentSpec):
-  """Trainer component spec."""
-
-  PARAMETERS = {
-      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
-      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
-  }
-  INPUTS = {
-      'examples':
-          ChannelParameter(type=standard_artifacts.Examples),
-      'transform_output':
-          ChannelParameter(
-              type=standard_artifacts.TransformResult, optional=True),
-      'schema':
-          ChannelParameter(type=standard_artifacts.Schema),
-  }
-  OUTPUTS = {'output': ChannelParameter(type=standard_artifacts.Model)}
+from tfx.types.standard_component_specs import TrainerSpec
 
 
 class Trainer(base_component.BaseComponent):
@@ -149,7 +125,7 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     transform_output_channel = channel_utils.as_channel(
         transform_output) if transform_output else None
-    output = output or channel.Channel(
+    output = output or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
     spec = TrainerSpec(
         examples=channel_utils.as_channel(examples),

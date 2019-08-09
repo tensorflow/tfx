@@ -20,22 +20,10 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
 from tfx.components.statistics_gen import executor
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class StatisticsGenSpec(base_component.ComponentSpec):
-  """StatisticsGen component spec."""
-
-  PARAMETERS = {}
-  INPUTS = {
-      'input_data': ChannelParameter(type=standard_artifacts.Examples),
-  }
-  OUTPUTS = {
-      'output': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-  }
+from tfx.types.standard_component_specs import StatisticsGenSpec
 
 
 class StatisticsGen(base_component.BaseComponent):

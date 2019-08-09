@@ -28,8 +28,7 @@ from tfx.types import channel_utils
 
 
 @deprecation.deprecated(
-    None,
-    'tfx.utils.channel.Channel has been renamed to tfx.types.Channel as of '
+    None, 'tfx.utils.types.Channel has been renamed to tfx.types.Channel as of '
     'TFX 0.14.0.')
 class Channel(types.Channel):
   pass

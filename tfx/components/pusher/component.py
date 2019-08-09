@@ -21,29 +21,11 @@ from typing import Any, Dict, Optional, Text, Type
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class PusherSpec(base_component.ComponentSpec):
-  """Pusher component spec."""
-
-  PARAMETERS = {
-      'push_destination': ExecutionParameter(type=pusher_pb2.PushDestination,
-                                             optional=True),
-      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
-  }
-  INPUTS = {
-      'model_export': ChannelParameter(type=standard_artifacts.Model),
-      'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
-  }
-  OUTPUTS = {
-      'model_push': ChannelParameter(type=standard_artifacts.PushedModel),
-  }
+from tfx.types.standard_component_specs import PusherSpec
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.

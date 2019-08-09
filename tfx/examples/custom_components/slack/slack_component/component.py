@@ -26,12 +26,12 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.types import standard_artifacts
+from tfx.types.component_spec import ChannelParameter
+from tfx.types.component_spec import ExecutionParameter
 
 
-class SlackComponentSpec(base_component.ComponentSpec):
+class SlackComponentSpec(types.ComponentSpec):
   """ComponentSpec for Custom TFX Slack Component."""
 
   PARAMETERS = {

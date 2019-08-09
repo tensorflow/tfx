@@ -24,10 +24,10 @@ from kfp import dsl
 from kfp import gcp
 from typing import Callable, List, Optional, Text
 
-from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
+from tfx.types.component_spec import _PropertyDictWrapper
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -106,8 +106,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._output_dir = output_dir or os.getcwd()
     self._config = config or KubeflowRunnerConfig()
 
-  def _prepare_output_dict(self,
-                           wrapper: tfx_base_component._PropertyDictWrapper):
+  def _prepare_output_dict(self, wrapper: _PropertyDictWrapper):
     return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):

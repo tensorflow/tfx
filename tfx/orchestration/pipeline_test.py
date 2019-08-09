@@ -28,15 +28,15 @@ from typing import Any, Dict, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
+from tfx.types.component_spec import ChannelParameter
 
 
 def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
                                   outputs: Dict[Text, types.Channel]):
 
-  class _FakeComponentSpec(base_component.ComponentSpec):
+  class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
     INPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
                    for arg, channel in inputs.items()])
