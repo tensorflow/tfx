@@ -108,22 +108,23 @@ class AirflowDagRunnerTest(tf.test.TestCase):
         _FakeComponentSpecA(output=types.Channel(type_name='a')))
     component_b = _FakeComponent(
         _FakeComponentSpecB(
-            a=component_a.outputs.output, output=types.Channel(type_name='b')))
+            a=component_a.outputs['output'],
+            output=types.Channel(type_name='b')))
     component_c = _FakeComponent(
         _FakeComponentSpecC(
-            a=component_a.outputs.output,
-            b=component_b.outputs.output,
+            a=component_a.outputs['output'],
+            b=component_b.outputs['output'],
             output=types.Channel(type_name='c')))
     component_d = _FakeComponent(
         _FakeComponentSpecD(
-            b=component_b.outputs.output,
-            c=component_c.outputs.output,
+            b=component_b.outputs['output'],
+            c=component_c.outputs['output'],
             output=types.Channel(type_name='d')))
     component_e = _FakeComponent(
         _FakeComponentSpecE(
-            a=component_a.outputs.output,
-            b=component_b.outputs.output,
-            d=component_d.outputs.output,
+            a=component_a.outputs['output'],
+            b=component_b.outputs['output'],
+            d=component_d.outputs['output'],
             output=types.Channel(type_name='e')))
 
     test_pipeline = pipeline.Pipeline(

@@ -15,9 +15,6 @@
 
 See `examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb` for an
 example of how to run TFX in a Jupyter notebook for iterative development.
-
-Note: these APIs are experimental and changes to interface and functionality
-are expected.
 """
 
 from __future__ import absolute_import

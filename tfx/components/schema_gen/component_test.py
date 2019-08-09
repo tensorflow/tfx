@@ -29,7 +29,7 @@ class SchemaGenTest(tf.test.TestCase):
     schema_gen = component.SchemaGen(
         stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
-    self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
+    self.assertEqual('SchemaPath', schema_gen.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

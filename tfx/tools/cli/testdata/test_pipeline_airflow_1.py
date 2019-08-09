@@ -55,14 +55,15 @@ def _create_pipeline():
   example_gen = CsvExampleGen(input_base=examples)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
+  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs.output, schema=infer_schema.outputs.output)
+      stats=statistics_gen.outputs['output'],
+      schema=infer_schema.outputs['output'])
 
   return pipeline.Pipeline(
       pipeline_name='chicago_taxi_simple',

@@ -35,10 +35,10 @@ from tfx import components
 
 trainer = components.Trainer(
       module_file=taxi_pipeline_utils,
-      train_files=transform_training.outputs.output,
-      eval_files=transform_eval.outputs.output,
-      schema=infer_schema.outputs.output,
-      tf_transform_dir=transform_training.outputs.output,
+      train_files=transform_training.outputs['output'],
+      eval_files=transform_eval.outputs['output'],
+      schema=infer_schema.outputs['output'],
+      tf_transform_dir=transform_training.outputs['output'],
       train_steps=10000,
       eval_steps=5000,
       warm_starting=True

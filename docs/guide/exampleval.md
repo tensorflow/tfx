@@ -35,7 +35,7 @@ from tfx import components
 ...
 
 validate_stats = components.ExampleValidator(
-      stats=compute_eval_stats.outputs.output,
-      schema=infer_schema.outputs.output
+      stats=compute_eval_stats.outputs['output'],
+      schema=infer_schema.outputs['output']
       )
 ```

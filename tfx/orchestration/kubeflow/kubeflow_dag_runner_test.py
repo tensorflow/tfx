@@ -41,7 +41,7 @@ def _two_step_pipeline():
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
       query='SELECT * FROM TABLE')
   statistics_gen = statistics_gen_component.StatisticsGen(
-      input_data=example_gen.outputs.examples)
+      input_data=example_gen.outputs['examples'])
   return [example_gen, statistics_gen]
 
 

@@ -78,8 +78,8 @@ class ComponentSpecTest(tf.test.TestCase):
 
     # Verify other properties.
     self.assertEqual(10, spec.exec_properties['folds'])
-    self.assertIs(spec.inputs.input, input_channel)
-    self.assertIs(spec.outputs.output, output_channel)
+    self.assertIs(spec.inputs['input'], input_channel)
+    self.assertIs(spec.outputs['output'], output_channel)
 
     with self.assertRaisesRegexp(
         TypeError,

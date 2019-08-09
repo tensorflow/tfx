@@ -111,6 +111,9 @@
 *   airflow_runner.AirflowDAGRunner is renamed to
     airflow_dag_runner.AirflowDagRunner.
 *   runner.KubeflowRunner is renamed to kubeflow_dag_runner.KubeflowDagRunner.
+*   The recommended method of accessing an input/output of a ComponentSpec has
+    changed from `spec.outputs.output_name` to `spec.outputs['output_name']`.
+    The previous style will be deprecated soon.
 
 # Version 0.13.0
 
