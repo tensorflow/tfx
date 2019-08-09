@@ -22,9 +22,9 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base.base_component import ChannelParameter
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
+from tfx.types.component_spec import ChannelParameter
 
 _executed_components = []
 
@@ -43,25 +43,25 @@ class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 # tfx/orchestration/pipeline_test.py), but that strategy does not work here
 # as these anonymous classes cannot be used with Beam, since they cannot be
 # pickled with the "dill" library.
-class _FakeComponentSpecA(base_component.ComponentSpec):
+class _FakeComponentSpecA(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {}
   OUTPUTS = {'output': ChannelParameter(type_name='a')}
 
 
-class _FakeComponentSpecB(base_component.ComponentSpec):
+class _FakeComponentSpecB(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {'a': ChannelParameter(type_name='a')}
   OUTPUTS = {'output': ChannelParameter(type_name='b')}
 
 
-class _FakeComponentSpecC(base_component.ComponentSpec):
+class _FakeComponentSpecC(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {'a': ChannelParameter(type_name='a')}
   OUTPUTS = {'output': ChannelParameter(type_name='c')}
 
 
-class _FakeComponentSpecD(base_component.ComponentSpec):
+class _FakeComponentSpecD(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
       'b': ChannelParameter(type_name='b'),
@@ -70,7 +70,7 @@ class _FakeComponentSpecD(base_component.ComponentSpec):
   OUTPUTS = {'output': ChannelParameter(type_name='d')}
 
 
-class _FakeComponentSpecE(base_component.ComponentSpec):
+class _FakeComponentSpecE(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
       'a': ChannelParameter(type_name='a'),
@@ -82,10 +82,10 @@ class _FakeComponentSpecE(base_component.ComponentSpec):
 
 class _FakeComponent(base_component.BaseComponent):
 
-  SPEC_CLASS = base_component.ComponentSpec
+  SPEC_CLASS = types.ComponentSpec
   EXECUTOR_CLASS = base_executor.BaseExecutor
 
-  def __init__(self, spec: base_component.ComponentSpec):
+  def __init__(self, spec: types.ComponentSpec):
     component_name = spec.__class__.__name__.replace(
         '_FakeComponentSpec', 'component_').lower()
     super(_FakeComponent, self).__init__(spec=spec,

@@ -20,24 +20,10 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
 from tfx.components.example_validator import executor
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class ExampleValidatorSpec(base_component.ComponentSpec):
-  """ExampleValidator component spec."""
-
-  PARAMETERS = {}
-  INPUTS = {
-      'stats': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-      'schema': ChannelParameter(type=standard_artifacts.Schema),
-  }
-  OUTPUTS = {
-      'output':
-          ChannelParameter(type=standard_artifacts.ExampleValidationResult),
-  }
+from tfx.types.standard_component_specs import ExampleValidatorSpec
 
 
 class ExampleValidator(base_component.BaseComponent):

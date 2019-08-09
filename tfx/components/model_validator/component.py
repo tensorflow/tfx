@@ -21,24 +21,11 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class ModelValidatorSpec(base_component.ComponentSpec):
-  """ModelValidator component spec."""
-
-  PARAMETERS = {}
-  INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'model': ChannelParameter(type=standard_artifacts.Model),
-  }
-  OUTPUTS = {
-      'blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
-  }
+from tfx.types.standard_component_specs import ModelValidatorSpec
 
 
 class ModelValidator(base_component.BaseComponent):

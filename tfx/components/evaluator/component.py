@@ -21,28 +21,11 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class EvaluatorSpec(base_component.ComponentSpec):
-  """Evaluator component spec."""
-
-  PARAMETERS = {
-      'feature_slicing_spec': ExecutionParameter(
-          type=evaluator_pb2.FeatureSlicingSpec),
-  }
-  INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'model_exports': ChannelParameter(type=standard_artifacts.Model),
-  }
-  OUTPUTS = {
-      'output': ChannelParameter(type=standard_artifacts.ModelEvalResult),
-  }
+from tfx.types.standard_component_specs import EvaluatorSpec
 
 
 class Evaluator(base_component.BaseComponent):

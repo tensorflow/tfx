@@ -36,7 +36,7 @@ class ChannelTest(tf.test.TestCase):
       channel.Channel(type_name='ExamplesPath')
       warn_mock.assert_called_once()
       self.assertIn(
-          'tfx.utils.channel.Channel has been renamed to tfx.types.Channel',
+          'tfx.utils.types.Channel has been renamed to tfx.types.Channel',
           warn_mock.call_args[0][5])
 
   def testAsChannelDeprecated(self):

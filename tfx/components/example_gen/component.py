@@ -22,49 +22,13 @@ from typing import Optional, Text, Type
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base.base_component import ChannelParameter
-from tfx.components.base.base_component import ExecutionParameter
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-
-class QueryBasedExampleGenSpec(base_component.ComponentSpec):
-  """Query-based ExampleGen component spec."""
-
-  PARAMETERS = {
-      'input_config':
-          ExecutionParameter(type=example_gen_pb2.Input),
-      'output_config':
-          ExecutionParameter(type=example_gen_pb2.Output),
-      'custom_config':
-          ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
-  }
-  INPUTS = {}
-  OUTPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-  }
-
-
-class FileBasedExampleGenSpec(base_component.ComponentSpec):
-  """File-based ExampleGen component spec."""
-
-  PARAMETERS = {
-      'input_config':
-          ExecutionParameter(type=example_gen_pb2.Input),
-      'output_config':
-          ExecutionParameter(type=example_gen_pb2.Output),
-      'custom_config':
-          ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
-  }
-  INPUTS = {
-      'input_base': ChannelParameter(type=standard_artifacts.ExternalArtifact),
-  }
-  OUTPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-  }
+from tfx.types.standard_component_specs import FileBasedExampleGenSpec
+from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
 
 
 class _QueryBasedExampleGen(base_component.BaseComponent):
