@@ -23,7 +23,7 @@
 *   Added support for Beam as an orchestrator.
 *   Introduced the experimental InteractiveContext environment for iterative
     notebook development, as well as an example Chicago Taxi notebook
-    in this environment.
+    in this environment with TFDV / TFMA examples.
 *   Enables Transform and Trainer components to specify user defined function
     (UDF) module by Python module path in addition to path to a module file.
 
