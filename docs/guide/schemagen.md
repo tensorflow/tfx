@@ -1,4 +1,4 @@
-# SchemaGen
+# The SchemaGen TFX Pipeline Component
 
 Some TFX components use a description of your input data called a *schema*. The
 schema is an instance of
