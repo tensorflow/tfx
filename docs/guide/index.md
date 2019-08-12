@@ -467,7 +467,7 @@ to any or all of these deployment targets.
 [TensorFlow Serving (TFS)](serving.md) is a flexible, high-performance serving
 system for machine learning models, designed for production environments. It
 consumes a SavedModel and will accept inference requests over either REST or
-gRPC interfaces.  It runs as a set of processes on one more more network
+gRPC interfaces.  It runs as a set of processes on one or more network
 servers, using one of several advanced architectures to handle synchronization
 and distributed computation.  See the [TFS documentation](serving.md) for more
 information on developing and deploying TFS solutions.
