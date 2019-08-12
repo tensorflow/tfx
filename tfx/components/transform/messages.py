@@ -13,5 +13,5 @@
 # limitations under the License.
 """Messages used in transform executor."""
 
-SCHEMA_EMPTY = 'Schema was empty.  The Transform component requires a full '
-'schema to be provided as an external config. '
+SCHEMA_EMPTY = ('Schema was empty.  The Transform component requires a full '
+                'schema to be provided as an external config.')
