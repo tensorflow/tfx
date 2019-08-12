@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import datetime
 import os
+import re
 
 import apache_beam as beam
 import tensorflow as tf
@@ -46,6 +47,18 @@ class _ComponentAsDoFn(beam.DoFn):
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
+    job_name = re.sub(
+      r'[^0-9a-zA-Z-]+',
+      '-',
+      '{pipeline_name}-{component}-{ts}'.format(
+        pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
+        component=component.component_name,
+        ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
+      )
+    )
+    # Exploit the last-in priority of --job_name for beam
+    tfx_pipeline.additional_pipeline_args['beam_pipeline_args'].append(
+      '--job_name={}'.format(job_name))
     self._component_launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
@@ -93,6 +106,19 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     """
     # For CLI, while creating or updating pipeline, pipeline_args are extracted
     # and hence we avoid deploying the pipeline.
+
+    # Google Dataflow restricts naming to only alphanumeric and dashes
+    job_name = re.sub(
+      r'[^0-9a-zA-Z-]+',
+      '-',
+      '{pipeline_name}-{ts}'.format(
+        pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
+        ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
+      )
+    )
+    # Exploit the last-in priority of --job_name for beam
+    self._beam_orchestrator_args.append('--job_name={}'.format(job_name))
+
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
 
