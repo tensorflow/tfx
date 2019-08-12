@@ -718,7 +718,7 @@ Try restarting the webserver and scheduler.
 
 Kubeflow requires a Kubernetes cluster to run the pipelines at scale.
 See the Kubeflow deployment guideline that guide through the options for
-[deplopying the Kubeflow cluster.] (https://www.kubeflow.org/docs/started/getting-started-gke/)
+[deplopying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/getting-started-gke/)
 
 ### Configure and run TFX pipeline
 
