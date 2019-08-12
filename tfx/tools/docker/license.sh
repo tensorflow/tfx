@@ -48,7 +48,8 @@ DIFF=()
 for i in "${INSTALLED_PACKAGES[@]}"; do
   skip=
   for j in "${REGISTERED_PACKAGES[@]}"; do
-    [[ $i == $j ]] && { skip=1; break; }
+    # PyPI package name is case-insensitive so cast to lower case.
+    [[ ${i,,} == ${j,,} ]] && { skip=1; break; }
   done
   [[ -n $skip ]] || DIFF+=("$i")
 done
