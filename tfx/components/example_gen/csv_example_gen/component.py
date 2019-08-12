@@ -35,17 +35,16 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               input_base: types.Channel = None,
+               input_base: types.Channel,
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[types.Channel] = None,
-               input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
                name: Optional[Text] = None):
     """Construct a CsvExampleGen component.
 
     Args:
       input_base: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with csv files inside (required).
+        whose uri is an external directory with csv files inside.
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split.
@@ -54,7 +53,6 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         size 2:1.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      input: Forwards compatibility alias for the 'input_base' argument.
       name: Optional unique name. Necessary if multiple CsvExampleGen components
         are declared in the same pipeline.
     """
@@ -63,5 +61,4 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         input_config=input_config,
         output_config=output_config,
         example_artifacts=example_artifacts,
-        input=input,
         name=name)

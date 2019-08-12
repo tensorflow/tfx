@@ -36,22 +36,19 @@ class SchemaGen(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               stats: types.Channel = None,
+               stats: types.Channel,
                output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
     Args:
       stats: A Channel of 'ExampleStatisticsPath' type (required if spec is not
         passed). This should contain at least a 'train' split. Other splits are
-        currently ignored (required).
+        currently ignored.
       output: Optional output 'SchemaPath' channel for schema result.
-      statistics: Forwards compatibility alias for the 'stats' argument.
       name: Optional unique name. Necessary iff multiple SchemaGen components
         are declared in the same pipeline.
     """
-    stats = stats or statistics
     output = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(stats=stats, output=output)

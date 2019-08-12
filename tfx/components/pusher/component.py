@@ -41,21 +41,20 @@ class Pusher(base_component.BaseComponent):
 
   def __init__(
       self,
-      model_export: types.Channel = None,
-      model_blessing: types.Channel = None,
+      model_export: types.Channel,
+      model_blessing: types.Channel,
       push_destination: Optional[pusher_pb2.PushDestination] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
       model_push: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
       name: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:
       model_export: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component (required).
+        Trainer component.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        ModelValidator component (required).
+        ModelValidator component.
       push_destination: A pusher_pb2.PushDestination instance, providing
         info for tensorflow serving to load models. Optional if executor_class
         doesn't require push_destination.
@@ -65,11 +64,9 @@ class Pusher(base_component.BaseComponent):
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
       executor_class: Optional custom python executor class.
       model_push: Optional output 'ModelPushPath' channel with result of push.
-      model: Forwards compatibility alias for the 'model_exports' argument.
       name: Optional unique name. Necessary if multiple Pusher components are
         declared in the same pipeline.
     """
-    model_export = model_export or model
     model_push = model_push or types.Channel(
         type=standard_artifacts.PushedModel,
         artifacts=[standard_artifacts.PushedModel()])
