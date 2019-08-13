@@ -23,7 +23,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import EvaluatorSpec
 
@@ -61,8 +60,8 @@ class Evaluator(base_component.BaseComponent):
         type=standard_artifacts.ModelEvalResult,
         artifacts=[standard_artifacts.ModelEvalResult()])
     spec = EvaluatorSpec(
-        examples=channel_utils.as_channel(examples),
-        model_exports=channel_utils.as_channel(model_exports),
+        examples=examples,
+        model_exports=model_exports,
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
         output=output)

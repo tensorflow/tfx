@@ -21,7 +21,6 @@ from typing import Optional, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.example_validator import executor
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 
@@ -55,7 +54,7 @@ class ExampleValidator(base_component.BaseComponent):
         type=standard_artifacts.ExampleValidationResult,
         artifacts=[standard_artifacts.ExampleValidationResult()])
     spec = ExampleValidatorSpec(
-        stats=channel_utils.as_channel(stats),
-        schema=channel_utils.as_channel(schema),
+        stats=stats,
+        schema=schema,
         output=output)
     super(ExampleValidator, self).__init__(spec=spec, name=name)

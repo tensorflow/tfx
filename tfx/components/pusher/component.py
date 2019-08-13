@@ -23,7 +23,6 @@ from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import PusherSpec
 
@@ -76,8 +75,8 @@ class Pusher(base_component.BaseComponent):
                        'executor_class is supplied that does not require '
                        'it.')
     spec = PusherSpec(
-        model_export=channel_utils.as_channel(model_export),
-        model_blessing=channel_utils.as_channel(model_blessing),
+        model_export=model_export,
+        model_blessing=model_blessing,
         push_destination=push_destination,
         custom_config=custom_config,
         model_push=model_push)

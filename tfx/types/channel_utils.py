@@ -17,18 +17,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-from typing import Dict, Iterable, List, Text, Union
+from typing import Dict, Iterable, List, Text
 
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 
 
-def as_channel(source: Union[Channel, Iterable[Artifact]]) -> Channel:
+def as_channel(artifacts: Iterable[Artifact]) -> Channel:
   """Converts artifact collection of the same artifact type into a Channel.
 
   Args:
-    source: Either a Channel or an iterable of Artifact.
+    artifacts: An iterable of Artifact.
 
   Returns:
     A static Channel containing the source artifact collection.
@@ -36,20 +35,14 @@ def as_channel(source: Union[Channel, Iterable[Artifact]]) -> Channel:
   Raises:
     ValueError when source is not a non-empty iterable of Artifact.
   """
-
-  if isinstance(source, Channel):
-    return source
-  elif isinstance(source, collections.Iterable):
-    try:
-      first_element = next(iter(source))
-      if isinstance(first_element, Artifact):
-        return Channel(type_name=first_element.type_name, artifacts=source)
-      else:
-        raise ValueError('Invalid source to be a channel: {}'.format(source))
-    except StopIteration:
-      raise ValueError('Cannot convert empty artifact collection into Channel')
-  else:
-    raise ValueError('Invalid source to be a channel: {}'.format(source))
+  try:
+    first_element = next(iter(artifacts))
+    if isinstance(first_element, Artifact):
+      return Channel(type_name=first_element.type_name, artifacts=artifacts)
+    else:
+      raise ValueError('Invalid artifact iterable: {}'.format(artifacts))
+  except StopIteration:
+    raise ValueError('Cannot convert empty artifact iterable into Channel')
 
 
 def unwrap_channel_dict(
