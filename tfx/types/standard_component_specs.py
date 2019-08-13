@@ -41,7 +41,7 @@ class EvaluatorSpec(ComponentSpec):
       'model_exports': ChannelParameter(type=standard_artifacts.Model),
   }
   OUTPUTS = {
-      'output': ChannelParameter(type=standard_artifacts.ModelEvalResult),
+      'output': ChannelParameter(type=standard_artifacts.ModelEvaluation),
   }
 
 
@@ -54,8 +54,7 @@ class ExampleValidatorSpec(ComponentSpec):
       'schema': ChannelParameter(type=standard_artifacts.Schema),
   }
   OUTPUTS = {
-      'output':
-          ChannelParameter(type=standard_artifacts.ExampleValidationResult),
+      'output': ChannelParameter(type=standard_artifacts.ExampleAnomalies),
   }
 
 
@@ -165,7 +164,7 @@ class TrainerSpec(ComponentSpec):
           ChannelParameter(type=standard_artifacts.Examples),
       'transform_output':
           ChannelParameter(
-              type=standard_artifacts.TransformResult, optional=True),
+              type=standard_artifacts.TransformGraph, optional=True),
       'schema':
           ChannelParameter(type=standard_artifacts.Schema),
   }
@@ -185,7 +184,7 @@ class TransformSpec(ComponentSpec):
   }
   OUTPUTS = {
       'transform_output':
-          ChannelParameter(type=standard_artifacts.TransformResult),
+          ChannelParameter(type=standard_artifacts.TransformGraph),
       'transformed_examples':
           ChannelParameter(type=standard_artifacts.Examples),
   }

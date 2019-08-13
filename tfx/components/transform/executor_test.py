@@ -53,7 +53,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    self._transformed_output = standard_artifacts.TransformResult()
+    self._transformed_output = standard_artifacts.TransformGraph()
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_output')
     self._transformed_train_examples = standard_artifacts.Examples(
