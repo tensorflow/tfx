@@ -28,7 +28,7 @@ class ExampleStatistics(artifact.Artifact):
   TYPE_NAME = 'ExampleStatisticsPath'
 
 
-class ExampleValidationResult(artifact.Artifact):
+class ExampleAnomalies(artifact.Artifact):
   TYPE_NAME = 'ExampleValidationPath'
 
 
@@ -40,7 +40,7 @@ class ModelBlessing(artifact.Artifact):
   TYPE_NAME = 'ModelBlessingPath'
 
 
-class ModelEvalResult(artifact.Artifact):
+class ModelEvaluation(artifact.Artifact):
   TYPE_NAME = 'ModelEvalPath'
 
 
@@ -52,5 +52,5 @@ class Schema(artifact.Artifact):
   TYPE_NAME = 'SchemaPath'
 
 
-class TransformResult(artifact.Artifact):
+class TransformGraph(artifact.Artifact):
   TYPE_NAME = 'TransformPath'

@@ -44,7 +44,7 @@ class ExecutorTest(tf.test.TestCase):
     eval_examples = standard_artifacts.Examples(split='eval')
     eval_examples.uri = os.path.join(self._source_data_dir,
                                      'transform/transformed_examples/eval/')
-    transform_output = standard_artifacts.TransformResult()
+    transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
                                         'transform/transform_output/')
     schema = standard_artifacts.Examples()

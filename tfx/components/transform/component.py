@@ -88,8 +88,8 @@ class Transform(base_component.BaseComponent):
       )
 
     transform_output = transform_output or types.Channel(
-        type=standard_artifacts.TransformResult,
-        artifacts=[standard_artifacts.TransformResult()])
+        type=standard_artifacts.TransformGraph,
+        artifacts=[standard_artifacts.TransformGraph()])
     transformed_examples = transformed_examples or types.Channel(
         type=standard_artifacts.Examples,
         artifacts=[

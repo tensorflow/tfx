@@ -57,8 +57,8 @@ class Evaluator(base_component.BaseComponent):
         declared in the same pipeline.
     """
     output = output or types.Channel(
-        type=standard_artifacts.ModelEvalResult,
-        artifacts=[standard_artifacts.ModelEvalResult()])
+        type=standard_artifacts.ModelEvaluation,
+        artifacts=[standard_artifacts.ModelEvaluation()])
     spec = EvaluatorSpec(
         examples=examples,
         model_exports=model_exports,
