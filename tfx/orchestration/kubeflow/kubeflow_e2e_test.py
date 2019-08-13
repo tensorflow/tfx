@@ -277,6 +277,10 @@ class KubeflowEndToEndTest(tf.test.TestCase):
     ]
     output = subprocess.check_output(get_workflow_command).decode('utf-8')
 
+    tf.logging.info(
+        'Here is what output is right before self.assertIsNotNone: {}'.format(
+            output))
+
     self.assertIsNotNone(
         re.search(r'^Status:\s+Succeeded$', output, flags=re.MULTILINE),
         'Pipeline {} failed to complete successfully:\n{}'.format(
