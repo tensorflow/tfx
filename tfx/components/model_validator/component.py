@@ -23,7 +23,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ModelValidatorSpec
 
@@ -63,7 +62,7 @@ class ModelValidator(base_component.BaseComponent):
         type=standard_artifacts.ModelBlessing,
         artifacts=[standard_artifacts.ModelBlessing()])
     spec = ModelValidatorSpec(
-        examples=channel_utils.as_channel(examples),
-        model=channel_utils.as_channel(model),
+        examples=examples,
+        model=model,
         blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, name=name)

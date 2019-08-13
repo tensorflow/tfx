@@ -24,7 +24,6 @@ from tfx.components.base import base_executor
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TrainerSpec
 
@@ -123,14 +122,12 @@ class Trainer(base_component.BaseComponent):
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_output' must be supplied too.")
     examples = examples or transformed_examples
-    transform_output_channel = channel_utils.as_channel(
-        transform_output) if transform_output else None
     output = output or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
     spec = TrainerSpec(
-        examples=channel_utils.as_channel(examples),
-        transform_output=transform_output_channel,
-        schema=channel_utils.as_channel(schema),
+        examples=examples,
+        transform_output=transform_output,
+        schema=schema,
         train_args=train_args,
         eval_args=eval_args,
         module_file=module_file,

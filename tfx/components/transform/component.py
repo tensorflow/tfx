@@ -21,7 +21,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.transform import executor
 from tfx.types import artifact
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
 
@@ -98,8 +97,8 @@ class Transform(base_component.BaseComponent):
             for split in artifact.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = TransformSpec(
-        input_data=channel_utils.as_channel(input_data),
-        schema=channel_utils.as_channel(schema),
+        input_data=input_data,
+        schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
         transform_output=transform_output,
