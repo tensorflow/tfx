@@ -546,7 +546,7 @@ Activate the `virtualenv` (created above) to setup the shell environment:
 </pre>
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">sh ./setup_beam_on_flink.sh</code>
+<code class="devsite-terminal">bash ./setup_beam_on_flink.sh</code>
 </pre>
 
 This will start a local Beam Job Server.
@@ -653,7 +653,7 @@ Activate the `virtualenv` (created above) to setup the shell environment:
 </pre>
 
 <pre class="prettyprint lang-bsh">
-<code class="devsite-terminal">sh ./setup_beam_on_spark.sh</code>
+<code class="devsite-terminal">bash ./setup_beam_on_spark.sh</code>
 </pre>
 
 This will start a local Beam Job Server.
