@@ -1,0 +1,25 @@
+version: "3"
+services:
+  tfx:
+    build:
+      context: ./buildfiles
+      dockerfile: Dockerfile
+    ports:
+    - "8080:8080" # airflow
+    - "8888:8888" # jupyter notebook
+    - "8081:8081" # Flink and Spark
+    volumes:
+    # Note: You should create the `airflow` directory BEFORE running `docker-compose up`, and
+    #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on your
+    # .     system.  In the container, it will be mounted as /home/tfx_user/airflow
+    - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/home/tfx_user/airflow"
+
+    # Note: You should clone the TFX repo BEFORE running `docker-compose up`, and
+    #       edit the TFX_PATH_ON_YOUR_HOST below to point to where you cloned the repo on your
+    # .     system.  In the container, it will be mounted as /home/tfx_user/tfx
+    - "TFX_PATH_ON_YOUR_HOST/tfx:/home/tfx_user/tfx"
+
+    stdin_open: true
+    tty: true
+
+    entrypoint: /bin/bash -c "su -l tfx_user"
