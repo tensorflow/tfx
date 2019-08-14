@@ -100,7 +100,7 @@ def compute_stats(input_handle,
           | 'ReadData' >> beam.io.textio.ReadFromText(
               file_pattern=input_handle, skip_header_lines=1)
           | 'DecodeData' >>
-          csv_decoder.DecodeCSV(column_names=taxi.CSV_COLUMN_NAMES))
+          csv_decoder.DecodeCSVToDict(column_names=taxi.CSV_COLUMN_NAMES))
     else:
       query = taxi.make_sql(
           table_name=input_handle, max_rows=max_rows, for_eval=for_eval)
@@ -111,14 +111,11 @@ def compute_stats(input_handle,
           | 'ConvertToTFDVInput' >> beam.Map(
               lambda x: {key: np.asarray([x[key]])  # pylint: disable=g-long-lambda
                          for key in x if x[key] is not None}))
-      # TODO(pachristopher): Remove this once TFDV 0.14 is released.
-      (major, minor, _) = tfdv.__version__.split('.')
-      if int(major) > 0 or int(minor) >= 14:
-        raw_data |= ('BatchExamplesToArrowTables' >>
-                     batch_util.BatchExamplesToArrowTables())
 
     _ = (
         raw_data
+        |
+        'BatchExamplesToArrowTables' >> batch_util.BatchExamplesToArrowTables()
         | 'GenerateStatistics' >> tfdv.GenerateStatistics()
         | 'WriteStatsOutput' >> beam.io.WriteToTFRecord(
             stats_path,
