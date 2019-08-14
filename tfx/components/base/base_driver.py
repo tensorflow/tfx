@@ -165,13 +165,13 @@ class BaseDriver(object):
     """
     return exec_properties
 
-  def _prepare_output_artifacts(
+  def prepare_output_artifacts(
       self,
       output_dict: Dict[Text, types.Channel],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-      exec_properties: Dict[Text, Any],
+      exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
   ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact.
 
@@ -275,7 +275,7 @@ class BaseDriver(object):
                       exec_properties)
 
       # Step 4a. New execution is needed. Prepare output artifacts.
-      output_artifacts = self._prepare_output_artifacts(
+      output_artifacts = self.prepare_output_artifacts(
           output_dict=output_dict,
           execution_id=execution_id,
           pipeline_info=pipeline_info,
