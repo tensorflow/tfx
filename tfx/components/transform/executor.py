@@ -488,15 +488,12 @@ class Executor(base_executor.BaseExecutor):
               | 'EncodeTFDV' >> beam.Map(
                   EncodeTFDV, feature_specs=feature_specs_from_schema))
 
-    # TODO(pachristopher): Remove this once TFDV 0.14 is released.
-    (major, minor, _) = tfdv.__version__.split('.')
-    if int(major) > 0 or int(minor) >= 14:
-      result |= ('BatchExamplesToArrowTables' >>
-                 batch_util.BatchExamplesToArrowTables())
-
-    return (result
-            | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
-                tfdv.StatsOptions(schema=schema)))
+    return (
+        result
+        |
+        'BatchExamplesToArrowTables' >> batch_util.BatchExamplesToArrowTables()
+        | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
+            tfdv.StatsOptions(schema=schema)))
 
   @staticmethod
   @beam.ptransform_fn
