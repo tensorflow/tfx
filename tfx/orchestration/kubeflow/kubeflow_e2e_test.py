@@ -247,13 +247,12 @@ class KubeflowEndToEndTest(tf.test.TestCase):
     blobs = bucket.list_blobs(prefix=prefix)
     bucket.delete_blobs(blobs)
 
-  def _compile_and_run_pipeline(self, pipeline_name: Text, pipeline_root: Text,
+  def _compile_and_run_pipeline(self, pipeline_name: Text,
                                 pipeline: tfx_pipeline.Pipeline):
     """Compiles and runs a KFP pipeline.
 
     Args:
       pipeline_name: The name of the pipeline.
-      pipeline_root: The pipeline root directory.
       pipeline: The logical pipeline to run.
     """
     _ = KubeflowRunner().run(pipeline)
@@ -289,7 +288,7 @@ class KubeflowEndToEndTest(tf.test.TestCase):
     pipeline = _create_test_pipeline(pipeline_name, pipeline_root,
                                      self._data_root, self._taxi_module_file,
                                      self._container_image)
-    self._compile_and_run_pipeline(pipeline_name, pipeline_root, pipeline)
+    self._compile_and_run_pipeline(pipeline_name, pipeline)
 
   # TODO(ajaygopinathan): Add test pipelines that exercise GCP extensions.
 
