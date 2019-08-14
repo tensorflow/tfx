@@ -77,7 +77,6 @@ def create_handler(flags_dict: Dict[Text, Any]) -> base_handler.BaseHandler:
 
   Returns:
     Corresponding Handler object.
-
   """
   engine = flags_dict[labels.ENGINE_FLAG]
   packages_list = str(subprocess.check_output(['pip', 'freeze', '--local']))

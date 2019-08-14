@@ -24,8 +24,7 @@ class Context(object):
   """Context shared between all command groups.
 
   Attributes :
-    flags_dict: A dictionary containing the flags of a command and additional
-    properties.
+    flags_dict: A dictionary containing the flags of a command.
   """
 
   def __init__(self):
