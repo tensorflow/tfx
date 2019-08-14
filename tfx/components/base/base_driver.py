@@ -171,8 +171,14 @@ class BaseDriver(object):
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
+      exec_properties: Dict[Text, Any],
   ) -> Dict[Text, List[types.Artifact]]:
-    """Prepare output artifacts by assigning uris to each artifact."""
+    """Prepare output artifacts by assigning uris to each artifact.
+
+    Subclasses might override this function for customized artifact uris assignation logic.
+    However please note that this function is supposed to be
+    called in normal cases since it handles artifact info passing to downstream components.
+    """
     result = channel_utils.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
@@ -263,19 +269,21 @@ class BaseDriver(object):
           use_cached_results = False
     if not use_cached_results:
       tf.logging.info('Cached results not found, move on to new execution')
+      exec_properties = self.resolve_exec_properties(exec_properties,
+                                                     component_info)
+      tf.logging.info('Execution properties for the upcoming execution are: %s',
+                      exec_properties)
+
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           output_dict=output_dict,
           execution_id=execution_id,
           pipeline_info=pipeline_info,
-          component_info=component_info)
+          component_info=component_info,
+          exec_properties=exec_properties)
       tf.logging.info(
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
-      exec_properties = self.resolve_exec_properties(exec_properties,
-                                                     component_info)
-      tf.logging.info('Execution properties for the upcoming execution are: %s',
-                      exec_properties)
 
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, execution_id,
