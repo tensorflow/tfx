@@ -35,15 +35,24 @@ class _PropertyDictWrapper(object):
   """Helper class to wrap inputs/outputs from TFX components.
 
   Currently, this class is read-only (setting properties is not implemented).
+
+  Internal class: no backwards compatibility guarantees.
   """
 
-  def __init__(self, data: Dict[Text, Channel]):
+  def __init__(self,
+               data: Dict[Text, Channel],
+               compat_aliases: Optional[Dict[Text, Text]] = None):
     self._data = data
+    self._compat_aliases = compat_aliases or {}
 
   def __getitem__(self, key):
+    if key in self._compat_aliases:
+      key = self._compat_aliases[key]
     return self._data[key]
 
   def __getattr__(self, key):
+    if key in self._compat_aliases:
+      key = self._compat_aliases[key]
     try:
       return self._data[key]
     except KeyError:
@@ -201,8 +210,21 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
       value = self._raw_args[arg_name]
       outputs[arg_name] = value
 
-    self.inputs = _PropertyDictWrapper(inputs)
-    self.outputs = _PropertyDictWrapper(outputs)
+    # Note: for forwards compatibility, ComponentSpec objects may provide an
+    # attribute mapping virtual keys to physical keys in the outputs dictionary,
+    # and when the value for a virtual key is accessed, the value for the
+    # physical key will be returned instead. This is intended to provide
+    # forwards compatibility. This feature will be removed once attribute
+    # renaming is completed and *should not* be used by ComponentSpec authors
+    # outside the TFX package.
+    #
+    # TODO(b/139281215): remove this functionality.
+    self.inputs = _PropertyDictWrapper(
+        inputs, compat_aliases=getattr(
+            self, '_INPUT_COMPATIBILITY_ALIASES', None))
+    self.outputs = _PropertyDictWrapper(
+        outputs, compat_aliases=getattr(
+            self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
 
 
 class _ComponentParameter(object):

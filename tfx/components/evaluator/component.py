@@ -38,24 +38,27 @@ class Evaluator(base_component.BaseComponent):
 
   def __init__(
       self,
-      examples: types.Channel,
-      model_exports: types.Channel,
+      examples: types.Channel = None,
+      model_exports: types.Channel = None,
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
       output: Optional[types.Channel] = None,
+      model: Optional[types.Channel] = None,
       name: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
       examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component.
+        component (required).
       model_exports: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component.
+        Trainer component (required).
       feature_slicing_spec: Optional evaluator_pb2.FeatureSlicingSpec instance,
         providing the way to slice the data.
       output: Optional channel of 'ModelEvalPath' for result of evaluation.
+      model: Forwards compatibility alias for the 'model_exports' argument.
       name: Optional unique name. Necessary if multiple Evaluator components are
         declared in the same pipeline.
     """
+    model_exports = model_exports or model
     output = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
         artifacts=[standard_artifacts.ModelEvaluation()])
