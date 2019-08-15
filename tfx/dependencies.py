@@ -26,8 +26,8 @@ def make_required_install_packages():
       'ml-metadata>=0.14,<0.15',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
-      'tensorflow-data-validation>=0.14.1,<0.15',
-      'tensorflow-model-analysis>=0.14,<0.15',
+      'tensorflow-data-validation>=0.14.1,<0.15.0.dev0',
+      'tensorflow-model-analysis>=0.14,<0.15.0.dev0',
       'tensorflow-transform>=0.14,<0.15',
   ]
 
