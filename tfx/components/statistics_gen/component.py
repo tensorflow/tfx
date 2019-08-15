@@ -39,17 +39,20 @@ class StatisticsGen(base_component.BaseComponent):
   def __init__(self,
                input_data: types.Channel = None,
                output: Optional[types.Channel] = None,
+               examples: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
     Args:
       input_data: A Channel of 'ExamplesPath' type. This should contain two
-        splits 'train' and 'eval' (required if spec is not passed).
+        splits 'train' and 'eval' (required).
       output: Optional 'ExampleStatisticsPath' channel for statistics of each
         split provided in input examples.
+      examples: Forwards compatibility alias for the 'input_data' argument.
       name: Optional unique name. Necessary iff multiple StatisticsGen
         components are declared in the same pipeline.
     """
+    input_data = input_data or examples
     output = output or types.Channel(
         type=standard_artifacts.ExampleStatistics,
         artifacts=[

@@ -50,7 +50,7 @@ class Trainer(base_component.BaseComponent):
   def __init__(
       self,
       examples: types.Channel = None,
-      transformed_examples: types.Channel = None,
+      transformed_examples: Optional[types.Channel] = None,
       transform_output: Optional[types.Channel] = None,
       schema: types.Channel = None,
       module_file: Optional[Text] = None,
@@ -60,12 +60,14 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
       output: Optional[types.Channel] = None,
+      transform_graph: Optional[types.Channel] = None,
       name: Optional[Text] = None):
     """Construct a Trainer component.
 
     Args:
       examples: A Channel of 'ExamplesPath' type, serving as the source of
-        examples that are used in training. May be raw or transformed.
+        examples that are used in training (required). May be raw or
+        transformed.
       transformed_examples: Deprecated field. Please set 'examples' instead.
       transform_output: An optional Channel of 'TransformPath' type, serving as
         the input transform graph if present.
@@ -99,6 +101,8 @@ class Trainer(base_component.BaseComponent):
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       executor_class: Optional custom executor class.
       output: Optional 'ModelExportPath' channel for result of exported models.
+      transform_graph: Forwards compatibility alias for the 'transform_output'
+        argument.
       name: Optional unique name. Necessary iff multiple Trainer components are
         declared in the same pipeline.
 
@@ -110,6 +114,7 @@ class Trainer(base_component.BaseComponent):
         - When 'transformed_examples' is supplied but 'transform_output'
             is not supplied.
     """
+    transform_output = transform_output or transform_graph
     if bool(module_file) == bool(trainer_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'trainer_fn' must be supplied")
