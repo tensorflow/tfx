@@ -91,7 +91,12 @@ def _CsvToExample(  # pylint: disable=invalid-name
       raise RuntimeError(
           'Files in same split {} have different header.'.format(csv_pattern))
 
-  decoder = csv_decoder.DecodeCSVToDict
+  # TODO(pachristopher): Remove this once TFDV 0.14 is released.
+  (major, minor, _) = tfdv.__version__.split('.')
+  if int(major) > 0 or int(minor) >= 14:
+    decoder = csv_decoder.DecodeCSVToDict
+  else:
+    decoder = csv_decoder.DecodeCSV
   return (pipeline
           | 'ReadFromText' >> beam.io.ReadFromText(
               file_pattern=csv_pattern, skip_header_lines=1)

@@ -29,9 +29,6 @@ def make_required_install_packages():
       'tensorflow-data-validation>=0.14,<0.15',
       'tensorflow-model-analysis>=0.14,<0.15',
       'tensorflow-transform>=0.14,<0.15',
-      # TODO(b/138406006): Remove the narrower dependency for pyarrow
-      # after Beam 2.15 release.
-      'pyarrow>=0.14,<0.15',
   ]
 
 

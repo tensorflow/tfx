@@ -113,16 +113,7 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
     tf.logging.info('Following packageUris \'%s\' are provided by user.',
                     package_uris)
   else:
-    if os.environ.get('TFX_SRC_DIR'):
-      # TFX Docker image contains a binary wheel file, so we'd reuse it here.
-      local_package = tf.gfile.Glob(
-          os.path.join(os.environ['TFX_SRC_DIR'], 'dist', 'tfx-*.whl'))[0]
-      tf.logging.info('Reusing wheel file %s shipped by docker image',
-                      local_package)
-    else:
-      local_package = dependency_utils.build_ephemeral_package()
-      tf.logging.info('Generated temporary package %s for dependency',
-                      local_package)
+    local_package = dependency_utils.build_ephemeral_package()
     # TODO(b/125451545): Use a safe temp dir instead of jobDir.
     cloud_package = os.path.join(training_inputs['jobDir'],
                                  os.path.basename(local_package))

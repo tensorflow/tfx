@@ -51,10 +51,6 @@ def main():
   subparser.add_argument('--input_base', type=str, required=True)
   subparser.set_defaults(executor=wrappers.CsvExampleGenWrapper)
 
-  subparser = subparsers.add_parser('ImportExampleGen')
-  subparser.add_argument('--input_base', type=str, required=True)
-  subparser.set_defaults(executor=wrappers.ImportExampleGenWrapper)
-
   subparser = subparsers.add_parser('BigQueryExampleGen')
   subparser.set_defaults(executor=wrappers.BigQueryExampleGenWrapper)
 

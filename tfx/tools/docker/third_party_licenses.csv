@@ -1,5 +1,5 @@
 APScheduler,https://raw.githubusercontent.com/agronholm/apscheduler/master/LICENSE.txt,MIT
-Click,https://raw.githubusercontent.com/pallets/click/master/LICENSE.rst,3-Clause BSD
+Click,https://github.com/pallets/click/blob/master/LICENSE.rst,BSD
 Flask,https://raw.githubusercontent.com/pallets/flask/master/LICENSE,3-Clause BSD
 Jinja2,https://raw.githubusercontent.com/pallets/jinja/master/LICENSE.rst,BSD
 Keras-Applications,https://raw.githubusercontent.com/keras-team/keras-applications/master/LICENSE,MIT
@@ -39,6 +39,7 @@ chainermn,https://raw.githubusercontent.com/chainer/chainermn/master/LICENSE,MIT
 chainerrl,https://raw.githubusercontent.com/chainer/chainerrl/master/LICENSE,MIT
 chainerui,https://raw.githubusercontent.com/chainer/chainerui/master/LICENSE,MIT
 chardet,https://raw.githubusercontent.com/chardet/chardet/master/LICENSE,LGPL 2.1
+click,https://raw.githubusercontent.com/pallets/click/master/LICENSE,3-Clause BSD
 configparser,https://bitbucket.org/ambv/configparser/raw/78998f2ded2e840376adc712337545014fa9b622/README.rst,MIT
 crcmod,https://raw.githubusercontent.com/gsutil-mirrors/crcmod/master/LICENSE,MIT
 cryptography,https://raw.githubusercontent.com/pyca/cryptography/master/LICENSE,Apache or BSD
@@ -148,7 +149,7 @@ pycparser,https://raw.githubusercontent.com/eliben/pycparser/master/LICENSE,BSD-
 pydot,https://raw.githubusercontent.com/erocarrera/pydot/master/LICENSE,MIT
 pyglet,https://raw.githubusercontent.com/adamlwgriffiths/Pyglet/master/LICENSE,3-Clause BSD
 pygments,https://bitbucket.org/birkenfeld/pygments-main/raw/7941677dc77d4f2bf0bbd6140ade85a9454b8b80/LICENSE,BSD
-pymongo,https://raw.githubusercontent.com/mher/pymongo/master/LICENSE,Apache 2.0
+pymongo,https://github.com/mher/pymongo/blob/master/LICENSE,Apache 2.0
 pyparsing,https://raw.githubusercontent.com/pyparsing/pyparsing/master/LICENSE,MIT
 pyrsistent,https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENCE.mit,MIT
 python-dateutil,https://raw.githubusercontent.com/dateutil/dateutil/283a3a3a67245e1d5791e5478ce6ff688f2c348a/LICENSE,"Apache Software License, BSD License (Dual License)"

@@ -105,8 +105,8 @@ class BeamHandlerTest(tf.test.TestCase):
     }
     handler = beam_handler.BeamHandler(flags_dict)
     handler.create_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+    handler_pipeline_path = handler._get_handler_pipeline_path(
+        self.pipeline_args[labels.PIPELINE_NAME])
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
@@ -147,8 +147,8 @@ class BeamHandlerTest(tf.test.TestCase):
     }
     handler = beam_handler.BeamHandler(flags_dict_2)
     handler.update_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+    handler_pipeline_path = handler._get_handler_pipeline_path(
+        self.pipeline_args[labels.PIPELINE_NAME])
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
@@ -208,8 +208,8 @@ class BeamHandlerTest(tf.test.TestCase):
     }
     handler = beam_handler.BeamHandler(flags_dict)
     handler.delete_pipeline()
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
+    handler_pipeline_path = handler._get_handler_pipeline_path(
+        self.pipeline_args[labels.PIPELINE_NAME])
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -253,8 +253,8 @@ class BeamHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess3)
   def testCreateRun(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
     tf.io.gfile.makedirs(handler_pipeline_path)
     with open(os.path.join(handler_pipeline_path, 'pipeline_args.json'),
               'w') as f:
@@ -285,9 +285,9 @@ class BeamHandlerTest(tf.test.TestCase):
             flags_dict[labels.PIPELINE_NAME]))
 
   def testDeleteRun(self):
-    # Create a pipeline in beam home.
-    handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -298,9 +298,9 @@ class BeamHandlerTest(tf.test.TestCase):
     self.assertIn('Not supported for Beam.', captured.contents())
 
   def testTerminateRun(self):
-    # Create a pipeline in beam home.
-    handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], 'dags',
+                                         self.pipeline_name)
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -311,9 +311,9 @@ class BeamHandlerTest(tf.test.TestCase):
     self.assertIn('Not supported for Beam.', captured.contents())
 
   def testListRuns(self):
-    # Create a pipeline in beam home.
-    handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -324,9 +324,9 @@ class BeamHandlerTest(tf.test.TestCase):
     self.assertIn('Not supported for Beam.', captured.contents())
 
   def testGetRun(self):
-    # Create a pipeline in beam home.
-    handler_pipeline_path = os.path.join(
-        os.environ['BEAM_HOME'], self.pipeline_args[labels.PIPELINE_NAME])
+    # Create a pipeline in dags folder.
+    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'],
+                                         self.pipeline_name)
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline

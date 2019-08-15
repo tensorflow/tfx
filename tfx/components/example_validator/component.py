@@ -36,26 +36,23 @@ class ExampleValidator(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
 
   def __init__(self,
-               stats: types.Channel = None,
-               schema: types.Channel = None,
+               stats: types.Channel,
+               schema: types.Channel,
                output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
       stats: A Channel of 'ExampleStatisticsPath' type. This should contain at
-        least 'eval' split. Other splits are ignored currently (required).
-      schema: A Channel of "SchemaPath' type (required).
+        least 'eval' split. Other splits are ignored currently.
+      schema: A Channel of "SchemaPath' type.
       output: Optional output channel of 'ExampleValidationPath' type.
-      statistics: Forwards compatibility alias for the 'stats' argument.
       name: Optional unique name. Necessary iff multiple ExampleValidator
         components are declared in the same pipeline.
     """
-    stats = stats or statistics
     output = output or types.Channel(
-        type=standard_artifacts.ExampleAnomalies,
-        artifacts=[standard_artifacts.ExampleAnomalies()])
+        type=standard_artifacts.ExampleValidationResult,
+        artifacts=[standard_artifacts.ExampleValidationResult()])
     spec = ExampleValidatorSpec(
         stats=stats,
         schema=schema,

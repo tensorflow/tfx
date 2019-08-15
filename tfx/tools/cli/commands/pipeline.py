@@ -81,7 +81,7 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--package_path',
     type=str,
-    help='Path to the pipeline output workflow file.')
+    help='Path to the output workflow tar.gz file.')
 @click.option(
     '--endpoint',
     default='',
@@ -185,9 +185,7 @@ def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
 @click.option(
     '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
 @click.option(
-    '--package_path',
-    type=str,
-    help='Path to the pipeline output workflow file.')
+    '--package_path', type=str, help='Path to the output workflow tar.gz file.')
 @click.option(
     '--endpoint',
     default='',

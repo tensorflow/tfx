@@ -47,13 +47,12 @@ class Transform(base_component.BaseComponent):
                preprocessing_fn: Optional[Text] = None,
                transform_output: Optional[types.Channel] = None,
                transformed_examples: Optional[types.Channel] = None,
-               examples: Optional[types.Channel] = None,
                name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
-      input_data: A Channel of 'ExamplesPath' type (required). This should
-        contain the two splits 'train' and 'eval'.
+      input_data: A Channel of 'ExamplesPath' type. This should contain two
+        splits 'train' and 'eval'.
       schema: A Channel of 'SchemaPath' type. This should contain a single
         schema artifact.
       module_file: The file path to a python module file, from which the
@@ -76,7 +75,6 @@ class Transform(base_component.BaseComponent):
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
-      examples: Forwards compatibility alias for the 'input_data' argument.
       name: Optional unique name. Necessary iff multiple transform components
         are declared in the same pipeline.
 
@@ -84,15 +82,14 @@ class Transform(base_component.BaseComponent):
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
     """
-    input_data = input_data or examples
     if bool(module_file) == bool(preprocessing_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
 
     transform_output = transform_output or types.Channel(
-        type=standard_artifacts.TransformGraph,
-        artifacts=[standard_artifacts.TransformGraph()])
+        type=standard_artifacts.TransformResult,
+        artifacts=[standard_artifacts.TransformResult()])
     transformed_examples = transformed_examples or types.Channel(
         type=standard_artifacts.Examples,
         artifacts=[

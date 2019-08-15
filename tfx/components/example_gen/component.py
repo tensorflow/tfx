@@ -95,20 +95,19 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   def __init__(
       self,
-      input_base: types.Channel = None,
+      input_base: types.Channel,
       input_config: Optional[example_gen_pb2.Input] = None,
       output_config: Optional[example_gen_pb2.Output] = None,
       custom_config: Optional[example_gen_pb2.CustomConfig] = None,
       component_name: Optional[Text] = 'ExampleGen',
       example_artifacts: Optional[types.Channel] = None,
       executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
       name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
       input_base: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with data files inside (required).
+        whose uri is an external directory with data files inside.
       input_config: An optional example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base (must set) will be
         treated as a single split.
@@ -123,10 +122,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
         eval examples.
       executor_class: Optional custom executor class overriding the default
         executor specified in the component attribute.
-      input: Forwards compatibility alias for the 'input_base' argument.
       name: Unique name for every component class instance.
     """
-    input_base = input_base or input
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(

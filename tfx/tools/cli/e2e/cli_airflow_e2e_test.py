@@ -22,11 +22,31 @@ import locale
 import os
 import subprocess
 import tempfile
+import time
 
 from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
+
+
+class AirflowSubprocess(object):
+  """Launch an Airflow command."""
+
+  def __init__(self, airflow_args):
+    self._args = ['airflow'] + airflow_args
+    self._sub_process = None
+
+  def __enter__(self):
+    self._sub_process = subprocess.Popen(self._args)
+
+    # Wait for new dags to be added to scheduler.
+    time.sleep(5)
+    return self
+
+  def __exit__(self, exception_type, exception_value, traceback):  # pylint: disable=unused-argument
+    if self._sub_process:
+      self._sub_process.terminate()
 
 
 class CliAirflowEndToEndTest(tf.test.TestCase):
@@ -42,7 +62,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Setup airflow_home in a temp directory
     self._airflow_home = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
-        self._testMethodName, 'airflow')
+        self._testMethodName)
     self._old_airflow_home = os.environ.get('AIRFLOW_HOME')
     os.environ['AIRFLOW_HOME'] = self._airflow_home
     self._old_home = os.environ.get('HOME')
@@ -50,24 +70,21 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     tf.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
                     self._airflow_home)
 
-    # Testdata path.
-    self._testdata_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-
-    # Set a couple of important environment variables. See
-    # https://airflow.apache.org/howto/set-config.html for details.
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
     # Following environment variables make scheduler process dags faster.
     os.environ['AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC'] = '1'
     os.environ['AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC'] = '1'
     os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
-    os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '0'
+    os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '1'
     os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
-    os.environ['AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL'] = '0'
     # Using more than one thread results in a warning for sqlite backend.
     # See https://github.com/tensorflow/tfx/issues/141
     os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
+
+    # Testdata path.
+    self._testdata_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
     # Copy data.
     chicago_taxi_pipeline_dir = os.path.join(
@@ -90,9 +107,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Initialize database.
     _ = subprocess.check_output(['airflow', 'initdb'])
 
-    # Start airflow scheduler.
-    self._scheduler = subprocess.Popen(['airflow', 'scheduler'])
-
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
 
@@ -102,8 +116,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
       os.environ['AIRFLOW_HOME'] = self._old_airflow_home
     if self._old_home:
       os.environ['HOME'] = self._old_home
-    if self._scheduler:
-      self._scheduler.terminate()
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
@@ -114,7 +126,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'create', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
     ])
-
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue(
@@ -265,17 +276,11 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn(pipeline_name_2, result.output)
 
   def _valid_run_and_check(self, pipeline_name):
-
-    # Wait to fill up the DagBag.
-    response = ''
-    while pipeline_name not in response:
-      response = str(
-          subprocess.check_output(['airflow', 'list_dags', '--report']))
-
-    result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
-    ])
-
+    with AirflowSubprocess(['scheduler']):
+      result = self.runner.invoke(cli_group, [
+          'run', 'create', '--engine', 'airflow', '--pipeline_name',
+          pipeline_name
+      ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
                   result.output)
@@ -301,6 +306,17 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
 
     # Now create a pipeline.
     self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try running without scheduler.
+    result = self.runner.invoke(cli_group, [
+        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
+                  result.output)
+    self.assertIn(
+        'Error while running "{}"'.format(' '.join(
+            ['airflow unpause', pipeline_name])), result.output)
 
     # Run pipeline.
     self._valid_run_and_check(pipeline_name)
