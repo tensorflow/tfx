@@ -36,6 +36,7 @@ from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.component_launcher import ComponentLauncher
+from tfx.orchestration.component_launcher import ExecutionResult
 
 
 class InteractiveContext(object):
@@ -84,9 +85,19 @@ class InteractiveContext(object):
     self.pipeline_root = pipeline_root
     self.metadata_connection_config = metadata_connection_config
 
+    # Register IPython formatters. Import this here to avoid circular
+    # dependency.
+    # pylint: disable=g-import-not-at-top
+    try:
+      from tfx.orchestration.interactive import notebook_formatters  # pytype: disable=import-error
+      # pylint: enable=g-import-not-at-top
+      notebook_formatters.register_formatters()
+    except ImportError:
+      pass
+
   def run(self,
           component: base_component.BaseComponent,
-          enable_cache: bool = True):
+          enable_cache: bool = True) -> ExecutionResult:
     """Run a given TFX component in the interactive context.
 
     Args:
@@ -114,29 +125,4 @@ class InteractiveContext(object):
     launcher = ComponentLauncher(component, pipeline_info, driver_args,
                                  self.metadata_connection_config,
                                  additional_pipeline_args)
-    execution_id = launcher.launch()
-    return ExecutionResult(component, execution_id)
-
-
-class ExecutionResult(object):
-  """Execution result from a component run in an InteractiveContext."""
-
-  def __init__(self,
-               component: base_component.BaseComponent,
-               execution_id: int):
-    self.component = component
-    self.execution_id = execution_id
-
-  def __repr__(self):
-    outputs_parts = []
-    for name, channel in self.component.outputs.get_all().items():
-      repr_string = '%s: %s' % (name, repr(channel))
-      for line in repr_string.split('\n'):
-        outputs_parts.append(line)
-    outputs_str = '\n'.join('        %s' % line for line in outputs_parts)
-    return ('ExecutionResult(\n    component: %s'
-            '\n    execution_id: %s'
-            '\n    outputs:\n%s'
-            ')') % (self.component.component_name,
-                    self.execution_id,
-                    outputs_str)
+    return launcher.launch()

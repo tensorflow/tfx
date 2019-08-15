@@ -50,6 +50,7 @@ class ComponentLauncher(object):
         - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
           Executor will use beam DirectRunner as Default.
     """
+    self._component = component
     self._pipeline_info = pipeline_info
     self._component_info = data_types.ComponentInfo(
         component_type=component.component_type,
@@ -121,7 +122,7 @@ class ComponentLauncher(object):
           output_dict=output_dict,
           use_cached_results=use_cached_results)
 
-  def launch(self) -> int:
+  def launch(self) -> ExecutionResult:
     """Execute the component, includes driver, executor and publisher.
 
     Returns:
@@ -141,4 +142,28 @@ class ComponentLauncher(object):
                         execution_decision.input_dict,
                         execution_decision.output_dict)
 
-    return execution_decision.execution_id
+    return ExecutionResult(self._component, execution_decision.execution_id)
+
+
+class ExecutionResult(object):
+  """Execution result from a component launch."""
+
+  def __init__(self,
+               component: base_component.BaseComponent,
+               execution_id: int):
+    self.component = component
+    self.execution_id = execution_id
+
+  def __repr__(self):
+    outputs_parts = []
+    for name, chan in self.component.outputs.get_all().items():
+      repr_string = '%s: %s' % (name, repr(chan))
+      for line in repr_string.split('\n'):
+        outputs_parts.append(line)
+    outputs_str = '\n'.join('        %s' % line for line in outputs_parts)
+    return ('ExecutionResult(\n    component: %s'
+            '\n    execution_id: %s'
+            '\n    outputs:\n%s'
+            ')') % (self.component.component_name,
+                    self.execution_id,
+                    outputs_str)
