@@ -15,11 +15,6 @@
 
 # Set up the environment for the TFX tutorial
 
-# Create the user
-adduser tfx_user --disabled-password
-echo "tfx_user:tfx" | chpasswd
-adduser tfx_user sudo
-
 # Add sources for GCC and Python3.6
 add-apt-repository -y ppa:ubuntu-toolchain-r/test
 add-apt-repository -y ppa:jonathonf/python-3.6
@@ -31,10 +26,3 @@ apt-get install -y --no-install-recommends gcc-7 g++-7 \
 
 # Upgrade to Python 3.6
 apt-get install -y --no-install-recommends python3.6 python3.6-dev
-
-# Download Flink
-cd /home/tfx_user
-wget http://us.mirrors.quenda.co/apache/flink/flink-1.8.1/flink-1.8.1-bin-scala_2.11.tgz
-chown tfx_user:tfx_user flink-1.8.1-bin-scala_2.11.tgz
-
-echo "cd" >> /home/tfx_user/.profile
