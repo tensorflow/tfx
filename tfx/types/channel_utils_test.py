@@ -43,15 +43,6 @@ class ChannelUtilsTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       channel_utils.as_channel(artifacts='invalid artifacts')
 
-  def testTypeCheckSuccess(self):
-    chnl = Channel('MyTypeName')
-    chnl.type_check('MyTypeName')
-
-  def testTypeCheckFail(self):
-    chnl = Channel('MyTypeName')
-    with self.assertRaises(TypeError):
-      chnl.type_check('AnotherTypeName')
-
   def testUnwrapChannelDict(self):
     instance_a = Artifact('MyTypeName')
     instance_b = Artifact('MyTypeName')

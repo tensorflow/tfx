@@ -309,8 +309,7 @@ class ChannelParameter(_ComponentParameter):
     return 'ChannelParameter(type_name: %s)' % (self.type_name,)
 
   def type_check(self, arg_name: Text, value: Channel):
-    if not isinstance(value, Channel):
+    if not isinstance(value, Channel) or value.type_name != self.type_name:
       raise TypeError(
           'Argument %s should be a Channel of type_name %r (got %s).' %
           (arg_name, self.type_name, value))
-    value.type_check(self.type_name)
