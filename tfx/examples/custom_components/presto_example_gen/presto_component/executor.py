@@ -26,9 +26,9 @@ import tensorflow as tf
 from typing import Any, Dict, Iterable, List, Text, Tuple
 
 from google.protobuf import json_format
+from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
-from tfx.utils import types
 
 
 @beam.typehints.with_input_types(Text)
@@ -165,7 +165,7 @@ def _row_to_example(
 @beam.typehints.with_output_types(tf.train.Example)
 def _PrestoToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxArtifact]],  # pylint: disable=unused-argument
+    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from Presto and transform to TF examples.
