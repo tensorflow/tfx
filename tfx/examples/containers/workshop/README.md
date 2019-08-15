@@ -16,26 +16,24 @@ workshop and examples themselves, and includes the basic dependencies.
 Note: You should create the `airflow` directory BEFORE running
 `docker-compose up`, and edit the `AIRFLOW_PATH_ON_YOUR_HOST` placeholder in
 docker-compose.yml to point to where you created the directory on your system.
-In the container, it will be mounted as `/home/tfx_user/airflow`.
+In the container, it will be mounted as `/home/tfx/airflow`.
 
 Note: You should clone the TFX repo on your system:
 
 ```bash
 git clone https://github.com/tensorflow/tfx.git
-cd tfx
-git checkout -f origin/r0.13
 ```
 
 Edit the `TFX_PATH_ON_YOU_HOST` placeholder in docker-compose.yml to point to
 where you cloned the repo on your system. In the container, it will be mounted
-as `/home/tfx_user/tfx`.
+as `/home/tfx/tfx`.
 
 Then run:
 
 `docker-compose run --service-ports tfx`
 
-That will build the image, create a container and run it, and log you in as
-`tfx_user` (password "tfx") in the current shell on your host machine.
+That will build the image, create a container and run it, and log you in to a
+bash shell in the current terminal on your host machine.
 
 ## Running the [TFX Developer Tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/workshop)
 
@@ -58,9 +56,9 @@ Note: To start Jupyter Notebook in the container, run:
 ## Using Bash
 
 When you first run `docker-compose`, after the build finishes you will be in a
-bash shell in the container, as `tfx_user` (which has sudo privileges).  To run
-another shell, you first need to get the name of the container with `docker ps`.
-Then, assuming that the name of the container is "tfx_docker", you would run:
+bash shell in the container.  To run another shell, you first need to get the
+name of the container with `docker ps`.  Then, assuming that the name of the
+container is "tfx_docker", you would run:
 
 `docker exec -it tfx_docker bash`
 
