@@ -270,6 +270,12 @@ class KubeflowEndToEndTest(tf.test.TestCase):
     # Run the pipeline to completion.
     self._run_workflow(pipeline_file, pipeline_name)
 
+    # Obtain workflow logs.
+    get_logs_command = [
+        'argo', '--namespace', 'kubeflow', 'logs', '-w', pipeline_name
+    ]
+    logs_output = subprocess.check_output(get_logs_command).decode('utf-8')
+
     # Check if pipeline completed successfully.
     get_workflow_command = [
         'argo', '--namespace', 'kubeflow', 'get', pipeline_name
@@ -278,8 +284,9 @@ class KubeflowEndToEndTest(tf.test.TestCase):
 
     self.assertIsNotNone(
         re.search(r'^Status:\s+Succeeded$', output, flags=re.MULTILINE),
-        'Pipeline {} failed to complete successfully:\n{}'.format(
-            pipeline_name, output))
+        'Pipeline {} failed to complete successfully:\n{}'
+        '\nFailed workflow logs:\n{}'.format(pipeline_name, output,
+                                             logs_output))
 
   def testSimplePipeline(self):
     """End-to-End test for simple pipeline."""
