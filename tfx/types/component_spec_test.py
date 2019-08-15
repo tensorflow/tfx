@@ -98,13 +98,15 @@ class ComponentSpecTest(tf.test.TestCase):
       spec = _BasicComponentSpec(
           folds='string', input=input_channel, output=output_channel)
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'Expected InputType but found WrongType'):
+    with self.assertRaisesRegexp(
+        TypeError,
+        '.*should be a Channel of .*InputType.*got (.|\\s)*WrongType.*'):
       spec = _BasicComponentSpec(
           folds=10, input=Channel(type_name='WrongType'), output=output_channel)
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'Expected OutputType but found WrongType'):
+    with self.assertRaisesRegexp(
+        TypeError,
+        '.*should be a Channel of .*OutputType.*got (.|\\s)*WrongType.*'):
       spec = _BasicComponentSpec(
           folds=10, input=input_channel, output=Channel(type_name='WrongType'))
 
