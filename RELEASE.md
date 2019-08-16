@@ -25,9 +25,10 @@
 *   Introduced the experimental InteractiveContext environment for iterative
     notebook development, as well as an example Chicago Taxi notebook in this
     environment with TFDV / TFMA examples.
-*   Enables Transform and Trainer components to specify user defined function
+*   Enabled Transform and Trainer components to specify user defined function
     (UDF) module by Python module path in addition to path to a module file.
 *   Enable ImportExampleGen component for Kubeflow.
+*   Enabled SchemaGen to infer feature shape.
 
 ## Bug fixes and other changes
 
@@ -114,6 +115,8 @@
 *   airflow_runner.AirflowDAGRunner is renamed to
     airflow_dag_runner.AirflowDagRunner.
 *   runner.KubeflowRunner is renamed to kubeflow_dag_runner.KubeflowDagRunner.
+*   SchemaGen takes a new required argument, infer_feature_shape to indicate
+    whether to infer shape of features in schema.
 
 # Version 0.13.0
 

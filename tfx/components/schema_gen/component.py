@@ -37,6 +37,7 @@ class SchemaGen(base_component.BaseComponent):
 
   def __init__(self,
                stats: types.Channel = None,
+               infer_feature_shape: bool = True,
                output: Optional[types.Channel] = None,
                statistics: Optional[types.Channel] = None,
                name: Optional[Text] = None):
@@ -46,6 +47,10 @@ class SchemaGen(base_component.BaseComponent):
       stats: A Channel of 'ExampleStatisticsPath' type (required if spec is not
         passed). This should contain at least a 'train' split. Other splits are
         currently ignored (required).
+      infer_feature_shape: bool value indicating whether or not to infer the
+        shape of features. If feature shape is not inferred, downstream
+        Tensorflow Transform component using the schema will parse input
+        as tf.SparseTensor.
       output: Optional output 'SchemaPath' channel for schema result.
       statistics: Forwards compatibility alias for the 'stats' argument.
       name: Optional unique name. Necessary iff multiple SchemaGen components
@@ -54,5 +59,6 @@ class SchemaGen(base_component.BaseComponent):
     stats = stats or statistics
     output = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
-    spec = SchemaGenSpec(stats=stats, output=output)
+    spec = SchemaGenSpec(
+        stats=stats, infer_feature_shape=infer_feature_shape, output=output)
     super(SchemaGen, self).__init__(spec=spec, name=name)

@@ -47,7 +47,8 @@ class Executor(base_executor.BaseExecutor):
           split 'train'. Stats on other splits are ignored.
       output_dict: Output dict from key to a list of artifacts, including:
         - output: A list of 'SchemaPath' artifact of size one.
-      exec_properties: A dict of execution properties. Not used yet.
+      exec_properties: A dict of execution properties, includes:
+        - infer_feature_shape: Whether or not to infer the shape of the feature.
 
     Returns:
       None
@@ -60,7 +61,7 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(output_dict['output']),
         _DEFAULT_FILE_NAME)
 
-    infer_feature_shape = False
+    infer_feature_shape = exec_properties['infer_feature_shape']
     tf.logging.info('Infering schema from statistics.')
     schema = tfdv.infer_schema(
         tfdv.load_statistics(train_stats_uri), infer_feature_shape)
