@@ -87,7 +87,8 @@ def _create_pipeline(
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+  infer_schema = SchemaGen(
+      stats=statistics_gen.outputs.output, infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(

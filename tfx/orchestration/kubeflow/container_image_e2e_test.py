@@ -60,7 +60,8 @@ class ContainerImageEndToEndTest(unittest.TestCase):
         """{"output": [{"artifact": {"uri": "%s", "properties": {"split": {"stringValue": ""}, "type_name": {"stringValue": "SchemaPath"}, "span": {"intValue": "0"}}}, "artifact_type": {"name": "SchemaPath", "properties": {"split": "STRING", "type_name": "STRING", "name": "STRING", "span": "INT", "state": "STRING"}}}]}
         """ % (self._output_basedir),
         '--exec_properties',
-        '{"output_dir": "%s"}' % (self._output_basedir),
+        '{"output_dir": "%s", "infer_feature_shape": false}' %
+        (self._output_basedir),
         '--executor_class_path=tfx.components.schema_gen.executor.Executor',
         'SchemaGen',
         '--stats',

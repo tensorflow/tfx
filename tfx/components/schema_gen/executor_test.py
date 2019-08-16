@@ -48,7 +48,7 @@ class ExecutorTest(tf.test.TestCase):
         'output': [schema_output],
     }
 
-    exec_properties = {}
+    exec_properties = {'infer_feature_shape': False}
 
     schema_gen_executor = executor.Executor()
     schema_gen_executor.Do(input_dict, output_dict, exec_properties)

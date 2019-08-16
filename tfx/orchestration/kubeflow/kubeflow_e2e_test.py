@@ -89,7 +89,8 @@ def _create_test_pipeline(pipeline_name: Text, pipeline_root: Text,
 
   example_gen = CsvExampleGen(input_base=examples)
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
-  infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+  infer_schema = SchemaGen(
+      stats=statistics_gen.outputs.output, infer_feature_shape=False)
   validate_stats = ExampleValidator(  # pylint: disable=unused-variable
       stats=statistics_gen.outputs.output,
       schema=infer_schema.outputs.output)

@@ -158,7 +158,7 @@ class PusherSpec(ComponentSpec):
 class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {'infer_feature_shape': ExecutionParameter(type=bool)}
   INPUTS = {
       # TODO(b/139281215): this will be renamed to 'statistics' in the future.
       'stats': ChannelParameter(type=standard_artifacts.ExampleStatistics),
