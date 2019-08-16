@@ -729,12 +729,8 @@ class Executor(base_executor.BaseExecutor):
 
     # Inspecting the preprocessing_fn even if we know we need a full pass in
     # order to fail faster if it fails.
-    try:
-      analyze_input_columns = tft.get_analyze_input_columns(
-          preprocessing_fn, feature_spec)
-    except AttributeError:
-      # If using TFT 1.12, fall back to assuming all features are used.
-      analyze_input_columns = feature_spec.keys()
+    analyze_input_columns = tft.get_analyze_input_columns(
+        preprocessing_fn, feature_spec)
 
     if not compute_statistics and not materialize_output_paths:
       if analyze_input_columns:
