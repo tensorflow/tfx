@@ -57,8 +57,8 @@ class _ComponentAsDoFn(beam.DoFn):
       )
     )
     # Exploit the last-in priority of --job_name for beam
-    tfx_pipeline.additional_pipeline_args['beam_pipeline_args'].append(
-      '--job_name={}'.format(job_name))
+    tfx_pipeline.additional_pipeline_args.setdefault(
+      'beam_pipeline_args', []).append('--job_name={}'.format(job_name))
     self._component_launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
@@ -117,7 +117,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       )
     )
     # Exploit the last-in priority of --job_name for beam
-    self._beam_orchestrator_args.append('--job_name={}'.format(job_name))
+    if self._beam_orchestrator_args:
+      self._beam_orchestrator_args.append('--job_name={}'.format(job_name))
+    else:
+      self._beam_orchestrator_args = ['--job_name={}'.format(job_name)]
 
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
