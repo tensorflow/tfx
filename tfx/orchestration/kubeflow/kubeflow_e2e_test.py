@@ -96,9 +96,13 @@ def _create_e2e_components(pipeline_root: Text, csv_input_location: Text,
 
 class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
+  def _delete_pipeline_output(self, unused_pipeline_name: Text):
+    """Deletes output produced by the named pipeline."""
+    pass
+
   def testSimpleEnd2EndPipeline(self):
     """End-to-End test for simple pipeline."""
-    pipeline_name = 'kubeflow-e2e-test-{}'.format(self._random_id())
+    pipeline_name = 'kubeflow-e2e-test-fixed-{}'.format(self._random_id())
     components = _create_e2e_components(
         self._pipeline_root(pipeline_name), self._data_root,
         self._taxi_module_file)
