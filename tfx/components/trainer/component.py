@@ -16,11 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base import base_executor
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
@@ -47,21 +46,23 @@ class Trainer(base_component.BaseComponent):
   EXECUTOR_CLASS = executor.Executor
   DRIVER_CLASS = driver.Driver
 
-  def __init__(
-      self,
-      examples: types.Channel = None,
-      transformed_examples: Optional[types.Channel] = None,
-      transform_output: Optional[types.Channel] = None,
-      schema: types.Channel = None,
-      module_file: Optional[Text] = None,
-      trainer_fn: Optional[Text] = None,
-      train_args: trainer_pb2.TrainArgs = None,
-      eval_args: trainer_pb2.EvalArgs = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
-      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      output: Optional[types.Channel] = None,
-      transform_graph: Optional[types.Channel] = None,
-      name: Optional[Text] = None):
+  # TODO(b/139532580): Revert type hint of executor_class to
+  # Optional[Type[base_executor.BaseExecutor]]
+  # once every environment we use is upgrade beyong Python 3.5.2.
+  def __init__(self,
+               examples: types.Channel = None,
+               transformed_examples: Optional[types.Channel] = None,
+               transform_output: Optional[types.Channel] = None,
+               schema: types.Channel = None,
+               module_file: Optional[Text] = None,
+               trainer_fn: Optional[Text] = None,
+               train_args: trainer_pb2.TrainArgs = None,
+               eval_args: trainer_pb2.EvalArgs = None,
+               custom_config: Optional[Dict[Text, Any]] = None,
+               executor_class: Optional[Any] = None,
+               output: Optional[types.Channel] = None,
+               transform_graph: Optional[types.Channel] = None,
+               name: Optional[Text] = None):
     """Construct a Trainer component.
 
     Args:

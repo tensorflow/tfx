@@ -23,7 +23,8 @@ import hashlib
 import os
 import types
 import tensorflow as tf
-from typing import Any, Dict, List, Optional, Set, Text, Type
+from typing import Any, Dict, List, Optional, Set, Text
+
 from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -99,8 +100,9 @@ class Metadata(object):
     self._store = metadata_store.MetadataStore(self._connection_config)
     return self
 
-  def __exit__(self, exc_type: Optional[Type[Exception]],
-               exc_value: Optional[Exception],
+  # TODO(b/139532580): Revert type hint of exc_type to Optional[Type[Exception]]
+  # once every environment we use is upgrade beyong Python 3.5.2.
+  def __exit__(self, exc_type: Optional[Any], exc_value: Optional[Exception],
                exc_tb: Optional[types.TracebackType]) -> None:
     self._store = None
 

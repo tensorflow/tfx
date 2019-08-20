@@ -22,7 +22,7 @@ import inspect
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_driver
@@ -68,12 +68,14 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
 
-  def __init__(
-      self,
-      spec: types.ComponentSpec,
-      custom_executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      name: Optional[Text] = None,
-      component_name: Optional[Text] = None):
+  # TODO(b/139532580): Revert type hint of custom_executor_class to
+  # Optional[Type[base_executor.BaseExecutor]]
+  # once every environment we use is upgrade beyong Python 3.5.2.
+  def __init__(self,
+               spec: types.ComponentSpec,
+               custom_executor_class: Optional[Any] = None,
+               name: Optional[Text] = None,
+               component_name: Optional[Text] = None):
     """Initialize a component.
 
     Args:

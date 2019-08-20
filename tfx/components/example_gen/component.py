@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Type
+from typing import Any, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
@@ -93,6 +93,9 @@ class FileBasedExampleGen(base_component.BaseComponent):
   EXECUTOR_CLASS = base_executor.BaseExecutor
   DRIVER_CLASS = driver.Driver
 
+  # TODO(b/139532580): Revert type hint of executor_class to
+  # Optional[Type[base_executor.BaseExecutor]]
+  # once every environment we use is upgrade beyong Python 3.5.2.
   def __init__(
       self,
       input_base: types.Channel = None,
@@ -101,7 +104,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
       custom_config: Optional[example_gen_pb2.CustomConfig] = None,
       component_name: Optional[Text] = 'ExampleGen',
       example_artifacts: Optional[types.Channel] = None,
-      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      executor_class: Optional[Any] = None,
       input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
       name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.

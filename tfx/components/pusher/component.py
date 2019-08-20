@@ -16,11 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base import base_executor
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
@@ -39,16 +38,18 @@ class Pusher(base_component.BaseComponent):
   SPEC_CLASS = PusherSpec
   EXECUTOR_CLASS = executor.Executor
 
-  def __init__(
-      self,
-      model_export: types.Channel = None,
-      model_blessing: types.Channel = None,
-      push_destination: Optional[pusher_pb2.PushDestination] = None,
-      custom_config: Optional[Dict[Text, Any]] = None,
-      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
-      model_push: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
-      name: Optional[Text] = None):
+  # TODO(b/139532580): Revert type hint of executor_class to
+  # Optional[Type[base_executor.BaseExecutor]]
+  # once every environment we use is upgrade beyong Python 3.5.2.
+  def __init__(self,
+               model_export: types.Channel = None,
+               model_blessing: types.Channel = None,
+               push_destination: Optional[pusher_pb2.PushDestination] = None,
+               custom_config: Optional[Dict[Text, Any]] = None,
+               executor_class: Optional[Any] = None,
+               model_push: Optional[types.Channel] = None,
+               model: Optional[types.Channel] = None,
+               name: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:

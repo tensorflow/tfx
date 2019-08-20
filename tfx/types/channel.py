@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Iterable, Optional, Text, Type
+from typing import Any, Iterable, Optional, Text
 
 from tfx.types.artifact import Artifact
 
@@ -35,10 +35,12 @@ class Channel(object):
 
   # TODO(b/124763842): Consider replace type_name with ArtifactType.
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
+  # TODO(b/139532580): Revert type hint of type to Optional[Type[Artifact]] once
+  # every environment we use is upgrade beyong Python 3.5.2.
   def __init__(
       self,
       type_name: Optional[Text] = None,
-      type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
+      type: Optional[Any] = None,  # pylint: disable=redefined-builtin
       artifacts: Optional[Iterable[Artifact]] = None):
     """Initialization of Channel.
 

@@ -23,7 +23,7 @@ import itertools
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from google.protobuf import json_format
 from google.protobuf import message
@@ -285,10 +285,12 @@ class ChannelParameter(_ComponentParameter):
     # ...
   """
 
+  # TODO(b/139532580): Revert type hint of type to Optional[Type[Artifact]] once
+  # every environment we use is upgrade beyong Python 3.5.2.
   def __init__(
       self,
       type_name: Optional[Text] = None,
-      type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
+      type: Optional[Any] = None,  # pylint: disable=redefined-builtin
       optional: Optional[bool] = False):
     # TODO(b/138664975): either deprecate or remove string-based artifact type
     # definition before 0.14.0 release.
