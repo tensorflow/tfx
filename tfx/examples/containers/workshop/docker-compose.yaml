@@ -4,14 +4,17 @@ services:
     build:
       context: ./buildfiles
       dockerfile: Dockerfile
+    image: tensorflow/tfx:workshop-latest
     ports:
-    - "8080:8080" # airflow
-    - "8888:8888" # jupyter notebook
-    - "8081:8081" # Flink and Spark
+    - "4040:4040" # SparkContext
+    - "8080:8080" # Airflow
+    - "8081:8081" # Flink UI or Spark UI
+    - "8888:8888" # Jupyter notebook
+    - "8099:8099" # Beam PortableRunner JobServer
     volumes:
     # Note: You should create the `airflow` directory BEFORE running `docker-compose up`, and
-    #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on your
-    # .     system.  In the container, it will be mounted as /home/tfx_user/airflow
+    #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on
+    #       your system.  In the container, it will be mounted as /home/tfx_user/airflow
     - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/home/tfx/airflow"
 
     # Note: You should clone the TFX repo BEFORE running `docker-compose up`, and
