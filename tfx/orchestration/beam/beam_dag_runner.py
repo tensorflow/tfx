@@ -47,24 +47,29 @@ class _ComponentAsDoFn(beam.DoFn):
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
-    job_name = re.sub(
+    self._additional_pipeline_args = tfx_pipeline.additional_pipeline_args.copy()
+    _job_name = re.sub(
       r'[^0-9a-zA-Z-]+',
       '-',
       '{pipeline_name}-{component}-{ts}'.format(
         pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
         component=component.component_name,
         ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
-      )
+      ).lower()
     )
-    # Exploit the last-in priority of --job_name for beam
-    tfx_pipeline.additional_pipeline_args.setdefault(
-      'beam_pipeline_args', []).append('--job_name={}'.format(job_name))
+    self._additional_pipeline_args['beam_pipeline_args'] = [
+      arg for arg in self._additional_pipeline_args.setdefault(
+        'beam_pipeline_args', []) if not arg.startswith("--job_name")
+    ]
+    self._additional_pipeline_args['beam_pipeline_args'].append(
+          '--job_name={}'.format(_job_name))
+
     self._component_launcher = component_launcher.ComponentLauncher(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=tfx_pipeline.metadata_connection_config,
-        additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
+        additional_pipeline_args=self._additional_pipeline_args)
     self._name = component.component_name
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -108,19 +113,21 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid deploying the pipeline.
 
     # Google Dataflow restricts naming to only alphanumeric and dashes
-    job_name = re.sub(
+    orchestrator_job_name = re.sub(
       r'[^0-9a-zA-Z-]+',
       '-',
       '{pipeline_name}-{ts}'.format(
         pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
         ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
-      )
+      ).lower()
     )
     # Exploit the last-in priority of --job_name for beam
     if self._beam_orchestrator_args:
-      self._beam_orchestrator_args.append('--job_name={}'.format(job_name))
+      self._beam_orchestrator_args.append(
+        '--job_name={}'.format(orchestrator_job_name))
     else:
-      self._beam_orchestrator_args = ['--job_name={}'.format(job_name)]
+      self._beam_orchestrator_args = [
+        '--job_name={}'.format(orchestrator_job_name)]
 
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
