@@ -39,9 +39,9 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.orchestration.component_launcher import ComponentLauncher
 from tfx.orchestration.interactive import execution_result
 from tfx.orchestration.interactive import notebook_formatters
+from tfx.orchestration.launcher import in_proc_component_launcher
 
 
 def requires_ipython(fn):
@@ -142,9 +142,11 @@ class InteractiveContext(object):
         artifact.producer_component = component.component_id
         artifact.run_id = run_id
         artifact.name = name
-    launcher = ComponentLauncher(component, pipeline_info, driver_args,
-                                 self.metadata_connection_config,
-                                 additional_pipeline_args)
+    # TODO(hongyes): figure out how to resolve launcher class in the interactive
+    # context.
+    launcher = in_proc_component_launcher.InProcComponentLauncher.create(
+        component, pipeline_info, driver_args, self.metadata_connection_config,
+        additional_pipeline_args)
     execution_id = launcher.launch()
 
     return execution_result.ExecutionResult(

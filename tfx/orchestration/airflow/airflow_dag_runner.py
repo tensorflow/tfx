@@ -24,13 +24,15 @@ from airflow import models
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
+from tfx.orchestration.launcher import in_proc_component_launcher
 
 
 class AirflowDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Airflow."""
 
   def __init__(self, config=None):
-    super(AirflowDagRunner, self).__init__()
+    super(AirflowDagRunner,
+          self).__init__([in_proc_component_launcher.InProcComponentLauncher])
     self._config = config or {}
 
   def run(self, tfx_pipeline: pipeline.Pipeline):
@@ -56,6 +58,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
       current_airflow_component = airflow_component.AirflowComponent(
           airflow_dag,
           component=tfx_component,
+          component_launcher_class=self.find_component_launcher_class(
+              tfx_component),
           pipeline_info=tfx_pipeline.pipeline_info,
           enable_cache=tfx_pipeline.enable_cache,
           metadata_connection_config=tfx_pipeline.metadata_connection_config,

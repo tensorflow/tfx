@@ -28,6 +28,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.launcher import in_proc_component_launcher
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -157,6 +158,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
     """
+    super(KubeflowDagRunner,
+          self).__init__([in_proc_component_launcher.InProcComponentLauncher])
     self._output_dir = output_dir or os.getcwd()
     self._config = config or KubeflowDagRunnerConfig()
 
@@ -180,6 +183,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
       kfp_component = base_component.BaseComponent(
           component=component,
+          component_launcher_class=self.find_component_launcher_class(
+              component),
           depends_on=depends_on,
           pipeline=pipeline,
           tfx_image=self._config.tfx_image,

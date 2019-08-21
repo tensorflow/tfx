@@ -23,9 +23,9 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
-from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
+from tfx.orchestration.launcher import in_proc_component_launcher
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
@@ -78,7 +78,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
 
-    launcher = component_launcher.ComponentLauncher(
+    launcher = in_proc_component_launcher.InProcComponentLauncher.create(
         component=example_gen,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
