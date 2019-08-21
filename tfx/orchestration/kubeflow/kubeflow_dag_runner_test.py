@@ -32,17 +32,16 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 
 
 # 2-step pipeline under test.
-@tfx_pipeline.PipelineDecorator(
-    pipeline_name='two_step_pipeline',
-    log_root='/var/tmp/tfx/logs',
-    pipeline_root='/pipeline/root',
-)
-def _two_step_pipeline():
+def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
       query='SELECT * FROM TABLE')
   statistics_gen = statistics_gen_component.StatisticsGen(
       input_data=example_gen.outputs.examples)
-  return [example_gen, statistics_gen]
+  return tfx_pipeline.Pipeline(
+      pipeline_name='two_step_pipeline',
+      pipeline_root='pipeline_root',
+      components=[example_gen, statistics_gen],
+  )
 
 
 class KubeflowDagRunnerTest(tf.test.TestCase):
@@ -91,25 +90,17 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       dag = [c for c in pipeline['spec']['templates'] if 'dag' in c]
       self.assertEqual(1, len(dag))
 
-      parameter_value = ('{{tasks.bigqueryexamplegen.outputs.parameters'
-                         '.bigqueryexamplegen-examples}}')
-
-      self.assertEqual({
-          'tasks': [{
-              'name': 'bigqueryexamplegen',
-              'template': 'bigqueryexamplegen'
-          }, {
-              'name': 'statisticsgen',
-              'template': 'statisticsgen',
-              'dependencies': ['bigqueryexamplegen'],
-              'arguments': {
-                  'parameters': [{
-                      'name': 'bigqueryexamplegen-examples',
-                      'value': parameter_value
-                  }],
-              },
-          }]
-      }, dag[0]['dag'])
+      self.assertEqual(
+          {
+              'tasks': [{
+                  'name': 'bigqueryexamplegen',
+                  'template': 'bigqueryexamplegen'
+              }, {
+                  'name': 'statisticsgen',
+                  'template': 'statisticsgen',
+                  'dependencies': ['bigqueryexamplegen'],
+              }]
+          }, dag[0]['dag'])
 
   def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())

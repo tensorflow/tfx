@@ -31,12 +31,11 @@ import docker
 import tensorflow as tf
 from typing import List, Text
 
-
 from google.cloud import storage
 from tfx.components.base.base_component import BaseComponent
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.kubeflow.runner import KubeflowRunner
-
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 
 # The following environment variables need to be set prior to calling the test
 # in this file. All variables are required and do not have a default.
@@ -179,6 +178,49 @@ class BaseKubeflowTest(tf.test.TestCase):
     blobs = bucket.list_blobs(prefix=prefix)
     bucket.delete_blobs(blobs)
 
+  def _delete_pipeline_metadata(self, pipeline_name: Text):
+    """Drops the database containing metadata produced by the pipeline.
+
+    Args:
+      pipeline_name: The name of the pipeline owning the database.
+    """
+    pod_name = subprocess.check_output([
+        'kubectl',
+        '-n',
+        'kubeflow',
+        'get',
+        'pods',
+        '-l',
+        'app=mysql',
+        '--no-headers',
+        '-o',
+        'custom-columns=:metadata.name',
+    ]).decode('utf-8').strip('\n')
+    db_name = self._get_mlmd_db_name(pipeline_name)
+
+    command = [
+        'kubectl',
+        '-n',
+        'kubeflow',
+        'exec',
+        '-it',
+        pod_name,
+        '--',
+        'mysql',
+        '--user',
+        'root',
+        '--execute',
+        'drop database {};'.format(db_name),
+    ]
+    tf.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
+    subprocess.run(command, check=True)
+
+  def _get_mlmd_db_name(self, pipeline_name: Text):
+    # MySQL DB names must not contain '-' while k8s names must not contain '_'.
+    # So we replace the dashes here for the DB name.
+    valid_mysql_name = pipeline_name.replace('-', '_')
+    return 'mlmd_{}'.format(valid_mysql_name)
+
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)
 
@@ -209,14 +251,28 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]
     return pipeline
 
+  def _get_kubeflow_metadata_config(self, pipeline_name: Text
+                                   ) -> kubeflow_pb2.KubeflowMetadataConfig:
+    config = kubeflow_pb2.KubeflowMetadataConfig()
+    config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
+    config.mysql_db_service_port.environment_variable = 'MYSQL_SERVICE_PORT'
+    config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)
+    config.mysql_db_user.value = 'root'
+    config.mysql_db_password.value = ''
+    return config
+
   def _compile_and_run_pipeline(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and runs a KFP pipeline.
 
     Args:
       pipeline: The logical pipeline to run.
     """
-    _ = KubeflowRunner().run(pipeline)
     pipeline_name = pipeline.pipeline_info.pipeline_name
+    config = kubeflow_dag_runner.KubeflowRunnerConfig(
+        kubeflow_metadata_config=self._get_kubeflow_metadata_config(
+            pipeline_name),
+        tfx_image=self._container_image)
+    kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
     self.assertTrue(tf.gfile.Exists(file_path))
@@ -227,6 +283,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_workflow, pipeline_name)
     self.addCleanup(self._delete_pipeline_output, pipeline_name)
+    self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
 
     # Run the pipeline to completion.
     self._run_workflow(pipeline_file, pipeline_name)
