@@ -146,9 +146,8 @@ class Metadata(object):
           (artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(
-      self,
-      raw_artifact_list: List[Artifact]) -> List[metadata_store_pb2.Artifact]:
+  def publish_artifacts(self, raw_artifact_list: List[Artifact]
+                       ) -> List[metadata_store_pb2.Artifact]:
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
     for raw_artifact in raw_artifact_list:
@@ -174,8 +173,8 @@ class Metadata(object):
     except tf.errors.NotFoundError:
       return []
 
-  def get_artifacts_by_type(
-      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
+  def get_artifacts_by_type(self, type_name: Text
+                           ) -> List[metadata_store_pb2.Artifact]:
     try:
       return self._store.get_artifacts_by_type(type_name)
     except tf.errors.NotFoundError:
@@ -255,6 +254,7 @@ class Metadata(object):
     if component_info:
       execution.properties[
           'component_id'].string_value = component_info.component_id
+    tf.logging.info('Prepared EXECUTION:\n {}'.format(execution))
     return execution
 
   def _update_execution_state(self, execution: metadata_store_pb2.Execution,
@@ -348,9 +348,9 @@ class Metadata(object):
     tf.logging.info('Published execution with final outputs %s' % output_dict)
     return output_dict
 
-  def _get_cached_execution_id(
-      self, input_dict: Dict[Text, List[Artifact]],
-      candidate_execution_ids: List[int]) -> Optional[int]:
+  def _get_cached_execution_id(self, input_dict: Dict[Text, List[Artifact]],
+                               candidate_execution_ids: List[int]
+                              ) -> Optional[int]:
     """Gets common execution ids that are related to all the artifacts in input.
 
     Args:
@@ -393,10 +393,11 @@ class Metadata(object):
     currrent_execution.id = target_execution.id
     return currrent_execution == target_execution
 
-  def previous_execution(
-      self, input_artifacts: Dict[Text, List[Artifact]],
-      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo) -> Optional[int]:
+  def previous_execution(self, input_artifacts: Dict[Text, List[Artifact]],
+                         exec_properties: Dict[Text, Any],
+                         pipeline_info: data_types.PipelineInfo,
+                         component_info: data_types.ComponentInfo
+                        ) -> Optional[int]:
     """Gets eligible previous execution that takes the same inputs.
 
     An eligible execution should take the same inputs, execution properties and
@@ -436,9 +437,10 @@ class Metadata(object):
                                          candidate_execution_ids)
 
   # TODO(b/136031301): This should be merged with previous_run.
-  def fetch_previous_result_artifacts(
-      self, output_dict: Dict[Text, List[Artifact]],
-      execution_id: int) -> Dict[Text, List[Artifact]]:
+  def fetch_previous_result_artifacts(self,
+                                      output_dict: Dict[Text, List[Artifact]],
+                                      execution_id: int
+                                     ) -> Dict[Text, List[Artifact]]:
     """Fetches output with artifact ids produced by a previous run.
 
     Args:

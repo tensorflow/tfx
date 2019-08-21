@@ -17,12 +17,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
-import json
 from kfp import dsl
 import tensorflow as tf
+
+from tfx.components.example_gen.csv_example_gen import component as csv_example_gen_component
+from tfx.components.statistics_gen import component as statistics_gen_component
+from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import base_component
-from tfx.types import artifact_utils
+from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
 
@@ -30,54 +33,58 @@ class BaseComponentTest(tf.test.TestCase):
   maxDiff = None  # pylint: disable=invalid-name
 
   def setUp(self):
-    self._output_dict = {'output_name': [standard_artifacts.Examples()]}
-    self._pipeline_properties = base_component.PipelineProperties(
-        output_dir='output_dir',
-        log_root='log_root',
+    super(BaseComponentTest, self).setUp()
+    examples = standard_artifacts.ExternalArtifact()
+    example_gen = csv_example_gen_component.CsvExampleGen(
+        input_base=channel_utils.as_channel([examples]))
+    statistics_gen = statistics_gen_component.StatisticsGen(
+        input_data=example_gen.outputs.examples)
+
+    pipeline = tfx_pipeline.Pipeline(
+        pipeline_name='test_pipeline',
+        pipeline_root='test_pipeline_root',
+        components=[example_gen, statistics_gen],
     )
 
+    self._metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
+    self._metadata_config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
     with dsl.Pipeline('test_pipeline'):
+
       self.component = base_component.BaseComponent(
-          component_name='TFXComponent',
-          input_dict=collections.OrderedDict([
-              ('input_data', 'input-data-contents'),
-              ('train_steps', 300),
-              ('accuracy_threshold', 0.3),
-          ]),
-          output_dict=self._output_dict,
-          exec_properties=collections.OrderedDict([('module_file',
-                                                    '/path/to/module.py')]),
-          executor_class_path='some.executor.Class',
-          pipeline_properties=self._pipeline_properties,
+          component=statistics_gen,
+          depends_on=set([example_gen]),
+          pipeline=pipeline,
+          tfx_image='container_image',
+          kubeflow_metadata_config=self._metadata_config,
       )
 
   def testContainerOpArguments(self):
-    self.assertEqual(self.component.container_op.arguments[0],
-                     '--exec_properties')
-    self.assertDictEqual(
-        {
-            'output_dir': 'output_dir',
-            'log_root': 'log_root',
-            'module_file': '/path/to/module.py'
-        }, json.loads(self.component.container_op.arguments[1]))
-
-    self.assertEqual(self.component.container_op.arguments[2:], [
-        '--outputs',
-        artifact_utils.jsonify_artifact_dict(self._output_dict),
+    self.assertEqual(self.component.container_op.arguments[:20], [
+        '--pipeline_name',
+        'test_pipeline',
+        '--pipeline_root',
+        'test_pipeline_root',
+        '--kubeflow_metadata_config',
+        '{\n'
+        '  "mysqlDbServiceHost": {\n'
+        '    "environmentVariable": "MYSQL_SERVICE_HOST"\n'
+        '  }\n'
+        '}',
+        '--additional_pipeline_args',
+        '{}',
+        '--component_id',
+        'StatisticsGen',
+        '--component_name',
+        'StatisticsGen',
+        '--component_type',
+        'tfx.components.statistics_gen.component.StatisticsGen',
+        '--name',
+        'None',
+        '--driver_class_path',
+        'tfx.components.base.base_driver.BaseDriver',
         '--executor_class_path',
-        'some.executor.Class',
-        'TFXComponent',
-        '--input_data',
-        'input-data-contents',
-        '--train_steps',
-        '300',
-        '--accuracy_threshold',
-        '0.3',
+        'tfx.components.statistics_gen.executor.Executor',
     ])
-
-  def testContainerOpOutputParameters(self):
-    self.assertEqual(self.component.container_op.file_outputs,
-                     {'output_name': '/output/ml_metadata/output_name'})
 
 
 if __name__ == '__main__':
