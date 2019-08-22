@@ -228,7 +228,8 @@ class BaseKubeflowTest(tf.test.TestCase):
                        components: List[BaseComponent]):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
-        pipeline_name=pipeline_name,
+        # Pipeline name cannot exceed 63 characters.
+        pipeline_name=pipeline_name[-63:],
         pipeline_root=self._pipeline_root(pipeline_name),
         components=components,
         log_root='/var/tmp/tfx/logs',
