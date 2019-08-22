@@ -129,8 +129,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     """Generates a random string that is also a valid Kubernetes DNS name."""
     choices = string.ascii_lowercase + string.digits
     result = ''.join([random.choice(choices) for _ in range(10)])
-    result = result + '-{}'.format(
-        datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    result = result + '-{}'.format(datetime.datetime.now().strftime('%s'))
     return result
 
   def _delete_workflow(self, workflow_name: Text):
@@ -219,7 +218,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     # MySQL DB names must not contain '-' while k8s names must not contain '_'.
     # So we replace the dashes here for the DB name.
     valid_mysql_name = pipeline_name.replace('-', '_')
-    return 'mlmd_{}'.format(valid_mysql_name)
+    # MySQL database name cannot exceed 64 characters.
+    return 'mlmd_{}'.format(valid_mysql_name[-59:])
 
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)
