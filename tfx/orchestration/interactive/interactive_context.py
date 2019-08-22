@@ -25,34 +25,17 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import functools
 import logging
 import os
 import tempfile
-from six.moves import builtins
 from typing import Text
+
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.component_launcher import ComponentLauncher
-
-
-def requires_ipython(fn):
-  """Decorator for methods that can only be run in IPython."""
-  @functools.wraps(fn)
-  def check_ipython(*args, **kwargs):
-    """Invokes `fn` if called from IPython, otherwise just emits a warning."""
-    # __IPYTHON__ variable is set by IPython, see
-    # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
-    if getattr(builtins, '__IPYTHON__', None):
-      return fn(*args, **kwargs)
-    else:
-      logging.warning('Method "%s" is a no-op when invoked outside of IPython.',
-                      fn.__name__)
-
-  return check_ipython
 
 
 class InteractiveContext(object):
@@ -101,7 +84,6 @@ class InteractiveContext(object):
     self.pipeline_root = pipeline_root
     self.metadata_connection_config = metadata_connection_config
 
-  @requires_ipython
   def run(self,
           component: base_component.BaseComponent,
           enable_cache: bool = True):

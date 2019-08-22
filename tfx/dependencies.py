@@ -23,10 +23,10 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.14,<3',
       'click>=7.0,<8',
       'google-api-python-client>=1.7.8,<2',
-      'ml-metadata>=0.14,<0.15',
+      'ml-metadata>=0.13.2,<0.14',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
-      'tensorflow-data-validation>=0.14.1,<0.15',
+      'tensorflow-data-validation>=0.14,<0.15',
       'tensorflow-model-analysis>=0.14,<0.15',
       'tensorflow-transform>=0.14,<0.15',
       # TODO(b/138406006): Remove the narrower dependency for pyarrow

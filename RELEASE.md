@@ -69,12 +69,10 @@
 *   Prepared support for analyzer cache optimization in transform executor.
 *   Added 'click>=7.0,<8' as a dependency to support CLI.
 *   Depends on `apache-beam[gcp]>=2.14,<3`
-*   Depends on `ml-metadata>=-1.14.0,<0.15`
-*   Depends on `tensorflow-data-validation>=0.14.1,<0.15`
+*   Depends on `tensorflow-data-validation>=0.14.0,<0.15`
 *   Depends on `tensorflow-model-analysis>=0.14.0,<0.15`
 *   Depends on `tensorflow-transform>=0.14.0,<0.15`
 *   Added support for Python 3.6 and 3.7.
-*   Bumped TFX Docker image to base on Ubuntu 16.04 and use Python 3.6.
 *   Fixed issue #463 correcting syntax in SCHEMA_EMPTY message.
 *   Added an explicit check that pipeline name cannot exceed 63 characters.
 
