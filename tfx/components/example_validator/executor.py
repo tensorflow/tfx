@@ -23,8 +23,6 @@ import tensorflow_data_validation as tfdv
 from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.components.example_validator import labels
-from tfx.components.util import value_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
@@ -59,53 +57,15 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     tf.logging.info('Validating schema against the computed statistics.')
-    label_inputs = {
-        labels.STATS:
-            tfdv.load_statistics(
-                io_utils.get_only_uri_in_dir(
-                    artifact_utils.get_split_uri(input_dict['stats'], 'eval'))),
-        labels.SCHEMA:
-            io_utils.SchemaReader().read(
-                io_utils.get_only_uri_in_dir(
-                    artifact_utils.get_single_uri(input_dict['schema'])))
-    }
+    schema = io_utils.SchemaReader().read(
+        io_utils.get_only_uri_in_dir(
+            artifact_utils.get_single_uri(input_dict['schema'])))
+    stats = tfdv.load_statistics(
+        io_utils.get_only_uri_in_dir(
+            artifact_utils.get_split_uri(input_dict['stats'], 'eval')))
     output_uri = artifact_utils.get_single_uri(output_dict['output'])
-    label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
-    self._Validate(label_inputs, label_outputs)
-    tf.logging.info(
-        'Validation complete. Anomalies written to {}.'.format(output_uri))
-
-  def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
-                                                             Any]) -> None:
-    """Validate the inputs and put validate result into outputs.
-
-      This is the implementation part of example validator executor. This is
-      intended for using or extending the executor without artifact dependecy.
-
-    Args:
-      inputs: A dictionary of labeled input values, including:
-        - labels.STATS: the feature statistics to validate
-        - labels.SCHEMA: the schema to respect
-        - (Optional) labels.ENVIRONMENT: if an environment is specified, only
-          validate the feature statistics of the fields in that environment.
-          Otherwise, validate all fields.
-        - (Optional) labels.PREV_SPAN_FEATURE_STATISTICS: the feature
-          statistics of a previous span.
-        - (Optional) labels.PREV_VERSION_FEATURE_STATISTICS: the feature
-          statistics of a previous version.
-        - (Optional) labels.FEATURES_NEEDED: the feature needed to be
-          validated on.
-        - (Optional) labels.VALIDATION_CONFIG: the configuration of this
-          validation.
-        - (Optional) labels.EXTERNAL_CONFIG_VERSION: the version number of
-          external config file.
-      outputs: A dictionary of labeled output values, including:
-          - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
-    """
-    schema = value_utils.GetSoleValue(inputs, labels.SCHEMA)
-    stats = value_utils.GetSoleValue(inputs, labels.STATS)
-    schema_diff_path = value_utils.GetSoleValue(
-        outputs, labels.SCHEMA_DIFF_PATH)
     anomalies = tfdv.validate_statistics(stats, schema)
     io_utils.write_pbtxt_file(
-        os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies)
+        os.path.join(output_uri, DEFAULT_FILE_NAME), anomalies)
+    tf.logging.info(
+        'Validation complete. Anomalies written to {}.'.format(output_uri))
