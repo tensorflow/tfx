@@ -29,6 +29,12 @@ from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tenso
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 
+# Argo's workflow name cannot exceed 63 chars:
+# see https://github.com/argoproj/argo/issues/1324.
+# MySQL's database name cannot exceed 64 chars:
+# https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
+MAX_PIPELINE_NAME_LENGTH = 63
+
 
 @deprecation.deprecated(
     None,
@@ -95,6 +101,9 @@ class Pipeline(object):
         - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
           Executor will use beam DirectRunner as Default.
     """
+    if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
+      raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
+                       pipeline_name)
     # TODO(ruoyu): Deprecate pipeline args once finish migration to
     # go/tfx-oss-artifact-passing
     self.pipeline_args = dict(kwargs)
