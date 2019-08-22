@@ -120,7 +120,8 @@ class Metadata(object):
                             ) -> metadata_store_pb2.ArtifactType:
     if artifact_type.id:
       return artifact_type
-    type_id = self._store.put_artifact_type(artifact_type)
+    type_id = self._store.put_artifact_type(
+        artifact_type=artifact_type, can_add_fields=True)
     artifact_type.id = type_id
     return artifact_type
 
@@ -214,7 +215,8 @@ class Metadata(object):
       execution_type.properties['run_id'] = metadata_store_pb2.STRING
       execution_type.properties['component_id'] = metadata_store_pb2.STRING
 
-      return self._store.put_execution_type(execution_type)
+      return self._store.put_execution_type(
+          execution_type=execution_type, can_add_fields=True)
 
   # TODO(ruoyu): Make pipeline_info and component_info required once migration
   # to go/tfx-oss-artifact-passing finishes.
