@@ -12,33 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+FROM ubuntu:16.04
+LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-FROM ubuntu:18.04
-
-# Need additional ppa since python 3.5 is not part of Ubuntu 18.04 by default.
+# Need additional ppa since python 3.6 is not part of Ubuntu 16.04 by default.
 RUN apt-get update -y && \
   apt-get install --no-install-recommends -y -q software-properties-common && \
-  add-apt-repository ppa:deadsnakes/ppa
-
-RUN apt-get update -y && \
+  add-apt-repository ppa:deadsnakes/ppa && \
+  apt-get update -y && \
   apt-get install --no-install-recommends -y -q \
   build-essential \
   ca-certificates \
   libsnappy-dev \
   protobuf-compiler \
   libprotobuf-dev \
-  python3.5-dev \
+  python3.6-dev \
   python3-pip \
   python3-setuptools \
   python3-virtualenv \
   python3-wheel \
   wget \
   unzip \
-  git
+  git && \
+  add-apt-repository -r ppa:deadsnakes/ppa && \
+  apt-get autoclean && \
+  apt-get autoremove --purge && \
+  update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.5 1
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m virtualenv --python=/usr/bin/python3.5 $VIRTUAL_ENV
+RUN python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # docker build command should be run under root directory of github checkout.
@@ -46,7 +48,7 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 RUN python setup.py bdist_wheel
-RUN CFLAGS=$(/usr/bin/python3.5-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker-image]
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker_image]
 
 ARG gather_third_party_licenses=true
 RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
@@ -55,4 +57,5 @@ RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
   /third_party/licenses; \
   fi
 
-ENTRYPOINT ["python3.5", "/tfx-src/tfx/scripts/run_executor.py"]
+# TODO(b/139532550): Consolidate container entrypoint with Kubeflow runner.
+ENTRYPOINT ["python3.6", "/tfx-src/tfx/scripts/run_executor.py"]
