@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import builtins
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 
@@ -28,6 +29,27 @@ from tfx.types import component_spec
 
 
 class InteractiveContextTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(InteractiveContextTest, self).setUp()
+    builtins.__dict__['__IPYTHON__'] = True
+
+  def testRequiresIPythonExecutes(self):
+    self.foo_called = False
+    def foo():
+      self.foo_called = True
+
+    interactive_context.requires_ipython(foo)()
+    self.assertTrue(self.foo_called)
+
+  def testRequiresIPythonNoOp(self):
+    del builtins.__dict__['__IPYTHON__']
+
+    self.foo_called = False
+    def foo():
+      self.foo_called = True
+    interactive_context.requires_ipython(foo)()
+    self.assertFalse(self.foo_called)
 
   def testBasicRun(self):
 
@@ -56,6 +78,12 @@ class InteractiveContextTest(tf.test.TestCase):
     component = _FakeComponent(_FakeComponentSpec())
     c.run(component)
     self.assertTrue(_FakeExecutor.CALLED)
+
+  def testRunMethodRequiresIPython(self):
+    del builtins.__dict__['__IPYTHON__']
+
+    c = interactive_context.InteractiveContext()
+    self.assertIsNone(c.run(None))
 
   def testUnresolvedChannel(self):
 
