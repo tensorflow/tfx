@@ -42,9 +42,9 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 # pylint: enable=g-direct-tensorflow-import
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.components.transform import common
 from tfx.components.transform import labels
 from tfx.components.transform import messages
+from tfx.components.util import value_utils
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -641,9 +641,9 @@ class Executor(base_executor.BaseExecutor):
         are present in inputs.
     """
     has_module_file = bool(
-        common.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
+        value_utils.GetSoleValue(inputs, labels.MODULE_FILE, strict=False))
     has_preprocessing_fn = bool(
-        common.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
+        value_utils.GetSoleValue(inputs, labels.PREPROCESSING_FN, strict=False))
 
     if has_module_file == has_preprocessing_fn:
       raise ValueError(
@@ -652,9 +652,10 @@ class Executor(base_executor.BaseExecutor):
 
     if has_module_file:
       return import_utils.import_func_from_source(
-          common.GetSoleValue(inputs, labels.MODULE_FILE), 'preprocessing_fn')
+          value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
+          'preprocessing_fn')
 
-    preprocessing_fn_path_split = common.GetSoleValue(
+    preprocessing_fn_path_split = value_utils.GetSoleValue(
         inputs, labels.PREPROCESSING_FN).split('.')
     return import_utils.import_func_from_module(
         '.'.join(preprocessing_fn_path_split[0:-1]),
@@ -697,13 +698,13 @@ class Executor(base_executor.BaseExecutor):
     """
 
     del status_file  # unused
-    compute_statistics = common.GetSoleValue(inputs,
-                                             labels.COMPUTE_STATISTICS_LABEL)
-    transform_output_path = common.GetSoleValue(
+    compute_statistics = value_utils.GetSoleValue(
+        inputs, labels.COMPUTE_STATISTICS_LABEL)
+    transform_output_path = value_utils.GetSoleValue(
         outputs, labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL)
-    raw_examples_data_format = common.GetSoleValue(
+    raw_examples_data_format = value_utils.GetSoleValue(
         inputs, labels.EXAMPLES_DATA_FORMAT_LABEL)
-    schema = common.GetSoleValue(inputs, labels.SCHEMA_PATH_LABEL)
+    schema = value_utils.GetSoleValue(inputs, labels.SCHEMA_PATH_LABEL)
     input_dataset_metadata = self._ReadMetadata(raw_examples_data_format,
                                                 schema)
 
@@ -724,7 +725,7 @@ class Executor(base_executor.BaseExecutor):
 
     preprocessing_fn = self._GetPreprocessingFn(inputs, outputs)
 
-    materialize_output_paths = common.GetValues(
+    materialize_output_paths = value_utils.GetValues(
         outputs, labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL)
 
     # Inspecting the preprocessing_fn even if we know we need a full pass in
@@ -777,21 +778,21 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       Status of the execution.
     """
-    raw_examples_file_format = common.GetSoleValue(
+    raw_examples_file_format = value_utils.GetSoleValue(
         inputs, labels.EXAMPLES_FILE_FORMAT_LABEL, strict=False)
-    analyze_and_transform_data_paths = common.GetValues(
+    analyze_and_transform_data_paths = value_utils.GetValues(
         inputs, labels.ANALYZE_AND_TRANSFORM_DATA_PATHS_LABEL)
-    transform_only_data_paths = common.GetValues(
+    transform_only_data_paths = value_utils.GetValues(
         inputs, labels.TRANSFORM_ONLY_DATA_PATHS_LABEL)
-    stats_use_tfdv = common.GetSoleValue(inputs,
-                                         labels.TFT_STATISTICS_USE_TFDV_LABEL)
-    per_set_stats_output_paths = common.GetValues(
+    stats_use_tfdv = value_utils.GetSoleValue(
+        inputs, labels.TFT_STATISTICS_USE_TFDV_LABEL)
+    per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
-    temp_path = common.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
+    temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
 
-    input_cache_dir = common.GetSoleValue(
+    input_cache_dir = value_utils.GetSoleValue(
         inputs, labels.CACHE_INPUT_PATH_LABEL, strict=False)
-    output_cache_dir = common.GetSoleValue(
+    output_cache_dir = value_utils.GetSoleValue(
         outputs, labels.CACHE_OUTPUT_PATH_LABEL, strict=False)
 
     tf.logging.info('Analyze and transform data patterns: %s',
