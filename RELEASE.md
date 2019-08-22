@@ -74,6 +74,7 @@
 *   Depends on `tensorflow-transform>=0.14.0,<0.15`
 *   Added support for Python 3.6 and 3.7.
 *   Fixed issue #463 correcting syntax in SCHEMA_EMPTY message.
+*   Added an explicit check that pipeline name cannot exceed 63 characters.
 
 ## Breaking changes
 

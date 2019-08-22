@@ -126,6 +126,14 @@ class PipelineTest(tf.test.TestCase):
     self.assertDictEqual(my_pipeline.additional_pipeline_args,
                          {'beam_pipeline_args': ['--runner=PortableRunner']})
 
+  def testPipelineWithLongname(self):
+    with self.assertRaises(ValueError):
+      pipeline.Pipeline(
+          pipeline_name='a' * (1 + pipeline.MAX_PIPELINE_NAME_LENGTH),
+          pipeline_root='root',
+          components=[],
+          metadata_connection_config=self._metadata_connection_config)
+
   def testPipelineWithLoop(self):
     channel_one = types.Channel(type_name='channel_one')
     channel_two = types.Channel(type_name='channel_two')
