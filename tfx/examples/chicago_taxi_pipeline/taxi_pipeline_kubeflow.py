@@ -29,7 +29,7 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow.runner import KubeflowRunner
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -68,20 +68,13 @@ _gcp_region = 'us-central1'
 _ai_platform_training_args = {
     'project': _project_id,
     'region': _gcp_region,
-    'jobDir': os.path.join(_output_bucket, 'tmp'),
-    # Starting from TFX 0.14, 'runtimeVersion' is not relevant anymore.
-    # Instead, it will be populated by TFX as <major>.<minor> version of
-    # the imported TensorFlow package;
-    'runtimeVersion': '1.13',
-    # Starting from TFX 0.14, 'pythonVersion' is not relevant anymore.
-    # Instead, it will be populated by TFX as the <major>.<minor> version
-    # of the running Python interpreter;
-    'pythonVersion': '3.5',
-    # 'pythonModule' will be populated by TFX;
-    # 'args' will be populated by TFX;
-    # If 'packageUris' is not empty, AI Platform trainer will assume this
-    # will populate this field with an ephemeral TFX package built from current
-    # installation.
+    # Starting from TFX 0.14, training on AI Platform uses custom containers:
+    # https://cloud.google.com/ml-engine/docs/containers-overview
+    # You can specify a custom container here. If not specified, TFX will use a
+    # a public container image matching the installed version of TFX.
+    # 'masterConfig': { 'imageUri': 'gcr.io/my-project/my-container' },
+    # Note that if you do specify a custom container, ensure the entrypoint
+    # calls into TFX's run_executor script (tfx/scripts/run_executor.py)
 }
 
 # A dict which contains the serving job parameters to be passed to Google
@@ -164,8 +157,7 @@ def _create_pipeline(
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs.output,
-      schema=infer_schema.outputs.output)
+      stats=statistics_gen.outputs.output, schema=infer_schema.outputs.output)
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
@@ -240,17 +232,24 @@ def _create_pipeline(
       ],
       additional_pipeline_args={
           'beam_pipeline_args': beam_pipeline_args,
-          # Optional args:
-          # 'tfx_image': custom docker image to use for components.
-          # This is needed if TFX package is not installed from an RC
-          # or released version.
       },
       log_root='/var/tmp/tfx/logs',
   )
 
 
 if __name__ == '__main__':
-  KubeflowRunner().run(
+  # Metadata config. The defaults works work with the installation of
+  # KF Pipelines using Kubeflow. If installing KF Pipelines using the
+  # lightweight deployment option, you may need to override the defaults.
+  metadata_config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
+
+  runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+      kubeflow_metadata_config=metadata_config,
+      # Specify custom docker image to use.
+      # tfx_image='...'
+  )
+
+  kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,

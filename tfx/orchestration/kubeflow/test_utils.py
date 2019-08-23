@@ -269,7 +269,7 @@ class BaseKubeflowTest(tf.test.TestCase):
       pipeline: The logical pipeline to run.
     """
     pipeline_name = pipeline.pipeline_info.pipeline_name
-    config = kubeflow_dag_runner.KubeflowRunnerConfig(
+    config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
         kubeflow_metadata_config=self._get_kubeflow_metadata_config(
             pipeline_name),
         tfx_image=self._container_image)

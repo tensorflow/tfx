@@ -98,7 +98,7 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
-class KubeflowRunnerConfig(object):
+class KubeflowDagRunnerConfig(object):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
   def __init__(
@@ -108,7 +108,7 @@ class KubeflowRunnerConfig(object):
       kubeflow_metadata_config: Optional[
           kubeflow_pb2.KubeflowMetadataConfig] = None,
   ):
-    """Creates a KubeflowRunnerConfig object.
+    """Creates a KubeflowDagRunnerConfig object.
 
     The user can use pipeline_operator_funcs to apply modifications to
     ContainerOps used in the pipeline. For example, to ensure the pipeline
@@ -122,7 +122,7 @@ class KubeflowRunnerConfig(object):
         "my-volume-name",
         "/mnt/volume-mount-path")
 
-      config = KubeflowRunnerConfig(
+      config = KubeflowDagRunnerConfig(
         pipeline_operator_funcs=[mount_secret_op, mount_volume_op]
       )
 
@@ -148,17 +148,17 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
   def __init__(self,
                output_dir: Optional[Text] = None,
-               config: Optional[KubeflowRunnerConfig] = None):
+               config: Optional[KubeflowDagRunnerConfig] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
       output_dir: An optional output directory into which to output the pipeline
         definition files. Defaults to the current working directory.
-      config: An optional KubeflowRunnerConfig object to specify runtime
+      config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
     """
     self._output_dir = output_dir or os.getcwd()
-    self._config = config or KubeflowRunnerConfig()
+    self._config = config or KubeflowDagRunnerConfig()
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
