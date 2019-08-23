@@ -122,8 +122,9 @@
 *   airflow_runner.AirflowDAGRunner is renamed to
     airflow_dag_runner.AirflowDagRunner.
 *   runner.KubeflowRunner is renamed to kubeflow_dag_runner.KubeflowDagRunner.
-*   SchemaGen takes a new required argument, infer_feature_shape to indicate
-    whether to infer shape of features in schema.
+*   SchemaGen takes a new argument, infer_feature_shape to indicate whether to
+    infer shape of features in schema. Current default value is False, but we
+    plan to remove default value for it in future.
 
 # Version 0.13.0
 
