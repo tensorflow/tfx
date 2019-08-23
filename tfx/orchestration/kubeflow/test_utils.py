@@ -32,6 +32,7 @@ import tensorflow as tf
 from typing import List, Text
 
 from google.cloud import storage
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base.base_component import BaseComponent
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -231,6 +232,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         # Pipeline name cannot exceed 63 characters.
         pipeline_name=pipeline_name[-63:],
         pipeline_root=self._pipeline_root(pipeline_name),
+        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=components,
         log_root='/var/tmp/tfx/logs',
         additional_pipeline_args={

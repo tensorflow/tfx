@@ -25,6 +25,7 @@ from kfp import onprem
 import tensorflow as tf
 import yaml
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.big_query_example_gen import component as big_query_example_gen_component
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -40,6 +41,7 @@ def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   return tfx_pipeline.Pipeline(
       pipeline_name='two_step_pipeline',
       pipeline_root='pipeline_root',
+      metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
       components=[example_gen, statistics_gen],
   )
 

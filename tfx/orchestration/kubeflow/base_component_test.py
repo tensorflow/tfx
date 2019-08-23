@@ -20,6 +20,7 @@ from __future__ import print_function
 from kfp import dsl
 import tensorflow as tf
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.csv_example_gen import component as csv_example_gen_component
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -43,6 +44,7 @@ class BaseComponentTest(tf.test.TestCase):
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name='test_pipeline',
         pipeline_root='test_pipeline_root',
+        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[example_gen, statistics_gen],
     )
 
