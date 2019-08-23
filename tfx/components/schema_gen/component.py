@@ -37,7 +37,7 @@ class SchemaGen(base_component.BaseComponent):
 
   def __init__(self,
                stats: types.Channel = None,
-               infer_feature_shape: bool = True,
+               infer_feature_shape: Optional[bool] = False,
                output: Optional[types.Channel] = None,
                statistics: Optional[types.Channel] = None,
                name: Optional[Text] = None):
