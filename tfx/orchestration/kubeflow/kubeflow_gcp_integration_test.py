@@ -23,16 +23,9 @@ import sys
 
 import tensorflow as tf
 
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.transform.component import Transform
 from tfx.orchestration.kubeflow import test_utils
-from tfx.proto import evaluator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-from tfx.utils import dsl_utils
 
 
 class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
@@ -89,60 +82,18 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         self._intermediate_data_root, 'model_validator/blessing/test-pipeline/')
     self._test_model_blessing = channel_utils.as_channel([model_blessing])
 
-  def testCsvExampleGenOnDataflowRunner(self):
-    """Test for CsvExampleGen on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        CsvExampleGen(input_base=dsl_utils.csv_input(self._data_root)),
-    ])
+  def testEndToEndDataflowRunnerPipeline(self):
+    """End-to-End test exectured on Dataflow Runner."""
+    pipeline_name = 'kubeflow-dataflow-e2e-test-{}'.format(self._random_id())
+    components = test_utils.create_e2e_components(
+        self._pipeline_root(pipeline_name), self._data_root,
+        self._taxi_module_file)
+    pipeline = self._create_dataflow_pipeline(pipeline_name, components)
+
     self._compile_and_run_pipeline(pipeline)
 
-  def testStatisticsGenOnDataflowRunner(self):
-    """Test for StatisticsGen on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-statistics-gen-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        StatisticsGen(input_data=self._test_raw_examples),
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testTransformOnDataflowRunner(self):
-    """Test for Transform on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-transform-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        Transform(
-            input_data=self._test_raw_examples,
-            schema=self._test_schema,
-            module_file=self._taxi_module_file),
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testEvaluatorOnDataflowRunner(self):
-    """Test for Evaluator on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        Evaluator(
-            examples=self._test_raw_examples,
-            model_exports=self._test_model,
-            feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-                evaluator_pb2.SingleSlicingSpec(
-                    column_for_slicing=['trip_start_hour'])
-            ])),
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testModelValidatorOnDataflowRunner(self):
-    """Test for ModelValidatorEvaluator on DataflowRunner invocation."""
-    pipeline_name = 'kubeflow-model-validator-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        ModelValidator(
-            examples=self._test_raw_examples, model=self._test_model),
-    ])
-    self._compile_and_run_pipeline(pipeline)
+  # TODO(muchida): Reinstate DataflowRunner tests for each component
+  #                individually.
 
   # TODO(muchida): Add test cases for AI Platform Trainer and Pusher.
 
