@@ -21,3 +21,4 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 
 # TODO(jyzhao): deprecate this and change taxi examples.
 KubeflowRunner = kubeflow_dag_runner.KubeflowDagRunner
+KubeflowRunnerConfig = kubeflow_dag_runner.KubeflowDagRunnerConfig

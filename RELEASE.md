@@ -30,6 +30,7 @@
 *   Enable ImportExampleGen component for Kubeflow.
 *   Enabled SchemaGen to infer feature shape.
 *   Enabled metadata logging and pipeline caching capability for KubeflowRunner.
+*   Used custom container for AI Platform Trainer extension.
 
 ## Bug fixes and other changes
 

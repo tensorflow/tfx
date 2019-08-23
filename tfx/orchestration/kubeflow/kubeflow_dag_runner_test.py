@@ -141,7 +141,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     mount_volume_op = onprem.mount_pvc('my-persistent-volume-claim',
                                        'my-volume-name',
                                        '/mnt/volume-mount-path')
-    config = kubeflow_dag_runner.KubeflowRunnerConfig(
+    config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
         pipeline_operator_funcs=[mount_volume_op])
 
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(

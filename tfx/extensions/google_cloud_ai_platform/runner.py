@@ -18,7 +18,6 @@ from __future__ import print_function
 
 import datetime
 import json
-import os
 import sys
 import time
 from googleapiclient import discovery
@@ -27,11 +26,14 @@ import tensorflow as tf
 from typing import Any, Dict, List, Text
 
 from tfx import types
+from tfx import version
 from tfx.types import artifact_utils
-from tfx.utils import dependency_utils
-from tfx.utils import io_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
+
+# TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
+# and gcr.io/tfx-oss-public/ registries.
+_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
 
 
 def _get_tf_runtime_version() -> Text:
@@ -92,43 +94,28 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
 
   # Configure CMLE job
   api_client = discovery.build('ml', 'v1')
+
+  # We use custom containers to launch training on AI Platform, which invokes
+  # the specified image using the container's entrypoint. The default
+  # entrypoint for TFX containers is to call scripts/run_executor.py. The
+  # arguments below are passed to this run_executor entry to run the executor
+  # specified in `executor_class_path`.
   job_args = [
       '--executor_class_path', executor_class_path, '--inputs', json_inputs,
       '--outputs', json_outputs, '--exec-properties', json_exec_properties
   ]
+
+  if not training_inputs.get('masterConfig'):
+    training_inputs['masterConfig'] = {
+        'imageUri': _TFX_IMAGE,
+    }
+
   training_inputs['args'] = job_args
-  training_inputs['pythonModule'] = 'tfx.scripts.run_executor'
-  training_inputs['pythonVersion'] = _get_caip_python_version()
-  # runtimeVersion should be same as <major>.<minor> of currently
-  # installed tensorflow version.
-  training_inputs['runtimeVersion'] = _get_tf_runtime_version()
 
   # Pop project_id so CMLE doesn't complain about an unexpected parameter.
   # It's been a stowaway in cmle_args and has finally reached its destination.
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
-
-  package_uris = training_inputs.get('packageUris', [])
-  if package_uris:
-    tf.logging.info('Following packageUris \'%s\' are provided by user.',
-                    package_uris)
-  else:
-    if os.environ.get('TFX_SRC_DIR'):
-      # TFX Docker image contains a binary wheel file, so we'd reuse it here.
-      local_package = tf.gfile.Glob(
-          os.path.join(os.environ['TFX_SRC_DIR'], 'dist', 'tfx-*.whl'))[0]
-      tf.logging.info('Reusing wheel file %s shipped by docker image',
-                      local_package)
-    else:
-      local_package = dependency_utils.build_ephemeral_package()
-      tf.logging.info('Generated temporary package %s for dependency',
-                      local_package)
-    # TODO(b/125451545): Use a safe temp dir instead of jobDir.
-    cloud_package = os.path.join(training_inputs['jobDir'],
-                                 os.path.basename(local_package))
-    io_utils.copy_file(local_package, cloud_package, True)
-    training_inputs['packageUris'] = [cloud_package]
-    tf.logging.info('Package %s will be used', training_inputs['packageUris'])
 
   job_name = 'tfx_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
   job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
@@ -164,10 +151,10 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
 
   Args:
     serving_path: The path to the model. Must be a GCS URI.
-    model_version: Version of the model being deployed. Must be different
-      from what is currently being served.
-    cmle_serving_args: Dictionary containing arguments for pushing to CMLE.
-      For the full set of parameters supported, refer to
+    model_version: Version of the model being deployed. Must be different from
+      what is currently being served.
+    cmle_serving_args: Dictionary containing arguments for pushing to CMLE. For
+      the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
 
   Raises:

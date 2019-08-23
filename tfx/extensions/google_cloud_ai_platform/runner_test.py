@@ -22,8 +22,8 @@ import os
 import mock
 import tensorflow as tf
 
+from tfx import version
 from tfx.extensions.google_cloud_ai_platform import runner
-from tfx.utils import io_utils
 
 
 class RunnerTest(tf.test.TestCase):
@@ -32,16 +32,12 @@ class RunnerTest(tf.test.TestCase):
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    self._job_dir = os.path.join(self._output_data_dir, 'jobDir')
-    self._fake_package = os.path.join(self._output_data_dir, 'fake_package')
     self._project_id = '12345'
-    io_utils.write_string_file(self._fake_package, 'fake package content')
     self._mock_api_client = mock.Mock()
     self._inputs = {}
     self._outputs = {}
     self._training_inputs = {
         'project': self._project_id,
-        'jobDir': self._job_dir,
     }
     self._exec_properties = {
         'custom_config': {
@@ -54,12 +50,9 @@ class RunnerTest(tf.test.TestCase):
     }
 
   @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.dependency_utils'
-  )
-  @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
-  def testStartCMLETraining(self, mock_discovery, mock_dependency_utils):
+  def testStartCMLETraining(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     mock_create = mock.Mock()
     self._mock_api_client.projects().jobs().create = mock_create
@@ -68,7 +61,6 @@ class RunnerTest(tf.test.TestCase):
     mock_get.execute.return_value = {
         'state': 'SUCCEEDED',
     }
-    mock_dependency_utils.build_ephemeral_package.return_value = self._fake_package
 
     class_path = 'foo.bar.class'
 
@@ -76,7 +68,44 @@ class RunnerTest(tf.test.TestCase):
                                self._exec_properties, class_path,
                                self._training_inputs)
 
-    mock_dependency_utils.build_ephemeral_package.assert_called_with()
+    mock_create.assert_called_with(
+        body=mock.ANY, parent='projects/{}'.format(self._project_id))
+    (_, kwargs) = mock_create.call_args
+    body = kwargs['body']
+
+    default_image = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
+    self.assertDictContainsSubset(
+        {
+            'masterConfig': {
+                'imageUri': default_image,
+            },
+            'args': [
+                '--executor_class_path', class_path, '--inputs', '{}',
+                '--outputs', '{}', '--exec-properties', '{"custom_config": {}}'
+            ],
+        }, body['trainingInput'])
+    self.assertStartsWith(body['jobId'], 'tfx_')
+    mock_get.execute.assert_called_with()
+
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
+  )
+  def testStartCMLETrainingWithUserContainer(self, mock_discovery):
+    self._training_inputs['masterConfig'] = {'imageUri': 'my-custom-image'}
+    mock_discovery.build.return_value = self._mock_api_client
+    mock_create = mock.Mock()
+    self._mock_api_client.projects().jobs().create = mock_create
+    mock_get = mock.Mock()
+    self._mock_api_client.projects().jobs().get.return_value = mock_get
+    mock_get.execute.return_value = {
+        'state': 'SUCCEEDED',
+    }
+
+    class_path = 'foo.bar.class'
+
+    runner.start_cmle_training(self._inputs, self._outputs,
+                               self._exec_properties, class_path,
+                               self._training_inputs)
 
     mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
@@ -84,15 +113,13 @@ class RunnerTest(tf.test.TestCase):
     body = kwargs['body']
     self.assertDictContainsSubset(
         {
-            'pythonVersion': runner._get_caip_python_version(),
-            'runtimeVersion': '.'.join(tf.__version__.split('.')[0:2]),
-            'jobDir': self._job_dir,
+            'masterConfig': {
+                'imageUri': 'my-custom-image',
+            },
             'args': [
                 '--executor_class_path', class_path, '--inputs', '{}',
                 '--outputs', '{}', '--exec-properties', '{"custom_config": {}}'
             ],
-            'pythonModule': 'tfx.scripts.run_executor',
-            'packageUris': [os.path.join(self._job_dir, 'fake_package')],
         }, body['trainingInput'])
     self.assertStartsWith(body['jobId'], 'tfx_')
     mock_get.execute.assert_called_with()
