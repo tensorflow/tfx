@@ -78,6 +78,8 @@
 *   Bumped TFX Docker image to base on Ubuntu 16.04 and use Python 3.6.
 *   Fixed issue #463 correcting syntax in SCHEMA_EMPTY message.
 *   Added an explicit check that pipeline name cannot exceed 63 characters.
+*   Deprecated 'metadata_db_root' in favor of passing in
+    metadata_connection_config directly.
 
 ## Breaking changes
 

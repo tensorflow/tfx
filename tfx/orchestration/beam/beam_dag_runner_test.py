@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import mock
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -122,7 +123,7 @@ class BeamDagRunnerTest(tf.test.TestCase):
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',
         pipeline_root='y',
-        metadata_connection_config=None,
+        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])
