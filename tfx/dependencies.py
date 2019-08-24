@@ -29,9 +29,6 @@ def make_required_install_packages():
       'tensorflow-data-validation>=0.14.1,<0.15',
       'tensorflow-model-analysis>=0.14,<0.15',
       'tensorflow-transform>=0.14,<0.15',
-      # TODO(b/138406006): Remove the narrower dependency for pyarrow
-      # after Beam 2.15 release.
-      'pyarrow>=0.14,<0.15',
   ]
 
 
@@ -51,4 +48,8 @@ def make_extra_packages_docker_image():
   return [
       'python-snappy>=0.5,<0.6',
       'tensorflow>=1.14,<2',
+      # TODO(b/138406006): Remove the narrower dependency for pyarrow
+      # and numpy after Beam 2.15 release.
+      'numpy>=1.16,<1.17',
+      'pyarrow>=0.14,<0.15',
   ]
