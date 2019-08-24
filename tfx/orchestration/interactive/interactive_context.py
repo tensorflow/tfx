@@ -16,8 +16,8 @@
 See `examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb` for an
 example of how to run TFX in a Jupyter notebook for iterative development.
 
-Note: these APIs are experimental and changes to interface and functionality
-are expected.
+Note: these APIs are **experimental** and major changes to interface and
+functionality are expected.
 """
 
 from __future__ import absolute_import
@@ -29,6 +29,7 @@ import functools
 import logging
 import os
 import tempfile
+
 from six.moves import builtins
 from typing import Text
 
@@ -37,6 +38,8 @@ from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.component_launcher import ComponentLauncher
+from tfx.orchestration.interactive import execution_result
+from tfx.orchestration.interactive import notebook_formatters
 
 
 def requires_ipython(fn):
@@ -56,7 +59,11 @@ def requires_ipython(fn):
 
 
 class InteractiveContext(object):
-  """TFX interactive context for interactive TFX notebook development."""
+  """TFX interactive context for interactive TFX notebook development.
+
+  Note: these APIs are **experimental** and major changes to interface and
+  functionality are expected.
+  """
 
   _DEFAULT_SQLITE_FILENAME = 'metadata.sqlite'
 
@@ -79,7 +86,8 @@ class InteractiveContext(object):
     """
 
     if not pipeline_name:
-      pipeline_name = 'interactive-%s' % datetime.datetime.now().isoformat()
+      pipeline_name = ('interactive-%s' %
+                       datetime.datetime.now().isoformat().replace(':', '_'))
     if not pipeline_root:
       pipeline_root = tempfile.mkdtemp(prefix='tfx-%s-' % pipeline_name)
       logging.info(
@@ -101,10 +109,13 @@ class InteractiveContext(object):
     self.pipeline_root = pipeline_root
     self.metadata_connection_config = metadata_connection_config
 
+    # Register IPython formatters.
+    notebook_formatters.register_formatters()
+
   @requires_ipython
   def run(self,
           component: base_component.BaseComponent,
-          enable_cache: bool = True):
+          enable_cache: bool = True) -> execution_result.ExecutionResult:
     """Run a given TFX component in the interactive context.
 
     Args:
@@ -112,7 +123,7 @@ class InteractiveContext(object):
       enable_cache: whether caching logic should be enabled in the driver.
 
     Returns:
-      ExecutionResult object.
+      execution_result.ExecutionResult object.
     """
     run_id = datetime.datetime.now().isoformat()
     pipeline_info = data_types.PipelineInfo(
@@ -133,28 +144,7 @@ class InteractiveContext(object):
                                  self.metadata_connection_config,
                                  additional_pipeline_args)
     execution_id = launcher.launch()
-    return ExecutionResult(component, execution_id)
 
-
-class ExecutionResult(object):
-  """Execution result from a component run in an InteractiveContext."""
-
-  def __init__(self,
-               component: base_component.BaseComponent,
-               execution_id: int):
-    self.component = component
-    self.execution_id = execution_id
-
-  def __repr__(self):
-    outputs_parts = []
-    for name, channel in self.component.outputs.get_all().items():
-      repr_string = '%s: %s' % (name, repr(channel))
-      for line in repr_string.split('\n'):
-        outputs_parts.append(line)
-    outputs_str = '\n'.join('        %s' % line for line in outputs_parts)
-    return ('ExecutionResult(\n    component: %s'
-            '\n    execution_id: %s'
-            '\n    outputs:\n%s'
-            ')') % (self.component.component_name,
-                    self.execution_id,
-                    outputs_str)
+    return execution_result.ExecutionResult(
+        component=component,
+        execution_id=execution_id)
