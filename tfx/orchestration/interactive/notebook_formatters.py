@@ -273,8 +273,13 @@ def register_formatters():
   outside a notebook environment.
   """
   if getattr(builtins, '__IPYTHON__', None):
+    # Skip registration if (1) IPython is not installed or (2) if IPython is
+    # installed but we are not running in the notebook context (in this case,
+    # get_ipython() returns None).
     try:
       ipython = __import__('IPython.core.getipython').get_ipython()
+      if not ipython:
+        return
     except ImportError:
       return
     html_formatter = ipython.display_formatter.formatters['text/html']
