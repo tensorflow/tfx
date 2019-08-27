@@ -23,7 +23,10 @@ import sys
 
 import tensorflow as tf
 
+from tfx.components.trainer.component import Trainer
+from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration.kubeflow import test_utils
+from tfx.proto import trainer_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -92,11 +95,45 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
 
     self._compile_and_run_pipeline(pipeline)
 
-  # TODO(muchida): Reinstate DataflowRunner tests for each component
-  #                individually.
+  def testAIPlatformTrainerPipeline(self):
+    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
+    # Up-to Transform component
+    components = test_utils.create_e2e_components(
+        self._pipeline_root(pipeline_name), self._data_root,
+        self._taxi_module_file)[:5]
 
-  # TODO(muchida): Add test cases for AI Platform Trainer and Pusher.
+    infer_schema = components[2]
+    transform = components[4]
 
+    trainer = Trainer(
+        executor_class=ai_platform_trainer_executor.Executor,
+        module_file=self._taxi_module_file,
+        transformed_examples=transform.outputs.transformed_examples,
+        schema=infer_schema.outputs.output,
+        transform_output=transform.outputs.transform_output,
+        train_args=trainer_pb2.TrainArgs(num_steps=10000),
+        eval_args=trainer_pb2.EvalArgs(num_steps=5000),
+        custom_config={
+            'ai_platform_training_args': {
+                'project':
+                    self._gcp_project_id,
+                'region':
+                    self._gcp_region,
+                'jobDir':
+                    os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
+                'masterConfig': {
+                    'imageUri': self._container_image,
+                }
+            }
+        })
+    components.append(trainer)
+    pipeline = self._create_pipeline(pipeline_name, components)
+
+    self._compile_and_run_pipeline(pipeline)
+
+  # TODO(muchida): Reinstate test cases for testing each component individually.
+
+  # TODO(muchida): Add a test case for AI Platform Pusher.
 
 if __name__ == '__main__':
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)
