@@ -155,7 +155,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         self._intermediate_data_root,
         'transform/transformed_examples/test-pipeline/eval/')
     self._test_transformed_examples = [
-        transformed_eval_examples, transformed_eval_examples
+        transformed_train_examples, transformed_eval_examples
     ]
 
     # Schema artifact for testing.
