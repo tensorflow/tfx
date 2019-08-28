@@ -43,6 +43,8 @@ _COMMAND = [
     'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
 ]
 
+_WORKFLOW_ID_KEY = 'WORKFLOW_ID'
+
 
 def _prepare_artifact_dict(wrapper: component_spec._PropertyDictWrapper):
   return dict((k, v.get()) for k, v in wrapper.get_all().items())
@@ -131,12 +133,20 @@ class BaseComponent(object):
       tf.logging.info('   ->  Component: {}'.format(op.name))
       self.container_op.after(op)
 
-    # Add the Argo workflow ID to the container's environment variable so it
-    # can be used to uniquely place pipeline outputs under the pipeline_root.
-    field_path = "metadata.labels['workflows.argoproj.io/workflow']"
-    self.container_op.add_env_variable(
-        k8s_client.V1EnvVar(
-            name='WORKFLOW_ID',
-            value_from=k8s_client.V1EnvVarSource(
-                field_ref=k8s_client.V1ObjectFieldSelector(
-                    field_path=field_path))))
+    # TODO(b/140172100): Document the use of additional_pipeline_args.
+    if _WORKFLOW_ID_KEY in pipeline.additional_pipeline_args:
+      # Allow overriding pipeline's run_id externally, primarily for testing.
+      self.container_op.add_env_variable(
+          k8s_client.V1EnvVar(
+              name=_WORKFLOW_ID_KEY,
+              value=pipeline.additional_pipeline_args[_WORKFLOW_ID_KEY]))
+    else:
+      # Add the Argo workflow ID to the container's environment variable so it
+      # can be used to uniquely place pipeline outputs under the pipeline_root.
+      field_path = "metadata.labels['workflows.argoproj.io/workflow']"
+      self.container_op.add_env_variable(
+          k8s_client.V1EnvVar(
+              name=_WORKFLOW_ID_KEY,
+              value_from=k8s_client.V1EnvVarSource(
+                  field_ref=k8s_client.V1ObjectFieldSelector(
+                      field_path=field_path))))
