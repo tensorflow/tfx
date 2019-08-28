@@ -173,6 +173,32 @@ class BaseKubeflowTest(tf.test.TestCase):
     tf.logging.info('Pushing image {}'.format(container_image))
     client.images.push(repository=container_image)
 
+  @classmethod
+  def _get_mysql_pod_name(cls):
+    """Returns MySQL pod name in the cluster."""
+    pod_name = subprocess.check_output([
+        'kubectl',
+        '-n',
+        'kubeflow',
+        'get',
+        'pods',
+        '-l',
+        'app=mysql',
+        '--no-headers',
+        '-o',
+        'custom-columns=:metadata.name',
+    ]).decode('utf-8').strip('\n')
+    tf.logging.info('MySQL pod name is: {}'.format(pod_name))
+    return pod_name
+
+  @classmethod
+  def _get_mlmd_db_name(cls, pipeline_name: Text):
+    # MySQL DB names must not contain '-' while k8s names must not contain '_'.
+    # So we replace the dashes here for the DB name.
+    valid_mysql_name = pipeline_name.replace('-', '_')
+    # MySQL database name cannot exceed 64 characters.
+    return 'mlmd_{}'.format(valid_mysql_name[-59:])
+
   def setUp(self):
     super(BaseKubeflowTest, self).setUp()
     self._test_dir = tempfile.mkdtemp()
@@ -250,18 +276,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     Args:
       pipeline_name: The name of the pipeline owning the database.
     """
-    pod_name = subprocess.check_output([
-        'kubectl',
-        '-n',
-        'kubeflow',
-        'get',
-        'pods',
-        '-l',
-        'app=mysql',
-        '--no-headers',
-        '-o',
-        'custom-columns=:metadata.name',
-    ]).decode('utf-8').strip('\n')
+    pod_name = self._get_mysql_pod_name()
     db_name = self._get_mlmd_db_name(pipeline_name)
 
     command = [
@@ -281,13 +296,6 @@ class BaseKubeflowTest(tf.test.TestCase):
     tf.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
     subprocess.run(command, check=True)
 
-  def _get_mlmd_db_name(self, pipeline_name: Text):
-    # MySQL DB names must not contain '-' while k8s names must not contain '_'.
-    # So we replace the dashes here for the DB name.
-    valid_mysql_name = pipeline_name.replace('-', '_')
-    # MySQL database name cannot exceed 64 characters.
-    return 'mlmd_{}'.format(valid_mysql_name[-59:])
-
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)
 
@@ -295,14 +303,15 @@ class BaseKubeflowTest(tf.test.TestCase):
                        components: List[BaseComponent]):
     """Creates a pipeline given name and list of components."""
     return tfx_pipeline.Pipeline(
-        # Pipeline name cannot exceed 63 characters.
-        pipeline_name=pipeline_name[-63:],
+        pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=components,
         log_root='/var/tmp/tfx/logs',
         additional_pipeline_args={
-            'tfx_image': self._container_image,
+            # Use a fixed WORKFLOW_ID (which is used as run id) for testing,
+            # for the purpose of making debugging easier.
+            'WORKFLOW_ID': pipeline_name,
         },
     )
 
