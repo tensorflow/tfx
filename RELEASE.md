@@ -117,10 +117,8 @@
     users who need to override the driver for a component should subclass the
     component and override the DRIVER_CLASS field.
 *   The `example_gen.component.ExampleGen` class has been refactored into the
-    `example_gen.component._ExampleGen` and
-    `example_gen.component._FileBasedExampleGen` abstract classes. Users should
-    use their concrete subclasses instead of using these abstract components
-    directly.
+    `example_gen.component._QueryBasedExampleGen` and
+    `example_gen.component.FileBasedExampleGen` classes.
 *   pipeline_root passed to pipeline.Pipeline is now the root to the running
     pipeline instead of root of all pipelines.
 
