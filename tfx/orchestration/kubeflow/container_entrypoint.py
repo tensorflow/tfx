@@ -33,6 +33,7 @@ from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel
 from tfx.utils import import_utils
+from tfx.utils import json_utils
 from google.protobuf import json_format
 
 
@@ -148,7 +149,7 @@ def main():
   parser.add_argument('--component_type', type=str, required=True)
   parser.add_argument('--name', type=str, required=True)
   parser.add_argument('--driver_class_path', type=str, required=True)
-  parser.add_argument('--executor_class_path', type=str, required=True)
+  parser.add_argument('--executor_spec', type=str, required=True)
   parser.add_argument('--inputs', type=str, required=True)
   parser.add_argument('--outputs', type=str, required=True)
   parser.add_argument('--exec_properties', type=str, required=True)
@@ -165,7 +166,7 @@ def main():
   exec_properties = json.loads(args.exec_properties)
 
   driver_class = import_utils.import_class_by_path(args.driver_class_path)
-  executor_class = import_utils.import_class_by_path(args.executor_class_path)
+  executor_spec = json_utils.loads(args.executor_spec)
 
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
@@ -182,7 +183,7 @@ def main():
   launcher = component_launcher.BaseComponentLauncher(
       component_info=component_info,
       driver_class=driver_class,
-      executor_class=executor_class,
+      component_executor_spec=executor_spec,
       input_dict=input_dict,
       output_dict=output_dict,
       exec_properties=exec_properties,

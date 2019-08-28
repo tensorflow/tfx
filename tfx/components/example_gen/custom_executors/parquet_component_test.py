@@ -20,6 +20,7 @@ import os
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
 from tfx.orchestration import component_launcher
@@ -57,7 +58,8 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     example_gen = FileBasedExampleGen(
-        executor_class=parquet_executor.Executor,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            parquet_executor.Executor),
         input_base=external_input(self.parquet_dir_path),
         input_config=self.input_config,
         output_config=self.output_config,

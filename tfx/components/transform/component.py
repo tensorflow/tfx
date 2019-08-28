@@ -19,6 +19,7 @@ from __future__ import print_function
 from typing import Optional, Text
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.types import artifact
 from tfx.types import standard_artifacts
@@ -38,7 +39,7 @@ class Transform(base_component.BaseComponent):
   """
 
   SPEC_CLASS = TransformSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                input_data: types.Channel = None,

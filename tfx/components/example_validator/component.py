@@ -20,6 +20,7 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
@@ -33,7 +34,7 @@ class ExampleValidator(base_component.BaseComponent):
   """
 
   SPEC_CLASS = ExampleValidatorSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                stats: types.Channel = None,

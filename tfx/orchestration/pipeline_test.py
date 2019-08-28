@@ -28,6 +28,7 @@ from typing import Any, Dict, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types.component_spec import ChannelParameter
@@ -47,7 +48,7 @@ def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
   class _FakeComponent(base_component.BaseComponent):
 
     SPEC_CLASS = _FakeComponentSpec
-    EXECUTOR_CLASS = base_executor.BaseExecutor
+    EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
     def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(

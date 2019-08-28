@@ -21,6 +21,7 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
@@ -34,7 +35,7 @@ class Evaluator(base_component.BaseComponent):
   """
 
   SPEC_CLASS = EvaluatorSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(
       self,

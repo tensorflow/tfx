@@ -21,6 +21,7 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.types import standard_artifacts
@@ -38,7 +39,7 @@ class ModelValidator(base_component.BaseComponent):
   """
 
   SPEC_CLASS = ModelValidatorSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
   def __init__(self,

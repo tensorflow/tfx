@@ -46,6 +46,9 @@
 *   Enabled SchemaGen to infer feature shape.
 *   Enabled metadata logging and pipeline caching capability for KubeflowRunner.
 *   Used custom container for AI Platform Trainer extension.
+*   Introduced ExecutorSpec, which generalizes the representation of executors
+    to include both Python classes and containers.
+
 
 ### Deprecations
 *   Deprecated 'metadata_db_root' in favor of passing in
@@ -112,7 +115,7 @@
     equivalent overriding functionality is now available by specifying optional
     keyword arguments (see each component class definition for details).
 *   The optional arguments "executor" and "unique_name" of component classes
-    have been uniformly renamed to "executor_class" and "name", respectively.
+    have been uniformly renamed to "executor_spec" and "name", respectively.
     The "driver" optional argument of component classes is no longer available:
     users who need to override the driver for a component should subclass the
     component and override the DRIVER_CLASS field.
@@ -125,8 +128,11 @@
 ### For component authors
 
 *   Component class definitions have been simplified; existing custom components
-    need to specify a ComponentSpec contract and conform to new class definition
-    style (see `base_component.BaseComponent`).
+    need to:
+    * specify a ComponentSpec contract and conform to new class definition
+      style (see `base_component.BaseComponent`)
+    * specify `EXECUTOR_SPEC=ExecutorClassSpec(MyExecutor)` in the component
+      definition to replace `executor=MyExecutor` from component constructor.
 *   Artifact definitions for standard TFX components have moved from using
     string type names into being concrete Artifact classes (see each official
     TFX component's ComponentSpec definition in `types.standard_component_specs`

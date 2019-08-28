@@ -20,6 +20,7 @@ from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact
 from tfx.types import standard_artifacts
@@ -34,7 +35,7 @@ class StatisticsGen(base_component.BaseComponent):
   """
 
   SPEC_CLASS = StatisticsGenSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                input_data: types.Channel = None,

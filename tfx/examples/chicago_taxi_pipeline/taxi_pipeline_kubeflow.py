@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 from typing import Dict, List, Text
+from tfx.components.base import executor_spec
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
 from tfx.components.example_validator.component import ExampleValidator
@@ -171,7 +172,8 @@ def _create_pipeline(
     from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor  # pylint: disable=g-import-not-at-top
     # Train using a custom executor. This requires TFX >= 0.14.
     trainer = Trainer(
-        executor_class=ai_platform_trainer_executor.Executor,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            ai_platform_trainer_executor.Executor),
         module_file=module_file,
         transformed_examples=transform.outputs.transformed_examples,
         schema=infer_schema.outputs.output,
@@ -209,7 +211,8 @@ def _create_pipeline(
     from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor  # pylint: disable=g-import-not-at-top
     # Deploy the model on Google Cloud AI Platform. This requires TFX >=0.14.
     pusher = Pusher(
-        executor_class=ai_platform_pusher_executor.Executor,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            ai_platform_pusher_executor.Executor),
         model_export=trainer.outputs.output,
         model_blessing=model_validator.outputs.blessing,
         custom_config={'ai_platform_serving_args': ai_platform_serving_args})

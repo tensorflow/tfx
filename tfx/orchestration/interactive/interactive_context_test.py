@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration.interactive import interactive_context
 from tfx.types import component_spec
 
@@ -106,7 +107,7 @@ class InteractiveContextTest(tf.test.TestCase):
 
     class _FakeComponent(base_component.BaseComponent):
       SPEC_CLASS = _FakeComponentSpec
-      EXECUTOR_CLASS = _FakeExecutor
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
 
       def __init__(self, spec: types.ComponentSpec):
         super(_FakeComponent, self).__init__(spec=spec)
@@ -140,7 +141,7 @@ class InteractiveContextTest(tf.test.TestCase):
 
     class _FakeComponent(base_component.BaseComponent):
       SPEC_CLASS = _FakeComponentSpec
-      EXECUTOR_CLASS = _FakeExecutor
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
 
       def __init__(self, spec: types.ComponentSpec):
         super(_FakeComponent, self).__init__(spec=spec)

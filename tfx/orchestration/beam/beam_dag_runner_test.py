@@ -23,6 +23,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types.component_spec import ChannelParameter
@@ -84,7 +85,7 @@ class _FakeComponentSpecE(types.ComponentSpec):
 class _FakeComponent(base_component.BaseComponent):
 
   SPEC_CLASS = types.ComponentSpec
-  EXECUTOR_CLASS = base_executor.BaseExecutor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
     component_name = spec.__class__.__name__.replace(
