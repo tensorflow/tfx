@@ -133,6 +133,8 @@ class MetadataTest(tf.test.TestCase):
 
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_id = m.register_run_context(self._pipeline_info.pipeline_name,
+                                          self._pipeline_info.run_id)
 
       # Test prepare_execution.
       exec_properties = {'arg_one': 1}
@@ -140,11 +142,11 @@ class MetadataTest(tf.test.TestCase):
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info)
-      [execution] = m.store.get_executions()
+      [execution] = m.store.get_executions_by_context(context_id)
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 1
+        type_id: 2
         properties {
           key: "state"
           value {
