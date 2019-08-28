@@ -38,6 +38,8 @@ MAX_EXECUTIONS_FOR_CACHE = 100
 EXECUTION_STATE_CACHED = 'cached'
 EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
+# Context type, currently only run context is supported.
+CONTEXT_TYPE_RUN = 'run'
 
 
 def sqlite_metadata_connection_config(metadata_db_uri: Text
@@ -537,3 +539,48 @@ class Metadata(object):
         result[execution.properties['component_id']
                .string_value] = execution.properties['state'].string_value
     return result
+
+  def register_run_context(self, pipeline_name: Text, run_id: Text) -> int:
+    """Create a new context in metadata for current pipeline run.
+
+    Args:
+      pipeline_name: name of the pipeline.
+      run_id: identifier of the target pipeline run.
+
+    Returns:
+      context id of the new context.
+    """
+    try:
+      context_type = self._store.get_context_type(CONTEXT_TYPE_RUN)
+      assert context_type, 'Context type is None for {}.'.format(
+          CONTEXT_TYPE_RUN)
+      context_type_id = context_type.id
+    except tf.errors.NotFoundError:
+      context_type = metadata_store_pb2.ContextType(name=CONTEXT_TYPE_RUN)
+      # TODO(b/139485894): add DAG as properties.
+      context_type_id = self._store.put_context_type(context_type)
+
+    context_name = '{}.{}'.format(pipeline_name, run_id)
+    context = metadata_store_pb2.Context(
+        type_id=context_type_id, name=context_name)
+    [context_id] = self._store.put_contexts([context])
+
+    return context_id
+
+  def get_run_context_id(self, pipeline_name: Text,
+                         run_id: Text) -> Optional[int]:
+    """Get the context of current pipeline run from metadata.
+
+    Args:
+      pipeline_name: name of the pipeline.
+      run_id: identifier of the target pipeline run.
+
+    Returns:
+      a matched context id or None.
+    """
+    context_name = '{}.{}'.format(pipeline_name, run_id)
+    # TODO(b/139092990): support get_contexts_by_name.
+    for context in self._store.get_contexts_by_type(CONTEXT_TYPE_RUN):
+      if context.name == context_name:
+        return context.id
+    return None
