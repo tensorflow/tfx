@@ -282,6 +282,19 @@ class Metadata(object):
     execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
                                         pipeline_info, component_info)
     [execution_id] = self._store.put_executions([execution])
+
+    # Link execution with run context if exists.
+    context_id = self.get_run_context_id(
+        pipeline_name=pipeline_info.pipeline_name, run_id=pipeline_info.run_id)
+    if context_id:
+      association = metadata_store_pb2.Association(
+          execution_id=execution_id, context_id=context_id)
+      self._store.put_attributions_and_associations(
+          attributions=[], associations=[association])
+    else:
+      tf.logging.info('Context is missing for %s.%s.' %
+                      (pipeline_info.pipeline_name, pipeline_info.run_id))
+
     return execution_id
 
   def publish_execution(
