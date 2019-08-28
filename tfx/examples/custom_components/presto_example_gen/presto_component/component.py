@@ -22,6 +22,7 @@ from proto import presto_config_pb2
 from typing import Optional, Text
 
 from tfx import types
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
@@ -33,7 +34,7 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
   The Presto examplegen component takes a query, connection client
   configuration, and generates train and eval examples for downsteam components.
   """
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                conn_config: presto_config_pb2.PrestoConnConfig,

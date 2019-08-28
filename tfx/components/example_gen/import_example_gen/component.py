@@ -20,6 +20,7 @@ from __future__ import print_function
 from typing import Optional, Text
 
 from tfx import types
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.import_example_gen import executor
 from tfx.proto import example_gen_pb2
@@ -34,7 +35,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   shuffle the dataset for ML best practice.
   """
 
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                input_base: types.Channel = None,

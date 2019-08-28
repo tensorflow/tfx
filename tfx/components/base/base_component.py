@@ -22,11 +22,11 @@ import inspect
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_driver
-from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.types import component_spec
 
 
@@ -49,8 +49,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       specified, the name of the component class will be used.
     SPEC_CLASS: a subclass of types.ComponentSpec used by this component
       (required).
-    EXECUTOR_CLASS: a subclass of base_executor.BaseExecutor used to execute
-      this component (required).
+    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes
+      how to execute this component (required).
     DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
       this component (optional, defaults to base_driver.BaseDriver).
   """
@@ -62,8 +62,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   # Subclasses must override this property (by specifying a types.ComponentSpec
   # class, e.g. "SPEC_CLASS = MyComponentSpec").
   SPEC_CLASS = _abstract_property()
-  # Subclasses must also override the executor class.
-  EXECUTOR_CLASS = _abstract_property()
+  # Subclasses must also override the executor spec.
+  # Note: EXECUTOR_CLASS has been replaced with EXECUTOR_SPEC. A custom
+  # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
+  # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
+  EXECUTOR_SPEC = _abstract_property()
   # Subclasses will usually use the default driver class, but may override this
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
@@ -71,15 +74,15 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   def __init__(
       self,
       spec: types.ComponentSpec,
-      custom_executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       name: Optional[Text] = None,
       component_name: Optional[Text] = None):
     """Initialize a component.
 
     Args:
       spec: types.ComponentSpec object for this component instance.
-      custom_executor_class: Optional custom executor class overriding the
-        default executor specified in the component attribute.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor specified in the component attribute.
       name: Optional unique identifying name for this instance of the component
         in the pipeline. Required if two instances of the same component is used
         in the pipeline.
@@ -89,18 +92,16 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
         component name).
     """
     self.spec = spec
-    if custom_executor_class:
-      if not issubclass(custom_executor_class, base_executor.BaseExecutor):
+    if custom_executor_spec:
+      if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
         raise TypeError(
-            ('Custom executor class override %s for %s should be a subclass of '
-             'base_executor.BaseExecutor') %
-            (custom_executor_class, self.__class__))
-    self.executor_class = (
-        custom_executor_class or self.__class__.EXECUTOR_CLASS)
+            ('Custom executor spec override %s for %s should be an instance of '
+             'ExecutorSpec') % (custom_executor_spec, self.__class__))
+    self.executor_spec = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
     self.driver_class = self.__class__.DRIVER_CLASS
-    self.component_name = (component_name
-                           or self.__class__.COMPONENT_NAME
-                           or self.__class__.__name__)
+    self.component_name = (
+        component_name or self.__class__.COMPONENT_NAME or
+        self.__class__.__name__)
     self.name = name
     self._upstream_nodes = set()
     self._downstream_nodes = set()
@@ -115,12 +116,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       raise TypeError(
           ('Component class %s expects SPEC_CLASS property to be a subclass '
            'of types.ComponentSpec; got %s instead.') % (cls, cls.SPEC_CLASS))
-    if not (inspect.isclass(cls.EXECUTOR_CLASS) and
-            issubclass(cls.EXECUTOR_CLASS, base_executor.BaseExecutor)):
+    if not isinstance(cls.EXECUTOR_SPEC, executor_spec.ExecutorSpec):
       raise TypeError((
-          'Component class %s expects EXECUTOR_CLASS property to be a subclass '
-          'of base_executor.BaseExecutor; got %s instead.') %
-                      (cls, cls.EXECUTOR_CLASS))
+          'Component class %s expects EXECUTOR_SPEC property to be an instance '
+          'of ExecutorSpec; got %s instead.') % (cls, type(cls.EXECUTOR_SPEC)))
     if not (inspect.isclass(cls.DRIVER_CLASS) and
             issubclass(cls.DRIVER_CLASS, base_driver.BaseDriver)):
       raise TypeError(
@@ -142,9 +141,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
           (self.__class__, self.__class__.SPEC_CLASS, spec))
 
   def __repr__(self):
-    return ('%s(spec: %s, executor_class: %s, driver_class: %s, name: %s, '
+    return ('%s(spec: %s, executor_spec: %s, driver_class: %s, name: %s, '
             'inputs: %s, outputs: %s)') % (
-                self.__class__.__name__, self.spec, self.executor_class,
+                self.__class__.__name__, self.spec, self.executor_spec,
                 self.driver_class, self.name, self.inputs, self.outputs)
 
   @property

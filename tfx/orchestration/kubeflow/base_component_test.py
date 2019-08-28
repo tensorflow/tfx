@@ -84,8 +84,16 @@ class BaseComponentTest(tf.test.TestCase):
         'None',
         '--driver_class_path',
         'tfx.components.base.base_driver.BaseDriver',
-        '--executor_class_path',
-        'tfx.components.statistics_gen.executor.Executor',
+        '--executor_spec',
+        '{'
+        '"__class__": "ExecutorClassSpec", '
+        '"__module__": "tfx.components.base.executor_spec", '
+        '"__tfx_object_type__": "jsonable", '
+        '"executor_class": {'
+        '"__class__": "Executor", '
+        '"__module__": "tfx.components.statistics_gen.executor", '
+        '"__tfx_object_type__": "class"}'
+        '}',
     ])
 
 

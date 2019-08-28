@@ -37,6 +37,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.types import artifact_utils
 from tfx.types import component_spec
+from tfx.utils import json_utils
 from google.protobuf import json_format
 
 _COMMAND = [
@@ -82,9 +83,7 @@ class BaseComponent(object):
     """
     driver_class_path = '.'.join(
         [component.driver_class.__module__, component.driver_class.__name__])
-    executor_class_path = '.'.join([
-        component.executor_class.__module__, component.executor_class.__name__
-    ])
+    executor_spec = json_utils.dumps(component.executor_spec)
 
     arguments = [
         '--pipeline_name',
@@ -105,8 +104,8 @@ class BaseComponent(object):
         component.name,
         '--driver_class_path',
         driver_class_path,
-        '--executor_class_path',
-        executor_class_path,
+        '--executor_spec',
+        executor_spec,
         '--inputs',
         artifact_utils.jsonify_artifact_dict(
             _prepare_artifact_dict(component.inputs)),

@@ -17,11 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Type
+from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
@@ -39,8 +40,8 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
   """
 
   SPEC_CLASS = QueryBasedExampleGenSpec
-  # EXECUTOR_CLASS should be overridden by subclasses.
-  EXECUTOR_CLASS = base_executor.BaseExecutor
+  # EXECUTOR_SPEC should be overridden by subclasses.
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self,
                input_config: example_gen_pb2.Input,
@@ -89,8 +90,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
   """
 
   SPEC_CLASS = FileBasedExampleGenSpec
-  # EXECUTOR_CLASS should be overridden by subclasses.
-  EXECUTOR_CLASS = base_executor.BaseExecutor
+  # EXECUTOR_SPEC should be overridden by subclasses.
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
   DRIVER_CLASS = driver.Driver
 
   def __init__(
@@ -101,7 +102,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
       custom_config: Optional[example_gen_pb2.CustomConfig] = None,
       component_name: Optional[Text] = 'ExampleGen',
       example_artifacts: Optional[types.Channel] = None,
-      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
       name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
@@ -121,8 +122,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
         class. Default to 'ExampleGen', can be overwritten by sub-classes.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      executor_class: Optional custom executor class overriding the default
-        executor specified in the component attribute.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
       input: Forwards compatibility alias for the 'input_base' argument.
       name: Unique name for every component class instance.
     """
@@ -143,4 +144,4 @@ class FileBasedExampleGen(base_component.BaseComponent):
         custom_config=custom_config,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(
-        spec=spec, custom_executor_class=executor_class, name=name)
+        spec=spec, custom_executor_spec=custom_executor_spec, name=name)

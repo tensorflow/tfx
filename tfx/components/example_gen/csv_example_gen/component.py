@@ -20,6 +20,7 @@ from __future__ import print_function
 from typing import Optional, Text
 
 from tfx import types
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
@@ -32,7 +33,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
   and eval examples for downsteam components.
   """
 
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                input_base: types.Channel = None,

@@ -16,11 +16,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
@@ -44,7 +44,7 @@ class Trainer(base_component.BaseComponent):
   """
 
   SPEC_CLASS = TrainerSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
   def __init__(
@@ -58,7 +58,7 @@ class Trainer(base_component.BaseComponent):
       train_args: trainer_pb2.TrainArgs = None,
       eval_args: trainer_pb2.EvalArgs = None,
       custom_config: Optional[Dict[Text, Any]] = None,
-      executor_class: Optional[Type[base_executor.BaseExecutor]] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
       transform_graph: Optional[types.Channel] = None,
       name: Optional[Text] = None):
@@ -99,7 +99,7 @@ class Trainer(base_component.BaseComponent):
         passed to Google Cloud ML Engine.  For the full set of parameters
         supported by Google Cloud ML Engine, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
-      executor_class: Optional custom executor class.
+      custom_executor_spec: Optional custom executor spec.
       output: Optional 'ModelExportPath' channel for result of exported models.
       transform_graph: Forwards compatibility alias for the 'transform_output'
         argument.
@@ -140,4 +140,4 @@ class Trainer(base_component.BaseComponent):
         custom_config=custom_config,
         output=output)
     super(Trainer, self).__init__(
-        spec=spec, custom_executor_class=executor_class, name=name)
+        spec=spec, custom_executor_spec=custom_executor_spec, name=name)

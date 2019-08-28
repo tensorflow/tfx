@@ -25,6 +25,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -33,9 +34,10 @@ from tfx.orchestration import publisher
 class BaseComponentLauncher(object):
   """Responsible for launching driver, executor and publisher of component."""
 
+  # pyformat: disable
   def __init__(self, component_info: data_types.ComponentInfo,
                driver_class: Type[base_driver.BaseDriver],
-               executor_class: Type[base_executor.BaseExecutor],
+               component_executor_spec: executor_spec.ExecutorSpec,
                input_dict: Dict[Text, types.Channel],
                output_dict: Dict[Text, types.Channel],
                exec_properties: Dict[Text, Any],
@@ -43,13 +45,14 @@ class BaseComponentLauncher(object):
                driver_args: data_types.DriverArgs,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
                additional_pipeline_args: Dict[Text, Any]):
+    # pyformat: enable
     """Initialize a ComponentLauncher.
 
     Args:
       component_info: ComponentInfo of the component.
       driver_class: The driver class to run for this component.
-      executor_class: The executor class to execute when launching this
-        component.
+      component_executor_spec: The executor spec to specify what to execute
+        when launching this component.
       input_dict: Dictionary of input artifacts consumed by this component.
       output_dict: Dictionary of output artifacts produced by this component.
       exec_properties: Dictionary of execution properties.
@@ -67,7 +70,7 @@ class BaseComponentLauncher(object):
     self._driver_args = driver_args
 
     self._driver_class = driver_class
-    self._executor_class = executor_class
+    self._component_executor_spec = component_executor_spec
 
     self._input_dict = input_dict
     self._output_dict = output_dict
@@ -110,9 +113,18 @@ class BaseComponentLauncher(object):
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
 
+    # TODO(hongyes): move this check to a specific method which can overrided
+    # by subclasses.
+    if not isinstance(self._component_executor_spec,
+                      executor_spec.ExecutorClassSpec):
+      raise TypeError(
+          'component_executor_spec must be an instance of ExecutorClassSpec.')
+
     # Type hint of component will cause not-instantiable error as
-    # component.executor is Type[BaseExecutor] which has an abstract function.
-    executor = self._executor_class(executor_context)  # type: ignore
+    # ExecutorClassSpec.executor_class is Type[BaseExecutor] which has an
+    # abstract function.
+    executor = self._component_executor_spec.executor_class(
+        executor_context)  # type: ignore
 
     executor.Do(input_dict, output_dict, exec_properties)
 
@@ -186,7 +198,7 @@ class ComponentLauncher(BaseComponentLauncher):
     super(ComponentLauncher, self).__init__(
         component_info=component_info,
         driver_class=component.driver_class,
-        executor_class=component.executor_class,
+        component_executor_spec=component.executor_spec,
         input_dict=component.inputs.get_all(),
         output_dict=component.outputs.get_all(),
         exec_properties=component.exec_properties,

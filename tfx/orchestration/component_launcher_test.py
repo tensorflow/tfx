@@ -27,6 +27,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
@@ -74,7 +75,7 @@ class _FakeComponentSpec(types.ComponentSpec):
 
 class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = _FakeComponentSpec
-  EXECUTOR_CLASS = _FakeExecutor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
   DRIVER_CLASS = _FakeDriver
 
   def __init__(self,
