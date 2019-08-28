@@ -135,3 +135,9 @@ class RuntimeParameter(json_utils.Jsonable):
     return ('RuntimeParam:\n  name: %s,\n  default: %s,\n  ptype: %s,\n  '
             'description: %s') % (self.name, self.default, self.ptype,
                                   self.description)
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) \
+      and self.name == other.name \
+      and self.ptype == other.ptype \
+      and self.description == other.description
