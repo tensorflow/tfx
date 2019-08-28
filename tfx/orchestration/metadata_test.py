@@ -382,6 +382,32 @@ class MetadataTest(tf.test.TestCase):
                   metadata.EXECUTION_STATE_NEW,
           }, states)
 
+  def testContext(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+
+      c1 = m.register_run_context('pipeline', 'run_id')
+      c2 = m.register_run_context('pipeline', 'run_id2')
+      c3 = m.register_run_context('pipeline2', 'run_id')
+
+      context_type = m.store.get_context_type('run')
+      self.assertProtoEquals(
+          """
+          id: 1
+          name: 'run'
+          """, context_type)
+      [context] = m.store.get_contexts_by_id([c1])
+      self.assertProtoEquals(
+          """
+          id: 1
+          type_id: 1
+          name: 'pipeline.run_id'
+          """, context)
+
+      self.assertEqual(c1, m.get_run_context_id('pipeline', 'run_id'))
+      self.assertEqual(c2, m.get_run_context_id('pipeline', 'run_id2'))
+      self.assertEqual(c3, m.get_run_context_id('pipeline2', 'run_id'))
+      self.assertEqual(None, m.get_run_context_id('pipeline2', 'run_id2'))
+
 
 if __name__ == '__main__':
   tf.test.main()
