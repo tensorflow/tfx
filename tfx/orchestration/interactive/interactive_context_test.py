@@ -17,6 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import inspect
+import os
+import shutil
+import tempfile
+import textwrap
+
+import mock
+import nbformat
 from six.moves import builtins
 import tensorflow as tf
 from typing import Any, Dict, List, Text
@@ -32,7 +40,36 @@ class InteractiveContextTest(tf.test.TestCase):
 
   def setUp(self):
     super(InteractiveContextTest, self).setUp()
+
     builtins.__dict__['__IPYTHON__'] = True
+    self._tmpdir = None
+
+  def tearDown(self):
+    if self._tmpdir:
+      shutil.rmtree(self._tmpdir, ignore_errors=True)
+    super(InteractiveContextTest, self).tearDown()
+
+  def _setupTestNotebook(self, notebook_name='test_notebook.ipynb'):
+    notebook = nbformat.v4.new_notebook(
+        cells=[
+            nbformat.v4.new_markdown_cell(source='A markdown cell.'),
+            nbformat.v4.new_code_cell(source='foo = 1'),
+            nbformat.v4.new_markdown_cell(source='Another markdown cell.'),
+            nbformat.v4.new_code_cell(source=textwrap.dedent('''\
+                def bar():
+                  a = "hello"
+                  b = "world"
+                  return a + b''')),
+            nbformat.v4.new_code_cell(source=textwrap.dedent('''\
+                def baz():
+                  c = "nyan"
+                  d = "cat"
+                  return c + d''')),
+        ]
+    )
+    self._tmpdir = tempfile.mkdtemp()
+    self._notebook_fp = os.path.join(self._tmpdir, notebook_name)
+    nbformat.write(notebook, self._notebook_fp)
 
   def testRequiresIPythonExecutes(self):
     self.foo_called = False
@@ -113,6 +150,39 @@ class InteractiveContextTest(tf.test.TestCase):
     component = _FakeComponent(_FakeComponentSpec(input=foo))
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)
+
+  def testExportToPipeline(self):
+    self._setupTestNotebook()
+
+    with mock.patch.object(inspect, 'getfile', return_value=self._notebook_fp):
+      c = interactive_context.InteractiveContext()
+      c.export_to_pipeline(notebook_filename='test_notebook.ipynb',
+                           pipeline_filename='exported_pipeline.py')
+      with open(os.path.join(
+          self._tmpdir, 'exported_pipeline.py'), 'r') as exported_pipeline:
+        code = exported_pipeline.read()
+        self.assertEqual(code, textwrap.dedent('''\
+            foo = 1
+
+            def bar():
+              a = "hello"
+              b = "world"
+              return a + b
+
+            def baz():
+              c = "nyan"
+              d = "cat"
+              return c + d'''))
+
+  def testExportToPipelineGeneratesDefaultExportName(self):
+    self._setupTestNotebook(notebook_name='my_notebook.ipynb')
+
+    with mock.patch.object(inspect, 'getfile', return_value=self._notebook_fp):
+      c = interactive_context.InteractiveContext()
+      c.export_to_pipeline(notebook_filename='my_notebook.ipynb',
+                           pipeline_filename=None)
+      self.assertTrue(
+          os.path.isfile(os.path.join(self._tmpdir, 'my_notebook_export.py')))
 
 
 if __name__ == '__main__':

@@ -26,10 +26,12 @@ from __future__ import print_function
 
 import datetime
 import functools
+import inspect
 import logging
 import os
 import tempfile
 
+import nbformat
 from six.moves import builtins
 from typing import Text
 
@@ -148,3 +150,43 @@ class InteractiveContext(object):
     return execution_result.ExecutionResult(
         component=component,
         execution_id=execution_id)
+
+  @requires_ipython
+  def export_to_pipeline(self,
+                         notebook_filename: Text,
+                         pipeline_filename: Text = None):
+    """Exports a notebook to a .py file as a runnable pipeline.
+
+    The pipeline will be exported to the same directory as the notebook.
+
+    Args:
+      notebook_filename: String name of the notebook file, e.g.
+        'notebook.ipynb'.
+      pipeline_filename: String name for the exported pipeline python file, e.g.
+        'exported_pipeline.py'. If `None`, a filename will be generated
+        using `notebook_filename`.
+    """
+    current_frame = inspect.currentframe()
+    if current_frame is None:
+      raise ValueError('Unable to get current frame.')
+
+    caller_filepath = inspect.getfile(current_frame.f_back)
+    notebook_dir = os.path.dirname(os.path.abspath(caller_filepath))
+
+    # The notebook filename is user-provided, as IPython kernels are agnostic to
+    # notebook metadata by design, and it seems that existing workarounds to
+    # retrieve the notebook filename are not universally robust
+    # (https://github.com/jupyter/notebook/issues/1000).
+    notebook_fp = os.path.join(notebook_dir, notebook_filename)
+
+    if pipeline_filename is None:
+      pipeline_filename = os.path.splitext(notebook_filename)[0] + '_export.py'
+    pipeline_fp = os.path.join(notebook_dir, pipeline_filename)
+    logging.info('Exporting contents of %s to %s.', notebook_fp, pipeline_fp)
+
+    with open(notebook_fp) as notebook_f, open(pipeline_fp, 'w') as pipeline_f:
+      notebook = nbformat.read(notebook_f, nbformat.NO_CONVERT)
+      cells = notebook['cells']
+      code_cells = (cell for cell in cells if cell['cell_type'] == 'code')
+      pipeline_f.write(
+          '\n\n'.join(code_cell['source'] for code_cell in code_cells))
