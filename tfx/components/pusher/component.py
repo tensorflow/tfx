@@ -29,11 +29,33 @@ from tfx.types.standard_component_specs import PusherSpec
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
 class Pusher(base_component.BaseComponent):
-  """Official TFX Pusher component.
+  """A TFX component to push validated TensorFlow models to a model serving platform.
 
   The `Pusher` component can be used to push an validated SavedModel from output
-  of `Trainer` to tensorflow Serving (tf.serving). If the model is not blessed
-  by `ModelValidator`, no push will happen.
+  of the [Trainer component](https://www.tensorflow.org/tfx/guide/trainer) to
+  [TensorFlow Serving](https://www.tensorflow.org/tfx/serving).  The Pusher
+  will check the validation results from the [ModelValidator
+  component](https://www.tensorflow.org/tfx/guide/model_validator)
+  before deploying the model.  If the model has not been blessed, then the model
+  will not be pushed.
+
+  *Note:* The executor for this component can be overriden to enable the model
+  to be pushed to other serving platforms than tf.serving.  The [Cloud AI
+  Platform custom
+  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/pusher)
+  provides an example how to implement this.
+
+  ## Example
+  ```
+    # Checks whether the model passed the validation steps and pushes the model
+    # to a file destination if check passed.
+    pusher = Pusher(
+        model_export=trainer.outputs.output,
+        model_blessing=model_validator.outputs.blessing,
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=serving_model_dir)))
+  ```
   """
 
   SPEC_CLASS = PusherSpec
@@ -53,16 +75,18 @@ class Pusher(base_component.BaseComponent):
 
     Args:
       model_export: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component (required).
+        Trainer component. Will be deprecated in the future for the `model`
+        parameter.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        ModelValidator component (required).
-      push_destination: A pusher_pb2.PushDestination instance, providing
-        info for tensorflow serving to load models. Optional if executor_class
+        ModelValidator component. _required_
+      push_destination: A pusher_pb2.PushDestination instance, providing info
+        for tensorflow serving to load models. Optional if executor_class
         doesn't require push_destination.
       custom_config: A dict which contains the deployment job parameters to be
-        passed to Google Cloud ML Engine.  For the full set of parameters
-        supported by Google Cloud ML Engine, refer to
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+        passed to cloud-based training platforms.  The
+        [Kubeflow
+          example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow.py#L211)
+          contains an example how this can be used by custom executors.
       custom_executor_spec: Optional custom executor spec.
       model_push: Optional output 'ModelPushPath' channel with result of push.
       model: Forwards compatibility alias for the 'model_exports' argument.

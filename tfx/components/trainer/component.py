@@ -29,18 +29,70 @@ from tfx.types.standard_component_specs import TrainerSpec
 
 
 class Trainer(base_component.BaseComponent):
-  """Official TFX Trainer component.
+  """A TFX component to train a TensorFlow model.
 
-  The Trainer component is used to train and eval a model using given inputs.
-  This component includes a custom driver to optionally grab previous model to
-  warm start from.
+  The Trainer component is used to train and eval a model using given inputs and
+  a user-supplied estimator.  This component includes a custom driver to
+  optionally grab previous model to warm start from.
 
-  There are two executors provided for this component currently:
-  - A default executor (in tfx.components.trainer.executor.py) provides local
-    training;
-  - A custom executor (in
-    tfx.extensions.google_cloud_ai_platform.trainer.executor.py) provides
-    training on Google Cloud AI Platform.
+  ## Providing an estimator
+  The TFX executor will use the estimator provided in the `module_file` file
+  to train the model.  The Trainer executor will look specifically for the
+  `trainer_fn()` function within that file.  Before training, the executor will
+  call that function expecting the following returned as a dictionary:
+
+    - estimator: The
+    [estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator)
+    to be used by TensorFlow to train the model.
+    - train_spec: The
+    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/TrainSpec)
+    to be used by the "train" part of the TensorFlow `train_and_evaluate()`
+    call.
+    - eval_spec: The
+    [configuration](https://www.tensorflow.org/api_docs/python/tf/estimator/EvalSpec)
+    to be used by the "eval" part of the TensorFlow `train_and_evaluate()` call.
+    - eval_input_receiver_fn: The
+    [configuration](https://www.tensorflow.org/tfx/model_analysis/get_started#modify_an_existing_model)
+    to be used
+    by the [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval)
+    component when validating the model.
+
+  An example of `trainer_fn()` can be found in the [user-supplied
+  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
+  of the TFX Chicago Taxi pipeline example.
+
+  *Note:* The default executor for this component trains locally.  This can be
+  overriden to enable the model to be trained on other platforms.  The [Cloud AI
+  Platform custom
+  executor](https://github.com/tensorflow/tfx/tree/master/tfx/extensions/google_cloud_ai_platform/trainer)
+  provides an example how to implement this.
+
+  Please see https://www.tensorflow.org/guide/estimators for more details.
+
+  ## Example 1: Training locally
+  ```
+  # Uses user-provided Python function that implements a model using TF-Learn.
+  trainer = Trainer(
+      module_file=module_file,
+      transformed_examples=transform.outputs.transformed_examples,
+      schema=infer_schema.outputs.output,
+      transform_output=transform.outputs.transform_output,
+      train_args=trainer_pb2.TrainArgs(num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+  ```
+
+  ## Example 2: Training through a cloud provider
+  ```
+  # Train using Google Cloud AI Platform.
+  trainer = Trainer(
+      executor_class=ai_platform_trainer_executor.Executor,
+      module_file=module_file,
+      transformed_examples=transform.outputs.transformed_examples,
+      schema=infer_schema.outputs.output,
+      transform_output=transform.outputs.transform_output,
+      train_args=trainer_pb2.TrainArgs(num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+  ```
   """
 
   SPEC_CLASS = TrainerSpec

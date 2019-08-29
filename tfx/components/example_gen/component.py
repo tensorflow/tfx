@@ -33,10 +33,20 @@ from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
 
 
 class _QueryBasedExampleGen(base_component.BaseComponent):
-  """TFX query-based ExampleGen component base class.
+  """A TFX component to ingest examples from a file system.
 
-  ExampleGen component takes input data source, and generates train
-  and eval example splits (or custom splits) for downsteam components.
+  The QueryBasedExampleGen component enables TFX to ingest examples from
+  relational databases such as SQLite and MySQL.  The component will also
+  convert the input data into
+  tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
+  and generate train and eval example splits for downsteam components.
+
+  ## Example
+  ```
+  _query = "SELECT * FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`"
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = BigQueryExampleGen(query=_query)
+  ```
   """
 
   SPEC_CLASS = QueryBasedExampleGenSpec
@@ -53,18 +63,23 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     """Construct an QueryBasedExampleGen component.
 
     Args:
-      input_config: An example_gen_pb2.Input instance, providing input
-        configuration.
-      output_config: An example_gen_pb2.Output instance, providing output
-        configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1.
-      custom_config: An optional example_gen_pb2.CustomConfig instance,
-        providing custom configuration for executor.
-      component_name: Name of the component, should be unique per component
-        class. Default to 'ExampleGen', can be overwritten by sub-classes.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
+      input_config: An
+        [example_gen_pb2.Input](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing input configuration. _required_
+      output_config: An
+        [example_gen_pb2.Output](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing output configuration. If unset, the default splits
+        will be labeled as 'train' and 'eval' with a distribution ratio of 2:1.
+      custom_config: An
+        [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing custom configuration for ExampleGen.
+      component_name: Name of the component.  This should be unique per
+        component class. Default to 'ExampleGen' and may be overwritten by
+        subclasses.
+      example_artifacts: Channel of 'ExamplesPath' for output train and
         eval examples.
-      name: Unique name for every component class instance.
+      name: Unique name. Required only if multiple ExampleGen components are
+        declared in the same pipeline.
     """
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
@@ -83,10 +98,22 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
 
 
 class FileBasedExampleGen(base_component.BaseComponent):
-  """TFX file-based ExampleGen component base class.
+  """A TFX component to ingest examples from a file system.
 
-  ExampleGen component takes input data source, and generates train
-  and eval example splits (or custom splits) for downsteam components.
+  The FileBasedExampleGen component is an API for getting file-based records
+  into TFX pipelines. It consumes external files to generate examples which will
+  be used by other internal components like StatisticsGen or Trainers.  The
+  component will also convert the input data into
+  [tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
+  and generate train and eval example splits for downsteam components.
+
+  ## Example
+  ```
+  _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+  _data_root = os.path.join(_taxi_root, 'data', 'simple')
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  example_gen = CsvExampleGen(input_base=examples)
+  ```
   """
 
   SPEC_CLASS = FileBasedExampleGenSpec
@@ -109,23 +136,29 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
     Args:
       input_base: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with data files inside (required).
-      input_config: An optional example_gen_pb2.Input instance, providing input
-        configuration. If unset, the files under input_base (must set) will be
-        treated as a single split.
-      output_config: An optional example_gen_pb2.Output instance, providing
+        whose uri is an external directory containing the data files.
+        _required_
+      input_config: An
+        [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
+        instance, providing input configuration. If unset, the files under
+        input_base will be treated as a single dataset.
+      output_config: An example_gen_pb2.Output instance, providing the
         output configuration. If unset, default splits will be 'train' and
         'eval' with size 2:1.
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
       component_name: Name of the component, should be unique per component
-        class. Default to 'ExampleGen', can be overwritten by sub-classes.
-      example_artifacts: Optional channel of 'ExamplesPath' for output train and
+        class. Do not use -- will be deprecated in a future release.
+      example_artifacts: Channel of 'ExamplesPath' for output train and
         eval examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
-      input: Forwards compatibility alias for the 'input_base' argument.
-      name: Unique name for every component class instance.
+      input: Future replacement of the 'input_base' argument.
+      name: Name assigned to this specific instance of FileBasedExampleGen.
+        Required only if multiple FileBasedExampleGen components are declared in
+        the same pipeline.
+
+      Either `input_base` or `input` must be present in the input arguments.
     """
     input_base = input_base or input
     # Configure inputs and outputs.

@@ -27,10 +27,36 @@ from tfx.types.standard_component_specs import ExampleValidatorSpec
 
 
 class ExampleValidator(base_component.BaseComponent):
-  """Official TFX ExampleValidator component.
+  """A TFX component to validate input examples.
 
-  The ExampleValidator component uses Tensorflow Data Validation (tfdv) to
+  The ExampleValidator component uses [Tensorflow Data
+  Validation](https://www.tensorflow.org/tfx/data_validation) to
   validate the statistics of some splits on input examples against a schema.
+
+  The ExampleValidator component identifies anomalies in training and serving
+  data. The component can be configured to detect different classes of anomalies
+  in the data. It can:
+    - perform validity checks by comparing data statistics against a schema that
+      codifies expectations of the user.
+    - detect data drift by looking at a series of data.
+    - detect changes in dataset-wide data (i.e., num_examples) across spans or
+      versions.
+
+  Schema Based Example Validation
+  The ExampleValidator component identifies any anomalies in the example data by
+  comparing data statistics computed by the StatisticsGen component against a
+  schema. The schema codifies properties which the input data is expected to
+  satisfy, and is provided and maintained by the user.
+
+  Please see https://www.tensorflow.org/tfx/data_validation for more details.
+
+  ## Example
+  ```
+  # Performs anomaly detection based on statistics and data schema.
+  validate_stats = ExampleValidator(
+      stats=statistics_gen.outputs.output,
+      schema=infer_schema.outputs.output)
+  ```
   """
 
   SPEC_CLASS = ExampleValidatorSpec
@@ -45,20 +71,21 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      stats: A Channel of 'ExampleStatisticsPath' type. This should contain at
-        least 'eval' split. Other splits are ignored currently (required).
-      schema: A Channel of "SchemaPath' type (required).
-      output: Optional output channel of 'ExampleValidationPath' type.
-      statistics: Forwards compatibility alias for the 'stats' argument.
-      name: Optional unique name. Necessary iff multiple ExampleValidator
-        components are declared in the same pipeline.
+      stats: A Channel of 'ExampleStatisticsPath` type. This should contain at
+        least 'eval' split. Other splits are ignored currently.  Will be
+        deprecated in the future for the `statistics` parameter.
+      schema: A Channel of "SchemaPath' type. _required_
+      output: Output channel of 'ExampleValidationPath' type.
+      statistics: Future replacement of the 'stats' argument.
+      name: Name assigned to this specific instance of ExampleValidator.
+        Required only if multiple ExampleValidator components are declared in
+        the same pipeline.
+
+    Either `stats` or `statistics` must be present in the arguments.
     """
     stats = stats or statistics
     output = output or types.Channel(
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
-    spec = ExampleValidatorSpec(
-        stats=stats,
-        schema=schema,
-        output=output)
+    spec = ExampleValidatorSpec(stats=stats, schema=schema, output=output)
     super(ExampleValidator, self).__init__(spec=spec, name=name)
