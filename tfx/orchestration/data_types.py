@@ -104,6 +104,8 @@ class RuntimeParameter(object):
 
   Attributes:
     name: The name of the runtime parameter
+    default: Default value for runtime params when it's not explicitly
+             specified.
     ptype: The type of the runtime parameter
     description: Description of the usage of the parameter
   """
@@ -111,10 +113,14 @@ class RuntimeParameter(object):
   def __init__(
       self,
       name: Text,
+      default: Any = None,
       ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
       description: Optional[Text] = None):
     if ptype and ptype not in [int, float, bool, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
+    if (default and ptype) and not isinstance(default, ptype):
+      raise TypeError('Default value must be consistent with specified ptype')
     self.name = name
+    self.default = default
     self.ptype = ptype
     self.description = description
