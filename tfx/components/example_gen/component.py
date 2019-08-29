@@ -35,8 +35,8 @@ from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
 class _QueryBasedExampleGen(base_component.BaseComponent):
   """A TFX component to ingest examples from a file system.
 
-  The QueryBasedExampleGen component enables TFX to ingest examples from
-  relational databases such as SQLite and MySQL.  The component will also
+  The _QueryBasedExampleGen component can be extended to ingest examples from
+  query based systems such as Presto or Bigquery. The component will also
   convert the input data into
   tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
   and generate train and eval example splits for downsteam components.
