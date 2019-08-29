@@ -50,7 +50,7 @@ class ExecutorTest(absltest.TestCase):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.gfile.MakeDirs(output_data_dir)
+    tf.io.gfile.makedirs(output_data_dir)
 
     # Create input dict.
     train_examples = standard_artifacts.Examples(split='train')

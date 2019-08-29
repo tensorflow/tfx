@@ -49,7 +49,7 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
+    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
     artifact_utils.get_single_instance(
         output_artifacts['output']).uri = os.path.join(
             pipeline_info.pipeline_root, 'output')
@@ -103,7 +103,7 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    tf.gfile.MakeDirs(os.path.dirname(input_path))
+    tf.io.gfile.makedirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
     input_artifact = types.Artifact(type_name='InputPath')

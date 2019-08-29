@@ -57,7 +57,7 @@ class DepsUtilsTest(tf.test.TestCase):
       self.assertEqual('sdist', cmd[2])
       setup_file = cmd[1]
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
-      tf.gfile.MakeDirs(dist_dir)
+      tf.io.gfile.makedirs(dist_dir)
       dest_file = os.path.join(dist_dir, expected_package)
       tf.gfile.Copy(test_file, dest_file)
 

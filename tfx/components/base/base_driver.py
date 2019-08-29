@@ -61,7 +61,7 @@ def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
     # TODO(zhitaoli): Consider refactoring this out into something
     # which can handle permission bits.
     tf.logging.info('Creating output artifact uri %s as directory', uri)
-    tf.gfile.MakeDirs(uri)
+    tf.io.gfile.makedirs(uri)
 
   return uri
 

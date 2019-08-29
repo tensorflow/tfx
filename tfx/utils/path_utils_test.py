@@ -32,10 +32,10 @@ class PathUtilsTest(tf.test.TestCase):
     self._output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
     self._eval_model_path = os.path.join(self._output_uri, 'eval_model_dir',
                                          'MODEL')
-    tf.gfile.MakeDirs(self._eval_model_path)
+    tf.io.gfile.makedirs(self._eval_model_path)
     self._serving_model_path = os.path.join(
         self._output_uri, 'serving_model_dir', 'export', 'taxi', 'MODEL')
-    tf.gfile.MakeDirs(self._serving_model_path)
+    tf.io.gfile.makedirs(self._serving_model_path)
 
   def testModelPath(self):
     # Test retrieving model folder.

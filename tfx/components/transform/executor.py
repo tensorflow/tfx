@@ -512,7 +512,7 @@ class Executor(base_executor.BaseExecutor):
     """
 
     # TODO(b/68765333): Investigate if this can be avoided.
-    tf.gfile.MakeDirs(os.path.dirname(stats_output_path))
+    tf.io.gfile.makedirs(os.path.dirname(stats_output_path))
     # TODO(b/117601471): Replace with utility method to write stats.
     return (pcollection_stats | 'Write' >> beam.io.WriteToText(
         stats_output_path,
