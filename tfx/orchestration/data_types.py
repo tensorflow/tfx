@@ -84,6 +84,11 @@ class PipelineInfo(object):
     self.pipeline_root = pipeline_root
     self.run_id = run_id
 
+  @property
+  def run_context_name(self) -> Text:
+    """Context name for current run."""
+    return '{}.{}'.format(self.pipeline_name, self.run_id)
+
 
 class ComponentInfo(object):
   """Component info.

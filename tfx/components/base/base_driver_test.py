@@ -82,6 +82,7 @@ class BaseDriverTest(tf.test.TestCase):
                 artifacts=[types.Artifact(type_name='output_a', split='split')])
     }
     execution_id = 1
+    context_id = 123
     exec_properties = copy.deepcopy(self._exec_properties)
     driver_args = data_types.DriverArgs(enable_cache=True)
     pipeline_info = data_types.PipelineInfo(
@@ -94,6 +95,9 @@ class BaseDriverTest(tf.test.TestCase):
         input_dict['input_a'].get())
     self._mock_metadata.register_execution.side_effect = [execution_id]
     self._mock_metadata.previous_execution.side_effect = [None]
+    self._mock_metadata.register_run_context_if_not_exists.side_effect = [
+        context_id
+    ]
 
     driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.pre_execution(
@@ -128,6 +132,7 @@ class BaseDriverTest(tf.test.TestCase):
                 artifacts=[types.Artifact(type_name='output_a', split='split')])
     }
     execution_id = 1
+    context_id = 123
     exec_properties = copy.deepcopy(self._exec_properties)
     driver_args = data_types.DriverArgs(enable_cache=True)
     pipeline_info = data_types.PipelineInfo(
@@ -140,6 +145,9 @@ class BaseDriverTest(tf.test.TestCase):
         input_dict['input_a'].get())
     self._mock_metadata.register_execution.side_effect = [execution_id]
     self._mock_metadata.previous_execution.side_effect = [2]
+    self._mock_metadata.register_run_context_if_not_exists.side_effect = [
+        context_id
+    ]
     self._mock_metadata.fetch_previous_result_artifacts.side_effect = [
         self._output_artifacts
     ]

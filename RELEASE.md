@@ -48,7 +48,7 @@
 *   Used custom container for AI Platform Trainer extension.
 *   Introduced ExecutorSpec, which generalizes the representation of executors
     to include both Python classes and containers.
-
+*   Supported run context for metadata tracking of tfx pipeline.
 
 ### Deprecations
 *   Deprecated 'metadata_db_root' in favor of passing in
