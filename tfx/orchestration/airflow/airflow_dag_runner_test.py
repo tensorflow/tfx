@@ -75,10 +75,10 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    component_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', '_FakeComponent')
+    instance_name = spec.__class__.__name__.replace(
+        '_FakeComponentSpec', '')
     super(_FakeComponent, self).__init__(
-        spec=spec, component_name=component_name)
+        spec=spec, instance_name=instance_name)
 
 
 class AirflowDagRunnerTest(tf.test.TestCase):

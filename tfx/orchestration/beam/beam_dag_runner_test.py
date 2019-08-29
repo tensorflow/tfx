@@ -34,7 +34,7 @@ _executed_components = []
 class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 
   def _run_component(self):
-    _executed_components.append(self._name)
+    _executed_components.append(self._component_id)
 
 
 # We define fake component spec classes below for testing. Note that we can't
@@ -88,10 +88,10 @@ class _FakeComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    component_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', 'component_').lower()
+    instance_name = spec.__class__.__name__.replace(
+        '_FakeComponentSpec', '').lower()
     super(_FakeComponent, self).__init__(spec=spec,
-                                         component_name=component_name)
+                                         instance_name=instance_name)
 
 
 class BeamDagRunnerTest(tf.test.TestCase):
@@ -131,12 +131,12 @@ class BeamDagRunnerTest(tf.test.TestCase):
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
     self.assertItemsEqual(_executed_components, [
-        'component_a', 'component_b', 'component_c', 'component_d',
-        'component_e'
+        '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
+        '_FakeComponent.d', '_FakeComponent.e'
     ])
-    self.assertEqual(_executed_components[0], 'component_a')
-    self.assertEqual(_executed_components[3], 'component_d')
-    self.assertEqual(_executed_components[4], 'component_e')
+    self.assertEqual(_executed_components[0], '_FakeComponent.a')
+    self.assertEqual(_executed_components[3], '_FakeComponent.d')
+    self.assertEqual(_executed_components[4], '_FakeComponent.e')
 
 
 if __name__ == '__main__':

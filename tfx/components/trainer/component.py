@@ -113,7 +113,7 @@ class Trainer(base_component.BaseComponent):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
       transform_graph: Optional[types.Channel] = None,
-      name: Optional[Text] = None):
+      instance_name: Optional[Text] = None):
     """Construct a Trainer component.
 
     Args:
@@ -155,8 +155,8 @@ class Trainer(base_component.BaseComponent):
       output: Optional 'ModelExportPath' channel for result of exported models.
       transform_graph: Forwards compatibility alias for the 'transform_output'
         argument.
-      name: Optional unique name. Necessary iff multiple Trainer components are
-        declared in the same pipeline.
+      instance_name: Optional unique instance name. Necessary iff multiple
+        Trainer components are declared in the same pipeline.
 
     Raises:
       ValueError:
@@ -192,4 +192,6 @@ class Trainer(base_component.BaseComponent):
         custom_config=custom_config,
         output=output)
     super(Trainer, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec, name=name)
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

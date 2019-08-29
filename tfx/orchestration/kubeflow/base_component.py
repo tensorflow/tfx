@@ -96,12 +96,8 @@ class BaseComponent(object):
         json.dumps(pipeline.additional_pipeline_args),
         '--component_id',
         component.component_id,
-        '--component_name',
-        component.component_name,
         '--component_type',
         component.component_type,
-        '--name',
-        component.name,
         '--driver_class_path',
         driver_class_path,
         '--executor_spec',
@@ -120,7 +116,7 @@ class BaseComponent(object):
       arguments.append('--enable_cache')
 
     self.container_op = dsl.ContainerOp(
-        name=component.component_name,
+        name=component.component_id.replace('.', '_'),
         command=_COMMAND,
         image=tfx_image,
         arguments=arguments,

@@ -51,7 +51,7 @@ class StatisticsGen(base_component.BaseComponent):
                input_data: types.Channel = None,
                output: Optional[types.Channel] = None,
                examples: Optional[types.Channel] = None,
-               name: Optional[Text] = None):
+               instance_name: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -61,9 +61,9 @@ class StatisticsGen(base_component.BaseComponent):
       output: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
       examples: Forwards compatibility alias for the `input_data` argument.
-      name: Name assigned to this specific instance of StatisticsGen.  Required
-        only if multiple StatisticsGen components are declared in the same
-        pipeline.
+      instance_name: Optional name assigned to this specific instance of
+        StatisticsGen.  Required only if multiple StatisticsGen components are
+        declared in the same pipeline.
     """
     input_data = input_data or examples
     output = output or types.Channel(
@@ -74,4 +74,4 @@ class StatisticsGen(base_component.BaseComponent):
         ])
     spec = StatisticsGenSpec(
         input_data=input_data, output=output)
-    super(StatisticsGen, self).__init__(spec=spec, name=name)
+    super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)

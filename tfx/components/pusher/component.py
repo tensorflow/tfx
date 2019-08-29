@@ -70,7 +70,7 @@ class Pusher(base_component.BaseComponent):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       model_push: Optional[types.Channel] = None,
       model: Optional[types.Channel] = None,
-      name: Optional[Text] = None):
+      instance_name: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:
@@ -90,8 +90,8 @@ class Pusher(base_component.BaseComponent):
       custom_executor_spec: Optional custom executor spec.
       model_push: Optional output 'ModelPushPath' channel with result of push.
       model: Forwards compatibility alias for the 'model_exports' argument.
-      name: Optional unique name. Necessary if multiple Pusher components are
-        declared in the same pipeline.
+      instance_name: Optional unique instance name. Necessary if multiple Pusher
+        components are declared in the same pipeline.
     """
     model_export = model_export or model
     model_push = model_push or types.Channel(
@@ -108,4 +108,6 @@ class Pusher(base_component.BaseComponent):
         custom_config=custom_config,
         model_push=model_push)
     super(Pusher, self).__init__(
-        spec=spec, custom_executor_spec=custom_executor_spec, name=name)
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

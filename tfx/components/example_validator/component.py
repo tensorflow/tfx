@@ -67,7 +67,7 @@ class ExampleValidator(base_component.BaseComponent):
                schema: types.Channel = None,
                output: Optional[types.Channel] = None,
                statistics: Optional[types.Channel] = None,
-               name: Optional[Text] = None):
+               instance_name: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -77,9 +77,9 @@ class ExampleValidator(base_component.BaseComponent):
       schema: A Channel of "SchemaPath' type. _required_
       output: Output channel of 'ExampleValidationPath' type.
       statistics: Future replacement of the 'stats' argument.
-      name: Name assigned to this specific instance of ExampleValidator.
-        Required only if multiple ExampleValidator components are declared in
-        the same pipeline.
+      instance_name: Optional name assigned to this specific instance of
+        ExampleValidator. Required only if multiple ExampleValidator components
+        are declared in the same pipeline.
 
     Either `stats` or `statistics` must be present in the arguments.
     """
@@ -88,4 +88,5 @@ class ExampleValidator(base_component.BaseComponent):
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(stats=stats, schema=schema, output=output)
-    super(ExampleValidator, self).__init__(spec=spec, name=name)
+    super(ExampleValidator, self).__init__(
+        spec=spec, instance_name=instance_name)

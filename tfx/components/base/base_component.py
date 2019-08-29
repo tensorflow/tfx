@@ -55,14 +55,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       this component (optional, defaults to base_driver.BaseDriver).
   """
 
-  # Subclasses may optionally override this component name property, which
-  # would otherwise default to the component class name. This is used for
-  # tracking component instances in pipelines and display in the UI.
-  COMPONENT_NAME = None
   # Subclasses must override this property (by specifying a types.ComponentSpec
   # class, e.g. "SPEC_CLASS = MyComponentSpec").
   SPEC_CLASS = _abstract_property()
   # Subclasses must also override the executor spec.
+  #
   # Note: EXECUTOR_CLASS has been replaced with EXECUTOR_SPEC. A custom
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
@@ -75,21 +72,16 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
       self,
       spec: types.ComponentSpec,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      name: Optional[Text] = None,
-      component_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None):
     """Initialize a component.
 
     Args:
       spec: types.ComponentSpec object for this component instance.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor specified in the component attribute.
-      name: Optional unique identifying name for this instance of the component
-        in the pipeline. Required if two instances of the same component is used
-        in the pipeline.
-      component_name: Optional component name override for this instance of the
-        component. This will override the class-level COMPONENT_NAME attribute
-        and the name of the class (which would otherwise be used as the
-        component name).
+      instance_name: Optional unique identifying name for this instance of the
+        component in the pipeline. Required if two instances of the same
+        component is used in the pipeline.
     """
     self.spec = spec
     if custom_executor_spec:
@@ -99,10 +91,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
              'ExecutorSpec') % (custom_executor_spec, self.__class__))
     self.executor_spec = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
     self.driver_class = self.__class__.DRIVER_CLASS
-    self.component_name = (
-        component_name or self.__class__.COMPONENT_NAME or
-        self.__class__.__name__)
-    self.name = name
+    # TODO(b/139540680): consider making instance_name private.
+    self.instance_name = instance_name
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._validate_component_class()
@@ -141,10 +131,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
           (self.__class__, self.__class__.SPEC_CLASS, spec))
 
   def __repr__(self):
-    return ('%s(spec: %s, executor_spec: %s, driver_class: %s, name: %s, '
-            'inputs: %s, outputs: %s)') % (
+    return ('%s(spec: %s, executor_spec: %s, driver_class: %s, '
+            'component_id: %s, inputs: %s, outputs: %s)') % (
                 self.__class__.__name__, self.spec, self.executor_spec,
-                self.driver_class, self.name, self.inputs, self.outputs)
+                self.driver_class, self.component_id, self.inputs, self.outputs)
 
   @property
   def component_type(self) -> Text:
@@ -166,23 +156,24 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   # we will have two component level keys:
   # - component_type: the path of the python executor or the image uri of the
   #   executor.
-  # - component_id: <component_name>.<unique_name>
+  # - component_id: <component_class_name>.<unique_name>
   @property
   def component_id(self):
-    """Component id.
+    """Component id, unique across all component instances in a pipeline.
 
     If unique name is available, component_id will be:
-      <component_name>.<unique_name>
+      <component_class_name>.<instance_name>
     otherwise, component_id will be:
-      <component_name>
+      <component_class_name>
 
     Returns:
       component id.
     """
-    if self.name:
-      return '{}.{}'.format(self.component_name, self.name)
+    component_class_name = self.__class__.__name__
+    if self.instance_name:
+      return '{}.{}'.format(component_class_name, self.instance_name)
     else:
-      return self.component_name
+      return component_class_name
 
   @property
   def upstream_nodes(self):

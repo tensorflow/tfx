@@ -67,7 +67,7 @@ class Transform(base_component.BaseComponent):
                transform_output: Optional[types.Channel] = None,
                transformed_examples: Optional[types.Channel] = None,
                examples: Optional[types.Channel] = None,
-               name: Optional[Text] = None):
+               instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
@@ -96,8 +96,8 @@ class Transform(base_component.BaseComponent):
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
       examples: Forwards compatibility alias for the 'input_data' argument.
-      name: Optional unique name. Necessary iff multiple transform components
-        are declared in the same pipeline.
+      instance_name: Optional unique instance name. Necessary iff multiple
+        transform components are declared in the same pipeline.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -125,4 +125,4 @@ class Transform(base_component.BaseComponent):
         preprocessing_fn=preprocessing_fn,
         transform_output=transform_output,
         transformed_examples=transformed_examples)
-    super(Transform, self).__init__(spec=spec, name=name)
+    super(Transform, self).__init__(spec=spec, instance_name=instance_name)

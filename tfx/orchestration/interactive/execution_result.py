@@ -42,9 +42,9 @@ class ExecutionResult(object):
       for line in repr_string.split('\n'):
         outputs_parts.append(line)
     outputs_str = '\n'.join('        %s' % line for line in outputs_parts)
-    return ('ExecutionResult(\n    component: %s'
+    return ('ExecutionResult(\n    component_id: %s'
             '\n    execution_id: %s'
             '\n    outputs:\n%s'
-            ')') % (self.component.component_name,
+            ')') % (self.component.component_id,
                     self.execution_id,
                     outputs_str)
