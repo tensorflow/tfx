@@ -20,7 +20,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow
-from tfx.orchestration.kubeflow.runner import KubeflowRunner
+from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 
 
 class TaxiPipelineKubeflowTest(tf.test.TestCase):
@@ -50,7 +50,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
         ._ai_platform_serving_args)
     self.assertEqual(9, len(logical_pipeline.components))
 
-    KubeflowRunner().run(logical_pipeline)
+    KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
