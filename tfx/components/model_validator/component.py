@@ -29,13 +29,36 @@ from tfx.types.standard_component_specs import ModelValidatorSpec
 
 
 class ModelValidator(base_component.BaseComponent):
-  """Official TFX ModelValidator component.
+  """A TFX component to validate a newly trained model against a prior model.
 
   The model validator component can be used to check model metrics threshold
-  and validate current model against preivously blessed model. If there isn't
-  blessed model yet, model validator will just make sure the threshold passed.
+  and validate current model against a previously validated model. If there
+  isn't a prior validated model, model validator will just make sure the
+  threshold passed.  Otherwise, ModelValidator compares a newly trained models
+  against a known good model, specifically the last model "blessed" by this
+  component.  A model is "blessed" if the exported model's metrics are within
+  predefined thresholds around the prior model's metrics.
 
-  This component includes a custom driver to resolve last blessed model.
+  *Note:* This component includes a driver to resolve last blessed model.
+
+  ## Possible causes why model validation fails
+  Model validation can fail for many reasons, but these are the most common:
+
+  - problems with training data.  For example, negative examples are dropped or
+    features are missing.
+  - problems with the test or evaluation data.  For example, skew exists between
+    the training and evaluation data.
+  - changes in data distribution.  This indicates the user behavior may have
+    changed over time.
+  - problems with the trainer.  For example, the trainer was stopped before
+    model is converged or the model is unstable.
+
+  ## Example
+  ```
+    # Performs quality validation of a candidate model (compared to a baseline).
+    model_validator = ModelValidator(
+        examples=example_gen.outputs.examples, model=trainer.outputs.output)
+  ```
   """
 
   SPEC_CLASS = ModelValidatorSpec
@@ -50,20 +73,20 @@ class ModelValidator(base_component.BaseComponent):
     """Construct a ModelValidator component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component.
-      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
-        component.
-      blessing: Optional output channel of 'ModelBlessingPath' for result of
-        blessing.
-      name: Optional unique name. Necessary if multiple ModelValidator
-        components are declared in the same pipeline.
+      examples: A Channel of 'ExamplesPath' type, usually produced by
+        [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
+        _required_
+      model: A Channel of 'ModelExportPath' type, usually produced by
+        [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
+        _required_
+      blessing: Output channel of 'ModelBlessingPath' that contains the
+        validation result.
+      name: Name assigned to this specific instance of ModelValidator.  Required
+        only if multiple ModelValidator components are declared in the same
+        pipeline.
     """
     blessing = blessing or types.Channel(
         type=standard_artifacts.ModelBlessing,
         artifacts=[standard_artifacts.ModelBlessing()])
-    spec = ModelValidatorSpec(
-        examples=examples,
-        model=model,
-        blessing=blessing)
+    spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, name=name)

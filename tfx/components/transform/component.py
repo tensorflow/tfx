@@ -27,13 +27,31 @@ from tfx.types.standard_component_specs import TransformSpec
 
 
 class Transform(base_component.BaseComponent):
-  """Official TFX Transform component.
+  """A TFX component to transform the input examples.
 
   The Transform component wraps TensorFlow Transform (tf.Transform) to
   preprocess data in a TFX pipeline. This component will load the
   preprocessing_fn from input module file, preprocess both 'train' and 'eval'
   splits of input examples, generate the `tf.Transform` output, and save both
   transform function and transformed examples to orchestrator desired locations.
+
+  ## Providing a preprocessing function
+  The TFX executor will use the estimator provided in the `module_file` file
+  to train the model.  The Transform executor will look specifically for the
+  `preprocessing_fn()` function within that file.
+
+  An example of `preprocessing_fn()` can be found in the [user-supplied
+  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
+  of the TFX Chicago Taxi pipeline example.
+
+  ## Example
+  ```
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
+      input_data=example_gen.outputs.examples,
+      schema=infer_schema.outputs.output,
+      module_file=module_file)
+  ```
 
   Please see https://www.tensorflow.org/tfx/transform for more details.
   """

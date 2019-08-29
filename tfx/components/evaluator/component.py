@@ -29,9 +29,40 @@ from tfx.types.standard_component_specs import EvaluatorSpec
 
 
 class Evaluator(base_component.BaseComponent):
-  """Official TFX Evaluator component.
+  """A TFX component to evaluate models trained by a TFX Trainer component.
 
-  The evaluator component can be used to perform model evaluations.
+  The Evaluator component performs model evaluations in the TFX pipeline and
+  the resultant metrics can be viewed in a Jupyter notebook.  It uses the
+  input examples generated from the
+  [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
+  component to evaluate the models.
+
+  Specifically, it can provide:
+    - metrics computed on entire training and eval dataset
+    - tracking metrics over time
+    - model quality performance on different feature slices
+
+  ## Exporting the EvalSavedModel in Trainer
+
+  In order to setup Evaluator in a TFX pipeline, an EvalSavedModel needs to be
+  exported during training, which is a special SavedModel containing
+  annotations for the metrics, features, labels, and so on in your model.
+  Evaluator uses this EvalSavedModel to compute metrics.
+
+  As part of this, the Trainer component creates eval_input_receiver_fn,
+  analogous to the serving_input_receiver_fn, which will extract the features
+  and labels from the input data. As with serving_input_receiver_fn, there are
+  utility functions to help with this.
+
+  Please see https://www.tensorflow.org/tfx/model_analysis for more details.
+
+  ## Example
+  ```
+    # Uses TFMA to compute a evaluation statistics over features of a model.
+    model_analyzer = Evaluator(
+        examples=example_gen.outputs.examples,
+        model_exports=trainer.outputs.output)
+  ```
   """
 
   SPEC_CLASS = EvaluatorSpec
@@ -49,16 +80,21 @@ class Evaluator(base_component.BaseComponent):
 
     Args:
       examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component (required).
+        component. _required_
       model_exports: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component (required).
-      feature_slicing_spec: Optional evaluator_pb2.FeatureSlicingSpec instance,
-        providing the way to slice the data.
-      output: Optional channel of 'ModelEvalPath' for result of evaluation.
-      model: Forwards compatibility alias for the 'model_exports' argument.
-      name: Optional unique name. Necessary if multiple Evaluator components are
-        declared in the same pipeline.
+        Trainer component.  Will be deprecated in the future for the `model`
+        parameter.
+      feature_slicing_spec:
+        [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
+        instance that describes how Evaluator should slice the data.
+      output: Channel of `ModelEvalPath` to store the evaluation results.
+      model: Future replacement of the `model_exports` argument.
+      name: Name assigned to this specific instance of Evaluator. Required
+        only if multiple Evaluator components are declared in the same pipeline.
+
+      Either `model_exports` or `model` must be present in the input arguments.
     """
+
     model_exports = model_exports or model
     output = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
