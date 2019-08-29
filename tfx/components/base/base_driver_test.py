@@ -47,7 +47,7 @@ class BaseDriverTest(tf.test.TestCase):
         artifact.id = index + 1
         uri = os.path.join(input_dir, key, str(artifact.id), '')
         artifact.uri = uri
-        tf.gfile.MakeDirs(uri)
+        tf.io.gfile.makedirs(uri)
     self._output_dict = {
         'output_data':
             types.Channel(

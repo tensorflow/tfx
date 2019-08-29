@@ -80,7 +80,7 @@ def get_logger(config):
   logger.setLevel(config.log_level)
 
   if not tf.gfile.Exists(config.log_root):
-    tf.gfile.MakeDirs(config.log_root)
+    tf.io.gfile.makedirs(config.log_root)
   if not tf.gfile.IsDirectory(config.log_root):
     raise RuntimeError('Log dir exists as a file: {}'.format(config.log_root))
 

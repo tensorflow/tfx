@@ -69,7 +69,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     pipeline_root = os.path.join(output_data_dir, 'Test')
-    tf.gfile.MakeDirs(pipeline_root)
+    tf.io.gfile.makedirs(pipeline_root)
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
 

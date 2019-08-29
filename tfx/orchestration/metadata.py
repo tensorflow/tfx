@@ -52,7 +52,7 @@ def sqlite_metadata_connection_config(metadata_db_uri: Text
   Returns:
     A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
   """
-  tf.gfile.MakeDirs(os.path.dirname(metadata_db_uri))
+  tf.io.gfile.makedirs(os.path.dirname(metadata_db_uri))
   connection_config = metadata_store_pb2.ConnectionConfig()
   connection_config.sqlite.filename_uri = metadata_db_uri
   connection_config.sqlite.connection_mode = \

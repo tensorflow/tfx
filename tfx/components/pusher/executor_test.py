@@ -34,7 +34,7 @@ class ExecutorTest(tf.test.TestCase):
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    tf.gfile.MakeDirs(self._output_data_dir)
+    tf.io.gfile.makedirs(self._output_data_dir)
     self._model_export = standard_artifacts.Model()
     self._model_export.uri = os.path.join(self._source_data_dir,
                                           'trainer/current/')
@@ -46,13 +46,13 @@ class ExecutorTest(tf.test.TestCase):
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
-    tf.gfile.MakeDirs(self._model_push.uri)
+    tf.io.gfile.makedirs(self._model_push.uri)
     self._output_dict = {
         'model_push': [self._model_push],
     }
     self._serving_model_dir = os.path.join(self._output_data_dir,
                                            'serving_model_dir')
-    tf.gfile.MakeDirs(self._serving_model_dir)
+    tf.io.gfile.makedirs(self._serving_model_dir)
     self._exec_properties = {
         'push_destination':
             json_format.MessageToJson(

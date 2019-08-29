@@ -49,7 +49,7 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
   if overwrite and tf.gfile.Exists(dst):
     tf.gfile.Remove(dst)
   dst_dir = os.path.dirname(dst)
-  tf.gfile.MakeDirs(dst_dir)
+  tf.io.gfile.makedirs(dst_dir)
   tf.gfile.Copy(src, dst, overwrite=overwrite)
 
 
@@ -58,7 +58,7 @@ def copy_dir(src: Text, dst: Text) -> None:
 
   if tf.gfile.Exists(dst):
     tf.gfile.DeleteRecursively(dst)
-  tf.gfile.MakeDirs(dst)
+  tf.io.gfile.makedirs(dst)
 
   for dir_name, sub_dirs, leaf_files in tf.gfile.Walk(src):
     for leaf_file in leaf_files:
@@ -67,7 +67,7 @@ def copy_dir(src: Text, dst: Text) -> None:
       tf.gfile.Copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
-      tf.gfile.MakeDirs(os.path.join(dst, sub_dir))
+      tf.io.gfile.makedirs(os.path.join(dst, sub_dir))
 
 
 def get_only_uri_in_dir(dir_path: Text) -> Text:
@@ -91,7 +91,7 @@ def delete_dir(path: Text) -> None:
 def write_string_file(file_name: Text, string_value: Text) -> None:
   """Writes a string to file."""
 
-  tf.gfile.MakeDirs(os.path.dirname(file_name))
+  tf.io.gfile.makedirs(os.path.dirname(file_name))
   file_io.write_string_to_file(file_name, string_value)
 
 
@@ -104,7 +104,7 @@ def write_pbtxt_file(file_name: Text, proto: Message) -> None:
 def write_tfrecord_file(file_name: Text, proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
 
-  tf.gfile.MakeDirs(os.path.dirname(file_name))
+  tf.io.gfile.makedirs(os.path.dirname(file_name))
   with tf.python_io.TFRecordWriter(file_name) as writer:
     writer.write(proto.SerializeToString())
 
