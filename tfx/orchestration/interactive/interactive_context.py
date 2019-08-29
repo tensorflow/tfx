@@ -139,7 +139,7 @@ class InteractiveContext(object):
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():
         artifact.pipeline_name = self.pipeline_name
-        artifact.producer_component = component.component_name
+        artifact.producer_component = component.component_id
         artifact.run_id = run_id
         artifact.name = name
     launcher = ComponentLauncher(component, pipeline_info, driver_args,

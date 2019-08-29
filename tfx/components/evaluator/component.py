@@ -75,7 +75,7 @@ class Evaluator(base_component.BaseComponent):
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
       output: Optional[types.Channel] = None,
       model: Optional[types.Channel] = None,
-      name: Optional[Text] = None):
+      instance_name: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -89,12 +89,12 @@ class Evaluator(base_component.BaseComponent):
         instance that describes how Evaluator should slice the data.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model: Future replacement of the `model_exports` argument.
-      name: Name assigned to this specific instance of Evaluator. Required
-        only if multiple Evaluator components are declared in the same pipeline.
+      instance_name: Optional name assigned to this specific instance of
+        Evaluator. Required only if multiple Evaluator components are declared
+        in the same pipeline.
 
       Either `model_exports` or `model` must be present in the input arguments.
     """
-
     model_exports = model_exports or model
     output = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
@@ -105,4 +105,4 @@ class Evaluator(base_component.BaseComponent):
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
         output=output)
-    super(Evaluator, self).__init__(spec=spec, name=name)
+    super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

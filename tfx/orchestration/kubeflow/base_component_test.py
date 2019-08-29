@@ -39,7 +39,7 @@ class BaseComponentTest(tf.test.TestCase):
     example_gen = csv_example_gen_component.CsvExampleGen(
         input_base=channel_utils.as_channel([examples]))
     statistics_gen = statistics_gen_component.StatisticsGen(
-        input_data=example_gen.outputs.examples)
+        input_data=example_gen.outputs.examples, instance_name='foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name='test_pipeline',
@@ -51,17 +51,17 @@ class BaseComponentTest(tf.test.TestCase):
     self._metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     self._metadata_config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
     with dsl.Pipeline('test_pipeline'):
-
       self.component = base_component.BaseComponent(
           component=statistics_gen,
-          depends_on=set([example_gen]),
+          depends_on=set(),
           pipeline=pipeline,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
       )
+    self.tfx_component = statistics_gen
 
   def testContainerOpArguments(self):
-    self.assertEqual(self.component.container_op.arguments[:20], [
+    expected_args = [
         '--pipeline_name',
         'test_pipeline',
         '--pipeline_root',
@@ -75,13 +75,9 @@ class BaseComponentTest(tf.test.TestCase):
         '--additional_pipeline_args',
         '{}',
         '--component_id',
-        'StatisticsGen',
-        '--component_name',
-        'StatisticsGen',
+        'StatisticsGen.foo',
         '--component_type',
         'tfx.components.statistics_gen.component.StatisticsGen',
-        '--name',
-        'None',
         '--driver_class_path',
         'tfx.components.base.base_driver.BaseDriver',
         '--executor_spec',
@@ -94,7 +90,15 @@ class BaseComponentTest(tf.test.TestCase):
         '"__module__": "tfx.components.statistics_gen.executor", '
         '"__tfx_object_type__": "class"}'
         '}',
-    ])
+    ]
+    self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
+                     expected_args)
+
+  def testContainerOpName(self):
+    self.assertEqual('StatisticsGen.foo',
+                     self.tfx_component.component_id)
+    self.assertEqual('StatisticsGen_foo',
+                     self.component.container_op.name)
 
 
 if __name__ == '__main__':

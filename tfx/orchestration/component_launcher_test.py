@@ -79,13 +79,13 @@ class _FakeComponent(base_component.BaseComponent):
   DRIVER_CLASS = _FakeDriver
 
   def __init__(self,
-               name: Text,
+               instance_name: Text,
                input_channel: types.Channel,
                output_channel: Optional[types.Channel] = None):
     output_channel = output_channel or types.Channel(
         type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(spec=spec, name=name)
+    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
 class ComponentRunnerTest(tf.test.TestCase):
@@ -110,7 +110,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     input_artifact.uri = input_path
 
     component = _FakeComponent(
-        name='FakeComponent',
+        instance_name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]))
 
     pipeline_info = data_types.PipelineInfo(

@@ -42,7 +42,7 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[types.Channel] = None,
-               name: Optional[Text] = None):
+               instance_name: Optional[Text] = None):
     """Constructs a PrestoExampleGen component.
 
     Args:
@@ -57,8 +57,8 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
         size 2:1.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      name: Optional unique name. Necessary if multiple PrestoExampleGen
-        components are declared in the same pipeline.
+      instance_name: Optional unique instance name. Necessary if multiple
+        PrestoExampleGen components are declared in the same pipeline.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set. Or
@@ -82,6 +82,5 @@ class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=prot
         input_config=input_config,
         output_config=output_config,
         custom_config=packed_custom_config,
-        component_name='PrestoExampleGen',
         example_artifacts=example_artifacts,
-        name=name)
+        instance_name=instance_name)

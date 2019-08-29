@@ -43,7 +43,6 @@ class _BasicComponentSpec(types.ComponentSpec):
 
 class _BasicComponent(base_component.BaseComponent):
 
-  COMPONENT_NAME = 'MyBasicComponent'
   SPEC_CLASS = _BasicComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
@@ -63,7 +62,7 @@ class ComponentTest(tf.test.TestCase):
   def testComponentBasic(self):
     input_channel = types.Channel(type_name='InputType')
     component = _BasicComponent(folds=10, input=input_channel)
-    self.assertEqual(component.component_name, 'MyBasicComponent')
+    self.assertEqual(component.component_id, '_BasicComponent')
     self.assertIs(input_channel, component.inputs.input)
     self.assertIsInstance(component.outputs.output, types.Channel)
     self.assertEqual(component.outputs.output.type_name, 'OutputType')
