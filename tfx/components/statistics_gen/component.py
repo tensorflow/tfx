@@ -47,11 +47,13 @@ class StatisticsGen(base_component.BaseComponent):
   SPEC_CLASS = StatisticsGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               input_data: types.Channel = None,
-               output: Optional[types.Channel] = None,
-               examples: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_data: types.Channel = None,
+      output: Optional[types.Channel] = None,
+      examples: Optional[types.Channel] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -61,6 +63,7 @@ class StatisticsGen(base_component.BaseComponent):
       output: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
       examples: Forwards compatibility alias for the `input_data` argument.
+      custom_executor_spec: Optional custom executor spec.
       instance_name: Optional name assigned to this specific instance of
         StatisticsGen.  Required only if multiple StatisticsGen components are
         declared in the same pipeline.
@@ -74,4 +77,7 @@ class StatisticsGen(base_component.BaseComponent):
         ])
     spec = StatisticsGenSpec(
         input_data=input_data, output=output)
-    super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
+    super(StatisticsGen, self).__init__(
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

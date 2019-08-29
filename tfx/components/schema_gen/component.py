@@ -57,7 +57,8 @@ class SchemaGen(base_component.BaseComponent):
                stats: types.Channel = None,
                infer_feature_shape: Optional[bool] = False,
                output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
+               statistics: Optional[types.Channel] = None,\
+               custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
                instance_name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
@@ -71,6 +72,7 @@ class SchemaGen(base_component.BaseComponent):
         as tf.SparseTensor.
       output: Output `SchemaPath` channel for schema result.
       statistics: Future replacement of the 'stats' argument.
+      custom_executor_spec: Optional custom executor spec.
       instance_name: Optional name assigned to this specific instance of
         SchemaGen.  Required only if multiple SchemaGen components are declared
         in the same pipeline.
@@ -82,4 +84,7 @@ class SchemaGen(base_component.BaseComponent):
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(
         stats=stats, infer_feature_shape=infer_feature_shape, output=output)
-    super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)
+    super(SchemaGen, self).__init__(
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

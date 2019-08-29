@@ -62,12 +62,14 @@ class ExampleValidator(base_component.BaseComponent):
   SPEC_CLASS = ExampleValidatorSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               stats: types.Channel = None,
-               schema: types.Channel = None,
-               output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      stats: types.Channel = None,
+      schema: types.Channel = None,
+      output: Optional[types.Channel] = None,
+      statistics: Optional[types.Channel] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -77,6 +79,7 @@ class ExampleValidator(base_component.BaseComponent):
       schema: A Channel of "SchemaPath' type. _required_
       output: Output channel of 'ExampleValidationPath' type.
       statistics: Future replacement of the 'stats' argument.
+      custom_executor_spec: Optional custom executor spec.
       instance_name: Optional name assigned to this specific instance of
         ExampleValidator. Required only if multiple ExampleValidator components
         are declared in the same pipeline.
@@ -89,4 +92,6 @@ class ExampleValidator(base_component.BaseComponent):
         artifacts=[standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(stats=stats, schema=schema, output=output)
     super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name)
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

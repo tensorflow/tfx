@@ -59,15 +59,17 @@ class Transform(base_component.BaseComponent):
   SPEC_CLASS = TransformSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               input_data: types.Channel = None,
-               schema: types.Channel = None,
-               module_file: Optional[Text] = None,
-               preprocessing_fn: Optional[Text] = None,
-               transform_output: Optional[types.Channel] = None,
-               transformed_examples: Optional[types.Channel] = None,
-               examples: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_data: types.Channel = None,
+      schema: types.Channel = None,
+      module_file: Optional[Text] = None,
+      preprocessing_fn: Optional[Text] = None,
+      transform_output: Optional[types.Channel] = None,
+      transformed_examples: Optional[types.Channel] = None,
+      examples: Optional[types.Channel] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
@@ -96,6 +98,7 @@ class Transform(base_component.BaseComponent):
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
       examples: Forwards compatibility alias for the 'input_data' argument.
+      custom_executor_spec: Optional custom executor spec.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
 
@@ -125,4 +128,7 @@ class Transform(base_component.BaseComponent):
         preprocessing_fn=preprocessing_fn,
         transform_output=transform_output,
         transformed_examples=transformed_examples)
-    super(Transform, self).__init__(spec=spec, instance_name=instance_name)
+    super(Transform, self).__init__(
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)

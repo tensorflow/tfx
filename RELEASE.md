@@ -49,6 +49,7 @@
 *   Introduced ExecutorSpec, which generalizes the representation of executors
     to include both Python classes and containers.
 *   Supported run context for metadata tracking of tfx pipeline.
+*   Enalbed custom executor for every existing TFX component.
 
 ### Deprecations
 *   Deprecated 'metadata_db_root' in favor of passing in

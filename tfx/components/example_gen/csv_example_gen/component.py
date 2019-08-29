@@ -35,13 +35,15 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               input_base: types.Channel = None,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_base: types.Channel = None,
+      input_config: Optional[example_gen_pb2.Input] = None,
+      output_config: Optional[example_gen_pb2.Output] = None,
+      example_artifacts: Optional[types.Channel] = None,
+      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct a CsvExampleGen component.
 
     Args:
@@ -56,6 +58,7 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       input: Forwards compatibility alias for the 'input_base' argument.
+      custom_executor_spec: Optional custom executor spec.
       instance_name: Optional unique instance name. Necessary if multiple
         CsvExampleGen components are declared in the same pipeline.
     """
@@ -65,4 +68,5 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         output_config=output_config,
         example_artifacts=example_artifacts,
         input=input,
+        custom_executor_spec=custom_executor_spec,
         instance_name=instance_name)

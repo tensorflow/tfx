@@ -53,12 +53,14 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
   # EXECUTOR_SPEC should be overridden by subclasses.
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self,
-               input_config: example_gen_pb2.Input,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               custom_config: Optional[example_gen_pb2.CustomConfig] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input_config: example_gen_pb2.Input,
+      output_config: Optional[example_gen_pb2.Output] = None,
+      custom_config: Optional[example_gen_pb2.CustomConfig] = None,
+      example_artifacts: Optional[types.Channel] = None,
+      custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct an QueryBasedExampleGen component.
 
     Args:
@@ -74,6 +76,8 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
         instance, providing custom configuration for ExampleGen.
       example_artifacts: Channel of 'ExamplesPath' for output train and
         eval examples.
+      custom_executor_spec: Optional custom executor spec overriding the default
+        executor spec specified in the component attribute.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
     """
@@ -91,7 +95,9 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
         custom_config=custom_config,
         examples=example_artifacts)
     super(_QueryBasedExampleGen, self).__init__(
-        spec=spec, instance_name=instance_name)
+        spec=spec,
+        custom_executor_spec=custom_executor_spec,
+        instance_name=instance_name)
 
 
 class FileBasedExampleGen(base_component.BaseComponent):
