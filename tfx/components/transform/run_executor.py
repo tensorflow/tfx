@@ -31,14 +31,28 @@ def _run_transform(args, beam_pipeline_args):
   tf.logging.set_verbosity(tf.logging.INFO)
 
   inputs = {
-      labels.ANALYZE_AND_TRANSFORM_DATA_PATHS_LABEL: (args.analyze_examples),
-      labels.TRANSFORM_ONLY_DATA_PATHS_LABEL: (args.transform_only_examples),
-      labels.SCHEMA_PATH_LABEL: args.input_schema_path,
-      labels.PREPROCESSING_FN: args.preprocessing_fn_path,
-      labels.EXAMPLES_DATA_FORMAT_LABEL: args.example_data_format,
-      labels.TFT_STATISTICS_USE_TFDV_LABEL: args.use_tfdv,
-      labels.COMPUTE_STATISTICS_LABEL: args.compute_statistics,
-      labels.BEAM_PIPELINE_ARGS: beam_pipeline_args,
+      labels.ANALYZE_DATA_PATHS_LABEL:
+          args.analyze_examples,
+      labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
+                                               len(args.analyze_examples),
+      labels.TRANSFORM_DATA_PATHS_LABEL: [
+          args.analyze_examples + args.transform_only_examples
+      ],
+      labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
+          [labels.FORMAT_TFRECORD] *
+          (len(args.analyze_examples) + len(args.transform_only_examples)),
+      labels.SCHEMA_PATH_LABEL:
+          args.input_schema_path,
+      labels.PREPROCESSING_FN:
+          args.preprocessing_fn_path,
+      labels.EXAMPLES_DATA_FORMAT_LABEL:
+          args.example_data_format,
+      labels.TFT_STATISTICS_USE_TFDV_LABEL:
+          args.use_tfdv,
+      labels.COMPUTE_STATISTICS_LABEL:
+          args.compute_statistics,
+      labels.BEAM_PIPELINE_ARGS:
+          beam_pipeline_args,
   }
   outputs = {
       labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: args.transform_fn,
