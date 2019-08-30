@@ -2,7 +2,7 @@ toc:
 - title: "Get started with TFX"
   path: /tfx/tutorials/
 - title: "Developer tutorial"
-  path: /tfx/tutorials/tfx/workshop
+  path: /tfx/tutorials/tfx/airflow_workshop
 - title: "End-to-end pipeline example"
   path: https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline
   status: external

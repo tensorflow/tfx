@@ -81,11 +81,11 @@ _FARE_KEY = 'fare'
 #   return schema_utils.schema_as_feature_spec(schema).feature_spec
 
 
-# def _gzip_reader_fn():
+# def _gzip_reader_fn(filenames):
 #   """Small utility returning a record reader that can read gzip'ed files."""
-#   return tf.TFRecordReader(
-#       options=tf.python_io.TFRecordOptions(
-#           compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+#   return tf.data.TFRecordDataset(
+#       filenames,
+#       compression_type='GZIP')
 
 
 # def _fill_in_missing(x):
@@ -102,8 +102,9 @@ _FARE_KEY = 'fare'
 #   """
 #   default_value = '' if x.dtype == tf.string else 0
 #   return tf.squeeze(
-#       tf.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
-#                          default_value),
+#       tf.sparse.to_dense(
+#           tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+#           default_value),
 #       axis=1)
 
 
@@ -131,7 +132,8 @@ _FARE_KEY = 'fare'
 
 #   for key in _BUCKET_FEATURE_KEYS:
 #     outputs[_transformed_name(key)] = tft.bucketize(
-#         _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+#         _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT,
+#         always_return_num_quantiles=False)
 
 #   for key in _CATEGORICAL_FEATURE_KEYS:
 #     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
@@ -145,23 +147,18 @@ _FARE_KEY = 'fare'
 #       # Test if the tip was > 20% of the fare.
 #       tf.cast(
 #           tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))),
-#                      tf.int64))
+#               tf.int64))
 
 #   return outputs
 # Step 4 END --------------------------
 
 # Step 5 START --------------------------
-# def _build_estimator(transform_output,
-#                      config,
-#                      hidden_units=None,
-#                      warm_start_from=None):
+# def _build_estimator(config, hidden_units=None, warm_start_from=None):
 #   """Build an estimator for predicting the tipping behavior of taxi riders.
 
 #   Args:
-#     transform_output: directory in which the tf-transform model was written
-#       during the preprocessing step.
-#     config: tf.contrib.learn.RunConfig defining the runtime environment for
-#       the estimator (including model_dir).
+#     config: tf.estimator.RunConfig defining the runtime environment for the
+#       estimator (including model_dir).
 #     hidden_units: [int], the layer sizes of the DNN (input layer first)
 #     warm_start_from: Optional directory to warm start from.
 
@@ -172,13 +169,6 @@ _FARE_KEY = 'fare'
 #       - eval_spec: Spec for eval.
 #       - eval_input_receiver_fn: Input function for eval.
 #   """
-#   metadata_dir = os.path.join(transform_output,
-#                               transform_fn_io.TRANSFORMED_METADATA_DIR)
-#   transformed_metadata = metadata_io.read_metadata(metadata_dir)
-#   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
-
-#   transformed_feature_spec.pop(_transformed_name(_LABEL_KEY))
-
 #   real_valued_columns = [
 #       tf.feature_column.numeric_column(key, shape=())
 #       for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
@@ -209,12 +199,11 @@ _FARE_KEY = 'fare'
 #       warm_start_from=warm_start_from)
 
 
-# def _example_serving_receiver_fn(transform_output, schema):
+# def _example_serving_receiver_fn(tf_transform_output, schema):
 #   """Build the serving in inputs.
 
 #   Args:
-#     transform_output: directory in which the tf-transform model was written
-#       during the preprocessing step.
+#     tf_transform_output: A TFTransformOutput.
 #     schema: the schema of the input data.
 
 #   Returns:
@@ -227,21 +216,18 @@ _FARE_KEY = 'fare'
 #       raw_feature_spec, default_batch_size=None)
 #   serving_input_receiver = raw_input_fn()
 
-#   _, transformed_features = (
-#       saved_transform_io.partially_apply_saved_transform(
-#           os.path.join(transform_output, transform_fn_io.TRANSFORM_FN_DIR),
-#           serving_input_receiver.features))
+#   transformed_features = tf_transform_output.transform_raw_features(
+#       serving_input_receiver.features)
 
 #   return tf.estimator.export.ServingInputReceiver(
 #       transformed_features, serving_input_receiver.receiver_tensors)
 
 
-# def _eval_input_receiver_fn(transform_output, schema):
+# def _eval_input_receiver_fn(tf_transform_output, schema):
 #   """Build everything needed for the tf-model-analysis to run the model.
 
 #   Args:
-#     transform_output: directory in which the tf-transform model was written
-#       during the preprocessing step.
+#     tf_transform_output: A TFTransformOutput.
 #     schema: the schema of the input data.
 
 #   Returns:
@@ -263,10 +249,8 @@ _FARE_KEY = 'fare'
 
 #   # Now that we have our raw examples, process them through the tf-transform
 #   # function computed during the preprocessing step.
-#   _, transformed_features = (
-#       saved_transform_io.partially_apply_saved_transform(
-#           os.path.join(transform_output, transform_fn_io.TRANSFORM_FN_DIR),
-#           features))
+#   transformed_features = tf_transform_output.transform_raw_features(
+#       features)
 
 #   # The key name MUST be 'examples'.
 #   receiver_tensors = {'examples': serialized_tf_example}
@@ -281,27 +265,25 @@ _FARE_KEY = 'fare'
 #       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-# def _input_fn(filenames, transform_output, batch_size=200):
+# def _input_fn(filenames, tf_transform_output, batch_size=200):
 #   """Generates features and labels for training or evaluation.
 
 #   Args:
 #     filenames: [str] list of CSV files to read data from.
-#     transform_output: directory in which the tf-transform model was written
-#       during the preprocessing step.
+#     tf_transform_output: A TFTransformOutput.
 #     batch_size: int First dimension size of the Tensors returned by input_fn
 
 #   Returns:
 #     A (features, indices) tuple where features is a dictionary of
 #       Tensors, and indices is a single Tensor of label indices.
 #   """
-#   metadata_dir = os.path.join(transform_output,
-#                               transform_fn_io.TRANSFORMED_METADATA_DIR)
-#   transformed_metadata = metadata_io.read_metadata(metadata_dir)
-#   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
+#   transformed_feature_spec = (
+#       tf_transform_output.transformed_feature_spec().copy())
 
-#   transformed_features = tf.contrib.learn.io.read_batch_features(
+#   dataset = tf.data.experimental.make_batched_features_dataset(
 #       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
+#   transformed_features = dataset.make_one_shot_iterator().get_next()
 #   # We pop the label because we do not want to use it as a feature while we're
 #   # training.
 #   return transformed_features, transformed_features.pop(
@@ -313,7 +295,8 @@ _FARE_KEY = 'fare'
 #   """Build the estimator using the high level API.
 
 #   Args:
-#     hparams: Holds hyperparameters used to train the model as name/value pairs
+#     hparams: Holds hyperparameters used to train the model as
+#              name/value pairs.
 #     schema: Holds the schema of the training examples.
 
 #   Returns:
@@ -331,14 +314,16 @@ _FARE_KEY = 'fare'
 #   train_batch_size = 40
 #   eval_batch_size = 40
 
+#   tf_transform_output = tft.TFTransformOutput(hparams.transform_output)
+
 #   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
 #       hparams.train_files,
-#       hparams.transform_output,
+#       tf_transform_output,
 #       batch_size=train_batch_size)
 
 #   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
 #       hparams.eval_files,
-#       hparams.transform_output,
+#       tf_transform_output,
 #       batch_size=eval_batch_size)
 
 #   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
@@ -346,7 +331,7 @@ _FARE_KEY = 'fare'
 #       max_steps=hparams.train_steps)
 
 #   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
-#       hparams.transform_output, schema)
+#       tf_transform_output, schema)
 
 #   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
 #   eval_spec = tf.estimator.EvalSpec(
@@ -361,8 +346,6 @@ _FARE_KEY = 'fare'
 #   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
 #   estimator = _build_estimator(
-#       transform_output=hparams.transform_output,
-
 #       # Construct layers sizes with exponetial decay
 #       hidden_units=[
 #           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
@@ -373,7 +356,7 @@ _FARE_KEY = 'fare'
 
 #   # Create an input receiver for TFMA processing
 #   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-#       hparams.transform_output, schema)
+#       tf_transform_output, schema)
 
 #   return {
 #       'estimator': estimator,
