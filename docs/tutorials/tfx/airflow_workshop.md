@@ -110,8 +110,8 @@ export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ## Tutorial materials
 
 The code for this tutorial is available at:
-[https://github.com/tensorflow/tfx/tree/master/tfx/examples/workshop](
-https://github.com/tensorflow/tfx/tree/master/tfx/examples/workshop)
+[https://github.com/tensorflow/tfx/tree/master/tfx/examples/airflow_workshop](
+https://github.com/tensorflow/tfx/tree/master/tfx/examples/airflow_workshop)
 
 The code is organized by the steps that you're working on, so
 for each step you'll have the code you need and instructions
@@ -176,8 +176,8 @@ you to review the code that you're uncommenting**.
 ## Chicago Taxi Dataset
 <!-- Image free for commercial use, does not require attribution:
 https://pixabay.com/photos/new-york-cab-cabs-taxi-urban-city-2087998/ -->
-![Taxi](images/workshop/taxi.jpg)
-![Chicago taxi](images/workshop/chicago.png)
+![Taxi](images/airflow_workshop/taxi.jpg)
+![Chicago taxi](images/airflow_workshop/chicago.png)
 
 You're using the [Taxi Trips dataset](
 https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
@@ -219,7 +219,7 @@ cd ~/tfx/tfx
 git checkout -f origin/r0.14
 pip uninstall setuptools -y && pip install setuptools
 pip install httplib2==0.12.0
-cd ~/tfx/tfx/tfx/examples/workshop/setup
+cd ~/tfx/tfx/tfx/examples/airflow_workshop/setup
 ./setup_demo.sh
 ```
 
@@ -243,7 +243,7 @@ airflow scheduler
 # Open yet another new terminal window, and in that window ...
 # Assuming that you've cloned the TFX repo into ~/tfx
 source ~/tfx-env/bin/activate
-cd ~/tfx/tfx/tfx/examples/workshop/notebooks
+cd ~/tfx/tfx/tfx/examples/airflow_workshop/notebooks
 jupyter notebook
 ```
 
@@ -268,14 +268,14 @@ airflow webserver -p 7070
 
 #### DAG view buttons
 
-![DAG buttons](images/workshop/airflow_dag_buttons.png)
+![DAG buttons](images/airflow_workshop/airflow_dag_buttons.png)
 
 * Use the button on the left to _enable_ the taxi DAG
 * Use the button on the right to _refresh_ the taxi DAG when you make changes
 * Use the button on the right to _trigger_ the taxi DAG
 * Click on taxi to go to the graph view of the taxt DAG
 
-![Graph refresh button](images/workshop/graph_refresh_button.png)
+![Graph refresh button](images/airflow_workshop/graph_refresh_button.png)
 
 #### Airflow CLI
 
@@ -304,7 +304,7 @@ page to see the updated status of the components as they run.
 So far you only have the CsvExampleGen component in our pipeline, so you need
 to wait for it to turn dark green (~1 minutes).
 
-![Setup complete](images/workshop/step2.png)
+![Setup complete](images/airflow_workshop/step2.png)
 
 ## Step 3: Dive into your data
 
@@ -317,8 +317,8 @@ and clean the data.
 
 ### Components
 
-![Data Components](images/workshop/examplegen1.png)
-![Data Components](images/workshop/examplegen2.png)
+![Data Components](images/airflow_workshop/examplegen1.png)
+![Data Components](images/airflow_workshop/examplegen2.png)
 
 * [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
 ingests and splits the input dataset.
@@ -346,7 +346,7 @@ left corner
   * All dark green
   * Use refresh on right side or refresh page
 
-![Dive into data](images/workshop/step3.png)
+![Dive into data](images/airflow_workshop/step3.png)
 
 ### Back on Jupyter:
 
@@ -356,7 +356,7 @@ tab.  Now return to that tab in your browser.
 * Open step3.ipynb
 * Follow the notebook
 
-![Dive into data](images/workshop/step3notebook.png)
+![Dive into data](images/airflow_workshop/step3notebook.png)
 
 ### More advanced example
 
@@ -385,7 +385,7 @@ and serving.
 
 ### Components
 
-![Transform](images/workshop/transform.png)
+![Transform](images/airflow_workshop/transform.png)
 
 * [Transform](https://www.tensorflow.org/tfx/guide/transform)
 performs feature engineering on the dataset.
@@ -406,7 +406,7 @@ performs feature engineering on the dataset.
   * All dark green
   * Use refresh on right side or refresh page
 
-![Feature Engineering](images/workshop/step4.png)
+![Feature Engineering](images/airflow_workshop/step4.png)
 
 ### Back on Jupyter:
 
@@ -452,7 +452,7 @@ trains the model using TensorFlow
   * All dark green
   * Use refresh on right side or refresh page
 
-![Training a Model](images/workshop/step5.png)
+![Training a Model](images/airflow_workshop/step5.png)
 
 ### Back on Jupyter:
 
@@ -461,7 +461,7 @@ Return to the Jupyter tab in your browser.
 * Open step5.ipynb
 * Follow the notebook
 
-![Training a Model](images/workshop/step5tboard.png)
+![Training a Model](images/airflow_workshop/step5tboard.png)
 
 ### More advanced example
 
@@ -501,7 +501,7 @@ performs deep analysis of the training results.
   * All dark green
   * Use refresh on right side or refresh page
 
-![Analyzing model performance](images/workshop/step6.png)
+![Analyzing model performance](images/airflow_workshop/step6.png)
 
 ### Back on Jupyter:
 
@@ -510,7 +510,7 @@ Return to the Jupyter tab in your browser.
 * Open step6.ipynb
 * Follow the notebook
 
-![Analyzing model performance](images/workshop/step6notebook.png)
+![Analyzing model performance](images/airflow_workshop/step6notebook.png)
 
 ### More advanced example
 
@@ -557,7 +557,7 @@ deploys the model to a serving infrastructure.
   * All dark green
   * Use refresh on right side or refresh page
 
-![Ready for production](images/workshop/step7.png)
+![Ready for production](images/airflow_workshop/step7.png)
 
 ## Next Steps
 
