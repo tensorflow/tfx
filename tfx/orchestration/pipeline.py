@@ -25,7 +25,7 @@ import os
 
 import tensorflow as tf
 
-from typing import List, Optional, Text
+from typing import List, Optional, Text, Dict, Any
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
@@ -79,7 +79,9 @@ class Pipeline(object):
       properties of the pipeline.
     enable_cache: whether or not cache is enabled for this run.
     metadata_connection_config: the config to connect to ML metadata.
-    additional_pipeline_args: other pipeline args. e.g. beam runner args.
+    beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+          Executor will use beam DirectRunner as Default.
+    additional_pipeline_args: other pipeline args.
   """
 
   def __init__(self,
@@ -90,6 +92,7 @@ class Pipeline(object):
                components: Optional[List[base_component.BaseComponent]] = None,
                enable_cache: Optional[bool] = False,
                metadata_db_root: Optional[Text] = None,
+               beam_pipeline_args: Dict[Text, Any] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -104,9 +107,13 @@ class Pipeline(object):
       metadata_db_root: Deprecated. the uri to the metadata database root.
         Deprecated and will be removed in future version.
         Please use metadata_connection_config instead.
-      **kwargs: additional kwargs forwarded as pipeline args.
-        - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
           Executor will use beam DirectRunner as Default.
+      **kwargs: additional kwargs forwarded as pipeline args.
+
+    Raises:
+      RuntimeError: Do not include beam pipeline args in
+      additional_pipeline_args when declared seperately.
     """
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
       raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
@@ -137,8 +144,14 @@ class Pipeline(object):
       else:
         self.metadata_connection_config = None
 
+    self.beam_pipeline_args = beam_pipeline_args
     self.additional_pipeline_args = self.pipeline_args.get(
         'additional_pipeline_args', {})
+
+    if self.beam_pipeline_args and 'beam_pipeline_args' in self.additional_pipeline_args:
+      raise RuntimeError(
+          'Do not include beam pipeline args in additional_pipeline_args when declared seperately.'
+      )
 
     # Store pipeline_args in a json file only when temp file exists.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
