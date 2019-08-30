@@ -127,7 +127,7 @@ def _deserialize_auth_config(
   if conn_config.HasField('basic_auth'):
     return prestodb.auth.BasicAuthentication(conn_config.basic_auth.username,
                                              conn_config.basic_auth.password)
-    # TODO(actam): Support KerberosAuth.
+    # TODO(b/140266796): Support KerberosAuth.
   else:
     raise RuntimeError('Authentication type not supported.')
 
@@ -153,7 +153,7 @@ def _row_to_example(
       feature[key] = tf.train.Feature(
           int64_list=tf.train.Int64List(value=[value]))
     else:
-      # TODO(actam): support more types
+      # TODO(b/140266796): support more types
       # https://prestodb.github.io/docs/current/language/types
       raise RuntimeError(
           'Presto column type {} is not supported.'.format(data_type))
