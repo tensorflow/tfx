@@ -128,6 +128,7 @@ class KubeflowHandler(base_handler.BaseHandler):
       pipeline_args: python dictionary with pipeline details extracted from DSL.
     """
     self._check_pipeline_dsl_path()
+    self._check_dsl_runner()
     pipeline_args = self._extract_pipeline_args()
     self._check_pipeline_package_path()
     if not pipeline_args:
