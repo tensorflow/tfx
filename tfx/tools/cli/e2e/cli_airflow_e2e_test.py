@@ -195,6 +195,30 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   def testPipelineCompile(self):
+
+    # Invalid DSL path
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
+                  result.output)
+
+    # Wrong Runner.
+    pipeline_path = os.path.join(self._testdata_dir,
+                                 'test_pipeline_kubeflow_1.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('airflow runner not found in dsl.', result.output)
+
+    # Successful compilation.
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_2.py')
     result = self.runner.invoke(cli_group, [
@@ -333,15 +357,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
     self.assertIn('Kubeflow not found', result.output)
-
-  def testIncorrectRunnerAirflow(self):
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_kubeflow_1.py')
-    result = self.runner.invoke(
-        cli_group, ['pipeline', 'create', '--pipeline_path', pipeline_path])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Creating pipeline', result.output)
-    self.assertIn('airflow runner not found in dsl.', result.output)
 
 
 if __name__ == '__main__':
