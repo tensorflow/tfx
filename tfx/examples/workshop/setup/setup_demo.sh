@@ -31,10 +31,10 @@ pip install httplib2==0.12.0
 # TODO(b/135470014): Use range or pin for pip installs.
 # TF/TFX prereqs
 printf "${GREEN}Installing TensorFlow${NORMAL}\n"
-pip install tensorflow==1.13.1
+pip install tensorflow==1.14.0
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install tfx==0.13.0
+pip install tfx==0.14.0rc1
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
