@@ -63,6 +63,7 @@
     tfx.extensions.google_cloud_ai_platform module instead.
 *   Moved tfx.orchestration.gcp.cmle_runner to
     tfx.extensions.google_cloud_ai_platform.runner.
+*   Deprecated csv_input and tfrecord_input, use external_input instead.
 
 ## Bug fixes and other changes
 *   Updated components and code samples to use `tft.TFTransformOutput` (
