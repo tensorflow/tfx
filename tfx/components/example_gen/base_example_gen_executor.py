@@ -183,7 +183,7 @@ class BaseExampleGenExecutor(
       for split in input_config.splits:
         examples = (
             pipeline
-            | 'InputToSerializedExample' + split.name >>
+            | 'InputToSerializedExample[{}]'.format(split.name) >>
             _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
                 input_to_example, input_dict, exec_properties, split.pattern))
         example_splits.append(examples)
@@ -223,7 +223,7 @@ class BaseExampleGenExecutor(
       # pylint: disable=expression-not-assigned, no-value-for-parameter
       for split_name, example_split in example_splits.items():
         (example_split
-         | 'WriteSplit' + split_name >> _WriteSplit(
+         | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
              artifact_utils.get_split_uri(output_dict['examples'], split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
