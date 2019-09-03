@@ -12,6 +12,10 @@
 
 ### For component authors
 
+## Documentation updates
+
+*   Added conceptual info on Artifacts to guide/index.md
+
 
 # Version 0.14.0
 
@@ -49,6 +53,7 @@
 *   Introduced ExecutorSpec, which generalizes the representation of executors
     to include both Python classes and containers.
 *   Supported run context for metadata tracking of tfx pipeline.
+
 
 ### Deprecations
 *   Deprecated 'metadata_db_root' in favor of passing in
