@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Made model validator executor forward compatible with TFMA change.
+
 ## Bug fixes and other changes
 
 ### Deprecations
