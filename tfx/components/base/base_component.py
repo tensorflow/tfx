@@ -45,8 +45,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   ComponentSpec subclass that defines the interface of this component.
 
   Attributes:
-    COMPONENT_NAME: the name of this component, as a string (optional). If not
-      specified, the name of the component class will be used.
     SPEC_CLASS: a subclass of types.ComponentSpec used by this component
       (required).
     EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes
