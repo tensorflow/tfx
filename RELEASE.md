@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 *   Made model validator executor forward compatible with TFMA change.
+*   Added Iris flowers classification example.
 
 ## Bug fixes and other changes
 
