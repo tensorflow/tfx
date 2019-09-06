@@ -116,6 +116,9 @@ class _Dataset(object):
       metadata: A DatasetMetadata object describing the dataset.
     """
     self._file_pattern = file_pattern
+    file_pattern_suffix = os.path.join(
+        *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
+    self._dataset_key = analyzer_cache.make_dataset_key(file_pattern_suffix)
     self._file_format = file_format
     self._data_format = data_format
     self._metadata = metadata
@@ -125,9 +128,8 @@ class _Dataset(object):
     return self._file_pattern
 
   @property
-  def file_pattern_suffix(self):
-    return os.path.join(
-        *self._file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
+  def dataset_key(self):
+    return self._dataset_key
 
   @property
   def data_format(self):
@@ -606,24 +608,12 @@ class Executor(base_executor.BaseExecutor):
       Text, beam.pvalue.PCollection]], bool]:
     """Utilizes TFT cache if applicable and removes unused datasets."""
 
-    # TODO(b/37788560): The keys of this dictionary are used for two somewhat
-    # independent reasons:
-    # a) Cache keys that need to remain consistent across pipeline runs (in
-    #    order for the cache to be effective.
-    # b) The labels of Beam stages.
-    # Having non-stable Beam labels can be suboptimal for infromation sharing
-    # across runs, so we should consider "indexifying" them.
-    analysis_key_to_dataset = {
-        analyzer_cache.make_dataset_key(dataset.file_pattern_suffix): dataset
-        for dataset in analyze_data_list
-    }
+    dataset_keys_list = [dataset.dataset_key for dataset in analyze_data_list]
     if input_cache_dir is not None:
       input_cache = (
           pipeline
           | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
-              input_cache_dir,
-              list(analysis_key_to_dataset.keys()),
-              source=cache_source))
+              input_cache_dir, dataset_keys_list, source=cache_source))
     elif output_cache_dir is not None:
       input_cache = {}
     else:
@@ -634,20 +624,19 @@ class Executor(base_executor.BaseExecutor):
     if input_cache is None:
       # Cache is disabled so we won't be filtering out any datasets, and will
       # always perform a flatten over all of them.
-      filtered_analysis_dataset_keys = list(analysis_key_to_dataset.keys())
+      filtered_analysis_dataset_keys = dataset_keys_list
       flat_data_required = True
     else:
       filtered_analysis_dataset_keys, flat_data_required = (
           tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
-              preprocessing_fn, feature_spec,
-              list(analysis_key_to_dataset.keys()), input_cache))
+              preprocessing_fn, feature_spec, dataset_keys_list, input_cache))
 
     new_analyze_data_dict = {}
-    for key, dataset in six.iteritems(analysis_key_to_dataset):
-      if key in filtered_analysis_dataset_keys:
-        new_analyze_data_dict[key] = dataset
+    for dataset in analyze_data_list:
+      if dataset.dataset_key in filtered_analysis_dataset_keys:
+        new_analyze_data_dict[dataset.dataset_key] = dataset
       else:
-        new_analyze_data_dict[key] = None
+        new_analyze_data_dict[dataset.dataset_key] = None
 
     return (new_analyze_data_dict, input_cache, flat_data_required)
 
@@ -916,7 +905,7 @@ class Executor(base_executor.BaseExecutor):
           if len(analyze_data_list) < len(new_analyze_data_dict):
             tf.logging.info(
                 'Not reading the following datasets due to cache: %s', [
-                    dataset.file_pattern_suffix
+                    dataset.file_pattern
                     for dataset in analyze_data_list
                     if dataset not in new_analyze_data_dict.values()
                 ])
@@ -1172,14 +1161,15 @@ class Executor(base_executor.BaseExecutor):
         unused.
 
     Returns:
-      A list of `_Dataset`.
+      A list of `_Dataset` sorted by their dataset_key property.
     """
     assert len(file_patterns) == len(file_formats)
     # File patterns will need to be processed independently.
-    return [
+    datasets = [
         _Dataset(p, f, data_format, metadata)
         for p, f in zip(file_patterns, file_formats)
     ]
+    return sorted(datasets, key=lambda dataset: dataset.dataset_key)
 
   @staticmethod
   def _ShouldDecodeAsRawExample(data_format: Text) -> bool:
