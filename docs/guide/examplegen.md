@@ -119,7 +119,7 @@ from tfx.utils.dsl_utils import external_input
 
 examples = external_input(os.path.join(base_dir, 'data/simple'))
 example_gen = FileBasedExampleGen(input_base=examples,
-                                  executor_class=executor.Executor)
+                                  custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor)
 ```
 
 Now, we also support reading Avro and Parquet files using this
