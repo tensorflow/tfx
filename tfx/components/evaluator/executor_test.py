@@ -48,7 +48,7 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     # Create output dict.
-    eval_output = standard_artifacts.ModelEvalResult()
+    eval_output = standard_artifacts.ModelEvaluation()
     eval_output.uri = os.path.join(output_data_dir, 'eval_output')
     output_dict = {'output': [eval_output]}
 

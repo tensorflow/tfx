@@ -42,6 +42,12 @@ class _BasicComponentSpec(ComponentSpec):
   OUTPUTS = {
       'output': ChannelParameter(type_name='OutputType'),
   }
+  _INPUT_COMPATIBILITY_ALIASES = {
+      'future_input_name': 'input',
+  }
+  _OUTPUT_COMPATIBILITY_ALIASES = {
+      'future_output_name': 'output',
+  }
 
 
 class ComponentSpecTest(tf.test.TestCase):
@@ -81,6 +87,10 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertIs(spec.inputs.input, input_channel)
     self.assertIs(spec.outputs.output, output_channel)
 
+    # Verify compatibility aliasing behavior.
+    self.assertIs(spec.inputs.future_input_name, spec.inputs.input)
+    self.assertIs(spec.outputs.future_output_name, spec.outputs.output)
+
     with self.assertRaisesRegexp(
         TypeError,
         "Expected type <(class|type) 'int'> for parameter u?'folds' but got "
@@ -88,13 +98,15 @@ class ComponentSpecTest(tf.test.TestCase):
       spec = _BasicComponentSpec(
           folds='string', input=input_channel, output=output_channel)
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'Expected InputType but found WrongType'):
+    with self.assertRaisesRegexp(
+        TypeError,
+        '.*should be a Channel of .*InputType.*got (.|\\s)*WrongType.*'):
       spec = _BasicComponentSpec(
           folds=10, input=Channel(type_name='WrongType'), output=output_channel)
 
-    with self.assertRaisesRegexp(TypeError,
-                                 'Expected OutputType but found WrongType'):
+    with self.assertRaisesRegexp(
+        TypeError,
+        '.*should be a Channel of .*OutputType.*got (.|\\s)*WrongType.*'):
       spec = _BasicComponentSpec(
           folds=10, input=input_channel, output=Channel(type_name='WrongType'))
 

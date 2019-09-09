@@ -28,6 +28,7 @@ from typing import Any, Dict, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types.component_spec import ChannelParameter
@@ -47,12 +48,12 @@ def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
   class _FakeComponent(base_component.BaseComponent):
 
     SPEC_CLASS = _FakeComponentSpec
-    EXECUTOR_CLASS = base_executor.BaseExecutor
+    EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
     def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
       spec = _FakeComponentSpec(
           output=types.Channel(type_name=name), **spec_kwargs)
-      super(_FakeComponent, self).__init__(spec=spec, component_name=name)
+      super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
   return _FakeComponent(name, spec_kwargs)
@@ -125,6 +126,14 @@ class PipelineTest(tf.test.TestCase):
     self.assertTrue(my_pipeline.enable_cache)
     self.assertDictEqual(my_pipeline.additional_pipeline_args,
                          {'beam_pipeline_args': ['--runner=PortableRunner']})
+
+  def testPipelineWithLongname(self):
+    with self.assertRaises(ValueError):
+      pipeline.Pipeline(
+          pipeline_name='a' * (1 + pipeline.MAX_PIPELINE_NAME_LENGTH),
+          pipeline_root='root',
+          components=[],
+          metadata_connection_config=self._metadata_connection_config)
 
   def testPipelineWithLoop(self):
     channel_one = types.Channel(type_name='channel_one')

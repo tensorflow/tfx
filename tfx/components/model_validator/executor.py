@@ -70,8 +70,18 @@ class Executor(base_executor.BaseExecutor):
       if current_metric[0] != blessed_metric[0]:
         raise RuntimeError('EvalResult not match {} vs {}.'.format(
             current_metric[0], blessed_metric[0]))
-      if (current_metric[1]['accuracy']['doubleValue'] <
-          blessed_metric[1]['accuracy']['doubleValue']):
+      # TODO(b/140455644): TFMA introduced breaking change post 0.14 release.
+      # Remove this forward compatibility change after 0.15 release.
+      current_model_metrics = current_metric[1]
+      blessed_model_metrics = blessed_metric[1]
+      try:
+        current_model_accuracy = current_model_metrics['accuracy']
+        blessed_model_accuracy = blessed_model_metrics['accuracy']
+      except KeyError:
+        current_model_accuracy = current_model_metrics['']['']['accuracy']
+        blessed_model_accuracy = blessed_model_metrics['']['']['accuracy']
+      if (current_model_accuracy['doubleValue'] <
+          blessed_model_accuracy['doubleValue']):
         tf.logging.info(
             'Current model accuracy is worse than blessed model: {}'.format(
                 current_metric[0]))

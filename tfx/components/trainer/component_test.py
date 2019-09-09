@@ -31,7 +31,7 @@ class ComponentTest(tf.test.TestCase):
 
     self.examples = channel_utils.as_channel([standard_artifacts.Examples()])
     self.transform_output = channel_utils.as_channel(
-        [standard_artifacts.TransformResult()])
+        [standard_artifacts.TransformGraph()])
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.train_args = trainer_pb2.TrainArgs(num_steps=100)
     self.eval_args = trainer_pb2.EvalArgs(num_steps=50)

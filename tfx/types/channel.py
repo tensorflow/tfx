@@ -84,18 +84,5 @@ class Channel(object):
       An artifact collection.
     """
     # TODO(b/125037186): We should support dynamic query against a Channel
-    #  instead of a static Artifact collection.
+    # instead of a static Artifact collection.
     return self._artifacts
-
-  def type_check(self, expected_type_name: Text) -> None:
-    """Checks whether a Channel has the expected type name.
-
-    Args:
-      expected_type_name: Expected type_name to check against.
-
-    Raises:
-      TypeError if the type_name of given Channel is different from expected.
-    """
-    if self.type_name != expected_type_name:
-      raise TypeError('Expected {} but found {}.'.format(
-          expected_type_name, str(self.type_name)))

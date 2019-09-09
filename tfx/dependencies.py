@@ -23,10 +23,10 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.14,<3',
       'click>=7.0,<8',
       'google-api-python-client>=1.7.8,<2',
-      'ml-metadata>=0.13.2,<0.14',
+      'ml-metadata>=0.14,<0.15',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',
-      'tensorflow-data-validation>=0.14,<0.15',
+      'tensorflow-data-validation>=0.14.1,<0.15',
       'tensorflow-model-analysis>=0.14,<0.15',
       'tensorflow-transform>=0.14,<0.15',
   ]
@@ -36,8 +36,9 @@ def make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
   return [
       'apache-airflow>=1.10,<2',
+      'docker>=4.0.0,<5.0.0',
       'kfp>=0.1.18,<0.2; python_version >= "3.0"',
-      'pytest>=4.4.1,<5',
+      'pytest>=5.0.0,<6.0.0',
       'tensorflow>=1.14,<2',
       'tzlocal>=1.5,<2.0',
   ]
@@ -48,4 +49,8 @@ def make_extra_packages_docker_image():
   return [
       'python-snappy>=0.5,<0.6',
       'tensorflow>=1.14,<2',
+      # TODO(b/138406006): Remove the narrower dependency for pyarrow
+      # and numpy after Beam 2.15 release.
+      'numpy>=1.16,<1.17',
+      'pyarrow>=0.14,<0.15',
   ]

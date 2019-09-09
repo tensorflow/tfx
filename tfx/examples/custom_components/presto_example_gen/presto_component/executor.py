@@ -26,9 +26,9 @@ import tensorflow as tf
 from typing import Any, Dict, Iterable, List, Text, Tuple
 
 from google.protobuf import json_format
+from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
-from tfx.utils import types
 
 
 @beam.typehints.with_input_types(Text)
@@ -127,7 +127,7 @@ def _deserialize_auth_config(
   if conn_config.HasField('basic_auth'):
     return prestodb.auth.BasicAuthentication(conn_config.basic_auth.username,
                                              conn_config.basic_auth.password)
-    # TODO(actam): Support KerberosAuth.
+    # TODO(b/140266796): Support KerberosAuth.
   else:
     raise RuntimeError('Authentication type not supported.')
 
@@ -153,7 +153,7 @@ def _row_to_example(
       feature[key] = tf.train.Feature(
           int64_list=tf.train.Int64List(value=[value]))
     else:
-      # TODO(actam): support more types
+      # TODO(b/140266796): support more types
       # https://prestodb.github.io/docs/current/language/types
       raise RuntimeError(
           'Presto column type {} is not supported.'.format(data_type))
@@ -165,7 +165,7 @@ def _row_to_example(
 @beam.typehints.with_output_types(tf.train.Example)
 def _PrestoToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.TfxArtifact]],  # pylint: disable=unused-argument
+    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from Presto and transform to TF examples.

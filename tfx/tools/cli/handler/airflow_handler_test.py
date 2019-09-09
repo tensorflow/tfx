@@ -98,7 +98,6 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler._save_pipeline(pipeline_args)
     self.assertTrue(tf.io.gfile.exists(os.path.join(
         handler._handler_home_dir,
-        'dags',
         self.pipeline_args[labels.PIPELINE_NAME])))
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -107,8 +106,8 @@ class AirflowHandlerTest(tf.test.TestCase):
                   labels.PIPELINE_DSL_PATH: self.pipeline_path}
     handler = airflow_handler.AirflowHandler(flags_dict)
     handler.create_pipeline()
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'test_pipeline_airflow_1.py')))
@@ -145,8 +144,8 @@ class AirflowHandlerTest(tf.test.TestCase):
                     labels.PIPELINE_DSL_PATH: pipeline_path_2}
     handler = airflow_handler.AirflowHandler(flags_dict_2)
     handler.update_pipeline()
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'test_pipeline_airflow_2.py')))
@@ -178,8 +177,8 @@ class AirflowHandlerTest(tf.test.TestCase):
                   labels.PIPELINE_NAME: self.pipeline_name}
     handler = airflow_handler.AirflowHandler(flags_dict)
     handler.delete_pipeline()
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
   @mock.patch('subprocess.call', _MockSubprocess)
@@ -247,9 +246,9 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testCreateRun(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'],
-                                         'dags',
-                                         self.pipeline_name)
+    handler_pipeline_path = os.path.join(
+        os.environ['AIRFLOW_HOME'], 'dags',
+        self.pipeline_args[labels.PIPELINE_NAME])
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -277,8 +276,9 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testListRuns(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'], 'dags',
-                                         self.pipeline_name)
+    handler_pipeline_path = os.path.join(
+        os.environ['AIRFLOW_HOME'], 'dags',
+        self.pipeline_args[labels.PIPELINE_NAME])
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -308,8 +308,9 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.check_output', _MockSubprocess4)
   def testGetRun(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'], 'dags',
-                                         self.pipeline_name)
+    handler_pipeline_path = os.path.join(
+        os.environ['AIRFLOW_HOME'], 'dags',
+        self.pipeline_args[labels.PIPELINE_NAME])
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -341,8 +342,9 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testDeleteRun(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'], 'dags',
-                                         self.pipeline_name)
+    handler_pipeline_path = os.path.join(
+        os.environ['AIRFLOW_HOME'], 'dags',
+        self.pipeline_args[labels.PIPELINE_NAME])
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline
@@ -355,8 +357,9 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testTerminateRun(self):
     # Create a pipeline in dags folder.
-    handler_pipeline_path = os.path.join(os.environ['AIRFLOW_HOME'], 'dags',
-                                         self.pipeline_name)
+    handler_pipeline_path = os.path.join(
+        os.environ['AIRFLOW_HOME'], 'dags',
+        self.pipeline_args[labels.PIPELINE_NAME])
     tf.io.gfile.makedirs(handler_pipeline_path)
 
     # Now run the pipeline

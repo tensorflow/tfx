@@ -1,0 +1,30 @@
+version: "3"
+services:
+  tfx:
+    build:
+      context: ./buildfiles
+      dockerfile: Dockerfile
+    image: tensorflow/tfx:workshop-latest
+    ports:
+    - "4040:4040" # SparkContext
+    - "8080:8080" # Airflow
+    - "8081:8081" # Flink UI or Spark UI
+    - "8888:8888" # Jupyter notebook
+    - "8099:8099" # Beam PortableRunner JobServer
+    volumes:
+    # Note: You should create the `airflow` directory BEFORE running `docker-compose up`, and
+    #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on
+    #       your system.  In the container, it will be mounted as /root/airflow.  The default
+    #       Airflow directory is under your home directory, and you're running in the container
+    #       as root, so the directory will be /root/airflow
+    - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/root/airflow"
+
+    # Note: You should clone the TFX repo BEFORE running `docker-compose up`, and
+    #       edit the TFX_PATH_ON_YOUR_HOST below to point to where you cloned the repo on your
+    # .     system.  In the container, it will be mounted as /home/tfx/tfx
+    - "TFX_PATH_ON_YOUR_HOST/tfx:/home/tfx/tfx"
+
+    stdin_open: true
+    tty: true
+
+    entrypoint: /bin/bash

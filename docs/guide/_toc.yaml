@@ -22,6 +22,8 @@ toc:
   path: /tfx/guide/modelval
 - title: "Pusher"
   path: /tfx/guide/pusher
+- title: "Advanced: Custom Components"
+  path: /tfx/guide/custom_component
 
 - heading: "Orchestrators"
   style: divider

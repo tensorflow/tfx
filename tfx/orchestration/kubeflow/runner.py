@@ -17,7 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 
-# TODO(jyzhao): deprecate this and change taxi examples.
-KubeflowRunner = kubeflow_dag_runner.KubeflowDagRunner
+KubeflowRunner = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='runner.KubeflowRunner',
+    name='kubeflow_dag_runner.KubeflowDagRunner',
+    func_or_class=kubeflow_dag_runner.KubeflowDagRunner)
+KubeflowRunnerConfig = deprecation.deprecated_alias(  # pylint: disable=invalid-name
+    deprecated_name='runner.KubeflowRunnerConfig',
+    name='kubeflow_dag_runner.KubeflowDagRunnerConfig',
+    func_or_class=kubeflow_dag_runner.KubeflowDagRunnerConfig)

@@ -33,19 +33,16 @@ from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
 
-# TODO(b/132286477): Check if _check_pipeline_folder, _get_handler_home and
-# _get_handler_pipeline_path can be shifted to base_handler after all handlers
-# are implemented.
 class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   """Base Handler for CLI.
 
   Attributes:
     flags_dict: A dictionary with flags provided in a command.
   """
-  # TODO(b/132286477): Update comments after finalizing return types.
 
   def __init__(self, flags_dict: Dict[Text, Any]):
     self.flags_dict = flags_dict
+    self._handler_home_dir = self._get_handler_home()
 
   @abc.abstractmethod
   def create_pipeline(self) -> None:
@@ -99,9 +96,9 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
   def _check_pipeline_dsl_path(self) -> None:
     """Check if pipeline dsl path exists."""
-    if not tf.io.gfile.exists(self.flags_dict[labels.PIPELINE_DSL_PATH]):
-      sys.exit('Invalid pipeline path: {}'
-               .format(self.flags_dict[labels.PIPELINE_DSL_PATH]))
+    pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
+    if not tf.io.gfile.exists(pipeline_dsl_path):
+      sys.exit('Invalid pipeline path: {}'.format(pipeline_dsl_path))
 
   def _check_dsl_runner(self) -> None:
     """Check if runner in dsl is same as engine flag."""
@@ -109,17 +106,22 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
       dsl_contents = f.read()
       regexes = {
-          'airflow': r'AirflowDagRunner\(.*\)',
-          'kubeflow': r'KubeflowDagRunner\(.*\)',
-          'beam': r'BeamDagRunner\(.*\)'
+          labels.AIRFLOW_ENGINE: r'AirflowDagRunner\(.*\)',
+          labels.KUBEFLOW_ENGINE: r'KubeflowDagRunner\(.*\)',
+          labels.BEAM_ENGINE: r'BeamDagRunner\(.*\)'
       }
       match = re.search(regexes[engine_flag], dsl_contents)
       if not match:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))
 
   def _extract_pipeline_args(self) -> Dict[Text, Any]:
-    """Get pipeline args from the DSL."""
-    if os.path.isdir(self.flags_dict[labels.PIPELINE_DSL_PATH]):
+    """Get pipeline args from the DSL.
+
+    Returns:
+      Python dictionary with pipeline details extracted from DSL.
+    """
+    pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
+    if os.path.isdir(pipeline_dsl_path):
       sys.exit('Provide dsl file path.')
 
     # Create an environment for subprocess.
@@ -132,8 +134,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
 
     # Run dsl with mock environment to store pipeline args in temp_file.
-    self._subprocess_call(['python', self.flags_dict[labels.PIPELINE_DSL_PATH]],
-                          env=temp_env)
+    self._subprocess_call(['python', pipeline_dsl_path], env=temp_env)
     if os.stat(temp_file).st_size != 0:
       # Load pipeline_args from temp_file for TFX pipelines
       with open(temp_file, 'r') as f:
@@ -142,8 +143,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       # For non-TFX pipelines, extract pipeline name from the dsl filename.
       pipeline_args = {
           labels.PIPELINE_NAME:
-              os.path.basename(self.flags_dict[labels.PIPELINE_DSL_PATH]
-                              ).split('.')[0]
+              os.path.basename(pipeline_dsl_path).split('.')[0]
       }
 
     # Delete temp file
@@ -151,11 +151,8 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
     return pipeline_args
 
-  def _get_handler_home(self, home_dir: Text) -> Text:
+  def _get_handler_home(self) -> Text:
     """Sets handler home.
-
-    Args:
-      home_dir: directory name to store pipelines
 
     Returns:
       Path to handler home directory.
@@ -164,7 +161,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     handler_home_dir = engine_flag.upper() + '_HOME'
     if handler_home_dir in os.environ:
       return os.environ[handler_home_dir]
-    return os.path.join(os.environ['HOME'], home_dir, '')
+    return os.path.join(os.environ['HOME'], engine_flag, '')
 
   def _subprocess_call(self,
                        command: List[Text],
@@ -172,3 +169,21 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     return_code = subprocess.call(command, env=env)
     if return_code != 0:
       sys.exit('Error while running "{}" '.format(' '.join(command)))
+
+  def _check_pipeline_existence(self,
+                                pipeline_name: Text,
+                                required: bool = True) -> None:
+    """Check if pipeline folder exists and if not, exit system.
+
+    Args:
+      pipeline_name: Name of the pipeline.
+      required: Set it as True if pipeline needs to exist else set it to False.
+    """
+    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
+                                         '')
+    # Check if pipeline folder exists.
+    exists = tf.io.gfile.exists(handler_pipeline_path)
+    if required and not exists:
+      sys.exit('Pipeline "{}" does not exist.'.format(pipeline_name))
+    elif not required and exists:
+      sys.exit('Pipeline "{}" already exists.'.format(pipeline_name))

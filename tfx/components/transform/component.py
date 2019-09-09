@@ -19,15 +19,15 @@ from __future__ import print_function
 from typing import Optional, Text
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.types import artifact
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
 
 
 class Transform(base_component.BaseComponent):
-  """Official TFX Transform component.
+  """A TFX component to transform the input examples.
 
   The Transform component wraps TensorFlow Transform (tf.Transform) to
   preprocess data in a TFX pipeline. This component will load the
@@ -35,11 +35,29 @@ class Transform(base_component.BaseComponent):
   splits of input examples, generate the `tf.Transform` output, and save both
   transform function and transformed examples to orchestrator desired locations.
 
+  ## Providing a preprocessing function
+  The TFX executor will use the estimator provided in the `module_file` file
+  to train the model.  The Transform executor will look specifically for the
+  `preprocessing_fn()` function within that file.
+
+  An example of `preprocessing_fn()` can be found in the [user-supplied
+  code]((https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py))
+  of the TFX Chicago Taxi pipeline example.
+
+  ## Example
+  ```
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
+      input_data=example_gen.outputs.examples,
+      schema=infer_schema.outputs.output,
+      module_file=module_file)
+  ```
+
   Please see https://www.tensorflow.org/tfx/transform for more details.
   """
 
   SPEC_CLASS = TransformSpec
-  EXECUTOR_CLASS = executor.Executor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
                input_data: types.Channel = None,
@@ -48,12 +66,13 @@ class Transform(base_component.BaseComponent):
                preprocessing_fn: Optional[Text] = None,
                transform_output: Optional[types.Channel] = None,
                transformed_examples: Optional[types.Channel] = None,
-               name: Optional[Text] = None):
+               examples: Optional[types.Channel] = None,
+               instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
-      input_data: A Channel of 'ExamplesPath' type. This should contain two
-        splits 'train' and 'eval'.
+      input_data: A Channel of 'ExamplesPath' type (required). This should
+        contain the two splits 'train' and 'eval'.
       schema: A Channel of 'SchemaPath' type. This should contain a single
         schema artifact.
       module_file: The file path to a python module file, from which the
@@ -76,21 +95,23 @@ class Transform(base_component.BaseComponent):
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
-      name: Optional unique name. Necessary iff multiple transform components
-        are declared in the same pipeline.
+      examples: Forwards compatibility alias for the 'input_data' argument.
+      instance_name: Optional unique instance name. Necessary iff multiple
+        transform components are declared in the same pipeline.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
     """
+    input_data = input_data or examples
     if bool(module_file) == bool(preprocessing_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
 
     transform_output = transform_output or types.Channel(
-        type=standard_artifacts.TransformResult,
-        artifacts=[standard_artifacts.TransformResult()])
+        type=standard_artifacts.TransformGraph,
+        artifacts=[standard_artifacts.TransformGraph()])
     transformed_examples = transformed_examples or types.Channel(
         type=standard_artifacts.Examples,
         artifacts=[
@@ -98,10 +119,10 @@ class Transform(base_component.BaseComponent):
             for split in artifact.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = TransformSpec(
-        input_data=channel_utils.as_channel(input_data),
-        schema=channel_utils.as_channel(schema),
+        input_data=input_data,
+        schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
         transform_output=transform_output,
         transformed_examples=transformed_examples)
-    super(Transform, self).__init__(spec=spec, name=name)
+    super(Transform, self).__init__(spec=spec, instance_name=instance_name)

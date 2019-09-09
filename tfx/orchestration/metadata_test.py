@@ -42,6 +42,10 @@ class MetadataTest(tf.test.TestCase):
         pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
     self._pipeline_info2 = data_types.PipelineInfo(
         pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id2')
+    self._pipeline_info3 = data_types.PipelineInfo(
+        pipeline_name='my_pipeline2', pipeline_root='/tmp', run_id='my_run_id')
+    self._pipeline_info4 = data_types.PipelineInfo(
+        pipeline_name='my_pipeline2', pipeline_root='/tmp', run_id='my_run_id2')
 
   def testEmptyArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -133,18 +137,20 @@ class MetadataTest(tf.test.TestCase):
 
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_id = m.register_run_context_if_not_exists(self._pipeline_info)
 
       # Test prepare_execution.
       exec_properties = {'arg_one': 1}
       eid = m.register_execution(
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
-          component_info=self._component_info)
-      [execution] = m.store.get_executions()
+          component_info=self._component_info,
+          run_context_id=context_id)
+      [execution] = m.store.get_executions_by_context(context_id)
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 1
+        type_id: 2
         properties {
           key: "state"
           value {
@@ -381,6 +387,54 @@ class MetadataTest(tf.test.TestCase):
               self._component_info2.component_id:
                   metadata.EXECUTION_STATE_NEW,
           }, states)
+
+  def testContext(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+
+      cid1 = m.register_run_context_if_not_exists(self._pipeline_info)
+      cid2 = m.register_run_context_if_not_exists(self._pipeline_info2)
+      cid3 = m.register_run_context_if_not_exists(self._pipeline_info3)
+
+      context_type = m.store.get_context_type('run')
+      self.assertProtoEquals(
+          """
+          id: 1
+          name: 'run'
+          properties {
+            key: "pipeline_name"
+            value: STRING
+          }
+          properties {
+            key: "run_id"
+            value: STRING
+          }
+          """, context_type)
+      [context] = m.store.get_contexts_by_id([cid1])
+      self.assertProtoEquals(
+          """
+          id: 1
+          type_id: 1
+          name: 'my_pipeline.my_run_id'
+          properties {
+            key: "pipeline_name"
+            value {
+              string_value: "my_pipeline"
+            }
+          }
+          properties {
+            key: "run_id"
+            value {
+              string_value: "my_run_id"
+            }
+          }
+          """, context)
+
+      self.assertEqual(
+          cid1, m.register_run_context_if_not_exists(self._pipeline_info))
+      self.assertEqual(cid1, m._get_run_context_id(self._pipeline_info))
+      self.assertEqual(cid2, m._get_run_context_id(self._pipeline_info2))
+      self.assertEqual(cid3, m._get_run_context_id(self._pipeline_info3))
+      self.assertEqual(None, m._get_run_context_id(self._pipeline_info4))
 
 
 if __name__ == '__main__':

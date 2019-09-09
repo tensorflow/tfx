@@ -44,6 +44,9 @@ from tfx.orchestration import pipeline
 
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
 from tfx.utils.dsl_utils import csv_input
+
+_pipeline_name = 'taxi'
+
 # pylint: enable=line-too-long
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
@@ -55,14 +58,16 @@ _data_root = os.path.join(_taxi_root, 'data/taxi_data')
 _taxi_module_file = os.path.join(_taxi_root, 'dags/taxi_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
-_serving_model_dir = os.path.join(_taxi_root, 'saved_models/taxi')
+_serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the chicago taxi
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(_taxi_root, 'tfx')
-_pipeline_root = os.path.join(_tfx_root, 'pipelines')
-_metadata_db_root = os.path.join(_tfx_root, 'metadata')
+_pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
+# Sqlite ML-metadata db path.
+_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                              'metadata.db')
 _log_root = os.path.join(_tfx_root, 'logs')
 
 # Airflow-specific configs; these will be passed directly to airflow
@@ -137,7 +142,7 @@ def _create_pipeline():
   #             base_directory=_serving_model_dir))) # Step 7
 
   return pipeline.Pipeline(
-      pipeline_name='taxi',
+      pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
       components=[
           example_gen,
@@ -148,7 +153,7 @@ def _create_pipeline():
           # model_validator, pusher # Step 7
       ],
       enable_cache=True,
-      metadata_db_root=_metadata_db_root,
+      metadata_db_root=_metadata_path,
       additional_pipeline_args={'logger_args': logger_overrides},
   )
 

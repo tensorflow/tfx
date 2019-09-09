@@ -11,7 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""A set of standard TFX Artifact types."""
+"""A set of standard TFX Artifact types.
+
+Note: the artifact definitions here are expected to change. We expect to add
+support for defining artifact-specific properties and to reconcile the TYPE_NAME
+strings to match their class names in an upcoming release.
+"""
 
 from tfx.types import artifact
 
@@ -28,7 +33,7 @@ class ExampleStatistics(artifact.Artifact):
   TYPE_NAME = 'ExampleStatisticsPath'
 
 
-class ExampleValidationResult(artifact.Artifact):
+class ExampleAnomalies(artifact.Artifact):
   TYPE_NAME = 'ExampleValidationPath'
 
 
@@ -40,7 +45,7 @@ class ModelBlessing(artifact.Artifact):
   TYPE_NAME = 'ModelBlessingPath'
 
 
-class ModelEvalResult(artifact.Artifact):
+class ModelEvaluation(artifact.Artifact):
   TYPE_NAME = 'ModelEvalPath'
 
 
@@ -52,5 +57,5 @@ class Schema(artifact.Artifact):
   TYPE_NAME = 'SchemaPath'
 
 
-class TransformResult(artifact.Artifact):
+class TransformGraph(artifact.Artifact):
   TYPE_NAME = 'TransformPath'

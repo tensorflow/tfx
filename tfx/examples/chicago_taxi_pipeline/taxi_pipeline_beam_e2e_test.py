@@ -34,10 +34,8 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
         self._testMethodName)
 
     self._pipeline_name = 'beam_test'
-    self._data_root = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'data', 'simple')
-    self._module_file = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'taxi_utils.py')
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data', 'simple')
+    self._module_file = os.path.join(os.path.dirname(__file__), 'taxi_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)

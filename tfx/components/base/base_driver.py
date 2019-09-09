@@ -61,7 +61,7 @@ def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
     # TODO(zhitaoli): Consider refactoring this out into something
     # which can handle permission bits.
     tf.logging.info('Creating output artifact uri %s as directory', uri)
-    tf.gfile.MakeDirs(uri)
+    tf.io.gfile.makedirs(uri)
 
   return uri
 
@@ -225,6 +225,8 @@ class BaseDriver(object):
     Raises:
       RuntimeError: if any input as an empty uri.
     """
+    run_context_id = self._metadata_handler.register_run_context_if_not_exists(
+        pipeline_info)
 
     # Step 1. Fetch inputs from metadata.
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
@@ -235,7 +237,8 @@ class BaseDriver(object):
     execution_id = self._metadata_handler.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
-        component_info=component_info)
+        component_info=component_info,
+        run_context_id=run_context_id)
     tf.logging.info('Execution id of the upcoming component execution is %s',
                     execution_id)
     output_artifacts = {}

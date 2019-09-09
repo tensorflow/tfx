@@ -25,42 +25,30 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import json
 
 from kfp import dsl
 from kubernetes import client as k8s_client
-from typing import Any, Dict, List, Optional, Text
+import tensorflow as tf
+from typing import Optional, Set, Text
 
-from tfx import types
-from tfx import version
+from tfx.components.base import base_component as tfx_base_component
+from tfx.orchestration import pipeline as tfx_pipeline
+from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.types import artifact_utils
+from tfx.types import component_spec
+from tfx.utils import json_utils
+from google.protobuf import json_format
 
-
-# Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
-# pipeline property.
-# TODO(ajaygopinathan): Update with final image location.
-_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 _COMMAND = [
     'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'
 ]
 
+_WORKFLOW_ID_KEY = 'WORKFLOW_ID'
 
-class PipelineProperties(object):
-  """Holds pipeline level execution properties that apply to all component."""
 
-  def __init__(self,
-               output_dir: Text,
-               log_root: Text,
-               beam_pipeline_args: Optional[Text] = None,
-               tfx_image: Text = None):
-    self.exec_properties = collections.OrderedDict([
-        ('output_dir', output_dir),
-        ('log_root', log_root),
-    ])
-    if beam_pipeline_args:
-      self.exec_properties['beam_pipeline_args'] = beam_pipeline_args
-    self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
+def _prepare_artifact_dict(wrapper: component_spec._PropertyDictWrapper):
+  return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
 
 class BaseComponent(object):
@@ -71,78 +59,89 @@ class BaseComponent(object):
   components.
   """
 
-  def __new__(
-      cls,
-      component_name: Text,
-      input_dict: Dict[Text, Any],
-      output_dict: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any],
-      executor_class_path: Text,
-      pipeline_properties: PipelineProperties,
+  def __init__(
+      self,
+      component: tfx_base_component.BaseComponent,
+      depends_on: Set[dsl.ContainerOp],
+      pipeline: tfx_pipeline.Pipeline,
+      tfx_image: Text,
+      kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
   ):
-    """Creates a new component.
+    """Creates a new Kubeflow-based component.
+
+    This class essentially wraps a dsl.ContainerOp construct in Kubeflow
+    Pipelines.
 
     Args:
-      component_name: TFX component name.
-      input_dict: Dictionary of input names to TFX types, or
-        kfp.dsl.PipelineParam representing input parameters.
-      output_dict: Dictionary of output names to List of TFX types.
-      exec_properties: Execution properties.
-      executor_class_path: <module>.<class> for Python class of executor.
-      pipeline_properties: Pipeline level properties shared by all components.
-
-    Returns:
-      Newly constructed TFX Kubeflow component instance.
+      component: The logical TFX component to wrap.
+      depends_on: The set of upstream KFP ContainerOp components that this
+        component will depend on.
+      pipeline: The logical TFX pipeline to which this component belongs.
+      tfx_image: The container image to use for this component.
+      kubeflow_metadata_config: Configuration settings for
+        connecting to the MLMD store in a Kubeflow cluster.
     """
-    outputs = output_dict.keys()
-    file_outputs = {
-        output: '/output/ml_metadata/{}'.format(output) for output in outputs
-    }
-
-    for k, v in pipeline_properties.exec_properties.items():
-      exec_properties[k] = v
+    driver_class_path = '.'.join(
+        [component.driver_class.__module__, component.driver_class.__name__])
+    executor_spec = json_utils.dumps(component.executor_spec)
 
     arguments = [
-        '--exec_properties',
-        json.dumps(exec_properties),
+        '--pipeline_name',
+        pipeline.pipeline_info.pipeline_name,
+        '--pipeline_root',
+        pipeline.pipeline_info.pipeline_root,
+        '--kubeflow_metadata_config',
+        json_format.MessageToJson(kubeflow_metadata_config),
+        '--additional_pipeline_args',
+        json.dumps(pipeline.additional_pipeline_args),
+        '--component_id',
+        component.component_id,
+        '--component_type',
+        component.component_type,
+        '--driver_class_path',
+        driver_class_path,
+        '--executor_spec',
+        executor_spec,
+        '--inputs',
+        artifact_utils.jsonify_artifact_dict(
+            _prepare_artifact_dict(component.inputs)),
         '--outputs',
-        artifact_utils.jsonify_artifact_dict(output_dict),
-        '--executor_class_path',
-        executor_class_path,
-        component_name,
+        artifact_utils.jsonify_artifact_dict(
+            _prepare_artifact_dict(component.outputs)),
+        '--exec_properties',
+        json.dumps(component.exec_properties),
     ]
 
-    for k, v in input_dict.items():
-      if isinstance(v, float) or isinstance(v, int):
-        v = str(v)
-      arguments.append('--{}'.format(k))
-      arguments.append(v)
+    if pipeline.enable_cache:
+      arguments.append('--enable_cache')
 
-    container_op = dsl.ContainerOp(
-        name=component_name,
+    self.container_op = dsl.ContainerOp(
+        name=component.component_id.replace('.', '_'),
         command=_COMMAND,
-        image=pipeline_properties.tfx_image,
+        image=tfx_image,
         arguments=arguments,
-        file_outputs=file_outputs,
     )
 
-    # Add the Argo workflow ID to the container's environment variable so it
-    # can be used to uniquely place pipeline outputs under the pipeline_root.
-    field_path = "metadata.labels['workflows.argoproj.io/workflow']"
-    container_op.add_env_variable(
-        k8s_client.V1EnvVar(
-            name='WORKFLOW_ID',
-            value_from=k8s_client.V1EnvVarSource(
-                field_ref=k8s_client.V1ObjectFieldSelector(
-                    field_path=field_path))))
+    tf.logging.info('Adding upstream dependencies for component {}'.format(
+        self.container_op.name))
+    for op in depends_on:
+      tf.logging.info('   ->  Component: {}'.format(op.name))
+      self.container_op.after(op)
 
-    named_outputs = {output: container_op.outputs[output] for output in outputs}
-
-    # This allows user code to refer to the ContainerOp 'op' output named 'x'
-    # as op.outputs.x
-    component_outputs = type('Output', (), named_outputs)
-
-    return type(component_name, (BaseComponent,), {
-        'container_op': container_op,
-        'outputs': component_outputs
-    })
+    # TODO(b/140172100): Document the use of additional_pipeline_args.
+    if _WORKFLOW_ID_KEY in pipeline.additional_pipeline_args:
+      # Allow overriding pipeline's run_id externally, primarily for testing.
+      self.container_op.add_env_variable(
+          k8s_client.V1EnvVar(
+              name=_WORKFLOW_ID_KEY,
+              value=pipeline.additional_pipeline_args[_WORKFLOW_ID_KEY]))
+    else:
+      # Add the Argo workflow ID to the container's environment variable so it
+      # can be used to uniquely place pipeline outputs under the pipeline_root.
+      field_path = "metadata.labels['workflows.argoproj.io/workflow']"
+      self.container_op.add_env_variable(
+          k8s_client.V1EnvVar(
+              name=_WORKFLOW_ID_KEY,
+              value_from=k8s_client.V1EnvVarSource(
+                  field_ref=k8s_client.V1ObjectFieldSelector(
+                      field_path=field_path))))

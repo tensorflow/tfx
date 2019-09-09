@@ -216,8 +216,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     }
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler._save_pipeline(self.pipeline_args)
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(os.path.join(handler_pipeline_path, 'pipeline_args.json'))
 
   @mock.patch('kfp.Client', _MockClientClass)
@@ -232,8 +232,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
         labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
     }
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
     handler.create_pipeline()
     self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
@@ -287,8 +287,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
         labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
     }
     handler = kubeflow_handler.KubeflowHandler(flags_dict_2)
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
     handler.update_pipeline()
     self.assertTrue(
@@ -356,8 +356,8 @@ class KubeflowHandlerTest(tf.test.TestCase):
     }
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler.delete_pipeline()
-    handler_pipeline_path = handler._get_handler_pipeline_path(
-        self.pipeline_args[labels.PIPELINE_NAME])
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
     self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
 
   @mock.patch('kfp.Client', _MockClientClass)

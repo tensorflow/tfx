@@ -76,6 +76,39 @@ class TypesTest(tf.test.TestCase):
       self.assertIn('tfx.utils.types.jsonify_tfx_type_dict has been renamed to',
                     warn_mock.call_args[0][5])
 
+  def testGetSingleInstanceDeprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      my_artifact = artifact.Artifact('TestType')
+      self.assertIs(my_artifact, types.get_single_instance([my_artifact]))
+      warn_mock.assert_called_once()
+      self.assertIn('tfx.utils.types.get_single_instance has been renamed to',
+                    warn_mock.call_args[0][5])
+
+  def testGetSingleUriDeprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      my_artifact = artifact.Artifact('TestType')
+      my_artifact.uri = '123'
+      self.assertEqual('123', types.get_single_uri([my_artifact]))
+      warn_mock.assert_called_once()
+      self.assertIn('tfx.utils.types.get_single_uri has been renamed to',
+                    warn_mock.call_args[0][5])
+
+  def testGetSplitUriDeprecated(self):
+    with mock.patch.object(tf_logging, 'warning'):
+      warn_mock = mock.MagicMock()
+      tf_logging.warning = warn_mock
+      my_artifact = artifact.Artifact('TestType')
+      my_artifact.uri = '123'
+      my_artifact.split = 'train'
+      self.assertEqual('123', types.get_split_uri([my_artifact], 'train'))
+      warn_mock.assert_called_once()
+      self.assertIn('tfx.utils.types.get_split_uri has been renamed to',
+                    warn_mock.call_args[0][5])
+
 
 if __name__ == '__main__':
   tf.test.main()

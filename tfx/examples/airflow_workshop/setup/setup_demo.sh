@@ -28,13 +28,16 @@ pip uninstall setuptools -y && pip install setuptools
 printf "${GREEN}Installing httplib2 for Beam compatibility${NORMAL}\n"
 pip install httplib2==0.12.0
 
+printf "${GREEN}Installing pendulum to avoid problem with tzlocal${NORMAL}\n"
+pip install pendulum==1.4.4
+
 # TODO(b/135470014): Use range or pin for pip installs.
 # TF/TFX prereqs
 printf "${GREEN}Installing TensorFlow${NORMAL}\n"
-pip install tensorflow==1.13.1
+pip install tensorflow==1.14.0
 
 printf "${GREEN}Installing TFX${NORMAL}\n"
-pip install tfx==0.13.0
+pip install tfx==0.14.0rc1
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
@@ -89,9 +92,8 @@ cp dags/taxi_utils.py ~/airflow/dags/
 cp ../../chicago_taxi_pipeline/taxi_pipeline_simple.py ~/airflow/dags/taxi_pipeline_solution.py
 cp ../../chicago_taxi_pipeline/taxi_utils.py ~/airflow/dags/taxi_utils_solution.py
 sed -i'.orig' "s/os.environ\['HOME'\], 'taxi'/os.environ\['HOME'\], 'airflow'/g" ~/airflow/dags/taxi_pipeline_solution.py
-sed -i'.orig' "s/data\/simple/data\/taxi_data/g" ~/airflow/dags/taxi_pipeline_solution.py
+sed -i'.orig' "s/_taxi_root, 'data', 'simple'/_taxi_root, 'data', 'taxi_data'/g" ~/airflow/dags/taxi_pipeline_solution.py
 sed -i'.orig' "s/taxi_utils.py/dags\/taxi_utils_solution.py/g" ~/airflow/dags/taxi_pipeline_solution.py
-sed -i'.orig' "s/serving_model\/taxi_simple/saved_models\/taxi_solution/g" ~/airflow/dags/taxi_pipeline_solution.py
 sed -i'.orig' "s/os.environ\['HOME'\], 'tfx'/_taxi_root, 'tfx'/g" ~/airflow/dags/taxi_pipeline_solution.py
 sed -i'.orig' "s/chicago_taxi_simple/taxi_solution/g" ~/airflow/dags/taxi_pipeline_solution.py
 

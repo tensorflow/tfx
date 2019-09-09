@@ -43,7 +43,7 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    validation_output = standard_artifacts.ExampleValidationResult()
+    validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {

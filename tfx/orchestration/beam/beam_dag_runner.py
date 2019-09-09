@@ -53,7 +53,7 @@ class _ComponentAsDoFn(beam.DoFn):
       '-',
       '{pipeline_name}-{component}-{ts}'.format(
         pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
-        component=component.component_name,
+        component=component.component_id,
         ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
       ).lower()
     )
@@ -70,7 +70,7 @@ class _ComponentAsDoFn(beam.DoFn):
         driver_args=driver_args,
         metadata_connection_config=tfx_pipeline.metadata_connection_config,
         additional_pipeline_args=self._additional_pipeline_args)
-    self._name = component.component_name
+    self._component_id = component.component_id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes component based on signals.
@@ -84,9 +84,9 @@ class _ComponentAsDoFn(beam.DoFn):
     self._run_component()
 
   def _run_component(self) -> None:
-    tf.logging.info('Component %s is running.', self._name)
+    tf.logging.info('Component %s is running.', self._component_id)
     self._component_launcher.launch()
-    tf.logging.info('Component %s is finished.', self._name)
+    tf.logging.info('Component %s is finished.', self._component_id)
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
@@ -142,7 +142,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       signal_map = {}
       # pipeline.components are in topological order.
       for component in tfx_pipeline.components:
-        name = component.component_name
+        component_id = component.component_id
 
         # Signals from upstream components.
         signals_to_wait = []
@@ -151,14 +151,14 @@ class BeamDagRunner(tfx_runner.TfxRunner):
             assert upstream_node in signal_map, ('Components is not in '
                                                  'topological order')
             signals_to_wait.append(signal_map[upstream_node])
-        tf.logging.info('Component %s depends on %s.', name,
+        tf.logging.info('Component %s depends on %s.', component_id,
                         [s.producer.full_label for s in signals_to_wait])
 
         # Each signal is an empty PCollection. AsIter ensures component will be
         # triggered after upstream components are finished.
         signal_map[component] = (
             root
-            | 'Run[%s]' % name >> beam.ParDo(
+            | 'Run[%s]' % component_id >> beam.ParDo(
                 _ComponentAsDoFn(component, tfx_pipeline),
                 *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
-        tf.logging.info('Component %s is scheduled.', name)
+        tf.logging.info('Component %s is scheduled.', component_id)

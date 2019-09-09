@@ -16,7 +16,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import os
 
 from kfp import compiler
@@ -24,10 +23,11 @@ from kfp import dsl
 from kfp import gcp
 from typing import Callable, List, Optional, Text
 
+from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
-from tfx.types.component_spec import _PropertyDictWrapper
+from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -37,10 +37,13 @@ from tfx.types.component_spec import _PropertyDictWrapper
 # https://github.com/kubeflow/pipelines/blob/master/sdk/python/kfp/gcp.py
 OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
 
-
 # Default secret name for GCP credentials. This secret is installed as part of
 # a typical Kubeflow installation when the platform is GKE.
 _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
+
+# Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
+# pipeline property.
+_KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
 
 def get_default_pipeline_operator_funcs() -> List[OpFunc]:
@@ -56,11 +59,56 @@ def get_default_pipeline_operator_funcs() -> List[OpFunc]:
   return [gcp_secret_op]
 
 
-class KubeflowRunnerConfig(object):
+def get_default_kubeflow_metadata_config(
+) -> kubeflow_pb2.KubeflowMetadataConfig:
+  """Returns the default metadata connection config for Kubeflow.
+
+  Returns:
+    A config proto that will be serialized as JSON and passed to the running
+    container so the TFX component driver is able to communicate with MLMD in
+    a Kubeflow cluster.
+  """
+  # The default metadata configuration for a Kubeflow cluster can be found
+  # here:
+  # https://github.com/kubeflow/manifests/blob/master/metadata/base/metadata-db-deployment.yaml
+
+  # If deploying Kubeflow Pipelines outside of Kubeflow, that configuration
+  # lives here:
+  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/mysql/mysql-deployment.yaml
+
+  config = kubeflow_pb2.KubeflowMetadataConfig()
+  # The environment variable to use to obtain the MySQL service host in the
+  # cluster that is backing Kubeflow Metadata.
+  config.mysql_db_service_host.environment_variable = 'METADATA_DB_SERVICE_HOST'
+  # The environment variable to use to obtain the MySQL service port in the
+  # cluster that is backing Kubeflow Metadata.
+  config.mysql_db_service_port.environment_variable = 'METADATA_DB_SERVICE_PORT'
+  # The MySQL database name to use.
+  config.mysql_db_name.value = 'metadb'
+  # The MySQL database username.
+  config.mysql_db_user.value = 'root'
+  # The MySQL database password. It is currently set to `test` for the
+  # default install of Kubeflow Metadata:
+  # https://github.com/kubeflow/manifests/blob/master/metadata/base/metadata-db-secret.yaml
+  # Note that you should ideally use k8s secrets for username/passwords. If you
+  # do so, you can change this setting so the container obtains the value at
+  # runtime from the secred mounted as an environment variable.
+  config.mysql_db_password.value = 'test'
+
+  return config
+
+
+class KubeflowDagRunnerConfig(object):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
-  def __init__(self, pipeline_operator_funcs: Optional[List[OpFunc]] = None):
-    """Creates a KubeflowRunnerConfig object.
+  def __init__(
+      self,
+      pipeline_operator_funcs: Optional[List[OpFunc]] = None,
+      tfx_image: Optional[Text] = None,
+      kubeflow_metadata_config: Optional[
+          kubeflow_pb2.KubeflowMetadataConfig] = None,
+  ):
+    """Creates a KubeflowDagRunnerConfig object.
 
     The user can use pipeline_operator_funcs to apply modifications to
     ContainerOps used in the pipeline. For example, to ensure the pipeline
@@ -74,16 +122,22 @@ class KubeflowRunnerConfig(object):
         "my-volume-name",
         "/mnt/volume-mount-path")
 
-      config = KubeflowRunnerConfig(
+      config = KubeflowDagRunnerConfig(
         pipeline_operator_funcs=[mount_secret_op, mount_volume_op]
       )
 
     Args:
       pipeline_operator_funcs: A list of ContainerOp modifying functions that
         will be applied to every container step in the pipeline.
+      tfx_image: The TFX container image to use in the pipeline.
+      kubeflow_metadata_config: Runtime configuration to use to connect to
+        Kubeflow metadata.
     """
     self.pipeline_operator_funcs = (
         pipeline_operator_funcs or get_default_pipeline_operator_funcs())
+    self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
+    self.kubeflow_metadata_config = (
+        kubeflow_metadata_config or get_default_kubeflow_metadata_config())
 
 
 class KubeflowDagRunner(tfx_runner.TfxRunner):
@@ -94,20 +148,17 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
   def __init__(self,
                output_dir: Optional[Text] = None,
-               config: Optional[KubeflowRunnerConfig] = None):
+               config: Optional[KubeflowDagRunnerConfig] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
       output_dir: An optional output directory into which to output the pipeline
         definition files. Defaults to the current working directory.
-      config: An optional KubeflowRunnerConfig object to specify runtime
+      config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
     """
     self._output_dir = output_dir or os.getcwd()
-    self._config = config or KubeflowRunnerConfig()
-
-  def _prepare_output_dict(self, wrapper: _PropertyDictWrapper):
-    return dict((k, v.get()) for k, v in wrapper.get_all().items())
+    self._config = config or KubeflowDagRunnerConfig()
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
@@ -115,64 +166,29 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     Args:
       pipeline: The logical TFX pipeline to base the construction on.
     """
-    output_dir = pipeline.pipeline_args['pipeline_root']
-    beam_pipeline_args = []
-    tfx_image = None
-    if 'additional_pipeline_args' in pipeline.pipeline_args:
-      additional_pipeline_args = pipeline.pipeline_args[
-          'additional_pipeline_args']
-      beam_pipeline_args = additional_pipeline_args.get('beam_pipeline_args',
-                                                        [])
-      tfx_image = additional_pipeline_args.get('tfx_image')
-
-    pipeline_properties = base_component.PipelineProperties(
-        output_dir=output_dir,
-        log_root=pipeline.pipeline_args['log_root'],
-        beam_pipeline_args=beam_pipeline_args,
-        tfx_image=tfx_image,
-    )
-
-    # producers is a map from an output Channel, to a Kubeflow component that
-    # is responsible for the named output represented by the Channel.
-    # Assumption: Channels are unique in a pipeline.
-    producers = {}
+    component_to_kfp_op = {}
 
     # Assumption: There is a partial ordering of components in the list, i.e.,
     # if component A depends on component B and C, then A appears after B and C
     # in the list.
     for component in pipeline.components:
-      input_dict = {}
-      for input_name, input_channel in component.inputs.get_all().items():
-        if input_channel in producers:
-          output = getattr(producers[input_channel]['component'].outputs,
-                           producers[input_channel]['channel_name'])
+      # Keep track of the set of upstream dsl.ContainerOps for this component.
+      depends_on = set()
 
-          if not isinstance(output, dsl.PipelineParam):
-            raise ValueError(
-                'Component outputs should be of type dsl.PipelineParam.'
-                ' Got type {} for output {}'.format(type(output), output))
-          input_dict[input_name] = output
-        else:
-          input_dict[input_name] = json.dumps(
-              [x.json_dict() for x in input_channel.get()])
-      executor_class_path = '.'.join(
-          [component.executor_class.__module__,
-           component.executor_class.__name__])
+      for upstream_component in component.upstream_nodes:
+        depends_on.add(component_to_kfp_op[upstream_component])
+
       kfp_component = base_component.BaseComponent(
-          component_name=component.component_name,
-          input_dict=input_dict,
-          output_dict=self._prepare_output_dict(component.outputs),
-          exec_properties=component.exec_properties,
-          executor_class_path=executor_class_path,
-          pipeline_properties=pipeline_properties)
+          component=component,
+          depends_on=depends_on,
+          pipeline=pipeline,
+          tfx_image=self._config.tfx_image,
+          kubeflow_metadata_config=self._config.kubeflow_metadata_config)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
 
-      for channel_name, channel in component.outputs.get_all().items():
-        producers[channel] = {}
-        producers[channel]['component'] = kfp_component
-        producers[channel]['channel_name'] = channel_name
+      component_to_kfp_op[component] = kfp_component.container_op
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.

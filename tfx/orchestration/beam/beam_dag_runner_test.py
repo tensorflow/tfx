@@ -19,9 +19,11 @@ from __future__ import print_function
 
 import mock
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types.component_spec import ChannelParameter
@@ -32,7 +34,7 @@ _executed_components = []
 class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 
   def _run_component(self):
-    _executed_components.append(self._name)
+    _executed_components.append(self._component_id)
 
 
 # We define fake component spec classes below for testing. Note that we can't
@@ -83,13 +85,13 @@ class _FakeComponentSpecE(types.ComponentSpec):
 class _FakeComponent(base_component.BaseComponent):
 
   SPEC_CLASS = types.ComponentSpec
-  EXECUTOR_CLASS = base_executor.BaseExecutor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self, spec: types.ComponentSpec):
-    component_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', 'component_').lower()
+    instance_name = spec.__class__.__name__.replace(
+        '_FakeComponentSpec', '').lower()
     super(_FakeComponent, self).__init__(spec=spec,
-                                         component_name=component_name)
+                                         instance_name=instance_name)
 
 
 class BeamDagRunnerTest(tf.test.TestCase):
@@ -122,19 +124,19 @@ class BeamDagRunnerTest(tf.test.TestCase):
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',
         pipeline_root='y',
-        metadata_connection_config=None,
+        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
     self.assertItemsEqual(_executed_components, [
-        'component_a', 'component_b', 'component_c', 'component_d',
-        'component_e'
+        '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
+        '_FakeComponent.d', '_FakeComponent.e'
     ])
-    self.assertEqual(_executed_components[0], 'component_a')
-    self.assertEqual(_executed_components[3], 'component_d')
-    self.assertEqual(_executed_components[4], 'component_e')
+    self.assertEqual(_executed_components[0], '_FakeComponent.a')
+    self.assertEqual(_executed_components[3], '_FakeComponent.d')
+    self.assertEqual(_executed_components[4], '_FakeComponent.e')
 
 
 if __name__ == '__main__':

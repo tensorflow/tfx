@@ -25,6 +25,7 @@ from kfp import onprem
 import tensorflow as tf
 import yaml
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.big_query_example_gen import component as big_query_example_gen_component
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -32,17 +33,17 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 
 
 # 2-step pipeline under test.
-@tfx_pipeline.PipelineDecorator(
-    pipeline_name='two_step_pipeline',
-    log_root='/var/tmp/tfx/logs',
-    pipeline_root='/pipeline/root',
-)
-def _two_step_pipeline():
+def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
       query='SELECT * FROM TABLE')
   statistics_gen = statistics_gen_component.StatisticsGen(
       input_data=example_gen.outputs.examples)
-  return [example_gen, statistics_gen]
+  return tfx_pipeline.Pipeline(
+      pipeline_name='two_step_pipeline',
+      pipeline_root='pipeline_root',
+      metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+      components=[example_gen, statistics_gen],
+  )
 
 
 class KubeflowDagRunnerTest(tf.test.TestCase):
@@ -91,25 +92,17 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       dag = [c for c in pipeline['spec']['templates'] if 'dag' in c]
       self.assertEqual(1, len(dag))
 
-      parameter_value = ('{{tasks.bigqueryexamplegen.outputs.parameters'
-                         '.bigqueryexamplegen-examples}}')
-
-      self.assertEqual({
-          'tasks': [{
-              'name': 'bigqueryexamplegen',
-              'template': 'bigqueryexamplegen'
-          }, {
-              'name': 'statisticsgen',
-              'template': 'statisticsgen',
-              'dependencies': ['bigqueryexamplegen'],
-              'arguments': {
-                  'parameters': [{
-                      'name': 'bigqueryexamplegen-examples',
-                      'value': parameter_value
-                  }],
-              },
-          }]
-      }, dag[0]['dag'])
+      self.assertEqual(
+          {
+              'tasks': [{
+                  'name': 'bigqueryexamplegen',
+                  'template': 'bigqueryexamplegen'
+              }, {
+                  'name': 'statisticsgen',
+                  'template': 'statisticsgen',
+                  'dependencies': ['bigqueryexamplegen'],
+              }]
+          }, dag[0]['dag'])
 
   def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
@@ -150,7 +143,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     mount_volume_op = onprem.mount_pvc('my-persistent-volume-claim',
                                        'my-volume-name',
                                        '/mnt/volume-mount-path')
-    config = kubeflow_dag_runner.KubeflowRunnerConfig(
+    config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
         pipeline_operator_funcs=[mount_volume_op])
 
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(

@@ -24,7 +24,7 @@ from airflow import models
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
-from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 
 
 class TaxiPipelineSimpleTest(tf.test.TestCase):
@@ -48,7 +48,7 @@ class TaxiPipelineSimpleTest(tf.test.TestCase):
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir)
     self.assertEqual(9, len(logical_pipeline.components))
-    pipeline = AirflowDAGRunner(airflow_config).run(logical_pipeline)
+    pipeline = AirflowDagRunner(airflow_config).run(logical_pipeline)
     self.assertIsInstance(pipeline, models.DAG)
 
 

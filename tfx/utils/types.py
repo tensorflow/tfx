@@ -51,3 +51,30 @@ def parse_tfx_type_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
     'tfx.types.artifact_utils.jsonify_artifact_dict as of TFX 0.14.0.')
 def jsonify_tfx_type_dict(artifact_dict: Dict[Text, List[Artifact]]) -> Text:
   return artifact_utils.jsonify_artifact_dict(artifact_dict)
+
+
+@deprecation.deprecated(
+    None, 'tfx.utils.types.get_single_instance has been renamed to '
+    'tfx.types.artifact_utils.get_single_instance as of TFX 0.14.0.')
+def get_single_instance(artifact_list: List[Artifact]) -> Artifact:
+  """Get a single instance of TfxArtifact from a list of length one."""
+  if len(artifact_list) != 1:
+    raise ValueError('expected list length of one but got {}'.format(
+        len(artifact_list)))
+  return artifact_utils.get_single_instance(artifact_list)
+
+
+@deprecation.deprecated(
+    None, 'tfx.utils.types.get_single_uri has been renamed to '
+    'tfx.types.artifact_utils.get_single_uri as of TFX 0.14.0.')
+def get_single_uri(artifact_list: List[Artifact]) -> Text:
+  """Get the uri of TfxArtifact from a list of length one."""
+  return artifact_utils.get_single_uri(artifact_list)
+
+
+@deprecation.deprecated(
+    None, 'tfx.utils.types.get_split_uri has been renamed to '
+    'tfx.types.artifact_utils.get_split_uri as of TFX 0.14.0.')
+def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
+  """Get the uri of the Artifact with matching split from given list."""
+  return artifact_utils.get_split_uri(artifact_list, split)

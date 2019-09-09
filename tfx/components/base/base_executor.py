@@ -93,7 +93,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     tmp_path = self._context.get_tmp_path()
     if not tf.gfile.Exists(tmp_path):
       tf.logging.info('Creating temp directory at %s', tmp_path)
-      tf.gfile.MakeDirs(tmp_path)
+      tf.io.gfile.makedirs(tmp_path)
     return tmp_path
 
   def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],

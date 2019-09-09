@@ -30,6 +30,7 @@ class SchemaGenTest(tf.test.TestCase):
         stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
+    self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
 
 
 if __name__ == '__main__':

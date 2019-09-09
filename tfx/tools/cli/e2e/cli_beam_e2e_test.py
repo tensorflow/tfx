@@ -46,7 +46,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self._original_beam_home_value = os.environ.get('BEAM_HOME', '')
     os.environ['BEAM_HOME'] = os.path.join(os.environ['HOME'], 'beam')
 
-    self.chicago_taxi_pipeline_dir = os.path.join(
+    self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.runner = click_testing.CliRunner()
 
@@ -73,8 +73,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
   def testPipelineCreate(self):
     # Create a pipeline.
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_beam_1.py')
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_1.py')
     pipeline_name = 'chicago_taxi_beam'
     self._valid_create_and_check(pipeline_path, pipeline_name)
 
@@ -91,7 +90,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
   def testPipelineUpdate(self):
     pipeline_name = 'chicago_taxi_beam'
     handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
+    pipeline_path_1 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_1.py')
     # Try pipeline update when pipeline does not exist.
     result = self.runner.invoke(cli_group, [
@@ -107,7 +106,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     # Now update an existing pipeline.
     self._valid_create_and_check(pipeline_path_1, pipeline_name)
 
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
+    pipeline_path_2 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_2.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'update', '--engine', 'beam', '--pipeline_path',
@@ -122,8 +121,30 @@ class CliBeamEndToEndTest(tf.test.TestCase):
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   def testPipelineCompile(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_beam_2.py')
+    # Invalid DSL path
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
+                  result.output)
+
+    # Wrong Runner.
+    pipeline_path = os.path.join(self._testdata_dir,
+                                 'test_pipeline_kubeflow_1.py')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
+        pipeline_path
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Compiling pipeline', result.output)
+    self.assertIn('beam runner not found in dsl.', result.output)
+
+    # Successful compilation.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'beam', '--pipeline_path',
         pipeline_path
@@ -133,8 +154,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn('Pipeline compiled successfully', result.output)
 
   def testPipelineDelete(self):
-    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
-                                 'test_pipeline_beam_1.py')
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_1.py')
     pipeline_name = 'chicago_taxi_beam'
     handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
 
@@ -174,12 +194,12 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
     # Create pipelines.
     pipeline_name_1 = 'chicago_taxi_beam'
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
+    pipeline_path_1 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_1.py')
     self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
 
     pipeline_name_2 = 'chicago_taxi_beam_v2'
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
+    pipeline_path_2 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_3.py')
     self._valid_create_and_check(pipeline_path_2, pipeline_name_2)
 
@@ -194,7 +214,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
   def testRunCreate(self):
     # Create a pipeline first.
     pipeline_name_1 = 'chicago_taxi_beam'
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
+    pipeline_path_1 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_1.py')
     self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
 

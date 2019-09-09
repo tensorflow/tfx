@@ -38,6 +38,8 @@ MAX_EXECUTIONS_FOR_CACHE = 100
 EXECUTION_STATE_CACHED = 'cached'
 EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
+# Context type, currently only run context is supported.
+_CONTEXT_TYPE_RUN = 'run'
 
 
 def sqlite_metadata_connection_config(metadata_db_uri: Text
@@ -50,7 +52,7 @@ def sqlite_metadata_connection_config(metadata_db_uri: Text
   Returns:
     A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
   """
-  tf.gfile.MakeDirs(os.path.dirname(metadata_db_uri))
+  tf.io.gfile.makedirs(os.path.dirname(metadata_db_uri))
   connection_config = metadata_store_pb2.ConnectionConfig()
   connection_config.sqlite.filename_uri = metadata_db_uri
   connection_config.sqlite.connection_mode = \
@@ -120,7 +122,8 @@ class Metadata(object):
                             ) -> metadata_store_pb2.ArtifactType:
     if artifact_type.id:
       return artifact_type
-    type_id = self._store.put_artifact_type(artifact_type)
+    type_id = self._store.put_artifact_type(
+        artifact_type=artifact_type, can_add_fields=True)
     artifact_type.id = type_id
     return artifact_type
 
@@ -146,9 +149,8 @@ class Metadata(object):
           (artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(
-      self,
-      raw_artifact_list: List[Artifact]) -> List[metadata_store_pb2.Artifact]:
+  def publish_artifacts(self, raw_artifact_list: List[Artifact]
+                       ) -> List[metadata_store_pb2.Artifact]:
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
     for raw_artifact in raw_artifact_list:
@@ -174,8 +176,8 @@ class Metadata(object):
     except tf.errors.NotFoundError:
       return []
 
-  def get_artifacts_by_type(
-      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
+  def get_artifacts_by_type(self, type_name: Text
+                           ) -> List[metadata_store_pb2.Artifact]:
     try:
       return self._store.get_artifacts_by_type(type_name)
     except tf.errors.NotFoundError:
@@ -215,7 +217,8 @@ class Metadata(object):
       execution_type.properties['run_id'] = metadata_store_pb2.STRING
       execution_type.properties['component_id'] = metadata_store_pb2.STRING
 
-      return self._store.put_execution_type(execution_type)
+      return self._store.put_execution_type(
+          execution_type=execution_type, can_add_fields=True)
 
   # TODO(ruoyu): Make pipeline_info and component_info required once migration
   # to go/tfx-oss-artifact-passing finishes.
@@ -255,6 +258,7 @@ class Metadata(object):
     if component_info:
       execution.properties[
           'component_id'].string_value = component_info.component_id
+    tf.logging.info('Prepared EXECUTION:\n {}'.format(execution))
     return execution
 
   def _update_execution_state(self, execution: metadata_store_pb2.Execution,
@@ -262,22 +266,33 @@ class Metadata(object):
     execution.properties['state'].string_value = tf.compat.as_text(new_state)
     self._store.put_executions([execution])
 
-  def register_execution(self, exec_properties: Dict[Text, Any],
+  def register_execution(self,
+                         exec_properties: Dict[Text, Any],
                          pipeline_info: data_types.PipelineInfo,
-                         component_info: data_types.ComponentInfo) -> int:
+                         component_info: data_types.ComponentInfo,
+                         run_context_id: Optional[int] = None) -> int:
     """Create a new execution in metadata.
 
     Args:
-      exec_properties: the execution properties of the execution
-      pipeline_info: optional pipeline info of the execution
-      component_info: optional component info of the execution
+      exec_properties: the execution properties of the execution.
+      pipeline_info: optional pipeline info of the execution.
+      component_info: optional component info of the execution.
+      run_context_id: context id for current run, link it with execution if
+        provided.
 
     Returns:
-      execution id of the new execution
+      execution id of the new execution.
     """
     execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
                                         pipeline_info, component_info)
     [execution_id] = self._store.put_executions([execution])
+
+    if run_context_id:
+      association = metadata_store_pb2.Association(
+          execution_id=execution_id, context_id=run_context_id)
+      self._store.put_attributions_and_associations(
+          attributions=[], associations=[association])
+
     return execution_id
 
   def publish_execution(
@@ -348,9 +363,9 @@ class Metadata(object):
     tf.logging.info('Published execution with final outputs %s' % output_dict)
     return output_dict
 
-  def _get_cached_execution_id(
-      self, input_dict: Dict[Text, List[Artifact]],
-      candidate_execution_ids: List[int]) -> Optional[int]:
+  def _get_cached_execution_id(self, input_dict: Dict[Text, List[Artifact]],
+                               candidate_execution_ids: List[int]
+                              ) -> Optional[int]:
     """Gets common execution ids that are related to all the artifacts in input.
 
     Args:
@@ -393,10 +408,11 @@ class Metadata(object):
     currrent_execution.id = target_execution.id
     return currrent_execution == target_execution
 
-  def previous_execution(
-      self, input_artifacts: Dict[Text, List[Artifact]],
-      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo) -> Optional[int]:
+  def previous_execution(self, input_artifacts: Dict[Text, List[Artifact]],
+                         exec_properties: Dict[Text, Any],
+                         pipeline_info: data_types.PipelineInfo,
+                         component_info: data_types.ComponentInfo
+                        ) -> Optional[int]:
     """Gets eligible previous execution that takes the same inputs.
 
     An eligible execution should take the same inputs, execution properties and
@@ -436,9 +452,10 @@ class Metadata(object):
                                          candidate_execution_ids)
 
   # TODO(b/136031301): This should be merged with previous_run.
-  def fetch_previous_result_artifacts(
-      self, output_dict: Dict[Text, List[Artifact]],
-      execution_id: int) -> Dict[Text, List[Artifact]]:
+  def fetch_previous_result_artifacts(self,
+                                      output_dict: Dict[Text, List[Artifact]],
+                                      execution_id: int
+                                     ) -> Dict[Text, List[Artifact]]:
     """Fetches output with artifact ids produced by a previous run.
 
     Args:
@@ -533,3 +550,74 @@ class Metadata(object):
         result[execution.properties['component_id']
                .string_value] = execution.properties['state'].string_value
     return result
+
+  def _register_run_context(self,
+                            pipeline_info: data_types.PipelineInfo) -> int:
+    """Create a new context in metadata for current pipeline run.
+
+    Args:
+      pipeline_info: pipeline information for current run.
+
+    Returns:
+      context id of the new context.
+    """
+    try:
+      context_type = self._store.get_context_type(_CONTEXT_TYPE_RUN)
+      assert context_type, 'Context type is None for %s.' % (_CONTEXT_TYPE_RUN)
+      context_type_id = context_type.id
+    except tf.errors.NotFoundError:
+      context_type = metadata_store_pb2.ContextType(name=_CONTEXT_TYPE_RUN)
+      context_type.properties['pipeline_name'] = metadata_store_pb2.STRING
+      context_type.properties['run_id'] = metadata_store_pb2.STRING
+      # TODO(b/139485894): add DAG as properties.
+      context_type_id = self._store.put_context_type(context_type)
+
+    context = metadata_store_pb2.Context(
+        type_id=context_type_id, name=pipeline_info.run_context_name)
+    context.properties[
+        'pipeline_name'].string_value = pipeline_info.pipeline_name
+    context.properties['run_id'].string_value = pipeline_info.run_id
+    [context_id] = self._store.put_contexts([context])
+
+    return context_id
+
+  def _get_run_context_id(
+      self, pipeline_info: data_types.PipelineInfo) -> Optional[int]:
+    """Get the context of current pipeline run from metadata.
+
+    Args:
+      pipeline_info: pipeline information for current run.
+
+    Returns:
+      a matched context id or None.
+    """
+    # TODO(b/139092990): support get_contexts_by_name.
+    for context in self._store.get_contexts_by_type(_CONTEXT_TYPE_RUN):
+      if context.name == pipeline_info.run_context_name:
+        return context.id
+    return None
+
+  def register_run_context_if_not_exists(
+      self, pipeline_info: data_types.PipelineInfo) -> int:
+    """Create or get the context for current pipeline run.
+
+    Args:
+      pipeline_info: pipeline information for current run.
+
+    Returns:
+      context id of the current run.
+    """
+    try:
+      run_context_id = self._register_run_context(pipeline_info)
+      tf.logging.info('Created run context %s.' %
+                      (pipeline_info.run_context_name))
+    except tf.errors.AlreadyExistsError:
+      tf.logging.info('Run context %s already exists.' %
+                      (pipeline_info.run_context_name))
+      run_context_id = self._get_run_context_id(pipeline_info)
+      assert run_context_id is not None, 'Run context is missing for %s.' % (
+          pipeline_info.run_context_name)
+
+    tf.logging.info('ID of run context %s is %s.' %
+                    (pipeline_info.run_context_name, run_context_id))
+    return run_context_id

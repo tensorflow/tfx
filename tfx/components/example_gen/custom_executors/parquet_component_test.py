@@ -20,6 +20,7 @@ import os
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
 from tfx.orchestration import component_launcher
@@ -57,17 +58,18 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     example_gen = FileBasedExampleGen(
-        executor_class=parquet_executor.Executor,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            parquet_executor.Executor),
         input_base=external_input(self.parquet_dir_path),
         input_config=self.input_config,
         output_config=self.output_config,
-        name='parquetExampleGenComponent')
+        instance_name='ParquetExampleGen')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
     pipeline_root = os.path.join(output_data_dir, 'Test')
-    tf.gfile.MakeDirs(pipeline_root)
+    tf.io.gfile.makedirs(pipeline_root)
     pipeline_info = data_types.PipelineInfo(
         pipeline_name='Test', pipeline_root=pipeline_root, run_id='123')
 
@@ -91,7 +93,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Get output paths.
-    component_id = '.'.join([example_gen.component_name, example_gen.name])
+    component_id = example_gen.component_id
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
     train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_path, 'train')

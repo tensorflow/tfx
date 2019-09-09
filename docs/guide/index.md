@@ -37,6 +37,63 @@ for specific data). Pipeline components are built upon TFX libraries.
 The result of a pipeline is a TFX deployment target and/or service of an
 inference request.
 
+### Artifacts
+
+In a pipeline, an **artifact** is a unit of data that is passed between
+components. Generally, components have at least one input artifact and one
+output artifact. All artifacts must have associated **metadata**, which defines
+the **type** and **properties** of the artifact. Artifacts must be strongly
+typed with an artifact type registered in the
+[ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) store. The concepts of
+**artifact** and **artifact type** originate from the data model that
+[ML Metadata](https://github.com/google/ml-metadata) defines, as described in
+[this document](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#concepts).
+TFX defines and implements its own artifact type ontology to realize its
+higher-level functionality. As of TFX 0.14,
+[10 known artifact types](https://github.com/tensorflow/tfx/blob/1e931c461ed38de51ae3e9975fd10a0cba75e58b/tfx/types/standard_artifacts.py)
+are defined and used throught the TFX system.
+
+An **artifact type** has a unique name and a schema of properties of its
+instances. TFX utilizes artifact type as how the artifact is used by components
+in the pipeline, but not necessarily to determine what the artifact content
+physically is on a filesystem.
+
+For instance, the *Example* artifact type may represent Examples materialized in
+TFRecord of `tensorflow::Example` protocol buffer, CSV, JSON, or any other
+physical format. Regardless, the way Examples are used in a pipeline is exactly
+the same: being analyzed to generate statistics, being validated against
+expected schema, being pre-processed in advance to training, and being supplied
+to a Trainer to training models, and so forth. Likewise, the *Model* artifact
+type may represent trained model objects exported in various physical formats
+such as TensorFlow SavedModel, ONNX, PMML or PKL (of various types of model
+objects in Python). In any case, models are always to be evaluated, analyzed and
+deployed for serving in pipelines.
+
+NOTE: As of TFX 0.14, *Examples* artifact is assumed to be `tensorflow::Example`
+protocol buffer in gzip-compressed TFRecord format. *Model* artifact is assumed
+to be TensorFlow SavedModel. Future versions of TFX may expand those artifact
+types to support more variants.
+
+In order to differentiate such possible variants of the same **artifact type**,
+the ML Metadata defines a set of **artifact properties**. For instance, one such
+**artifact property** for an *Examples* artifact may be *format*, whose values
+may be one of `TFRecord`, `JSON`, `CSV`, and so forth. Artifacts of type
+*Examples* can always be passed to a component that is designed to take Examples
+as an input artifact (for example, a Trainer). However, the actual
+implementation of the consuming component may adjust its behavior in response to
+a particular value of the *format* property, or simply raise a runtime error if
+it doesn’t have implementation to process the particular format of the Examples.
+
+In summary, **artifact type**s define the ontology of **artifact**s in the
+entire TFX pipeline system, whereas **artifact properties** define the ontology
+specific to an **artifact type**. Users of the pipeline system can choose to
+extend such ontology locally to their pipeline applications, by defining and
+populating new custom properties. Users can also choose to extend the ontology
+globally for the system as a whole, by introducing new artifact types, and/or
+modifying predefined type-properties, in which case such extension would be
+contributed back to the master repository of the pipeline system (the TFX
+repository).
+
 ## TFX Pipeline Components
 
 A TFX pipeline is a sequence of components that implement an [ML
@@ -467,9 +524,9 @@ to any or all of these deployment targets.
 [TensorFlow Serving (TFS)](serving.md) is a flexible, high-performance serving
 system for machine learning models, designed for production environments. It
 consumes a SavedModel and will accept inference requests over either REST or
-gRPC interfaces.  It runs as a set of processes on one more more network
-servers, using one of several advanced architectures to handle synchronization
-and distributed computation.  See the [TFS documentation](serving.md) for more
+gRPC interfaces. It runs as a set of processes on one or more network servers,
+using one of several advanced architectures to handle synchronization and
+distributed computation. See the [TFS documentation](serving.md) for more
 information on developing and deploying TFS solutions.
 
 In a typical pipeline a [Pusher](pusher.md) component will consume SavedModels which
@@ -716,9 +773,9 @@ Try restarting the webserver and scheduler.
 
 ### Setup
 
-Kubeflow requires a Kubernetes cluster to run the pipelines at scale.
-See the Kubeflow deployment guideline that guide through the options for
-[deplopying the Kubeflow cluster.] (https://www.kubeflow.org/docs/started/getting-started-gke/)
+Kubeflow requires a Kubernetes cluster to run the pipelines at scale. See the
+Kubeflow deployment guideline that guide through the options for
+[deplopying the Kubeflow cluster.](https://www.kubeflow.org/docs/started/getting-started-gke/)
 
 ### Configure and run TFX pipeline
 

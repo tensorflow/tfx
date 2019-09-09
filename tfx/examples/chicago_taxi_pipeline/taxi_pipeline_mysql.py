@@ -32,7 +32,7 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -87,7 +87,8 @@ def _create_pipeline(
   statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+  infer_schema = SchemaGen(
+      stats=statistics_gen.outputs.output, infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
@@ -142,7 +143,8 @@ def _create_pipeline(
       metadata_connection_config=metadata_connection_config)
 
 
-airflow_pipeline = AirflowDAGRunner(_airflow_config).run(
+# 'DAG' below need to be kept for Airflow to detect dag.
+DAG = AirflowDagRunner(_airflow_config).run(
     _create_pipeline(
         pipeline_name=_pipeline_name,
         pipeline_root=_pipeline_root,

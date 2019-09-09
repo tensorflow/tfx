@@ -35,29 +35,13 @@ class ChannelUtilsTest(tf.test.TestCase):
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
 
-  def testChannelUtilsAsChannelSuccess(self):
-    instance_a = Artifact('MyTypeName')
-    instance_b = Artifact('MyTypeName')
-    chnl_original = Channel('MyTypeName', artifacts=[instance_a, instance_b])
-    chnl_result = channel_utils.as_channel(chnl_original)
-    self.assertEqual(chnl_original, chnl_result)
-
   def testEmptyArtifactCollectionAsChannelFail(self):
     with self.assertRaises(ValueError):
       channel_utils.as_channel([])
 
   def testInvalidSourceAsChannelFail(self):
     with self.assertRaises(ValueError):
-      channel_utils.as_channel(source='invalid source')
-
-  def testTypeCheckSuccess(self):
-    chnl = Channel('MyTypeName')
-    chnl.type_check('MyTypeName')
-
-  def testTypeCheckFail(self):
-    chnl = Channel('MyTypeName')
-    with self.assertRaises(TypeError):
-      chnl.type_check('AnotherTypeName')
+      channel_utils.as_channel(artifacts='invalid artifacts')
 
   def testUnwrapChannelDict(self):
     instance_a = Artifact('MyTypeName')

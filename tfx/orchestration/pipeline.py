@@ -23,11 +23,20 @@ import functools
 import json
 import os
 
+import tensorflow as tf
+
 from typing import List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
+
+# Argo's workflow name cannot exceed 63 chars:
+# see https://github.com/argoproj/argo/issues/1324.
+# MySQL's database name cannot exceed 64 chars:
+# https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
+MAX_PIPELINE_NAME_LENGTH = 63
 
 
 @deprecation.deprecated(
@@ -80,6 +89,7 @@ class Pipeline(object):
                    metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_component.BaseComponent]] = None,
                enable_cache: Optional[bool] = False,
+               metadata_db_root: Optional[Text] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -91,12 +101,17 @@ class Pipeline(object):
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
       enable_cache: whether or not cache is enabled for this run.
+      metadata_db_root: Deprecated. the uri to the metadata database root.
+        Deprecated and will be removed in future version.
+        Please use metadata_connection_config instead.
       **kwargs: additional kwargs forwarded as pipeline args.
         - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
           Executor will use beam DirectRunner as Default.
     """
-    # TODO(ruoyu): Deprecate pipeline args once finish migration to
-    # go/tfx-oss-artifact-passing
+    if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
+      raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
+                       pipeline_name)
+    # TODO(b/138406006): Deprecate pipeline args after 0.14 release.
     self.pipeline_args = dict(kwargs)
     self.pipeline_args.update({
         'pipeline_name': pipeline_name,
@@ -106,7 +121,22 @@ class Pipeline(object):
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
-    self.metadata_connection_config = metadata_connection_config
+    if metadata_connection_config:
+      self.metadata_connection_config = metadata_connection_config
+      assert not metadata_db_root, ('At most one of metadata_connection_config '
+                                    'and metadata_db_root should be set')
+    else:
+      # TODO(b/138406006): Drop metadata_db_root support after 0.14 release.
+      # We also need to make metadata_connection_config required.
+      tf.logging.warning(
+          'metadata_db_root is deprecated, metadata_connection_config will be required in next release'
+      )
+      if metadata_db_root:
+        self.metadata_connection_config = metadata.sqlite_metadata_connection_config(
+            metadata_db_root)
+      else:
+        self.metadata_connection_config = None
+
     self.additional_pipeline_args = self.pipeline_args.get(
         'additional_pipeline_args', {})
 

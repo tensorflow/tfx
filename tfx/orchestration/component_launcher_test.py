@@ -27,6 +27,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
@@ -48,7 +49,7 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
+    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
     artifact_utils.get_single_instance(
         output_artifacts['output']).uri = os.path.join(
             pipeline_info.pipeline_root, 'output')
@@ -74,17 +75,17 @@ class _FakeComponentSpec(types.ComponentSpec):
 
 class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = _FakeComponentSpec
-  EXECUTOR_CLASS = _FakeExecutor
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
   DRIVER_CLASS = _FakeDriver
 
   def __init__(self,
-               name: Text,
+               instance_name: Text,
                input_channel: types.Channel,
                output_channel: Optional[types.Channel] = None):
     output_channel = output_channel or types.Channel(
         type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(spec=spec, name=name)
+    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
 class ComponentRunnerTest(tf.test.TestCase):
@@ -102,14 +103,14 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    tf.gfile.MakeDirs(os.path.dirname(input_path))
+    tf.io.gfile.makedirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
     input_artifact = types.Artifact(type_name='InputPath')
     input_artifact.uri = input_path
 
     component = _FakeComponent(
-        name='FakeComponent',
+        instance_name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]))
 
     pipeline_info = data_types.PipelineInfo(
