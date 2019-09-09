@@ -113,13 +113,15 @@ Alternatively, pass a custom executor into the standard
 ExampleGen component as shown below.
 
 ```python
+from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.utils.dsl_utils import external_input
 
 examples = external_input(os.path.join(base_dir, 'data/simple'))
-example_gen = FileBasedExampleGen(input_base=examples,
-                                  executor_class=executor.Executor)
+example_gen = FileBasedExampleGen(
+    input_base=examples,
+    custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
 ```
 
 Now, we also support reading Avro and Parquet files using this
