@@ -86,8 +86,10 @@ class CliCommonEndToEndTest(tf.test.TestCase):
   def testPipelineCreateInvalidPipelinePath(self):
     pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                  'test_pipeline.py')
-    result = self.runner.invoke(
-        cli_group, ['pipeline', 'create', '--pipeline_path', pipeline_path])
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'create', '--engine', 'beam',
+        '--pipeline_path', pipeline_path
+    ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),

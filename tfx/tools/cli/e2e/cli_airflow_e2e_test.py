@@ -21,10 +21,12 @@ import codecs
 import locale
 import os
 import subprocess
+import sys
 import tempfile
 
 from click import testing as click_testing
 import tensorflow as tf
+from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
 
@@ -33,6 +35,13 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
     super(CliAirflowEndToEndTest, self).setUp()
+
+    # List of packages installed.
+    self._pip_list = str(subprocess.check_output(['pip', 'freeze', '--local']))
+
+    # Check if Apache Airflow is installed before running E2E tests.
+    if labels.AIRFLOW_PACKAGE_NAME not in self._pip_list:
+      sys.exit('Apache Airflow not installed.')
 
     # Change the encoding for Click since Python 3 is configured to use ASCII as
     # encoding for the environment.
@@ -135,12 +144,17 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     ])
     self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertIn('Detected Airflow', result.output)
-    self.assertTrue(
-        tf.io.gfile.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-    self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
-                  result.output)
+    if labels.AIRFLOW_PACKAGE_NAME in self._pip_list and labels.KUBEFLOW_PACKAGE_NAME in self._pip_list:
+      self.assertIn(
+          'Multiple orchestrators found. Choose one using --engine flag.',
+          result.output)
+    else:
+      self.assertIn('Detected Airflow', result.output)
+      self.assertTrue(
+          tf.io.gfile.exists(
+              os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+      self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
+                    result.output)
 
   def testPipelineCreate(self):
     # Create a pipeline.
@@ -332,7 +346,9 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                                 ['pipeline', 'list', '--engine', 'kubeflow'])
     self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
-    self.assertIn('Kubeflow not found', result.output)
+    # When only Airflow is installed.
+    if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:
+      self.assertIn('Kubeflow not found', result.output)
 
   def testIncorrectRunnerAirflow(self):
     pipeline_path = os.path.join(self._testdata_dir,
