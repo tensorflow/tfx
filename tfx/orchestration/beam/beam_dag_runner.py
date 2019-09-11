@@ -112,22 +112,20 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # For CLI, while creating or updating pipeline, pipeline_args are extracted
     # and hence we avoid deploying the pipeline.
 
-    # Google Dataflow restricts naming to only alphanumeric and dashes
-    orchestrator_job_name = re.sub(
-      r'[^0-9a-zA-Z-]+',
-      '-',
-      '{pipeline_name}-{ts}'.format(
-        pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
-        ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
-      ).lower()
-    )
-    # Exploit the last-in priority of --job_name for beam
-    if self._beam_orchestrator_args:
+    # Append a beam orchestrator pipeline job name if none is present
+    if not any(
+      [arg.startswith("--job_name=") for arg in self._beam_orchestrator_args]):
+      # Google Dataflow restricts naming to only alphanumeric and dashes
+      orchestrator_job_name = re.sub(
+        r'[^0-9a-zA-Z-]+',
+        '-',
+        '{pipeline_name}-{ts}'.format(
+          pipeline_name=tfx_pipeline.pipeline_info.pipeline_name,
+          ts=int(datetime.datetime.timestamp(datetime.datetime.now()))
+        ).lower()
+      )
       self._beam_orchestrator_args.append(
         '--job_name={}'.format(orchestrator_job_name))
-    else:
-      self._beam_orchestrator_args = [
-        '--job_name={}'.format(orchestrator_job_name)]
 
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
