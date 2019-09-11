@@ -364,22 +364,30 @@ class MetadataTest(tf.test.TestCase):
 
   def testGetExecutionStates(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_id = m.register_run_context_if_not_exists(self._pipeline_info)
+      context_id2 = m.register_run_context_if_not_exists(self._pipeline_info2)
+
+      self.assertListEqual(
+          [self._pipeline_info.run_id, self._pipeline_info2.run_id],
+          m.get_all_runs('my_pipeline'))
+
       eid = m.register_execution(
           exec_properties={},
           pipeline_info=self._pipeline_info,
-          component_info=self._component_info)
+          component_info=self._component_info,
+          run_context_id=context_id)
       m.publish_execution(eid, {}, {})
       m.register_execution(
           exec_properties={},
           pipeline_info=self._pipeline_info,
-          component_info=self._component_info2)
+          component_info=self._component_info2,
+          run_context_id=context_id)
       m.register_execution(
           exec_properties={},
           pipeline_info=self._pipeline_info2,
-          component_info=self._component_info)
-      states = m.get_execution_states(
-          pipeline_name=self._pipeline_info.pipeline_name,
-          run_id=self._pipeline_info.run_id)
+          component_info=self._component_info,
+          run_context_id=context_id2)
+      states = m.get_execution_states(self._pipeline_info)
       self.assertDictEqual(
           {
               self._component_info.component_id:

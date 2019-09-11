@@ -531,24 +531,37 @@ class Metadata(object):
       result_artifacts.append(tfx_artifact)
     return result_artifacts
 
-  def get_execution_states(self, pipeline_name: Text,
-                           run_id: Text) -> Dict[Text, Text]:
-    """Get components execution states.
+  def get_all_runs(self, pipeline_name: Text) -> List[Text]:
+    """Get all runs for a given pipeline name.
 
     Args:
       pipeline_name: name of the pipeline.
-      run_id: identifier of the target pipeline run.
+
+    Returns:
+      A List of run id.
+    """
+    result = []
+    # TODO(b/139092990): support get_contexts_by_property.
+    for context in self._store.get_contexts_by_type(_CONTEXT_TYPE_RUN):
+      if context.properties['pipeline_name'].string_value == pipeline_name:
+        result.append(context.properties['run_id'].string_value)
+    return result
+
+  def get_execution_states(
+      self, pipeline_info: data_types.PipelineInfo) -> Dict[Text, Text]:
+    """Get components execution states for a given pipeline.
+
+    Args:
+      pipeline_info: target pipeline's information.
 
     Returns:
       A Dict of component id to its state mapping.
     """
+    run_context_id = self._get_run_context_id(pipeline_info)
     result = {}
-    # TODO(b/138747820): query in a more efficient way.
-    for execution in self._store.get_executions():
-      if (execution.properties['pipeline_name'].string_value == pipeline_name
-          and execution.properties['run_id'].string_value == run_id):
-        result[execution.properties['component_id']
-               .string_value] = execution.properties['state'].string_value
+    for execution in self._store.get_executions_by_context(run_context_id):
+      result[execution.properties['component_id']
+             .string_value] = execution.properties['state'].string_value
     return result
 
   def _register_run_context(self,
