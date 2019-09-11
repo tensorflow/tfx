@@ -48,7 +48,6 @@ the full dataset in the
 
 * [Apache Airflow](https://airflow.apache.org/) is used for pipeline orchestration.
 * [Apache Beam](https://beam.apache.org/) is used for distributed processing.
-* [Docker](https://www.docker.com/) is used for containerization.
 * [TensorFlow](https://tensorflow.org) is used for model training, evaluation and inference.
 
 ### Install dependencies
@@ -73,11 +72,11 @@ sudo easy_install pip
 pip install --upgrade virtualenv
 </pre>
 
-Create a Python 2.7 virtual environment for this example and activate the
+Create a Python 3.6 virtual environment for this example and activate the
 `virtualenv`:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-virtualenv -p python2.7 taxi_pipeline
+virtualenv -p python3.6 taxi_pipeline
 source ./taxi_pipeline/bin/activate
 </pre>
 
@@ -98,11 +97,9 @@ pip install -r requirements.txt
 -->
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow==1.13.1
-pip install docker==4.0.1
-export SLUGIFY_USES_TEXT_UNIDECODE=yes
-pip install apache-airflow==1.10.3
-pip install tfx==0.13.0
+pip install tensorflow==1.14.0
+pip install apache-airflow==1.10.5
+pip install tfx==0.14.0
 </pre>
 
 Next, initialize Airflow
@@ -114,37 +111,40 @@ airflow initdb
 ### Copy the pipeline definition to Airflow's DAG directory
 
 The benefit of the local example is that you can edit any part of the pipeline
-and experiment very quickly with various components. The example comes with a
-small subset of the Taxi Trips dataset as CSV files.
-
-First let's download the TFX source we can run the example:
-
-<pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx
-cd tfx/tfx/examples/chicago_taxi_pipeline
-</pre>
-
-Let's copy the dataset CSV to the directory where TFX ExampleGen will ingest it
-from:
+and experiment very quickly with various components.  First let's download the
+data for the example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 mkdir -p $TAXI_DIR/data/simple
-cp data/simple/data.csv $TAXI_DIR/data/simple
+wget -O $TAXI_DIR/data/simple/data.csv https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/data/simple/data.csv?raw=true
 </pre>
 
-Let's copy the TFX pipeline definition to Airflow's
-<code>DAGs directory</code> <code>($AIRFLOW_HOME/dags)</code> so it can run the pipeline.
+Next, copy the TFX pipeline definition to Airflow's <code>DAGs directory</code>
+<code>($AIRFLOW_HOME/dags)</code> so it can run the pipeline.  To find the
+location of your TFX installation, use this command:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-mkdir -p $AIRFLOW_HOME/dags/taxi
-cp taxi_pipeline_simple.py $AIRFLOW_HOME/dags/taxi
+pip show tfx
+</pre>
+
+Use the location shown when setting the TFX_EXAMPLES path below.
+
+<pre class="devsite-terminal devsite-click-to-copy">
+export TFX_EXAMPLES=~/taxi_pipeline/lib/python3.6/site-packages/tfx/examples/chicago_taxi_pipeline
+</pre>
+
+Copy the Chicago Taxi example pipeline into the Airflow DAG folder.
+
+<pre class="devsite-terminal devsite-click-to-copy">
+mkdir -p $AIRFLOW_HOME/dags/
+cp $TFX_EXAMPLES/taxi_pipeline_simple.py $AIRFLOW_HOME/dags/
 </pre>
 
 The module file <code>taxi_utils.py</code> used by the Trainer and Transform
-components will reside in $TAXI_DIR, let's copy it there.
+components will reside in $TAXI_DIR.  Copy it there.
 
 <pre class="devsite-terminal devsite-click-to-copy">
-cp taxi_utils.py $TAXI_DIR
+cp $TFX_EXAMPLES/taxi_utils.py $TAXI_DIR
 </pre>
 
 ## Run the local example
@@ -215,7 +215,7 @@ SCHEMA_FILE=~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LA
 classify_local.sh
 </pre>
 
-# Chicago Taxi Flink Example (python 2.7 only, python 3 WIP)
+# Chicago Taxi Flink Example (python 2.7, 3.5, 3.6, 3.7)
 
 Start local Flink cluster and Beam job server:
 
@@ -228,7 +228,7 @@ Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
 replaced by 'taxi_pipeline_portable_beam'.
 (Check http://localhost:8081 for the Flink Cluster Dashboard)
 
-# Chicago Taxi Spark Example (python 2.7 only, python 3 WIP)
+# Chicago Taxi Spark Example (python 2.7, 3.5, 3.6, 3.7)
 
 Start local Spark cluster and Beam job server:
 
