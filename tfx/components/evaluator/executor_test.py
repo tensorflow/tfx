@@ -70,7 +70,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Check evaluator outputs.
     self.assertTrue(
-        tf.gfile.Exists(os.path.join(eval_output.uri, 'eval_config')))
+        tf.gfile.Exists(os.path.join(eval_output.uri, 'eval_config.json')))
     self.assertTrue(tf.gfile.Exists(os.path.join(eval_output.uri, 'metrics')))
     self.assertTrue(tf.gfile.Exists(os.path.join(eval_output.uri, 'plots')))
 
