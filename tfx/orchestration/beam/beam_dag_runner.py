@@ -92,7 +92,7 @@ class _ComponentAsDoFn(beam.DoFn):
 class BeamDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Beam."""
 
-  def __init__(self, beam_orchestrator_args: Optional[List[Text]] = None):
+  def __init__(self, beam_orchestrator_args: Optional[List[Text]] = []):
     """Initializes BeamDagRunner as a TFX orchestrator.
 
     Args:
