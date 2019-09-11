@@ -92,7 +92,7 @@ class _ComponentAsDoFn(beam.DoFn):
 class BeamDagRunner(tfx_runner.TfxRunner):
   """Tfx runner on Beam."""
 
-  def __init__(self, beam_orchestrator_args: Optional[List[Text]] = []):
+  def __init__(self, beam_orchestrator_args: Optional[List[Text]] = None):
     """Initializes BeamDagRunner as a TFX orchestrator.
 
     Args:
@@ -101,7 +101,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         additional_pipeline_args, which is for beam pipelines in components.
     """
     super(BeamDagRunner, self).__init__()
-    self._beam_orchestrator_args = beam_orchestrator_args
+    self._beam_orchestrator_args = beam_orchestrator_args or []
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
     """Deploys given logical pipeline on Beam.
