@@ -779,7 +779,7 @@ Kubeflow deployment guideline that guide through the options for
 
 ### Configure and run TFX pipeline
 
-Please follow the Kubeflow Pipelines [instructions](https://github.com/kubeflow/pipelines/tree/master/samples/tfx-oss)
+Please follow the Kubeflow Pipelines [instructions](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss)
 to run the TFX example pipeline on Kubeflow.
 TFX components have been containerized to compose the Kubeflow pipeline and
 the sample illustrates the ability to configure the pipeline to read large 
