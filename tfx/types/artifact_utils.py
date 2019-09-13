@@ -25,19 +25,21 @@ from typing import Dict, List, Text
 from tfx.types.artifact import Artifact
 
 
+# TODO(ruoyu): Deprecate this function since it is no longer needed.
 def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
   """Parse a dict from key to list of Artifact from its json format."""
   tfx_artifacts = {}
   for k, l in json.loads(json_str).items():
-    tfx_artifacts[k] = [Artifact.parse_from_json_dict(v) for v in l]
+    tfx_artifacts[k] = [Artifact.from_json_dict(v) for v in l]
   return tfx_artifacts
 
 
+# TODO(ruoyu): Deprecate this function since it is no longer needed.
 def jsonify_artifact_dict(artifact_dict: Dict[Text, List[Artifact]]) -> Text:
   """Serialize a dict from key to list of Artifact into json format."""
   d = {}
   for k, l in artifact_dict.items():
-    d[k] = [v.json_dict() for v in l]
+    d[k] = [v.to_json_dict() for v in l]
   return json.dumps(d)
 
 

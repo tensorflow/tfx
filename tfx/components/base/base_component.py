@@ -28,6 +28,13 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
 from tfx.types import component_spec
+from tfx.utils import json_utils
+
+# Constants that used for serializing and de-serializing components.
+_DRIVER_CLASS_PATH_KEY = 'driver_class_path'
+_EXECUTOR_SPEC_KEY = 'executor_spec'
+_INSTANCE_NAME_KEY = 'instance_name'
+_SPEC_KEY = 'spec'
 
 
 def _abstract_property() -> Any:
@@ -35,7 +42,7 @@ def _abstract_property() -> Any:
   return abc.abstractmethod(lambda: None)
 
 
-class BaseComponent(with_metaclass(abc.ABCMeta, object)):
+class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """Base class for a TFX pipeline component.
 
   An instance of a subclass of BaseComponent represents the parameters for a
@@ -47,8 +54,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
   Attributes:
     SPEC_CLASS: a subclass of types.ComponentSpec used by this component
       (required).
-    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes
-      how to execute this component (required).
+    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes how
+      to execute this component (required).
     DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
       this component (optional, defaults to base_driver.BaseDriver).
   """
@@ -133,6 +140,15 @@ class BaseComponent(with_metaclass(abc.ABCMeta, object)):
             'component_id: %s, inputs: %s, outputs: %s)') % (
                 self.__class__.__name__, self.spec, self.executor_spec,
                 self.driver_class, self.component_id, self.inputs, self.outputs)
+
+  def to_json_dict(self) -> Dict[Text, Any]:
+    return {
+        # _DRIVER_CLASS_PATH_KEY: driver_class_path,
+        _DRIVER_CLASS_PATH_KEY: self.driver_class,
+        _EXECUTOR_SPEC_KEY: self.executor_spec,
+        _INSTANCE_NAME_KEY: self.instance_name,
+        _SPEC_KEY: self.spec
+    }
 
   @property
   def component_type(self) -> Text:
