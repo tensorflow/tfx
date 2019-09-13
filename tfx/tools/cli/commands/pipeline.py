@@ -40,8 +40,10 @@ def pipeline_group() -> None:
     '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
 @click.option(
     '--package_path',
+    default=None,
     type=str,
-    help='Path to the pipeline output workflow file.')
+    help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
+)
 @click.option(
     '--endpoint',
     default=None,
@@ -81,15 +83,17 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--package_path',
     type=str,
-    help='Path to the pipeline output workflow file.')
+    default=None,
+    help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
+)
 @click.option(
     '--endpoint',
-    default='',
+    default=None,
     type=str,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
-    default='',
+    default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
 @click.option(
@@ -120,12 +124,12 @@ def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     '--pipeline_name', required=True, type=str, help='Name of the pipeline')
 @click.option(
     '--endpoint',
-    default='',
+    default=None,
     type=str,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
-    default='',
+    default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
 @click.option(
@@ -153,12 +157,12 @@ def delete_pipeline(ctx: Context, engine: Text, pipeline_name: Text,
     '--engine', default='auto', type=str, help='orchestrator for pipelines')
 @click.option(
     '--endpoint',
-    default='',
+    default=None,
     type=str,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
-    default='',
+    default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
 @click.option(
@@ -186,16 +190,18 @@ def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
     '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
 @click.option(
     '--package_path',
+    default=None,
     type=str,
-    help='Path to the pipeline output workflow file.')
+    help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
+)
 @click.option(
     '--endpoint',
-    default='',
+    default=None,
     type=str,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
-    default='',
+    default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
 @click.option(
