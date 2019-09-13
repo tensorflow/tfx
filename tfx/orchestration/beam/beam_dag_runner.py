@@ -22,13 +22,14 @@ import os
 
 import apache_beam as beam
 import tensorflow as tf
-from typing import Any, Iterable, List, Optional, Text
+from typing import Any, Iterable, List, Optional, Text, Type
 
 from tfx.components.base import base_component
-from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
+from tfx.orchestration.launcher import base_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
 
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
@@ -38,15 +39,19 @@ class _ComponentAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
   def __init__(self, component: base_component.BaseComponent,
+               component_launcher_class: Type[
+                   base_component_launcher.BaseComponentLauncher],
                tfx_pipeline: pipeline.Pipeline):
     """Initialize the _ComponentAsDoFn.
 
     Args:
       component: Component that to be executed.
+      component_launcher_class: The class of the launcher to launch the
+        component.
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
-    self._component_launcher = component_launcher.ComponentLauncher(
+    self._component_launcher = component_launcher_class.create(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
@@ -72,7 +77,15 @@ class _ComponentAsDoFn(beam.DoFn):
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
-  """Tfx runner on Beam."""
+  """Tfx runner on Beam.
+
+  The supported launcher classes are (in the order of preference):
+  `in_process_component_launcher.InProcessComponentLauncher`.
+  """
+
+  SUPPORTED_LAUNCHER_CLASSES = [
+      in_process_component_launcher.InProcessComponentLauncher
+  ]
 
   def __init__(self, beam_orchestrator_args: Optional[List[Text]] = None):
     """Initializes BeamDagRunner as a TFX orchestrator.
@@ -118,11 +131,14 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         tf.logging.info('Component %s depends on %s.', component_id,
                         [s.producer.full_label for s in signals_to_wait])
 
+        component_launcher_class = self.find_component_launcher_class(component)
+
         # Each signal is an empty PCollection. AsIter ensures component will be
         # triggered after upstream components are finished.
         signal_map[component] = (
             root
             | 'Run[%s]' % component_id >> beam.ParDo(
-                _ComponentAsDoFn(component, tfx_pipeline),
+                _ComponentAsDoFn(component, component_launcher_class,
+                                 tfx_pipeline),
                 *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
         tf.logging.info('Component %s is scheduled.', component_id)

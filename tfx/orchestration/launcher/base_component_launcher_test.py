@@ -28,9 +28,9 @@ from tfx.components.base import base_component
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
+from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import component_spec
@@ -49,7 +49,7 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
+    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
     artifact_utils.get_single_instance(
         output_artifacts['output']).uri = os.path.join(
             pipeline_info.pipeline_root, 'output')
@@ -79,13 +79,13 @@ class _FakeComponent(base_component.BaseComponent):
   DRIVER_CLASS = _FakeDriver
 
   def __init__(self,
-               instance_name: Text,
+               name: Text,
                input_channel: types.Channel,
                output_channel: Optional[types.Channel] = None):
     output_channel = output_channel or types.Channel(
         type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
+    super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
 
 
 class ComponentRunnerTest(tf.test.TestCase):
@@ -103,14 +103,14 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    tf.io.gfile.makedirs(os.path.dirname(input_path))
+    tf.gfile.MakeDirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
     input_artifact = types.Artifact(type_name='InputPath')
     input_artifact.uri = input_path
 
     component = _FakeComponent(
-        instance_name='FakeComponent',
+        name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]))
 
     pipeline_info = data_types.PipelineInfo(
@@ -118,7 +118,8 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     driver_args = data_types.DriverArgs(enable_cache=True)
 
-    launcher = component_launcher.ComponentLauncher(
+    # We use InProcessComponentLauncher to test BaseComponentLauncher logics.
+    launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,

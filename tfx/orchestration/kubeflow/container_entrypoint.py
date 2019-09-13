@@ -27,9 +27,9 @@ import tensorflow as tf
 from typing import Any, Dict, Text
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact_utils
 from tfx.types import channel
 from tfx.utils import import_utils
@@ -148,6 +148,8 @@ def main():
   parser.add_argument('--component_type', type=str, required=True)
   parser.add_argument('--driver_class_path', type=str, required=True)
   parser.add_argument('--executor_spec', type=str, required=True)
+  parser.add_argument(
+      '--component_launcher_class_path', type=str, required=True)
   parser.add_argument('--inputs', type=str, required=True)
   parser.add_argument('--outputs', type=str, required=True)
   parser.add_argument('--exec_properties', type=str, required=True)
@@ -166,6 +168,14 @@ def main():
   driver_class = import_utils.import_class_by_path(args.driver_class_path)
   executor_spec = json_utils.loads(args.executor_spec)
 
+  component_launcher_class = import_utils.import_class_by_path(
+      args.component_launcher_class_path)
+  if not issubclass(component_launcher_class,
+                    base_component_launcher.BaseComponentLauncher):
+    raise TypeError(
+        'component_launcher_class "%s" is not subclass of base_component_launcher.BaseComponentLauncher'
+        % component_launcher_class)
+
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
   connection_config = _get_metadata_connection_config(kubeflow_metadata_config)
@@ -178,7 +188,9 @@ def main():
   additional_pipeline_args = _make_additional_pipeline_args(
       args.additional_pipeline_args)
 
-  launcher = component_launcher.BaseComponentLauncher(
+  # TODO(hongyes): create a classmethod to create launcher from a deserialized
+  # component.
+  launcher = component_launcher_class(
       component_info=component_info,
       driver_class=driver_class,
       component_executor_spec=executor_spec,
