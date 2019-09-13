@@ -25,7 +25,7 @@ import os
 
 import tensorflow as tf
 
-from typing import List, Optional, Text
+from typing import List, Optional, Text, Union
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
@@ -75,6 +75,9 @@ class Pipeline(object):
       - pipeline_name: Required. The unique name of this pipeline.
       - pipeline_root: Required. The root of the pipeline outputs.
     components: logical components of this pipeline.
+    runtime_params: List of runtime parameters defined across its components +
+      pipeline_root if parameterized. Currently can be specified only when
+      constructing.
     pipeline_info: An instance of data_types.PipelineInfo that contains basic
       properties of the pipeline.
     enable_cache: whether or not cache is enabled for this run.
@@ -84,7 +87,7 @@ class Pipeline(object):
 
   def __init__(self,
                pipeline_name: Text,
-               pipeline_root: Text,
+               pipeline_root: Union[Text, data_types.RuntimeParameter],
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_component.BaseComponent]] = None,
@@ -95,7 +98,8 @@ class Pipeline(object):
 
     Args:
       pipeline_name: name of the pipeline;
-      pipeline_root: path to root directory of the pipeline;
+      pipeline_root: path to root directory of the pipeline, can be specified as
+        runtime parameter when backed by KubeflowDagRunner;
       metadata_connection_config: the config to connect to ML metadata.
       components: a list of components in the pipeline (optional only for
         backward compatible purpose to be used with deprecated
@@ -148,6 +152,17 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
+    self._runtime_params = []
+    for component in components:
+      self._runtime_params.extend(component.runtime_params)
+
+    if isinstance(pipeline_root, data_types.RuntimeParameter):
+      self._runtime_params.append(pipeline_root)
+
+  @property
+  def runtime_params(self):
+    """A set of RuntimeParameters defined in this pipeline."""
+    return self._runtime_params
 
   @property
   def components(self):

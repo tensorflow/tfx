@@ -11,6 +11,8 @@
     and Trainer.
 
 ## Bug fixes and other changes
+*   Bumped dependency to kfp (Kubeflow Pipelines SDK) to be at version at least
+    0.1.30.
 
 ### Deprecations
 

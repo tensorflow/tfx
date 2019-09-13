@@ -22,19 +22,21 @@ import inspect
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, List, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.types import component_spec
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 # Constants that used for serializing and de-serializing components.
-_DRIVER_CLASS_PATH_KEY = 'driver_class_path'
+_DRIVER_CLASS_PATH_KEY = 'driver_class'
 _EXECUTOR_SPEC_KEY = 'executor_spec'
 _INSTANCE_NAME_KEY = 'instance_name'
+_PARAM_KEY = 'runtime_params'
 _SPEC_KEY = 'spec'
 
 
@@ -73,7 +75,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       self,
       spec: types.ComponentSpec,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      runtime_params: Optional[List[data_types.RuntimeParameter]] = None):
     """Initialize a component.
 
     Args:
@@ -83,6 +86,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       instance_name: Optional unique identifying name for this instance of the
         component in the pipeline. Required if two instances of the same
         component is used in the pipeline.
+      runtime_params: Optional runtime parameters contained in this component.
+        Note that names of runtime parameters are unique within the same
+        pipeline.
     """
     self.spec = spec
     if custom_executor_spec:
@@ -94,6 +100,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self.driver_class = self.__class__.DRIVER_CLASS
     # TODO(b/139540680): consider making instance_name private.
     self.instance_name = instance_name
+    self.runtime_params = runtime_params or []
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._validate_component_class()
@@ -133,9 +140,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   def __repr__(self):
     return ('%s(spec: %s, executor_spec: %s, driver_class: %s, '
-            'component_id: %s, inputs: %s, outputs: %s)') % (
-                self.__class__.__name__, self.spec, self.executor_spec,
-                self.driver_class, self.component_id, self.inputs, self.outputs)
+            'component_id: %s, inputs: %s, outputs: %s, runtime_params: %s)'
+           ) % (self.__class__.__name__, self.spec, self.executor_spec,
+                self.driver_class, self.component_id, self.inputs, self.outputs,
+                self.runtime_params)
 
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
@@ -143,6 +151,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         _DRIVER_CLASS_PATH_KEY: self.driver_class,
         _EXECUTOR_SPEC_KEY: self.executor_spec,
         _INSTANCE_NAME_KEY: self.instance_name,
+        _PARAM_KEY: self.runtime_params,
         _SPEC_KEY: self.spec
     }
 

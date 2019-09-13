@@ -16,12 +16,18 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from __future__ import unicode_literals
 
 import tensorflow as tf
+
+from typing import Optional, Text
+
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import component_spec
@@ -49,15 +55,20 @@ class _BasicComponent(base_component.BaseComponent):
 
   SPEC_CLASS = _BasicComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
+  DRIVER_CLASS = base_driver.BaseDriver
 
   def __init__(self,
                spec: types.ComponentSpec = None,
                folds: int = None,
+               pipeline_root: Optional[data_types.RuntimeParameter] = None,
                input: types.Channel = None):  # pylint: disable=redefined-builtin
     if not spec:
       output = types.Channel(type_name="OutputType")
       spec = _BasicComponentSpec(folds=folds, input=input, output=output)
-    super(_BasicComponent, self).__init__(spec=spec)
+    params = None
+    if pipeline_root:
+      params = [pipeline_root]
+    super(_BasicComponent, self).__init__(spec=spec, runtime_params=params)
 
 
 class ComponentTest(tf.test.TestCase):
@@ -171,7 +182,13 @@ class ComponentTest(tf.test.TestCase):
     input_channel = types.Channel(
         type_name="InputType",
         artifacts=[artifact.Artifact(type_name="InputType")])
-    component = _BasicComponent(folds=10, input=input_channel)
+    root_param = data_types.RuntimeParameter(
+        name="pipeline_root",
+        default="root",
+        ptype=Text,
+        description="root dir of the pipeline.")
+    component = _BasicComponent(
+        folds=10, input=input_channel, pipeline_root=root_param)
     json_dict = json_utils.dumps(component)
     recovered_component = json_utils.loads(json_dict)
     self.assertEqual(recovered_component.__class__, component.__class__)
@@ -182,6 +199,10 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
     self.assertEqual(recovered_component.outputs.output.type_name, "OutputType")
     self.assertEqual(recovered_component.DRIVER_CLASS, component.DRIVER_CLASS)
+    self.assertEqual(
+        str(recovered_component.runtime_params), str(component.runtime_params))
+    # Test re-dump.
+    new_json_dict = json_utils.dumps(recovered_component)  # pylint: disable=unused-variable
 
 
 if __name__ == "__main__":

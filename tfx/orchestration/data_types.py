@@ -16,9 +16,45 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type
+import abc
+
+from six import with_metaclass
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 from tfx import types
+from tfx.utils import json_utils
+
+
+class RuntimeParameter(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+  """Runtime parameter.
+
+  Attributes:
+    name: The name of the runtime parameter
+    default: Default value for runtime params when it's not explicitly
+             specified.
+    ptype: The type of the runtime parameter
+    description: Description of the usage of the parameter
+  """
+
+  def __init__(
+      self,
+      name: Text,
+      default: Optional[Union[int, float, bool, Text]] = None,
+      ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
+      description: Optional[Text] = None):
+    if ptype and ptype not in [int, float, bool, Text]:
+      raise RuntimeError('Only str and scalar runtime parameters are supported')
+    if (default and ptype) and not isinstance(default, ptype):
+      raise TypeError('Default value must be consistent with specified ptype')
+    self.name = name
+    self.default = default
+    self.ptype = ptype
+    self.description = description
+
+  def __repr__(self):
+    return ('RuntimeParam: name: %s, default: %s, ptype: %s, '
+            'description: %s') % (self.name, self.default,
+                                  self.ptype, self.description)
 
 
 class ExecutionDecision(object):
@@ -78,7 +114,7 @@ class PipelineInfo(object):
 
   def __init__(self,
                pipeline_name: Text,
-               pipeline_root: Text,
+               pipeline_root: Union[Text, RuntimeParameter],
                run_id: Optional[Text] = None):
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
@@ -103,29 +139,3 @@ class ComponentInfo(object):
     self.component_type = component_type
     self.component_id = component_id
 
-
-class RuntimeParameter(object):
-  """Runtime parameter.
-
-  Attributes:
-    name: The name of the runtime parameter
-    default: Default value for runtime params when it's not explicitly
-             specified.
-    ptype: The type of the runtime parameter
-    description: Description of the usage of the parameter
-  """
-
-  def __init__(
-      self,
-      name: Text,
-      default: Any = None,
-      ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
-      description: Optional[Text] = None):
-    if ptype and ptype not in [int, float, bool, Text]:
-      raise RuntimeError('Only str and scalar runtime parameters are supported')
-    if (default and ptype) and not isinstance(default, ptype):
-      raise TypeError('Default value must be consistent with specified ptype')
-    self.name = name
-    self.default = default
-    self.ptype = ptype
-    self.description = description

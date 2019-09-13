@@ -33,6 +33,7 @@ import tensorflow as tf
 from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
@@ -94,11 +95,18 @@ class BaseComponent(object):
         component_launcher_class.__module__, component_launcher_class.__name__
     ])
 
+    if isinstance(pipeline.pipeline_info.pipeline_root,
+                  data_types.RuntimeParameter):
+      pipeline_root_param = dsl.PipelineParam(
+          name=pipeline.pipeline_info.pipeline_root.name)
+    else:
+      pipeline_root_param = pipeline.pipeline_info.pipeline_root
+
     arguments = [
         '--pipeline_name',
         pipeline.pipeline_info.pipeline_name,
         '--pipeline_root',
-        pipeline.pipeline_info.pipeline_root,
+        pipeline_root_param,
         '--kubeflow_metadata_config',
         json_format.MessageToJson(kubeflow_metadata_config),
         '--additional_pipeline_args',
