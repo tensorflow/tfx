@@ -18,12 +18,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import json
-
 # Standard Imports
 
 import tensorflow as tf
 from tfx.types import artifact
+from tfx.utils import json_utils
 
 
 class ArtifactTest(tf.test.TestCase):
@@ -73,9 +72,8 @@ class ArtifactTest(tf.test.TestCase):
         str(instance))
 
     # Test json serialization.
-    json_dict = instance.json_dict()
-    s = json.dumps(json_dict)
-    other_instance = artifact.Artifact.parse_from_json_dict(json.loads(s))
+    json_dict = json_utils.dumps(instance)
+    other_instance = json_utils.loads(json_dict)
     self.assertEqual(instance.artifact, other_instance.artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 

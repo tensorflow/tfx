@@ -29,9 +29,10 @@ from google.protobuf import json_format
 from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
+from tfx.utils import json_utils
 
 
-class _PropertyDictWrapper(object):
+class _PropertyDictWrapper(json_utils.Jsonable):
   """Helper class to wrap inputs/outputs from TFX components.
 
   Currently, this class is read-only (setting properties is not implemented).
@@ -70,7 +71,7 @@ def _abstract_property() -> Any:
   return abc.abstractmethod(lambda: None)
 
 
-class ComponentSpec(with_metaclass(abc.ABCMeta, object)):
+class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """A specification of the inputs, outputs and parameters for a component.
 
   Components should have a corresponding ComponentSpec inheriting from this

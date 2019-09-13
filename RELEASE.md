@@ -4,6 +4,7 @@
 
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
+*   Added support for serialization and deserialization of components.
 
 ## Bug fixes and other changes
 

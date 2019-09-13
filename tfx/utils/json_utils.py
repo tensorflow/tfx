@@ -48,9 +48,9 @@ class _ObjectType(object):
 class Jsonable(with_metaclass(abc.ABCMeta, object)):
   """Base class for serializing and deserializing objects to/from JSON.
 
-  The default implementation assumes that the `self.__dict__` states of
-  subclasses can be passed into class constructor as kwargs to reconstruct the
-  class instance. If the subclass cannot hold the assumption, it should
+  The default implementation assumes that the subclass can be restored by
+  updating `self.__dict__` without invoking `self.__init__` function.. If the
+  subclass cannot hold the assumption, it should
   override `to_json_dict` and `from_json_dict` to customize the implementation.
   """
 
@@ -61,7 +61,9 @@ class Jsonable(with_metaclass(abc.ABCMeta, object)):
   @classmethod
   def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
     """Convert from dictionary data to an object."""
-    return cls(**dict_data)
+    instance = cls.__new__(cls)
+    instance.__dict__ = dict_data
+    return instance
 
 
 class _DefaultEncoder(json.JSONEncoder):
@@ -90,9 +92,9 @@ class _DefaultEncoder(json.JSONEncoder):
 class _DefaultDecoder(json.JSONDecoder):
   """Default JSON Decoder which decodes JSON to Jsonable object."""
 
-  def __init__(self, *args, **kargs):
+  def __init__(self, *args, **kwargs):
     super(_DefaultDecoder, self).__init__(
-        object_hook=self._dict_to_object, *args, **kargs)
+        object_hook=self._dict_to_object, *args, **kwargs)
 
   def _dict_to_object(self, dict_data: Dict[Text, Any]) -> Any:
     """Converts a dictionary to an object."""

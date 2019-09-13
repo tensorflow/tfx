@@ -20,9 +20,10 @@ from __future__ import print_function
 from typing import Iterable, Optional, Text, Type
 
 from tfx.types.artifact import Artifact
+from tfx.utils import json_utils
 
 
-class Channel(object):
+class Channel(json_utils.Jsonable):
   """Tfx Channel.
 
   TFX Channel is an abstract concept that connects data producers and data
@@ -45,8 +46,8 @@ class Channel(object):
     Args:
       type_name: Name of the type that should be fed into or read from the
         Channel. If not specified, "type" must be specified instead.
-      type: Subclass of Artifact that represents the type of the Channel.
-        If not specified, "type_name" must be specified instead.
+      type: Subclass of Artifact that represents the type of the Channel. If not
+        specified, "type_name" must be specified instead.
       artifacts: (Optional) A collection of artifacts as the values that can be
         read from the Channel. This is used to construct a static Channel.
     """
