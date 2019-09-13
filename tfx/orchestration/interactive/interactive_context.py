@@ -44,20 +44,24 @@ from tfx.orchestration.interactive import notebook_formatters
 from tfx.orchestration.launcher import in_process_component_launcher
 
 
+def check_ipython():
+  # __IPYTHON__ variable is set by IPython, see
+  # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
+  return getattr(builtins, '__IPYTHON__', None)
+
+
 def requires_ipython(fn):
   """Decorator for methods that can only be run in IPython."""
   @functools.wraps(fn)
-  def check_ipython(*args, **kwargs):
+  def run_if_ipython(*args, **kwargs):
     """Invokes `fn` if called from IPython, otherwise just emits a warning."""
-    # __IPYTHON__ variable is set by IPython, see
-    # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
-    if getattr(builtins, '__IPYTHON__', None):
+    if check_ipython():
       return fn(*args, **kwargs)
     else:
       logging.warning('Method "%s" is a no-op when invoked outside of IPython.',
                       fn.__name__)
 
-  return check_ipython
+  return run_if_ipython
 
 
 class InteractiveContext(object):
@@ -172,7 +176,7 @@ class InteractiveContext(object):
     if current_frame is None:
       raise ValueError('Unable to get current frame.')
 
-    caller_filepath = inspect.getfile(current_frame.f_back)
+    caller_filepath = inspect.getfile(current_frame.f_back.f_back)
     notebook_dir = os.path.dirname(os.path.abspath(caller_filepath))
 
     # The notebook filename is user-provided, as IPython kernels are agnostic to
