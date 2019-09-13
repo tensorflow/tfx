@@ -188,7 +188,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
                                       'test_pipeline_kubeflow_1.py')
     self.pipeline_name = 'chicago_taxi_pipeline_kubeflow'
     self.pipeline_package_path = os.path.join(
-        self.chicago_taxi_pipeline_dir, 'chicago_taxi_pipeline_kubeflow.tar.gz')
+        os.getcwd(), 'chicago_taxi_pipeline_kubeflow.tar.gz')
 
     # Kubeflow client params.
     self.endpoint = 'dummyEndpoint'
@@ -202,6 +202,51 @@ class KubeflowHandlerTest(tf.test.TestCase):
     super(KubeflowHandlerTest, self).tearDown()
     os.environ['HOME'] = self._original_home_value
     os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
+
+  # TODO(b/140954873): Change the following test after Kubeflow e2e test.
+  @mock.patch('kfp.Client', _MockClientClass)
+  def testCheckPipelinePackagePathDefaultPath(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+        labels.PIPELINE_PACKAGE_PATH: None
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    pipeline_args = handler._extract_pipeline_args()
+    handler._check_pipeline_package_path(pipeline_args[labels.PIPELINE_NAME])
+    self.assertEqual(
+        handler.flags_dict[labels.PIPELINE_PACKAGE_PATH],
+        os.path.join(os.getcwd(),
+                     '{}.tar.gz'.format(pipeline_args[labels.PIPELINE_NAME])))
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  def testCheckPipelinePackagePathWrongPath(self):
+    flags_dict = {
+        labels.ENGINE_FLAG:
+            self.engine,
+        labels.PIPELINE_DSL_PATH:
+            self.pipeline_path,
+        labels.ENDPOINT:
+            self.endpoint,
+        labels.IAP_CLIENT_ID:
+            self.iap_client_id,
+        labels.NAMESPACE:
+            self.namespace,
+        labels.PIPELINE_PACKAGE_PATH:
+            os.path.join(self.chicago_taxi_pipeline_dir,
+                         '{}.tar.gz'.format(self.pipeline_name))
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    pipeline_args = handler._extract_pipeline_args()
+    with self.assertRaises(SystemExit) as err:
+      handler._check_pipeline_package_path(pipeline_args[labels.PIPELINE_NAME])
+    self.assertEqual(
+        str(err.exception),
+        'Pipeline package not found at {}. When --package_path is unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
+        .format(flags_dict[labels.PIPELINE_PACKAGE_PATH]))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)

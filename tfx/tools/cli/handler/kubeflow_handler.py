@@ -130,7 +130,7 @@ class KubeflowHandler(base_handler.BaseHandler):
     self._check_pipeline_dsl_path()
     self._check_dsl_runner()
     pipeline_args = self._extract_pipeline_args()
-    self._check_pipeline_package_path()
+    self._check_pipeline_package_path(pipeline_args[labels.PIPELINE_NAME])
     if not pipeline_args:
       sys.exit('Unable to compile pipeline. Check your pipeline dsl.')
     click.echo('Pipeline compiled successfully.')
@@ -268,13 +268,18 @@ class KubeflowHandler(base_handler.BaseHandler):
     with open(pipeline_args_path, 'w') as f:
       json.dump(pipeline_args, f)
 
-  def _check_pipeline_package_path(self):
-    pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
-    if not pipeline_package_path:
-      sys.exit('Provide the output workflow package path.')
+  def _check_pipeline_package_path(self, pipeline_name: Text) -> None:
 
+    # When unset, search for the workflow file in the current dir.
+    if not self.flags_dict[labels.PIPELINE_PACKAGE_PATH]:
+      self.flags_dict[labels.PIPELINE_PACKAGE_PATH] = os.path.join(
+          os.getcwd(), '{}.tar.gz'.format(pipeline_name))
+
+    pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
     if not tf.io.gfile.exists(pipeline_package_path):
-      sys.exit('Pipeline package not found: {}'.format(pipeline_package_path))
+      sys.exit(
+          'Pipeline package not found at {}. When --package_path is unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
+          .format(pipeline_package_path))
 
   def _get_pipeline_id(self, pipeline_name: Text) -> Text:
     # Path to pipeline folder.

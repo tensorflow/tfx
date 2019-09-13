@@ -46,7 +46,7 @@ Optional flags:
 *   --engine
 *   --iap_client_id
 *   --namespace
-*   --package_path (Required for Kubeflow)
+*   --package_path
 
 Examples:
 
@@ -96,7 +96,7 @@ Optional flags:
 *   --engine
 *   --iap_client_id
 *   --namespace
-*   --package_path (Required for Kubeflow)
+*   --package_path
 
 Examples:
 
@@ -150,7 +150,7 @@ Optional flags:
 *   --engine
 *   --iap_client_id
 *   --namespace
-*   --package_path (Required for Kubeflow)
+*   --package_path
 
 Examples:
 
@@ -497,4 +497,6 @@ Kubeflow:
 *   --package_path:
 
     Path to the pipeline output workflow file. The package_file should end with
-    '.tar.gz', '.tgz', '.zip', '.yaml' or '.yml'.
+    '.tar.gz', '.tgz', '.zip', '.yaml' or '.yml'. When unset, the workflow file
+    will be searched in this path:
+    "\<current_directory>/\<pipeline_name>\.tar.gz".
