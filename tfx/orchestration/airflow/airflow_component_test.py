@@ -68,32 +68,33 @@ class AirflowComponentTest(tf.test.TestCase):
         start_date=datetime.datetime(2018, 1, 1),
         schedule_interval=None)
 
-  @mock.patch(
-      'tfx.orchestration.component_launcher.ComponentLauncher'
-  )
-  def testAirflowAdaptor(self, mock_component_launcher_class):
+  def testAirflowAdaptor(self):
     fake_dagrun = collections.namedtuple('fake_dagrun', ['run_id'])
     mock_ti = mock.Mock()
     mock_ti.get_dagrun.return_value = fake_dagrun('run_id')
     mock_component_launcher = mock.Mock()
-    mock_component_launcher_class.return_value = mock_component_launcher
+    mock_component_launcher_class = mock.Mock()
+    mock_component_launcher_class.create.return_value = mock_component_launcher
     airflow_component._airflow_component_launcher(
         component=self._component,
+        component_launcher_class=mock_component_launcher_class,
         pipeline_info=self._pipeline_info,
         driver_args=self._driver_args,
         metadata_connection_config=self._metadata_connection_config,
         additional_pipeline_args={},
         ti=mock_ti)
-    mock_component_launcher_class.assert_called_once()
-    arg_list = mock_component_launcher_class.call_args_list
+    mock_component_launcher_class.create.assert_called_once()
+    arg_list = mock_component_launcher_class.create.call_args_list
     self.assertEqual(arg_list[0][1]['pipeline_info'].run_id, 'run_id')
     mock_component_launcher.launch.assert_called_once()
 
   @mock.patch('functools.partial')
   def testAirflowComponent(self, mock_functools_partial):
+    mock_component_launcher_class = mock.Mock()
     airflow_component.AirflowComponent(
         parent_dag=self._parent_dag,
         component=self._component,
+        component_launcher_class=mock_component_launcher_class,
         pipeline_info=self._pipeline_info,
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
@@ -101,6 +102,7 @@ class AirflowComponentTest(tf.test.TestCase):
     mock_functools_partial.assert_called_once_with(
         airflow_component._airflow_component_launcher,
         component=self._component,
+        component_launcher_class=mock_component_launcher_class,
         pipeline_info=self._pipeline_info,
         driver_args=mock.ANY,
         metadata_connection_config=self._metadata_connection_config,

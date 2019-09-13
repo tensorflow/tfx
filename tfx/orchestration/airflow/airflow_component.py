@@ -22,16 +22,17 @@ import functools
 from airflow import models
 from airflow.operators import python_operator
 
-from typing import Any, Dict, Text
+from typing import Any, Dict, Text, Type
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
-from tfx.orchestration import component_launcher
 from tfx.orchestration import data_types
+from tfx.orchestration.launcher import base_component_launcher
 
 
 def _airflow_component_launcher(
-    component: base_component.BaseComponent,
+    component: base_component.BaseComponent, component_launcher_class: Type[
+        base_component_launcher.BaseComponentLauncher],
     pipeline_info: data_types.PipelineInfo, driver_args: data_types.DriverArgs,
     metadata_connection_config: metadata_store_pb2.ConnectionConfig,
     additional_pipeline_args: Dict[Text, Any], **kwargs) -> None:
@@ -43,6 +44,8 @@ def _airflow_component_launcher(
   Args:
     component: TFX BaseComponent instance. This instance holds all inputs and
       outputs placeholders as well as component properties.
+    component_launcher_class: the class of the launcher to launch the
+        component.
     pipeline_info: a data_types.PipelineInfo instance that holds pipeline
       properties
     driver_args: component specific args for driver.
@@ -57,7 +60,7 @@ def _airflow_component_launcher(
   """
   # Populate run id from Airflow task instance.
   pipeline_info.run_id = kwargs['ti'].get_dagrun().run_id
-  launcher = component_launcher.ComponentLauncher(
+  launcher = component_launcher_class.create(
       component=component,
       pipeline_info=pipeline_info,
       driver_args=driver_args,
@@ -74,6 +77,8 @@ class AirflowComponent(python_operator.PythonOperator):
 
   def __init__(self, parent_dag: models.DAG,
                component: base_component.BaseComponent,
+               component_launcher_class: Type[
+                   base_component_launcher.BaseComponentLauncher],
                pipeline_info: data_types.PipelineInfo, enable_cache: bool,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
                additional_pipeline_args: Dict[Text, Any]):
@@ -83,6 +88,8 @@ class AirflowComponent(python_operator.PythonOperator):
       parent_dag: An AirflowPipeline instance as the pipeline DAG.
       component: An instance of base_component.BaseComponent that holds all
         properties of a logical component.
+      component_launcher_class: the class of the launcher to launch the
+        component.
       pipeline_info: An instance of data_types.PipelineInfo that holds pipeline
         properties.
       enable_cache: Whether or not cache is enabled for this component run.
@@ -98,6 +105,7 @@ class AirflowComponent(python_operator.PythonOperator):
         python_callable=functools.partial(
             _airflow_component_launcher,
             component=component,
+            component_launcher_class=component_launcher_class,
             pipeline_info=pipeline_info,
             driver_args=driver_args,
             metadata_connection_config=metadata_connection_config,

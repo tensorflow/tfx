@@ -28,6 +28,7 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
 from tfx.types import component_spec
+from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 # Constants that used for serializing and de-serializing components.
@@ -35,11 +36,6 @@ _DRIVER_CLASS_PATH_KEY = 'driver_class_path'
 _EXECUTOR_SPEC_KEY = 'executor_spec'
 _INSTANCE_NAME_KEY = 'instance_name'
 _SPEC_KEY = 'spec'
-
-
-def _abstract_property() -> Any:
-  """Returns an abstract property for use in an ABC abstract class."""
-  return abc.abstractmethod(lambda: None)
 
 
 class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
@@ -62,13 +58,13 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   # Subclasses must override this property (by specifying a types.ComponentSpec
   # class, e.g. "SPEC_CLASS = MyComponentSpec").
-  SPEC_CLASS = _abstract_property()
+  SPEC_CLASS = abc_utils.abstract_property()
   # Subclasses must also override the executor spec.
   #
   # Note: EXECUTOR_CLASS has been replaced with EXECUTOR_SPEC. A custom
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
-  EXECUTOR_SPEC = _abstract_property()
+  EXECUTOR_SPEC = abc_utils.abstract_property()
   # Subclasses will usually use the default driver class, but may override this
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver

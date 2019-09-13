@@ -26,6 +26,7 @@ from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -53,6 +54,8 @@ class BaseComponentTest(tf.test.TestCase):
     with dsl.Pipeline('test_pipeline'):
       self.component = base_component.BaseComponent(
           component=statistics_gen,
+          component_launcher_class=in_process_component_launcher
+          .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
           tfx_image='container_image',
@@ -90,6 +93,8 @@ class BaseComponentTest(tf.test.TestCase):
         '"__module__": "tfx.components.statistics_gen.executor", '
         '"__tfx_object_type__": "class"}'
         '}',
+        '--component_launcher_class_path',
+        'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
     ]
     self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
                      expected_args)

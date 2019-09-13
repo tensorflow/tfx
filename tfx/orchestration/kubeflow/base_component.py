@@ -30,11 +30,12 @@ import json
 from kfp import dsl
 from kubernetes import client as k8s_client
 import tensorflow as tf
-from typing import Optional, Set, Text
+from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact_utils
 from tfx.types import component_spec
 from tfx.utils import json_utils
@@ -51,6 +52,7 @@ def _prepare_artifact_dict(wrapper: component_spec._PropertyDictWrapper):
   return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
 
+# TODO(hongyes): renaming the name to KubeflowComponent.
 class BaseComponent(object):
   """Base component for all Kubeflow pipelines TFX components.
 
@@ -62,6 +64,8 @@ class BaseComponent(object):
   def __init__(
       self,
       component: tfx_base_component.BaseComponent,
+      component_launcher_class: Type[
+          base_component_launcher.BaseComponentLauncher],
       depends_on: Set[dsl.ContainerOp],
       pipeline: tfx_pipeline.Pipeline,
       tfx_image: Text,
@@ -74,6 +78,8 @@ class BaseComponent(object):
 
     Args:
       component: The logical TFX component to wrap.
+      component_launcher_class: the class of the launcher to launch the
+        component.
       depends_on: The set of upstream KFP ContainerOp components that this
         component will depend on.
       pipeline: The logical TFX pipeline to which this component belongs.
@@ -84,6 +90,9 @@ class BaseComponent(object):
     driver_class_path = '.'.join(
         [component.driver_class.__module__, component.driver_class.__name__])
     executor_spec = json_utils.dumps(component.executor_spec)
+    component_launcher_class_path = '.'.join([
+        component_launcher_class.__module__, component_launcher_class.__name__
+    ])
 
     arguments = [
         '--pipeline_name',
@@ -102,6 +111,8 @@ class BaseComponent(object):
         driver_class_path,
         '--executor_spec',
         executor_spec,
+        '--component_launcher_class_path',
+        component_launcher_class_path,
         '--inputs',
         artifact_utils.jsonify_artifact_dict(
             _prepare_artifact_dict(component.inputs)),

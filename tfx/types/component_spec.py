@@ -29,6 +29,7 @@ from google.protobuf import json_format
 from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
+from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 
@@ -64,11 +65,6 @@ class _PropertyDictWrapper(json_utils.Jsonable):
 
   def get_all(self) -> Dict[Text, Channel]:
     return self._data
-
-
-def _abstract_property() -> Any:
-  """Returns an abstract property for use in an ABC abstract class."""
-  return abc.abstractmethod(lambda: None)
 
 
 class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
@@ -108,9 +104,9 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     OUTPUTS: a dict of string keys and ChannelParameter values.
   """
 
-  PARAMETERS = _abstract_property()
-  INPUTS = _abstract_property()
-  OUTPUTS = _abstract_property()
+  PARAMETERS = abc_utils.abstract_property()
+  INPUTS = abc_utils.abstract_property()
+  OUTPUTS = abc_utils.abstract_property()
 
   def __init__(self, **kwargs):
     """Initialize a ComponentSpec.

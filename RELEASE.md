@@ -5,6 +5,8 @@
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
+* . Made component launcher extensible to support launching components on
+    multiple platforms.
 
 ## Bug fixes and other changes
 
