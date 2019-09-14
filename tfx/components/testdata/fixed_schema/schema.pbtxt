@@ -1,0 +1,25 @@
+feature {
+  name: "foo"
+  value_count {
+    min: 1
+    max: 1
+  }
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+}
+feature {
+  name: "bar"
+  value_count {
+    min: 1
+    max: 1
+  }
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+}
+# generate_legacy_feature_spec: false

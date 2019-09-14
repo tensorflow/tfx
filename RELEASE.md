@@ -7,6 +7,8 @@
 *   Added support for serialization and deserialization of components.
 * . Made component launcher extensible to support launching components on
     multiple platforms.
+*   Added option to use fixed Schema artifact for ExampleValidator, Transform
+    and Trainer.
 
 ## Bug fixes and other changes
 
