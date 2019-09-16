@@ -37,7 +37,13 @@ def make_required_test_packages():
   return [
       'apache-airflow>=1.10,<2',
       'docker>=4.0.0,<5.0.0',
+      # LINT.IfChange
       'kfp>=0.1.30,<0.2; python_version >= "3.0"',
+      # LINT.ThenChange(
+      #     testing/github/common.sh,
+      #     testing/github/ubuntu/image/image.sh,
+      #     testing/kubeflow/common.sh
+      # )
       'pytest>=5.0.0,<6.0.0',
       'tensorflow>=1.14,<2',
       'tzlocal>=1.5,<2.0',
