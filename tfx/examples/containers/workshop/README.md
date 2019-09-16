@@ -11,6 +11,13 @@ workshop and examples themselves, and includes the basic dependencies.
 * Docker
 * At least 2GB available disk space
 
+Unless you want to build the container locally, you should download the
+prebuilt image:
+
+```bash
+docker pull tensorflow/tfx:workshop-latest
+```
+
 ## To Run
 
 Note: You should create the `airflow` directory BEFORE running
@@ -18,15 +25,29 @@ Note: You should create the `airflow` directory BEFORE running
 docker-compose.yml to point to where you created the directory on your system.
 In the container, it will be mounted as `/home/tfx/airflow`.
 
-Note: You should clone the TFX repo on your system:
+Note: You should clone the TFX repo on your system.
+For Linux or MacOS:
 
 ```bash
 git clone https://github.com/tensorflow/tfx.git
 ```
 
+For Windows:
+
+```bash
+git clone https://github.com/tensorflow/tfx.git --config core.autocrlf=input
+```
+
 Edit the `TFX_PATH_ON_YOU_HOST` placeholder in docker-compose.yml to point to
 where you cloned the repo on your system. In the container, it will be mounted
 as `/home/tfx/tfx`.
+
+Note: For Windows, the paths on your local system will need to be Windows paths
+with escaped backslashes.  For example `C:\\user\\projects\\tfx`.  You will also
+need to share your drive with Docker.  In Docker Desktop, go to
+Settings > Shared Drives.  This will often require you to open ports 445, 8080,
+and 8888 for Docker in your firewall, which may be your Windows Firewall or your
+security software.
 
 Then run:
 
