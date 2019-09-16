@@ -16,12 +16,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
+import io
 import os
+import tarfile
 
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from typing import Callable, List, Optional, Text
+import yaml
 
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -167,6 +171,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     super(KubeflowDagRunner, self).__init__()
     self._output_dir = output_dir or os.getcwd()
     self._config = config or KubeflowDagRunnerConfig()
+    self._compiler = compiler.Compiler()
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
@@ -208,9 +213,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         pipeline.
     """
 
-    @dsl.pipeline(
-        name=pipeline.pipeline_args['pipeline_name'],
-        description=pipeline.pipeline_args.get('description', ''))
+    # TODO(b/128836890): Add pipeline parameters after removing the usage of
+    # kfp decorator.
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
 
@@ -219,9 +223,23 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       """
       self._construct_pipeline_graph(pipeline)
 
+    workflow = self._compiler.create_workflow(
+        pipeline_func=_construct_pipeline,
+        pipeline_name=pipeline.pipeline_args['pipeline_name'],
+        pipeline_description=pipeline.pipeline_args.get('description', ''))
+
+    # default_flow_style is set to false to ensure the generated yaml spec in
+    # compliance with Argo. Otherwise it might output nested collection using
+    # {}.
+    yaml_text = yaml.dump(workflow, default_flow_style=False)
+
     pipeline_name = pipeline.pipeline_args['pipeline_name']
     # TODO(b/134680219): Allow users to specify the extension. Specifying
     # .yaml will compile the pipeline directly into a YAML file. Kubeflow
     # backend recognizes .tar.gz, .zip, and .yaml today.
     pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
-    compiler.Compiler().compile(_construct_pipeline, pipeline_file)
+    with tarfile.open(pipeline_file, 'w:gz') as tar:
+      with contextlib.closing(io.BytesIO(yaml_text.encode())) as yaml_file:
+        tarinfo = tarfile.TarInfo('pipeline.yaml')
+        tarinfo.size = len(yaml_file.getvalue())
+        tar.addfile(tarinfo, fileobj=yaml_file)
