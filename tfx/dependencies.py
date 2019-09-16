@@ -37,7 +37,7 @@ def make_required_test_packages():
   return [
       'apache-airflow>=1.10,<2',
       'docker>=4.0.0,<5.0.0',
-      'kfp>=0.1.18,<0.2; python_version >= "3.0"',
+      'kfp>=0.1.30,<0.2; python_version >= "3.0"',
       'pytest>=5.0.0,<6.0.0',
       'tensorflow>=1.14,<2',
       'tzlocal>=1.5,<2.0',
