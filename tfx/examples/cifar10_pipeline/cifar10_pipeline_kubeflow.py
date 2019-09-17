@@ -103,7 +103,7 @@ if __name__ == '__main__':
         _tfx_root)
     config = KubeflowDagRunnerConfig(
         pipeline_operator_funcs=[mount_volume_op],
-        tfx_image='tensorflow/tfx:0.14.0rc1'
+        tfx_image='tensorflow/tfx:0.14.0'
     )
     _pipeline = _create_pipeline(
         pipeline_name=_pipeline_name,
