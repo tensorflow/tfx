@@ -429,9 +429,9 @@ Train a TensorFlow model with your nice, clean, transformed data.
 
 ### Components
 
-* [Trainer](https://www.tensorflow.org/tfx/guide/trainer)
-trains the model using TensorFlow
-[Estimators](https://www.tensorflow.org/guide/estimators)
+*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains the model
+    using TensorFlow
+    [Estimators](https://github.com/tensorflow/docs/blob/master/site/en/r1/guide/estimators.md)
 
 ### In an editor:
 
