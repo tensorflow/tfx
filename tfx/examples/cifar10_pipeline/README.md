@@ -37,7 +37,7 @@ understood that the data provided at this site is being used at one’s own risk
 
 You can read more about the dataset in [CIFAR dataset homepage](https://www.cs.toronto.edu/~kriz/cifar.html).
 
-## Run the example on Kubeflow (on premise)
+## Run the example on Kubeflow
 
 A PersistentVolumeClaim called `tfx-pvc` is needed so the cluster should have one ready before dropping the pipelines.
 Then add the entire folder `cifar_pipeline` (this folder) to the root of the `tfx-pvc` related persistend volume.
