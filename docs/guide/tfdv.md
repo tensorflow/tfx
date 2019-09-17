@@ -367,4 +367,4 @@ TensorFlow's Estimators have restrictions on the type of data they accept as
 labels. For example, binary classifiers typically only work with {0, 1} labels.
 
 Review the label values in the Facets Overview and make sure they conform to the
-[requirements of Estimators](https://www.tensorflow.org/guide/feature_columns).
+[requirements of Estimators](https://github.com/tensorflow/docs/blob/master/site/en/r1/guide/feature_columns.md).

@@ -290,7 +290,7 @@ computed. The two senses may be used interchangeably based on context.
 #### SavedModel
 
 * **What is a [SavedModel](
-https://www.tensorflow.org/api_docs/python/tf/saved_model)**: a universal,
+https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model)**: a universal,
 language-neutral, hermetic, recoverable serialization of a TensorFlow model.
 * **Why is it important**: It enables higher-level systems to produce,
 transform, and consume TensorFlow models using a single abstraction.

@@ -7,7 +7,7 @@ It relies on a [ModelValidator](modelval.md) component to ensure that the new
 model is "good enough" to be pushed to production.
 
 * Consumes: A Trained model in [SavedModel](
-https://www.tensorflow.org/api_docs/python/tf/saved_model) format
+https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model) format
 * Emits: The same SavedModel, along with versioning metadata
 
 ## Using the Pusher Component
