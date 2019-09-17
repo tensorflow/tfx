@@ -5,10 +5,13 @@
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
-* . Made component launcher extensible to support launching components on
+*   Made component launcher extensible to support launching components on
     multiple platforms.
 *   Added option to use fixed Schema artifact for ExampleValidator, Transform
     and Trainer.
+*   Added support for specifying `pipeline_root` as a runtime parameter when the
+    pipeline is running on KubeflowDagRunner. The runtime value of
+    `pipeline_root` can be easily specified using [KFP UI](https://www.kubeflow.org/docs/pipelines/pipelines-quickstart/).
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

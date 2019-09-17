@@ -27,12 +27,14 @@ from __future__ import print_function
 
 import json
 
+import re
 from kfp import dsl
 from kubernetes import client as k8s_client
 import tensorflow as tf
 from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
@@ -47,9 +49,18 @@ _COMMAND = [
 
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
 
+# Default pipeline root parameter name used in Kubeflow pipeline spec.
+KUBEFLOW_PIPELINE_ROOT_PARAM = 'pipeline-root'
+
 
 def _prepare_artifact_dict(wrapper: component_spec._PropertyDictWrapper):
   return dict((k, v.get()) for k, v in wrapper.get_all().items())
+
+
+def _sanitize_name(name: Text) -> Text:
+  """Sanitize the name so it is in compliance with k8s standard."""
+  return re.sub('-+', '-', re.sub('[^-0-9a-z]+', '-',
+                                  name.lower())).lstrip('-').rstrip('-')
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
@@ -84,8 +95,8 @@ class BaseComponent(object):
         component will depend on.
       pipeline: The logical TFX pipeline to which this component belongs.
       tfx_image: The container image to use for this component.
-      kubeflow_metadata_config: Configuration settings for
-        connecting to the MLMD store in a Kubeflow cluster.
+      kubeflow_metadata_config: Configuration settings for connecting to the
+        MLMD store in a Kubeflow cluster.
     """
     driver_class_path = '.'.join(
         [component.driver_class.__module__, component.driver_class.__name__])
@@ -94,11 +105,20 @@ class BaseComponent(object):
         component_launcher_class.__module__, component_launcher_class.__name__
     ])
 
+    # Format a dsl placeholder for pipeline_root.
+    if isinstance(pipeline.pipeline_info.pipeline_root,
+                  data_types.RuntimeParameter):
+      pipeline_root = dsl.PipelineParam(
+          name=_sanitize_name(pipeline.pipeline_info.pipeline_root.name))
+    else:
+      pipeline_root = dsl.PipelineParam(
+          name=_sanitize_name(KUBEFLOW_PIPELINE_ROOT_PARAM))
+
     arguments = [
         '--pipeline_name',
         pipeline.pipeline_info.pipeline_name,
         '--pipeline_root',
-        pipeline.pipeline_info.pipeline_root,
+        pipeline_root,
         '--kubeflow_metadata_config',
         json_format.MessageToJson(kubeflow_metadata_config),
         '--additional_pipeline_args',

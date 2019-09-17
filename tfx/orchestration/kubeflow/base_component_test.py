@@ -68,7 +68,7 @@ class BaseComponentTest(tf.test.TestCase):
         '--pipeline_name',
         'test_pipeline',
         '--pipeline_root',
-        'test_pipeline_root',
+        '{{pipelineparam:op=;name=pipeline-root}}',
         '--kubeflow_metadata_config',
         '{\n'
         '  "mysqlDbServiceHost": {\n'

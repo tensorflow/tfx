@@ -28,9 +28,11 @@ from typing import Callable, List, Optional, Text
 import yaml
 
 from tfx import version
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.kubeflow import base_component
+from tfx.orchestration.kubeflow.base_component import KUBEFLOW_PIPELINE_ROOT_PARAM
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import in_process_component_launcher
 
@@ -172,6 +174,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._output_dir = output_dir or os.getcwd()
     self._config = config or KubeflowDagRunnerConfig()
     self._compiler = compiler.Compiler()
+    self._params = []  # List of dsl.PipelineParam used in this pipeline.
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
     """Constructs a Kubeflow Pipeline graph.
@@ -212,9 +215,19 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
+    # TODO(b/128836890): Add component level runtime params.
+    if isinstance(pipeline.pipeline_info.pipeline_root,
+                  data_types.RuntimeParameter):
+      self._params.append(dsl.PipelineParam(
+          name=pipeline.pipeline_info.pipeline_root.name,
+          value=pipeline.pipeline_info.pipeline_root.default))
+    else:
+      # By default, pipeline root is specified as a pipeline parameter with a
+      # default value.
+      self._params.append(dsl.PipelineParam(
+          name=KUBEFLOW_PIPELINE_ROOT_PARAM,
+          value=pipeline.pipeline_info.pipeline_root))
 
-    # TODO(b/128836890): Add pipeline parameters after removing the usage of
-    # kfp decorator.
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
 
@@ -226,7 +239,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     workflow = self._compiler.create_workflow(
         pipeline_func=_construct_pipeline,
         pipeline_name=pipeline.pipeline_args['pipeline_name'],
-        pipeline_description=pipeline.pipeline_args.get('description', ''))
+        pipeline_description=pipeline.pipeline_args.get('description', ''),
+        params_list=self._params)
 
     # default_flow_style is set to false to ensure the generated yaml spec in
     # compliance with Argo. Otherwise it might output nested collection using

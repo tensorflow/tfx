@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -182,6 +183,9 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
     self.assertEqual(recovered_component.outputs.output.type_name, "OutputType")
     self.assertEqual(recovered_component.DRIVER_CLASS, component.DRIVER_CLASS)
+    # Test re-dump.
+    new_json_dict = json_utils.dumps(recovered_component)
+    self.assertEqual(new_json_dict, json_dict)
 
 
 if __name__ == "__main__":

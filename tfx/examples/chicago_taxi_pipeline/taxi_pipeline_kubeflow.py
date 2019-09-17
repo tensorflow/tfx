@@ -29,6 +29,7 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
@@ -226,9 +227,12 @@ def _create_pipeline(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
 
+  pipeline_root_param = data_types.RuntimeParameter(
+      name='pipeline-root-param', default=pipeline_root)
+
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
-      pipeline_root=pipeline_root,
+      pipeline_root=pipeline_root_param,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher

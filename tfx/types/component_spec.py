@@ -131,6 +131,7 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
              'dict; got %s instead.') % (self.__class__, param_name, param))
 
     # Validate that the ComponentSpec class is well-formed.
+    # TODO(b/128836890): Make RuntimeParameter in compliance with this check.
     seen_arg_names = set()
     for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
                                          self.INPUTS.items(),

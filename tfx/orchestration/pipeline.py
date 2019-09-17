@@ -25,7 +25,7 @@ import os
 
 import tensorflow as tf
 
-from typing import List, Optional, Text
+from typing import List, Optional, Text, Union
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
@@ -84,7 +84,7 @@ class Pipeline(object):
 
   def __init__(self,
                pipeline_name: Text,
-               pipeline_root: Text,
+               pipeline_root: Union[Text, data_types.RuntimeParameter],
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_component.BaseComponent]] = None,

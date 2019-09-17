@@ -251,8 +251,13 @@ class Metadata(object):
     if pipeline_info:
       execution.properties[
           'pipeline_name'].string_value = pipeline_info.pipeline_name
-      execution.properties[
-          'pipeline_root'].string_value = pipeline_info.pipeline_root
+      if isinstance(pipeline_info.pipeline_root, data_types.RuntimeParameter):
+        raise TypeError(
+            'pipeline root needs to be resolved before launch, '
+            'but got parameter: {}'
+            .format(pipeline_info.pipeline_root))
+      execution.properties['pipeline_root'].string_value = str(
+          pipeline_info.pipeline_root)
       if pipeline_info.run_id:
         execution.properties['run_id'].string_value = pipeline_info.run_id
     if component_info:

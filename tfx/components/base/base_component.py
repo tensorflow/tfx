@@ -32,7 +32,7 @@ from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 # Constants that used for serializing and de-serializing components.
-_DRIVER_CLASS_PATH_KEY = 'driver_class_path'
+_DRIVER_CLASS_PATH_KEY = 'driver_class'
 _EXECUTOR_SPEC_KEY = 'executor_spec'
 _INSTANCE_NAME_KEY = 'instance_name'
 _SPEC_KEY = 'spec'
