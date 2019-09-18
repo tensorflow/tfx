@@ -172,8 +172,10 @@ class BaseKubeflowTest(tf.test.TestCase):
             'gather_third_party_licenses': 'false',
         },
     )
-    tf.logging.info('Pushing image {}'.format(container_image))
+    tf.logging.info('Pushing image  {}'.format(container_image))
     client.images.push(repository=container_image)
+    tf.logging.info('Containers: {}'.format(client.images.list()))
+    client.close()
 
   @classmethod
   def _get_mysql_pod_name(cls):
@@ -331,8 +333,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]
     return pipeline
 
-  def _get_kubeflow_metadata_config(self, pipeline_name: Text
-                                   ) -> kubeflow_pb2.KubeflowMetadataConfig:
+  def _get_kubeflow_metadata_config(
+      self, pipeline_name: Text) -> kubeflow_pb2.KubeflowMetadataConfig:
     config = kubeflow_pb2.KubeflowMetadataConfig()
     config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
     config.mysql_db_service_port.environment_variable = 'MYSQL_SERVICE_PORT'
