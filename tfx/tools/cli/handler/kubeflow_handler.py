@@ -138,6 +138,9 @@ class KubeflowHandler(base_handler.BaseHandler):
         self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
     return pipeline_args
 
+  def get_schema(self) -> None:
+    pass
+
   def create_run(self) -> None:
     """Runs a pipeline in Kubeflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]

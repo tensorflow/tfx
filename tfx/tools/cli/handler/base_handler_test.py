@@ -44,6 +44,9 @@ class FakeHandler(base_handler.BaseHandler):
   def compile_pipeline(self) -> None:
     pass
 
+  def get_schema(self) -> None:
+    pass
+
   def create_run(self) -> None:
     pass
 

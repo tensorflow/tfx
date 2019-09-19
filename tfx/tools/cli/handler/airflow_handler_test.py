@@ -29,21 +29,25 @@ from tfx.tools.cli.handler import airflow_handler
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
-  # Store pipeline_args in a pickle file
+  # Store pipeline_args in a json file.
   pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_args = {'pipeline_name': 'chicago_taxi_simple'}
+  pipeline_root = os.path.join(os.environ['HOME'], 'tfx', 'pipelines')
+  pipeline_args = {
+      'pipeline_name': 'chicago_taxi_simple',
+      'pipeline_root': pipeline_root
+  }
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
   return 0
 
 
-def _MockSubprocess2(cmd, env):  # pylint: disable=invalid-name, unused-argument
+def _MockSubprocess2(cmd, env=None):  # pylint: disable=invalid-name, unused-argument
   click.echo(cmd)
   return 0
 
 
 def _MockSubprocess3(cmd, env):  # pylint: disable=invalid-name, unused-argument
-  # Store pipeline_args in a pickle file
+  # Store pipeline_args in a json file.
   pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
   pipeline_args = {}
   with open(pipeline_args_path, 'w') as f:
@@ -64,9 +68,11 @@ class AirflowHandlerTest(tf.test.TestCase):
 
   def setUp(self):
     super(AirflowHandlerTest, self).setUp()
-    self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
+    self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
+                                   self.get_temp_dir())
+    self._home = os.path.join(self._tmp_dir, self._testMethodName)
+    self._olddir = os.getcwd()
+    os.chdir(self._tmp_dir)
     self._original_home_value = os.environ.get('HOME', '')
     os.environ['HOME'] = self._home
     self._original_airflow_home_value = os.environ.get('AIRFLOW_HOME', '')
@@ -78,6 +84,7 @@ class AirflowHandlerTest(tf.test.TestCase):
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_airflow_1.py')
+    self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
     self.pipeline_name = 'chicago_taxi_simple'
     self.run_id = 'manual__2019-07-19T19:56:02+00:00'
 
@@ -88,6 +95,7 @@ class AirflowHandlerTest(tf.test.TestCase):
     super(AirflowHandlerTest, self).tearDown()
     os.environ['HOME'] = self._original_home_value
     os.environ['AIRFLOW_HOME'] = self._original_airflow_home_value
+    os.chdir(self._olddir)
 
   @mock.patch('subprocess.call', _MockSubprocess)
   def testSavePipeline(self):
@@ -243,6 +251,80 @@ class AirflowHandlerTest(tf.test.TestCase):
         str(err.exception),
         'Unable to compile pipeline. Check your pipeline dsl.')
 
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def testPipelineSchemaNoPipelineRoot(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+    )
+
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def testPipelineSchemaNoSchemaGenOutput(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    tf.io.gfile.makedirs(self.pipeline_root)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+    )
+
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def testPipelineSchemaSuccessfulRun(self):
+    # First create a pipeline.
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+    handler = airflow_handler.AirflowHandler(flags_dict)
+    # Create fake schema in pipeline root.
+    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'output', '3')
+    tf.io.gfile.makedirs(schema_path)
+    with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
+      f.write('SCHEMA')
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_schema()
+      curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+      self.assertIn('Path to schema: {}'.format(curr_dir_path),
+                    captured.contents())
+      self.assertIn(
+          '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
+          captured.contents())
+      self.assertTrue(tf.io.gfile.exists(curr_dir_path))
+
   @mock.patch('subprocess.call', _MockSubprocess2)
   def testCreateRun(self):
     # Create a pipeline in dags folder.
@@ -274,6 +356,7 @@ class AirflowHandlerTest(tf.test.TestCase):
             flags_dict[labels.PIPELINE_NAME]))
 
   @mock.patch('subprocess.call', _MockSubprocess2)
+  @mock.patch('subprocess.check_output', _MockSubprocess2)
   def testListRuns(self):
     # Create a pipeline in dags folder.
     handler_pipeline_path = os.path.join(
