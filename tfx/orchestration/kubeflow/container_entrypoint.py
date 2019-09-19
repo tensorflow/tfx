@@ -30,8 +30,6 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.types import artifact_utils
-from tfx.types import channel
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 from google.protobuf import json_format
@@ -78,32 +76,6 @@ def _get_metadata_connection_config(
   return connection_config
 
 
-def _make_channel_dict(artifact_dict: Dict[Text, Text]
-                      ) -> Dict[Text, channel.Channel]:
-  """Makes a dictionary of artifact channels from a dictionary of artifacts.
-
-  Args:
-    artifact_dict: Dictionary of artifacts.
-
-  Returns:
-    Dictionary of artifact channels.
-
-  Raises:
-    RuntimeError: If list of artifacts is malformed.
-  """
-  channel_dict = {}
-  for name, artifact_list in artifact_dict.items():
-    if not artifact_list:
-      raise RuntimeError(
-          'Found empty list of artifacts for input/output named {}: {}'.format(
-              name, artifact_list))
-    type_name = artifact_list[0].type_name
-    channel_dict[name] = channel.Channel(
-        type_name=type_name, artifacts=artifact_list)
-
-  return channel_dict
-
-
 def _make_additional_pipeline_args(json_additional_pipeline_args: Text
                                   ) -> Dict[Text, Any]:
   """Constructs additional_pipeline_args for ComponentLauncher.
@@ -144,30 +116,14 @@ def main():
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
   parser.add_argument('--additional_pipeline_args', type=str, required=True)
-  parser.add_argument('--component_id', type=str, required=True)
-  parser.add_argument('--component_type', type=str, required=True)
-  parser.add_argument('--driver_class_path', type=str, required=True)
-  parser.add_argument('--executor_spec', type=str, required=True)
   parser.add_argument(
       '--component_launcher_class_path', type=str, required=True)
-  parser.add_argument('--inputs', type=str, required=True)
-  parser.add_argument('--outputs', type=str, required=True)
-  parser.add_argument('--exec_properties', type=str, required=True)
   parser.add_argument('--enable_cache', action='store_true')
+  parser.add_argument('--serialized_component', type=str, required=True)
 
   args = parser.parse_args()
 
-  inputs = artifact_utils.parse_artifact_dict(args.inputs)
-  input_dict = _make_channel_dict(inputs)
-
-  outputs = artifact_utils.parse_artifact_dict(args.outputs)
-  output_dict = _make_channel_dict(outputs)
-
-  exec_properties = json.loads(args.exec_properties)
-
-  driver_class = import_utils.import_class_by_path(args.driver_class_path)
-  executor_spec = json_utils.loads(args.executor_spec)
-
+  component = json_utils.loads(args.serialized_component)
   component_launcher_class = import_utils.import_class_by_path(
       args.component_launcher_class_path)
   if not issubclass(component_launcher_class,
@@ -179,24 +135,13 @@ def main():
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
   connection_config = _get_metadata_connection_config(kubeflow_metadata_config)
-
-  component_info = data_types.ComponentInfo(
-      component_type=args.component_type, component_id=args.component_id)
-
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
   additional_pipeline_args = _make_additional_pipeline_args(
       args.additional_pipeline_args)
 
-  # TODO(hongyes): create a classmethod to create launcher from a deserialized
-  # component.
-  launcher = component_launcher_class(
-      component_info=component_info,
-      driver_class=driver_class,
-      component_executor_spec=executor_spec,
-      input_dict=input_dict,
-      output_dict=output_dict,
-      exec_properties=exec_properties,
+  launcher = component_launcher_class.create(
+      component=component,
       pipeline_info=data_types.PipelineInfo(
           pipeline_name=args.pipeline_name,
           pipeline_root=args.pipeline_root,

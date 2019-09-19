@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
+import os
 from kfp import dsl
 import tensorflow as tf
 
@@ -64,6 +66,14 @@ class BaseComponentTest(tf.test.TestCase):
     self.tfx_component = statistics_gen
 
   def testContainerOpArguments(self):
+    # TODO(hongyes): make the whole args list in one golden file to keep
+    # source of truth in same file.
+    source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
+    with open(os.path.join(source_data_dir,
+                           'component.json')) as component_json_file:
+      formatted_component_json = json.dumps(
+          json.load(component_json_file), sort_keys=True)
+
     expected_args = [
         '--pipeline_name',
         'test_pipeline',
@@ -77,24 +87,10 @@ class BaseComponentTest(tf.test.TestCase):
         '}',
         '--additional_pipeline_args',
         '{}',
-        '--component_id',
-        'StatisticsGen.foo',
-        '--component_type',
-        'tfx.components.statistics_gen.component.StatisticsGen',
-        '--driver_class_path',
-        'tfx.components.base.base_driver.BaseDriver',
-        '--executor_spec',
-        '{'
-        '"__class__": "ExecutorClassSpec", '
-        '"__module__": "tfx.components.base.executor_spec", '
-        '"__tfx_object_type__": "jsonable", '
-        '"executor_class": {'
-        '"__class__": "Executor", '
-        '"__module__": "tfx.components.statistics_gen.executor", '
-        '"__tfx_object_type__": "class"}'
-        '}',
         '--component_launcher_class_path',
         'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
+        '--serialized_component',
+        formatted_component_json,
     ]
     self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
                      expected_args)

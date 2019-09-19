@@ -181,7 +181,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
     self.assertEqual(recovered_component.outputs.output.type_name, "OutputType")
-    self.assertEqual(recovered_component.DRIVER_CLASS, component.DRIVER_CLASS)
+    self.assertEqual(recovered_component.driver_class, component.driver_class)
 
 
 if __name__ == "__main__":

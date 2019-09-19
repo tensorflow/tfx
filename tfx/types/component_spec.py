@@ -23,7 +23,7 @@ import itertools
 
 from six import with_metaclass
 
-from typing import Any, Optional, Text, Type
+from typing import Any, Dict, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message
@@ -189,6 +189,14 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self.outputs = _PropertyDictWrapper(
         outputs,
         compat_aliases=getattr(self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
+
+  def to_json_dict(self) -> Dict[Text, Any]:
+    """Convert from an object to a JSON serializable dictionary."""
+    return {
+        'inputs': self.inputs,
+        'outputs': self.outputs,
+        'exec_properties': self.exec_properties,
+    }
 
 
 class _ComponentParameter(object):

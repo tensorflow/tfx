@@ -36,8 +36,6 @@ from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.types import artifact_utils
-from tfx.types import node_common
 from tfx.utils import json_utils
 from google.protobuf import json_format
 
@@ -46,10 +44,6 @@ _COMMAND = [
 ]
 
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
-
-
-def _prepare_artifact_dict(wrapper: node_common._PropertyDictWrapper):
-  return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
 
 # TODO(hongyes): renaming the name to KubeflowComponent.
@@ -84,12 +78,9 @@ class BaseComponent(object):
         component will depend on.
       pipeline: The logical TFX pipeline to which this component belongs.
       tfx_image: The container image to use for this component.
-      kubeflow_metadata_config: Configuration settings for
-        connecting to the MLMD store in a Kubeflow cluster.
+      kubeflow_metadata_config: Configuration settings for connecting to the
+        MLMD store in a Kubeflow cluster.
     """
-    driver_class_path = '.'.join(
-        [component.driver_class.__module__, component.driver_class.__name__])
-    executor_spec = json_utils.dumps(component.executor_spec)
     component_launcher_class_path = '.'.join([
         component_launcher_class.__module__, component_launcher_class.__name__
     ])
@@ -103,24 +94,10 @@ class BaseComponent(object):
         json_format.MessageToJson(kubeflow_metadata_config),
         '--additional_pipeline_args',
         json.dumps(pipeline.additional_pipeline_args),
-        '--component_id',
-        component.id,
-        '--component_type',
-        component.type,
-        '--driver_class_path',
-        driver_class_path,
-        '--executor_spec',
-        executor_spec,
         '--component_launcher_class_path',
         component_launcher_class_path,
-        '--inputs',
-        artifact_utils.jsonify_artifact_dict(
-            _prepare_artifact_dict(component.inputs)),
-        '--outputs',
-        artifact_utils.jsonify_artifact_dict(
-            _prepare_artifact_dict(component.outputs)),
-        '--exec_properties',
-        json.dumps(component.exec_properties),
+        '--serialized_component',
+        json_utils.dumps(component),
     ]
 
     if pipeline.enable_cache:
