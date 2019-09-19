@@ -57,7 +57,7 @@ class _ComponentAsDoFn(beam.DoFn):
         driver_args=driver_args,
         metadata_connection_config=tfx_pipeline.metadata_connection_config,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
-    self._component_id = component.component_id
+    self._component_id = component.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes component based on signals.
@@ -119,7 +119,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       signal_map = {}
       # pipeline.components are in topological order.
       for component in tfx_pipeline.components:
-        component_id = component.component_id
+        component_id = component.id
 
         # Signals from upstream components.
         signals_to_wait = []

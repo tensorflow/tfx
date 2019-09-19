@@ -26,19 +26,22 @@ from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_driver
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
-from tfx.types import component_spec
+from tfx.types import node_common
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 # Constants that used for serializing and de-serializing components.
-_DRIVER_CLASS_PATH_KEY = 'driver_class_path'
+_DRIVER_CLASS_KEY = 'driver_class'
 _EXECUTOR_SPEC_KEY = 'executor_spec'
-_INSTANCE_NAME_KEY = 'instance_name'
+_INSTANCE_NAME_KEY = '_instance_name'
 _SPEC_KEY = 'spec'
 
 
-class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+class BaseComponent(
+    with_metaclass(abc.ABCMeta, json_utils.Jsonable,
+                   base_node.BaseNode)):
   """Base class for a TFX pipeline component.
 
   An instance of a subclass of BaseComponent represents the parameters for a
@@ -84,6 +87,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         component in the pipeline. Required if two instances of the same
         component is used in the pipeline.
     """
+    super(BaseComponent, self).__init__(instance_name)
     self.spec = spec
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
@@ -92,10 +96,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
              'ExecutorSpec') % (custom_executor_spec, self.__class__))
     self.executor_spec = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
     self.driver_class = self.__class__.DRIVER_CLASS
-    # TODO(b/139540680): consider making instance_name private.
-    self.instance_name = instance_name
-    self._upstream_nodes = set()
-    self._downstream_nodes = set()
     self._validate_component_class()
     self._validate_spec(spec)
 
@@ -135,66 +135,24 @@ class BaseComponent(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     return ('%s(spec: %s, executor_spec: %s, driver_class: %s, '
             'component_id: %s, inputs: %s, outputs: %s)') % (
                 self.__class__.__name__, self.spec, self.executor_spec,
-                self.driver_class, self.component_id, self.inputs, self.outputs)
+                self.driver_class, self.id, self.inputs, self.outputs)
 
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
-        # _DRIVER_CLASS_PATH_KEY: driver_class_path,
-        _DRIVER_CLASS_PATH_KEY: self.driver_class,
+        _DRIVER_CLASS_KEY: self.driver_class,
         _EXECUTOR_SPEC_KEY: self.executor_spec,
-        _INSTANCE_NAME_KEY: self.instance_name,
+        _INSTANCE_NAME_KEY: self._instance_name,
         _SPEC_KEY: self.spec
     }
 
   @property
-  def component_type(self) -> Text:
-    return '.'.join([self.__class__.__module__, self.__class__.__name__])
-
-  @property
-  def inputs(self) -> component_spec._PropertyDictWrapper:
+  def inputs(self) -> node_common._PropertyDictWrapper:
     return self.spec.inputs
 
   @property
-  def outputs(self) -> component_spec._PropertyDictWrapper:
+  def outputs(self) -> node_common._PropertyDictWrapper:
     return self.spec.outputs
 
   @property
   def exec_properties(self) -> Dict[Text, Any]:
     return self.spec.exec_properties
-
-  # TODO(ruoyu): Consolidate the usage of component identifier. Moving forward,
-  # we will have two component level keys:
-  # - component_type: the path of the python executor or the image uri of the
-  #   executor.
-  # - component_id: <component_class_name>.<unique_name>
-  @property
-  def component_id(self):
-    """Component id, unique across all component instances in a pipeline.
-
-    If unique name is available, component_id will be:
-      <component_class_name>.<instance_name>
-    otherwise, component_id will be:
-      <component_class_name>
-
-    Returns:
-      component id.
-    """
-    component_class_name = self.__class__.__name__
-    if self.instance_name:
-      return '{}.{}'.format(component_class_name, self.instance_name)
-    else:
-      return component_class_name
-
-  @property
-  def upstream_nodes(self):
-    return self._upstream_nodes
-
-  def add_upstream_node(self, upstream_node):
-    self._upstream_nodes.add(upstream_node)
-
-  @property
-  def downstream_nodes(self):
-    return self._downstream_nodes
-
-  def add_downstream_node(self, downstream_node):
-    self._downstream_nodes.add(downstream_node)

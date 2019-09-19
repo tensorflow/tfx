@@ -100,7 +100,7 @@ class AirflowComponent(python_operator.PythonOperator):
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
 
     super(AirflowComponent, self).__init__(
-        task_id=component.component_id,
+        task_id=component.id,
         provide_context=True,
         python_callable=functools.partial(
             _airflow_component_launcher,

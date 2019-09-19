@@ -23,48 +23,15 @@ import itertools
 
 from six import with_metaclass
 
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
+from tfx.types.node_common import _PropertyDictWrapper
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
-
-
-class _PropertyDictWrapper(json_utils.Jsonable):
-  """Helper class to wrap inputs/outputs from TFX components.
-
-  Currently, this class is read-only (setting properties is not implemented).
-
-  Internal class: no backwards compatibility guarantees.
-  """
-
-  def __init__(self,
-               data: Dict[Text, Channel],
-               compat_aliases: Optional[Dict[Text, Text]] = None):
-    self._data = data
-    self._compat_aliases = compat_aliases or {}
-
-  def __getitem__(self, key):
-    if key in self._compat_aliases:
-      key = self._compat_aliases[key]
-    return self._data[key]
-
-  def __getattr__(self, key):
-    if key in self._compat_aliases:
-      key = self._compat_aliases[key]
-    try:
-      return self._data[key]
-    except KeyError:
-      raise AttributeError
-
-  def __repr__(self):
-    return repr(self._data)
-
-  def get_all(self) -> Dict[Text, Channel]:
-    return self._data
 
 
 class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
@@ -217,11 +184,11 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     #
     # TODO(b/139281215): remove this functionality.
     self.inputs = _PropertyDictWrapper(
-        inputs, compat_aliases=getattr(
-            self, '_INPUT_COMPATIBILITY_ALIASES', None))
+        inputs,
+        compat_aliases=getattr(self, '_INPUT_COMPATIBILITY_ALIASES', None))
     self.outputs = _PropertyDictWrapper(
-        outputs, compat_aliases=getattr(
-            self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
+        outputs,
+        compat_aliases=getattr(self, '_OUTPUT_COMPATIBILITY_ALIASES', None))
 
 
 class _ComponentParameter(object):

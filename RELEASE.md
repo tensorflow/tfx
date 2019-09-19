@@ -10,12 +10,16 @@
 *   Added option to use fixed Schema artifact for ExampleValidator, Transform
     and Trainer.
 *   Simplified component package names.
+*   Introduced BaseNode as the base class of any node in a TFX pipeline DAG.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
     be at version at least 0.1.30.
 
 ### Deprecations
+
+*   Deprecated component_type in favor of type.
+*   Deprecated component_id in favor of id.
 
 ## Breaking changes
 

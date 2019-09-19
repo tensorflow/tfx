@@ -92,7 +92,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Get output paths.
-    component_id = example_gen.component_id
+    component_id = example_gen.id
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
     train_examples = standard_artifacts.Examples(split='train')
     train_examples.uri = os.path.join(output_path, 'train')
