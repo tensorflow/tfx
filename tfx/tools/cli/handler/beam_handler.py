@@ -99,6 +99,9 @@ class BeamHandler(base_handler.BaseHandler):
     click.echo('Pipeline compiled successfully.')
     return pipeline_args
 
+  def get_schema(self) -> None:
+    pass
+
   def create_run(self) -> None:
     """Runs a pipeline in Beam."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]

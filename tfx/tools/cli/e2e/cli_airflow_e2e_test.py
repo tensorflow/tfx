@@ -100,6 +100,8 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     _ = subprocess.check_output(['airflow', 'initdb'])
 
     # Start airflow scheduler.
+    self._out = open(os.path.join(self._airflow_home, 'out.txt'), 'w+')
+    self._err = open(os.path.join(self._airflow_home, 'err.txt'), 'w+')
     self._scheduler = subprocess.Popen(['airflow', 'scheduler'])
 
     # Initialize CLI runner.
@@ -302,6 +304,49 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn(pipeline_name_1, result.output)
     self.assertIn(pipeline_name_2, result.output)
 
+  def testPipelineSchemaError(self):
+    pipeline_path = os.path.join(self._testdata_dir,
+                                 'test_pipeline_airflow_2.py')
+    pipeline_name = 'chicago_taxi_simple'
+
+    # Try getting schema without creating pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try getting schema without creating a pipeline run.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
+        result.output)
+
+    # Run pipeline.
+    self._valid_run_and_check(pipeline_name)
+
+    # Try inferring schema without SchemaGen output.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
+        result.output)
+
   def _valid_run_and_check(self, pipeline_name):
 
     # Wait to fill up the DagBag.
@@ -350,6 +395,16 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
 
     # Now create a pipeline.
     self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Check if pipeline runs exist.
+    result = self.runner.invoke(cli_group, [
+        'run', 'list', '--engine', 'airflow', '--pipeline_name', pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Listing all runs of pipeline: {}'.format(pipeline_name),
+                  result.output)
+    self.assertIn('No pipeline runs for {}'.format(pipeline_name),
+                  result.output)
 
     # Run pipeline.
     self._valid_run_and_check(pipeline_name)

@@ -70,6 +70,11 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     pass
 
   @abc.abstractmethod
+  def get_schema(self) -> None:
+    """Obtain schema from pipeline."""
+    pass
+
+  @abc.abstractmethod
   def create_run(self) -> None:
     """Runs a pipeline for the handler."""
     pass

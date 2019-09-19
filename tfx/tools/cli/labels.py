@@ -23,6 +23,10 @@ RUN_ID = 'run_id'
 AIRFLOW_ENGINE = 'airflow'
 BEAM_ENGINE = 'beam'
 KUBEFLOW_ENGINE = 'kubeflow'
+# Path to root directory of the pipeline.
+PIPELINE_ROOT = 'pipeline_root'
+# List of components in the pipeline.
+PIPELINE_COMPONENTS = 'pipeline_components'
 
 # Kubeflow specific labels.
 # Path to the output workflow file for Kubeflow pipelines.
