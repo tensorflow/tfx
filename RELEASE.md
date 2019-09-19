@@ -9,6 +9,7 @@
     multiple platforms.
 *   Added option to use fixed Schema artifact for ExampleValidator, Transform
     and Trainer.
+*   Simplified component package names.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

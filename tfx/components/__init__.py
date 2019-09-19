@@ -11,3 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Subpackage for TFX components."""
+
+# For component user to direct use tfx.components.[...] as an alias.
+from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
+from tfx.components.example_gen.component import FileBasedExampleGen
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.model_validator.component import ModelValidator
+from tfx.components.pusher.component import Pusher
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
+from tfx.components.trainer.component import Trainer
+from tfx.components.transform.component import Transform
