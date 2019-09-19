@@ -176,9 +176,15 @@ def main():
 
   # Set python level verbosity
   tf.logging.set_verbosity(args.verbosity)
+
+  if args.verbosity in tf.logging.__dict__:
+    tf_py_log_level = tf.logging.__dict__[args.verbosity]
+  else:
+    # Logging levels are wrapped away in TF 1.14.
+    # https://github.com/tensorflow/tensorflow/issues/30184
+    tf_py_log_level = tf.logging._dw_wrapped_module.__dict__[args.verbosity]  # pylint: disable=protected-access
   # Set C++ Graph Execution level verbosity
-  os.environ['TF_CPP_MIN_LOG_LEVEL'] = str(
-      tf.logging.__dict__[args.verbosity] / 10)
+  os.environ['TF_CPP_MIN_LOG_LEVEL'] = str(tf_py_log_level / 10)
 
   # Run the training job
   hparams = tf.contrib.training.HParams(**args.__dict__)

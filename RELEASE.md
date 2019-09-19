@@ -16,6 +16,12 @@
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
     be at version at least 0.1.30.
 *   Fixed trainer executor to correctly make `transform_output` optional.
+*   Updated Chicago Taxi example dependency tensorflow to version >=1.14.0.
+*   Updated Chicago Taxi example dependencies tensorflow-data-validation,
+    tensorflow-metadata, tensorflow-model-analysis, tensorflow-serving-api, and
+    tensorflow-transform to version >=0.14.
+*   Updated Chicago Taxi example dependencies to Beam 2.14.0, Flink 1.8.1, Spark
+    2.4.3.
 
 ### Deprecations
 

@@ -31,7 +31,7 @@ gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/
 MODEL_BINARIES=$(gsutil ls $WORKING_DIR/serving_model_dir/export/chicago-taxi/ \
   | sort | grep '\/[0-9]*\/$' | tail -n1)
 
-TF_VERSION=1.12
+TF_VERSION=1.14
 
 gcloud ai-platform versions create v1 \
   --model chicago_taxi \

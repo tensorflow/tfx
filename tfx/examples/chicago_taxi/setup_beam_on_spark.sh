@@ -22,7 +22,7 @@ if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
   exit 1
 fi
 
-SPARK_VERSION="2.4.0"
+SPARK_VERSION="2.4.3"
 SPARK_NAME="spark-$SPARK_VERSION"
 SPARK_ROOT="$SPARK_NAME-bin-hadoop2.7"
 SPARK_BINARY="$SPARK_ROOT.tgz"
@@ -68,7 +68,7 @@ function start_spark() {
 function start_job_server() {
   echo "Starting Beam Spark jobserver"
   cd $BEAM_DIR
-  ./gradlew beam-runners-spark-job-server:runShadow \
+  ./gradlew :runners:spark:job-server:runShadow \
       -PsparkMasterUrl=$SPARK_MASTER_URL \
       -Dspark.authenticate=true \
       -Dspark.authenticate.secret=$SPARK_SECRET
