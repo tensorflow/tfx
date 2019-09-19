@@ -163,12 +163,12 @@ class Pipeline(object):
     # Fills in producer map.
     for component in deduped_components:
       # Guarantees every component of a component type has unique component_id.
-      if component.component_id in instances_per_component_type[
-          component.component_type]:
+      if component.id in instances_per_component_type[
+          component.type]:
         raise RuntimeError('Duplicated component_id %s for component type %s' %
-                           (component.component_id, component.component_type))
-      instances_per_component_type[component.component_type].add(
-          component.component_id)
+                           (component.id, component.type))
+      instances_per_component_type[component.type].add(
+          component.id)
       for key, output_channel in component.outputs.get_all().items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
@@ -177,7 +177,7 @@ class Pipeline(object):
         for artifact in output_channel.get():
           artifact.name = key
           artifact.pipeline_name = self.pipeline_info.pipeline_name
-          artifact.producer_component = component.component_id
+          artifact.producer_component = component.id
 
     # Connects nodes based on producer map.
     for component in deduped_components:

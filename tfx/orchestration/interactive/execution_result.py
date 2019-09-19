@@ -45,6 +45,6 @@ class ExecutionResult(object):
     return ('ExecutionResult(\n    component_id: %s'
             '\n    execution_id: %s'
             '\n    outputs:\n%s'
-            ')') % (self.component.component_id,
+            ')') % (self.component.id,
                     self.execution_id,
                     outputs_str)

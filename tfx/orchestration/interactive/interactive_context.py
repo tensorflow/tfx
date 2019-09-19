@@ -143,7 +143,7 @@ class InteractiveContext(object):
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():
         artifact.pipeline_name = self.pipeline_name
-        artifact.producer_component = component.component_id
+        artifact.producer_component = component.id
         artifact.run_id = run_id
         artifact.name = name
     # TODO(hongyes): figure out how to resolve launcher class in the interactive

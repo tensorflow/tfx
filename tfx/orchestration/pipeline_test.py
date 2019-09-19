@@ -205,11 +205,11 @@ class PipelineTest(tf.test.TestCase):
     self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
     self.assertEqual(component_a.outputs.one._artifacts[0].pipeline_name, 'a')
     self.assertEqual(component_a.outputs.one._artifacts[0].producer_component,
-                     component_a.component_id)
+                     component_a.id)
     self.assertEqual(component_a.outputs.one._artifacts[0].name, 'one')
     self.assertEqual(component_b.inputs.a._artifacts[0].pipeline_name, 'a')
     self.assertEqual(component_b.inputs.a._artifacts[0].producer_component,
-                     component_a.component_id)
+                     component_a.id)
     self.assertEqual(component_b.inputs.a._artifacts[0].name, 'one')
 
   def testPipelineDecorator(self):

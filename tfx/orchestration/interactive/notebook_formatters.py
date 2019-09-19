@@ -30,7 +30,7 @@ from tfx.components.base.base_component import BaseComponent
 from tfx.orchestration.interactive.execution_result import ExecutionResult
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
-from tfx.types.component_spec import _PropertyDictWrapper
+from tfx.types.node_common import _PropertyDictWrapper
 
 STATIC_HTML_CONTENTS = u"""<style>
 .tfx-object.expanded {

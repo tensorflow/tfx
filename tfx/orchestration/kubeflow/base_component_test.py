@@ -101,7 +101,7 @@ class BaseComponentTest(tf.test.TestCase):
 
   def testContainerOpName(self):
     self.assertEqual('StatisticsGen.foo',
-                     self.tfx_component.component_id)
+                     self.tfx_component.id)
     self.assertEqual('StatisticsGen_foo',
                      self.component.container_op.name)
 

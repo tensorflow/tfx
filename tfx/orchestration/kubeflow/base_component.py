@@ -37,7 +37,7 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact_utils
-from tfx.types import component_spec
+from tfx.types import node_common
 from tfx.utils import json_utils
 from google.protobuf import json_format
 
@@ -48,7 +48,7 @@ _COMMAND = [
 _WORKFLOW_ID_KEY = 'WORKFLOW_ID'
 
 
-def _prepare_artifact_dict(wrapper: component_spec._PropertyDictWrapper):
+def _prepare_artifact_dict(wrapper: node_common._PropertyDictWrapper):
   return dict((k, v.get()) for k, v in wrapper.get_all().items())
 
 
@@ -104,9 +104,9 @@ class BaseComponent(object):
         '--additional_pipeline_args',
         json.dumps(pipeline.additional_pipeline_args),
         '--component_id',
-        component.component_id,
+        component.id,
         '--component_type',
-        component.component_type,
+        component.type,
         '--driver_class_path',
         driver_class_path,
         '--executor_spec',
@@ -127,7 +127,7 @@ class BaseComponent(object):
       arguments.append('--enable_cache')
 
     self.container_op = dsl.ContainerOp(
-        name=component.component_id.replace('.', '_'),
+        name=component.id.replace('.', '_'),
         command=_COMMAND,
         image=tfx_image,
         arguments=arguments,

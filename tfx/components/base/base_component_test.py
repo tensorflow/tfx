@@ -65,7 +65,7 @@ class ComponentTest(tf.test.TestCase):
   def testComponentBasic(self):
     input_channel = types.Channel(type_name="InputType")
     component = _BasicComponent(folds=10, input=input_channel)
-    self.assertEqual(component.component_id, "_BasicComponent")
+    self.assertEqual(component.id, "_BasicComponent")
     self.assertIs(input_channel, component.inputs.input)
     self.assertIsInstance(component.outputs.output, types.Channel)
     self.assertEqual(component.outputs.output.type_name, "OutputType")
