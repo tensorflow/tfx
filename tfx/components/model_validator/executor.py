@@ -22,11 +22,17 @@ import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
+
+from google.protobuf import json_format
+from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.view.util import find_all_slices
+
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import tfma_utils
 
 # Path to store model eval results for validation.
 CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model/'
@@ -53,10 +59,35 @@ class Executor(base_executor.BaseExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L110.
 
   """
-
-  # TODO(jyzhao): customized threshold support.
   def _pass_threshold(self, eval_result: tfma.EvalResult) -> bool:
     """Check threshold."""
+    if not self._threshold_config:
+      tf.logging.info("Not comparing to thresholds: No threshold_config passed")
+      return True
+    overall_slices = find_all_slices(
+      eval_result.slicing_metrics, tfma.slicer.slicer.SingleSliceSpec()
+    )
+    if not overall_slices:
+      raise RuntimeError("Cannot find any overall slice to compare to thresholds")
+    overall_metrics = overall_slices[0]["metrics"]
+    for metric_key, raw_value in overall_metrics.items():
+      if metric_key not in self._threshold_config:
+        continue
+      current_metric_value: metrics_for_slice_pb2.MetricValue = json_format.ParseDict(
+        raw_value, metrics_for_slice_pb2.MetricValue()
+      )
+
+      if not tfma_utils.metric_value_gte(
+        current_metric_value, self._threshold_config[metric_key]
+      ):
+        tf.logging.info(
+          "Current model's {} is worse than threshold: {} with value {}".format(
+            metric_key,
+            self._threshold_config[metric_key],
+            current_metric_value,
+          )
+        )
+        return False
     return True
 
   # TODO(jyzhao): customized validation support.
@@ -159,6 +190,7 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
+    self._threshold_config = exec_properties.get("threshold_config")
     self._temp_path = self._get_tmp_dir()
     tf.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 

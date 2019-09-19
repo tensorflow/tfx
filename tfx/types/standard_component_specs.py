@@ -101,7 +101,9 @@ class FileBasedExampleGenSpec(ComponentSpec):
 class ModelValidatorSpec(ComponentSpec):
   """ModelValidator component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {
+      'threshold_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+  }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
       'model': ChannelParameter(type=standard_artifacts.Model),

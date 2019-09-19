@@ -28,9 +28,11 @@ class ComponentTest(tf.test.TestCase):
   def testConstruct(self):
     examples = standard_artifacts.Examples()
     model = standard_artifacts.Model()
+    threshold_config = dict(accuracy=0.5)
     model_validator = component.ModelValidator(
         examples=channel_utils.as_channel([examples]),
-        model=channel_utils.as_channel([model]))
+        model=channel_utils.as_channel([model]),
+        threshold_config=threshold_config)
     self.assertEqual('ModelBlessingPath',
                      model_validator.outputs.blessing.type_name)
 

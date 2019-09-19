@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional, Text, Dict, Any
 
 from tfx import types
 from tfx.components.base import base_component
@@ -68,6 +68,7 @@ class ModelValidator(base_component.BaseComponent):
   def __init__(self,
                examples: types.Channel,
                model: types.Channel,
+               threshold_config: Optional[Dict[Text, Any]] = None,
                blessing: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct a ModelValidator component.
@@ -88,5 +89,8 @@ class ModelValidator(base_component.BaseComponent):
     blessing = blessing or types.Channel(
         type=standard_artifacts.ModelBlessing,
         artifacts=[standard_artifacts.ModelBlessing()])
-    spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
+    spec = ModelValidatorSpec(examples=examples,
+                              model=model,
+                              threshold_config=threshold_config,
+                              blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, instance_name=instance_name)

@@ -54,6 +54,9 @@ class ExecutorTest(tf.test.TestCase):
         'blessing': [self._blessing]
     }
 
+    # Create threshold_config
+    self._threshold_config = dict(accuracy=0.5)
+
     # Create context
     self._tmp_dir = os.path.join(output_data_dir, '.temp')
     self._context = executor.Executor.Context(tmp_dir=self._tmp_dir,
@@ -68,6 +71,8 @@ class ExecutorTest(tf.test.TestCase):
             123,
         'component_id':
             self.component_id,
+        'threshold_config':
+            self._threshold_config,
     }
 
     # Run executor.
@@ -81,6 +86,47 @@ class ExecutorTest(tf.test.TestCase):
         tf.gfile.Exists(os.path.join(self._blessing.uri, 'BLESSED')))
 
   def testDoWithoutBlessedModel(self):
+    # Create exe properties.
+    exec_properties = {
+        'blessed_model': None,
+        'blessed_model_id': None,
+        'component_id': self.component_id,
+        'threshold_config': self._threshold_config,
+    }
+
+    # Run executor.
+    model_validator = executor.Executor(self._context)
+    model_validator.Do(self._input_dict, self._output_dict, exec_properties)
+
+    # Check model validator outputs.
+    self.assertTrue(
+        tf.gfile.Exists(os.path.join(self._tmp_dir)))
+    self.assertTrue(
+        tf.gfile.Exists(os.path.join(self._blessing.uri, 'BLESSED')))
+
+
+  def testDoWithoutBlessedModelThresholdHigh(self):
+    # Create exe properties.
+    exec_properties = {
+        'blessed_model': None,
+        'blessed_model_id': None,
+        'component_id': self.component_id,
+        'threshold_config': dict(accuracy=0.95),
+    }
+
+    # Run executor.
+    model_validator = executor.Executor(self._context)
+    model_validator.Do(self._input_dict, self._output_dict, exec_properties)
+
+    # Check model validator outputs.
+    self.assertTrue(
+        tf.gfile.Exists(os.path.join(self._tmp_dir)))
+    self.assertTrue(
+        tf.gfile.Exists(os.path.join(self._blessing.uri, 'NOT_BLESSED')))
+    self.assertTrue(self._blessing.artifact.custom_properties['blessed'])
+
+
+  def testDoWithoutThresholdConfig(self):
     # Create exe properties.
     exec_properties = {
         'blessed_model': None,
