@@ -144,8 +144,8 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.get_split_uri(input_dict['examples'], 'train'))
     ]
     transform_output = artifact_utils.get_single_uri(
-        input_dict['transform_output']
-    ) if input_dict['transform_output'] else None
+        input_dict['transform_output']) if input_dict.get(
+            'transform_output', None) else None
     eval_files = [
         _all_files_pattern(
             artifact_utils.get_split_uri(input_dict['examples'], 'eval'))

@@ -15,6 +15,7 @@
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
     be at version at least 0.1.30.
+*   Fixed trainer executor to correctly make `transform_output` optional.
 
 ### Deprecations
 
