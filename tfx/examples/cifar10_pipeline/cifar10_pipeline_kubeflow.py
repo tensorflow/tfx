@@ -55,7 +55,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     ])
     example_gen = ImportExampleGen(input_base=examples, input_config=input_split)
     statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
-    infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+    infer_schema = SchemaGen(stats=statistics_gen.outputs.output, infer_feature_shape=True)
     validate_stats = ExampleValidator(
         stats=statistics_gen.outputs.output,
         schema=infer_schema.outputs.output)
@@ -65,7 +65,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
         module_file=module_file)
     trainer = Trainer(
         module_file=module_file,
-        transformed_examples=transform.outputs.transformed_examples,
+        examples=transform.outputs.transformed_examples,
         schema=infer_schema.outputs.output,
         transform_output=transform.outputs.transform_output,
         train_args=trainer_pb2.TrainArgs(num_steps=1000),
