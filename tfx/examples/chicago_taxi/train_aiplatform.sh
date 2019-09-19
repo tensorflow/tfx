@@ -61,7 +61,7 @@ EVAL_FILE=$TFT_OUTPUT_PATH/train_transformed-*
 TRAIN_STEPS=100000
 EVAL_STEPS=1000
 
-TF_VERSION=1.12
+TF_VERSION=1.14
 
 gcloud ai-platform jobs submit training $JOB_ID \
                                     --stream-logs \

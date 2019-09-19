@@ -22,7 +22,7 @@ if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
   exit 1
 fi
 
-FLINK_VERSION="1.5.6"
+FLINK_VERSION="1.8.1"
 FLINK_NAME="flink-$FLINK_VERSION"
 FLINK_BINARY="$FLINK_NAME-bin-scala_2.11.tgz"
 FLINK_DOWNLOAD_URL="http://archive.apache.org/dist/flink/flink-$FLINK_VERSION/$FLINK_BINARY"
@@ -53,7 +53,7 @@ function start_flink() {
 function start_job_server() {
   echo "Starting Beam jobserver"
   cd $BEAM_DIR
-  ./gradlew beam-runners-flink_2.11-job-server:runShadow -PflinkMasterUrl=localhost:8081
+  ./gradlew :runners:flink:1.8:job-server:runShadow -PflinkMasterUrl=localhost:8081
 }
 
 function main(){

@@ -18,7 +18,7 @@ WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
-BEAM_BRANCH="release-2.13.0"
+BEAM_BRANCH="release-2.14.0"
 
 
 # TODO(BEAM-2530): Support Java 11 when BEAM-2530 is done.
