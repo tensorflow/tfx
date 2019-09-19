@@ -48,8 +48,8 @@ class ComponentTest(tf.test.TestCase):
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
     self.assertEqual('ExamplesPath',
-                     presto_example_gen.outputs.examples.type_name)
-    artifact_collection = presto_example_gen.outputs.examples.get()
+                     presto_example_gen.outputs['examples'].type_name)
+    artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
 
@@ -68,8 +68,8 @@ class ComponentTest(tf.test.TestCase):
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
     self.assertEqual('ExamplesPath',
-                     presto_example_gen.outputs.examples.type_name)
-    artifact_collection = presto_example_gen.outputs.examples.get()
+                     presto_example_gen.outputs['examples'].type_name)
+    artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)
@@ -87,8 +87,8 @@ class ComponentTest(tf.test.TestCase):
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
     self.assertEqual('ExamplesPath',
-                     presto_example_gen.outputs.examples.type_name)
-    artifact_collection = presto_example_gen.outputs.examples.get()
+                     presto_example_gen.outputs['examples'].type_name)
+    artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
     self.assertEqual('test', artifact_collection[2].split)

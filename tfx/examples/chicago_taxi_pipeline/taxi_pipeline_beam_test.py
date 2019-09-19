@@ -106,8 +106,8 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         examples=example_gen.outputs['examples'],
         model=trainer.outputs['model'])
     pusher = Pusher(
-        model=trainer.outputs.output,
-        model_blessing=model_validator.outputs.blessing,
+        model=trainer.outputs['output'],
+        model_blessing=model_validator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='/fake/serving/dir')))
