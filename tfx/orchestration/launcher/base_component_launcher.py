@@ -20,12 +20,11 @@ from __future__ import print_function
 import abc
 from six import with_metaclass
 import tensorflow as tf
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_component
-from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -35,28 +34,15 @@ from tfx.orchestration import publisher
 class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
   """Responsible for launching driver, executor and publisher of component."""
 
-  # pyformat: disable
-  def __init__(self, component_info: data_types.ComponentInfo,
-               driver_class: Type[base_driver.BaseDriver],
-               component_executor_spec: executor_spec.ExecutorSpec,
-               input_dict: Dict[Text, types.Channel],
-               output_dict: Dict[Text, types.Channel],
-               exec_properties: Dict[Text, Any],
+  def __init__(self, component: base_component.BaseComponent,
                pipeline_info: data_types.PipelineInfo,
                driver_args: data_types.DriverArgs,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
                additional_pipeline_args: Dict[Text, Any]):
-    # pyformat: enable
     """Initialize a BaseComponentLauncher.
 
     Args:
-      component_info: ComponentInfo of the component.
-      driver_class: The driver class to run for this component.
-      component_executor_spec: The executor spec to specify what to execute when
-        launching this component.
-      input_dict: Dictionary of input artifacts consumed by this component.
-      output_dict: Dictionary of output artifacts produced by this component.
-      exec_properties: Dictionary of execution properties.
+      component: The component to launch.
       pipeline_info: An instance of data_types.PipelineInfo that holds pipeline
         properties.
       driver_args: An instance of data_types.DriverArgs that holds component
@@ -71,15 +57,17 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       launcher.
     """
     self._pipeline_info = pipeline_info
-    self._component_info = component_info
+    self._component_info = data_types.ComponentInfo(
+        component_type=component.component_type,
+        component_id=component.component_id)
     self._driver_args = driver_args
 
-    self._driver_class = driver_class
-    self._component_executor_spec = component_executor_spec
+    self._driver_class = component.driver_class
+    self._component_executor_spec = component.executor_spec
 
-    self._input_dict = input_dict
-    self._output_dict = output_dict
-    self._exec_properties = exec_properties
+    self._input_dict = component.inputs.get_all()
+    self._output_dict = component.outputs.get_all()
+    self._exec_properties = component.exec_properties
 
     self._metadata_connection_config = metadata_connection_config
     self._additional_pipeline_args = additional_pipeline_args
@@ -90,8 +78,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
           (self._component_executor_spec.__class__.__name__,
            self.__class__.__name__))
 
-  # TODO(hongyes): merge the classmethod to contructor after supporting
-  # component serialziation/deserialization.
   @classmethod
   def create(
       cls, component: base_component.BaseComponent,
@@ -100,6 +86,10 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       metadata_connection_config: metadata_store_pb2.ConnectionConfig,
       additional_pipeline_args: Dict[Text, Any]) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
+
+    This class method is the contract between `TfxRunner` and
+    `BaseComponentLauncher` to support launcher polymorphism. Sublcass of this
+    class must make sure it can be initialized by the method.
 
     Args:
       component: The component to launch.
@@ -115,16 +105,8 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     Returns:
       A new instance of component launcher.
     """
-    component_info = data_types.ComponentInfo(
-        component_type=component.component_type,
-        component_id=component.component_id)
     return cls(
-        component_info=component_info,
-        driver_class=component.driver_class,
-        component_executor_spec=component.executor_spec,
-        input_dict=component.inputs.get_all(),
-        output_dict=component.outputs.get_all(),
-        exec_properties=component.exec_properties,
+        component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=metadata_connection_config,
@@ -137,10 +119,11 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     """Checks if the launcher can launch the executor spec."""
     raise NotImplementedError
 
-  def _run_driver(self, input_dict: Dict[Text, types.Channel],
-                  output_dict: Dict[Text, types.Channel],
-                  exec_properties: Dict[Text, Any]
-                 ) -> data_types.ExecutionDecision:
+  def _run_driver(
+      self, input_dict: Dict[Text,
+                             types.Channel], output_dict: Dict[Text,
+                                                               types.Channel],
+      exec_properties: Dict[Text, Any]) -> data_types.ExecutionDecision:
     """Prepare inputs, outputs and execution properties for actual execution."""
 
     with metadata.Metadata(self._metadata_connection_config) as m:
