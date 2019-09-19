@@ -54,7 +54,7 @@ RAW_EXAMPLE_KEY = 'raw_example'
 
 # Schema to use if the input data should be decoded as raw example.
 _RAW_EXAMPLE_SCHEMA = dataset_schema.from_feature_spec(
-    {RAW_EXAMPLE_KEY: tf.FixedLenFeature([], tf.string)})
+    {RAW_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string)})
 
 # TODO(b/123519698): Simplify the code by removing the key structure.
 _TRANSFORM_INTERNAL_FEATURE_FOR_KEY = '__TFT_PASS_KEY__'
@@ -122,10 +122,16 @@ class _Dataset(object):
     self._file_format = file_format
     self._data_format = data_format
     self._metadata = metadata
+    self._index = None
 
   @property
   def file_pattern(self):
     return self._file_pattern
+
+  @property
+  def index(self):
+    assert self._index is not None
+    return self._index
 
   @property
   def dataset_key(self):
@@ -161,6 +167,10 @@ class _Dataset(object):
   @property
   def transformed_and_encoded(self):
     return self._transformed_and_encoded
+
+  @index.setter
+  def index(self, val):
+    self._index = val
 
   @encoded.setter
   def encoded(self, val):
@@ -859,17 +869,19 @@ class Executor(base_executor.BaseExecutor):
               {feature: feature_spec[feature]
                for feature in transform_input_columns}))
 
-    can_process_jointly = not bool(per_set_stats_output_paths or
-                                   materialize_output_paths or output_cache_dir)
+    can_process_analysis_jointly = not bool(output_cache_dir)
     analyze_data_list = self._MakeDatasetList(analyze_data_paths,
                                               analyze_paths_file_formats,
                                               raw_examples_data_format,
                                               analyze_input_dataset_metadata,
-                                              can_process_jointly)
+                                              can_process_analysis_jointly)
+
+    can_process_transform_jointly = not bool(per_set_stats_output_paths or
+                                             materialize_output_paths)
     transform_data_list = self._MakeDatasetList(
         transform_data_paths, transform_paths_file_formats,
         raw_examples_data_format, transform_input_dataset_metadata,
-        can_process_jointly)
+        can_process_transform_jointly)
 
     desired_batch_size = self._GetDesiredBatchSize(raw_examples_data_format)
 
@@ -896,26 +908,30 @@ class Executor(base_executor.BaseExecutor):
         if input_cache:
           tf.logging.info('Analyzing data with cache.')
 
+        full_analyze_dataset_keys_list = [
+            dataset.dataset_key for dataset in analyze_data_list
+        ]
+
         # Removing unneeded datasets if they won't be needed for statistics or
         # materialization.
         if not materialize_output_paths and not compute_statistics:
-          analyze_data_list = [
-              d for d in new_analyze_data_dict.values() if d is not None
-          ]
-          if len(analyze_data_list) < len(new_analyze_data_dict):
+          if None in new_analyze_data_dict.values():
             tf.logging.info(
                 'Not reading the following datasets due to cache: %s', [
                     dataset.file_pattern
                     for dataset in analyze_data_list
-                    if dataset not in new_analyze_data_dict.values()
+                    if new_analyze_data_dict[dataset.dataset_key] is None
                 ])
+          analyze_data_list = [
+              d for d in new_analyze_data_dict.values() if d is not None
+          ]
 
         analyze_decode_fn = (
             self._GetDecodeFunction(raw_examples_data_format,
                                     analyze_input_dataset_metadata.schema))
 
-        for (idx, dataset) in enumerate(analyze_data_list):
-          infix = 'AnalysisIndex{}'.format(idx)
+        for dataset in analyze_data_list:
+          infix = 'AnalysisIndex{}'.format(dataset.index)
           dataset.encoded = (
               p
               | 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(dataset))
@@ -971,9 +987,18 @@ class Executor(base_executor.BaseExecutor):
                 self._CopyCache(full_span_cache_dir,
                                 os.path.join(output_cache_dir, span_cache_dir))
 
+          # TODO(b/138934800): Use dataset_keys directly once TFT 0.15 is
+          # released.
+          write_analysis_cache_kwargs = dict(
+              pipeline=p,
+              cache_base_dir=output_cache_dir,
+              sink=self._GetCacheSink())
+          if tft.__version__ > '0.14.0':
+            write_analysis_cache_kwargs['dataset_keys'] = (
+                full_analyze_dataset_keys_list)
           (cache_output
-           | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
-               p, output_cache_dir, sink=self._GetCacheSink()))
+           | 'WriteCache' >>
+           analyzer_cache.WriteAnalysisCacheToFS(**write_analysis_cache_kwargs))
 
         if compute_statistics or materialize_output_paths:
           # Do not compute pre-transform stats if the input format is raw proto,
@@ -1169,7 +1194,10 @@ class Executor(base_executor.BaseExecutor):
         _Dataset(p, f, data_format, metadata)
         for p, f in zip(file_patterns, file_formats)
     ]
-    return sorted(datasets, key=lambda dataset: dataset.dataset_key)
+    result = sorted(datasets, key=lambda dataset: dataset.dataset_key)
+    for index, dataset in enumerate(result):
+      dataset.index = index
+    return result
 
   @staticmethod
   def _ShouldDecodeAsRawExample(data_format: Text) -> bool:
