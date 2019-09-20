@@ -102,8 +102,8 @@ class Pipeline(object):
         PipelineDecorator).
       enable_cache: whether or not cache is enabled for this run.
       metadata_db_root: Deprecated. the uri to the metadata database root.
-        Deprecated and will be removed in future version.
-        Please use metadata_connection_config instead.
+        Deprecated and will be removed in future version. Please use
+        metadata_connection_config instead.
       **kwargs: additional kwargs forwarded as pipeline args.
         - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
           Executor will use beam DirectRunner as Default.
@@ -163,12 +163,10 @@ class Pipeline(object):
     # Fills in producer map.
     for component in deduped_components:
       # Guarantees every component of a component type has unique component_id.
-      if component.id in instances_per_component_type[
-          component.type]:
+      if component.id in instances_per_component_type[component.type]:
         raise RuntimeError('Duplicated component_id %s for component type %s' %
                            (component.id, component.type))
-      instances_per_component_type[component.type].add(
-          component.id)
+      instances_per_component_type[component.type].add(component.id)
       for key, output_channel in component.outputs.get_all().items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
