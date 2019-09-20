@@ -50,6 +50,9 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 # pipeline property.
 _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
+# Name of pipeline_root parameter.
+_PIPELINE_ROOT = 'pipeline-root'
+
 
 def get_default_pipeline_operator_funcs() -> List[OpFunc]:
   """Returns a default list of pipeline operator functions.
@@ -172,12 +175,15 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._output_dir = output_dir or os.getcwd()
     self._config = config or KubeflowDagRunnerConfig()
     self._compiler = compiler.Compiler()
+    self._params = []  # List of dsl.PipelineParam used in this pipeline.
 
-  def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline):
+  def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline,
+                                pipeline_root: dsl.PipelineParam):
     """Constructs a Kubeflow Pipeline graph.
 
     Args:
       pipeline: The logical TFX pipeline to base the construction on.
+      pipeline_root: dsl.PipelineParam representing the pipeline root.
     """
     component_to_kfp_op = {}
 
@@ -197,6 +203,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
               component),
           depends_on=depends_on,
           pipeline=pipeline,
+          pipeline_name=pipeline.pipeline_info.pipeline_name,
+          pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config)
 
@@ -212,21 +220,26 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
+    # TODO(b/128836890): Add component level runtime params.
+    # By default, pipeline root is specified as a pipeline parameter with a
+    # default value provided by the logical pipeline.
+    pipeline_root = dsl.PipelineParam(
+        name=_PIPELINE_ROOT, value=pipeline.pipeline_info.pipeline_root)
+    self._params.append(pipeline_root)
 
-    # TODO(b/128836890): Add pipeline parameters after removing the usage of
-    # kfp decorator.
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
 
       Creates Kubeflow ContainerOps for each TFX component encountered in the
       logical pipeline definition.
       """
-      self._construct_pipeline_graph(pipeline)
+      self._construct_pipeline_graph(pipeline, pipeline_root)
 
     workflow = self._compiler.create_workflow(
         pipeline_func=_construct_pipeline,
         pipeline_name=pipeline.pipeline_args['pipeline_name'],
-        pipeline_description=pipeline.pipeline_args.get('description', ''))
+        pipeline_description=pipeline.pipeline_args.get('description', ''),
+        params_list=self._params)
 
     # default_flow_style is set to false to ensure the generated yaml spec in
     # compliance with Argo. Otherwise it might output nested collection using

@@ -16,9 +16,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 from tfx import types
+from tfx.utils import json_utils
 
 
 class ExecutionDecision(object):
@@ -53,9 +54,9 @@ class DriverArgs(object):
 
   Attributes:
     enable_cache: whether cache is enabled in current execution.
-    interactive_resolution: whether to skip MLMD channel artifact resolution,
-      if artifacts are already resolved for a channel when running in
-      interactive mode.
+    interactive_resolution: whether to skip MLMD channel artifact resolution, if
+      artifacts are already resolved for a channel when running in interactive
+      mode.
   """
 
   def __init__(self,
@@ -104,13 +105,13 @@ class ComponentInfo(object):
     self.component_id = component_id
 
 
-class RuntimeParameter(object):
+class RuntimeParameter(json_utils.Jsonable):
   """Runtime parameter.
 
   Attributes:
     name: The name of the runtime parameter
     default: Default value for runtime params when it's not explicitly
-             specified.
+      specified.
     ptype: The type of the runtime parameter
     description: Description of the usage of the parameter
   """
@@ -118,7 +119,7 @@ class RuntimeParameter(object):
   def __init__(
       self,
       name: Text,
-      default: Any = None,
+      default: Optional[Union[int, float, bool, Text]] = None,
       ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
       description: Optional[Text] = None):
     if ptype and ptype not in [int, float, bool, Text]:
@@ -129,3 +130,8 @@ class RuntimeParameter(object):
     self.default = default
     self.ptype = ptype
     self.description = description
+
+  def __repr__(self):
+    return ('RuntimeParam:\n  name: %s,\n  default: %s,\n  ptype: %s,\n  '
+            'description: %s') % (self.name, self.default, self.ptype,
+                                  self.description)
