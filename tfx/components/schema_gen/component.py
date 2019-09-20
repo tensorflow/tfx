@@ -45,7 +45,7 @@ class SchemaGen(base_component.BaseComponent):
   ## Example
   ```
     # Generates an inferred schema based on given statistics files.
-    infer_schema = SchemaGen(stats=statistics_gen.outputs.output)
+    infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
 
     # Provide an instance of schema that has already been implemented.
     # Schema is the pipeline's expectation towards training data, under

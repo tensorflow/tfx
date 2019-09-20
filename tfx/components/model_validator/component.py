@@ -57,7 +57,8 @@ class ModelValidator(base_component.BaseComponent):
   ```
     # Performs quality validation of a candidate model (compared to a baseline).
     model_validator = ModelValidator(
-        examples=example_gen.outputs.examples, model=trainer.outputs.output)
+        examples=example_gen.outputs['examples'],
+        model=trainer.outputs['output'])
   ```
   """
 

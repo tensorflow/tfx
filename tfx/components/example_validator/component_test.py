@@ -32,7 +32,7 @@ class ExampleValidatorTest(tf.test.TestCase):
         schema=channel_utils.as_channel([standard_artifacts.Schema()]),
     )
     self.assertEqual('ExampleValidationPath',
-                     example_validator.outputs.output.type_name)
+                     example_validator.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

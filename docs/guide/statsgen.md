@@ -25,7 +25,7 @@ from tfx import components
 ...
 
 compute_eval_stats = components.StatisticsGen(
-      input_data=example_gen.outputs.examples,
+      input_data=example_gen.outputs['examples'],
       name='compute-eval-stats'
       )
 ```

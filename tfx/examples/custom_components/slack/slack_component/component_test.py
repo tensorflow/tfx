@@ -39,7 +39,7 @@ class ComponentTest(tf.test.TestCase):
         channel_id='channel_id',
         timeout_sec=3600)
     self.assertEqual('ModelBlessingPath',
-                     slack_component.outputs.slack_blessing.type_name)
+                     slack_component.outputs['slack_blessing'].type_name)
 
 
 if __name__ == '__main__':

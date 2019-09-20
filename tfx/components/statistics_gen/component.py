@@ -40,7 +40,7 @@ class StatisticsGen(base_component.BaseComponent):
   ## Example
   ```
     # Computes statistics over data for visualization and example validation.
-    statistics_gen = StatisticsGen(input_data=example_gen.outputs.examples)
+    statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
   ```
   """
 

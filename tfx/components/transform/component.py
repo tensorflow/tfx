@@ -48,8 +48,8 @@ class Transform(base_component.BaseComponent):
   ```
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=example_gen.outputs.examples,
-      schema=infer_schema.outputs.output,
+      input_data=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['output'],
       module_file=module_file)
   ```
 

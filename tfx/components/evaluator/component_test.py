@@ -32,7 +32,7 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
         model_exports=channel_utils.as_channel([model_exports]))
-    self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
   def testConstructWithSliceSpec(self):
     examples = standard_artifacts.Examples()
@@ -44,7 +44,7 @@ class ComponentTest(tf.test.TestCase):
             evaluator_pb2.SingleSlicingSpec(
                 column_for_slicing=['trip_start_hour'])
         ]))
-    self.assertEqual('ModelEvalPath', evaluator.outputs.output.type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

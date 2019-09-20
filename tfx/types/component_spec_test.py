@@ -84,12 +84,12 @@ class ComponentSpecTest(tf.test.TestCase):
 
     # Verify other properties.
     self.assertEqual(10, spec.exec_properties['folds'])
-    self.assertIs(spec.inputs.input, input_channel)
-    self.assertIs(spec.outputs.output, output_channel)
+    self.assertIs(spec.inputs['input'], input_channel)
+    self.assertIs(spec.outputs['output'], output_channel)
 
     # Verify compatibility aliasing behavior.
-    self.assertIs(spec.inputs.future_input_name, spec.inputs.input)
-    self.assertIs(spec.outputs.future_output_name, spec.outputs.output)
+    self.assertIs(spec.inputs['future_input_name'], spec.inputs['input'])
+    self.assertIs(spec.outputs['future_output_name'], spec.outputs['output'])
 
     with self.assertRaisesRegexp(
         TypeError,

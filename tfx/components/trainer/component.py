@@ -74,9 +74,9 @@ class Trainer(base_component.BaseComponent):
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
-      transformed_examples=transform.outputs.transformed_examples,
-      schema=infer_schema.outputs.output,
-      transform_output=transform.outputs.transform_output,
+      transformed_examples=transform.outputs['transformed_examples'],
+      schema=infer_schema.outputs['output'],
+      transform_output=transform.outputs['transform_output'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   ```
@@ -87,9 +87,9 @@ class Trainer(base_component.BaseComponent):
   trainer = Trainer(
       executor_class=ai_platform_trainer_executor.Executor,
       module_file=module_file,
-      transformed_examples=transform.outputs.transformed_examples,
-      schema=infer_schema.outputs.output,
-      transform_output=transform.outputs.transform_output,
+      transformed_examples=transform.outputs['transformed_examples'],
+      schema=infer_schema.outputs['output'],
+      transform_output=transform.outputs['transform_output'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   ```
