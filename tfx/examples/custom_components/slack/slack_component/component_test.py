@@ -27,16 +27,16 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(ComponentTest, self).setUp()
-    self.model_export = channel_utils.as_channel([standard_artifacts.Model()])
-    self.model_blessing = channel_utils.as_channel(
+    self._model_export = channel_utils.as_channel([standard_artifacts.Model()])
+    self._model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
   def testConstruct(self):
     slack_component = component.SlackComponent(
-        model_export=self.model_export,
-        model_blessing=self.model_blessing,
+        model_export=self._model_export,
+        model_blessing=self._model_blessing,
         slack_token='token',
-        channel_id='channel_id',
+        slack_channel_id='slack_channel_id',
         timeout_sec=3600)
     self.assertEqual('ModelBlessingPath',
                      slack_component.outputs['slack_blessing'].type_name)

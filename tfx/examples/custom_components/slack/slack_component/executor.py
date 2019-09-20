@@ -79,7 +79,7 @@ _SlackResponse = NamedTuple(
         # The decision message.
         ('message', Text),
         # The slack channel that the decision is made on.
-        ('channel_id', Text),
+        ('slack_channel_id', Text),
         # The slack thread that the decision is made on.
         ('thread_ts', Text)
     ])
@@ -88,14 +88,38 @@ _SlackResponse = NamedTuple(
 class Executor(base_executor.BaseExecutor):
   """Executor for Slack component."""
 
-  def _fetch_slack_blessing(self, slack_token: Text, channel_id: Text,
+  def _is_valid_message(self, payload: Dict[Text, Any],
+                        expected_slack_channel_id: Text,
+                        expected_thread_timestamp: int):
+    """Evaluates whether a payload is valid.
+
+    A payload is considered valid iff:
+      a. it is from the expected slack channel
+      b. it is from the expected slack thread
+      c. it contains message info
+
+    Args:
+      payload: the payload to be evaluated
+      expected_slack_channel_id: the id of the expected slack channel
+      expected_thread_timestamp: the timestamp of the expected slack thread
+
+    Returns:
+
+    """
+    return (payload.get('type') == 'message' and
+            payload.get('channel') == expected_slack_channel_id and
+            payload.get('text') and
+            payload.get('thread_ts') == expected_thread_timestamp)
+
+  def _fetch_slack_blessing(self, slack_token: Text, slack_channel_id: Text,
                             model_uri: Text) -> _SlackResponse:
     """Send message via Slack channel and wait for response.
 
     Args:
       slack_token: The user-defined function to obtain token to send and receive
         messages.
-      channel_id: The id of the Slack channel to send and receive messages.
+      slack_channel_id: The id of the Slack channel to send and receive
+        messages.
       model_uri: The URI of the model waiting for human review.
 
     Returns:
@@ -114,7 +138,7 @@ class Executor(base_executor.BaseExecutor):
       tf.logging.error(msg)
       raise ConnectionError(msg)  # pylint: disable=undefined-variable
 
-    sc.rtm_send_message(types.Channel_id, message=msg)
+    sc.rtm_send_message(slack_channel_id, message=msg)
 
     while sc.server.connected:
       payload_list = sc.rtm_read()
@@ -125,27 +149,25 @@ class Executor(base_executor.BaseExecutor):
         if payload.get('ok') and payload.get('reply_to') == 0 and not ts:
           ts = payload['ts']
           continue
-        elif payload.get('type') == 'message' and payload.get(
-            'channel') == channel_id and payload.get('text') and payload.get(
-                'thread_ts') == ts:
-          if payload.get('text').lower() in _APPROVE_TEXT:
-            tf.logging.info('User %s approves the model located at %s',
-                            payload.get('user'), model_uri)
-            return _SlackResponse(True, payload.get('user'),
-                                  payload.get('text'), channel_id, str(ts))
-          elif payload.get('text').lower() in _DECLINE_TEXT:
-            tf.logging.info('User %s declines the model located at %s',
-                            payload.get('user'), model_uri)
-            return _SlackResponse(False, payload.get('user'),
-                                  payload.get('text'), channel_id, str(ts))
-          else:
-            unrecognized_text = payload.get('text')
-            tf.logging.info('Unrecognized response: %s', unrecognized_text)
-            sc.rtm_send_message(
-                types.Channel_id,
-                message=_NOTIFY_CORRECT_REPLY_TEMPLATE.format(
-                    unrecognized_text),
-                thread=ts)
+        if not self._is_valid_message(payload, slack_channel_id, ts):
+          continue
+        if payload.get('text').lower() in _APPROVE_TEXT:
+          tf.logging.info('User %s approves the model located at %s',
+                          payload.get('user'), model_uri)
+          return _SlackResponse(True, payload.get('user'), payload.get('text'),
+                                slack_channel_id, str(ts))
+        elif payload.get('text').lower() in _DECLINE_TEXT:
+          tf.logging.info('User %s declines the model located at %s',
+                          payload.get('user'), model_uri)
+          return _SlackResponse(False, payload.get('user'), payload.get('text'),
+                                slack_channel_id, str(ts))
+        else:
+          unrecognized_text = payload.get('text')
+          tf.logging.info('Unrecognized response: %s', unrecognized_text)
+          sc.rtm_send_message(
+              slack_channel_id,
+              message=_NOTIFY_CORRECT_REPLY_TEMPLATE.format(unrecognized_text),
+              thread=ts)
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -160,7 +182,8 @@ class Executor(base_executor.BaseExecutor):
         - slack_blessing: model blessing result.
       exec_properties: A dict of execution properties, including:
         - slack_token: Token used to setup connection with slack server.
-        - channel_id: The id of the Slack channel to send and receive messages.
+        - slack_channel_id: The id of the Slack channel to send and receive
+          messages.
         - timeout_sec: How long do we wait for response, in seconds.
 
     Returns:
@@ -177,7 +200,7 @@ class Executor(base_executor.BaseExecutor):
 
     # Fetch execution properties from exec_properties dict.
     slack_token = exec_properties['slack_token']
-    channel_id = exec_properties['channel_id']
+    slack_channel_id = exec_properties['slack_channel_id']
     timeout_sec = exec_properties['timeout_sec']
 
     # Fetch input URIs from input_dict.
@@ -198,7 +221,8 @@ class Executor(base_executor.BaseExecutor):
     slack_response = None
     with Timeout(timeout_sec):
       if tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
-        slack_response = self._fetch_slack_blessing(slack_token, channel_id,
+        slack_response = self._fetch_slack_blessing(slack_token,
+                                                    slack_channel_id,
                                                     model_export_uri)
 
     # If model is blessed, write an empty file named 'BLESSED' in the assigned
@@ -217,7 +241,7 @@ class Executor(base_executor.BaseExecutor):
       slack_blessing.set_string_custom_property('slack_decision_message',
                                                 slack_response.message)
       slack_blessing.set_string_custom_property('slack_decision_channel',
-                                                slack_response.channel_id)
+                                                slack_response.slack_channel_id)
       slack_blessing.set_string_custom_property('slack_decision_thread',
                                                 slack_response.thread_ts)
     tf.logging.info('Blessing result written to %s.', slack_blessing.uri)
