@@ -21,10 +21,37 @@ message Input {
   // List of split name and input glob pattern pairs.
   //
   // 'name' shouldn't be empty and must be unique within the list.
+  //
   // 'pattern' is a glob relative file pattern that maps to input files with
   //   root directory given by input base path. Some ExampleGen might take the
   //   pattern as something other than file pattern, e.g. BigQuery.
-  // TODO(ruoyu): support span and version spec in continuous training.
+  //
+  // A Span is a grouping of training examples. If your data is persisted on a
+  // filesystem, each Span may be stored in a separate directory. The semantics
+  // of a Span are not hardcoded into TFX; a Span may correspond to a day of
+  // data, an hour of data, or any other grouping that is meaningful to your
+  // task.
+  //
+  // Each Span can hold multiple Versions of data. To give an example, if you
+  // remove some examples from a Span because of wipeout compliance, this could
+  // result in a new Version of that Span. By default, TFX components operate on
+  // the latest Version within a Span.
+  //
+  // Each Version within a Span can further be subdivided into multiple Splits.
+  // The most common use-case for splitting a Span is to split it into training
+  // and eval data.
+  //
+  // [SPAN spec]
+  //   - '{SPAN}', for using in pattern below to retrieve span number.
+  //   - This spec matches digits and maps the data into the relevant SPAN
+  //     numbers. e.g. 'data_{SPAN}-*.tfrecord' will collect files like
+  //     'data_12-a.tfrecord', 'date_12-b.tfrecord'.
+  //   - When SPAN spec is missing, it's assumed to be always Span 0.
+  //   - If SPAN is specified, pipeline will process the latest span, and store
+  //     the span number in metadata.
+  //
+  // TODO(jyzhao): support version and date spec.
+  // TODO(jyzhao): support range config for define certain spans to process.
   message Split {
     string name = 1;
     string pattern = 2;
@@ -33,7 +60,7 @@ message Input {
 }
 
 // Optional specified configuration for example gen.
-message CustomConfig{
+message CustomConfig {
   google.protobuf.Any custom_config = 1;
 }
 
