@@ -58,8 +58,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     shutil.rmtree(self.test_dir)
 
   def testTwoStepPipeline(self):
-    """Sanity-checks the construction and dependencies for a 2-step pipeline.
-    """
+    """Sanity-checks the construction and dependencies for a 2-step pipeline."""
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
     self.assertTrue(tf.gfile.Exists(file_path))
@@ -96,10 +95,22 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
           {
               'tasks': [{
                   'name': 'bigqueryexamplegen',
-                  'template': 'bigqueryexamplegen'
+                  'template': 'bigqueryexamplegen',
+                  'arguments': {
+                      'parameters': [{
+                          'name': 'pipeline-root',
+                          'value': '{{inputs.parameters.pipeline-root}}'
+                      }]
+                  }
               }, {
                   'name': 'statisticsgen',
                   'template': 'statisticsgen',
+                  'arguments': {
+                      'parameters': [{
+                          'name': 'pipeline-root',
+                          'value': '{{inputs.parameters.pipeline-root}}'
+                      }]
+                  },
                   'dependencies': ['bigqueryexamplegen'],
               }]
           }, dag[0]['dag'])

@@ -12,6 +12,8 @@
 *   Simplified component package names.
 *   Introduced BaseNode as the base class of any node in a TFX pipeline DAG.
 *   Added docker component launcher to launch container component.
+*   Added support for specifying pipeline root in runtime when run on KubeflowDagRunner.
+    A default value can be provided when constructing the TFX pipeline.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

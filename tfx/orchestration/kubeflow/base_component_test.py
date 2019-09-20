@@ -35,6 +35,7 @@ from tfx.types import standard_artifacts
 
 class BaseComponentTest(tf.test.TestCase):
   maxDiff = None  # pylint: disable=invalid-name
+  _test_pipeline_name = 'test_pipeline'
 
   def setUp(self):
     super(BaseComponentTest, self).setUp()
@@ -45,11 +46,13 @@ class BaseComponentTest(tf.test.TestCase):
         input_data=example_gen.outputs['examples'], instance_name='foo')
 
     pipeline = tfx_pipeline.Pipeline(
-        pipeline_name='test_pipeline',
+        pipeline_name=self._test_pipeline_name,
         pipeline_root='test_pipeline_root',
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[example_gen, statistics_gen],
     )
+
+    test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
 
     self._metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     self._metadata_config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
@@ -60,6 +63,8 @@ class BaseComponentTest(tf.test.TestCase):
           .InProcessComponentLauncher,
           depends_on=set(),
           pipeline=pipeline,
+          pipeline_name=self._test_pipeline_name,
+          pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
       )
@@ -78,7 +83,7 @@ class BaseComponentTest(tf.test.TestCase):
         '--pipeline_name',
         'test_pipeline',
         '--pipeline_root',
-        'test_pipeline_root',
+        '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
         '{\n'
         '  "mysqlDbServiceHost": {\n'
