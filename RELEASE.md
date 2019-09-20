@@ -14,6 +14,8 @@
 *   Added docker component launcher to launch container component.
 *   Added support for specifying pipeline root in runtime when run on KubeflowDagRunner.
     A default value can be provided when constructing the TFX pipeline.
+*   Added basic span support in ExampleGen to ingest file based data sources
+    that can be updated regularly by upstream.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
