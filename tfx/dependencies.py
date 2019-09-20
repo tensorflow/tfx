@@ -23,6 +23,7 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.14,<3',
       'click>=7.0,<8',
       'google-api-python-client>=1.7.8,<2',
+      'jinja2>=2.7.3,<3',
       'ml-metadata>=0.14,<0.15',
       'protobuf>=3.7,<4',
       'six>=1.10,<2',

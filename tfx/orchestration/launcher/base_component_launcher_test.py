@@ -20,72 +20,14 @@ from __future__ import print_function
 import os
 import mock
 import tensorflow as tf
-from typing import Any, Dict, List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
-from tfx.components.base import base_component
-from tfx.components.base import base_driver
-from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
-from tfx.types import artifact_utils
+from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
-from tfx.types import component_spec
-
-
-class _FakeDriver(base_driver.BaseDriver):
-
-  def pre_execution(
-      self,
-      input_dict: Dict[Text, types.Channel],
-      output_dict: Dict[Text, types.Channel],
-      exec_properties: Dict[Text, Any],
-      driver_args: data_types.DriverArgs,
-      pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo,
-  ) -> data_types.ExecutionDecision:
-    input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
-    output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
-    artifact_utils.get_single_instance(
-        output_artifacts['output']).uri = os.path.join(
-            pipeline_info.pipeline_root, 'output')
-    return data_types.ExecutionDecision(input_artifacts, output_artifacts,
-                                        exec_properties, 123, False)
-
-
-class _FakeExecutor(base_executor.BaseExecutor):
-
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
-    input_path = artifact_utils.get_single_uri(input_dict['input'])
-    output_path = artifact_utils.get_single_uri(output_dict['output'])
-    tf.gfile.Copy(input_path, output_path)
-
-
-class _FakeComponentSpec(types.ComponentSpec):
-  PARAMETERS = {}
-  INPUTS = {'input': component_spec.ChannelParameter(type_name='InputPath')}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='OutputPath')}
-
-
-class _FakeComponent(base_component.BaseComponent):
-  SPEC_CLASS = _FakeComponentSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
-  DRIVER_CLASS = _FakeDriver
-
-  def __init__(self,
-               name: Text,
-               input_channel: types.Channel,
-               output_channel: Optional[types.Channel] = None):
-    output_channel = output_channel or types.Channel(
-        type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
-    spec = _FakeComponentSpec(input=input_channel, output=output_channel)
-    super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
 
 
 class ComponentRunnerTest(tf.test.TestCase):
@@ -109,7 +51,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     input_artifact = types.Artifact(type_name='InputPath')
     input_artifact.uri = input_path
 
-    component = _FakeComponent(
+    component = test_utils._FakeComponent(
         name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]))
 
@@ -126,8 +68,10 @@ class ComponentRunnerTest(tf.test.TestCase):
         metadata_connection_config=connection_config,
         additional_pipeline_args={})
     self.assertEqual(
-        launcher._component_info.component_type,
-        '.'.join([_FakeComponent.__module__, _FakeComponent.__name__]))
+        launcher._component_info.component_type, '.'.join([
+            test_utils._FakeComponent.__module__,
+            test_utils._FakeComponent.__name__
+        ]))
     launcher.launch()
 
     output_path = os.path.join(pipeline_root, 'output')
