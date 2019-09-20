@@ -28,7 +28,6 @@ from tfx.components.pusher.component import Pusher
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -73,25 +72,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Generates schema based on statistics files.
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs['output'], infer_feature_shape=False)
+      stats=statistics_gen.outputs['output'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
       stats=statistics_gen.outputs['output'],
       schema=infer_schema.outputs['output'])
 
-  # Performs transformations and feature engineering in training and serving.
-  transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
-      module_file=module_file)
-
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
+      examples=example_gen.outputs['examples'],
       schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
@@ -117,8 +109,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          example_gen, statistics_gen, infer_schema, validate_stats, trainer,
+          model_analyzer, model_validator, pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(

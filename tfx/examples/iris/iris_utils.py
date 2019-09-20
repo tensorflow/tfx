@@ -22,22 +22,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
-_DENSE_FLOAT_FEATURE_KEYS = [
-    'sepal_length', 'sepal_width', 'petal_length', 'petal_width']
-
-# Keys
+_FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
-
-
-def _transformed_name(key):
-  return key + '_xf'
-
-
-def _transformed_names(keys):
-  return [_transformed_name(key) for key in keys]
 
 
 # Tf.Transform considers these features as "raw"
@@ -47,90 +35,13 @@ def _get_raw_feature_spec(schema):
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(
-      filenames,
-      compression_type='GZIP')
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def _fill_in_missing(x):
-  """Replace missing values in a SparseTensor.
-
-  Fills in missing values of `x` with '' or 0, and converts to a dense tensor.
-
-  Args:
-    x: A `SparseTensor` of rank 2.  Its dense shape should have size at most 1
-      in the second dimension.
-
-  Returns:
-    A rank 1 tensor where missing values of `x` have been filled in.
-  """
-  default_value = '' if x.dtype == tf.string else 0
-  return tf.squeeze(
-      tf.sparse.to_dense(
-          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
-          default_value),
-      axis=1)
-
-
-# TODO(chary): Transform will be needed if we choose to use an alternative
-# dataset with 'text' label column. Will either update the dataset and
-# transform function -or- remove the transform function in a follow up CL.
-def preprocessing_fn(inputs):
-  """tf.transform's callback function for preprocessing inputs.
-
-  Args:
-    inputs: map from feature keys to raw not-yet-transformed features.
-
-  Returns:
-    A no-op!
-    Returns unchanged map from string feature key to features.
-  """
-  outputs = {}
-  for key in _DENSE_FLOAT_FEATURE_KEYS:
-    # Preserve this feature as a dense float, setting nan's to the mean.
-    outputs[_transformed_name(key)] = tft.scale_to_z_score(
-        _fill_in_missing(inputs[key]))
-
-  # flower variety
-  variety = _fill_in_missing(inputs[_LABEL_KEY])
-  outputs[_transformed_name(_LABEL_KEY)] = tf.cast(variety, tf.int64)
-
-  return outputs
-
-
-def _build_estimator(config, hidden_units=None, warm_start_from=None):
-  """Build an estimator for predicting the flower variety.
-
-  Args:
-    config: tf.estimator.RunConfig defining the runtime environment for the
-      estimator (including model_dir).
-    hidden_units: [int], the layer sizes of the DNN (input layer first)
-    warm_start_from: Optional directory to warm start from.
-
-  Returns:
-    A dict of the following:
-      - estimator: The estimator that will be used for training and eval.
-      - train_spec: Spec for training.
-      - eval_spec: Spec for eval.
-      - eval_input_receiver_fn: Input function for eval.
-  """
-  real_valued_columns = [
-      tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
-  ]
-  return tf.estimator.DNNClassifier(
-      config=config,
-      feature_columns=real_valued_columns,
-      hidden_units=hidden_units or [10, 10],
-      n_classes=3,
-      warm_start_from=warm_start_from)
-
-
-def _example_serving_receiver_fn(tf_transform_output, schema):
+def _example_serving_receiver_fn(schema):
   """Build the serving in inputs.
 
   Args:
-    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -143,18 +54,14 @@ def _example_serving_receiver_fn(tf_transform_output, schema):
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
-  transformed_features = tf_transform_output.transform_raw_features(
-      serving_input_receiver.features)
-
   return tf.estimator.export.ServingInputReceiver(
-      transformed_features, serving_input_receiver.receiver_tensors)
+      serving_input_receiver.features, serving_input_receiver.receiver_tensors)
 
 
-def _eval_input_receiver_fn(tf_transform_output, schema):
+def _eval_input_receiver_fn(schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
-    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -174,48 +81,60 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   # raw, untransformed, tf examples.
   features = tf.parse_example(serialized_tf_example, raw_feature_spec)
 
-  # Now that we have our raw examples, process them through the tf-transform
-  # function computed during the preprocessing step.
-  transformed_features = tf_transform_output.transform_raw_features(
-      features)
-
   # The key name MUST be 'examples'.
   receiver_tensors = {'examples': serialized_tf_example}
-
-  # NOTE: Model is driven by transformed features (since training works on the
-  # materialized output of TFT, but slicing will happen on raw features.
-  features.update(transformed_features)
 
   return tfma.export.EvalInputReceiver(
       features=features,
       receiver_tensors=receiver_tensors,
-      labels=transformed_features[_transformed_name(_LABEL_KEY)])
+      labels=features.pop(_LABEL_KEY))
 
 
-def _input_fn(filenames, tf_transform_output, batch_size=200):
+def _input_fn(filenames, schema, batch_size=200):
   """Generates features and labels for training or evaluation.
 
   Args:
     filenames: [str] list of CSV files to read data from.
-    tf_transform_output: A TFTransformOutput.
+    schema: Schema of the input data.
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
     A (features, indices) tuple where features is a dictionary of
       Tensors, and indices is a single Tensor of label indices.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
+
+  feature_spec = _get_raw_feature_spec(schema)
 
   dataset = tf.data.experimental.make_batched_features_dataset(
-      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
+      filenames, batch_size, feature_spec, reader=_gzip_reader_fn)
 
-  transformed_features = dataset.make_one_shot_iterator().get_next()
+  features = dataset.make_one_shot_iterator().get_next()
 
   # We pop the label because we do not want to use it as a feature while we're
   # training.
-  return transformed_features, transformed_features.pop(
-      _transformed_name(_LABEL_KEY))
+  return features, features.pop(_LABEL_KEY)
+
+
+def _keras_model_builder():
+  """Creates a DNN Keras model  for classifying iris data.
+
+  Returns:
+    A keras Model.
+  """
+
+  l = tf.keras.layers
+  opt = tf.keras.optimizers
+  inputs = [l.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
+  input_layer = l.concatenate(inputs)
+  d1 = l.Dense(8, activation='relu')(input_layer)
+  output = l.Dense(3, activation='softmax')(d1)
+  model = tf.keras.Model(inputs=inputs, outputs=output)
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=opt.Adam(lr=0.001),
+      metrics=['accuracy'])
+  tf.logging.info(model.summary())
+  return model
 
 
 # TFX will call this function
@@ -233,32 +152,25 @@ def trainer_fn(hparams, schema):
       - eval_spec: Spec for eval.
       - eval_input_receiver_fn: Input function for eval.
   """
-  # Number of nodes in the first layer of the DNN
-  first_dnn_layer_size = 10
-  num_dnn_layers = 2
-  dnn_decay_factor = 1.0
 
   train_batch_size = 40
   eval_batch_size = 40
 
-  tf_transform_output = tft.TFTransformOutput(hparams.transform_output)
-
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       hparams.train_files,
-      tf_transform_output,
+      schema,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       hparams.eval_files,
-      tf_transform_output,
+      schema,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
       max_steps=hparams.train_steps)
 
-  serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
-      tf_transform_output, schema)
+  serving_receiver_fn = lambda: _example_serving_receiver_fn(schema)  # pylint: disable=g-long-lambda
 
   exporter = tf.estimator.FinalExporter('iris', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
@@ -272,18 +184,11 @@ def trainer_fn(hparams, schema):
 
   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
-  estimator = _build_estimator(
-      # Construct layers sizes with exponetial decay
-      hidden_units=[
-          max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
-          for i in range(num_dnn_layers)
-      ],
-      config=run_config,
-      warm_start_from=hparams.warm_start_from)
+  estimator = tf.keras.estimator.model_to_estimator(
+      keras_model=_keras_model_builder(), config=run_config)
 
   # Create an input receiver for TFMA processing
-  receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-      tf_transform_output, schema)
+  receiver_fn = lambda: _eval_input_receiver_fn(schema)  # pylint: disable=g-long-lambda
 
   return {
       'estimator': estimator,
