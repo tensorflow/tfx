@@ -96,7 +96,7 @@ mkdir $AIRFLOW_HOME/dags/
 cp example/taxi_pipeline_slack.py $AIRFLOW_HOME/dags/
 ```
 
-You will also need to change the `channel_id` field to your own Slack channel id
+You will also need to change the `slack_channel_id` field to your own Slack channel id
 in the pipeline definition:
 
 ```bash

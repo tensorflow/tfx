@@ -57,7 +57,7 @@ _taxi_module_file = os.path.join(_taxi_root, 'taxi_utils_slack.py')
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model/taxi_slack')
 # Slack channel to push the model notifications to.
-_channel_id = 'my-channel-id'
+_slack_channel_id = 'my-channel-id'
 # Slack token to set up connection.
 _slack_token = os.environ['SLACK_BOT_TOKEN']
 
@@ -135,7 +135,7 @@ def _create_pipeline():
       model_export=trainer.outputs['output'],
       model_blessing=model_validator.outputs['blessing'],
       slack_token=_slack_token,
-      channel_id=_channel_id,
+      slack_channel_id=_slack_channel_id,
       timeout_sec=3600,
   )
 

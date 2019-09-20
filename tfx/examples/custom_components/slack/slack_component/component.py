@@ -37,7 +37,7 @@ class SlackComponentSpec(types.ComponentSpec):
 
   PARAMETERS = {
       'slack_token': ExecutionParameter(type=Text),
-      'channel_id': ExecutionParameter(type=Text),
+      'slack_channel_id': ExecutionParameter(type=Text),
       'timeout_sec': ExecutionParameter(type=int),
   }
   INPUTS = {
@@ -86,7 +86,7 @@ class SlackComponent(base_component.BaseComponent):
                model_export: types.Channel,
                model_blessing: types.Channel,
                slack_token: Text,
-               channel_id: Text,
+               slack_channel_id: Text,
                timeout_sec: int,
                slack_blessing: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
@@ -98,7 +98,7 @@ class SlackComponent(base_component.BaseComponent):
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
         ModelValidator component.
       slack_token: A token used for setting up connection with Slack server.
-      channel_id: Slack channel id to communicate on.
+      slack_channel_id: Slack channel id to communicate on.
       timeout_sec: Seconds to wait for response before default to reject.
       slack_blessing: Optional output channel of 'ModelBlessingPath' with result
         of blessing; will be created for you if not specified.
@@ -110,7 +110,7 @@ class SlackComponent(base_component.BaseComponent):
         artifacts=[standard_artifacts.ModelBlessing()])
     spec = SlackComponentSpec(
         slack_token=slack_token,
-        channel_id=channel_id,
+        slack_channel_id=slack_channel_id,
         timeout_sec=timeout_sec,
         model_export=model_export,
         model_blessing=model_blessing,

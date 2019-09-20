@@ -53,7 +53,7 @@ class SlackComponentSpec(types.ComponentSpec):
   }
   PARAMETERS = {
       'slack_token': ExecutionParameter(type=Text),
-      'channel_id': ExecutionParameter(type=Text),
+      'slack_channel_id': ExecutionParameter(type=Text),
       'timeout_sec': ExecutionParameter(type=int),
   }
 ```
@@ -82,7 +82,7 @@ class Executor(base_executor.BaseExecutor):
     ...
     # Fetch execution properties from exec_properties dict.
     slack_token = exec_properties['slack_token']
-    channel_id = exec_properties['channel_id']
+    slack_channel_id = exec_properties['slack_channel_id']
     timeout_sec = exec_properties['timeout_sec']
 
     # Fetch input URIs from input_dict.
@@ -137,7 +137,7 @@ class SlackComponent(base_component.BaseComponent):
                model_export: channel.Channel,
                model_blessing: channel.Channel,
                slack_token: Text,
-               channel_id: Text,
+               slack_channel_id: Text,
                timeout_sec: int,
                slack_blessing: Optional[channel.Channel] = None,
                name: Optional[Text] = None):
@@ -146,7 +146,7 @@ class SlackComponent(base_component.BaseComponent):
         artifacts=[types.TfxArtifact('ModelBlessingPath')])
     spec = SlackComponentSpec(
         slack_token=slack_token,
-        channel_id=channel_id,
+        slack_channel_id=slack_channel_id,
         timeout_sec=timeout_sec,
         model_export=model_export,
         model_blessing=model_blessing,
@@ -180,7 +180,7 @@ def _create_pipeline():
       model_export=trainer.outputs['output'],
       model_blessing=model_validator.outputs['blessing'],
       slack_token=_slack_token,
-      channel_id=_channel_id,
+      slack_channel_id=_slack_channel_id,
       timeout_sec=3600,
   )
 
