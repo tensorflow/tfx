@@ -11,6 +11,7 @@
     and Trainer.
 *   Simplified component package names.
 *   Introduced BaseNode as the base class of any node in a TFX pipeline DAG.
+*   Added docker component launcher to launch container component.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
