@@ -20,11 +20,13 @@ from __future__ import print_function
 import codecs
 import locale
 import os
+import tempfile
 
 from click import testing as click_testing
 import tensorflow as tf
 
 from tfx.tools.cli.cli_main import cli_group
+from tfx.utils import io_utils
 
 
 class CliBeamEndToEndTest(tf.test.TestCase):
@@ -37,26 +39,50 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
       os.environ['LANG'] = 'en_US.utf-8'
 
-    # Set home folders for engines.
+    # Setup beam_home in a temp directory
     self._home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
         self._testMethodName)
-    self._original_home_value = os.environ.get('HOME', '')
+    self._old_home = os.environ.get('HOME')
     os.environ['HOME'] = self._home
-    self._original_beam_home_value = os.environ.get('BEAM_HOME', '')
-    os.environ['BEAM_HOME'] = os.path.join(os.environ['HOME'], 'beam')
+    self._old_beam_home = os.environ.get('BEAM_HOME')
+    os.environ['BEAM_HOME'] = os.path.join(self._home, 'beam', '')
+    self._beam_home = os.environ['BEAM_HOME']
 
+    # Testdata path.
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    # Copy data.
+    chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(
+            os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        'examples', 'chicago_taxi_pipeline', '')
+    data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
+    content = tf.gfile.ListDirectory(data_dir)
+    assert content, 'content in {} is empty'.format(data_dir)
+    target_data_dir = os.path.join(self._home, 'taxi', 'data', 'simple')
+    io_utils.copy_dir(data_dir, target_data_dir)
+    assert tf.gfile.IsDirectory(target_data_dir)
+    content = tf.gfile.ListDirectory(target_data_dir)
+    assert content, 'content in {} is {}'.format(target_data_dir, content)
+    io_utils.copy_file(
+        os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
+        os.path.join(self._home, 'taxi', 'taxi_utils.py'))
+
+    # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
 
   def tearDown(self):
     super(CliBeamEndToEndTest, self).tearDown()
-    os.environ['HOME'] = self._original_home_value
-    os.environ['BEAM_HOME'] = self._original_beam_home_value
+    if self._old_beam_home:
+      os.environ['BEAM_HOME'] = self._old_beam_home
+    if self._old_home:
+      os.environ['HOME'] = self._old_home
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
-    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
+    handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
 
     # Create a pipeline.
     result = self.runner.invoke(cli_group, [
@@ -89,7 +115,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
   def testPipelineUpdate(self):
     pipeline_name = 'chicago_taxi_beam'
-    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
+    handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
     pipeline_path_1 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_1.py')
     # Try pipeline update when pipeline does not exist.
@@ -105,7 +131,6 @@ class CliBeamEndToEndTest(tf.test.TestCase):
 
     # Now update an existing pipeline.
     self._valid_create_and_check(pipeline_path_1, pipeline_name)
-
     pipeline_path_2 = os.path.join(self._testdata_dir,
                                    'test_pipeline_beam_2.py')
     result = self.runner.invoke(cli_group, [
@@ -156,7 +181,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
   def testPipelineDelete(self):
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_1.py')
     pipeline_name = 'chicago_taxi_beam'
-    handler_pipeline_path = os.path.join(os.environ['BEAM_HOME'], pipeline_name)
+    handler_pipeline_path = os.path.join(self._beam_home, pipeline_name)
 
     # Try deleting a non existent pipeline.
     result = self.runner.invoke(cli_group, [
@@ -211,11 +236,85 @@ class CliBeamEndToEndTest(tf.test.TestCase):
     self.assertIn(pipeline_name_1, result.output)
     self.assertIn(pipeline_name_2, result.output)
 
+  def testPipelineSchema(self):
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_2.py')
+    pipeline_name = 'chicago_taxi_beam'
+
+    # Try getting schema without creating pipeline.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                  result.output)
+
+    # Create a pipeline.
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Try getting schema without creating a pipeline run.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
+        result.output)
+
+    # Run pipeline.
+    self._valid_run_and_check(pipeline_name)
+
+    # Try inferring schema without SchemaGen component.
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertIn(
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.',
+        result.output)
+
+    # Create a pipeline.
+    pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_beam_3.py')
+    pipeline_name = 'chicago_taxi_beam_v2'
+    self._valid_create_and_check(pipeline_path, pipeline_name)
+
+    # Run pipeline
+    self._valid_run_and_check(pipeline_name)
+
+    # Infer Schema when pipeline runs for the first time.
+    schema_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+    result = self.runner.invoke(cli_group, [
+        'pipeline', 'schema', '--engine', 'beam', '--pipeline_name',
+        pipeline_name
+    ])
+    self.assertIn('CLI', result.output)
+    self.assertIn('Getting latest schema.', result.output)
+    self.assertTrue(tf.io.gfile.exists(schema_path))
+    self.assertIn('Path to schema: {}'.format(schema_path), result.output)
+    self.assertIn(
+        '*********SCHEMA FOR {}**********'.format(pipeline_name.upper()),
+        result.output)
+
+  def _valid_run_and_check(self, pipeline_name):
+    result = self.runner.invoke(
+        cli_group,
+        ['run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name])
+    self.assertIn('CLI', result.output)
+    self.assertNotIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+                     result.output)
+    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
+                  result.output)
+
   def testRunCreate(self):
     # Create a pipeline first.
     pipeline_name_1 = 'chicago_taxi_beam'
     pipeline_path_1 = os.path.join(self._testdata_dir,
-                                   'test_pipeline_beam_1.py')
+                                   'test_pipeline_beam_2.py')
     self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
 
     # Now run a different pipeline
@@ -230,12 +329,7 @@ class CliBeamEndToEndTest(tf.test.TestCase):
                   result.output)
 
     # Now run the pipeline
-    result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'beam', '--pipeline_name', pipeline_name_2
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name_2),
-                  result.output)
+    self._valid_run_and_check(pipeline_name_1)
 
 
 if __name__ == '__main__':

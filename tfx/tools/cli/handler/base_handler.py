@@ -24,6 +24,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import click
 
 from six import with_metaclass
 import tensorflow as tf
@@ -67,11 +68,6 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
   def compile_pipeline(self) -> None:
     """Compiles pipeline for the handler."""
-    pass
-
-  @abc.abstractmethod
-  def get_schema(self) -> None:
-    """Obtain schema from pipeline."""
     pass
 
   @abc.abstractmethod
@@ -192,3 +188,50 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       sys.exit('Pipeline "{}" does not exist.'.format(pipeline_name))
     elif not required and exists:
       sys.exit('Pipeline "{}" already exists.'.format(pipeline_name))
+
+  def get_schema(self):
+    pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+
+    # Check if pipeline exists.
+    self._check_pipeline_existence(pipeline_name)
+
+    # Path to pipeline args.
+    pipeline_args_path = os.path.join(self._handler_home_dir,
+                                      self.flags_dict[labels.PIPELINE_NAME],
+                                      'pipeline_args.json')
+
+    # Get pipeline_root.
+    with open(pipeline_args_path, 'r') as f:
+      pipeline_args = json.load(f)
+
+    # Check if pipeline root created. If not, it means that the user has not
+    # created a run yet or the pipeline is still running for the first time.
+    pipeline_root = pipeline_args[labels.PIPELINE_ROOT]
+    if not tf.io.gfile.exists(pipeline_root):
+      sys.exit(
+          'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+      )
+
+    # If pipeline_root exists, then check if SchemaGen output exists.
+    components = tf.io.gfile.listdir(pipeline_root)
+    if 'SchemaGen' not in components:
+      sys.exit(
+          'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+      )
+
+    # Get the latest SchemaGen output.
+    schemagen_outputs = tf.io.gfile.listdir(
+        os.path.join(pipeline_root, 'SchemaGen', 'output', ''))
+    latest_schema_folder = max(schemagen_outputs, key=int)
+
+    # Copy schema to current dir.
+    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'output',
+                                      latest_schema_folder, 'schema.pbtxt')
+    curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+    io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)
+
+    # Print schema and path to schema
+    click.echo('Path to schema: {}'.format(curr_dir_path))
+    click.echo('*********SCHEMA FOR {}**********'.format(pipeline_name.upper()))
+    with open(curr_dir_path, 'r') as f:
+      click.echo(f.read())
