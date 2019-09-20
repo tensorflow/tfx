@@ -23,6 +23,9 @@
     tensorflow-transform to version >=0.14.
 *   Updated Chicago Taxi example dependencies to Beam 2.14.0, Flink 1.8.1, Spark
     2.4.3.
+*   Adopted new recommended way to access component inputs/outputs as
+    `component.outputs['output_name']` (previously, the syntax was
+    `component.outputs.output_name`).
 
 ### Deprecations
 

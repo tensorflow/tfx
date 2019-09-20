@@ -70,5 +70,5 @@ from tfx import components
 
 ...
 
-infer_schema = components.SchemaGen(stats=compute_training_stats.outputs.output)
+infer_schema = components.SchemaGen(stats=compute_training_stats.outputs['output'])
 ```

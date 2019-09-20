@@ -60,8 +60,8 @@ class Evaluator(base_component.BaseComponent):
   ```
     # Uses TFMA to compute a evaluation statistics over features of a model.
     model_analyzer = Evaluator(
-        examples=example_gen.outputs.examples,
-        model_exports=trainer.outputs.output)
+        examples=example_gen.outputs['examples'],
+        model_exports=trainer.outputs['output'])
   ```
   """
 

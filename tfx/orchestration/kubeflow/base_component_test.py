@@ -42,7 +42,7 @@ class BaseComponentTest(tf.test.TestCase):
     example_gen = csv_example_gen_component.CsvExampleGen(
         input_base=channel_utils.as_channel([examples]))
     statistics_gen = statistics_gen_component.StatisticsGen(
-        input_data=example_gen.outputs.examples, instance_name='foo')
+        input_data=example_gen.outputs['examples'], instance_name='foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name='test_pipeline',

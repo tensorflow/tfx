@@ -66,9 +66,9 @@ class ComponentTest(tf.test.TestCase):
     input_channel = types.Channel(type_name="InputType")
     component = _BasicComponent(folds=10, input=input_channel)
     self.assertEqual(component.id, "_BasicComponent")
-    self.assertIs(input_channel, component.inputs.input)
-    self.assertIsInstance(component.outputs.output, types.Channel)
-    self.assertEqual(component.outputs.output.type_name, "OutputType")
+    self.assertIs(input_channel, component.inputs["input"])
+    self.assertIsInstance(component.outputs["output"], types.Channel)
+    self.assertEqual(component.outputs["output"].type_name, "OutputType")
 
   def testComponentSpecType(self):
 
@@ -180,7 +180,8 @@ class ComponentTest(tf.test.TestCase):
                      recovered_component.inputs["input"].type_name)
     self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
-    self.assertEqual(recovered_component.outputs.output.type_name, "OutputType")
+    self.assertEqual(recovered_component.outputs["output"].type_name,
+                     "OutputType")
     self.assertEqual(recovered_component.driver_class, component.driver_class)
 
 

@@ -174,11 +174,11 @@ found in the
 def _create_pipeline():
   ...
   model_validator = ModelValidator(
-      examples=example_gen.outputs.examples, model=trainer.outputs.output)
+      examples=example_gen.outputs['examples'], model=trainer.outputs['output'])
 
   slack_validator = SlackComponent(
-      model_export=trainer.outputs.output,
-      model_blessing=model_validator.outputs.blessing,
+      model_export=trainer.outputs['output'],
+      model_blessing=model_validator.outputs['blessing'],
       slack_token=_slack_token,
       channel_id=_channel_id,
       timeout_sec=3600,
@@ -186,7 +186,7 @@ def _create_pipeline():
 
   pusher = Pusher(
       ...
-      model_blessing=slack_validator.outputs.slack_blessing,
+      model_blessing=slack_validator.outputs['slack_blessing'],
       ...)
 
   return pipeline.Pipeline(

@@ -29,13 +29,13 @@ class SchemaGenTest(tf.test.TestCase):
     schema_gen = component.SchemaGen(
         stats=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
-    self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
+    self.assertEqual('SchemaPath', schema_gen.outputs['output'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
 
   def testConstructWithSchema(self):
     schema_gen = component.SchemaGen(
         schema=channel_utils.as_channel([standard_artifacts.Schema()]))
-    self.assertEqual('SchemaPath', schema_gen.outputs.output.type_name)
+    self.assertEqual('SchemaPath', schema_gen.outputs['output'].type_name)
 
   def testConstructWithBothStatsAndSchema(self):
     with self.assertRaises(ValueError):
