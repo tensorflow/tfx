@@ -106,9 +106,7 @@ class _Dataset(object):
   _FILE_PATTERN_SUFFIX_LENGTH = 6
 
   def __init__(self, file_pattern: Text, file_format: Text, data_format: Text,
-               metadata: dataset_metadata.DatasetMetadata,
-               stats_output_path: Optional[Text] = None,
-               materialize_output_path: Optional[Text] = None):
+               metadata: dataset_metadata.DatasetMetadata):
     """Initialize a Dataset.
 
     Args:
@@ -116,8 +114,6 @@ class _Dataset(object):
       file_format: The file format of the dataset.
       data_format: The data format of the dataset.
       metadata: A DatasetMetadata object describing the dataset.
-      stats_output_path: The file path where to write stats for the dataset.
-      materialize_output_path: The file path where to write the dataset.
     """
     self._file_pattern = file_pattern
     file_pattern_suffix = os.path.join(
@@ -126,24 +122,11 @@ class _Dataset(object):
     self._file_format = file_format
     self._data_format = data_format
     self._metadata = metadata
-    self._stats_output_path = stats_output_path
-    self._materialize_output_path = materialize_output_path
     self._index = None
 
   @property
   def file_pattern(self):
-    assert self._file_pattern
     return self._file_pattern
-
-  @property
-  def stats_output_path(self):
-    assert self._stats_output_path
-    return self._stats_output_path
-
-  @property
-  def materialize_output_path(self):
-    assert self._materialize_output_path
-    return self._materialize_output_path
 
   @property
   def index(self):
@@ -152,17 +135,14 @@ class _Dataset(object):
 
   @property
   def dataset_key(self):
-    assert self._dataset_key
     return self._dataset_key
 
   @property
   def data_format(self):
-    assert self._data_format
     return self._data_format
 
   @property
   def file_format(self):
-    assert self._file_format
     return self._file_format
 
   @property
@@ -901,8 +881,7 @@ class Executor(base_executor.BaseExecutor):
     transform_data_list = self._MakeDatasetList(
         transform_data_paths, transform_paths_file_formats,
         raw_examples_data_format, transform_input_dataset_metadata,
-        can_process_transform_jointly, per_set_stats_output_paths,
-        materialize_output_paths)
+        can_process_transform_jointly)
 
     desired_batch_size = self._GetDesiredBatchSize(raw_examples_data_format)
 
@@ -914,6 +893,7 @@ class Executor(base_executor.BaseExecutor):
           use_deep_copy_optimization=True):
         # pylint: disable=expression-not-assigned
         # pylint: disable=no-value-for-parameter
+
         _ = (
             p |
             'IncrementColumnUsageCounter' >> self._IncrementColumnUsageCounter(
@@ -1049,8 +1029,8 @@ class Executor(base_executor.BaseExecutor):
           # transform_data_list is a superset of analyze_data_list, we pay the
           # cost to read the same dataset (analyze_data_list) again here to
           # prevent certain beam runner from doing large temp materialization.
-          for dataset in transform_data_list:
-            infix = 'TransformIndex{}'.format(dataset.index)
+          for (idx, dataset) in enumerate(transform_data_list):
+            infix = 'TransformIndex{}'.format(idx)
             dataset.encoded = (
                 p |
                 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(dataset))
@@ -1090,27 +1070,30 @@ class Executor(base_executor.BaseExecutor):
                  use_tfdv=stats_use_tfdv))
 
             if per_set_stats_output_paths:
+              assert len(transform_data_list) == len(per_set_stats_output_paths)
               # TODO(b/67632871): Remove duplicate stats gen compute that is
               # done both on a flattened view of the data, and on each span
               # below.
-              for dataset in transform_data_list:
-                infix = 'TransformIndex{}'.format(dataset.index)
+              bundles = zip(transform_data_list, per_set_stats_output_paths)
+              for (idx, (dataset, output_path)) in enumerate(bundles):
+                infix = 'TransformIndex{}'.format(idx)
                 if stats_use_tfdv:
                   data = dataset.transformed
                 else:
                   data = dataset.transformed_and_encoded
                 data | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
-                    dataset.stats_output_path,
+                    output_path,
                     transformed_schema_proto,
                     use_tfdv=stats_use_tfdv)
 
           if materialize_output_paths:
-            for dataset in transform_data_list:
-              infix = 'TransformIndex{}'.format(dataset.index)
+            assert len(transform_data_list) == len(materialize_output_paths)
+            bundles = zip(transform_data_list, materialize_output_paths)
+            for (idx, (dataset, output_path)) in enumerate(bundles):
+              infix = 'TransformIndex{}'.format(idx)
               (dataset.transformed_and_encoded
                | 'Materialize[{}]'.format(infix) >> self._WriteExamples(
-                   transform_paths_file_formats[-1],
-                   dataset.materialize_output_path))
+                   transform_paths_file_formats[-1], output_path))
 
     return _Status.OK()
 
@@ -1179,21 +1162,17 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       Beam pipeline.
     """
+
     # TODO(b/122478841): Consider making beam pipeline part of context to
     # support fusion.
     return beam.Pipeline(argv=self._get_beam_pipeline_args())
 
-  # TODO(b/114444977): Remove the unused can_process_jointly argument.
-  def _MakeDatasetList(
-      self,
-      file_patterns: Sequence[Text],
-      file_formats: Sequence[Text],
-      data_format: Text,
-      metadata: dataset_metadata.DatasetMetadata,
-      can_process_jointly: bool,
-      stats_output_paths: Optional[Sequence[Text]] = None,
-      materialize_output_paths: Optional[Sequence[Text]] = None
-  ) -> List[_Dataset]:
+  # TODO(b/114444977): Remove the unused_can_process_jointly argument and
+  # perhaps the need for this entire function.
+  def _MakeDatasetList(self, file_patterns: Sequence[Text],
+                       file_formats: Sequence[Text], data_format: Text,
+                       metadata: dataset_metadata.DatasetMetadata,
+                       unused_can_process_jointly: bool) -> List[_Dataset]:
     """Makes a list of Dataset from the given `file_patterns`.
 
     Args:
@@ -1203,27 +1182,17 @@ class Executor(base_executor.BaseExecutor):
         `_Dataset`. Must have the same size as `file_patterns`.
       data_format: The data format of the datasets.
       metadata: A DatasetMetadata object for the datasets.
-      can_process_jointly: Whether paths can be processed jointly, unused.
-      stats_output_paths: The statistics output paths, if applicable.
-      materialize_output_paths: The materialization output paths, if applicable.
+      unused_can_process_jointly: Whether paths can be processed jointly,
+        unused.
 
     Returns:
       A list of `_Dataset` sorted by their dataset_key property.
     """
     assert len(file_patterns) == len(file_formats)
-    if stats_output_paths:
-      assert len(file_patterns) == len(stats_output_paths)
-    else:
-      stats_output_paths = [None] * len(file_patterns)
-    if materialize_output_paths:
-      assert len(file_patterns) == len(materialize_output_paths)
-    else:
-      materialize_output_paths = [None] * len(file_patterns)
-
+    # File patterns will need to be processed independently.
     datasets = [
-        _Dataset(p, f, data_format, metadata, s, m)
-        for p, f, s, m in zip(file_patterns, file_formats,
-                              stats_output_paths, materialize_output_paths)
+        _Dataset(p, f, data_format, metadata)
+        for p, f in zip(file_patterns, file_formats)
     ]
     result = sorted(datasets, key=lambda dataset: dataset.dataset_key)
     for index, dataset in enumerate(result):
