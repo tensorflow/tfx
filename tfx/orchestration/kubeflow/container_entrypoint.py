@@ -24,7 +24,7 @@ import os
 import sys
 
 import tensorflow as tf
-from typing import List, Text
+from typing import Any, Dict, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import data_types
@@ -76,26 +76,33 @@ def _get_metadata_connection_config(
   return connection_config
 
 
-def _make_beam_pipeline_args(json_beam_pipeline_args: Text) -> List[Text]:
-  """Constructs beam_pipeline_args for ComponentLauncher.
+def _make_additional_pipeline_args(json_additional_pipeline_args: Text
+                                  ) -> Dict[Text, Any]:
+  """Constructs additional_pipeline_args for ComponentLauncher.
+
+  Currently, this mainly involves parsing and constructing `beam_pipeline_args`.
 
   Args:
-    json_beam_pipeline_args: JSON serialized list of beam pipeline args.
+    json_additional_pipeline_args: JSON serialized dictionary of additional
+      pipeline args.
 
   Returns:
-    List containing `beam_pipeline_args`.
+    Dictionary containing `additional_pipeline_args`.
   """
-  beam_pipeline_args = json.loads(json_beam_pipeline_args)
+  additional_pipeline_args = json.loads(json_additional_pipeline_args)
 
   # Ensure beam pipelines args has a setup.py file so we can use
   # DataflowRunner.
+  beam_pipeline_args = additional_pipeline_args.get('beam_pipeline_args', [])
+
   module_dir = os.environ['TFX_SRC_DIR']
   setup_file = os.path.join(module_dir, 'setup.py')
   tf.logging.info('Using setup_file \'%s\' to capture TFX dependencies',
                   setup_file)
   beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
-  return beam_pipeline_args
+  additional_pipeline_args['beam_pipeline_args'] = beam_pipeline_args
+  return additional_pipeline_args
 
 
 def main():
@@ -108,7 +115,6 @@ def main():
   parser.add_argument('--pipeline_name', type=str, required=True)
   parser.add_argument('--pipeline_root', type=str, required=True)
   parser.add_argument('--kubeflow_metadata_config', type=str, required=True)
-  parser.add_argument('--beam_pipeline_args', type=str, required=True)
   parser.add_argument('--additional_pipeline_args', type=str, required=True)
   parser.add_argument(
       '--component_launcher_class_path', type=str, required=True)
@@ -131,9 +137,8 @@ def main():
   connection_config = _get_metadata_connection_config(kubeflow_metadata_config)
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
-  beam_pipeline_args = _make_beam_pipeline_args(args.beam_pipeline_args)
-
-  additional_pipeline_args = json.loads(args.additional_pipeline_args)
+  additional_pipeline_args = _make_additional_pipeline_args(
+      args.additional_pipeline_args)
 
   launcher = component_launcher_class.create(
       component=component,
@@ -143,7 +148,6 @@ def main():
           run_id=os.environ['WORKFLOW_ID']),
       driver_args=driver_args,
       metadata_connection_config=connection_config,
-      beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args)
 
   launcher.launch()

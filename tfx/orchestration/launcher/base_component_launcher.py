@@ -38,7 +38,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
                pipeline_info: data_types.PipelineInfo,
                driver_args: data_types.DriverArgs,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-               beam_pipeline_args: List[Text],
                additional_pipeline_args: Dict[Text, Any]):
     """Initialize a BaseComponentLauncher.
 
@@ -49,8 +48,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       driver_args: An instance of data_types.DriverArgs that holds component
         specific driver args.
       metadata_connection_config: ML metadata connection config.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-      additional_pipeline_args: Additional pipeline args.
+      additional_pipeline_args: Additional pipeline args, includes,
+        - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+          Executor will use beam DirectRunner as Default.
 
     Raises:
       ValueError: when component_executor_spec is not launchable by the
@@ -70,8 +70,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._exec_properties = component.exec_properties
 
     self._metadata_connection_config = metadata_connection_config
-    self._beam_pipeline_args = beam_pipeline_args
-
     self._additional_pipeline_args = additional_pipeline_args
 
     if not self.can_launch(self._component_executor_spec):
@@ -86,7 +84,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
       metadata_connection_config: metadata_store_pb2.ConnectionConfig,
-      beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any]) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -101,8 +98,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       driver_args: An instance of data_types.DriverArgs that holds component
         specific driver args.
       metadata_connection_config: ML metadata connection config.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-      additional_pipeline_args: Additional pipeline args.
+      additional_pipeline_args: Additional pipeline args, includes,
+        - beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+          Executor will use beam DirectRunner as Default.
 
     Returns:
       A new instance of component launcher.
@@ -112,7 +110,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         pipeline_info=pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=metadata_connection_config,
-        beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args)
 
   @classmethod

@@ -90,8 +90,6 @@ class BaseComponentTest(tf.test.TestCase):
         '    "environmentVariable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
-        '--beam_pipeline_args',
-        '[]',
         '--additional_pipeline_args',
         '{}',
         '--component_launcher_class_path',

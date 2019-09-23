@@ -46,7 +46,8 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
     executor_context = base_executor.BaseExecutor.Context(
-        beam_pipeline_args=self._beam_pipeline_args,
+        beam_pipeline_args=self._additional_pipeline_args.get(
+            'beam_pipeline_args'),
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
 

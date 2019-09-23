@@ -96,8 +96,6 @@ class BaseComponent(object):
         pipeline_root,
         '--kubeflow_metadata_config',
         json_format.MessageToJson(kubeflow_metadata_config),
-        '--beam_pipeline_args',
-        json.dumps(pipeline.beam_pipeline_args),
         '--additional_pipeline_args',
         json.dumps(pipeline.additional_pipeline_args),
         '--component_launcher_class_path',

@@ -101,7 +101,6 @@ class DockerComponentLauncherTest(tf.test.TestCase):
         pipeline_info=pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=connection_config,
-        beam_pipeline_args=[],
         additional_pipeline_args={})
 
     return {'launcher': launcher, 'input_artifact': input_artifact}
