@@ -70,6 +70,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
           pipeline_info=tfx_pipeline.pipeline_info,
           enable_cache=tfx_pipeline.enable_cache,
           metadata_connection_config=tfx_pipeline.metadata_connection_config,
+          beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
           additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
       component_impl_map[tfx_component] = current_airflow_component
       for upstream_node in tfx_component.upstream_nodes:

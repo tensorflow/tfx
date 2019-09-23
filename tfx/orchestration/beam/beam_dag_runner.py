@@ -56,6 +56,7 @@ class _ComponentAsDoFn(beam.DoFn):
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
         metadata_connection_config=tfx_pipeline.metadata_connection_config,
+        beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
     self._component_id = component.id
 

@@ -139,6 +139,7 @@ class InteractiveContext(object):
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache,
         interactive_resolution=True)
+    beam_pipeline_args = []
     additional_pipeline_args = {}
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():
@@ -150,7 +151,7 @@ class InteractiveContext(object):
     # context.
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component, pipeline_info, driver_args, self.metadata_connection_config,
-        additional_pipeline_args)
+        beam_pipeline_args, additional_pipeline_args)
     execution_id = launcher.launch()
 
     return execution_result.ExecutionResult(
