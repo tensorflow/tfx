@@ -22,6 +22,8 @@ upper_tabs:
       contents:
       - title: TFX API
         path: /tfx/api_docs/
+      - heading: TFX
+      - include: /tfx/api_docs/python/_toc.yaml
       - heading: Data Validation
       - include: /tfx/data_validation/api_docs/python/_toc.yaml
       - heading: Transform
