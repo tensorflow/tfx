@@ -5,7 +5,7 @@
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
-* . Made component launcher extensible to support launching components on
+*   Made component launcher extensible to support launching components on
     multiple platforms.
 *   Added option to use fixed Schema artifact for ExampleValidator, Transform
     and Trainer.
@@ -36,6 +36,8 @@
 
 *   Deprecated component_type in favor of type.
 *   Deprecated component_id in favor of id.
+*   Move beam_pipeline_args out of additional_pipeline_args as top level
+    pipeline param
 
 ## Breaking changes
 
