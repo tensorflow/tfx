@@ -4,7 +4,7 @@ services:
     build:
       context: ./buildfiles
       dockerfile: Dockerfile
-    image: tensorflow/tfx:workshop-latest
+    image: gcr.io/tfx-oss-public/tfx-workshop:latest
     ports:
     - "4040:4040" # SparkContext
     - "6006:6006" # TensorBoard
