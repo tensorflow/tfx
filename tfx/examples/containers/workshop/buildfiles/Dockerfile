@@ -2,6 +2,7 @@ FROM ubuntu:16.04
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 COPY init.sh /
+COPY setup_demo.sh /
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
@@ -22,4 +23,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         && chmod +x /init.sh \
         && bash /init.sh
 
-EXPOSE 8080 8888 8081
+EXPOSE 8080 8888 6006

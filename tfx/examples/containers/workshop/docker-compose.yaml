@@ -7,22 +7,24 @@ services:
     image: tensorflow/tfx:workshop-latest
     ports:
     - "4040:4040" # SparkContext
+    - "6006:6006" # TensorBoard
     - "8080:8080" # Airflow
     - "8081:8081" # Flink UI or Spark UI
     - "8888:8888" # Jupyter notebook
     - "8099:8099" # Beam PortableRunner JobServer
     volumes:
     # Note: You should create the `airflow` directory BEFORE running `docker-compose up`, and
-    #       edit the AIRFLOW_PATH_ON_YOUR_HOST below to point to where you created the directory on
-    #       your system.  In the container, it will be mounted as /root/airflow.  The default
-    #       Airflow directory is under your home directory, and you're running in the container
-    #       as root, so the directory will be /root/airflow
-    - "AIRFLOW_PATH_ON_YOUR_HOST/airflow:/root/airflow"
-
-    # Note: You should clone the TFX repo BEFORE running `docker-compose up`, and
-    #       edit the TFX_PATH_ON_YOUR_HOST below to point to where you cloned the repo on your
-    # .     system.  In the container, it will be mounted as /home/tfx/tfx
-    - "TFX_PATH_ON_YOUR_HOST/tfx:/home/tfx/tfx"
+    #       export a WSHOME shell variable to point to the directory where you created the airflow
+    #       directory.  WSHOME ("workshop home") should be set to the absolute path of the directory
+    #       on your host system where you're running the workshop.  The airflow directory should be
+    #       under that.  In the container, it will be mounted as /root/airflow.  The default
+    #       Airflow directory inside the container (where you will actually run Airflow) is under
+    #       your home directory, and you're running in the container as root, so the directory will
+    #       be /root/airflow
+    #
+    #       For convenience, you can automate the process with:
+    #       https://github.com/tensorflow/workshops/blob/master/tfx_airflow/host_start.sh
+    - "$WSHOME/airflow:/root/airflow"
 
     stdin_open: true
     tty: true
