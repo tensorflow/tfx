@@ -1,68 +1,39 @@
 # Workshop / Examples Container
 
 This is a Docker image for running the
-[TFX Developer Tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/workshop)
-and other similar examples.  It does not load TensorFlow or TFX, but only
-initializes a clean, basic environment for cloning, installing, and running the
-workshop and examples themselves, and includes the basic dependencies.
+[TFX Developer Tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/workshop).
+It includes TensorFlow and TFX, and initializes a clean, basic environment for
+running the workshop.
 
 ## Prequisites
 
+* Mac or Linux (Highly recommended)
+* Windows (optional)
 * Docker
-* At least 2GB available disk space
-
-Unless you want to build the container locally, you should download the
-prebuilt image:
-
-```bash
-docker pull tensorflow/tfx:workshop-latest
-```
+* Git
+* At least 3GB available disk space
 
 ## To Run
 
-Note: You should create the `airflow` directory BEFORE running
-`docker-compose up`, and edit the `AIRFLOW_PATH_ON_YOUR_HOST` placeholder in
-docker-compose.yml to point to where you created the directory on your system.
-In the container, it will be mounted as `/home/tfx/airflow`.
-
-Note: You should clone the TFX repo on your system.
-For Linux or MacOS:
-
 ```bash
-git clone https://github.com/tensorflow/tfx.git
+git clone https://github.com/tensorflow/workshops.git
+cd tfx_airflow
+source host_start.sh
 ```
 
-For Windows:
-
-```bash
-git clone https://github.com/tensorflow/tfx.git --config core.autocrlf=input
-```
-
-Edit the `TFX_PATH_ON_YOU_HOST` placeholder in docker-compose.yml to point to
-where you cloned the repo on your system. In the container, it will be mounted
-as `/home/tfx/tfx`.
-
-Note: For Windows, the paths on your local system will need to be Windows paths
-with escaped backslashes.  For example `C:\\user\\projects\\tfx`.  You will also
-need to share your drive with Docker.  In Docker Desktop, go to
-Settings > Shared Drives.  This will often require you to open ports 445, 8080,
-and 8888 for Docker in your firewall, which may be your Windows Firewall or your
-security software.
-
-Then run:
-
-`docker-compose run --service-ports tfx`
-
-That will build the image, create a container and run it, and log you in to a
-bash shell in the current terminal on your host machine.
+Note: Instructions for Windows are TBD.
 
 ## Running the [TFX Developer Tutorial](https://www.tensorflow.org/tfx/tutorials/tfx/workshop)
 
 Follow the instructions in the tutorial, which assume that you are running on
-your host, and make a few changes to commands which are required because you
-are running inside a container instead.
+your host, and *make a few changes to commands* which are required because you
+are running inside a container instead of directly on your machine.
 
-The Airflow console will be available on the host system at:
+*Do not start Airflow webserver, Airflow scheduler, or Jupyter notebook. Those
+have already been started for you in your container.*
+
+The Airflow console will be available on the host system (in other words,
+outside the container) at:
 
 `http://localhost:8080`
 
@@ -70,21 +41,19 @@ Jupyter Notebook will be available on the host system at:
 
 `http://localhost:8888`
 
-Note: To start Jupyter Notebook in the container, run:
+## Using Bash (optional)
 
-`jupyter notebook --ip=0.0.0.0 --no-browser`
+Once the container startup is complete you will be in a bash shell, which will
+be logging Airflow messages.  Hit return to get to a bash prompt, or start
+another shell in a different terminal. To run another shell, move to where you
+cloned the workshops repo and run:
 
-## Using Bash
+`source run_bash.sh`
 
-When you first run `docker-compose`, after the build finishes you will be in a
-bash shell in the container.  To run another shell, you first need to get the
-name of the container with `docker ps`.  Then, assuming that the name of the
-container is "tfx_docker", you would run:
+Since the workshop runs in a Python virtual environment you may also need to
+activate that environment in the bash shell that you're running inside the
+container.  It is located in the container at /root/tfx_env.
 
-`docker exec -it tfx_docker bash`
-
-Using additional shells you can start Airflow's webserver and scheduler, and/or
-Jupyter Notebook (see command syntax above).  Don't forget to also activate the
-Python virtual environment that you create in the workshop.
+`source /root/tfx_env/bin/activate`
 
 To exit your shells, enter `exit`.
