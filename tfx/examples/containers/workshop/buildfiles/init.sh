@@ -37,6 +37,7 @@ cd tfx
 git checkout -f origin/r0.14
 rm -rf tfx/examples/containers/workshop
 
+cd /root
 virtualenv -p python3.6 tfx_env
 source /root/tfx_env/bin/activate
 
