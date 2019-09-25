@@ -141,4 +141,13 @@ setup(
     keywords='tensorflow tfx',
     url='https://www.tensorflow.org/tfx',
     download_url='https://github.com/tensorflow/tfx/tags',
-    requires=[])
+    requires=[],
+    # Below console_scripts, each line identifies one console script. The first
+    # part before the equals sign (=) which is 'tfx', is the name of the script
+    # that should be generated, the second part is the import path followed by a
+    # colon (:) with the Click command group. After installation, the user can
+    # invoke the CLI using "tfx <command_group> <sub_command> <flags>"
+    entry_points="""
+        [console_scripts]
+        tfx=tfx.tools.cli.cli_main:cli_group
+    """)
