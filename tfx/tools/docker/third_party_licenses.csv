@@ -7,7 +7,7 @@ Keras-Preprocessing,https://raw.githubusercontent.com/keras-team/keras-preproces
 Mako,https://raw.githubusercontent.com/zzzeek/mako/master/LICENSE,MIT
 Markdown,https://raw.githubusercontent.com/Python-Markdown/markdown/master/LICENSE.md,BSD
 MarkupSafe,https://raw.githubusercontent.com/pallets/markupsafe/master/LICENSE.rst,BSD
-Pillow,https://raw.githubusercontent.com/python-pillow/Pillow/master/LICENSE
+Pillow,https://raw.githubusercontent.com/python-pillow/Pillow/master/LICENSE,PIL
 PyJWT,https://raw.githubusercontent.com/jpadilla/pyjwt/master/LICENSE,MIT
 PyVCF,https://raw.githubusercontent.com/jamescasbon/PyVCF/master/LICENSE,BSD
 PyYAML,https://raw.githubusercontent.com/yaml/pyyaml/master/LICENSE,MIT
