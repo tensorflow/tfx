@@ -23,8 +23,17 @@ warmstarting/resuming ML models from previous runs.
 
 ## Documentation
 
+### User Documentation (Start here)
 Please see the
 [TFX User Guide](https://github.com/tensorflow/tfx/blob/master/docs/guide/index.md).
+
+### Development References
+#### Roadmap
+The TFX [Roadmap](https://github.com/tensorflow/tfx/blob/master/ROADMAP.md), which is updated quarterly.
+#### Release Details
+For detailed previous and upcoming changes, please [check here](https://github.com/tensorflow/tfx/blob/master/RELEASE.md)
+#### Requests For Comment
+For designs, we started to publish [RFCs](https://github.com/tensorflow/community/tree/master/rfcs) under the Tensorflow community.
 
 ## Examples
 
