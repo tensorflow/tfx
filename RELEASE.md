@@ -1,18 +1,3 @@
-# Current version (not yet released; still in development)
-
-## Major Features and Improvements
-
-## Bug fixes and other changes
-
-### Deprecations
-
-## Breaking changes
-
-### For pipeline authors
-
-### For component authors
-
-
 # Version 0.14.0
 
 ## Major Features and Improvements
