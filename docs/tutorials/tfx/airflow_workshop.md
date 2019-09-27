@@ -92,7 +92,7 @@ If you do not have Python 3 and git already installed, you can install them
 using the [Homebrew](https://brew.sh/) package manager:
 
 ```bash
-/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install"
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 export PATH="/usr/local/bin:/usr/local/sbin:$PATH"
 brew update
 brew install python
