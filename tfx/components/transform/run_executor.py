@@ -53,6 +53,8 @@ def _run_transform(args, beam_pipeline_args):
           args.compute_statistics,
       labels.BEAM_PIPELINE_ARGS:
           beam_pipeline_args,
+      labels.POST_TRANSFORM_WEIGHT_FEATURE_LABEL:
+          args.post_transform_weight_feature,
   }
   outputs = {
       labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: args.transform_fn,
@@ -107,6 +109,13 @@ def main(argv):
       type=str,
       default=labels.FORMAT_TF_EXAMPLE,
       help='Example data format')
+  parser.add_argument(
+      '--post_transform_weight_feature',
+      type=str,
+      default='',
+      required=True,
+      help='Name of the tf.Feature whose numeric value represents the weight '
+      'of a transformed example')
   # Arguments in outputs
   parser.add_argument(
       '--transform_fn',

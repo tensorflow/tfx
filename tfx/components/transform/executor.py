@@ -287,6 +287,7 @@ class Executor(base_executor.BaseExecutor):
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
+        labels.POST_TRANSFORM_WEIGHT_FEATURE_LABEL: '',
         labels.SCHEMA_PATH_LABEL:
             schema_file,
         labels.EXAMPLES_DATA_FORMAT_LABEL:
@@ -468,7 +469,8 @@ class Executor(base_executor.BaseExecutor):
       stats_output_path: Text,
       schema: schema_pb2.Schema,
       use_tfdv=True,
-      use_deep_copy_optimization=False  # pylint: disable=unused-argument
+      use_deep_copy_optimization=False,  # pylint: disable=unused-argument
+      weight_feature='',
   ) -> beam.pvalue.PDone:
     """Generates statistics.
 
@@ -478,17 +480,20 @@ class Executor(base_executor.BaseExecutor):
       schema: schema.
       use_tfdv: whether use TFDV for computing statistics.
       use_deep_copy_optimization: whether use deep copy optimization.
+      weight_feature: An optional feature name whose numeric value represents
+          the weight of an example.
 
     Returns:
       beam.pvalue.PDone.
     """
     if not use_tfdv:
       raise ValueError(
-          'TFDV is not used for stats. Please provide althernatives.')
+          'TFDV is not used for stats. Please provide alternatives.')
 
     # pylint: disable=no-value-for-parameter
     return (pcollection
-            | 'ComputeTFDVStats' >> Executor._ComputeTFDVStats(schema)
+            | 'ComputeTFDVStats' >> Executor._ComputeTFDVStats(
+                schema, weight_feature)
             | 'WriteStats' >> Executor._WriteStats(stats_output_path))
 
   @staticmethod
@@ -496,12 +501,15 @@ class Executor(base_executor.BaseExecutor):
   @beam.typehints.with_input_types(beam.typehints.Dict[str, beam.typehints.Any])
   @beam.typehints.with_output_types(statistics_pb2.DatasetFeatureStatisticsList)
   def _ComputeTFDVStats(pcollection: beam.pvalue.PCollection,
-                        schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
-    """Cmoputes Statistics with TFDV.
+                        schema: schema_pb2.Schema,
+                        weight_feature: Text = '') -> beam.pvalue.PCollection:
+    """Computes Statistics with TFDV.
 
     Args:
       pcollection: pcollection of examples.
       schema: schema.
+      weight_feature: An optional feature name whose numeric value represents
+        the weight of an example.
 
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
@@ -549,7 +557,9 @@ class Executor(base_executor.BaseExecutor):
         |
         'BatchExamplesToArrowTables' >> batch_util.BatchExamplesToArrowTables()
         | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
-            tfdv.StatsOptions(schema=schema)))
+            tfdv.StatsOptions(
+                schema=schema,
+                weight_feature=weight_feature if weight_feature else None)))
 
   @staticmethod
   @beam.ptransform_fn
@@ -741,6 +751,9 @@ class Executor(base_executor.BaseExecutor):
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
+        - labels.POST_TRANSFORM_WEIGHT_FEATURE_LABEL: The name of the
+          feature whose numeric value represents the weight of a transformed
+          example.
       outputs: A dictionary of labelled output values, including:
         - labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: Paths to statistics output,
           optional.
@@ -847,6 +860,8 @@ class Executor(base_executor.BaseExecutor):
     per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
+    post_transform_weight_feature = value_utils.GetSoleValue(
+        inputs, labels.POST_TRANSFORM_WEIGHT_FEATURE_LABEL)
 
     input_cache_dir = value_utils.GetSoleValue(
         inputs, labels.CACHE_INPUT_PATH_LABEL, strict=False)
@@ -1097,7 +1112,8 @@ class Executor(base_executor.BaseExecutor):
              self._GenerateStats(
                  post_transform_feature_stats_path,
                  transformed_schema_proto,
-                 use_tfdv=stats_use_tfdv))
+                 use_tfdv=stats_use_tfdv,
+                 weight_feature=post_transform_weight_feature))
 
             if per_set_stats_output_paths:
               # TODO(b/67632871): Remove duplicate stats gen compute that is
@@ -1112,7 +1128,8 @@ class Executor(base_executor.BaseExecutor):
                 data | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
                     dataset.stats_output_path,
                     transformed_schema_proto,
-                    use_tfdv=stats_use_tfdv)
+                    use_tfdv=stats_use_tfdv,
+                    weight_feature=post_transform_weight_feature)
 
           if materialize_output_paths:
             for dataset in transform_data_list:

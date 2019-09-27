@@ -28,6 +28,7 @@ BEAM_PIPELINE_ARGS = 'pipeline_args'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
 CACHE_INPUT_PATH_LABEL = 'cache_input_path'
+POST_TRANSFORM_WEIGHT_FEATURE_LABEL = 'post_transform_weight_feature'
 
 # Output labels.
 # TODO(b/72214804): Ideally per-set stats and materialization output paths
