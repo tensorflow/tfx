@@ -67,8 +67,7 @@ class PipelineTest(tf.test.TestCase):
   def testPipelineCompile(self):
     result = self.runner.invoke(pipeline_group, [
         'compile', '--pipeline_path', 'chicago.py', '--engine', 'kubeflow',
-        '--package_path', 'chicago.tar.gz', '--iap_client_id', 'fake_id',
-        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+        '--package_path', 'chicago.tar.gz'
     ])
     self.assertIn('Compiling pipeline', result.output)
 

@@ -26,8 +26,8 @@ import kfp
 import kfp_server_api
 from tabulate import tabulate
 import tensorflow as tf
-
 from typing import Text, Dict, Any
+
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
@@ -47,14 +47,13 @@ class KubeflowHandler(base_handler.BaseHandler):
     super(KubeflowHandler, self).__init__(flags_dict)
 
     # TODO(b/132286477): Change to setup config instead of flags if needed.
-    try:
-      # Create client.
+    if labels.NAMESPACE in self.flags_dict:
       self._client = kfp.Client(
           host=self.flags_dict[labels.ENDPOINT],
           client_id=self.flags_dict[labels.IAP_CLIENT_ID],
           namespace=self.flags_dict[labels.NAMESPACE])
-    except kfp_server_api.rest.ApiException as err:
-      self._print_error(err)
+    else:
+      self._client = None
 
   def create_pipeline(self, overwrite: bool = False) -> None:
     """Creates pipeline in Kubeflow.
@@ -137,9 +136,6 @@ class KubeflowHandler(base_handler.BaseHandler):
     click.echo('Pipeline package path: {}'.format(
         self.flags_dict[labels.PIPELINE_PACKAGE_PATH]))
     return pipeline_args
-
-  def get_schema(self) -> None:
-    pass
 
   def create_run(self) -> None:
     """Runs a pipeline in Kubeflow."""
