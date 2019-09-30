@@ -34,7 +34,11 @@ from tfx.utils import io_utils
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   # Store pipeline_args in a pickle file
   pipeline_args_path = env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH]
-  pipeline_args = {'pipeline_name': 'chicago_taxi_pipeline_kubeflow'}
+  pipeline_root = os.path.join(os.environ['HOME'], 'tfx', 'pipelines')
+  pipeline_args = {
+      'pipeline_name': 'chicago_taxi_pipeline_kubeflow',
+      'pipeline_root': pipeline_root
+  }
   with open(pipeline_args_path, 'w') as f:
     json.dump(pipeline_args, f)
 
@@ -189,6 +193,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
     self.pipeline_name = 'chicago_taxi_pipeline_kubeflow'
     self.pipeline_package_path = os.path.join(
         os.getcwd(), 'chicago_taxi_pipeline_kubeflow.tar.gz')
+    self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
 
     # Kubeflow client params.
     self.endpoint = 'dummyEndpoint'
@@ -365,9 +370,6 @@ class KubeflowHandlerTest(tf.test.TestCase):
     flags_dict = {
         labels.ENGINE_FLAG: self.engine,
         labels.PIPELINE_DSL_PATH: self.pipeline_path,
-        labels.ENDPOINT: self.endpoint,
-        labels.IAP_CLIENT_ID: self.iap_client_id,
-        labels.NAMESPACE: self.namespace,
         labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
     }
     handler = kubeflow_handler.KubeflowHandler(flags_dict)
@@ -421,6 +423,59 @@ class KubeflowHandlerTest(tf.test.TestCase):
     self.assertEqual(
         str(err.exception), 'Pipeline "{}" does not exist.'.format(
             flags_dict[labels.PIPELINE_NAME]))
+
+  @mock.patch('kfp.Client', _MockClientClass)
+  @mock.patch('subprocess.call', _MockSubprocess)
+  def testGetSchema(self):
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_DSL_PATH: self.pipeline_path,
+        labels.ENDPOINT: self.endpoint,
+        labels.IAP_CLIENT_ID: self.iap_client_id,
+        labels.NAMESPACE: self.namespace,
+        labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
+    }
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    handler.create_pipeline()
+
+    flags_dict = {
+        labels.ENGINE_FLAG: self.engine,
+        labels.PIPELINE_NAME: self.pipeline_name,
+    }
+
+    # No pipeline root
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.'
+    )
+
+    # No SchemaGen output.
+    tf.io.gfile.makedirs(self.pipeline_root)
+    with self.assertRaises(SystemExit) as err:
+      handler.get_schema()
+    self.assertEqual(
+        str(err.exception),
+        'Either SchemaGen component does not exist or pipeline is still running. If pipeline is running, then wait for it to successfully finish.'
+    )
+
+    # Successful pipeline run.
+    # Create fake schema in pipeline root.
+    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'output', '3')
+    tf.io.gfile.makedirs(schema_path)
+    with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
+      f.write('SCHEMA')
+    with self.captureWritesToStream(sys.stdout) as captured:
+      handler.get_schema()
+      curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
+      self.assertIn('Path to schema: {}'.format(curr_dir_path),
+                    captured.contents())
+      self.assertIn(
+          '*********SCHEMA FOR {}**********'.format(self.pipeline_name.upper()),
+          captured.contents())
+      self.assertTrue(tf.io.gfile.exists(curr_dir_path))
 
   @mock.patch('kfp.Client', _MockClientClass)
   @mock.patch('subprocess.call', _MockSubprocess)

@@ -194,33 +194,13 @@ def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
     type=str,
     help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
 )
-@click.option(
-    '--endpoint',
-    default=None,
-    type=str,
-    help='Endpoint of the KFP API service to connect.')
-@click.option(
-    '--iap_client_id',
-    default=None,
-    type=str,
-    help='Client ID for IAP protected endpoint.')
-@click.option(
-    '-n',
-    '--namespace',
-    default='kubeflow',
-    type=str,
-    help='Kubernetes namespace to connect to the KFP API.')
 def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
-                     package_path: Text, endpoint: Text, iap_client_id: Text,
-                     namespace: Text) -> None:
+                     package_path: Text) -> None:
   """Command definition to compile a pipeline."""
   click.echo('Compiling pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   ctx.flags_dict[labels.PIPELINE_PACKAGE_PATH] = package_path
-  ctx.flags_dict[labels.ENDPOINT] = endpoint
-  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
-  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).compile_pipeline()
 
 
@@ -230,29 +210,9 @@ def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
     '--pipeline_name', required=True, type=str, help='Name of the pipeline')
-@click.option(
-    '--endpoint',
-    default=None,
-    type=str,
-    help='Endpoint of the KFP API service to connect.')
-@click.option(
-    '--iap_client_id',
-    default=None,
-    type=str,
-    help='Client ID for IAP protected endpoint.')
-@click.option(
-    '-n',
-    '--namespace',
-    default='kubeflow',
-    type=str,
-    help='Kubernetes namespace to connect to the KFP API.')
-def get_schema(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
-               iap_client_id: Text, namespace: Text) -> None:
+def get_schema(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   """Command definition to infer latest schema."""
   click.echo('Getting latest schema.')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_NAME] = pipeline_name
-  ctx.flags_dict[labels.ENDPOINT] = endpoint
-  ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
-  ctx.flags_dict[labels.NAMESPACE] = namespace
   handler_factory.create_handler(ctx.flags_dict).get_schema()
