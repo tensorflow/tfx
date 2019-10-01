@@ -26,13 +26,13 @@ from __future__ import print_function
 
 import datetime
 import functools
-import inspect
 import logging
 import os
 import tempfile
 
 import nbformat
 from six.moves import builtins
+import tensorflow as tf
 from typing import Text
 
 from ml_metadata.proto import metadata_store_pb2
@@ -42,6 +42,10 @@ from tfx.orchestration import metadata
 from tfx.orchestration.interactive import execution_result
 from tfx.orchestration.interactive import notebook_formatters
 from tfx.orchestration.launcher import in_process_component_launcher
+
+
+_SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
+_MAGIC_PREFIX = '%'
 
 
 def check_ipython():
@@ -160,40 +164,39 @@ class InteractiveContext(object):
 
   @requires_ipython
   def export_to_pipeline(self,
-                         notebook_filename: Text,
-                         pipeline_filename: Text = None):
+                         notebook_filepath: Text,
+                         export_filepath: Text):
     """Exports a notebook to a .py file as a runnable pipeline.
 
-    The pipeline will be exported to the same directory as the notebook.
-
     Args:
-      notebook_filename: String name of the notebook file, e.g.
-        'notebook.ipynb'.
-      pipeline_filename: String name for the exported pipeline python file, e.g.
-        'exported_pipeline.py'. If `None`, a filename will be generated
-        using `notebook_filename`.
+      notebook_filepath: String path of the notebook file, e.g.
+        '/path/to/notebook.ipynb'.
+      export_filepath: String path for the exported pipeline python file, e.g.
+        '/path/to/exported_pipeline.py'.
     """
-    current_frame = inspect.currentframe()
-    if current_frame is None:
-      raise ValueError('Unable to get current frame.')
+    tf.logging.info('Exporting contents of %s to %s.',
+                    notebook_filepath, export_filepath)
 
-    caller_filepath = inspect.getfile(current_frame.f_back.f_back)
-    notebook_dir = os.path.dirname(os.path.abspath(caller_filepath))
-
-    # The notebook filename is user-provided, as IPython kernels are agnostic to
-    # notebook metadata by design, and it seems that existing workarounds to
-    # retrieve the notebook filename are not universally robust
-    # (https://github.com/jupyter/notebook/issues/1000).
-    notebook_fp = os.path.join(notebook_dir, notebook_filename)
-
-    if pipeline_filename is None:
-      pipeline_filename = os.path.splitext(notebook_filename)[0] + '_export.py'
-    pipeline_fp = os.path.join(notebook_dir, pipeline_filename)
-    logging.info('Exporting contents of %s to %s.', notebook_fp, pipeline_fp)
-
-    with open(notebook_fp) as notebook_f, open(pipeline_fp, 'w') as pipeline_f:
+    with open(notebook_filepath) as notebook_f,\
+        open(export_filepath, 'w') as export_f:
       notebook = nbformat.read(notebook_f, nbformat.NO_CONVERT)
       cells = notebook['cells']
       code_cells = (cell for cell in cells if cell['cell_type'] == 'code')
-      pipeline_f.write(
-          '\n\n'.join(code_cell['source'] for code_cell in code_cells))
+      sources = []
+      num_skipped_cells = 0
+      for code_cell in code_cells:
+        cell_source = code_cell['source']
+        if cell_source.lstrip().startswith(_SKIP_FOR_EXPORT_MAGIC):
+          num_skipped_cells += 1
+          continue
+
+        # Filter out all line/cell magics using `%` prefix.
+        # TODO(b/141881947): This will not work for magics invoked without the
+        # prefix when %automagic is set.
+        sources.append(
+            ('\n'.join(line for line in cell_source.split('\n')
+                       if not line.lstrip().startswith(_MAGIC_PREFIX))))
+
+      export_f.write('\n\n'.join(sources))
+      tf.logging.info('%d cell(s) marked with "%s", skipped.',
+                      num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)
