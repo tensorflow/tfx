@@ -321,7 +321,7 @@ To send a request to the server for model inference, run:
 <code class="devsite-click-to-copy">bash ./classify_local.sh</code>
 </pre>
 
-For more information, see [TensorFlow Serving](/serving/).
+For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
 ### Playground notebook
 
