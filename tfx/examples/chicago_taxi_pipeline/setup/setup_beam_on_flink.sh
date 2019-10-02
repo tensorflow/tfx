@@ -14,7 +14,7 @@
 # limitations under the License.
 set -u
 
-source ./setup_beam.sh
+source `dirname "$(readlink -f "$0")"`/setup_beam.sh
 
 if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
   echo "Please run the setup script from a vritual environment and make sure environment variable\

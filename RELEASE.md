@@ -44,6 +44,9 @@
 
 ## Breaking changes
 
+*   Moved beam setup scripts from examples/chicago_taxi/ to
+    examples/chicago_taxi_pipeline/
+
 ### For pipeline authors
 
 ### For component authors
