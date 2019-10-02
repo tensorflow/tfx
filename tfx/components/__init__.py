@@ -13,6 +13,8 @@
 # limitations under the License.
 """Subpackage for TFX components."""
 
+import tensorflow as tf
+
 # For component user to direct use tfx.components.[...] as an alias.
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
@@ -26,3 +28,7 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+
+# Prevents double logging due to both tensorflow and logging module adds it's
+# own handler
+tf.get_logger().propagate = False
