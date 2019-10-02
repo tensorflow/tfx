@@ -191,29 +191,35 @@ Once the pipeline completes, the model will be copied by the [Pusher](https://gi
 to the directory configured in the example code:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-ls $TAXI_DIR/serving_model/taxi_simple
+ls $TAXI_DIR/serving_model/chicago_taxi_simple
 </pre>
 
+Now serve the created model with
+[TensorFlow Serving](https://www.tensorflow.org/serving). For this example, run
+the server in a Docker container that is run locally. Instructions for
+installing Docker locally are found in the
+[Docker install documentation](https://docs.docker.com/install).
 
-To serve the model with [TensorFlow Serving](https://www.tensorflow.org/serving)
-please follow the instructions [here](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/README.md#serve-the-tensorflow-model) with following environment variables:
-
-For start_model_server_local.sh:
+In the terminal, run the following script to start a server:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-LOCAL_MODEL_DIR=$TAXI_DIR/serving_model/taxi_simple \
-start_model_server_local.sh
+bash $TFX_EXAMPLES/serving/start_model_server_local.sh \
+$TAXI_DIR/serving_model/chicago_taxi_simple
 </pre>
 
-This will pick up the latest model under above path.
+This script pulls a TensorFlow Serving serving image and listens for for gRPC
+requests on `localhost` port 9000. The model server loads the latest model
+exported from the Pusher at above path.
 
-For classify_local.sh:
+To send a request to the server for model inference, run:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-EXAMPLES_FILE=~/taxi/data/simple/data.csv \
-SCHEMA_FILE=~/tfx/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt \
-classify_local.sh
+bash $TFX_EXAMPLES/serving/classify_local.sh \
+$TAXI_DIR/data/simple/data.csv \
+$TFX_DIR/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt
 </pre>
+
+For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
 # Chicago Taxi Flink Example (python 2.7, 3.5, 3.6, 3.7)
 
