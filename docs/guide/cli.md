@@ -1,5 +1,7 @@
 # Command Line Interface for TFX
 
+Note: CLI is in experimental stage without compatibility guarantees.
+
 ## Introduction
 
 The CLI helps perform full range of pipeline actions like create, update, run,
