@@ -221,31 +221,53 @@ $TFX_DIR/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR<
 
 For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
-# Chicago Taxi Flink Example (python 2.7, 3.5, 3.6, 3.7)
+# Chicago Taxi Flink Example
 
-Start local Flink cluster and Beam job server:
+This section requires the [local prerequisites](#local_prerequisites) and adds a
+few more for [Apache Flink](https://flink.apache.org/).
 
-<pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-sh tfx/examples/chicago_taxi/setup_beam_on_flink.sh
-</pre>
+You need a local Apache Flink cluster and Java 8 to run the example locally on
+Apache Flink. You will also need a Apache Beam Job Server running locally for
+Apache Flink. Apache Beam and Flink setup script should be executed from within
+a virtual environment. The script builds and updates the Apache Beam version
+inside the virtual environment.
 
-Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
-replaced by 'taxi_pipeline_portable_beam'.
-(Check http://localhost:8081 for the Flink Cluster Dashboard)
-
-# Chicago Taxi Spark Example (python 2.7, 3.5, 3.6, 3.7)
-
-Start local Spark cluster and Beam job server:
+Create and activate a `virtualenv`, then setup the Flink environment:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-sh tfx/examples/chicago_taxi/setup_beam_on_spark.sh
+bash $TFX_EXAMPLES/setup/setup_beam_on_flink.sh
 </pre>
 
-Follow above instructions of Chicago Taxi Example with 'taxi_pipeline_simple'
-replaced by 'taxi_pipeline_portable_beam'.
-(Check http://localhost:8081 for the Spark Cluster Dashboard)
+This will start a local Beam Job Server.
+The Apache Flink UI can be viewed at http://localhost:8081.
+
+To run tfx e2e on Flink, open a new terminal and activate another instance of
+same `virtualenv`. Follow above instructions of Chicago Taxi Example with
+'taxi_pipeline_simple' replaced by 'taxi_pipeline_portable_beam'.
+
+# Chicago Taxi Spark Example
+
+This section requires the [local prerequisites](#local_prerequisites) and adds a
+few more for [Apache Spark](https://spark.apache.org/).
+
+You need a local Apache Spark cluster and Java 8 to run the example locally on
+Apache Spark. You will also need a Apache Beam Job Server running locally for
+Apache Spark. Apache Beam and Spark setup script should be executed from within
+a virtual environment. The script builds and updates the Apache Beam version
+inside the virtual environment.
+
+Create and activate a `virtualenv`, then setup the Spark environment:
+
+<pre class="devsite-terminal devsite-click-to-copy">
+bash $TFX_EXAMPLES/setup/setup_beam_on_spark.sh
+</pre>
+
+This will start a local Beam Job Server.
+The Apache Spark UI can be viewed at http://localhost:8081.
+
+To run tfx e2e on Spark, open a new terminal and activate another instance of
+same `virtualenv`. Follow above instructions of Chicago Taxi Example with
+'taxi_pipeline_simple' replaced by 'taxi_pipeline_portable_beam'.
 
 # Learn more
 
