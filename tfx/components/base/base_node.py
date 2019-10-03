@@ -21,10 +21,14 @@ import abc
 
 from six import with_metaclass
 
-from typing import Any, Optional, Text
+from typing import Any, Dict, Optional, Text
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
+from tfx.components.base import base_driver
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.types import node_common
+from tfx.utils import json_utils
 
 
 def _abstract_property() -> Any:
@@ -32,11 +36,26 @@ def _abstract_property() -> Any:
   return abc.abstractmethod(lambda: None)
 
 
-class BaseNode(with_metaclass(abc.ABCMeta, object)):
-  """Base class for a node in TFX pipeline DAG."""
+class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
+  """Base class for a node in TFX pipeline.
+
+  Attributes:
+    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes how
+      to execute this node (optional, defaults to an empty executor indicates
+      no-op.
+    DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
+      this node (optional, defaults to base_driver.BaseDriver).
+  """
+
+  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.EmptyExecutor)
+  # Subclasses will usually use the default driver class, but may override this
+  # property as well.
+  DRIVER_CLASS = base_driver.BaseDriver
 
   def __init__(self, instance_name: Optional[Text] = None):
     self._instance_name = instance_name
+    self.executor_spec = self.__class__.EXECUTOR_SPEC
+    self.driver_class = self.__class__.DRIVER_CLASS
     self._upstream_nodes = set()
     self._downstream_nodes = set()
 
@@ -81,6 +100,11 @@ class BaseNode(with_metaclass(abc.ABCMeta, object)):
   @property
   @abc.abstractmethod
   def outputs(self) -> node_common._PropertyDictWrapper:
+    pass
+
+  @property
+  @abc.abstractmethod
+  def exec_properties(self) -> Dict[Text, Any]:
     pass
 
   @property

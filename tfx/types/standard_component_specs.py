@@ -243,6 +243,7 @@ class TransformSpec(ComponentSpec):
   PARAMETERS = {
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
       'preprocessing_fn': ExecutionParameter(type=(str, Text), optional=True),
+      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
   }
   INPUTS = {
       # TODO(b/139281215): this will be renamed to 'examples' in the future.

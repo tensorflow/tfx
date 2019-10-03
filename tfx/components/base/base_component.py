@@ -30,7 +30,6 @@ from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.types import node_common
 from tfx.utils import abc_utils
-from tfx.utils import json_utils
 
 # Constants that used for serializing and de-serializing components.
 _DRIVER_CLASS_KEY = 'driver_class'
@@ -39,9 +38,7 @@ _INSTANCE_NAME_KEY = '_instance_name'
 _SPEC_KEY = 'spec'
 
 
-class BaseComponent(
-    with_metaclass(abc.ABCMeta, json_utils.Jsonable,
-                   base_node.BaseNode)):
+class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   """Base class for a TFX pipeline component.
 
   An instance of a subclass of BaseComponent represents the parameters for a
@@ -68,9 +65,6 @@ class BaseComponent(
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
   EXECUTOR_SPEC = abc_utils.abstract_property()
-  # Subclasses will usually use the default driver class, but may override this
-  # property as well.
-  DRIVER_CLASS = base_driver.BaseDriver
 
   def __init__(
       self,
