@@ -9,7 +9,7 @@ toc:
 
 - heading: "Data Validation"
 - title: "Get started with TFDV"
-  path: /tfx/tutorials/data_validation/chicago_taxi
+  path: /tfx/tutorials/data_validation/tfdv_basic
 
 - heading: "Transform"
 - title: "Preprocess data (beginner)"
@@ -18,9 +18,9 @@ toc:
   path: /tfx/tutorials/transform/census
 
 - heading: "Model Analysis"
-- title: "Chicago Taxi"
-  path: /tfx/tutorials/model_analysis/chicago_taxi
-- title: "Chicago Taxi local playground"
+- title: "Get started with TFMA"
+  path: /tfx/tutorials/model_analysis/tfma_basic
+- title: "TFMA local playground"
   path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
   status: external
 
