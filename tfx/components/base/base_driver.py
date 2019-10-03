@@ -190,6 +190,32 @@ class BaseDriver(object):
     return self._metadata_handler.fetch_previous_result_artifacts(
         output_artifacts_dict, cached_execution_id)
 
+  def _register_execution(self, exec_properties: Dict[Text, Any],
+                          pipeline_info: data_types.PipelineInfo,
+                          component_info: data_types.ComponentInfo):
+    """Register the upcoming execution in MLMD.
+
+    Args:
+      exec_properties: Dict of other execution properties.
+      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
+        related properties including pipeline_name, pipeline_root and run_id
+      component_info: An instance of data_types.ComponentInfo, holding component
+        related properties including component_type and component_id.
+
+    Returns:
+      the id of the upcoming execution
+    """
+    run_context_id = self._metadata_handler.register_run_context_if_not_exists(
+        pipeline_info)
+    execution_id = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info,
+        run_context_id=run_context_id)
+    tf.logging.info('Execution id of the upcoming component execution is %s',
+                    execution_id)
+    return execution_id
+
   def pre_execution(
       self,
       input_dict: Dict[Text, types.Channel],
@@ -225,22 +251,16 @@ class BaseDriver(object):
     Raises:
       RuntimeError: if any input as an empty uri.
     """
-    run_context_id = self._metadata_handler.register_run_context_if_not_exists(
-        pipeline_info)
-
     # Step 1. Fetch inputs from metadata.
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    driver_args, pipeline_info)
     _verify_input_artifacts(artifacts_dict=input_artifacts)
     tf.logging.info('Resolved input artifacts are: %s' % input_artifacts)
     # Step 2. Register execution in metadata.
-    execution_id = self._metadata_handler.register_execution(
+    execution_id = self._register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
-        component_info=component_info,
-        run_context_id=run_context_id)
-    tf.logging.info('Execution id of the upcoming component execution is %s',
-                    execution_id)
+        component_info=component_info)
     output_artifacts = {}
     use_cached_results = False
 

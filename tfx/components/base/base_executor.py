@@ -34,7 +34,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   class Context(object):
     """A context class for all excecutors."""
 
-    def __init__(self, beam_pipeline_args: Optional[List[Text]] = None,
+    def __init__(self,
+                 beam_pipeline_args: Optional[List[Text]] = None,
                  tmp_dir: Optional[Text] = None,
                  unique_id: Optional[Text] = None):
       self.beam_pipeline_args = beam_pipeline_args
@@ -107,3 +108,12 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
         self.__class__.__name__, artifact_utils.jsonify_artifact_dict(outputs)))
     tf.logging.info('Execution properties for {} is: {}'.format(
         self.__class__.__name__, json.dumps(exec_properties)))
+
+
+class EmptyExecutor(BaseExecutor):
+  """An empty executor that does nothing."""
+
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    pass

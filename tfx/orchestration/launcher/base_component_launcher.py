@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -34,7 +34,7 @@ from tfx.orchestration import publisher
 class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
   """Responsible for launching driver, executor and publisher of component."""
 
-  def __init__(self, component: base_component.BaseComponent,
+  def __init__(self, component: base_node.BaseNode,
                pipeline_info: data_types.PipelineInfo,
                driver_args: data_types.DriverArgs,
                metadata_connection_config: metadata_store_pb2.ConnectionConfig,
@@ -43,7 +43,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     """Initialize a BaseComponentLauncher.
 
     Args:
-      component: The component to launch.
+      component: The Tfx node to launch.
       pipeline_info: An instance of data_types.PipelineInfo that holds pipeline
         properties.
       driver_args: An instance of data_types.DriverArgs that holds component
@@ -82,7 +82,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
   @classmethod
   def create(
-      cls, component: base_component.BaseComponent,
+      cls, component: base_node.BaseNode,
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
       metadata_connection_config: metadata_store_pb2.ConnectionConfig,

@@ -315,19 +315,22 @@ class Metadata(object):
       Updated outputs with artifact ids.
 
     Raises:
-      RuntimeError: If any output artifact already has id set.
+      RuntimeError: If any of the following happens:
+        1. Execution state not valid for publish
+        2. Input artifact id missing
+        3. Output artifact id missing when execution state is
+           EXECUTION_STATE_CASHED
     """
-    [execution] = self._store.get_executions_by_id([execution_id])
-    self._update_execution_state(execution, state)
+    if state not in [EXECUTION_STATE_CACHED, EXECUTION_STATE_COMPLETE]:
+      raise RuntimeError('Cannot publish execution with state: %s' % state)
 
-    tf.logging.info('Publishing execution %s, with inputs %s and outputs %s' %
-                    (execution, input_dict, output_dict))
     events = []
     if input_dict:
       for key, input_list in input_dict.items():
         for index, single_input in enumerate(input_list):
           if not single_input.artifact.id:
-            raise ValueError('input artifact %s has missing id' % single_input)
+            raise RuntimeError('input artifact %s has missing id' %
+                               single_input)
           events.append(
               self._prepare_event(
                   execution_id=execution_id,
@@ -338,19 +341,14 @@ class Metadata(object):
     if output_dict:
       for key, output_list in output_dict.items():
         for index, single_output in enumerate(output_list):
-          if state == EXECUTION_STATE_CACHED:
-            if not single_output.artifact.id:
+          if not single_output.artifact.id:
+            if state == EXECUTION_STATE_CACHED:
               raise RuntimeError(
                   'output artifact id not available for cached output: %s' %
                   single_output)
-          elif state == EXECUTION_STATE_COMPLETE:
-            if single_output.artifact.id:
-              raise RuntimeError('output artifact %s already has an id' %
-                                 single_output)
             [published_artifact] = self.publish_artifacts([single_output])  # pylint: disable=unbalanced-tuple-unpacking
             single_output.set_artifact(published_artifact)
-          else:
-            raise RuntimeError('Execution state not supported: %s' % state)
+
           events.append(
               self._prepare_event(
                   execution_id=execution_id,
@@ -358,9 +356,13 @@ class Metadata(object):
                   key=key,
                   index=index,
                   event_type=metadata_store_pb2.Event.OUTPUT))
+
+    [execution] = self._store.get_executions_by_id([execution_id])
+    self._update_execution_state(execution, state)
     if events:
       self._store.put_events(events)
-    tf.logging.info('Published execution with final outputs %s' % output_dict)
+    tf.logging.info('Publishing execution %s, with inputs %s and outputs %s' %
+                    (execution, input_dict, output_dict))
     return output_dict
 
   def _get_cached_execution_id(self, input_dict: Dict[Text, List[Artifact]],

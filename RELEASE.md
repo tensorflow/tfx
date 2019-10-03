@@ -19,6 +19,8 @@
 *   Introduced Resolver as a logical unit for resolving input artifacts.
 *   Branched a local serving example under chicago_taxi_pipeline/ from
     chicago_taxi/ example.
+*   Introduced ImporterNode as a special TFX node to register external resource
+    into MLMD so that downstream nodes can use as input artifacts.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
