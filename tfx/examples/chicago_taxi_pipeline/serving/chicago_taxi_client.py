@@ -27,10 +27,51 @@ import tempfile
 import requests
 import tensorflow as tf
 
+from tensorflow_transform import coders as tft_coders
+from tensorflow_transform.tf_metadata import dataset_schema
+from tensorflow_transform.tf_metadata import schema_utils
+
+from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tfx.examples.chicago_taxi.trainer import taxi
+from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.utils import io_utils
 
 _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
+
+_LABEL_KEY = 'tips'
+
+
+# Tf.Transform considers these features as "raw"
+def _get_raw_feature_spec(schema):
+  return schema_utils.schema_as_feature_spec(schema).feature_spec
+
+
+def _make_proto_coder(schema):
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_schema = dataset_schema.from_feature_spec(raw_feature_spec)
+  return tft_coders.ExampleProtoCoder(raw_schema)
+
+
+def _make_csv_coder(schema, column_names):
+  """Return a coder for tf.transform to read csv files."""
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  parsing_schema = dataset_schema.from_feature_spec(raw_feature_spec)
+  return tft_coders.CsvCoder(column_names, parsing_schema)
+
+
+def _read_schema(path):
+  """Reads a schema from the provided location.
+
+  Args:
+    path: The location of the file holding a serialized Schema proto.
+
+  Returns:
+    An instance of Schema or None if the input argument is None
+  """
+  result = schema_pb2.Schema()
+  contents = file_io.read_file_to_string(path)
+  text_format.Parse(contents, result)
+  return result
 
 
 def _do_local_inference(host, port, serialized_examples):
@@ -62,8 +103,8 @@ def _do_aiplatform_inference(model, version, serialized_examples):
   for serialized_example in serialized_examples:
     # The encoding follows the example in:
     # https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/quests/tpu/invoke_model.py
-    json_examples.append(
-        '{ "inputs": { "b64": "%s" } }' % base64.b64encode(serialized_example))
+    json_examples.append('{ "inputs": { "b64": "%s" } }' %
+                         base64.b64encode(serialized_example).decode('utf-8'))
   file_io.write_string_to_file(instances_file, '\n'.join(json_examples))
   gcloud_command = [
       'gcloud', 'ai-platform', 'predict', '--model', model, '--version',
@@ -87,13 +128,14 @@ def _do_inference(model_handle, examples_file, num_examples, schema):
     Response from model server
   """
   filtered_features = [
-      feature for feature in schema.feature if feature.name != taxi.LABEL_KEY
+      feature for feature in schema.feature if feature.name != _LABEL_KEY
   ]
   del schema.feature[:]
   schema.feature.extend(filtered_features)
 
-  csv_coder = taxi.make_csv_coder(schema)
-  proto_coder = taxi.make_proto_coder(schema)
+  column_names = io_utils.load_csv_column_names(examples_file)
+  csv_coder = _make_csv_coder(schema, column_names)
+  proto_coder = _make_proto_coder(schema)
 
   input_file = open(examples_file, 'r')
   input_file.readline()  # skip header line
@@ -143,9 +185,8 @@ def main(_):
   parser.add_argument(
       '--schema_file', help='File holding the schema for the input data')
   known_args, _ = parser.parse_known_args()
-  _do_inference(known_args.server,
-                known_args.examples_file, known_args.num_examples,
-                taxi.read_schema(known_args.schema_file))
+  _do_inference(known_args.server, known_args.examples_file,
+                known_args.num_examples, _read_schema(known_args.schema_file))
 
 
 if __name__ == '__main__':

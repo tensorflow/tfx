@@ -62,8 +62,8 @@ def _do_aiplatform_inference(model, version, serialized_examples):
   for serialized_example in serialized_examples:
     # The encoding follows the example in:
     # https://github.com/GoogleCloudPlatform/training-data-analyst/blob/master/quests/tpu/invoke_model.py
-    json_examples.append(
-        '{ "inputs": { "b64": "%s" } }' % base64.b64encode(serialized_example))
+    json_examples.append('{ "inputs": { "b64": "%s" } }' %
+                         base64.b64encode(serialized_example).decode('utf-8'))
   file_io.write_string_to_file(instances_file, '\n'.join(json_examples))
   gcloud_command = [
       'gcloud', 'ai-platform', 'predict', '--model', model, '--version',

@@ -17,7 +17,7 @@
 *   Added basic span support in ExampleGen to ingest file based data sources
     that can be updated regularly by upstream.
 *   Introduced Resolver as a logical unit for resolving input artifacts.
-*   Branched a local serving example under chicago_taxi_pipeline/ from
+*   Branched serving examples under chicago_taxi_pipeline/ from
     chicago_taxi/ example.
 *   Introduced ImporterNode as a special TFX node to register external resource
     into MLMD so that downstream nodes can use as input artifacts.
