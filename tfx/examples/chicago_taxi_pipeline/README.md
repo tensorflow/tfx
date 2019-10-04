@@ -219,6 +219,10 @@ $TAXI_DIR/data/simple/data.csv \
 $TFX_DIR/pipelines/chicago_taxi_simple/SchemaGen/output/<b>CHANGE_TO_LATEST_DIR</b>/schema.pbtxt
 </pre>
 
+For Gooogle Cloud AI Platform serving example, use
+`start_model_server_aiplatform.sh` and `classify_aiplatform.sh` in a similar way
+as above local example with local directory changing to `gs://YOUR_BUCKET`.
+
 For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
 # Chicago Taxi Flink Example
