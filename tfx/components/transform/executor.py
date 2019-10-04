@@ -522,13 +522,15 @@ class Executor(base_executor.BaseExecutor):
         feature_value = element.get(feature_name)
         if feature_value is None:
           result[feature_name] = None
-        elif isinstance(feature_value, (np.ndarray, list)):
+        elif isinstance(feature_value, np.ndarray):
+          result[feature_name] = np.asarray(
+              feature_value, feature_spec.dtype.as_numpy_dtype).reshape(-1)
+        elif isinstance(feature_value, list):
           result[feature_name] = np.asarray(
               feature_value, feature_spec.dtype.as_numpy_dtype)
         else:
           result[feature_name] = np.asarray(
               [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
-
       return result
 
     result = (pcollection
