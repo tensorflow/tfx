@@ -1,6 +1,7 @@
 # Command Line Interface for TFX
 
-Note: CLI is in experimental stage without compatibility guarantees.
+Note: CLI doesn't have compatibility guarantees, interface might change across
+versions
 
 ## Introduction
 

@@ -24,8 +24,7 @@ from tfx.tools.cli.commands.run import run_group
 
 @click.group('cli')
 def cli_group():
-  click.echo(
-      'NOTE: CLI is in experimental stage without compatibility guarantees.')
+  click.echo('CLI')
 
 
 cli_group.add_command(pipeline_group)
