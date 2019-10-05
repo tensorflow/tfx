@@ -84,7 +84,7 @@ implementation of the consuming component may adjust its behavior in response to
 a particular value of the *format* property, or simply raise a runtime error if
 it doesn’t have implementation to process the particular format of the Examples.
 
-In summary, **artifact type**s define the ontology of **artifact**s in the
+In summary, **artifact types** define the ontology of **artifacts** in the
 entire TFX pipeline system, whereas **artifact properties** define the ontology
 specific to an **artifact type**. Users of the pipeline system can choose to
 extend such ontology locally to their pipeline applications, by defining and
