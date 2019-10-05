@@ -46,6 +46,7 @@ from tfx.orchestration.launcher import in_process_component_launcher
 
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
+_CMD_LINE_PREFIX = '!'
 
 
 def check_ipython():
@@ -190,12 +191,14 @@ class InteractiveContext(object):
           num_skipped_cells += 1
           continue
 
-        # Filter out all line/cell magics using `%` prefix.
-        # TODO(b/141881947): This will not work for magics invoked without the
-        # prefix when %automagic is set.
+        # Filter out all line/cell magics using `%` prefix and command line
+        # invocations (e.g. !pip install ...).
+        # Note: This will not work for magics invoked without the prefix when
+        # %automagic is set.
         sources.append(
             ('\n'.join(line for line in cell_source.split('\n')
-                       if not line.lstrip().startswith(_MAGIC_PREFIX))))
+                       if not (line.lstrip().startswith(_MAGIC_PREFIX) or
+                               line.lstrip().startswith(_CMD_LINE_PREFIX)))))
 
       export_f.write('\n\n'.join(sources))
       tf.logging.info('%d cell(s) marked with "%s", skipped.',
