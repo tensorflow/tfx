@@ -101,7 +101,7 @@ class Executor(base_executor.BaseExecutor):
         eval_saved_model_path=eval_model_path)
 
     tf.logging.info('Evaluating model.')
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
+    with self._make_beam_pipeline() as pipeline:
       # pylint: disable=expression-not-assigned
       (pipeline
        | 'ReadData' >> beam.io.ReadFromTFRecord(

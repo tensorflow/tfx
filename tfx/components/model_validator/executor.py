@@ -97,7 +97,7 @@ class Executor(base_executor.BaseExecutor):
     blessed_model_eval_result_path = os.path.join(
         self._temp_path, BLESSED_MODEL_EVAL_RESULT_PATH)
 
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
+    with self._make_beam_pipeline() as pipeline:
       eval_data = (
           pipeline | 'ReadData' >> beam.io.ReadFromTFRecord(
               file_pattern=io_utils.all_files_pattern(eval_examples_uri)))

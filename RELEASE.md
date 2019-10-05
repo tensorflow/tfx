@@ -21,6 +21,7 @@
     chicago_taxi/ example.
 *   Introduced ImporterNode as a special TFX node to register external resource
     into MLMD so that downstream nodes can use as input artifacts.
+*   Supported beam arg 'direct_num_workers' for multi-processing on local.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

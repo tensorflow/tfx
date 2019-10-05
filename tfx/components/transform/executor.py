@@ -1181,9 +1181,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       Beam pipeline.
     """
-    # TODO(b/122478841): Consider making beam pipeline part of context to
-    # support fusion.
-    return beam.Pipeline(argv=self._get_beam_pipeline_args())
+    return self._make_beam_pipeline()
 
   # TODO(b/114444977): Remove the unused can_process_jointly argument.
   def _MakeDatasetList(

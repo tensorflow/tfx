@@ -65,7 +65,7 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     split_to_instance = {x.split: x for x in input_dict['input_data']}
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as p:
+    with self._make_beam_pipeline() as p:
       # TODO(b/126263006): Support more stats_options through config.
       stats_options = options.StatsOptions()
       for split, instance in split_to_instance.items():

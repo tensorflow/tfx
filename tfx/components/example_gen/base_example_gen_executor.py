@@ -216,7 +216,7 @@ class BaseExampleGenExecutor(
     self._log_startup(input_dict, output_dict, exec_properties)
 
     tf.logging.info('Generating examples.')
-    with beam.Pipeline(argv=self._get_beam_pipeline_args()) as pipeline:
+    with self._make_beam_pipeline() as pipeline:
       example_splits = self.GenerateExamplesByBeam(pipeline, input_dict,
                                                    exec_properties)
 
