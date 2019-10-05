@@ -20,6 +20,13 @@ from __future__ import print_function
 import abc
 import json
 import os
+import sys
+import apache_beam as beam
+from apache_beam.options.pipeline_options import DirectOptions
+from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.portability import python_urns
+from apache_beam.portability.api import beam_runner_api_pb2
+from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text
@@ -83,9 +90,27 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
-  def _get_beam_pipeline_args(self) -> Optional[List[Text]]:
-    """Get beam pipeline args."""
-    return self._beam_pipeline_args
+  def _make_beam_pipeline(self) -> beam.Pipeline:
+    """Makes beam pipeline."""
+    pipeline_options = PipelineOptions(self._beam_pipeline_args)
+    direct_num_workers = pipeline_options.view_as(
+        DirectOptions).direct_num_workers
+    # TODO(b/141578059): refactor when direct_num_workers can be directly used
+    # as argv. Currently runner and options need to be set separately for
+    # multi-process, in other cases, use beam_pipeline_args to set pipeline.
+    # Default value for direct_num_workers is 1 if unset:
+    #   https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
+    if direct_num_workers > 1:
+      tf.logging.info('Multi-process with %d workers' % direct_num_workers)
+      return beam.Pipeline(
+          options=pipeline_options,
+          runner=fn_api_runner.FnApiRunner(
+              default_environment=beam_runner_api_pb2.Environment(
+                  urn=python_urns.SUBPROCESS_SDK,
+                  payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
+                  (sys.executable or sys.argv[0]).encode('ascii'))))
+    else:
+      return beam.Pipeline(argv=self._beam_pipeline_args)
 
   def _get_tmp_dir(self) -> Text:
     """Get the temporary directory path."""
