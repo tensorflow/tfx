@@ -1,6 +1,6 @@
 # The StatisticsGen TFX Pipeline Component
 
-The StatisticsGen TFX pipeline component generates features statistics
+The StatisticsGen TFX pipeline component generates feature statistics
 over both training and serving data, which can be used by other pipeline
 components.
 StatisticsGen uses Beam to scale to large datasets.
