@@ -99,9 +99,9 @@ examples = csv_input(input_dir)
 example_gen = CsvExampleGen(input_base=examples, input_config=input)
 ```
 
-For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
+For file-based ExampleGen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
 is a glob relative file pattern that maps to input files with root directory
-given by input base path. For query-based example gen (e.g. BigQueryExampleGen,
+given by input base path. For query-based ExampleGen (e.g. BigQueryExampleGen,
 PrestoExampleGen), `pattern` is a SQL query.
 
 By default, the entire input base dir is treated as a single input split, and
