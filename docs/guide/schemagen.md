@@ -9,7 +9,7 @@ whether a feature has to be present in all examples, allowed value ranges, and
 other properties.  A SchemaGen pipeline component will automatically generate a
 schema by inferring types, categories, and ranges from the training data.
 
-* Consumes: statistics from an StatisticsGen component
+* Consumes: Statistics from a StatisticsGen component
 * Emits: Data schema proto
 
 Here's an excerpt from a schema proto:
@@ -49,7 +49,7 @@ The following TFX libraries use the schema:
 *   TensorFlow Transform
 *   TensorFlow Model Analysis
 
-In a typical TFX pipeline SchemaGen generates a schema, which is consumed by the
+In a typical TFX pipeline, SchemaGen generates a schema which is consumed by the
 other pipeline components.
 
 Note: The auto-generated schema is best-effort and only tries to infer basic
