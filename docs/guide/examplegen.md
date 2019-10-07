@@ -29,7 +29,7 @@ from tfx.utils.dsl_utils import csv_input
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 examples = csv_input(os.path.join(base_dir, 'data/simple'))
-example_gen = CsvExampleGen(input_base=examples)
+example_gen = CsvExampleGen(input=examples)
 ```
 
 or like below for importing external tf Examples directly:
@@ -39,7 +39,7 @@ from tfx.utils.dsl_utils import tfrecord_input
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
 
 examples = tfrecord_input(path_to_tfrecord_dir)
-example_gen = ImportExampleGen(input_base=examples)
+example_gen = ImportExampleGen(input=examples)
 ```
 
 ## Span, Version and Split
@@ -78,7 +78,7 @@ output = example_gen_pb2.Output(
                  example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
              ]))
 examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input_base=examples, output_config=output)
+example_gen = CsvExampleGen(input=examples, output_config=output)
 ```
 
 Notice how the `hash_buckets` were set in this example.
@@ -96,7 +96,7 @@ input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
             ])
 examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input_base=examples, input_config=input)
+example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
 For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
@@ -164,7 +164,7 @@ input = example_gen_pb2.Input(splits=[
                                             pattern='span-{SPAN}/eval/*')
             ])
 examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input_base=examples, input_config=input)
+example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
 Note: Retrieving a certain span is not supported yet. You can only fix the
@@ -202,7 +202,7 @@ from tfx.utils.dsl_utils import external_input
 
 examples = external_input(os.path.join(base_dir, 'data/simple'))
 example_gen = FileBasedExampleGen(
-    input_base=examples,
+    input=examples,
     custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
 ```
 

@@ -220,7 +220,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        CsvExampleGen(input_base=dsl_utils.csv_input(self._data_root)),
+        CsvExampleGen(input=dsl_utils.csv_input(self._data_root)),
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -230,8 +230,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         StatisticsGen(
-            input_data=self._input_artifacts(pipeline_name,
-                                             self._test_raw_examples)),
+            examples=self._input_artifacts(pipeline_name,
+                                           self._test_raw_examples)),
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -241,8 +241,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         Transform(
-            input_data=self._input_artifacts(pipeline_name,
-                                             self._test_raw_examples),
+            examples=self._input_artifacts(pipeline_name,
+                                           self._test_raw_examples),
             schema=self._input_artifacts(pipeline_name, self._test_schema),
             module_file=self._taxi_module_file)
     ])
@@ -288,8 +288,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
             transformed_examples=self._input_artifacts(
                 pipeline_name, self._test_transformed_examples),
             schema=self._input_artifacts(pipeline_name, self._test_schema),
-            transform_output=self._input_artifacts(pipeline_name,
-                                                   self._test_transform_graph),
+            transform_graph=self._input_artifacts(pipeline_name,
+                                                  self._test_transform_graph),
             train_args=trainer_pb2.TrainArgs(num_steps=10000),
             eval_args=trainer_pb2.EvalArgs(num_steps=5000),
             custom_config={
@@ -317,7 +317,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         Pusher(
             custom_executor_spec=executor_spec.ExecutorClassSpec(
                 ai_platform_pusher_executor.Executor),
-            model_export=self._input_artifacts(pipeline_name, self._test_model),
+            model=self._input_artifacts(pipeline_name, self._test_model),
             model_blessing=self._input_artifacts(pipeline_name,
                                                  self._test_model_blessing),
             custom_config={

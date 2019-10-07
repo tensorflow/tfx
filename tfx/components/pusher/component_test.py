@@ -34,13 +34,13 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(ComponentTest, self).setUp()
-    self.model_export = channel_utils.as_channel([standard_artifacts.Model()])
+    self.model = channel_utils.as_channel([standard_artifacts.Model()])
     self.model_blessing = channel_utils.as_channel(
         [standard_artifacts.ModelBlessing()])
 
   def testConstruct(self):
     pusher = component.Pusher(
-        model_export=self.model_export,
+        model=self.model,
         model_blessing=self.model_blessing,
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
@@ -50,13 +50,13 @@ class ComponentTest(tf.test.TestCase):
   def testConstructNoDestination(self):
     with self.assertRaises(ValueError):
       _ = component.Pusher(
-          model_export=self.model_export,
+          model=self.model,
           model_blessing=self.model_blessing,
       )
 
   def testConstructNoDestinationCustomExecutor(self):
     pusher = component.Pusher(
-        model_export=self.model_export,
+        model=self.model,
         model_blessing=self.model_blessing,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             self._MyCustomPusherExecutor),

@@ -109,7 +109,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
   _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
   _data_root = os.path.join(_taxi_root, 'data', 'simple')
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=examples)
+  example_gen = CsvExampleGen(input=examples)
   ```
   """
 
@@ -120,18 +120,18 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   def __init__(
       self,
-      input_base: types.Channel = None,
+      input: types.Channel = None,  # pylint: disable=redefined-builtin
       input_config: Optional[example_gen_pb2.Input] = None,
       output_config: Optional[example_gen_pb2.Output] = None,
       custom_config: Optional[example_gen_pb2.CustomConfig] = None,
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
+      input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
-      input_base: A Channel of 'ExternalPath' type, which includes one artifact
+      input: A Channel of 'ExternalPath' type, which includes one artifact
         whose uri is an external directory containing the data files.
         _required_
       input_config: An
@@ -147,13 +147,13 @@ class FileBasedExampleGen(base_component.BaseComponent):
         eval examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
-      input: Future replacement of the 'input_base' argument.
+      input_base: Backwards compatibility alias for the 'input' argument.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
 
       Either `input_base` or `input` must be present in the input arguments.
     """
-    input_base = input_base or input
+    input = input or input_base
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
@@ -164,7 +164,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
             input_config, output_config)
     ])
     spec = FileBasedExampleGenSpec(
-        input_base=input_base,
+        input_base=input,
         input_config=input_config,
         output_config=output_config,
         custom_config=custom_config,

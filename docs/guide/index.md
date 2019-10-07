@@ -585,32 +585,32 @@ example, a typical pipeline might look like:
 def create_pipeline():
   """Implements the example pipeline with TFX."""
   examples = csv_input(os.path.join(base_dir, 'no_split/span_1'))
-  example_gen = CsvExampleGen(input_data=examples)
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['output'])
-  infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
+  example_gen = CsvExampleGen(examples=examples)
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
   validate_stats = ExampleValidator(  # pylint: disable=unused-variable
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
   transform = Transform(
-      input_data=example_gen.outputs['output'],
-      schema=infer_schema.outputs['output'],
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
       module_file=transforms)
   trainer = Trainer(
       module_file=model,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_steps=10000,
       eval_steps=5000,
       warm_starting=True)
   model_analyzer = Evaluator(
-      examples=example_gen.outputs['output'],
-      model_exports=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'],
+      model_exports=trainer.outputs['model'])
   model_validator = ModelValidator(
-      examples=example_gen.outputs['output'],
-      model=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'])
   pusher = Pusher(
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       serving_model_dir=serving_model_dir)
 

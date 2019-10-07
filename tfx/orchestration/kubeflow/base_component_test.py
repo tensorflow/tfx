@@ -41,9 +41,9 @@ class BaseComponentTest(tf.test.TestCase):
     super(BaseComponentTest, self).setUp()
     examples = standard_artifacts.ExternalArtifact()
     example_gen = csv_example_gen_component.CsvExampleGen(
-        input_base=channel_utils.as_channel([examples]))
+        input=channel_utils.as_channel([examples]))
     statistics_gen = statistics_gen_component.StatisticsGen(
-        input_data=example_gen.outputs['examples'], instance_name='foo')
+        examples=example_gen.outputs['examples'], instance_name='foo')
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,

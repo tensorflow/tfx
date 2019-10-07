@@ -54,8 +54,8 @@ class ExampleValidator(base_component.BaseComponent):
   ```
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
   ```
   """
 
@@ -63,30 +63,29 @@ class ExampleValidator(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               stats: types.Channel = None,
+               statistics: types.Channel = None,
                schema: types.Channel = None,
                output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
+               stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct an ExampleValidator component.
 
     Args:
-      stats: A Channel of 'ExampleStatisticsPath` type. This should contain at
-        least 'eval' split. Other splits are ignored currently.  Will be
-        deprecated in the future for the `statistics` parameter.
+      statistics: A Channel of 'ExampleStatisticsPath` type. This should contain
+        at least 'eval' split. Other splits are ignored currently.
       schema: A Channel of "SchemaPath' type. _required_
       output: Output channel of 'ExampleValidationPath' type.
-      statistics: Future replacement of the 'stats' argument.
+      stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
         ExampleValidator. Required only if multiple ExampleValidator components
         are declared in the same pipeline.
 
     Either `stats` or `statistics` must be present in the arguments.
     """
-    stats = stats or statistics
+    statistics = statistics or stats
     output = output or types.Channel(
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
-    spec = ExampleValidatorSpec(stats=stats, schema=schema, output=output)
+    spec = ExampleValidatorSpec(stats=statistics, schema=schema, output=output)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

@@ -92,35 +92,36 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
   """
   examples = dsl_utils.csv_input(csv_input_location)
 
-  example_gen = CsvExampleGen(input_base=examples)
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  example_gen = CsvExampleGen(input=examples)
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs['output'], infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
       module_file=taxi_module_file)
   trainer = Trainer(
       module_file=taxi_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['output'],
+      model_exports=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
       ]))
   model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
   pusher = Pusher(
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(

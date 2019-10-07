@@ -131,8 +131,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         eval_steps=1,
         verbosity='INFO',
         warm_start_from=os.path.join(self._testdata_path,
-                                     'trainer/current/serving_model_dir')
-    )
+                                     'trainer/current/serving_model_dir'))
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils.trainer_fn(hparams, schema)
 

@@ -48,8 +48,8 @@ class Transform(base_component.BaseComponent):
   ```
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
       module_file=module_file)
   ```
 
@@ -60,18 +60,18 @@ class Transform(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               input_data: types.Channel = None,
+               examples: types.Channel = None,
                schema: types.Channel = None,
                module_file: Optional[Text] = None,
                preprocessing_fn: Optional[Text] = None,
-               transform_output: Optional[types.Channel] = None,
+               transform_graph: Optional[types.Channel] = None,
                transformed_examples: Optional[types.Channel] = None,
-               examples: Optional[types.Channel] = None,
+               input_data: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
-      input_data: A Channel of 'ExamplesPath' type (required). This should
+      examples: A Channel of 'ExamplesPath' type (required). This should
         contain the two splits 'train' and 'eval'.
       schema: A Channel of 'SchemaPath' type. This should contain a single
         schema artifact.
@@ -89,13 +89,13 @@ class Transform(base_component.BaseComponent):
          'preprocessing_fn'. See 'module_file' for expected signature of the
          function. Exactly one of 'module_file' or 'preprocessing_fn' must
          be supplied.
-      transform_output: Optional output 'TransformPath' channel for output of
+      transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
-      examples: Forwards compatibility alias for the 'input_data' argument.
+      input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
 
@@ -103,13 +103,13 @@ class Transform(base_component.BaseComponent):
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
     """
-    input_data = input_data or examples
+    examples = examples or input_data
     if bool(module_file) == bool(preprocessing_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
       )
 
-    transform_output = transform_output or types.Channel(
+    transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
     transformed_examples = transformed_examples or types.Channel(
@@ -119,10 +119,10 @@ class Transform(base_component.BaseComponent):
             for split in artifact.DEFAULT_EXAMPLE_SPLITS
         ])
     spec = TransformSpec(
-        input_data=input_data,
+        input_data=examples,
         schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
-        transform_output=transform_output,
+        transform_output=transform_graph,
         transformed_examples=transformed_examples)
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)

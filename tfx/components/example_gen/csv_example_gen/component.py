@@ -35,17 +35,18 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               input_base: types.Channel = None,
-               input_config: Optional[example_gen_pb2.Input] = None,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               example_artifacts: Optional[types.Channel] = None,
-               input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      input: types.Channel = None,  # pylint: disable=redefined-builtin
+      input_config: Optional[example_gen_pb2.Input] = None,
+      output_config: Optional[example_gen_pb2.Output] = None,
+      example_artifacts: Optional[types.Channel] = None,
+      input_base: Optional[types.Channel] = None,
+      instance_name: Optional[Text] = None):
     """Construct a CsvExampleGen component.
 
     Args:
-      input_base: A Channel of 'ExternalPath' type, which includes one artifact
+      input: A Channel of 'ExternalPath' type, which includes one artifact
         whose uri is an external directory with csv files inside (required).
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
@@ -55,14 +56,14 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         size 2:1.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      input: Forwards compatibility alias for the 'input_base' argument.
+      input_base: Backwards compatibility alias for the 'input' argument.
       instance_name: Optional unique instance name. Necessary if multiple
         CsvExampleGen components are declared in the same pipeline.
     """
     super(CsvExampleGen, self).__init__(
-        input_base=input_base,
+        input=input,
         input_config=input_config,
         output_config=output_config,
         example_artifacts=example_artifacts,
-        input=input,
+        input_base=input_base,
         instance_name=instance_name)

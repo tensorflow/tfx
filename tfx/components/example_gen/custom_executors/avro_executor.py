@@ -85,7 +85,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     from tfx.utils.dsl_utils import external_input
 
     example_gen = FileBasedExampleGen(
-        input_base=external_input(avro_dir_path),
+        input=external_input(avro_dir_path),
         executor_class=avro_executor.Executor)
   """
 

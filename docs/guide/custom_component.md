@@ -148,7 +148,7 @@ class SlackComponent(base_component.BaseComponent):
         slack_token=slack_token,
         slack_channel_id=slack_channel_id,
         timeout_sec=timeout_sec,
-        model_export=model_export,
+        model=model_export,
         model_blessing=model_blessing,
         slack_blessing=slack_blessing)
     super(SlackComponent, self).__init__(spec=spec, name=name)
@@ -174,10 +174,10 @@ found in the
 def _create_pipeline():
   ...
   model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   slack_validator = SlackComponent(
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       slack_token=_slack_token,
       slack_channel_id=_slack_channel_id,

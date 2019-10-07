@@ -33,6 +33,6 @@ taxi_eval_spec = [
 model_analyzer = components.Evaluator(
       examples=examples_gen.outputs['examples'],
       feature_slicing_spec=taxi_eval_spec,
-      model_exports=trainer.outputs['output']
+      model_exports=trainer.outputs['model']
       )
 ```
