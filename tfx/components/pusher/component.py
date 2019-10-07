@@ -50,7 +50,7 @@ class Pusher(base_component.BaseComponent):
     # Checks whether the model passed the validation steps and pushes the model
     # to a file destination if check passed.
     pusher = Pusher(
-        model_export=trainer.outputs['output'],
+        model=trainer.outputs['model'],
         model_blessing=model_validator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
@@ -63,18 +63,18 @@ class Pusher(base_component.BaseComponent):
 
   def __init__(
       self,
-      model_export: types.Channel = None,
+      model: types.Channel = None,
       model_blessing: types.Channel = None,
       push_destination: Optional[pusher_pb2.PushDestination] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       model_push: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
+      model_export: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:
-      model_export: A Channel of 'ModelExportPath' type, usually produced by
+      model: A Channel of 'ModelExportPath' type, usually produced by
         Trainer component. Will be deprecated in the future for the `model`
         parameter.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
@@ -89,11 +89,11 @@ class Pusher(base_component.BaseComponent):
           contains an example how this can be used by custom executors.
       custom_executor_spec: Optional custom executor spec.
       model_push: Optional output 'ModelPushPath' channel with result of push.
-      model: Forwards compatibility alias for the 'model_exports' argument.
+      model_export: Backwards compatibility alias for the 'model' argument.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
         components are declared in the same pipeline.
     """
-    model_export = model_export or model
+    model = model or model_export
     model_push = model_push or types.Channel(
         type=standard_artifacts.PushedModel,
         artifacts=[standard_artifacts.PushedModel()])
@@ -102,7 +102,7 @@ class Pusher(base_component.BaseComponent):
                        'custom_executor_spec is supplied that does not require '
                        'it.')
     spec = PusherSpec(
-        model_export=model_export,
+        model_export=model,
         model_blessing=model_blessing,
         push_destination=push_destination,
         custom_config=custom_config,

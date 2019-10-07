@@ -33,7 +33,7 @@ class ComponentTest(tf.test.TestCase):
 
   def testConstruct(self):
     slack_component = component.SlackComponent(
-        model_export=self._model_export,
+        model=self._model_export,
         model_blessing=self._model_blessing,
         slack_token='token',
         slack_channel_id='slack_channel_id',

@@ -41,7 +41,7 @@ class SlackComponentSpec(types.ComponentSpec):
       'timeout_sec': ExecutionParameter(type=int),
   }
   INPUTS = {
-      'model_export': ChannelParameter(type=standard_artifacts.Model),
+      'model': ChannelParameter(type=standard_artifacts.Model),
       'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
   OUTPUTS = {
@@ -83,7 +83,7 @@ class SlackComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               model_export: types.Channel,
+               model: types.Channel,
                model_blessing: types.Channel,
                slack_token: Text,
                slack_channel_id: Text,
@@ -93,7 +93,7 @@ class SlackComponent(base_component.BaseComponent):
     """Construct a SlackComponent.
 
     Args:
-      model_export: A Channel of 'ModelExportPath' type, usually produced by
+      model: A Channel of 'ModelExportPath' type, usually produced by
         Trainer component.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
         ModelValidator component.
@@ -112,7 +112,7 @@ class SlackComponent(base_component.BaseComponent):
         slack_token=slack_token,
         slack_channel_id=slack_channel_id,
         timeout_sec=timeout_sec,
-        model_export=model_export,
+        model=model,
         model_blessing=model_blessing,
         slack_blessing=slack_blessing)
     super(SlackComponent, self).__init__(spec=spec, instance_name=instance_name)

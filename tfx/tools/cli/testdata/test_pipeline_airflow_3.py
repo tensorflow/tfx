@@ -55,10 +55,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   examples = external_input(data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=examples)
+  example_gen = CsvExampleGen(input=examples)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

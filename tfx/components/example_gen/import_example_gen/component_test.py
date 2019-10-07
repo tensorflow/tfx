@@ -28,7 +28,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstruct(self):
     input_base = standard_artifacts.ExternalArtifact()
     import_example_gen = component.ImportExampleGen(
-        input_base=channel_utils.as_channel([input_base]))
+        input=channel_utils.as_channel([input_base]))
     self.assertEqual('ExamplesPath',
                      import_example_gen.outputs['examples'].type_name)
     artifact_collection = import_example_gen.outputs['examples'].get()

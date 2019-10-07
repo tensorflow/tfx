@@ -75,8 +75,8 @@ class Trainer(base_component.BaseComponent):
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   ```
@@ -88,8 +88,8 @@ class Trainer(base_component.BaseComponent):
       executor_class=ai_platform_trainer_executor.Executor,
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   ```
@@ -103,7 +103,7 @@ class Trainer(base_component.BaseComponent):
       self,
       examples: types.Channel = None,
       transformed_examples: Optional[types.Channel] = None,
-      transform_output: Optional[types.Channel] = None,
+      transform_graph: Optional[types.Channel] = None,
       schema: types.Channel = None,
       module_file: Optional[Text] = None,
       trainer_fn: Optional[Text] = None,
@@ -112,7 +112,7 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
-      transform_graph: Optional[types.Channel] = None,
+      transform_output: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Trainer component.
 
@@ -121,7 +121,7 @@ class Trainer(base_component.BaseComponent):
         examples that are used in training (required). May be raw or
         transformed.
       transformed_examples: Deprecated field. Please set 'examples' instead.
-      transform_output: An optional Channel of 'TransformPath' type, serving as
+      transform_graph: An optional Channel of 'TransformPath' type, serving as
         the input transform graph if present.
       schema:  A Channel of 'SchemaPath' type, serving as the schema of training
         and eval data.
@@ -153,7 +153,7 @@ class Trainer(base_component.BaseComponent):
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       custom_executor_spec: Optional custom executor spec.
       output: Optional 'ModelExportPath' channel for result of exported models.
-      transform_graph: Forwards compatibility alias for the 'transform_output'
+      transform_output: Backwards compatibility alias for the 'transform_graph'
         argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         Trainer components are declared in the same pipeline.
@@ -166,7 +166,7 @@ class Trainer(base_component.BaseComponent):
         - When 'transformed_examples' is supplied but 'transform_output'
             is not supplied.
     """
-    transform_output = transform_output or transform_graph
+    transform_graph = transform_graph or transform_output
     if bool(module_file) == bool(trainer_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'trainer_fn' must be supplied")
@@ -175,15 +175,15 @@ class Trainer(base_component.BaseComponent):
       raise ValueError(
           "Exactly one of 'example' or 'transformed_example' must be supplied.")
 
-    if transformed_examples and not transform_output:
+    if transformed_examples and not transform_graph:
       raise ValueError("If 'transformed_examples' is supplied, "
-                       "'transform_output' must be supplied too.")
+                       "'transform_graph' must be supplied too.")
     examples = examples or transformed_examples
     output = output or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
     spec = TrainerSpec(
         examples=examples,
-        transform_output=transform_output,
+        transform_output=transform_graph,
         schema=schema,
         train_args=train_args,
         eval_args=eval_args,

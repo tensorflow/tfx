@@ -28,7 +28,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstruct(self):
     input_base = standard_artifacts.ExternalArtifact()
     csv_example_gen = component.CsvExampleGen(
-        input_base=channel_utils.as_channel([input_base]))
+        input=channel_utils.as_channel([input_base]))
     self.assertEqual('ExamplesPath',
                      csv_example_gen.outputs['examples'].type_name)
     artifact_collection = csv_example_gen.outputs['examples'].get()

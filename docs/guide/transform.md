@@ -19,14 +19,14 @@ will be found and used by Transform to construct the preprocessing pipeline.
 
 ```
 transform_training = components.Transform(
-    input_data=examples_gen.outputs['training_examples'],
-    schema=infer_schema.outputs['output'],
+    examples=examples_gen.outputs['training_examples'],
+    schema=infer_schema.outputs['schema'],
     module_file=taxi_pipeline_utils,
     name='transform-training')
 
 transform_eval = components.Transform(
-    input_data=examples_gen.outputs['eval_examples'],
-    schema=infer_schema.outputs['output'],
+    examples=examples_gen.outputs['eval_examples'],
+    schema=infer_schema.outputs['schema'],
     transform_dir=transform_training.outputs['output'],
     name='transform-eval')
 ```

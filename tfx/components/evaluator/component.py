@@ -61,7 +61,7 @@ class Evaluator(base_component.BaseComponent):
     # Uses TFMA to compute a evaluation statistics over features of a model.
     model_analyzer = Evaluator(
         examples=example_gen.outputs['examples'],
-        model_exports=trainer.outputs['output'])
+        model=trainer.outputs['model'])
   ```
   """
 
@@ -71,24 +71,25 @@ class Evaluator(base_component.BaseComponent):
   def __init__(
       self,
       examples: types.Channel = None,
-      model_exports: types.Channel = None,
+      model: types.Channel = None,
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
       output: Optional[types.Channel] = None,
-      model: Optional[types.Channel] = None,
+      model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
       examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
         component. _required_
-      model_exports: A Channel of 'ModelExportPath' type, usually produced by
+      model: A Channel of 'ModelExportPath' type, usually produced by
         Trainer component.  Will be deprecated in the future for the `model`
         parameter.
       feature_slicing_spec:
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
         instance that describes how Evaluator should slice the data.
       output: Channel of `ModelEvalPath` to store the evaluation results.
-      model: Future replacement of the `model_exports` argument.
+      model_exports: Backwards compatibility alias for the `model`
+        argument.
       instance_name: Optional name assigned to this specific instance of
         Evaluator. Required only if multiple Evaluator components are declared
         in the same pipeline.

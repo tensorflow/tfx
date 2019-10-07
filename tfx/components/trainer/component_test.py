@@ -37,14 +37,14 @@ class ComponentTest(tf.test.TestCase):
     self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
 
   def _verify_outputs(self, trainer):
-    self.assertEqual('ModelExportPath', trainer.outputs['output'].type_name)
+    self.assertEqual('ModelExportPath', trainer.outputs['model'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
         module_file=module_file,
         transformed_examples=self.examples,
-        transform_output=self.transform_output,
+        transform_graph=self.transform_output,
         schema=self.schema,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -56,7 +56,7 @@ class ComponentTest(tf.test.TestCase):
     trainer = component.Trainer(
         trainer_fn=trainer_fn,
         transformed_examples=self.examples,
-        transform_output=self.transform_output,
+        transform_graph=self.transform_output,
         schema=self.schema,
         train_args=self.train_args,
         eval_args=self.eval_args)
@@ -97,7 +97,7 @@ class ComponentTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       _ = component.Trainer(
           examples=self.examples,
-          transform_output=self.transform_output,
+          transform_graph=self.transform_output,
           schema=self.schema,
           train_args=self.train_args,
           eval_args=self.eval_args)
@@ -108,7 +108,7 @@ class ComponentTest(tf.test.TestCase):
           module_file='/path/to/module/file',
           trainer_fn='path.to.my_trainer_fn',
           examples=self.examples,
-          transform_output=self.transform_output,
+          transform_graph=self.transform_output,
           schema=self.schema,
           train_args=self.train_args,
           eval_args=self.eval_args)

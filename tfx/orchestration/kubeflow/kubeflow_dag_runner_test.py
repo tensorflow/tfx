@@ -37,7 +37,7 @@ def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
       query='SELECT * FROM TABLE')
   statistics_gen = statistics_gen_component.StatisticsGen(
-      input_data=example_gen.outputs['examples'])
+      examples=example_gen.outputs['examples'])
   return tfx_pipeline.Pipeline(
       pipeline_name='two_step_pipeline',
       pipeline_root='pipeline_root',

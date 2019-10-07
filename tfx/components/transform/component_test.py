@@ -37,14 +37,14 @@ class ComponentTest(tf.test.TestCase):
 
   def _verify_outputs(self, transform):
     self.assertEqual('TransformPath',
-                     transform.outputs['transform_output'].type_name)
+                     transform.outputs['transform_graph'].type_name)
     self.assertEqual('ExamplesPath',
                      transform.outputs['transformed_examples'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
-        input_data=self.input_data,
+        examples=self.input_data,
         schema=self.schema,
         module_file=module_file,
     )
@@ -54,7 +54,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructFromPreprocessingFn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     transform = component.Transform(
-        input_data=self.input_data,
+        examples=self.input_data,
         schema=self.schema,
         preprocessing_fn=preprocessing_fn,
     )
@@ -65,14 +65,14 @@ class ComponentTest(tf.test.TestCase):
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
-          input_data=self.input_data,
+          examples=self.input_data,
           schema=self.schema,
       )
 
   def testConstructDuplicateUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
-          input_data=self.input_data,
+          examples=self.input_data,
           schema=self.schema,
           module_file='/path/to/preprocessing.py',
           preprocessing_fn='path.to.my_preprocessing_fn',

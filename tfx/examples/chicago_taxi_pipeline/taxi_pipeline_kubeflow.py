@@ -150,21 +150,22 @@ def _create_pipeline(
   example_gen = BigQueryExampleGen(query=query)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs['output'], infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn
@@ -177,8 +178,8 @@ def _create_pipeline(
             ai_platform_trainer_executor.Executor),
         module_file=module_file,
         transformed_examples=transform.outputs['transformed_examples'],
-        schema=infer_schema.outputs['output'],
-        transform_output=transform.outputs['transform_output'],
+        schema=infer_schema.outputs['schema'],
+        transform_graph=transform.outputs['transform_graph'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=5000),
         custom_config={'ai_platform_training_args': ai_platform_training_args})
@@ -187,8 +188,8 @@ def _create_pipeline(
     trainer = Trainer(
         module_file=module_file,
         transformed_examples=transform.outputs['transformed_examples'],
-        schema=infer_schema.outputs['output'],
-        transform_output=transform.outputs['transform_output'],
+        schema=infer_schema.outputs['schema'],
+        transform_graph=transform.outputs['transform_graph'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=5000),
         custom_config={'cmle_training_args': ai_platform_training_args})
@@ -196,7 +197,7 @@ def _create_pipeline(
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['output'],
+      model_exports=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
@@ -204,7 +205,7 @@ def _create_pipeline(
 
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['output'])
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a destination if check passed.
@@ -214,13 +215,13 @@ def _create_pipeline(
     pusher = Pusher(
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             ai_platform_pusher_executor.Executor),
-        model_export=trainer.outputs['output'],
+        model=trainer.outputs['model'],
         model_blessing=model_validator.outputs['blessing'],
         custom_config={'ai_platform_serving_args': ai_platform_serving_args})
   except ImportError:
     # Deploy the model on Google Cloud AI Platform, using a deprecated flag.
     pusher = Pusher(
-        model_export=trainer.outputs['output'],
+        model=trainer.outputs['model'],
         model_blessing=model_validator.outputs['blessing'],
         custom_config={'cmle_serving_args': ai_platform_serving_args},
         push_destination=pusher_pb2.PushDestination(

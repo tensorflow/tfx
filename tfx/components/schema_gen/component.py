@@ -45,7 +45,7 @@ class SchemaGen(base_component.BaseComponent):
   ## Example
   ```
     # Generates an inferred schema based on given statistics files.
-    infer_schema = SchemaGen(stats=statistics_gen.outputs['output'])
+    infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
 
     # Provide an instance of schema that has already been implemented.
     # Schema is the pipeline's expectation towards training data, under
@@ -63,16 +63,16 @@ class SchemaGen(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
   def __init__(self,
-               stats: Optional[types.Channel] = None,
+               statistics: Optional[types.Channel] = None,
                schema: Optional[types.Channel] = None,
                infer_feature_shape: Optional[bool] = False,
                output: Optional[types.Channel] = None,
-               statistics: Optional[types.Channel] = None,
+               stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
     Args:
-      stats: A Channel of `ExampleStatistics` type (required if spec is not
+      statistics: A Channel of `ExampleStatistics` type (required if spec is not
         passed). This should contain at least a `train` split. Other splits are
         currently ignored. Exactly one of 'stats'/'statistics' or 'schema'
         is required.
@@ -84,23 +84,23 @@ class SchemaGen(base_component.BaseComponent):
         Tensorflow Transform component using the schema will parse input
         as tf.SparseTensor.
       output: Output `Schema` channel for schema result.
-      statistics: Future replacement of the 'stats' argument.
+      stats: Backwards compatibility alias for the 'stats' argument.
       instance_name: Optional name assigned to this specific instance of
         SchemaGen.  Required only if multiple SchemaGen components are declared
         in the same pipeline.
 
       Either `statistics` or `stats` must be present in the input arguments.
     """
-    stats = stats or statistics
+    statistics = statistics or stats
     output = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
 
-    if bool(stats) == bool(schema):
+    if bool(statistics) == bool(schema):
       raise ValueError(
           'Exactly one of statistics or schema must be supplied.')
 
     spec = SchemaGenSpec(
-        stats=stats,
+        stats=statistics,
         schema=schema,
         infer_feature_shape=infer_feature_shape,
         output=output)

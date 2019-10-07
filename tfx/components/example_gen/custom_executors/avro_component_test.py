@@ -59,7 +59,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     example_gen = FileBasedExampleGen(
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor),
-        input_base=external_input(self.avro_dir_path),
+        input=external_input(self.avro_dir_path),
         input_config=self.input_config,
         output_config=self.output_config,
         instance_name='AvroExampleGen')
