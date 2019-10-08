@@ -17,6 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import re
+
 from IPython.display import display_html
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -27,8 +29,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 def _is_output_event(event):
   """Checks if event is an Output event."""
-  return event.type in [metadata_store_pb2.Event.DECLARED_OUTPUT,
-                        metadata_store_pb2.Event.OUTPUT]
+  return event.type == metadata_store_pb2.Event.OUTPUT
 
 
 def _is_input_event(event):
@@ -60,9 +61,16 @@ class _LineageGraphHelper(object):
     self.metadata_store = store
 
   def _get_upstream_execution_ids(self, artifact_id):
-    """Returns a list of execution ids that generated `artifact_id`."""
+    """Returns a tuple of most recent execution id and whether it is cached run.
+
+    Args:
+      artifact_id: The artifact used to retrieve the upstream executions.
+    """
     events = self.metadata_store.get_events_by_artifact_ids([artifact_id])
-    return [e.execution_id for e in events if _is_output_event(e)]
+    # skip other executions from caching.
+    execution_ids = [e.execution_id for e in events if _is_output_event(e)]
+    num_parents = len(execution_ids)
+    return [] if num_parents < 1 else [(max(execution_ids), num_parents > 1)]
 
   def _get_upstream_artifact_ids(self, execution_id):
     """Returns a list of artifact_ids that were inputs for `execution_id`."""
@@ -95,12 +103,12 @@ class _LineageGraphHelper(object):
     if max_depth is not None and depth > max_depth:
       return
     if is_artifact:
-      for e_id in self._get_upstream_execution_ids(node_id):
-        g.add_edge(e_id * -1, node_id)
+      for (e_id, is_cached) in self._get_upstream_execution_ids(node_id):
+        g.add_edge(e_id * -1, node_id, is_cached=is_cached)
         self._add_parents(g, e_id, not is_artifact, depth + 1, max_depth)
     else:
       for a_id in self._get_upstream_artifact_ids(node_id):
-        g.add_edge(a_id, node_id * -1)
+        g.add_edge(a_id, node_id * -1, is_cached=False)
         self._add_parents(g, a_id, not is_artifact, depth + 1, max_depth)
 
   def get_artifact_lineage(self, artifact_id, max_depth=None):
@@ -151,14 +159,21 @@ class _LineageGraphHelper(object):
         node_color += 'c'
         node_labels[node_id] = abs(node_id)
       elif node_id > 0 and node_id >= label_anchor_id:
+        # artifact label
         node_color += 'w'
-        node_labels[node_id] = dag.node[node_id - label_anchor_id]['_label_']
+        type_name = dag.node[node_id - label_anchor_id]['_label_']
+        type_segments = re.split('([A-Z][a-z]+)', type_name)
+        node_txt = ('\n').join([s for s in type_segments if s])
+        node_labels[node_id] = node_txt
       elif node_id < 0 and node_id > -1 * label_anchor_id:
         node_color += 'm'
         node_labels[node_id] = abs(node_id)
       else:
+        # execution label
         node_color += 'w'
-        node_labels[node_id] = dag.node[node_id + label_anchor_id]['_label_']
+        type_name = dag.node[node_id + label_anchor_id]['_label_']
+        node_txt = type_name.split('.')[-1]
+        node_labels[node_id] = node_txt
     pos = {}
     a_nodes = []
     e_nodes = []
@@ -167,6 +182,11 @@ class _LineageGraphHelper(object):
         a_nodes.append(node_id)
       elif node_id < 0 and node_id > -1 * label_anchor_id:
         e_nodes.append(node_id)
+
+    # assign edge color
+    edge_color = []
+    for (_, _, labels) in dag.edges(data=True):
+      edge_color.append('y' if labels['is_cached'] else 'k')
 
     a_nodes.sort(key=abs)
     e_nodes.sort(key=abs)
@@ -190,15 +210,26 @@ class _LineageGraphHelper(object):
 
     nx.draw(dag, pos=pos,
             node_size=500, node_color=node_color,
-            labels=node_labels, node_shape='o', font_size=8.3, label='abc')
+            labels=node_labels, node_shape='o', font_size=8.3, label='abc',
+            width=0.5, edge_color=edge_color)
 
-    legend_x = max(a_node_x, e_node_x) - 0.85
-    legend_y = 0.02
     a_bbox_props = dict(boxstyle='square,pad=0.3', fc='c', ec='b', lw=0)
-    plt.text(legend_x - 0.0025, legend_y, '  Artifacts  ', bbox=a_bbox_props)
+    plt.annotate('  Artifacts  ',
+                 xycoords='axes fraction', xy=(0.85, 0.575),
+                 textcoords='axes fraction', xytext=(0.85, 0.575),
+                 bbox=a_bbox_props, alpha=0.6)
     e_bbox_props = dict(boxstyle='square,pad=0.3', fc='m', ec='b', lw=0)
-    plt.text(legend_x - 0.0025, legend_y - 0.007, 'Executions',
-             bbox=e_bbox_props)
+    plt.annotate('Executions',
+                 xycoords='axes fraction', xy=(0.85, 0.5),
+                 textcoords='axes fraction', xytext=(0.85, 0.5),
+                 bbox=e_bbox_props, alpha=0.6)
+    plt.annotate('  Cached    ',
+                 xycoords='axes fraction', xy=(0.85, 0.425),
+                 textcoords='axes fraction', xytext=(0.85, 0.425),
+                 alpha=0.6)
+    plt.annotate('', xycoords='axes fraction', xy=(0.975, 0.405),
+                 textcoords='axes fraction', xytext=(0.845, 0.405),
+                 arrowprops=dict(edgecolor='y', arrowstyle='->', alpha=0.6))
 
     x_lim_left = min(a_node_x_min, e_node_x_min) - 0.5
     x_lim_right = min(1 - 0.05 * len(a_nodes), max(a_node_x, e_node_x))
