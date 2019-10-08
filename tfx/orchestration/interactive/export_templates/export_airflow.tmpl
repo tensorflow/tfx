@@ -1,0 +1,24 @@
+import datetime
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
+
+{{ notebook_content }}
+
+# Airflow-specific configs; these will be passed directly to airflow
+_airflow_config = {
+    'schedule_interval': None,
+    'start_date': datetime.datetime(2019, 1, 1),
+}
+
+tf.logging.set_verbosity(tf.logging.INFO)
+
+tfx_pipeline = pipeline.Pipeline(
+    pipeline_name=_pipeline_name,
+    pipeline_root=_pipeline_root,
+    components=components,
+    enable_cache=True,
+    metadata_connection_config=(
+        metadata.sqlite_metadata_connection_config(_metadata_path)),
+    additional_pipeline_args={})
+
+# 'DAG' below needs to be kept for Airflow to detect dag.
+DAG = AirflowDagRunner(_airflow_config).run(tfx_pipeline)
