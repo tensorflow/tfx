@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago Taxi example using TFX DSL on Kubeflow."""
+"""Test pipeline for Kubeflow."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,57 +19,37 @@ from __future__ import print_function
 
 import os
 
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.orchestration import pipeline
-from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
-from tfx.utils.dsl_utils import csv_input
+from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration import pipeline as tfx_pipeline
+from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.tools.cli.e2e import test_utils
 
-# This example assumes that the taxi data is stored in ~/taxi/data and the
-# taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-_taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-_data_root = os.path.join(_taxi_root, 'data/simple')
-
-_output_dir = os.path.join(os.environ['HOME'], 'tfx')
-_pipeline_root = os.path.join(_output_dir, 'tfx')
-
-# Google Cloud Platform project id to use when deploying this pipeline.
-_project_id = 'my-gcp-project'
-
-# Region to use for Dataflow jobs and AI Platform training jobs.
-_gcp_region = 'us-central1'
+# Name of the pipeline
+_PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow'
 
 
 def _create_pipeline():
-  """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
-
-  examples = csv_input(_data_root)
-
-  # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
-
-  # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-
-  # Generates schema based on statistics files.
-  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-
-  return pipeline.Pipeline(
-      pipeline_name='chicago_taxi_pipeline_kubeflow',
-      pipeline_root=_pipeline_root,
-      components=[example_gen, statistics_gen, infer_schema],
-      additional_pipeline_args={
-          'beam_pipeline_args': [
-              '--runner=DataflowRunner',
-              '--experiments=shuffle_mode=auto',
-              '--project=' + _project_id,
-              '--temp_location=' + os.path.join(_output_dir, 'tmp'),
-              '--region=' + _gcp_region,
-          ],
-      },
+  pipeline_name = _PIPELINE_NAME
+  test_output_dir = 'gs://{}/test_output'.format(test_utils.BUCKET_NAME)
+  pipeline_root = os.path.join(test_output_dir, pipeline_name)
+  components = test_utils.create_e2e_components(pipeline_root,
+                                                test_utils.DATA_ROOT,
+                                                test_utils.TAXI_MODULE_FILE)
+  return tfx_pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+      components=components[:2],
       log_root='/var/tmp/tfx/logs',
+      additional_pipeline_args={
+          'WORKFLOW_ID': pipeline_name,
+      },
   )
 
 
-_ = KubeflowDagRunner().run(_create_pipeline())
+runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+    kubeflow_metadata_config=test_utils.get_kubeflow_metadata_config(
+        _PIPELINE_NAME),
+    tfx_image=test_utils.BASE_CONTAINER_IMAGE)
+_ = kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
+    _create_pipeline())

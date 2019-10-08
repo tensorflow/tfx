@@ -23,7 +23,6 @@ import sys
 
 import click
 import kfp
-import kfp_server_api
 from tabulate import tabulate
 import tensorflow as tf
 from typing import Text, Dict, Any
@@ -45,7 +44,6 @@ class KubeflowHandler(base_handler.BaseHandler):
       flags_dict: A dictionary with flags provided in a command.
     """
     super(KubeflowHandler, self).__init__(flags_dict)
-
     # TODO(b/132286477): Change to setup config instead of flags if needed.
     if labels.NAMESPACE in self.flags_dict:
       self._client = kfp.Client(
@@ -82,34 +80,28 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    try:
-      response = self._client.list_pipelines()
-    except kfp_server_api.rest.ApiException as err:
-      self._print_error(err)
+    response = self._client.list_pipelines()
 
-    if response.pipelines:
+    if response and response.pipelines:
       click.echo(response.pipelines)
     else:
       click.echo('No pipelines to display.')
 
   def delete_pipeline(self) -> None:
     """Delete pipeline in Kubeflow."""
-    try:
-      pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-      # Check if pipeline exists on server.
-      pipeline_id = self._get_pipeline_id(pipeline_name)
-      self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
-      # Delete pipeline for kfp server.
-      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
+    pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+    # Check if pipeline exists on server.
+    pipeline_id = self._get_pipeline_id(pipeline_name)
+    self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
-      # Delete experiment from server.
-      experiment_id = self._client.get_experiment(
-          experiment_name=pipeline_name).id
-      self._client._experiment_api.delete_experiment(experiment_id)  # pylint: disable=protected-access
+    # Delete pipeline for kfp server.
+    self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
 
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
+    # Delete experiment from server.
+    experiment_id = self._client.get_experiment(
+        experiment_name=pipeline_name).id
+    self._client._experiment_api.delete_experiment(experiment_id)  # pylint: disable=protected-access
 
     # Path to pipeline folder.
     handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
@@ -144,63 +136,45 @@ class KubeflowHandler(base_handler.BaseHandler):
     # Get pipeline id.
     pipeline_id = self._get_pipeline_id(pipeline_name)
 
-    try:
-      # Get experiment id.
-      experiment_name = pipeline_name
-      experiment_id = self._client.get_experiment(
-          experiment_name=experiment_name).id
+    # Get experiment id.
+    experiment_name = pipeline_name
+    experiment_id = self._client.get_experiment(
+        experiment_name=experiment_name).id
 
-      # Run pipeline.
-      run = self._client.run_pipeline(
-          experiment_id=experiment_id,
-          job_name=experiment_name,
-          pipeline_id=pipeline_id)
-
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
+    # Run pipeline.
+    run = self._client.run_pipeline(
+        experiment_id=experiment_id,
+        job_name=experiment_name,
+        pipeline_id=pipeline_id)
 
     click.echo('Run created for pipeline: ' + pipeline_name)
     self._print_runs([run])
 
   def delete_run(self) -> None:
     """Deletes a run."""
-    try:
-      self._client._run_api.delete_run(self.flags_dict[labels.RUN_ID])  # pylint: disable=protected-access
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
+    self._client._run_api.delete_run(self.flags_dict[labels.RUN_ID])  # pylint: disable=protected-access
 
     click.echo('Run deleted.')
 
   def terminate_run(self) -> None:
     """Stops a run."""
-    try:
-      self._client._run_api.terminate_run(self.flags_dict[labels.RUN_ID])  # pylint: disable=protected-access
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
-
+    self._client._run_api.terminate_run(self.flags_dict[labels.RUN_ID])  # pylint: disable=protected-access
     click.echo('Run terminated.')
 
   def list_runs(self) -> None:
     """Lists all runs of a pipeline."""
-    try:
-      pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-      # Check if pipeline exists.
-      pipeline_id = self._get_pipeline_id(pipeline_name)
-      self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
+    pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
+    # Check if pipeline exists.
+    pipeline_id = self._get_pipeline_id(pipeline_name)
+    self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
-      # Get experiment id.
-      experiment_name = pipeline_name
-      experiment_id = self._client.get_experiment(
-          experiment_name=experiment_name).id
+    # Get experiment id.
+    experiment_name = pipeline_name
+    experiment_id = self._client.get_experiment(
+        experiment_name=experiment_name).id
 
-      # List runs.
-      response = self._client.list_runs(experiment_id=experiment_id)
-
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
-
-    except ValueError as err:
-      sys.exit(str(err))
+    # List runs.
+    response = self._client.list_runs(experiment_id=experiment_id)
 
     if response and response.runs:
       self._print_runs(response.runs)
@@ -209,11 +183,9 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def get_run(self) -> None:
     """Checks run status."""
-    try:
-      run = self._client.get_run(self.flags_dict[labels.RUN_ID]).run
-      self._print_runs([run])
-    except kfp_server_api.rest.ApiException as err:  # pylint: disable=broad-except
-      sys.exit(self._print_error(err))
+
+    run = self._client.get_run(self.flags_dict[labels.RUN_ID]).run
+    self._print_runs([run])
 
   def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""
@@ -229,28 +201,22 @@ class KubeflowHandler(base_handler.BaseHandler):
       # Delete pipeline for kfp server.
       pipeline_id = self._get_pipeline_id(pipeline_name)
 
-      try:
-        self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
-      except kfp_server_api.rest.ApiException as err:
-        sys.exit(self._print_error(err))
+      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
 
       # Delete pipeline for home directory.
       io_utils.delete_dir(handler_pipeline_path)
 
     pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
-    try:
-      # Now upload pipeline to server.
-      upload_response = self._client.upload_pipeline(
-          pipeline_package_path=pipeline_package_path,
-          pipeline_name=pipeline_name)
-      click.echo(upload_response)
 
-      # Create experiment with pipeline name as experiment name.
-      experiment_name = pipeline_name
-      experiment_id = self._client.create_experiment(experiment_name).id
+    # Now upload pipeline to server.
+    upload_response = self._client.upload_pipeline(
+        pipeline_package_path=pipeline_package_path,
+        pipeline_name=pipeline_name)
+    click.echo(upload_response)
 
-    except kfp_server_api.rest.ApiException as err:
-      sys.exit(self._print_error(err))
+    # Create experiment with pipeline name as experiment name.
+    experiment_name = pipeline_name
+    experiment_id = self._client.create_experiment(experiment_name).id
 
     # Add pipeline details to pipeline_args.
     pipeline_args[labels.PIPELINE_NAME] = upload_response.name
@@ -304,9 +270,3 @@ class KubeflowHandler(base_handler.BaseHandler):
     data = [[pipeline_name, run.id, run.status,
              run.created_at.isoformat()] for run in runs]
     click.echo(tabulate(data, headers=headers, tablefmt='grid'))
-
-  def _print_error(self, error: kfp_server_api.rest.ApiException):
-    error = json.loads(error.body)
-    click.echo('Error Code: {}'.format(str(error['code'])))
-    click.echo('Error Type: {}'.format(error['details'][0]['@type']))
-    click.echo('Error Message: {}'.format(error['message']))
