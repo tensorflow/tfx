@@ -1,0 +1,16 @@
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+
+{{ notebook_content }}
+
+tf.logging.set_verbosity(tf.logging.INFO)
+
+tfx_pipeline = pipeline.Pipeline(
+    pipeline_name=_pipeline_name,
+    pipeline_root=_pipeline_root,
+    components=components,
+    enable_cache=True,
+    metadata_connection_config=(
+        metadata.sqlite_metadata_connection_config(_metadata_path)),
+    additional_pipeline_args={})
+
+BeamDagRunner().run(tfx_pipeline)

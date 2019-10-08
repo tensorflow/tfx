@@ -30,6 +30,7 @@ import logging
 import os
 import tempfile
 
+import jinja2
 import nbformat
 from six.moves import builtins
 import tensorflow as tf
@@ -47,12 +48,7 @@ from tfx.orchestration.launcher import in_process_component_launcher
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
 _CMD_LINE_PREFIX = '!'
-
-
-def check_ipython():
-  # __IPYTHON__ variable is set by IPython, see
-  # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
-  return getattr(builtins, '__IPYTHON__', None)
+_EXPORT_TEMPLATES_DIR = 'export_templates'
 
 
 def requires_ipython(fn):
@@ -60,7 +56,9 @@ def requires_ipython(fn):
   @functools.wraps(fn)
   def run_if_ipython(*args, **kwargs):
     """Invokes `fn` if called from IPython, otherwise just emits a warning."""
-    if check_ipython():
+    if getattr(builtins, '__IPYTHON__', None):
+      # __IPYTHON__ variable is set by IPython, see
+      # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
       return fn(*args, **kwargs)
     else:
       logging.warning('Method "%s" is a no-op when invoked outside of IPython.',
@@ -166,7 +164,8 @@ class InteractiveContext(object):
   @requires_ipython
   def export_to_pipeline(self,
                          notebook_filepath: Text,
-                         export_filepath: Text):
+                         export_filepath: Text,
+                         runner_type: Text):
     """Exports a notebook to a .py file as a runnable pipeline.
 
     Args:
@@ -174,9 +173,13 @@ class InteractiveContext(object):
         '/path/to/notebook.ipynb'.
       export_filepath: String path for the exported pipeline python file, e.g.
         '/path/to/exported_pipeline.py'.
+      runner_type: String indicating type of runner, e.g. 'beam', 'airflow'.
     """
-    tf.logging.info('Exporting contents of %s to %s.',
-                    notebook_filepath, export_filepath)
+    if runner_type not in ['beam', 'airflow']:
+      raise ValueError('Invalid runner_type: %s' % runner_type)
+
+    tf.logging.info('Exporting contents of %s to %s with %s runner.',
+                    notebook_filepath, export_filepath, runner_type)
 
     with open(notebook_filepath) as notebook_f,\
         open(export_filepath, 'w') as export_f:
@@ -200,6 +203,15 @@ class InteractiveContext(object):
                        if not (line.lstrip().startswith(_MAGIC_PREFIX) or
                                line.lstrip().startswith(_CMD_LINE_PREFIX)))))
 
-      export_f.write('\n\n'.join(sources))
+      jinja_env = jinja2.Environment(
+          loader=jinja2.PackageLoader(
+              __name__, package_path=_EXPORT_TEMPLATES_DIR))
+      template_name = 'export_%s.tmpl' % runner_type
+      # TODO(b/142326292): Consider parameterizing the other variables names
+      # present in the export templates.
+      rendered_template = jinja_env.get_template(template_name).render({
+          'notebook_content': '\n\n'.join(sources),
+      })
+      export_f.write(rendered_template)
       tf.logging.info('%d cell(s) marked with "%s", skipped.',
                       num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)

@@ -22,6 +22,8 @@ import shutil
 import tempfile
 import textwrap
 
+import jinja2
+import mock
 import nbformat
 from six.moves import builtins
 import tensorflow as tf
@@ -157,13 +159,16 @@ class InteractiveContextTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)
 
-  def testExportToPipeline(self):
+  @mock.patch.object(jinja2.Environment, 'get_template',
+                     return_value=jinja2.Template('{{ notebook_content }}'))
+  def testExportToPipeline(self, mock_get_template):
     self._setupTestNotebook()
 
     c = interactive_context.InteractiveContext()
     export_filepath = os.path.join(self._exportdir, 'exported_pipeline.py')
     c.export_to_pipeline(notebook_filepath=self._notebook_fp,
-                         export_filepath=export_filepath)
+                         export_filepath=export_filepath,
+                         runner_type='beam')
 
     with open(export_filepath, 'r') as exported_pipeline:
       code = exported_pipeline.read()
@@ -179,6 +184,16 @@ class InteractiveContextTest(tf.test.TestCase):
             c = "nyan"
             d = "cat"
             return c + d'''))
+
+  def testExportToPipelineRaisesErrorInvalidRunnerType(self):
+    self._setupTestNotebook()
+
+    c = interactive_context.InteractiveContext()
+    export_filepath = os.path.join(self._exportdir, 'exported_pipeline.py')
+    with self.assertRaisesRegexp(ValueError, 'runner_type'):
+      c.export_to_pipeline(notebook_filepath=self._notebook_fp,
+                           export_filepath=export_filepath,
+                           runner_type='foobar')
 
 
 if __name__ == '__main__':
