@@ -69,6 +69,26 @@ flags.DEFINE_string("site_path", "tfx/api_docs/python",
 FLAGS = flags.FLAGS
 
 
+def ignore_test_objects(path, parent, children):
+  """Removes all "test" modules. These are not part of the public api.
+
+  Arguments:
+    path: A tuple of name parts forming the attribute-lookup path to this
+      object. For `tf.keras.layers.Dense` path is:
+        ("tf","keras","layers","Dense")
+    parent: The parent object.
+    children: A list of (name, value) pairs. The attributes of the patent.
+
+  Returns:
+    A filtered list of children `(name, value)` pairs. With all test modules
+    removed.
+  """
+  del path
+  del parent
+  return [(name, obj) for (name, obj) in children
+          if not (name.endswith("_test") or name == "testdata")]
+
+
 def main(_):
   # These make up for the empty __init__.py files.
   api_generator.utils.recursive_import(tfx.orchestration)
@@ -93,7 +113,9 @@ def main(_):
       # local_definitions_filter ensures that shared modules are only
       # documented in the location that defines them, instead of every location
       # that imports them.
-      callbacks=[api_generator.public_api.local_definitions_filter])
+      callbacks=[
+          api_generator.public_api.local_definitions_filter, ignore_test_objects
+      ])
   doc_generator.build(output_dir=FLAGS.output_dir)
 
 
