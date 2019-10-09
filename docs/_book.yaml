@@ -21,7 +21,7 @@ upper_tabs:
       skip_translation: true
       contents:
       - title: TFX API
-        path: /tfx/api_docs/
+        path: /tfx/api_overview
       - heading: TFX
       - include: /tfx/api_docs/python/_toc.yaml
       - heading: Data Validation
