@@ -23,6 +23,8 @@
     into MLMD so that downstream nodes can use as input artifacts.
 *   Supported beam arg 'direct_num_workers' for multi-processing on local.
 *   Improved naming of standard component inputs and outputs.
+*   Improved visualization functionality in the experimental TFX notebook
+    interface.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

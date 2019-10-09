@@ -34,7 +34,9 @@ from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.interactive import interactive_context
+from tfx.orchestration.interactive import standard_visualizations
 from tfx.types import component_spec
+from tfx.types import standard_artifacts
 
 
 class InteractiveContextTest(tf.test.TestCase):
@@ -194,6 +196,20 @@ class InteractiveContextTest(tf.test.TestCase):
       c.export_to_pipeline(notebook_filepath=self._notebook_fp,
                            export_filepath=export_filepath,
                            runner_type='foobar')
+
+  @mock.patch(
+      'tfx.orchestration.interactive.'
+      'standard_visualizations.ExampleAnomaliesVisualization.display')
+  def testShow(self, *unused_mocks):
+    context = interactive_context.InteractiveContext()
+    mock_object = mock.MagicMock()
+    standard_visualizations.ExampleAnomaliesVisualization.display = mock_object
+    mock_object.assert_not_called()
+    artifact = standard_artifacts.ExampleAnomalies()
+    context.show(
+        types.Channel(
+            type=standard_artifacts.ExampleAnomalies, artifacts=[artifact]))
+    mock_object.assert_called_with(artifact)
 
 
 if __name__ == '__main__':

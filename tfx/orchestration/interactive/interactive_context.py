@@ -24,6 +24,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import cgi
 import datetime
 import functools
 import logging
@@ -37,11 +38,14 @@ import tensorflow as tf
 from typing import Text
 
 from ml_metadata.proto import metadata_store_pb2
+from tfx import types
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.interactive import execution_result
 from tfx.orchestration.interactive import notebook_formatters
+from tfx.orchestration.interactive import standard_visualizations
+from tfx.orchestration.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
 
 
@@ -120,6 +124,9 @@ class InteractiveContext(object):
 
     # Register IPython formatters.
     notebook_formatters.register_formatters()
+
+    # Register artifact visualizations.
+    standard_visualizations.register_standard_visualizations()
 
   @requires_ipython
   def run(self,
@@ -215,3 +222,21 @@ class InteractiveContext(object):
       export_f.write(rendered_template)
       tf.logging.info('%d cell(s) marked with "%s", skipped.',
                       num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)
+
+  @requires_ipython
+  def show(self, item: object) -> None:
+    """Show the given object in an IPython notebook display."""
+    from IPython.core.display import display  # pylint: disable=g-import-not-at-top
+    from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
+    if isinstance(item, types.Channel):
+      channel = item
+      artifacts = channel.get()
+      for artifact in artifacts:
+        artifact_heading = 'Artifact at %s' % cgi.escape(artifact.uri)
+        display(HTML('<b>%s</b><br/><br/>' % artifact_heading))
+        visualization = visualizations.get_registry().get_visualization(
+            artifact.type_name)
+        if visualization:
+          visualization.display(artifact)
+    else:
+      display(item)
