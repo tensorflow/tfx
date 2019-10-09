@@ -167,29 +167,25 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       self.assertIsNotNone(pipeline_file)
       pipeline = yaml.load(pipeline_file)
 
-      containers = [
+      container_templates = [
           c for c in pipeline['spec']['templates'] if 'container' in c
       ]
-      self.assertEqual(2, len(containers))
+      self.assertEqual(2, len(container_templates))
 
-      # Check that each container has the volume mounted.
-      self.assertEqual([{
-          'name': 'my-volume-name',
-          'mountPath': '/mnt/volume-mount-path'
-      }], containers[0]['container']['volumeMounts'])
+      for template in container_templates:
+        # Check that each container has the volume mounted.
+        self.assertEqual([{
+            'name': 'my-volume-name',
+            'mountPath': '/mnt/volume-mount-path'
+        }], template['container']['volumeMounts'])
 
-      self.assertEqual([{
-          'name': 'my-volume-name',
-          'mountPath': '/mnt/volume-mount-path'
-      }], containers[1]['container']['volumeMounts'])
-
-      # Check that the PVC is specified.
-      self.assertEqual([{
-          'name': 'my-volume-name',
-          'persistentVolumeClaim': {
-              'claimName': 'my-persistent-volume-claim'
-          }
-      }], pipeline['spec']['volumes'])
+        # Check that each template has the PVC specified.
+        self.assertEqual([{
+            'name': 'my-volume-name',
+            'persistentVolumeClaim': {
+                'claimName': 'my-persistent-volume-claim'
+            }
+        }], template['volumes'])
 
 
 if __name__ == '__main__':
