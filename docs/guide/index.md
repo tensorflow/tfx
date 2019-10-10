@@ -23,9 +23,10 @@ Note: See the [TensorFlow Serving](https://www.tensorflow.org/serving/),
 [TensorFlow Lite](https://www.tensorflow.org/lite) documentation for
 installing those optional components.
 
-Note: This installs [Apache Beam](beam.md) with the Direct runner.  You will
-need to install streaming runners such as [Flink](https://flink.apache.org/)
-separately.
+Note: This installs [Apache Beam](beam.md) with the DirectRunner.  You can also
+separately install runners that perform distributed computation, such as
+[Apache Flink](https://flink.apache.org/) or
+[Apache Spark](https://spark.apache.org/).
 
 ## Core Concepts
 
@@ -228,10 +229,11 @@ MLMD manages persistence using [SQL-Lite](https://www.sqlite.org/index.html),
 #### Required
 
 *   [**Apache Beam**](beam.md) is an open source, unified model for defining
-both batch and streaming data-parallel processing pipelines. TFX uses Beam to
-implement data-parallel pipelines.  The pipeline is then executed by one of
-Beam's supported distributed processing back-ends, which include Apache
-Flink, Google Cloud Dataflow, and others.
+both batch and streaming data-parallel processing pipelines. TFX uses
+Apache Beam to implement data-parallel pipelines.  The pipeline is then executed
+by one of Beam's supported distributed processing back-ends, which include
+Apache Flink, Apache Spark,
+[Google Cloud Dataflow](https://cloud.google.com/dataflow/), and others.
 
 #### Optional
 
@@ -262,13 +264,19 @@ monitoring, and maintaining an ML pipeline easier.
     Pipelines SDK allows for creation and sharing of components and composition
     of pipelines programmatically.
 
-### Orchestration and Portability
+### Portability and Interoperability
 
 TFX is designed to be portable to multiple environments and orchestration
 frameworks, including [Apache Airflow](airflow.md),
 [Apache Beam](beam_orchestrator.md) and [Kubeflow](kubeflow.md) . It is also
-portable to different computing platforms, including bare-metal and the Google
-Cloud Platform (GCP).
+portable to different computing platforms, including on-premise, and
+cloud platforms such as the
+[Google Cloud Platform (GCP)](https://cloud.google.com/). In particular,
+TFX interoperates with serveral managed GCP services, such as
+[Cloud AI Platform](https://cloud.google.com/ai-platform/) for
+[Training and Prediction](https://cloud.google.com/ml-engine/), and
+[Cloud Dataflow](https://cloud.google.com/dataflow/) for distributed data
+processing for several other aspects of the ML lifecycle.
 
 Note: The current revision of this user guide primarily discusses deployment
 on a bare-metal system using Apache Airflow for orchestration.
