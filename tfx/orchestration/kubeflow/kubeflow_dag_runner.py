@@ -16,16 +16,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import contextlib
-import io
 import os
-import tarfile
 
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from typing import Callable, List, Optional, Text
-import yaml
 
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -162,17 +158,24 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
   def __init__(self,
                output_dir: Optional[Text] = None,
+               output_filename: Optional[Text] = None,
                config: Optional[KubeflowDagRunnerConfig] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
       output_dir: An optional output directory into which to output the pipeline
         definition files. Defaults to the current working directory.
+      output_filename: An optional output file name for the pipeline definition
+        file. Defaults to pipeline_name.tar.gz when compiling a TFX pipeline.
+        Currently supports .tar.gz, .tgz, .zip, .yaml, .yml formats. See
+        https://github.com/kubeflow/pipelines/blob/181de66cf9fa87bcd0fe9291926790c400140783/sdk/python/kfp/compiler/compiler.py#L851
+        for format restriction.
       config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
     """
     super(KubeflowDagRunner, self).__init__()
     self._output_dir = output_dir or os.getcwd()
+    self._output_filename = output_filename
     self._config = config or KubeflowDagRunnerConfig()
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
@@ -235,24 +238,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       """
       self._construct_pipeline_graph(pipeline, pipeline_root)
 
-    workflow = self._compiler.create_workflow(
+    file_name = self._output_filename or pipeline.pipeline_args[
+        'pipeline_name'] + '.tar.gz'
+    # Create workflow spec and write out to package.
+    self._compiler._create_and_write_workflow(  # pylint: disable=protected-access
         pipeline_func=_construct_pipeline,
         pipeline_name=pipeline.pipeline_args['pipeline_name'],
         pipeline_description=pipeline.pipeline_args.get('description', ''),
-        params_list=self._params)
-
-    # default_flow_style is set to false to ensure the generated yaml spec in
-    # compliance with Argo. Otherwise it might output nested collection using
-    # {}.
-    yaml_text = yaml.dump(workflow, default_flow_style=False)
-
-    pipeline_name = pipeline.pipeline_args['pipeline_name']
-    # TODO(b/134680219): Allow users to specify the extension. Specifying
-    # .yaml will compile the pipeline directly into a YAML file. Kubeflow
-    # backend recognizes .tar.gz, .zip, and .yaml today.
-    pipeline_file = os.path.join(self._output_dir, pipeline_name + '.tar.gz')
-    with tarfile.open(pipeline_file, 'w:gz') as tar:
-      with contextlib.closing(io.BytesIO(yaml_text.encode())) as yaml_file:
-        tarinfo = tarfile.TarInfo('pipeline.yaml')
-        tarinfo.size = len(yaml_file.getvalue())
-        tar.addfile(tarinfo, fileobj=yaml_file)
+        params_list=self._params,
+        package_path=os.path.join(self._output_dir, file_name))

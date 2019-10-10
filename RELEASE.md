@@ -25,6 +25,8 @@
 *   Improved naming of standard component inputs and outputs.
 *   Improved visualization functionality in the experimental TFX notebook
     interface.
+*   Allowed users to specify output file format when compiling TFX pipelines
+    using KubeflowDagRunner.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
