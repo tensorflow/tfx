@@ -27,7 +27,7 @@ from six.moves import builtins
 from typing import Callable, List, Optional, Text, Tuple, Type, Union
 
 from tfx.components.base.base_component import BaseComponent
-from tfx.orchestration.interactive.execution_result import ExecutionResult
+from tfx.orchestration.experimental.interactive.execution_result import ExecutionResult
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
