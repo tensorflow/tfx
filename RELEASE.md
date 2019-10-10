@@ -52,6 +52,8 @@
 
 *   Moved beam setup scripts from examples/chicago_taxi/ to
     examples/chicago_taxi_pipeline/
+*   Moved interactive notebook classes into `tfx.orchestration.experimental`
+    namespace.
 
 ### For pipeline authors
 

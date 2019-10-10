@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.interactive.visualizations."""
+"""Tests for tfx.orchestration.experimental.interactive.visualizations."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ import mock
 from six.moves import builtins
 import tensorflow as tf
 
-from tfx.orchestration.interactive import visualizations
+from tfx.orchestration.experimental.interactive import visualizations
 from tfx.types import standard_artifacts
 
 
@@ -37,7 +37,7 @@ class VisualizationsTest(tf.test.TestCase):
     super(VisualizationsTest, self).tearDown()
 
   @mock.patch(
-      'tfx.orchestration.interactive.'
+      'tfx.orchestration.experimental.interactive.'
       'visualizations.get_registry')
   def testVisualizationRegistrationAndUsage(self, *unused_mocks):
     registry = visualizations.ArtifactVisualizationRegistry()

@@ -25,7 +25,7 @@ import tensorflow_data_validation as tfdv
 import tensorflow_model_analysis as tfma
 
 from tfx import types
-from tfx.orchestration.interactive import visualizations
+from tfx.orchestration.experimental.interactive import visualizations
 from tfx.types import standard_artifacts
 
 

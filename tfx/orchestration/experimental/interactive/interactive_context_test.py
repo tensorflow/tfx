@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.interactive.interactive_context."""
+"""Tests for tfx.orchestration.experimental.interactive.interactive_context."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -33,8 +33,8 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.orchestration.interactive import interactive_context
-from tfx.orchestration.interactive import standard_visualizations
+from tfx.orchestration.experimental.interactive import interactive_context
+from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 
@@ -198,7 +198,7 @@ class InteractiveContextTest(tf.test.TestCase):
                            runner_type='foobar')
 
   @mock.patch(
-      'tfx.orchestration.interactive.'
+      'tfx.orchestration.experimental.interactive.'
       'standard_visualizations.ExampleAnomaliesVisualization.display')
   def testShow(self, *unused_mocks):
     context = interactive_context.InteractiveContext()

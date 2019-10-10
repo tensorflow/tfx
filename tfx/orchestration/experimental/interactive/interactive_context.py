@@ -42,10 +42,10 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.orchestration.interactive import execution_result
-from tfx.orchestration.interactive import notebook_formatters
-from tfx.orchestration.interactive import standard_visualizations
-from tfx.orchestration.interactive import visualizations
+from tfx.orchestration.experimental.interactive import execution_result
+from tfx.orchestration.experimental.interactive import notebook_formatters
+from tfx.orchestration.experimental.interactive import standard_visualizations
+from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
 
 

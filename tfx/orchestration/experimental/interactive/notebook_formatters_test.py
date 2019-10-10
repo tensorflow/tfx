@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.interactive.notebook_formatters."""
+"""Tests for tfx.orchestration.experimental.interactive.notebook_formatters."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ import re
 import tensorflow as tf
 
 from tfx import types
-from tfx.orchestration.interactive import notebook_formatters
+from tfx.orchestration.experimental.interactive import notebook_formatters
 from tfx.types import standard_artifacts
 
 
