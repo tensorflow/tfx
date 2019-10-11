@@ -41,7 +41,7 @@ def _verify_input_artifacts(
     for artifact in single_artifacts_list:
       if not artifact.uri:
         raise RuntimeError('Artifact %s does not have uri' % artifact)
-      if not tf.io.gfile.exists(os.path.dirname(artifact.uri)):
+      if not tf.io.gfile.exists(artifact.uri):
         raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
 
