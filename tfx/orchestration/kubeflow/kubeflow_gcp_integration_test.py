@@ -147,8 +147,10 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
       tf.logging.info('Model %s has versions %s' % (model_name, versions))
 
       # First line of the output is the header: [NAME] [DEPLOYMENT_URI] [STATE]
+      # Second line is the 'default' version, which needs to be deleted last,
+      # as such, need to flip the order of result lines.
       for version in versions.stdout.decode('utf-8').strip('\n').split(
-          '\n')[1:]:
+          '\n')[1:][::-1]:
         version = version.split()[0]
         tf.logging.info('Deleting version %s of model %s' %
                         (version, model_name))
@@ -204,10 +206,15 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self._test_transform_graph = [transform_graph]
 
     # Model artifact for testing.
-    model = standard_artifacts.Model()
-    model.uri = os.path.join(self._intermediate_data_root,
-                             'trainer/output/test-pipeline/')
-    self._test_model = [model]
+    model_1 = standard_artifacts.Model()
+    model_1.uri = os.path.join(self._intermediate_data_root,
+                               'trainer/output/test-pipeline/1/')
+    self._test_model_1 = [model_1]
+
+    model_2 = standard_artifacts.Model()
+    model_2.uri = os.path.join(self._intermediate_data_root,
+                               'trainer/output/test-pipeline/2/')
+    self._test_model_2 = [model_2]
 
     # ModelBlessing artifact for testing.
     model_blessing = standard_artifacts.ModelBlessing()
@@ -257,7 +264,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
             examples=self._input_artifacts(pipeline_name,
                                            self._test_raw_examples),
             model_exports=self._input_artifacts(pipeline_name,
-                                                self._test_model),
+                                                self._test_model_1),
             feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
                 evaluator_pb2.SingleSlicingSpec(
                     column_for_slicing=['trip_start_hour'])
@@ -273,7 +280,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         ModelValidator(
             examples=self._input_artifacts(pipeline_name,
                                            self._test_raw_examples),
-            model=self._input_artifacts(pipeline_name, self._test_model))
+            model=self._input_artifacts(pipeline_name, self._test_model_1))
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -313,19 +320,27 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-aip-pusher-test-{}'.format(self._random_id())
     # AI Platform does not accept '-' in the model name.
     model_name = ('%s_model' % pipeline_name).replace('-', '_')
+
+    def _pusher(model, name):
+      return Pusher(
+          custom_executor_spec=executor_spec.ExecutorClassSpec(
+              ai_platform_pusher_executor.Executor),
+          model=self._input_artifacts(pipeline_name, model),
+          model_blessing=self._input_artifacts(pipeline_name,
+                                               self._test_model_blessing),
+          custom_config={
+              'ai_platform_serving_args': {
+                  'model_name': model_name,
+                  'project_id': self._gcp_project_id,
+              }
+          },
+          instance_name=name,
+      )
+
     pipeline = self._create_pipeline(pipeline_name, [
-        Pusher(
-            custom_executor_spec=executor_spec.ExecutorClassSpec(
-                ai_platform_pusher_executor.Executor),
-            model=self._input_artifacts(pipeline_name, self._test_model),
-            model_blessing=self._input_artifacts(pipeline_name,
-                                                 self._test_model_blessing),
-            custom_config={
-                'ai_platform_serving_args': {
-                    'model_name': model_name,
-                    'project_id': self._gcp_project_id,
-                }
-            })
+        # Test creation of multiple versions under the same model_name.
+        _pusher(self._test_model_1, 'model_1'),
+        _pusher(self._test_model_2, 'model_2'),
     ])
     self.addCleanup(self._delete_ai_platform_model, model_name)
     self._compile_and_run_pipeline(pipeline)
