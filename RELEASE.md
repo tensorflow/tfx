@@ -56,6 +56,8 @@
 *   Deprecated component_id in favor of id.
 *   Move beam_pipeline_args out of additional_pipeline_args as top level
     pipeline param
+*   Deprecated chicago_taxi folder, beam setup scripts and serving examples are
+    moved to chicago_taxi_pipeline folder.
 
 ## Breaking changes
 
