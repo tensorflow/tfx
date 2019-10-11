@@ -20,6 +20,8 @@ from __future__ import print_function
 import os
 import sys
 # Standard Imports
+
+import absl
 import mock
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -29,6 +31,7 @@ from tfx.utils import dependency_utils
 class DepsUtilsTest(tf.test.TestCase):
 
   def setUp(self):
+    super(tf.test.TestCase, self).setUp()
     self._tmp_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -38,7 +41,7 @@ class DepsUtilsTest(tf.test.TestCase):
     mock_mkdtemp.return_value = self._tmp_dir
     if os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR'):
       # This test requires setuptools which is not available.
-      tf.logging.info('Skipping testEphemeralPackage')
+      absl.logging.info('Skipping testEphemeralPackage')
       return
     package = dependency_utils.build_ephemeral_package()
     self.assertRegexpMatches(

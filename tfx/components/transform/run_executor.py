@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import tensorflow as tf
+import absl
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.platform import app
 # pylint: enable=g-direct-tensorflow-import
@@ -28,7 +28,7 @@ from tfx.components.transform.executor import Executor
 
 def _run_transform(args, beam_pipeline_args):
   """Construct and run transform executor."""
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
 
   inputs = {
       labels.ANALYZE_DATA_PATHS_LABEL:

@@ -47,8 +47,9 @@
     `component.outputs['output_name']` (previously, the syntax was
     `component.outputs.output_name`).
 *   Updated Iris example to skip transform and use Keras model.
-*   Fixes the check for input artifact existence in base driver.
+*   Fixed the check for input artifact existence in base driver.
 *   Fixed bug in AI Platform Pusher that prevents pushes after first push.
+*   Replaced all usage of deprecated `tensorflow.logging` with `absl.logging`.
 
 ### Deprecations
 

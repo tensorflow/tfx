@@ -23,6 +23,7 @@ import subprocess
 import sys
 import time
 
+import absl
 import tensorflow as tf
 
 from typing import List, Text
@@ -80,7 +81,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     for _ in range(timeout):
       if result.returncode == 0:
         break
-      tf.logging.info('Waiting while MySQL port-forward is established...')
+      absl.logging.info('Waiting while MySQL port-forward is established...')
       time.sleep(1)
 
       result = subprocess.run(poll_mysql_port_command)
@@ -144,7 +145,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     versions = subprocess.run(versions_command, stdout=subprocess.PIPE)
 
     if versions.returncode == 0:
-      tf.logging.info('Model %s has versions %s' % (model_name, versions))
+      absl.logging.info('Model %s has versions %s' % (model_name, versions))
 
       # First line of the output is the header: [NAME] [DEPLOYMENT_URI] [STATE]
       # Second line is the 'default' version, which needs to be deleted last,
@@ -152,15 +153,15 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
       for version in versions.stdout.decode('utf-8').strip('\n').split(
           '\n')[1:][::-1]:
         version = version.split()[0]
-        tf.logging.info('Deleting version %s of model %s' %
-                        (version, model_name))
+        absl.logging.info('Deleting version %s of model %s' %
+                          (version, model_name))
         version_delete_command = [
             'gcloud', '--quiet', 'ai-platform', 'versions', 'delete', version,
             '--model=%s' % model_name
         ]
         subprocess.run(version_delete_command, check=True)
 
-    tf.logging.info('Deleting model %s' % model_name)
+    absl.logging.info('Deleting model %s' % model_name)
     subprocess.run(
         ['gcloud', '--quiet', 'ai-platform', 'models', 'delete', model_name],
         check=True)

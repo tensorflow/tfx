@@ -27,9 +27,9 @@ from __future__ import print_function
 
 import json
 
+import absl
 from kfp import dsl
 from kubernetes import client as k8s_client
-import tensorflow as tf
 from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
@@ -116,10 +116,10 @@ class BaseComponent(object):
         arguments=arguments,
     )
 
-    tf.logging.info('Adding upstream dependencies for component {}'.format(
+    absl.logging.info('Adding upstream dependencies for component {}'.format(
         self.container_op.name))
     for op in depends_on:
-      tf.logging.info('   ->  Component: {}'.format(op.name))
+      absl.logging.info('   ->  Component: {}'.format(op.name))
       self.container_op.after(op)
 
     # TODO(b/140172100): Document the use of additional_pipeline_args.

@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import apache_beam as beam
 import tensorflow as tf
 from typing import Any, Dict, List, Text
@@ -52,7 +53,7 @@ def _AvroToExample(  # pylint: disable=invalid-name
   """
   input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
   avro_pattern = os.path.join(input_base_uri, split_pattern)
-  tf.logging.info(
+  absl.logging.info(
       'Processing input avro data {} to TFExample.'.format(avro_pattern))
 
   return (pipeline

@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 
+import absl
 from click import testing as click_testing
 import kfp
 import kfp_server_api
@@ -107,7 +108,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         subprocess.check_output(
             'kubectl describe configmap inverse-proxy-config -n kubeflow'.split(
             ))) + '/pipeline'
-    tf.logging.info('ENDPOINT: ' + self._endpoint)
+    absl.logging.info('ENDPOINT: ' + self._endpoint)
 
     # Change home directories
     self._olddir = os.getcwd()
@@ -122,7 +123,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       # Create a kfp client for cleanup after running commands.
       self._client = kfp.Client(host=self._endpoint)
     except kfp_server_api.rest.ApiException as err:
-      tf.logging.info(err)
+      absl.logging.info(err)
 
   def tearDown(self):
     super(CliKubeflowEndToEndTest, self).tearDown()
@@ -130,7 +131,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       os.environ['KUBEFLOW_HOME'] = self._old_kubeflow_home
     os.chdir(self._olddir)
     shutil.rmtree(self._kubeflow_home)
-    tf.logging.info('Deleted all runs.')
+    absl.logging.info('Deleted all runs.')
 
   def _change_pipeline_name(self, filename: Text, origin_dsl_dir: Text,
                             new_dsl_dir: Text, origin_pipeline_name: Text,
@@ -156,14 +157,14 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     pipeline_id = self._get_pipeline_id(pipeline_name)
     if self._client._pipelines_api.get_pipeline(pipeline_id):
       self._client._pipelines_api.delete_pipeline(id=pipeline_id)
-      tf.logging.info('Deleted pipeline : {}'.format(pipeline_name))
+      absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
 
   def _delete_experiment(self, pipeline_name: Text):
     if self._client.get_experiment(experiment_name=pipeline_name):
       experiment_id = self._client.get_experiment(
           experiment_name=pipeline_name).id
       self._client._experiment_api.delete_experiment(experiment_id)
-      tf.logging.info('Deleted experiment : {}'.format(pipeline_name))
+      absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
   def _get_pipeline_id(self, pipeline_name: Text) -> Text:
     # Path to pipeline_args.json .
@@ -186,7 +187,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     client = storage.Client(project=gcp_project_id)
     bucket = client.get_bucket(bucket_name)
     prefix = 'test_output/{}'.format(pipeline_name)
-    tf.logging.info(
+    absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
     blobs = bucket.list_blobs(prefix=prefix)
     bucket.delete_blobs(blobs)
@@ -205,7 +206,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         '-o',
         'custom-columns=:metadata.name',
     ]).decode('utf-8').strip('\n')
-    tf.logging.info('MySQL pod name is: {}'.format(pod_name))
+    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
 
   def _delete_pipeline_metadata(self, pipeline_name: Text) -> None:
@@ -232,7 +233,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         '--execute',
         'drop database if exists {};'.format(db_name),
     ]
-    tf.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
+    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
     subprocess.run(command, check=True)
 
   def _delete_all_runs(self):
@@ -243,7 +244,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         for run in response.runs:
           self._client._run_api.delete_run(id=run.id)
     except kfp_server_api.rest.ApiException as err:
-      tf.logging.info(err)
+      absl.logging.info(err)
 
   def _valid_create_and_check(self, pipeline_path: Text,
                               pipeline_name: Text) -> None:
@@ -279,7 +280,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       return run
 
     except kfp_server_api.rest.ApiException as err:
-      tf.logging.info(err)
+      absl.logging.info(err)
 
   def testPipelineCreate(self):
     # Create a pipeline.

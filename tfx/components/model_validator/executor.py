@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import apache_beam as beam
-import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
 from tfx import types
@@ -82,7 +82,7 @@ class Executor(base_executor.BaseExecutor):
         blessed_model_accuracy = blessed_model_metrics['']['']['accuracy']
       if (current_model_accuracy['doubleValue'] <
           blessed_model_accuracy['doubleValue']):
-        tf.logging.info(
+        absl.logging.info(
             'Current model accuracy is worse than blessed model: {}'.format(
                 current_metric[0]))
         return False
@@ -121,12 +121,12 @@ class Executor(base_executor.BaseExecutor):
         output_path=current_model_eval_result_path)
 
     if not self._pass_threshold(current_model_eval_result):
-      tf.logging.info('Current model does not pass threshold.')
+      absl.logging.info('Current model does not pass threshold.')
       return False
-    tf.logging.info('Current model passes threshold.')
+    absl.logging.info('Current model passes threshold.')
 
     if blessed_model_dir is None:
-      tf.logging.info('No blessed model yet.')
+      absl.logging.info('No blessed model yet.')
       return True
 
     blessed_model_eval_result = tfma.load_eval_result(
@@ -134,10 +134,10 @@ class Executor(base_executor.BaseExecutor):
 
     if (self._compare_eval_result(current_model_eval_result,
                                   blessed_model_eval_result)):
-      tf.logging.info('Current model better than blessed model.')
+      absl.logging.info('Current model better than blessed model.')
       return True
     else:
-      tf.logging.info('Current model worse than blessed model.')
+      absl.logging.info('Current model worse than blessed model.')
       return False
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -160,7 +160,7 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
     self._temp_path = self._get_tmp_dir()
-    tf.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
+    absl.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 
     eval_examples_uri = artifact_utils.get_split_uri(input_dict['examples'],
                                                      'eval')
@@ -168,7 +168,7 @@ class Executor(base_executor.BaseExecutor):
 
     # Current model.
     current_model = artifact_utils.get_single_instance(input_dict['model'])
-    tf.logging.info('Using {} as current model.'.format(current_model.uri))
+    absl.logging.info('Using {} as current model.'.format(current_model.uri))
     blessing.set_string_custom_property('current_model', current_model.uri)
     blessing.set_int_custom_property('current_model_id', current_model.id)
 
@@ -179,12 +179,12 @@ class Executor(base_executor.BaseExecutor):
     # Blessed model.
     blessed_model_dir = exec_properties['blessed_model']
     blessed_model_id = exec_properties['blessed_model_id']
-    tf.logging.info('Using {} as blessed model.'.format(blessed_model_dir))
+    absl.logging.info('Using {} as blessed model.'.format(blessed_model_dir))
     if blessed_model_dir:
       blessing.set_string_custom_property('blessed_model', blessed_model_dir)
       blessing.set_int_custom_property('blessed_model_id', blessed_model_id)
 
-    tf.logging.info('Validating model.')
+    absl.logging.info('Validating model.')
     # TODO(b/125853306): support customized slice spec.
     blessed = self._generate_blessing_result(
         eval_examples_uri=eval_examples_uri,
@@ -198,9 +198,9 @@ class Executor(base_executor.BaseExecutor):
     else:
       io_utils.write_string_file(os.path.join(blessing.uri, 'NOT_BLESSED'), '')
       blessing.set_int_custom_property('blessed', 0)
-    tf.logging.info('Blessing result {} written to {}.'.format(
+    absl.logging.info('Blessing result {} written to {}.'.format(
         blessed, blessing.uri))
 
     io_utils.delete_dir(self._temp_path)
-    tf.logging.info('Cleaned up temp path {} on executor success.'.format(
+    absl.logging.info('Cleaned up temp path {} on executor success.'.format(
         self._temp_path))

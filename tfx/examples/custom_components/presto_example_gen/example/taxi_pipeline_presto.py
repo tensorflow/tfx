@@ -19,9 +19,9 @@ from __future__ import print_function
 
 import os
 
+import absl
 from presto_component.component import PrestoExampleGen
 from proto import presto_config_pb2
-import tensorflow as tf
 from typing import Text
 
 from tfx.components.evaluator.component import Evaluator
@@ -141,7 +141,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
 # To run this pipeline from the python CLI:
 #   $python taxi_pipeline_presto.py
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
 
   BeamDagRunner().run(
       _create_pipeline(

@@ -21,9 +21,9 @@ import abc
 import bisect
 import hashlib
 import os
+import absl
 import apache_beam as beam
 from six import with_metaclass
-import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_executor
@@ -215,7 +215,7 @@ class BaseExampleGenExecutor(
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    tf.logging.info('Generating examples.')
+    absl.logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
       example_splits = self.GenerateExamplesByBeam(pipeline, input_dict,
                                                    exec_properties)
@@ -227,4 +227,4 @@ class BaseExampleGenExecutor(
              artifact_utils.get_split_uri(output_dict['examples'], split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
-    tf.logging.info('Examples generated.')
+    absl.logging.info('Examples generated.')

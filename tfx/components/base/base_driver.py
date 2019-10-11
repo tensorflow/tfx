@@ -17,6 +17,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
+import absl
 import tensorflow as tf
 
 from typing import Any, Dict, List, Text
@@ -55,12 +57,12 @@ def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
                      '')
   if tf.io.gfile.exists(uri):
     msg = 'Output artifact uri %s already exists' % uri
-    tf.logging.error(msg)
+    absl.logging.error(msg)
     raise RuntimeError(msg)
   else:
     # TODO(zhitaoli): Consider refactoring this out into something
     # which can handle permission bits.
-    tf.logging.debug('Creating output artifact uri %s as directory', uri)
+    absl.logging.debug('Creating output artifact uri %s as directory', uri)
     tf.io.gfile.makedirs(uri)
 
   return uri
@@ -83,13 +85,13 @@ class BaseDriver(object):
                       output_dict: Dict[Text, List[types.Artifact]],
                       exec_properties: Dict[Text, Any]):
     """Log inputs, outputs, and executor properties in a standard format."""
-    tf.logging.debug('Starting %s driver.', self.__class__.__name__)
-    tf.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                     input_dict)
-    tf.logging.debug('Execution properties for %s are: %s',
-                     self.__class__.__name__, exec_properties)
-    tf.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                     output_dict)
+    absl.logging.debug('Starting %s driver.', self.__class__.__name__)
+    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                       input_dict)
+    absl.logging.debug('Execution properties for %s are: %s',
+                       self.__class__.__name__, exec_properties)
+    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                       output_dict)
 
   def resolve_input_artifacts(
       self,
@@ -213,8 +215,8 @@ class BaseDriver(object):
         pipeline_info=pipeline_info,
         component_info=component_info,
         run_context_id=run_context_id)
-    tf.logging.debug('Execution id of the upcoming component execution is %s',
-                     execution_id)
+    absl.logging.debug('Execution id of the upcoming component execution is %s',
+                       execution_id)
     return execution_id
 
   def pre_execution(
@@ -256,7 +258,7 @@ class BaseDriver(object):
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    driver_args, pipeline_info)
     _verify_input_artifacts(artifacts_dict=input_artifacts)
-    tf.logging.debug('Resolved input artifacts are: %s', input_artifacts)
+    absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
     execution_id = self._register_execution(
         exec_properties=exec_properties,
@@ -275,30 +277,32 @@ class BaseDriver(object):
           pipeline_info=pipeline_info,
           component_info=component_info)
       if cached_execution_id:
-        tf.logging.debug('Found cached_execution: %s', cached_execution_id)
+        absl.logging.debug('Found cached_execution: %s', cached_execution_id)
         # Step 4b. New execution not needed. Fetch cached output artifacts.
         try:
           output_artifacts = self._fetch_cached_artifacts(
               output_dict=output_dict, cached_execution_id=cached_execution_id)
-          tf.logging.debug('Cached output artifacts are: %s', output_artifacts)
+          absl.logging.debug('Cached output artifacts are: %s',
+                             output_artifacts)
           use_cached_results = True
         except RuntimeError:
-          tf.logging.warning('Error when trying to get cached output artifacts')
+          absl.logging.warning(
+              'Error when trying to get cached output artifacts')
           use_cached_results = False
     if not use_cached_results:
-      tf.logging.debug('Cached results not found, move on to new execution')
+      absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           output_dict=output_dict,
           execution_id=execution_id,
           pipeline_info=pipeline_info,
           component_info=component_info)
-      tf.logging.debug(
+      absl.logging.debug(
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
       exec_properties = self.resolve_exec_properties(exec_properties,
                                                      component_info)
-      tf.logging.debug(
+      absl.logging.debug(
           'Execution properties for the upcoming execution are: %s',
           exec_properties)
 

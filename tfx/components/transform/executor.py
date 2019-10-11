@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import apache_beam as beam
 import numpy as np
 import six
@@ -275,7 +276,7 @@ class Executor(base_executor.BaseExecutor):
     transformed_eval_output = artifact_utils.get_split_uri(
         output_dict['transformed_examples'], 'eval')
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
-    tf.logging.debug('Using temp path %s for tft.beam', temp_path)
+    absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
     def _GetCachePath(label, params_dict):
       if label not in params_dict:
@@ -327,7 +328,8 @@ class Executor(base_executor.BaseExecutor):
       label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
     self.Transform(label_inputs, label_outputs, status_file)
-    tf.logging.debug('Cleaning up temp path %s on executor success', temp_path)
+    absl.logging.debug('Cleaning up temp path %s on executor success',
+                       temp_path)
     io_utils.delete_dir(temp_path)
 
   @staticmethod
@@ -758,8 +760,9 @@ class Executor(base_executor.BaseExecutor):
     input_dataset_metadata = self._ReadMetadata(raw_examples_data_format,
                                                 schema)
 
-    tf.logging.debug('Inputs to executor.Transform function: {}'.format(inputs))
-    tf.logging.debug(
+    absl.logging.debug(
+        'Inputs to executor.Transform function: {}'.format(inputs))
+    absl.logging.debug(
         'Outputs to executor.Transform function: {}'.format(outputs))
 
     feature_spec = schema_utils.schema_as_feature_spec(
@@ -785,12 +788,12 @@ class Executor(base_executor.BaseExecutor):
 
     if not compute_statistics and not materialize_output_paths:
       if analyze_input_columns:
-        tf.logging.warning(
+        absl.logging.warning(
             'Not using the in-place Transform because the following features '
             'require analyzing: {}'.format(
                 tuple(c for c in analyze_input_columns)))
       else:
-        tf.logging.warning(
+        absl.logging.warning(
             'Using the in-place Transform since compute_statistics=False, '
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
@@ -847,13 +850,13 @@ class Executor(base_executor.BaseExecutor):
     output_cache_dir = value_utils.GetSoleValue(
         outputs, labels.CACHE_OUTPUT_PATH_LABEL, strict=False)
 
-    tf.logging.debug('Analyze data patterns: %s',
-                     list(enumerate(analyze_data_paths)))
-    tf.logging.debug('Transform data patterns: %s',
-                     list(enumerate(transform_data_paths)))
-    tf.logging.debug('Transform materialization output paths: %s',
-                     list(enumerate(materialize_output_paths)))
-    tf.logging.debug('Transform output path: %s', transform_output_path)
+    absl.logging.debug('Analyze data patterns: %s',
+                       list(enumerate(analyze_data_paths)))
+    absl.logging.debug('Transform data patterns: %s',
+                       list(enumerate(transform_data_paths)))
+    absl.logging.debug('Transform materialization output paths: %s',
+                       list(enumerate(materialize_output_paths)))
+    absl.logging.debug('Transform output path: %s', transform_output_path)
 
     if len(analyze_data_paths) != len(analyze_paths_file_formats):
       return _Status.Error(
@@ -930,7 +933,7 @@ class Executor(base_executor.BaseExecutor):
                 feature_spec, preprocessing_fn, self._GetCacheSource()))
 
         if input_cache:
-          tf.logging.debug('Analyzing data with cache.')
+          absl.logging.debug('Analyzing data with cache.')
 
         full_analyze_dataset_keys_list = [
             dataset.dataset_key for dataset in analyze_data_list
@@ -940,7 +943,7 @@ class Executor(base_executor.BaseExecutor):
         # materialization.
         if not materialize_output_paths and not compute_statistics:
           if None in new_analyze_data_dict.values():
-            tf.logging.debug(
+            absl.logging.debug(
                 'Not reading the following datasets due to cache: %s', [
                     dataset.file_pattern
                     for dataset in analyze_data_list
@@ -999,7 +1002,7 @@ class Executor(base_executor.BaseExecutor):
         if output_cache_dir is not None and cache_output is not None:
           # TODO(b/37788560): Possibly make this part of the beam graph.
           tf.io.gfile.makedirs(output_cache_dir)
-          tf.logging.debug('Using existing cache in: %s', input_cache_dir)
+          absl.logging.debug('Using existing cache in: %s', input_cache_dir)
           if input_cache_dir is not None:
             # Only copy cache that is relevant to this iteration. This is
             # assuming that this pipeline operates on rolling ranges, so those
@@ -1132,7 +1135,7 @@ class Executor(base_executor.BaseExecutor):
       Status of the execution.
     """
 
-    tf.logging.debug('Processing an in-place transform')
+    absl.logging.debug('Processing an in-place transform')
 
     raw_metadata_dir = os.path.join(transform_output_path,
                                     tft.TFTransformOutput.RAW_METADATA_DIR)
@@ -1300,7 +1303,7 @@ class Executor(base_executor.BaseExecutor):
 
     if self._ShouldDecodeAsRawExample(data_format):
       if self._IsDataFormatSequenceExample(data_format):
-        tf.logging.warning(
+        absl.logging.warning(
             'TFX Transform doesn\'t officially support tf.SequenceExample, '
             'follow b/38235367 to track official support progress. We do not '
             'guarantee not to break your pipeline if you use Transform with a '

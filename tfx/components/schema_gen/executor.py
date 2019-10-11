@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from typing import Any, Dict, List, Text
@@ -47,7 +48,7 @@ class Executor(base_executor.BaseExecutor):
 
     if schema:
       schema_uri = artifact_utils.get_single_uri(schema)
-      tf.logging.info('Schema is provided. Reading from %s.' % schema_uri)
+      absl.logging.info('Schema is provided. Reading from %s.' % schema_uri)
       schema_reader = io_utils.SchemaReader()
       try:
         return schema_reader.read(
@@ -97,4 +98,4 @@ class Executor(base_executor.BaseExecutor):
     # metadata of it in the same way regardless of inferred or fixed.
     io_utils.write_pbtxt_file(output_uri,
                               self._provide_schema(input_dict, exec_properties))
-    tf.logging.info('Schema written to {}.'.format(output_uri))
+    absl.logging.info('Schema written to {}.'.format(output_uri))

@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import absl
 from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_executor
@@ -56,7 +56,7 @@ class Executor(base_executor.BaseExecutor):
     if not exec_properties.get('custom_config',
                                {}).get('ai_platform_training_args'):
       err_msg = '\'ai_platform_training_args\' not found in custom_config.'
-      tf.logging.error(err_msg)
+      absl.logging.error(err_msg)
       raise ValueError(err_msg)
 
     training_inputs = exec_properties.get('custom_config',

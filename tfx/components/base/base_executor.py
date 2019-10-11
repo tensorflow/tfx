@@ -21,6 +21,7 @@ import abc
 import json
 import os
 import sys
+import absl
 import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
@@ -101,7 +102,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     # Default value for direct_num_workers is 1 if unset:
     #   https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
     if direct_num_workers > 1:
-      tf.logging.info('Multi-process with %d workers' % direct_num_workers)
+      absl.logging.info('Multi-process with %d workers' % direct_num_workers)
       return beam.Pipeline(
           options=pipeline_options,
           runner=fn_api_runner.FnApiRunner(
@@ -118,7 +119,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       raise RuntimeError('No context for the executor')
     tmp_path = self._context.get_tmp_path()
     if not tf.io.gfile.exists(tmp_path):
-      tf.logging.info('Creating temp directory at %s', tmp_path)
+      absl.logging.info('Creating temp directory at %s', tmp_path)
       tf.io.gfile.makedirs(tmp_path)
     return tmp_path
 
@@ -126,13 +127,13 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                    outputs: Dict[Text, List[types.Artifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
-    tf.logging.debug('Starting %s execution.', self.__class__.__name__)
-    tf.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                     artifact_utils.jsonify_artifact_dict(inputs))
-    tf.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                     artifact_utils.jsonify_artifact_dict(outputs))
-    tf.logging.debug('Execution properties for %s are: %s',
-                     self.__class__.__name__, json.dumps(exec_properties))
+    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
+    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                       artifact_utils.jsonify_artifact_dict(inputs))
+    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                       artifact_utils.jsonify_artifact_dict(outputs))
+    absl.logging.debug('Execution properties for %s are: %s',
+                       self.__class__.__name__, json.dumps(exec_properties))
 
 
 class EmptyExecutor(BaseExecutor):
