@@ -42,8 +42,7 @@ OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
 # a typical Kubeflow installation when the platform is GKE.
 _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
-# Default TFX container image to use in Kubeflow. Overrideable by 'tfx_image'
-# pipeline property.
+# Default TFX container image to use in KubeflowDagRunner.
 _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
 # Name of pipeline_root parameter.

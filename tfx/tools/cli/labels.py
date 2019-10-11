@@ -31,6 +31,10 @@ PIPELINE_COMPONENTS = 'pipeline_components'
 # Kubeflow specific labels.
 # Path to the output workflow file for Kubeflow pipelines.
 PIPELINE_PACKAGE_PATH = 'pipeline_package_path'
+# Target container image path.
+TARGET_IMAGE = 'build_target_image'
+# Skaffold command
+SKAFFOLD_CMD = 'skaffold_cmd'
 # Client ID for IAP protected endpoint.
 IAP_CLIENT_ID = 'iap_client_id'
 # Endpoint of the KFP API service to connect.
@@ -41,3 +45,5 @@ NAMESPACE = 'namespace'
 PIPELINE_ID = 'pipeline_id'
 # Experiment id generated when a new experiment is created on KFP server.
 EXPERIMENT_ID = 'experiment_id'
+# Environment variable for the default Kubeflow TFX image.
+KUBEFLOW_TFX_IMAGE_ENV = 'KUBEFLOW_TFX_IMAGE'
