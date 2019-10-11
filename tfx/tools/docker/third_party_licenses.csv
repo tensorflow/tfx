@@ -92,6 +92,7 @@ html5lib,https://raw.githubusercontent.com/html5lib/html5lib-python/master/LICEN
 httplib2,https://raw.githubusercontent.com/httplib2/httplib2/master/LICENSE,MIT
 ideep4py,https://raw.githubusercontent.com/intel/ideep/master/LICENSE,MIT
 idna,https://raw.githubusercontent.com/kjd/idna/master/LICENSE.rst,BSD-like
+importlib-metadata,https://gitlab.com/python-devs/importlib_metadata/raw/master/LICENSE, Apache 2.0
 ipaddress,https://raw.githubusercontent.com/phihag/ipaddress/master/LICENSE,PSF
 ipykernel,https://raw.githubusercontent.com/ipython/ipykernel/master/COPYING.md,3-Clause BSD
 ipython,https://raw.githubusercontent.com/ipython/ipython/master/LICENSE,3-Clause BSD
@@ -117,6 +118,7 @@ mistune,https://raw.githubusercontent.com/lepture/mistune/master/LICENSE,3-Claus
 ml-metadata,https://raw.githubusercontent.com/google/ml-metadata/master/LICENSE,Apache 2.0
 mock,https://raw.githubusercontent.com/testing-cabal/mock/master/LICENSE.txt,2-Clause BSD
 monotonic,https://raw.githubusercontent.com/atdt/monotonic/master/LICENSE,Apache 2.0
+more-itertools,https://raw.githubusercontent.com/erikrose/more-itertools/master/LICENSE, MIT
 mpi4py,https://raw.githubusercontent.com/mpi4py/mpi4py/master/LICENSE.rst,2-Clause BSD
 msgpack,https://raw.githubusercontent.com/msgpack/msgpack/python-0.1.7/python/COPYING,Apache v2
 nbconvert,https://raw.githubusercontent.com/jupyter/nbconvert/master/LICENSE,BSD-4-Clause
@@ -202,3 +204,4 @@ webencodings,https://raw.githubusercontent.com/gsnedders/python-webencodings/mas
 websocket-client,https://raw.githubusercontent.com/websocket-client/websocket-client/master/LICENSE,LGPL
 widgetsnbextension,https://raw.githubusercontent.com/jupyter-widgets/ipywidgets/master/widgetsnbextension/LICENSE,BSD
 wrapt,https://raw.githubusercontent.com/GrahamDumpleton/wrapt/develop/LICENSE,BSD
+zipp,https://raw.githubusercontent.com/jaraco/zipp/master/LICENSE,MIT
