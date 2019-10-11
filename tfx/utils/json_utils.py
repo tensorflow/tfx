@@ -23,7 +23,10 @@ import inspect
 import json
 
 from six import with_metaclass
-from typing import Any, Dict, Text
+from typing import Any, Dict, List, Text, Type, Union
+
+from google.protobuf import json_format
+from google.protobuf import message
 
 # This is the special key to indicate the serialized object type.
 # Depending on which, the utility knows how to deserialize it back to its
@@ -31,18 +34,24 @@ from typing import Any, Dict, Text
 _TFX_OBJECT_TYPE_KEY = '__tfx_object_type__'
 _MODULE_KEY = '__module__'
 _CLASS_KEY = '__class__'
+_PROTO_VALUE_KEY = '__proto_value__'
 
 
 class _ObjectType(object):
+  """Internal class to hold supported types."""
   # Indicates that the JSON dictionary is an instance of Jsonable type.
   # The dictionary has the states of the object and the object type info is
   # stored as __module__ and __class__ fields.
   JSONABLE = 'jsonable'
-  # Indicates that the JSON dctionary is a python class.
+  # Indicates that the JSON dictionary is a python class.
   # The class info is stored as __module__ and __class__ fields in the
   # dictionary.
   CLASS = 'class'
-  # TODO(hongyes): add proto message
+  # Indicates that the JSON dictionary is an instance of a proto.Message
+  # subclass. The class info of the proto python class is stored as __module__
+  # and __class__ fields in the dictionary. The serialized value of the proto is
+  # stored in the dictionary with key of _PROTO_VALUE_KEY.
+  PROTO = 'proto'
 
 
 class Jsonable(with_metaclass(abc.ABCMeta, object)):
@@ -66,6 +75,13 @@ class Jsonable(with_metaclass(abc.ABCMeta, object)):
     return instance
 
 
+JsonableValue = Union[bool, bytes, float, int, Jsonable, message.Message, Text,
+                      Type]
+JsonableList = List[JsonableValue]
+JsonableDict = Dict[Union[bytes, Text], Union[JsonableValue, JsonableList]]
+JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
+
+
 class _DefaultEncoder(json.JSONEncoder):
   """Default JSON Encoder which encodes Jsonable object to JSON."""
 
@@ -84,6 +100,14 @@ class _DefaultEncoder(json.JSONEncoder):
           _TFX_OBJECT_TYPE_KEY: _ObjectType.CLASS,
           _MODULE_KEY: obj.__module__,
           _CLASS_KEY: obj.__name__,
+      }
+
+    if isinstance(obj, message.Message):
+      return {
+          _TFX_OBJECT_TYPE_KEY: _ObjectType.PROTO,
+          _MODULE_KEY: obj.__class__.__module__,
+          _CLASS_KEY: obj.__class__.__name__,
+          _PROTO_VALUE_KEY: json_format.MessageToJson(obj, sort_keys=True)
       }
 
     return super(_DefaultEncoder, self).default(obj)
@@ -111,12 +135,21 @@ class _DefaultDecoder(json.JSONDecoder):
     if object_type == _ObjectType.JSONABLE:
       jsonable_class_type = _extract_class(dict_data)
       if not issubclass(jsonable_class_type, Jsonable):
-        raise ValueError('Class {} must be a subclass of Jsonable'.format(
-            jsonable_class_type))
+        raise ValueError('Class %s must be a subclass of Jsonable' %
+                         jsonable_class_type)
       return jsonable_class_type.from_json_dict(dict_data)
 
     if object_type == _ObjectType.CLASS:
       return _extract_class(dict_data)
+
+    if object_type == _ObjectType.PROTO:
+      proto_class_type = _extract_class(dict_data)
+      if not issubclass(proto_class_type, message.Message):
+        raise ValueError('Class %s must be a subclass of proto.Message' %
+                         proto_class_type)
+      if _PROTO_VALUE_KEY not in dict_data:
+        raise ValueError('Missing proto value in json dict')
+      return json_format.Parse(dict_data[_PROTO_VALUE_KEY], proto_class_type())
 
 
 def dumps(obj: Any) -> Text:

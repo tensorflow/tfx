@@ -92,7 +92,7 @@ class ImporterDriver(base_driver.BaseDriver):
 
 
 class ImporterNode(base_node.BaseNode):
-  """Definition for TFX Importer.
+  """Definition for TFX ImporterNode.
 
   ImporterNode is a special TFX node which registers an external resource into
   MLMD

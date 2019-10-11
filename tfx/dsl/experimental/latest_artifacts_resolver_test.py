@@ -21,15 +21,15 @@ from __future__ import print_function
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.dsl.experimental import latest_artifact_resolver
+from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
 
 
-class LatestArtifactResolverTest(tf.test.TestCase):
+class LatestArtifactsResolverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(LatestArtifactResolverTest, self).setUp()
+    super(LatestArtifactsResolverTest, self).setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
 
@@ -43,14 +43,16 @@ class LatestArtifactResolverTest(tf.test.TestCase):
       artifact_two.uri = 'uri_two'
       m.publish_artifacts([artifact_two])
 
-      resolver = latest_artifact_resolver.LatestArtifactResolver()
+      resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       resolve_result = resolver.resolve(
           m, {'input': types.Channel(type_name=artifact_one.type_name)})
 
       self.assertTrue(resolve_result.has_complete_result)
-      self.assertEqual(resolve_result.per_key_resolve_result['input'][0][0].uri,
-                       'uri_two')
-      self.assertTrue(resolve_result.per_key_resolve_result['input'][1])
+      self.assertEqual([
+          artifact.uri
+          for artifact in resolve_result.per_key_resolve_result['input']
+      ], ['uri_two'])
+      self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
 
 if __name__ == '__main__':
