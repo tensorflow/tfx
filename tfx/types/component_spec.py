@@ -241,8 +241,9 @@ class ExecutionParameter(_ComponentParameter):
 
   def type_check(self, arg_name: Text, value: Any):
     # Can't type check generics. Note that we need to do this strange check form
-    # since typing.GenericMeta is not exposed.
-    if self.type.__class__.__name__ == 'GenericMeta':
+    # since typing.GenericMeta (which became typing._GenericAlias in Python 3.7)
+    # is not exposed.
+    if self.type.__class__.__name__ in ('GenericMeta', '_GenericAlias'):
       return
     if not isinstance(value, self.type):
       raise TypeError('Expected type %s for parameter %r but got %s.' %
