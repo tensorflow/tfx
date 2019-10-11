@@ -16,7 +16,6 @@
     A default value can be provided when constructing the TFX pipeline.
 *   Added basic span support in ExampleGen to ingest file based data sources
     that can be updated regularly by upstream.
-*   Introduced Resolver as a logical unit for resolving input artifacts.
 *   Branched serving examples under chicago_taxi_pipeline/ from
     chicago_taxi/ example.
 *   Introduced ImporterNode as a special TFX node to register external resource
@@ -27,6 +26,9 @@
     interface.
 *   Allowed users to specify output file format when compiling TFX pipelines
     using KubeflowDagRunner.
+*   Introduced ResolverNode as a special TFX node to resolve input artifacts for
+    downstream nodes. ResolverNode is a convenient way to wrap TFX Resolver, a
+    logical unit for resolving input artifacts.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

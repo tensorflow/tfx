@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx.proto import trainer_pb2
 from tfx.utils import json_utils
 
 
@@ -42,7 +43,8 @@ class JsonUtilsTest(tf.test.TestCase):
     self.assertItemsEqual([True], actual_obj.c)
 
   def testDumpsNestedJsonableObject(self):
-    nested_obj = _DefaultJsonableObject(1, 2, 3)
+    nested_obj = _DefaultJsonableObject(1, 2,
+                                        trainer_pb2.TrainArgs(num_steps=100))
     obj = _DefaultJsonableObject(nested_obj, None, None)
 
     json_text = json_utils.dumps(obj)
@@ -50,7 +52,7 @@ class JsonUtilsTest(tf.test.TestCase):
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(1, actual_obj.a.a)
     self.assertEqual(2, actual_obj.a.b)
-    self.assertEqual(3, actual_obj.a.c)
+    self.assertProtoEquals(trainer_pb2.TrainArgs(num_steps=100), actual_obj.a.c)
     self.assertIsNone(actual_obj.b)
     self.assertIsNone(actual_obj.c)
 

@@ -21,7 +21,7 @@ import abc
 
 from six import with_metaclass
 
-from typing import Dict, List, Text, Tuple
+from typing import Dict, List, Text
 
 from tfx import types
 from tfx.orchestration import metadata
@@ -31,19 +31,19 @@ class ResolveResult(object):
   """The data structure to hold results from Resolver.
 
   Attributes:
-    per_key_resolve_result: a key -> Tuple[List[Artifact], bool] dict containing
-      the artifact resolution result and a bool value indicating whether the
-      resolved result is complete.
+    per_key_resolve_result: a key -> List[Artifact] dict containing the resolved
+      artifacts for each source channel with the key as tag.
+    per_key_resolve_state: a key -> bool dict containing whether or not the
+      resolved artifacts for the channel are considered complete.
     has_complete_result: bool value indicating whether all desired artifacts
       have been resolved.
   """
 
-  def __init__(self, per_key_resolve_result: Dict[Text,
-                                                  Tuple[List[types.Artifact],
-                                                        bool]]):
+  def __init__(self, per_key_resolve_result: Dict[Text, List[types.Artifact]],
+               per_key_resolve_state: Dict[Text, bool]):
     self.per_key_resolve_result = per_key_resolve_result
-    self.has_complete_result = all(
-        [t[1] for t in per_key_resolve_result.values()])
+    self.per_key_resolve_state = per_key_resolve_state
+    self.has_complete_result = all([s for s in per_key_resolve_state.values()])
 
 
 class BaseResolver(with_metaclass(abc.ABCMeta, object)):
