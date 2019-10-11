@@ -30,7 +30,9 @@
     downstream nodes. ResolverNode is a convenient way to wrap TFX Resolver, a
     logical unit for resolving input artifacts.
 *   Added cifar-10 example to demonstrate image classification.
-
+*   Added container builder feature in the CLI tool for container-based custom
+    python components. This is specifically for the Kubeflow orchestration
+    engine, which requires containers built with the custom python codes.
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
     be at version 0.1.31.2.
