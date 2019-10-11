@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 
+import absl
 from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli import labels
@@ -56,8 +57,8 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     os.environ['AIRFLOW_HOME'] = self._airflow_home
     self._old_home = os.environ.get('HOME')
     os.environ['HOME'] = self._airflow_home
-    tf.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
-                    self._airflow_home)
+    absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
+                      self._airflow_home)
 
     # Testdata path.
     self._testdata_dir = os.path.join(

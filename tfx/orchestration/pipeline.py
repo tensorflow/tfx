@@ -23,7 +23,7 @@ import functools
 import json
 import os
 
-import tensorflow as tf
+import absl
 
 from typing import List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
@@ -131,7 +131,7 @@ class Pipeline(object):
     else:
       # TODO(b/138406006): Drop metadata_db_root support after 0.14 release.
       # We also need to make metadata_connection_config required.
-      tf.logging.info(
+      absl.logging.info(
           'metadata_db_root is deprecated, metadata_connection_config will be required in next release'
       )
       if metadata_db_root:
@@ -147,7 +147,7 @@ class Pipeline(object):
 
     # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
     if 'beam_pipeline_args' in self.additional_pipeline_args:
-      tf.logging.warning(
+      absl.logging.warning(
           'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
       )
       self.beam_pipeline_args = self.additional_pipeline_args[

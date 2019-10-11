@@ -17,9 +17,11 @@ For a TFX pipeline to successfully run, a preprocessing_fn and a
 _build_estimator function needs to be provided.  This file contains both.
 """
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
@@ -133,7 +135,7 @@ def _keras_model_builder():
       loss='sparse_categorical_crossentropy',
       optimizer=opt.Adam(lr=0.001),
       metrics=['accuracy'])
-  tf.logging.info(model.summary())
+  absl.logging.info(model.summary())
   return model
 
 

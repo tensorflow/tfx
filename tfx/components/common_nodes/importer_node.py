@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import absl
 from typing import Any, Dict, List, Optional, Text, Type
 
 from tfx import types
@@ -44,7 +44,7 @@ class ImporterDriver(base_driver.BaseDriver):
       destination_channel: types.Channel,
   ) -> List[types.Artifact]:
     """Imports external resource in MLMD."""
-    tf.logging.info('Processing source uri: %s' % source_uri)
+    absl.logging.info('Processing source uri: %s' % source_uri)
 
     previous_artifacts = self._metadata_handler.get_artifacts_by_uri(source_uri)
     result = types.Artifact(type_name=destination_channel.type_name)
@@ -55,11 +55,11 @@ class ImporterDriver(base_driver.BaseDriver):
     # Otherwise, register the external resource into MLMD using the type info
     # in the destination channel.
     if bool(previous_artifacts) and not reimport:
-      tf.logging.info('Reusing existing artifact')
+      absl.logging.info('Reusing existing artifact')
       result.set_artifact(max(previous_artifacts, key=lambda m: m.id))
     else:
       [registered_artifact] = self._metadata_handler.publish_artifacts([result])
-      tf.logging.info('Registered new artifact: %s' % registered_artifact)
+      absl.logging.info('Registered new artifact: %s' % registered_artifact)
       result.set_artifact(registered_artifact)
 
     return [result]

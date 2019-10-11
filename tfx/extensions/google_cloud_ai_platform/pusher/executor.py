@@ -19,6 +19,7 @@ from __future__ import print_function
 import os
 import tempfile
 
+import absl
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from google.protobuf import json_format
@@ -82,7 +83,7 @@ class Executor(tfx_pusher_executor.Executor):
     # TODO(jyzhao): should this be in driver or executor.
     if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
-      tf.logging.info('Model on %s was not blessed', model_blessing_uri)
+      absl.logging.info('Model on %s was not blessed', model_blessing_uri)
       return
 
     exec_properties_copy = exec_properties.copy()

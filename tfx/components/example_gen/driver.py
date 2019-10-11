@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 import re
+import absl
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from google.protobuf import json_format
@@ -63,12 +64,12 @@ class Driver(base_driver.BaseDriver):
             split_pattern)
 
     split_glob_pattern = split_pattern.replace(_SPAN_SPEC, '*')
-    tf.logging.info('Glob pattern for split %s: %s' %
-                    (split.name, split_glob_pattern))
+    absl.logging.info('Glob pattern for split %s: %s' %
+                      (split.name, split_glob_pattern))
     split_regex_pattern = self._glob_to_regex(split_pattern).replace(
         _SPAN_SPEC, '(.*)')
-    tf.logging.info('Regex pattern for split %s: %s' %
-                    (split.name, split_regex_pattern))
+    absl.logging.info('Regex pattern for split %s: %s' %
+                      (split.name, split_regex_pattern))
     assert re.compile(
         split_regex_pattern).groups == 1, 'Regex should have only one group'
 
@@ -108,9 +109,9 @@ class Driver(base_driver.BaseDriver):
     input_dict = channel_utils.unwrap_channel_dict(input_channels)
     for input_list in input_dict.values():
       for single_input in input_list:
-        tf.logging.info('Processing input %s.' % (single_input.uri))
-        tf.logging.info('single_input %s.' % (single_input))
-        tf.logging.info('single_input.artifact %s.' % (single_input.artifact))
+        absl.logging.info('Processing input %s.' % (single_input.uri))
+        absl.logging.info('single_input %s.' % (single_input))
+        absl.logging.info('single_input.artifact %s.' % (single_input.artifact))
 
         # Set the fingerprint of input.
         split_fingerprints = []
@@ -152,15 +153,16 @@ class Driver(base_driver.BaseDriver):
           # Using id because spans are the same for matched artifacts.
           latest_artifact = max(
               matched_artifacts, key=lambda artifact: artifact.id)
-          tf.logging.info('latest_artifact %s.' % (latest_artifact))
-          tf.logging.info('type(latest_artifact) %s.' % (type(latest_artifact)))
+          absl.logging.info('latest_artifact %s.' % (latest_artifact))
+          absl.logging.info('type(latest_artifact) %s.' %
+                            (type(latest_artifact)))
 
           single_input.set_artifact(latest_artifact)
         else:
           # TODO(jyzhao): whether driver should be read-only for metadata.
           [new_artifact] = self._metadata_handler.publish_artifacts(
               [single_input])  # pylint: disable=unbalanced-tuple-unpacking
-          tf.logging.info('Registered new input: %s' % (new_artifact))
+          absl.logging.info('Registered new input: %s' % (new_artifact))
           single_input.set_artifact(new_artifact)
 
     exec_properties['input_config'] = json_format.MessageToJson(

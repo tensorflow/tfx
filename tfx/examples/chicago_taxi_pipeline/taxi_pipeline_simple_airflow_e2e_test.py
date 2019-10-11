@@ -20,8 +20,9 @@ import os
 import subprocess
 import tempfile
 import time
-import pytest
 
+import absl
+import pytest
 import tensorflow as tf
 from typing import Sequence, Set, Text
 
@@ -78,11 +79,11 @@ class AirflowEndToEndTest(unittest.TestCase):
     for dir_name, _, leaf_files in tf.gfile.Walk(task_log_dir):
       for leaf_file in leaf_files:
         leaf_file_path = os.path.join(dir_name, leaf_file)
-        tf.logging.error('Print task log %s:', leaf_file_path)
+        absl.logging.error('Print task log %s:', leaf_file_path)
         with tf.gfile.GFile(leaf_file_path, 'r') as f:
           lines = f.readlines()
           for line in lines:
-            tf.logging.error(line)
+            absl.logging.error(line)
 
   def _CheckPendingTasks(self, pending_task_names: Sequence[Text]) -> Set[Text]:
     unknown_tasks = set(pending_task_names) - set(self._all_tasks)
@@ -92,14 +93,14 @@ class AirflowEndToEndTest(unittest.TestCase):
     for task in pending_task_names:
       task_state = self._GetState(task).lower()
       if task_state in _SUCCESS_TASK_STATES:
-        tf.logging.info('Task %s succeeded, checking output artifacts', task)
+        absl.logging.info('Task %s succeeded, checking output artifacts', task)
         self._CheckOutputArtifacts(task)
       elif task_state in _PENDING_TASK_STATES:
         still_pending.add(task)
       else:
         failed[task] = task_state
     for task, state in failed.items():
-      tf.logging.error('Retrieving logs for %s task %s', state, task)
+      absl.logging.error('Retrieving logs for %s task %s', state, task)
       self._PrintTaskLogsOnError(task)
     self.assertFalse(failed)
     return still_pending
@@ -114,8 +115,8 @@ class AirflowEndToEndTest(unittest.TestCase):
     os.environ['AIRFLOW_HOME'] = self._airflow_home
     self._old_home = os.environ.get('HOME')
     os.environ['HOME'] = self._airflow_home
-    tf.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
-                    self._airflow_home)
+    absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
+                      self._airflow_home)
     # Set a couple of important environment variables. See
     # https://airflow.apache.org/howto/set-config.html for details.
     os.environ['AIRFLOW__CORE__AIRFLOW_HOME'] = self._airflow_home
@@ -197,16 +198,16 @@ class AirflowEndToEndTest(unittest.TestCase):
           _MAX_TASK_STATE_CHANGE_SEC / _TASK_POLLING_INTERVAL_SEC) + 1
       while True:
         if not pending_tasks:
-          tf.logging.info('No pending task left anymore')
+          absl.logging.info('No pending task left anymore')
           return
         for _ in range(attempts):
-          tf.logging.debug('Polling task state')
+          absl.logging.debug('Polling task state')
           still_pending = self._CheckPendingTasks(pending_tasks)
           if len(still_pending) != len(pending_tasks):
             pending_tasks = still_pending
             break
-          tf.logging.info('Polling task state after %d secs',
-                          _TASK_POLLING_INTERVAL_SEC)
+          absl.logging.info('Polling task state after %d secs',
+                            _TASK_POLLING_INTERVAL_SEC)
           time.sleep(_TASK_POLLING_INTERVAL_SEC)
         else:
           self.fail('No pending tasks in %s finished within %d secs' %

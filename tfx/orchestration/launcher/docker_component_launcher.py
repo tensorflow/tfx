@@ -17,8 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import docker
-import tensorflow as tf
 
 from typing import Any, Dict, List, Text, cast
 
@@ -64,7 +64,7 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
 
     # Streaming logs
     for log in container.logs(stream=True):
-      tf.logging.info('Docker: ' + log.decode('utf-8'))
+      absl.logging.info('Docker: ' + log.decode('utf-8'))
     exit_code = container.wait()['StatusCode']
     if exit_code != 0:
       raise RuntimeError(

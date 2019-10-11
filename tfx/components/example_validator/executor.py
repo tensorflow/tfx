@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import absl
 import tensorflow_data_validation as tfdv
 from typing import Any, Dict, List, Text
 from tfx import types
@@ -58,7 +58,7 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    tf.logging.info('Validating schema against the computed statistics.')
+    absl.logging.info('Validating schema against the computed statistics.')
     label_inputs = {
         labels.STATS:
             tfdv.load_statistics(
@@ -72,7 +72,7 @@ class Executor(base_executor.BaseExecutor):
     output_uri = artifact_utils.get_single_uri(output_dict['output'])
     label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
     self._Validate(label_inputs, label_outputs)
-    tf.logging.info(
+    absl.logging.info(
         'Validation complete. Anomalies written to {}.'.format(output_uri))
 
   def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,

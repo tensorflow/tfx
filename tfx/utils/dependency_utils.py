@@ -21,6 +21,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+import absl
 import apache_beam as beam
 import tensorflow as tf
 from typing import List, Optional, Text
@@ -58,20 +60,20 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   all_options = pipeline_options.get_all_options()
   for flag_name in ['extra_package', 'setup_file', 'requirements_file']:
     if all_options.get(flag_name):
-      tf.logging.info('Nonempty beam arg %s already includes dependency',
-                      flag_name)
+      absl.logging.info('Nonempty beam arg %s already includes dependency',
+                        flag_name)
       return beam_pipeline_args
-  tf.logging.info('Attempting to infer TFX Python dependency for beam')
+  absl.logging.info('Attempting to infer TFX Python dependency for beam')
   dependency_flags = []
   pypi_version = _get_pypi_package_version()
   if pypi_version:
     requirements_file = _build_requirements_file()
-    tf.logging.info('Added --requirements_file=%s to beam args',
-                    requirements_file)
+    absl.logging.info('Added --requirements_file=%s to beam args',
+                      requirements_file)
     dependency_flags.append('--requirements_file=%s' % requirements_file)
   else:
     sdist_file = build_ephemeral_package()
-    tf.logging.info('Added --extra_package=%s to beam args', sdist_file)
+    absl.logging.info('Added --extra_package=%s to beam args', sdist_file)
     dependency_flags.append('--extra_package=%s' % sdist_file)
   return beam_pipeline_args + dependency_flags
 
@@ -92,7 +94,7 @@ if __name__ == '__main__':
 def _build_requirements_file() -> Text:
   """Returns a requirements.txt file which includes current TFX package."""
   result = os.path.join(tempfile.mkdtemp(), 'requirement.txt')
-  tf.logging.info('Generating a temp requirements.txt file at %s', result)
+  absl.logging.info('Generating a temp requirements.txt file at %s', result)
   io_utils.write_string_file(result, 'tfx==%s' % version.__version__)
   return result
 
@@ -107,14 +109,14 @@ def build_ephemeral_package() -> Text:
   """
   tmp_dir = os.path.join(tempfile.mkdtemp(), 'build')
   tfx_root_dir = os.path.dirname(os.path.dirname(version.__file__))
-  tf.logging.info('Copying all content from install dir %s to temp dir %s',
-                  tfx_root_dir, tmp_dir)
+  absl.logging.info('Copying all content from install dir %s to temp dir %s',
+                    tfx_root_dir, tmp_dir)
   shutil.copytree(tfx_root_dir, tmp_dir)
   # Source directory default permission is 0555 but we need to be able to create
   # new setup.py file.
   os.chmod(tmp_dir, 0o720)
   setup_file = os.path.join(tmp_dir, 'setup.py')
-  tf.logging.info('Generating a temp setup file at %s', setup_file)
+  absl.logging.info('Generating a temp setup file at %s', setup_file)
   install_requires = dependencies.make_required_install_packages()
   io_utils.write_string_file(
       setup_file,

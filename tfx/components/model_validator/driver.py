@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import absl
 from typing import Any, Dict, Optional, Text, Tuple
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
@@ -57,6 +57,6 @@ class Driver(base_driver.BaseDriver):
      exec_properties['blessed_model_id']) = self._fetch_last_blessed_model(
          component_info.component_id)
     exec_properties['component_id'] = component_info.component_id
-    tf.logging.info('Resolved last blessed model {}'.format(
+    absl.logging.info('Resolved last blessed model {}'.format(
         exec_properties['blessed_model']))
     return exec_properties

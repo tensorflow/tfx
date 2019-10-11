@@ -17,8 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import apache_beam as beam
-import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
 
@@ -96,11 +96,11 @@ class Executor(base_executor.BaseExecutor):
 
     eval_model_path = path_utils.eval_model_path(model_exports_uri)
 
-    tf.logging.info('Using {} for model eval.'.format(eval_model_path))
+    absl.logging.info('Using {} for model eval.'.format(eval_model_path))
     eval_shared_model = tfma.default_eval_shared_model(
         eval_saved_model_path=eval_model_path)
 
-    tf.logging.info('Evaluating model.')
+    absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
       # pylint: disable=expression-not-assigned
       (pipeline
@@ -112,5 +112,5 @@ class Executor(base_executor.BaseExecutor):
            eval_shared_model=eval_shared_model,
            slice_spec=slice_spec,
            output_path=output_uri))
-    tf.logging.info(
+    absl.logging.info(
         'Evaluation complete. Results written to {}.'.format(output_uri))

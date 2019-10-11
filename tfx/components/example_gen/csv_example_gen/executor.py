@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import apache_beam as beam
 import numpy
 import tensorflow as tf
@@ -77,7 +78,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   """
   input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
   csv_pattern = os.path.join(input_base_uri, split_pattern)
-  tf.logging.info(
+  absl.logging.info(
       'Processing input csv data {} to TFExample.'.format(csv_pattern))
 
   csv_files = tf.io.gfile.glob(csv_pattern)

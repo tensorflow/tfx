@@ -23,8 +23,8 @@ from __future__ import print_function
 import os
 import signal
 
+import absl
 from slackclient import SlackClient
-
 import tensorflow as tf
 from typing import Any, Dict, List, NamedTuple, Text
 from tfx import types
@@ -57,7 +57,7 @@ class Timeout(object):
 
   def handle_timeout(self, unused_signum, unused_frame):
     msg = 'Did not get model evaluation result in %d seconds' % self.seconds
-    tf.logging.warning(msg)
+    absl.logging.warning(msg)
     raise TimeoutError(msg)  # pylint: disable=undefined-variable
 
   def __enter__(self):
@@ -135,7 +135,7 @@ class Executor(base_executor.BaseExecutor):
     ts = 0
     if not sc.rtm_connect():
       msg = 'Cannot connect to slack server with given token'
-      tf.logging.error(msg)
+      absl.logging.error(msg)
       raise ConnectionError(msg)  # pylint: disable=undefined-variable
 
     sc.rtm_send_message(slack_channel_id, message=msg)
@@ -152,18 +152,18 @@ class Executor(base_executor.BaseExecutor):
         if not self._is_valid_message(payload, slack_channel_id, ts):
           continue
         if payload.get('text').lower() in _APPROVE_TEXT:
-          tf.logging.info('User %s approves the model located at %s',
-                          payload.get('user'), model_uri)
+          absl.logging.info('User %s approves the model located at %s',
+                            payload.get('user'), model_uri)
           return _SlackResponse(True, payload.get('user'), payload.get('text'),
                                 slack_channel_id, str(ts))
         elif payload.get('text').lower() in _DECLINE_TEXT:
-          tf.logging.info('User %s declines the model located at %s',
-                          payload.get('user'), model_uri)
+          absl.logging.info('User %s declines the model located at %s',
+                            payload.get('user'), model_uri)
           return _SlackResponse(False, payload.get('user'), payload.get('text'),
                                 slack_channel_id, str(ts))
         else:
           unrecognized_text = payload.get('text')
-          tf.logging.info('Unrecognized response: %s', unrecognized_text)
+          absl.logging.info('Unrecognized response: %s', unrecognized_text)
           sc.rtm_send_message(
               slack_channel_id,
               message=_NOTIFY_CORRECT_REPLY_TEMPLATE.format(unrecognized_text),
@@ -244,4 +244,4 @@ class Executor(base_executor.BaseExecutor):
                                                 slack_response.slack_channel_id)
       slack_blessing.set_string_custom_property('slack_decision_thread',
                                                 slack_response.thread_ts)
-    tf.logging.info('Blessing result written to %s.', slack_blessing.uri)
+    absl.logging.info('Blessing result written to %s.', slack_blessing.uri)

@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import absl
 from typing import Text
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
@@ -136,7 +136,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 # To run this pipeline from the python CLI:
 #   $python cifar10_pipeline_beam.py
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,

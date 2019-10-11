@@ -20,7 +20,8 @@ from __future__ import print_function
 import argparse
 import base64
 import json
-import tensorflow as tf
+
+import absl
 
 from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_executor
@@ -78,7 +79,7 @@ def _run_executor(args, pipeline_args) -> None:
     None
   """
 
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
 
   (inputs_str, outputs_str,
    exec_properties_str) = (args.inputs or base64.b64decode(args.inputs_base64),
@@ -90,7 +91,7 @@ def _run_executor(args, pipeline_args) -> None:
   inputs = artifact_utils.parse_artifact_dict(inputs_str)
   outputs = artifact_utils.parse_artifact_dict(outputs_str)
   exec_properties = json.loads(exec_properties_str)
-  tf.logging.info(
+  absl.logging.info(
       'Executor {} do: inputs: {}, outputs: {}, exec_properties: {}'.format(
           args.executor_class_path, inputs, outputs, exec_properties))
   executor_cls = import_utils.import_class_by_path(args.executor_class_path)
@@ -99,7 +100,7 @@ def _run_executor(args, pipeline_args) -> None:
       tmp_dir=args.temp_directory_path,
       unique_id='')
   executor = executor_cls(executor_context)
-  tf.logging.info('Starting executor')
+  absl.logging.info('Starting executor')
   executor.Do(inputs, outputs, exec_properties)
 
   # The last line of stdout will be pushed to xcom by Airflow.

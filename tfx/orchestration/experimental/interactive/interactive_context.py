@@ -31,10 +31,10 @@ import logging
 import os
 import tempfile
 
+import absl
 import jinja2
 import nbformat
 from six.moves import builtins
-import tensorflow as tf
 from typing import Text
 
 from ml_metadata.proto import metadata_store_pb2
@@ -185,8 +185,8 @@ class InteractiveContext(object):
     if runner_type not in ['beam', 'airflow']:
       raise ValueError('Invalid runner_type: %s' % runner_type)
 
-    tf.logging.info('Exporting contents of %s to %s with %s runner.',
-                    notebook_filepath, export_filepath, runner_type)
+    absl.logging.info('Exporting contents of %s to %s with %s runner.',
+                      notebook_filepath, export_filepath, runner_type)
 
     with open(notebook_filepath) as notebook_f,\
         open(export_filepath, 'w') as export_f:
@@ -220,8 +220,8 @@ class InteractiveContext(object):
           'notebook_content': '\n\n'.join(sources),
       })
       export_f.write(rendered_template)
-      tf.logging.info('%d cell(s) marked with "%s", skipped.',
-                      num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)
+      absl.logging.info('%d cell(s) marked with "%s", skipped.',
+                        num_skipped_cells, _SKIP_FOR_EXPORT_MAGIC)
 
   @requires_ipython
   def show(self, item: object) -> None:

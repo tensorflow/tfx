@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import absl
 from typing import Dict, List, Text
 
 from tfx import types
@@ -56,10 +56,11 @@ class Publisher(object):
     Returns:
       A dict containing output artifacts.
     """
-    tf.logging.debug('Whether cached results are used: %s', use_cached_results)
-    tf.logging.debug('Execution id: %s', execution_id)
-    tf.logging.debug('Inputs: %s', input_dict)
-    tf.logging.debug('Outputs: %s', output_dict)
+    absl.logging.debug('Whether cached results are used: %s',
+                       use_cached_results)
+    absl.logging.debug('Execution id: %s', execution_id)
+    absl.logging.debug('Inputs: %s', input_dict)
+    absl.logging.debug('Outputs: %s', output_dict)
 
     final_execution_state = metadata.EXECUTION_STATE_CACHED if use_cached_results else metadata.EXECUTION_STATE_COMPLETE
     return self._metadata_handler.publish_execution(

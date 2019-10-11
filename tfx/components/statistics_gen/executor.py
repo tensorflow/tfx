@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import apache_beam as beam
-import tensorflow as tf
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.coders import tf_example_decoder
 from tensorflow_data_validation.statistics import stats_options as options
@@ -69,7 +69,7 @@ class Executor(base_executor.BaseExecutor):
       # TODO(b/126263006): Support more stats_options through config.
       stats_options = options.StatsOptions()
       for split, instance in split_to_instance.items():
-        tf.logging.info('Generating statistics for split {}'.format(split))
+        absl.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(instance.uri)
         output_uri = artifact_utils.get_split_uri(output_dict['output'], split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
@@ -85,5 +85,5 @@ class Executor(base_executor.BaseExecutor):
                 shard_name_template='',
                 coder=beam.coders.ProtoCoder(
                     statistics_pb2.DatasetFeatureStatisticsList)))
-        tf.logging.info('Statistics for split {} written to {}.'.format(
+        absl.logging.info('Statistics for split {} written to {}.'.format(
             split, output_uri))

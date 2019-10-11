@@ -20,6 +20,7 @@ import datetime
 import json
 import sys
 import time
+import absl
 from googleapiclient import discovery
 from googleapiclient import errors
 import tensorflow as tf
@@ -86,11 +87,11 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
       exec_properties['custom_config'].pop(gaip_training_key)
 
   json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  tf.logging.info('json_inputs=\'%s\'.', json_inputs)
+  absl.logging.info('json_inputs=\'%s\'.', json_inputs)
   json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  tf.logging.info('json_outputs=\'%s\'.', json_outputs)
+  absl.logging.info('json_outputs=\'%s\'.', json_outputs)
   json_exec_properties = json.dumps(exec_properties)
-  tf.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+  absl.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
   # Configure CMLE job
   api_client = discovery.build('ml', 'v1')
@@ -121,7 +122,7 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
   job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
 
   # Submit job to CMLE
-  tf.logging.info('Submitting job=\'{}\', project=\'{}\' to CMLE.'.format(
+  absl.logging.info('Submitting job=\'{}\', project=\'{}\' to CMLE.'.format(
       job_name, project))
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
@@ -138,11 +139,11 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
   if response['state'] == 'FAILED':
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
         job_name, response)
-    tf.logging.error(err_msg)
+    absl.logging.error(err_msg)
     raise RuntimeError(err_msg)
 
   # CMLE training complete
-  tf.logging.info('Job \'{}\' successful.'.format(job_name))
+  absl.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
 def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
@@ -160,7 +161,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  tf.logging.info(
+  absl.logging.info(
       'Deploying to model with version {} to CMLE for serving: {}'.format(
           model_version, cmle_serving_args))
 
@@ -178,7 +179,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
     # If the error is to create an already existing model, it's ok to ignore.
     # TODO(b/135211463): Remove the disable once the pytype bug is fixed.
     if e.resp.status == 409:  # pytype: disable=attribute-error
-      tf.logging.warn('Model {} already exists'.format(model_name))
+      absl.logging.warn('Model {} already exists'.format(model_name))
     else:
       raise RuntimeError('CMLE Push failed: {}'.format(e))
 
@@ -201,14 +202,14 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
       break
     if 'error' in deploy_status:
       # The operation completed with an error.
-      tf.logging.error(deploy_status['error'])
+      absl.logging.error(deploy_status['error'])
       raise RuntimeError(
           'Failed to deploy model to CMLE for serving: {}'.format(
               deploy_status['error']))
 
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    tf.logging.info('Model still being deployed...')
+    absl.logging.info('Model still being deployed...')
 
-  tf.logging.info(
+  absl.logging.info(
       'Successfully deployed model {} with version {}, serving from {}'.format(
           model_name, model_version, serving_path))

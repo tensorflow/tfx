@@ -23,7 +23,7 @@ import logging
 import os
 import sys
 
-import tensorflow as tf
+import absl
 from typing import List, Text
 
 from ml_metadata.proto import metadata_store_pb2
@@ -91,8 +91,8 @@ def _make_beam_pipeline_args(json_beam_pipeline_args: Text) -> List[Text]:
   # DataflowRunner.
   module_dir = os.environ['TFX_SRC_DIR']
   setup_file = os.path.join(module_dir, 'setup.py')
-  tf.logging.info('Using setup_file \'%s\' to capture TFX dependencies',
-                  setup_file)
+  absl.logging.info('Using setup_file \'%s\' to capture TFX dependencies',
+                    setup_file)
   beam_pipeline_args.append('--setup_file={}'.format(setup_file))
 
   return beam_pipeline_args

@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx import types
@@ -69,7 +70,7 @@ class Executor(base_executor.BaseExecutor):
     # TODO(jyzhao): should this be in driver or executor.
     if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
-      tf.logging.info('Model on %s was not blessed', model_blessing_uri)
+      absl.logging.info('Model on %s was not blessed', model_blessing_uri)
       return False
     return True
 
@@ -102,15 +103,15 @@ class Executor(base_executor.BaseExecutor):
     model_export = artifact_utils.get_single_instance(
         input_dict['model_export'])
     model_export_uri = model_export.uri
-    tf.logging.info('Model pushing.')
+    absl.logging.info('Model pushing.')
     # Copy the model we are pushing into
     model_path = path_utils.serving_model_path(model_export_uri)
     # Note: we do not have a logical model version right now. This
     # model_version is a timestamp mapped to trainer's exporter.
     model_version = os.path.basename(model_path)
-    tf.logging.info('Model version is %s', model_version)
+    absl.logging.info('Model version is %s', model_version)
     io_utils.copy_dir(model_path, os.path.join(model_push_uri, model_version))
-    tf.logging.info('Model written to %s.', model_push_uri)
+    absl.logging.info('Model written to %s.', model_push_uri)
 
     # Copied to a fixed outside path, which can be listened by model server.
     #
@@ -125,26 +126,25 @@ class Executor(base_executor.BaseExecutor):
     serving_path = os.path.join(push_destination.filesystem.base_directory,
                                 model_version)
     if tf.io.gfile.exists(serving_path):
-      tf.logging.info(
+      absl.logging.info(
           'Destination directory %s already exists, skipping current push.',
           serving_path)
     else:
       # tf.serving won't load partial model, it will retry until fully copied.
       io_utils.copy_dir(model_path, serving_path)
-      tf.logging.info('Model written to serving path %s.', serving_path)
+      absl.logging.info('Model written to serving path %s.', serving_path)
 
     model_push.set_int_custom_property('pushed', 1)
     model_push.set_string_custom_property('pushed_model', model_export_uri)
     model_push.set_int_custom_property('pushed_model_id', model_export.id)
-    tf.logging.info('Model pushed to %s.', serving_path)
+    absl.logging.info('Model pushed to %s.', serving_path)
 
     if exec_properties.get('custom_config'):
       cmle_serving_args = exec_properties.get('custom_config',
                                               {}).get('cmle_serving_args')
       if cmle_serving_args is not None:
-        tf.logging.warn(
+        absl.logging.warn(
             '\'cmle_serving_args\' is deprecated, please use custom executor '
-            'in tfx.extensions.google_cloud_ai_platform.pusher instead'
-        )
+            'in tfx.extensions.google_cloud_ai_platform.pusher instead')
         return runner.deploy_model_for_cmle_serving(
             serving_path, model_version, cmle_serving_args)

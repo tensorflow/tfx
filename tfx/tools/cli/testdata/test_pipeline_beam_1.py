@@ -18,7 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+
+import absl
 from typing import Text
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.schema_gen.component import SchemaGen
@@ -64,7 +65,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 if __name__ == '__main__':
-  tf.logging.set_verbosity(tf.logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,

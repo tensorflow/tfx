@@ -20,8 +20,8 @@ from __future__ import print_function
 import datetime
 import os
 
+import absl
 import apache_beam as beam
-import tensorflow as tf
 from typing import Any, Iterable, List, Optional, Text, Type
 
 from tfx.components.base import base_component
@@ -72,9 +72,9 @@ class _ComponentAsDoFn(beam.DoFn):
     self._run_component()
 
   def _run_component(self) -> None:
-    tf.logging.info('Component %s is running.', self._component_id)
+    absl.logging.info('Component %s is running.', self._component_id)
     self._component_launcher.launch()
-    tf.logging.info('Component %s is finished.', self._component_id)
+    absl.logging.info('Component %s is finished.', self._component_id)
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
@@ -129,8 +129,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
             assert upstream_node in signal_map, ('Components is not in '
                                                  'topological order')
             signals_to_wait.append(signal_map[upstream_node])
-        tf.logging.info('Component %s depends on %s.', component_id,
-                        [s.producer.full_label for s in signals_to_wait])
+        absl.logging.info('Component %s depends on %s.', component_id,
+                          [s.producer.full_label for s in signals_to_wait])
 
         component_launcher_class = self.find_component_launcher_class(component)
 
@@ -142,4 +142,4 @@ class BeamDagRunner(tfx_runner.TfxRunner):
                 _ComponentAsDoFn(component, component_launcher_class,
                                  tfx_pipeline),
                 *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
-        tf.logging.info('Component %s is scheduled.', component_id)
+        absl.logging.info('Component %s is scheduled.', component_id)

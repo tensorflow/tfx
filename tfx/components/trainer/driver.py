@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import absl
 from typing import Any, Dict, Text
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
@@ -44,6 +44,6 @@ class Driver(base_driver.BaseDriver):
     """Overrides BaseDriver.resolve_exec_properties()."""
     if exec_properties.get('warm_starting', None):
       exec_properties['warm_start_from'] = self._fetch_latest_model()
-      tf.logging.debug('Model directory to warm start from: {}'.format(
+      absl.logging.debug('Model directory to warm start from: {}'.format(
           exec_properties['warm_start_from']))
     return exec_properties

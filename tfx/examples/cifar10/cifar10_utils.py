@@ -16,9 +16,11 @@
 For a TFX pipeline to successfully run, a preprocessing_fn and a train_fn
 function needs to be provided. This file contains both.
 """
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
@@ -97,7 +99,7 @@ def _keras_model_builder():
       loss='categorical_crossentropy',
       metric='accuracy')
 
-  tf.logging.info(model.summary())
+  absl.logging.info(model.summary())
   return model
 
 

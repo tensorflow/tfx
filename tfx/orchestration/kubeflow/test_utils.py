@@ -27,6 +27,7 @@ import subprocess
 import tarfile
 import tempfile
 
+import absl
 import docker
 import tensorflow as tf
 from typing import List, Text
@@ -154,7 +155,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     super(BaseKubeflowTest, cls).tearDownClass()
 
     # Delete container image used in tests.
-    tf.logging.info('Deleting image {}'.format(cls._container_image))
+    absl.logging.info('Deleting image {}'.format(cls._container_image))
     subprocess.run(
         ['gcloud', 'container', 'images', 'delete', cls._container_image],
         check=True)
@@ -164,7 +165,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     client = docker.from_env()
     repo_base = os.environ['KFP_E2E_SRC']
 
-    tf.logging.info('Building image {}'.format(container_image))
+    absl.logging.info('Building image {}'.format(container_image))
     _ = client.images.build(
         path=repo_base,
         dockerfile='tfx/tools/docker/Dockerfile',
@@ -174,7 +175,7 @@ class BaseKubeflowTest(tf.test.TestCase):
             'gather_third_party_licenses': 'false',
         },
     )
-    tf.logging.info('Pushing image {}'.format(container_image))
+    absl.logging.info('Pushing image {}'.format(container_image))
     client.images.push(repository=container_image)
 
   @classmethod
@@ -192,7 +193,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '-o',
         'custom-columns=:metadata.name',
     ]).decode('utf-8').strip('\n')
-    tf.logging.info('MySQL pod name is: {}'.format(pod_name))
+    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
 
   @classmethod
@@ -231,7 +232,7 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def _delete_workflow(self, workflow_name: Text):
     """Deletes the specified Argo workflow."""
-    tf.logging.info('Deleting workflow {}'.format(workflow_name))
+    absl.logging.info('Deleting workflow {}'.format(workflow_name))
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
@@ -257,7 +258,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         'pipeline-runner',
         workflow_file,
     ]
-    tf.logging.info('Launching workflow {}'.format(workflow_name))
+    absl.logging.info('Launching workflow {}'.format(workflow_name))
     subprocess.run(run_command, check=True)
 
   def _delete_pipeline_output(self, pipeline_name: Text):
@@ -269,7 +270,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     client = storage.Client(project=self._gcp_project_id)
     bucket = client.get_bucket(self._bucket_name)
     prefix = 'test_output/{}'.format(pipeline_name)
-    tf.logging.info(
+    absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
     blobs = bucket.list_blobs(prefix=prefix)
     bucket.delete_blobs(blobs)
@@ -297,7 +298,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '--execute',
         'drop database {};'.format(db_name),
     ]
-    tf.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
+    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
     subprocess.run(command, check=True)
 
   def _pipeline_root(self, pipeline_name: Text):

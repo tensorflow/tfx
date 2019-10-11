@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from typing import Any, Dict, List, Text
@@ -127,7 +128,7 @@ class Executor(base_executor.BaseExecutor):
                                       {}).get('cmle_training_args')
       if cmle_args:
         executor_class_path = '.'.join([Executor.__module__, Executor.__name__])
-        tf.logging.warn(
+        absl.logging.warn(
             'Passing \'cmle_training_args\' to trainer directly is deprecated, '
             'please use extension executor at '
             'tfx.extensions.google_cloud_ai_platform.trainer.executor instead')
@@ -204,18 +205,18 @@ class Executor(base_executor.BaseExecutor):
     training_spec = trainer_fn(hparams, schema)
 
     # Train the model
-    tf.logging.info('Training model.')
+    absl.logging.info('Training model.')
     tf.estimator.train_and_evaluate(training_spec['estimator'],
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
-    tf.logging.info('Training complete.  Model written to %s',
-                    serving_model_dir)
+    absl.logging.info('Training complete.  Model written to %s',
+                      serving_model_dir)
 
     # Export an eval savedmodel for TFMA
-    tf.logging.info('Exporting eval_savedmodel for TFMA.')
+    absl.logging.info('Exporting eval_savedmodel for TFMA.')
     tfma.export.export_eval_savedmodel(
         estimator=training_spec['estimator'],
         export_dir_base=eval_model_dir,
         eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-    tf.logging.info('Exported eval_savedmodel to %s.', eval_model_dir)
+    absl.logging.info('Exported eval_savedmodel to %s.', eval_model_dir)
