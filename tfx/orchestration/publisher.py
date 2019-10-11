@@ -56,10 +56,10 @@ class Publisher(object):
     Returns:
       A dict containing output artifacts.
     """
-    tf.logging.info('Whether cached results are used: %s', use_cached_results)
-    tf.logging.info('Execution id: %s', execution_id)
-    tf.logging.info('Inputs: %s', input_dict)
-    tf.logging.info('Outputs: %s', output_dict)
+    tf.logging.debug('Whether cached results are used: %s', use_cached_results)
+    tf.logging.debug('Execution id: %s', execution_id)
+    tf.logging.debug('Inputs: %s', input_dict)
+    tf.logging.debug('Outputs: %s', output_dict)
 
     final_execution_state = metadata.EXECUTION_STATE_CACHED if use_cached_results else metadata.EXECUTION_STATE_COMPLETE
     return self._metadata_handler.publish_execution(
