@@ -20,9 +20,6 @@ toc:
 - heading: "Model Analysis"
 - title: "Get started with TFMA"
   path: /tfx/tutorials/model_analysis/tfma_basic
-- title: "TFMA local playground"
-  path: https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi/chicago_taxi_tfma_local_playground.ipynb
-  status: external
 
 - heading: "Serving"
 - title: "Train and serve a model with REST"
