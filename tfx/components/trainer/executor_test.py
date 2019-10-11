@@ -82,10 +82,10 @@ class ExecutorTest(tf.test.TestCase):
 
   def _verify_model_exports(self):
     self.assertTrue(
-        tf.gfile.Exists(
+        tf.io.gfile.exists(
             os.path.join(self._model_exports.uri, 'eval_model_dir')))
     self.assertTrue(
-        tf.gfile.Exists(
+        tf.io.gfile.exists(
             os.path.join(self._model_exports.uri, 'serving_model_dir')))
 
   def testDoWithModuleFile(self):

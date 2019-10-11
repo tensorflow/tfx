@@ -75,10 +75,9 @@ class ExecutorTest(tf.test.TestCase):
     model_validator.Do(self._input_dict, self._output_dict, exec_properties)
 
     # Check model validator outputs.
+    self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.gfile.Exists(os.path.join(self._tmp_dir)))
-    self.assertTrue(
-        tf.gfile.Exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
 
   def testDoWithoutBlessedModel(self):
     # Create exe properties.
@@ -93,10 +92,9 @@ class ExecutorTest(tf.test.TestCase):
     model_validator.Do(self._input_dict, self._output_dict, exec_properties)
 
     # Check model validator outputs.
+    self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.gfile.Exists(os.path.join(self._tmp_dir)))
-    self.assertTrue(
-        tf.gfile.Exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
 
 
 if __name__ == '__main__':

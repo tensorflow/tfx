@@ -103,7 +103,7 @@ class ExecutorTest(tf.test.TestCase):
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.constants.SAVED_MODEL_FILENAME_PB)
-    self.assertTrue(tf.gfile.Exists(path_to_saved_model))
+    self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
   def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file

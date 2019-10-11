@@ -243,7 +243,7 @@ class Metadata(object):
     # TODO(ruoyu): Find a better place / solution to the checksum logic.
     # TODO(ruoyu): SHA instead of MD5.
     if 'module_file' in exec_properties and exec_properties[
-        'module_file'] and tf.gfile.Exists(exec_properties['module_file']):
+        'module_file'] and tf.io.gfile.exists(exec_properties['module_file']):
       contents = file_io.read_file_to_string(exec_properties['module_file'])
       execution.properties['checksum_md5'].string_value = tf.compat.as_text(
           tf.compat.as_str_any(

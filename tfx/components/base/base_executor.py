@@ -117,7 +117,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     if not self._context:
       raise RuntimeError('No context for the executor')
     tmp_path = self._context.get_tmp_path()
-    if not tf.gfile.Exists(tmp_path):
+    if not tf.io.gfile.exists(tmp_path):
       tf.logging.info('Creating temp directory at %s', tmp_path)
       tf.io.gfile.makedirs(tmp_path)
     return tmp_path

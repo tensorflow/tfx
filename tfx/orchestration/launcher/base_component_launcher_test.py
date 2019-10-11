@@ -76,7 +76,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     launcher.launch()
 
     output_path = os.path.join(pipeline_root, 'output')
-    self.assertTrue(tf.gfile.Exists(output_path))
+    self.assertTrue(tf.io.gfile.exists(output_path))
     contents = file_io.read_file_to_string(output_path)
     self.assertEqual('test', contents)
 

@@ -53,7 +53,7 @@ from tfx.utils import io_utils
 RAW_EXAMPLE_KEY = 'raw_example'
 
 # Schema to use if the input data should be decoded as raw example.
-_RAW_EXAMPLE_SCHEMA = dataset_schema.from_feature_spec(
+_RAW_EXAMPLE_SCHEMA = schema_utils.schema_from_feature_spec(
     {RAW_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string)})
 
 # TODO(b/123519698): Simplify the code by removing the key structure.
@@ -883,13 +883,15 @@ class Executor(base_executor.BaseExecutor):
       transform_input_dataset_metadata = input_dataset_metadata
     else:
       analyze_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-          dataset_schema.from_feature_spec(
-              {feature: feature_spec[feature]
-               for feature in analyze_input_columns}))
+          schema_utils.schema_from_feature_spec({
+              feature: feature_spec[feature]
+              for feature in analyze_input_columns
+          }))
       transform_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-          dataset_schema.from_feature_spec(
-              {feature: feature_spec[feature]
-               for feature in transform_input_columns}))
+          schema_utils.schema_from_feature_spec({
+              feature: feature_spec[feature]
+              for feature in transform_input_columns
+          }))
 
     can_process_analysis_jointly = not bool(output_cache_dir)
     analyze_data_list = self._MakeDatasetList(analyze_data_paths,

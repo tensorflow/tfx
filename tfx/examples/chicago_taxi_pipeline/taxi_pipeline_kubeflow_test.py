@@ -53,7 +53,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
                              'chicago_taxi_pipeline_kubeflow.tar.gz')
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
 
 
 if __name__ == '__main__':

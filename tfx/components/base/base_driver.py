@@ -41,7 +41,7 @@ def _verify_input_artifacts(
     for artifact in single_artifacts_list:
       if not artifact.uri:
         raise RuntimeError('Artifact %s does not have uri' % artifact)
-      if not tf.gfile.Exists(os.path.dirname(artifact.uri)):
+      if not tf.io.gfile.exists(os.path.dirname(artifact.uri)):
         raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
 
@@ -53,7 +53,7 @@ def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
   # Last empty string forces this be to a directory.
   uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
                      '')
-  if tf.gfile.Exists(uri):
+  if tf.io.gfile.exists(uri):
     msg = 'Output artifact uri %s already exists' % uri
     tf.logging.error(msg)
     raise RuntimeError(msg)

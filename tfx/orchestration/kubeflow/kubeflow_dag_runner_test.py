@@ -61,7 +61,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     """Sanity-checks the construction and dependencies for a 2-step pipeline."""
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
@@ -118,7 +118,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
   def testDefaultPipelineOperatorFuncs(self):
     kubeflow_dag_runner.KubeflowDagRunner().run(_two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
@@ -160,7 +160,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(
         _two_step_pipeline())
     file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
 
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:

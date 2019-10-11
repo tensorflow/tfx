@@ -220,7 +220,7 @@ class Executor(base_executor.BaseExecutor):
     #   _fetch_slack_blessing().
     slack_response = None
     with Timeout(timeout_sec):
-      if tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
+      if tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
         slack_response = self._fetch_slack_blessing(slack_token,
                                                     slack_channel_id,
                                                     model_export_uri)

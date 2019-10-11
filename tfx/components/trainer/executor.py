@@ -175,7 +175,7 @@ class Executor(base_executor.BaseExecutor):
         'warm_start_from'):
       previous_model_dir = os.path.join(exec_properties['warm_start_from'],
                                         path_utils.SERVING_MODEL_DIR)
-      if previous_model_dir and tf.gfile.Exists(
+      if previous_model_dir and tf.io.gfile.exists(
           os.path.join(previous_model_dir, self._CHECKPOINT_FILE_NAME)):
         warm_start_from = previous_model_dir
 

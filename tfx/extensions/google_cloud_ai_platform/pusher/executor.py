@@ -80,7 +80,7 @@ class Executor(tfx_pusher_executor.Executor):
         input_dict['model_blessing'])
     model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
-    if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
+    if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
       tf.logging.info('Model on %s was not blessed', model_blessing_uri)
       return
