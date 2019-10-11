@@ -47,6 +47,7 @@
     `component.outputs['output_name']` (previously, the syntax was
     `component.outputs.output_name`).
 *   Updated Iris example to skip transform and use Keras model.
+*   Fixes the check for input artifact existence in base driver.
 
 ### Deprecations
 
