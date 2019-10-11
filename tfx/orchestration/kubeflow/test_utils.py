@@ -357,7 +357,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
 
     file_path = os.path.join(self._test_dir, '{}.tar.gz'.format(pipeline_name))
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
     tarfile.TarFile.open(file_path).extract('pipeline.yaml')
     pipeline_file = os.path.join(self._test_dir, 'pipeline.yaml')
     self.assertIsNotNone(pipeline_file)

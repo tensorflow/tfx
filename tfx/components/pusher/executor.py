@@ -67,7 +67,7 @@ class Executor(base_executor.BaseExecutor):
         input_dict['model_blessing'])
     model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
-    if not tf.gfile.Exists(os.path.join(model_blessing_uri, 'BLESSED')):
+    if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
       model_push.set_int_custom_property('pushed', 0)
       tf.logging.info('Model on %s was not blessed', model_blessing_uri)
       return False
@@ -124,7 +124,7 @@ class Executor(base_executor.BaseExecutor):
     json_format.Parse(exec_properties['push_destination'], push_destination)
     serving_path = os.path.join(push_destination.filesystem.base_directory,
                                 model_version)
-    if tf.gfile.Exists(serving_path):
+    if tf.io.gfile.exists(serving_path):
       tf.logging.info(
           'Destination directory %s already exists, skipping current push.',
           serving_path)

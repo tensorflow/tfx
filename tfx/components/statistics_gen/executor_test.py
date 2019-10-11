@@ -35,7 +35,7 @@ class ExecutorTest(absltest.TestCase):
     return tempfile.mkdtemp()
 
   def _validate_stats_output(self, stats_path):
-    self.assertTrue(tf.gfile.Exists(stats_path))
+    self.assertTrue(tf.io.gfile.exists(stats_path))
     stats = tfdv.load_statistics(stats_path)
     self.assertLen(stats.datasets, 1)
     data_set = stats.datasets[0]

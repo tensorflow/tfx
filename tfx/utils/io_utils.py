@@ -46,7 +46,7 @@ def ensure_local(file_path: Text) -> Text:
 def copy_file(src: Text, dst: Text, overwrite: bool = False):
   """Copies a single file from source to destination."""
 
-  if overwrite and tf.gfile.Exists(dst):
+  if overwrite and tf.io.gfile.exists(dst):
     tf.gfile.Remove(dst)
   dst_dir = os.path.dirname(dst)
   tf.io.gfile.makedirs(dst_dir)
@@ -56,7 +56,7 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
 def copy_dir(src: Text, dst: Text) -> None:
   """Copies the whole directory recursively from source to destination."""
 
-  if tf.gfile.Exists(dst):
+  if tf.io.gfile.exists(dst):
     tf.gfile.DeleteRecursively(dst)
   tf.io.gfile.makedirs(dst)
 

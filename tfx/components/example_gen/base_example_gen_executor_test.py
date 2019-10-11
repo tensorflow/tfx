@@ -104,8 +104,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     example_gen.Do({}, self._output_dict, exec_properties)
 
     # Check example gen outputs.
-    self.assertTrue(tf.gfile.Exists(self._train_output_file))
-    self.assertTrue(tf.gfile.Exists(self._eval_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
     # Input train split is bigger than eval split.
     self.assertGreater(
         tf.gfile.GFile(self._train_output_file).size(),
@@ -136,8 +136,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     example_gen.Do({}, self._output_dict, exec_properties)
 
     # Check example gen outputs.
-    self.assertTrue(tf.gfile.Exists(self._train_output_file))
-    self.assertTrue(tf.gfile.Exists(self._eval_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
     # Output split ratio: train:eval=2:1.
     self.assertGreater(
         tf.gfile.GFile(self._train_output_file).size(),

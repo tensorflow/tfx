@@ -105,8 +105,8 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
                                      'data_tfrecord-00000-of-00001.gz')
     eval_output_file = os.path.join(eval_examples.uri,
                                     'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.gfile.Exists(train_output_file))
-    self.assertTrue(tf.gfile.Exists(eval_output_file))
+    self.assertTrue(tf.io.gfile.exists(train_output_file))
+    self.assertTrue(tf.io.gfile.exists(eval_output_file))
     self.assertGreater(
         tf.gfile.GFile(train_output_file).size(),
         tf.gfile.GFile(eval_output_file).size())

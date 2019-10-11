@@ -72,10 +72,11 @@ class ExecutorTest(tf.test.TestCase):
     self.assertTrue(
         # TODO(b/141490237): Update to only check eval_config.json after TFMA
         # released with corresponding change.
-        tf.gfile.Exists(os.path.join(eval_output.uri, 'eval_config')) or
-        tf.gfile.Exists(os.path.join(eval_output.uri, 'eval_config.json')))
-    self.assertTrue(tf.gfile.Exists(os.path.join(eval_output.uri, 'metrics')))
-    self.assertTrue(tf.gfile.Exists(os.path.join(eval_output.uri, 'plots')))
+        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config')) or
+        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config.json')))
+    self.assertTrue(
+        tf.io.gfile.exists(os.path.join(eval_output.uri, 'metrics')))
+    self.assertTrue(tf.io.gfile.exists(os.path.join(eval_output.uri, 'plots')))
 
 
 if __name__ == '__main__':

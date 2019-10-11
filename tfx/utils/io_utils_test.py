@@ -85,9 +85,9 @@ class IoUtilsTest(tf.test.TestCase):
   def testDeleteDir(self):
     file_path = os.path.join(self._base_dir, 'file', 'path')
     io_utils.write_string_file(file_path, 'testing')
-    self.assertTrue(tf.gfile.Exists(file_path))
+    self.assertTrue(tf.io.gfile.exists(file_path))
     io_utils.delete_dir(os.path.dirname(file_path))
-    self.assertFalse(tf.gfile.Exists(file_path))
+    self.assertFalse(tf.io.gfile.exists(file_path))
 
   def testAllFilesPattern(self):
     self.assertEqual('model*', io_utils.all_files_pattern('model'))

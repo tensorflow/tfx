@@ -80,7 +80,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   tf.logging.info(
       'Processing input csv data {} to TFExample.'.format(csv_pattern))
 
-  csv_files = tf.gfile.Glob(csv_pattern)
+  csv_files = tf.io.gfile.glob(csv_pattern)
   if not csv_files:
     raise RuntimeError(
         'Split pattern {} does not match any files.'.format(csv_pattern))
