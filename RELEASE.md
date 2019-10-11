@@ -29,6 +29,7 @@
 *   Introduced ResolverNode as a special TFX node to resolve input artifacts for
     downstream nodes. ResolverNode is a convenient way to wrap TFX Resolver, a
     logical unit for resolving input artifacts.
+*   Added cifar-10 example to demonstrate image classification.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
