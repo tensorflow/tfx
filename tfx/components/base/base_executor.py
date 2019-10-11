@@ -126,13 +126,13 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                    outputs: Dict[Text, List[types.Artifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
-    tf.logging.info('Starting {} execution.'.format(self.__class__.__name__))
-    tf.logging.info('Inputs for {} is: {}'.format(
-        self.__class__.__name__, artifact_utils.jsonify_artifact_dict(inputs)))
-    tf.logging.info('Outputs for {} is: {}'.format(
-        self.__class__.__name__, artifact_utils.jsonify_artifact_dict(outputs)))
-    tf.logging.info('Execution properties for {} is: {}'.format(
-        self.__class__.__name__, json.dumps(exec_properties)))
+    tf.logging.debug('Starting %s execution.', self.__class__.__name__)
+    tf.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                     artifact_utils.jsonify_artifact_dict(inputs))
+    tf.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                     artifact_utils.jsonify_artifact_dict(outputs))
+    tf.logging.debug('Execution properties for %s are: %s',
+                     self.__class__.__name__, json.dumps(exec_properties))
 
 
 class EmptyExecutor(BaseExecutor):

@@ -258,7 +258,7 @@ class Metadata(object):
     if component_info:
       execution.properties[
           'component_id'].string_value = component_info.component_id
-    tf.logging.info('Prepared EXECUTION:\n {}'.format(execution))
+    tf.logging.debug('Prepared EXECUTION:\n {}'.format(execution))
     return execution
 
   def _update_execution_state(self, execution: metadata_store_pb2.Execution,
@@ -361,8 +361,8 @@ class Metadata(object):
     self._update_execution_state(execution, state)
     if events:
       self._store.put_events(events)
-    tf.logging.info('Publishing execution %s, with inputs %s and outputs %s' %
-                    (execution, input_dict, output_dict))
+    tf.logging.debug('Publishing execution %s, with inputs %s and outputs %s' %
+                     (execution, input_dict, output_dict))
     return output_dict
 
   def _get_cached_execution_id(self, input_dict: Dict[Text, List[Artifact]],
@@ -392,14 +392,14 @@ class Metadata(object):
           ]
       ])
       if input_ids == execution_input_ids:
-        tf.logging.info(
+        tf.logging.debug(
             'Found matching execution with all input artifacts: %s' %
             execution_id)
         return execution_id
       else:
         tf.logging.debug('Execution %d does not match desired input artifacts',
                          execution_id)
-    tf.logging.info('No execution matching type id and input artifacts found')
+    tf.logging.debug('No execution matching type id and input artifacts found')
     return None
 
   def _is_eligible_previous_execution(
@@ -429,7 +429,7 @@ class Metadata(object):
     Returns:
       Execution id of previous run that takes the input dict. None if not found.
     """
-    tf.logging.info(
+    tf.logging.debug(
         'Checking previous run for execution_type_name %s and input_artifacts %s',
         component_info.component_type, input_artifacts)
 
@@ -624,15 +624,15 @@ class Metadata(object):
     """
     try:
       run_context_id = self._register_run_context(pipeline_info)
-      tf.logging.info('Created run context %s.' %
-                      (pipeline_info.run_context_name))
+      tf.logging.debug('Created run context %s.',
+                       pipeline_info.run_context_name)
     except tf.errors.AlreadyExistsError:
-      tf.logging.info('Run context %s already exists.' %
-                      (pipeline_info.run_context_name))
+      tf.logging.debug('Run context %s already exists.',
+                       pipeline_info.run_context_name)
       run_context_id = self._get_run_context_id(pipeline_info)
       assert run_context_id is not None, 'Run context is missing for %s.' % (
           pipeline_info.run_context_name)
 
-    tf.logging.info('ID of run context %s is %s.' %
-                    (pipeline_info.run_context_name, run_context_id))
+    tf.logging.debug('ID of run context %s is %s.',
+                     pipeline_info.run_context_name, run_context_id)
     return run_context_id

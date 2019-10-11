@@ -170,18 +170,20 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     Returns:
       The execution id of the launch.
     """
-    tf.logging.info('Run driver for %s', self._component_info.component_id)
+    tf.logging.info('Running driver for %s', self._component_info.component_id)
     execution_decision = self._run_driver(self._input_dict, self._output_dict,
                                           self._exec_properties)
 
     if not execution_decision.use_cached_results:
-      tf.logging.info('Run executor for %s', self._component_info.component_id)
+      tf.logging.info('Running executor for %s',
+                      self._component_info.component_id)
       self._run_executor(execution_decision.execution_id,
                          execution_decision.input_dict,
                          execution_decision.output_dict,
                          execution_decision.exec_properties)
 
-    tf.logging.info('Run publisher for %s', self._component_info.component_id)
+    tf.logging.info('Running publisher for %s',
+                    self._component_info.component_id)
     self._run_publisher(execution_decision.use_cached_results,
                         execution_decision.execution_id,
                         execution_decision.input_dict,
