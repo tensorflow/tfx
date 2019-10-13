@@ -1,21 +1,23 @@
 # The StatisticsGen TFX Pipeline Component
 
-The StatisticsGen TFX pipeline component generates features statistics
-over both training and serving data, which can be used by other pipeline
-components.
-StatisticsGen uses Beam to scale to large datasets.
+The StatisticsGen component generates feature statistics
+over `tf.Record` datasets. This statistical data can be used by other pipeline
+components. While it is largely assumed that StatisticsGen will be
+used with ExampleGen, it is possible for StatisticsGen to be used with
+other components as well (As long as the data provided is a
+`tf.Record` dataset). For large datasets, StatisticsGen uses Beam.
 
-* Consumes: datasets created by an ExampleGen pipeline component.
-* Emits: Dataset statistics.
+* Consumes: `tf.Record` datasets
+* Emits: Dataset statistics
 
 ## StatisticsGen and TensorFlow Data Validation
 
-StatisticsGen makes extensive use of [TensorFlow Data Validation](tfdv.md) for
-generating statistics from your dataset.
+StatisticsGen makes extensive use of the [TensorFlow Data Validation](tfdv.md) library for
+generating statistics from a dataset
 
-## Using the StatsGen Component
+## Using the StatisticsGen Component
 
-A StatisticsGen pipeline component is typically very easy to deploy and
+A StatisticsGen component is typically very easy to deploy and
 requires little
 customization. Typical code looks like this:
 
@@ -24,8 +26,8 @@ from tfx import components
 
 ...
 
-compute_eval_stats = components.StatisticsGen(
+compute_example_statistics = components.StatisticsGen(
       examples=example_gen.outputs['examples'],
-      name='compute-eval-stats'
+      instance_name='compute_example_statistics'
       )
 ```
