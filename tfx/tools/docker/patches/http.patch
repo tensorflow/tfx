@@ -1,0 +1,8 @@
+--- http.py	2019-10-01 20:23:04.710005975 +0000
++++ http_new.py	2019-10-01 20:25:35.008717927 +0000
+@@ -1789,4 +1789,4 @@
+     http_timeout = socket.getdefaulttimeout()
+   else:
+     http_timeout = DEFAULT_HTTP_TIMEOUT_SEC
+-  return httplib2.Http(timeout=http_timeout)
++  return set_user_agent(httplib2.Http(timeout=http_timeout), '-tfxpipeline-')

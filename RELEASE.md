@@ -33,6 +33,7 @@
 *   Added container builder feature in the CLI tool for container-based custom
     python components. This is specifically for the Kubeflow orchestration
     engine, which requires containers built with the custom python codes.
+
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
     be at version 0.1.31.2.
@@ -50,6 +51,8 @@
 *   Fixed the check for input artifact existence in base driver.
 *   Fixed bug in AI Platform Pusher that prevents pushes after first push.
 *   Replaced all usage of deprecated `tensorflow.logging` with `absl.logging`.
+*   Used special user agent for all HTTP requests through
+    googleapiclient and apitools.
 
 ### Deprecations
 
