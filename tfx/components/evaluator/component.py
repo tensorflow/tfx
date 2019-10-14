@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
@@ -73,6 +73,7 @@ class Evaluator(base_component.BaseComponent):
       examples: types.Channel = None,
       model: types.Channel = None,
       feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
+      fairness_indicator_thresholds: Optional[List[float]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -87,6 +88,11 @@ class Evaluator(base_component.BaseComponent):
       feature_slicing_spec:
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
         instance that describes how Evaluator should slice the data.
+      fairness_indicator_thresholds: Optional list of float threshold values for
+        use with TFMA fairness indicators. Experimental functionality: this
+        interface and functionality may change at any time. TODO(b/142653905):
+        add a link to additional documentation for TFMA fairness indicators
+        here.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model`
         argument.
@@ -105,5 +111,6 @@ class Evaluator(base_component.BaseComponent):
         model_exports=model_exports,
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
+        fairness_indicator_thresholds=fairness_indicator_thresholds,
         output=output)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
