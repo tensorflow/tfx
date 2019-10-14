@@ -267,7 +267,9 @@ bash $TFX_EXAMPLES/setup/setup_beam_on_spark.sh
 </pre>
 
 This will start a local Beam Job Server.
-The Apache Spark UI can be viewed at http://localhost:8081.
+The Apache Spark UI can be viewed at http://localhost:8081. Check
+http://localhost:4040 for the Spark application UI (while a job is running).
+
 
 To run tfx e2e on Spark, open a new terminal and activate another instance of
 same `virtualenv`. Follow above instructions of Chicago Taxi Example with
