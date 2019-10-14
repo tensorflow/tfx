@@ -21,7 +21,7 @@ import datetime
 import logging
 import os
 
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+from tfx.components import CsvExampleGen
 
 # pylint: disable=line-too-long
 # from tfx.components import StatisticsGen # Step 3
