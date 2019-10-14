@@ -96,9 +96,23 @@ class Executor(base_executor.BaseExecutor):
 
     eval_model_path = path_utils.eval_model_path(model_exports_uri)
 
+    # Add fairness indicator metric callback if necessary.
+    fairness_indicator_thresholds = exec_properties.get(
+        'fairness_indicator_thresholds', None)
+    add_metrics_callbacks = None
+    if fairness_indicator_thresholds:
+      # Need to import the following module so that the fairness indicator
+      # post-export metric is registered.
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
+      add_metrics_callbacks = [
+          tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
+              thresholds=fairness_indicator_thresholds),
+      ]
+
     absl.logging.info('Using {} for model eval.'.format(eval_model_path))
     eval_shared_model = tfma.default_eval_shared_model(
-        eval_saved_model_path=eval_model_path)
+        eval_saved_model_path=eval_model_path,
+        add_metrics_callbacks=add_metrics_callbacks)
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:

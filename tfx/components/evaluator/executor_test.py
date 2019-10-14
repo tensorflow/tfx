@@ -64,6 +64,19 @@ class ExecutorTest(tf.test.TestCase):
                 ]))
     }
 
+    try:
+      # Need to import the following module so that the fairness indicator
+      # post-export metric is registered.  This may raise an ImportError if the
+      # currently-installed version of TFMA does not support fairness
+      # indicators.
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
+      exec_properties['fairness_indicator_thresholds'] = [
+          0.1, 0.3, 0.5, 0.7, 0.9]
+    except ImportError:
+      tf.logging.warning(
+          'Not testing fairness indicators because a compatible TFMA version '
+          'is not installed.')
+
     # Run executor.
     evaluator = executor.Executor()
     evaluator.Do(input_dict, output_dict, exec_properties)

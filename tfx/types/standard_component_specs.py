@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Text
+from typing import Any, Dict, List, Text
 
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
@@ -35,6 +35,10 @@ class EvaluatorSpec(ComponentSpec):
   PARAMETERS = {
       'feature_slicing_spec':
           ExecutionParameter(type=evaluator_pb2.FeatureSlicingSpec),
+      # This parameter is experimental: its interface and functionality may
+      # change at any time.
+      'fairness_indicator_thresholds':
+          ExecutionParameter(type=List[float], optional=True),
   }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),

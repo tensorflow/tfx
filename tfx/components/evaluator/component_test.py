@@ -46,6 +46,19 @@ class ComponentTest(tf.test.TestCase):
         ]))
     self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
+  def testConstructWithFairnessThresholds(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model_exports=channel_utils.as_channel([model_exports]),
+        feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
+            evaluator_pb2.SingleSlicingSpec(
+                column_for_slicing=['trip_start_hour'])
+        ]),
+        fairness_indicator_thresholds=[0.1, 0.3, 0.5, 0.9])
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
+
 
 if __name__ == '__main__':
   tf.test.main()
