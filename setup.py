@@ -80,6 +80,7 @@ _make_required_install_packages = globals_dict['make_required_install_packages']
 _make_required_test_packages = globals_dict['make_required_test_packages']
 _make_extra_packages_docker_image = globals_dict[
     'make_extra_packages_docker_image']
+_make_all_dependency_packages = globals_dict['make_all_dependency_packages']
 
 # Get version from version module.
 with open('tfx/version.py') as fp:
@@ -128,7 +129,10 @@ setup(
     namespace_packages=[],
     install_requires=_make_required_install_packages(),
     extras_require={
+        # In order to use 'docker-image' or 'all', system libraries specified
+        # under 'tfx/tools/docker/Dockerfile' are required
         'docker-image': _make_extra_packages_docker_image(),
+        'all': _make_all_dependency_packages(),
     },
     setup_requires=['pytest-runner'],
     tests_require=_make_required_test_packages(),

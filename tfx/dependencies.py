@@ -62,3 +62,8 @@ def make_extra_packages_docker_image():
       'numpy>=1.16,<1.17',
       'pyarrow>=0.14,<0.15',
   ]
+
+
+def make_all_dependency_packages():
+  # All extra dependencies.
+  return make_required_test_packages() + make_extra_packages_docker_image()
