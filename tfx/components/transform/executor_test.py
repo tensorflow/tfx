@@ -97,12 +97,12 @@ class ExecutorTest(tf.test.TestCase):
 
   def _verify_transform_outputs(self):
     self.assertNotEqual(
-        0, len(tf.gfile.ListDirectory(self._transformed_train_examples.uri)))
+        0, len(tf.io.gfile.listdir(self._transformed_train_examples.uri)))
     self.assertNotEqual(
-        0, len(tf.gfile.ListDirectory(self._transformed_eval_examples.uri)))
+        0, len(tf.io.gfile.listdir(self._transformed_eval_examples.uri)))
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
-        tf.saved_model.constants.SAVED_MODEL_FILENAME_PB)
+        tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
   def testDoWithModuleFile(self):
@@ -141,7 +141,7 @@ class ExecutorTest(tf.test.TestCase):
                                 self._exec_properties)
     self._verify_transform_outputs()
     self.assertNotEqual(0,
-                        len(tf.gfile.ListDirectory(output_cache_artifact.uri)))
+                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
 
     # Second run from cache.
     self._output_data_dir = self._get_output_data_dir('2nd_run')
@@ -162,7 +162,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self._verify_transform_outputs()
     self.assertNotEqual(0,
-                        len(tf.gfile.ListDirectory(output_cache_artifact.uri)))
+                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
 
 
 if __name__ == '__main__':

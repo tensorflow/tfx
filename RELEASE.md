@@ -54,6 +54,8 @@
 *   Replaced all usage of deprecated `tensorflow.logging` with `absl.logging`.
 *   Used special user agent for all HTTP requests through
     googleapiclient and apitools.
+*   Transform component updated to use `tf.compat.v1` according to the TF 2.0
+    upgrading procedure.
 
 ### Deprecations
 
