@@ -66,7 +66,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._execution_id = 100
 
   @mock.patch(
-      'tfx.components.base.base_driver._verify_input_artifacts'
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
   )
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     input_dict = {
@@ -116,7 +116,7 @@ class BaseDriverTest(tf.test.TestCase):
                      'output_a', str(execution_id), 'split', ''))
 
   @mock.patch(
-      'tfx.components.base.base_driver._verify_input_artifacts'
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
   )
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     input_dict = {
@@ -170,8 +170,9 @@ class BaseDriverTest(tf.test.TestCase):
     base_driver._verify_input_artifacts(self._input_artifacts)
 
   def testVerifyInputArtifactsNotExists(self):
+    driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     with self.assertRaises(RuntimeError):
-      base_driver._verify_input_artifacts(
+      driver.verify_input_artifacts(
           {'artifact': [types.Artifact(type_name='input_data')]})
 
 
