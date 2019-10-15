@@ -19,7 +19,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
-import functools
 import json
 import os
 
@@ -27,7 +26,6 @@ import absl
 
 from typing import List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -37,32 +35,6 @@ from tfx.orchestration import metadata
 # MySQL's database name cannot exceed 64 chars:
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
 MAX_PIPELINE_NAME_LENGTH = 63
-
-
-@deprecation.deprecated(
-    None,
-    'PipelineDecorator is no longer needed. Please construct a pipeline '
-    'directly from a list of components  using the constructor call to '
-    'pipeline.Pipeline.',
-)
-class PipelineDecorator(object):
-  """Pipeline decorator that has pipeline-level specification."""
-
-  def __init__(self, **kwargs):
-    self._pipeline = self._new_pipeline(**kwargs)
-
-  # TODO(b/126411144): Come up with a better style to construct TFX pipeline.
-  def __call__(self, func):
-
-    @functools.wraps(func)
-    def decorated():
-      self._pipeline.components = func()
-      return self._pipeline
-
-    return decorated
-
-  def _new_pipeline(self, **kwargs):
-    return Pipeline(**kwargs)
 
 
 class Pipeline(object):
