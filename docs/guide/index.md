@@ -562,7 +562,7 @@ on using TensorFlow JS.
 ## Creating a TFX Pipeline With Airflow
 
 Check
-[airflow workshop](https://github.com/tensorflow/tfx/tree/master/tfx/examples/airflow_workshop)
+[airflow workshop](https://www.tensorflow.org/tfx/tutorials/tfx/airflow_workshop/)
 for details
 
 ## Creating a TFX Pipeline With Kubeflow
