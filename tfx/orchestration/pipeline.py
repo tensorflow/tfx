@@ -28,7 +28,6 @@ from typing import List, Optional, Text
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
@@ -63,7 +62,6 @@ class Pipeline(object):
                    metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_component.BaseComponent]] = None,
                enable_cache: Optional[bool] = False,
-               metadata_db_root: Optional[Text] = None,
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
     """Initialize pipeline.
@@ -76,9 +74,6 @@ class Pipeline(object):
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
       enable_cache: whether or not cache is enabled for this run.
-      metadata_db_root: Deprecated. the uri to the metadata database root.
-        Deprecated and will be removed in future version. Please use
-        metadata_connection_config instead.
       beam_pipeline_args: Beam pipeline args for beam jobs within executor.
         Executor will use beam DirectRunner as Default.
       **kwargs: additional kwargs forwarded as pipeline args.
@@ -86,35 +81,16 @@ class Pipeline(object):
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
       raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
                        pipeline_name)
-    # TODO(b/138406006): Deprecate pipeline args after 0.14 release.
-    self.pipeline_args = dict(kwargs)
-    self.pipeline_args.update({
-        'pipeline_name': pipeline_name,
-        'pipeline_root': pipeline_root,
-    })
+    pipeline_args = dict(kwargs)
 
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
-    if metadata_connection_config:
-      self.metadata_connection_config = metadata_connection_config
-      assert not metadata_db_root, ('At most one of metadata_connection_config '
-                                    'and metadata_db_root should be set')
-    else:
-      # TODO(b/138406006): Drop metadata_db_root support after 0.14 release.
-      # We also need to make metadata_connection_config required.
-      absl.logging.info(
-          'metadata_db_root is deprecated, metadata_connection_config will be required in next release'
-      )
-      if metadata_db_root:
-        self.metadata_connection_config = metadata.sqlite_metadata_connection_config(
-            metadata_db_root)
-      else:
-        self.metadata_connection_config = None
+    self.metadata_connection_config = metadata_connection_config
 
     self.beam_pipeline_args = beam_pipeline_args or []
 
-    self.additional_pipeline_args = self.pipeline_args.get(
+    self.additional_pipeline_args = pipeline_args.get(
         'additional_pipeline_args', {})
 
     # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
@@ -126,10 +102,14 @@ class Pipeline(object):
           'beam_pipeline_args']
 
     # Store pipeline_args in a json file only when temp file exists.
+    pipeline_args.update({
+        'pipeline_name': pipeline_name,
+        'pipeline_root': pipeline_root,
+    })
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       pipeline_args_path = os.environ.get('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
       with open(pipeline_args_path, 'w') as f:
-        json.dump(self.pipeline_args, f)
+        json.dump(pipeline_args, f)
 
     # Calls property setter.
     self.components = components or []
