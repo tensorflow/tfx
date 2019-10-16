@@ -535,9 +535,12 @@ class Executor(base_executor.BaseExecutor):
               [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
       return result
 
+    # TODO(pachristopher): Remove encoding and batching steps once TFT
+    # supports Arrow tables.
+    # TODO(pachristopher): Explore if encoding TFT dict into serialized examples
+    # and then converting them to Arrow tables is cheaper than converting to
+    # TFDV dict and then to Arrow tables.
     result = (pcollection
-              # TODO(kestert): Remove encoding and batching steps once TFT
-              # supports Arrow tables.
               | 'EncodeTFDV' >> beam.Map(
                   EncodeTFDV, feature_specs=feature_specs_from_schema))
 
