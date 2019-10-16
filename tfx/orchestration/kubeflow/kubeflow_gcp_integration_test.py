@@ -150,9 +150,14 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
       # First line of the output is the header: [NAME] [DEPLOYMENT_URI] [STATE]
       # Second line is the 'default' version, which needs to be deleted last,
       # as such, need to flip the order of result lines.
-      for version in versions.stdout.decode('utf-8').strip('\n').split(
-          '\n')[1:][::-1]:
-        version = version.split()[0]
+			model_versions = []
+      for line in versions.stdout.decode('utf-8').strip('\n').split('\n')[1:]:
+				version = version.split()[0]
+        model_versions.append(version)
+
+      # Delete in chronological order, as the latest version will be the
+      # default version and must be deleted last.
+      for version in model_versions.sort():
         absl.logging.info('Deleting version %s of model %s' %
                           (version, model_name))
         version_delete_command = [
