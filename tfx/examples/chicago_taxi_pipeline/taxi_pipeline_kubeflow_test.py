@@ -42,7 +42,6 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
         pipeline_root=taxi_pipeline_kubeflow._pipeline_root,
         query=taxi_pipeline_kubeflow._query,
         module_file=taxi_pipeline_kubeflow._module_file,
-        serving_model_dir=taxi_pipeline_kubeflow._serving_model_dir,
         beam_pipeline_args=taxi_pipeline_kubeflow._beam_pipeline_args,
         ai_platform_training_args=taxi_pipeline_kubeflow
         ._ai_platform_training_args,
