@@ -29,24 +29,6 @@ from tfx.orchestration import metadata
 from tfx.types import channel_utils
 
 
-def _verify_input_artifacts(
-    artifacts_dict: Dict[Text, List[types.Artifact]]) -> None:
-  """Verify that all artifacts have existing uri.
-
-  Args:
-    artifacts_dict: key -> types.Artifact for inputs.
-
-  Raises:
-    RuntimeError: if any input as an empty or non-existing uri.
-  """
-  for single_artifacts_list in artifacts_dict.values():
-    for artifact in single_artifacts_list:
-      if not artifact.uri:
-        raise RuntimeError('Artifact %s does not have uri' % artifact)
-      if not tf.io.gfile.exists(artifact.uri):
-        raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
-
-
 def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
                          name: Text, execution_id: int) -> Text:
   """Generate uri for output artifact."""
@@ -80,6 +62,23 @@ class BaseDriver(object):
 
   def __init__(self, metadata_handler: metadata.Metadata):
     self._metadata_handler = metadata_handler
+
+  def verify_input_artifacts(
+      self, artifacts_dict: Dict[Text, List[types.Artifact]]) -> None:
+    """Verify that all artifacts have existing uri.
+
+    Args:
+      artifacts_dict: key -> types.Artifact for inputs.
+
+    Raises:
+      RuntimeError: if any input as an empty or non-existing uri.
+    """
+    for single_artifacts_list in artifacts_dict.values():
+      for artifact in single_artifacts_list:
+        if not artifact.uri:
+          raise RuntimeError('Artifact %s does not have uri' % artifact)
+        if not tf.io.gfile.exists(artifact.uri):
+          raise RuntimeError('Artifact uri %s is missing' % artifact.uri)
 
   def _log_properties(self, input_dict: Dict[Text, List[types.Artifact]],
                       output_dict: Dict[Text, List[types.Artifact]],
@@ -257,7 +256,7 @@ class BaseDriver(object):
     # Step 1. Fetch inputs from metadata.
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    driver_args, pipeline_info)
-    _verify_input_artifacts(artifacts_dict=input_artifacts)
+    self.verify_input_artifacts(artifacts_dict=input_artifacts)
     absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
     execution_id = self._register_execution(
