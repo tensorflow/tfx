@@ -27,7 +27,7 @@ from __future__ import print_function
 import cgi
 import datetime
 import functools
-import logging
+import multiprocessing
 import os
 import tempfile
 
@@ -65,8 +65,9 @@ def requires_ipython(fn):
       # https://ipython.org/ipython-doc/rel-0.10.2/html/interactive/reference.html#embedding-ipython.
       return fn(*args, **kwargs)
     else:
-      logging.warning('Method "%s" is a no-op when invoked outside of IPython.',
-                      fn.__name__)
+      absl.logging.warning(
+          'Method "%s" is a no-op when invoked outside of IPython.',
+          fn.__name__)
 
   return run_if_ipython
 
@@ -103,10 +104,9 @@ class InteractiveContext(object):
                        datetime.datetime.now().isoformat().replace(':', '_'))
     if not pipeline_root:
       pipeline_root = tempfile.mkdtemp(prefix='tfx-%s-' % pipeline_name)
-      logging.info(
+      absl.logging.warning(
           'InteractiveContext pipeline_root argument not provided: using '
-          'temporary directory %s as root for pipeline outputs.',
-          pipeline_root)
+          'temporary directory %s as root for pipeline outputs.', pipeline_root)
     if not metadata_connection_config:
       # TODO(ccy): consider reconciling similar logic here with other instances
       # in tfx/orchestration/...
@@ -114,10 +114,9 @@ class InteractiveContext(object):
           pipeline_root, self._DEFAULT_SQLITE_FILENAME)
       metadata_connection_config = metadata.sqlite_metadata_connection_config(
           metadata_sqlite_path)
-      logging.info(
+      absl.logging.warning(
           'InteractiveContext metadata_connection_config not provided: using '
-          'SQLite ML Metadata database at %s.',
-          metadata_sqlite_path)
+          'SQLite ML Metadata database at %s.', metadata_sqlite_path)
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
     self.metadata_connection_config = metadata_connection_config
@@ -149,7 +148,12 @@ class InteractiveContext(object):
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache,
         interactive_resolution=True)
-    beam_pipeline_args = []
+    try:
+      parallelism = multiprocessing.cpu_count()
+    except NotImplementedError:
+      absl.logging.info('Using a single process for Beam pipeline execution.')
+      parallelism = 1
+    beam_pipeline_args = ['--direct_num_workers=%d' % parallelism]
     additional_pipeline_args = {}
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():
