@@ -108,8 +108,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
     # Input train split is bigger than eval split.
     self.assertGreater(
-        tf.gfile.GFile(self._train_output_file).size(),
-        tf.gfile.GFile(self._eval_output_file).size())
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
 
   def testDoOutputSplit(self):
     # Create exec proterties.
@@ -140,8 +140,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
     # Output split ratio: train:eval=2:1.
     self.assertGreater(
-        tf.gfile.GFile(self._train_output_file).size(),
-        tf.gfile.GFile(self._eval_output_file).size())
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
 
 
 if __name__ == '__main__':

@@ -46,10 +46,10 @@ class Cifar10PipelineBeamEndToEndTest(tf.test.TestCase):
   def assertExecutedOnce(self, component: Text) -> None:
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.gfile.Exists(component_path))
-    outputs = tf.gfile.ListDirectory(component_path)
+    self.assertTrue(tf.io.gfile.exists(component_path))
+    outputs = tf.io.gfile.listdir(component_path)
     for output in outputs:
-      execution = tf.gfile.ListDirectory(os.path.join(component_path, output))
+      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
@@ -73,8 +73,8 @@ class Cifar10PipelineBeamEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path))
 
-    self.assertTrue(tf.gfile.Exists(self._serving_model_dir))
-    self.assertTrue(tf.gfile.Exists(self._metadata_path))
+    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
+    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:

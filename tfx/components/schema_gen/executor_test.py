@@ -71,7 +71,7 @@ class ExecutorTest(tf.test.TestCase):
     schema_gen_executor = executor.Executor()
     schema_gen_executor.Do(self.input_dict, self.output_dict,
                            self.exec_properties)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self.schema_output.uri)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self.schema_output.uri)))
     self._assertSchemaEqual(self.expected_schema, self.schema_output)
 
   def testDoWithSchema(self):
@@ -80,7 +80,7 @@ class ExecutorTest(tf.test.TestCase):
     schema_gen_executor = executor.Executor()
     schema_gen_executor.Do(self.input_dict, self.output_dict,
                            self.exec_properties)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self.schema_output.uri)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self.schema_output.uri)))
     self._assertSchemaEqual(self.schema, self.schema_output)
 
   def testDoWithNonExistentSchema(self):

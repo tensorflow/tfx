@@ -113,8 +113,8 @@ def preprocessing_fn(inputs):
   # Was this passenger a big tipper?
   taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
   tips = _fill_in_missing(inputs[_LABEL_KEY])
-  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
-      tf.is_nan(taxi_fare),
+  outputs[_transformed_name(_LABEL_KEY)] = tf.compat.v1.where(
+      tf.math.is_nan(taxi_fare),
       tf.cast(tf.zeros_like(taxi_fare), tf.int64),
       # Test if the tip was > 20% of the fare.
       tf.cast(

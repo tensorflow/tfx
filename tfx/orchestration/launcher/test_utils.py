@@ -45,7 +45,7 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.gfile.MakeDirs(pipeline_info.pipeline_root)
+    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
     artifact_utils.get_single_instance(
         output_artifacts['output']).uri = os.path.join(
             pipeline_info.pipeline_root, 'output')
@@ -61,7 +61,7 @@ class _FakeExecutor(base_executor.BaseExecutor):
          exec_properties: Dict[Text, Any]) -> None:
     input_path = artifact_utils.get_single_uri(input_dict['input'])
     output_path = artifact_utils.get_single_uri(output_dict['output'])
-    tf.gfile.Copy(input_path, output_path)
+    tf.io.gfile.copy(input_path, output_path)
 
 
 class _FakeComponentSpec(types.ComponentSpec):

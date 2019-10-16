@@ -75,9 +75,9 @@ def _get_raw_feature_spec(schema):
 
 def _gzip_reader_fn():
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.TFRecordReader(
-      options=tf.python_io.TFRecordOptions(
-          compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+  return tf.compat.v1.TFRecordReader(
+      options=tf.io.TFRecordOptions(
+          compression_type=tf.compat.v1.python_io.TFRecordCompressionType.GZIP))
 
 
 def _build_estimator(tf_transform_output,
@@ -170,12 +170,13 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   # Notice that the inputs are raw features, not transformed features here.
   raw_feature_spec = _get_raw_feature_spec(schema)
 
-  serialized_tf_example = tf.placeholder(
+  serialized_tf_example = tf.compat.v1.placeholder(
       dtype=tf.string, shape=[None], name='input_example_tensor')
 
   # Add a parse_example operator to the tensorflow graph, which will parse
   # raw, untransformed, tf examples.
-  features = tf.parse_example(serialized_tf_example, raw_feature_spec)
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
 
   # Now that we have our raw examples, process them through the tf-transform
   # function computed during the preprocessing step.

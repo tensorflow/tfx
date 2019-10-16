@@ -31,7 +31,7 @@ class BaseDriverTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseDriverTest, self).setUp()
-    self._mock_metadata = tf.test.mock.Mock()
+    self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._input_dict = {
         'input_data':
             types.Channel(

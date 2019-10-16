@@ -145,12 +145,13 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   # Notice that the inputs are raw features, not transformed features here.
   raw_feature_spec = _get_raw_feature_spec(schema)
 
-  serialized_tf_example = tf.placeholder(
+  serialized_tf_example = tf.compat.v1.placeholder(
       dtype=tf.string, shape=[None], name='input_example_tensor')
 
   # Add a parse_example operator to the tensorflow graph, which will parse
   # raw, untransformed, tf examples.
-  features = tf.parse_example(serialized_tf_example, raw_feature_spec)
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
 
   transformed_features = tf_transform_output.transform_raw_features(features)
   labels = transformed_features.pop(_transformed_name(_LABEL_KEY))
@@ -181,7 +182,8 @@ def _input_fn(filenames, tf_transform_output, batch_size):
   dataset = tf.data.experimental.make_batched_features_dataset(
       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
-  transformed_features = dataset.make_one_shot_iterator().get_next()
+  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
+      dataset).get_next()
   # We pop the label because we do not want to use it as a feature while we're
   # training.
   return transformed_features, transformed_features.pop(

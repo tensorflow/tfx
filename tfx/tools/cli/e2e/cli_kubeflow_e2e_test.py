@@ -77,7 +77,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
 
     self._pipeline_name = 'chicago_taxi_pipeline_kubeflow' + (
         '_%s' % datetime.datetime.now().strftime('%s'))
-    tf.logging.info('Pipeline name is %s' % self._pipeline_name)
+    absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 
     self._change_pipeline_name('test_pipeline_kubeflow_1.py',

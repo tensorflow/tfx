@@ -73,7 +73,7 @@ class ExecutorTest(tf.test.TestCase):
                       self._exec_properties)
     mock_runner.deploy_model_for_cmle_serving.assert_called_with(
         mock.ANY, mock.ANY, mock.ANY)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self._model_push.uri)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
         1, self._model_push.artifact.custom_properties['pushed'].int_value)
 
@@ -85,7 +85,7 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/not_blessed/')
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertEqual(0, len(tf.gfile.ListDirectory(self._model_push.uri)))
+    self.assertEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
         0, self._model_push.artifact.custom_properties['pushed'].int_value)
     mock_runner.deploy_model_for_cmle_serving.assert_not_called()

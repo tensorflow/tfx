@@ -46,9 +46,9 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     """Check the component is executed exactly once."""
     component_path = os.path.join(self._pipeline_root, component)
     self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.gfile.ListDirectory(component_path)
+    outputs = tf.io.gfile.listdir(component_path)
     for output in outputs:
-      execution = tf.gfile.ListDirectory(os.path.join(component_path, output))
+      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:

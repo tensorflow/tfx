@@ -109,8 +109,8 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(train_output_file))
     self.assertTrue(tf.io.gfile.exists(eval_output_file))
     self.assertGreater(
-        tf.gfile.GFile(train_output_file).size(),
-        tf.gfile.GFile(eval_output_file).size())
+        tf.io.gfile.GFile(train_output_file).size(),
+        tf.io.gfile.GFile(eval_output_file).size())
 
 
 if __name__ == '__main__':
