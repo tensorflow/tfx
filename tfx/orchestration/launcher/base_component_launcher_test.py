@@ -45,7 +45,7 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
-    tf.gfile.MakeDirs(os.path.dirname(input_path))
+    tf.io.gfile.makedirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
     input_artifact = types.Artifact(type_name='InputPath')

@@ -83,9 +83,9 @@ def _get_raw_feature_spec(schema):
 
 def _gzip_reader_fn():
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.TFRecordReader(
-      options=tf.python_io.TFRecordOptions(
-          compression_type=tf.python_io.TFRecordCompressionType.GZIP))
+  return tf.compat.v1.TFRecordReader(
+      options=tf.io.TFRecordOptions(
+          compression_type=tf.compat.v1.python_io.TFRecordCompressionType.GZIP))
 
 
 def _fill_in_missing(x):
@@ -102,8 +102,8 @@ def _fill_in_missing(x):
   """
   default_value = '' if x.dtype == tf.string else 0
   return tf.squeeze(
-      tf.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
-                         default_value),
+      tf.compat.v1.sparse_to_dense(x.indices, [x.dense_shape[0], 1], x.values,
+                                   default_value),
       axis=1)
 
 
@@ -139,8 +139,8 @@ def preprocessing_fn(inputs):
   # Was this passenger a big tipper?
   taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
   tips = _fill_in_missing(inputs[_LABEL_KEY])
-  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
-      tf.is_nan(taxi_fare),
+  outputs[_transformed_name(_LABEL_KEY)] = tf.compat.v1.where(
+      tf.math.is_nan(taxi_fare),
       tf.cast(tf.zeros_like(taxi_fare), tf.int64),
       # Test if the tip was > 20% of the fare.
       tf.cast(
@@ -240,12 +240,13 @@ def _eval_input_receiver_fn(transform_output, schema):
   # Notice that the inputs are raw features, not transformed features here.
   raw_feature_spec = _get_raw_feature_spec(schema)
 
-  serialized_tf_example = tf.placeholder(
+  serialized_tf_example = tf.compat.v1.placeholder(
       dtype=tf.string, shape=[None], name='input_example_tensor')
 
   # Add a parse_example operator to the tensorflow graph, which will parse
   # raw, untransformed, tf examples.
-  features = tf.parse_example(serialized_tf_example, raw_feature_spec)
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
 
   # Now that we have our raw examples, process them through the tf-transform
   # function computed during the preprocessing step.

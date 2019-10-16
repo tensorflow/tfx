@@ -47,24 +47,24 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
   """Copies a single file from source to destination."""
 
   if overwrite and tf.io.gfile.exists(dst):
-    tf.gfile.Remove(dst)
+    tf.io.gfile.remove(dst)
   dst_dir = os.path.dirname(dst)
   tf.io.gfile.makedirs(dst_dir)
-  tf.gfile.Copy(src, dst, overwrite=overwrite)
+  tf.io.gfile.copy(src, dst, overwrite=overwrite)
 
 
 def copy_dir(src: Text, dst: Text) -> None:
   """Copies the whole directory recursively from source to destination."""
 
   if tf.io.gfile.exists(dst):
-    tf.gfile.DeleteRecursively(dst)
+    tf.io.gfile.rmtree(dst)
   tf.io.gfile.makedirs(dst)
 
-  for dir_name, sub_dirs, leaf_files in tf.gfile.Walk(src):
+  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(src):
     for leaf_file in leaf_files:
       leaf_file_path = os.path.join(dir_name, leaf_file)
       new_file_path = os.path.join(dir_name.replace(src, dst, 1), leaf_file)
-      tf.gfile.Copy(leaf_file_path, new_file_path)
+      tf.io.gfile.copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
       tf.io.gfile.makedirs(os.path.join(dst, sub_dir))
@@ -73,7 +73,7 @@ def copy_dir(src: Text, dst: Text) -> None:
 def get_only_uri_in_dir(dir_path: Text) -> Text:
   """Gets the only uri from given directory."""
 
-  files = tf.gfile.ListDirectory(dir_path)
+  files = tf.io.gfile.listdir(dir_path)
   if len(files) != 1:
     raise RuntimeError(
         'Only one file per dir is supported: {}.'.format(dir_path))
@@ -84,8 +84,8 @@ def get_only_uri_in_dir(dir_path: Text) -> Text:
 def delete_dir(path: Text) -> None:
   """Deletes a directory if exists."""
 
-  if tf.gfile.IsDirectory(path):
-    tf.gfile.DeleteRecursively(path)
+  if tf.io.gfile.isdir(path):
+    tf.io.gfile.rmtree(path)
 
 
 def write_string_file(file_name: Text, string_value: Text) -> None:
@@ -105,7 +105,7 @@ def write_tfrecord_file(file_name: Text, proto: Message) -> None:
   """Writes a serialized tfrecord to file."""
 
   tf.io.gfile.makedirs(os.path.dirname(file_name))
-  with tf.python_io.TFRecordWriter(file_name) as writer:
+  with tf.io.TFRecordWriter(file_name) as writer:
     writer.write(proto.SerializeToString())
 
 

@@ -59,7 +59,7 @@ class ExecutorTest(tf.test.TestCase):
     example_validator_executor = executor.Executor()
     example_validator_executor.Do(input_dict, output_dict, exec_properties)
     self.assertEqual(['anomalies.pbtxt'],
-                     tf.gfile.ListDirectory(validation_output.uri))
+                     tf.io.gfile.listdir(validation_output.uri))
     anomalies = io_utils.parse_pbtxt_file(
         os.path.join(validation_output.uri, 'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())

@@ -56,6 +56,8 @@
     googleapiclient and apitools.
 *   Transform component updated to use `tf.compat.v1` according to the TF 2.0
     upgrading procedure.
+*   TFX updated to use `tf.compat.v1` according to the TF 2.0 upgrading
+    procedure.
 
 ### Deprecations
 

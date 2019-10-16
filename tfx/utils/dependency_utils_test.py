@@ -62,7 +62,7 @@ class DepsUtilsTest(tf.test.TestCase):
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
       tf.io.gfile.makedirs(dist_dir)
       dest_file = os.path.join(dist_dir, expected_package)
-      tf.gfile.Copy(test_file, dest_file)
+      tf.io.gfile.copy(test_file, dest_file)
 
     mock_subprocess_call.side_effect = side_effect
     mock_mkdtemp.return_value = self._tmp_dir

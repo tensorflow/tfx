@@ -37,7 +37,7 @@ class DriverTest(tf.test.TestCase):
 
   def testFetchLastBlessedModel(self):
     # Mock metadata.
-    mock_metadata = tf.test.mock.Mock()
+    mock_metadata = tf.compat.v1.test.mock.Mock()
     model_validator_driver = driver.Driver(mock_metadata)
     component_id = 'test_component'
 

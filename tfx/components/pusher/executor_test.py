@@ -67,8 +67,8 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/blessed/')
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self._serving_model_dir)))
-    self.assertNotEqual(0, len(tf.gfile.ListDirectory(self._model_push.uri)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
         1, self._model_push.artifact.custom_properties['pushed'].int_value)
 
@@ -77,8 +77,8 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/not_blessed/')
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertEqual(0, len(tf.gfile.ListDirectory(self._serving_model_dir)))
-    self.assertEqual(0, len(tf.gfile.ListDirectory(self._model_push.uri)))
+    self.assertEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
+    self.assertEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
         0, self._model_push.artifact.custom_properties['pushed'].int_value)
 

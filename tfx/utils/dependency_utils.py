@@ -132,7 +132,7 @@ def build_ephemeral_package() -> Text:
 
   # Return the package dir+filename
   dist_dir = os.path.join(tmp_dir, 'dist')
-  files = tf.gfile.ListDirectory(dist_dir)
+  files = tf.io.gfile.listdir(dist_dir)
   if not files:
     raise RuntimeError('Found no package files in %s' % dist_dir)
   elif len(files) > 1:

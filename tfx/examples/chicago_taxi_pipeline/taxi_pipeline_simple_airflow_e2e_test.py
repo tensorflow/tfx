@@ -76,11 +76,11 @@ class AirflowEndToEndTest(unittest.TestCase):
   def _PrintTaskLogsOnError(self, task):
     task_log_dir = os.path.join(self._airflow_home, 'logs',
                                 '%s.%s' % (self._dag_id, task))
-    for dir_name, _, leaf_files in tf.gfile.Walk(task_log_dir):
+    for dir_name, _, leaf_files in tf.io.gfile.walk(task_log_dir):
       for leaf_file in leaf_files:
         leaf_file_path = os.path.join(dir_name, leaf_file)
         absl.logging.error('Print task log %s:', leaf_file_path)
-        with tf.gfile.GFile(leaf_file_path, 'r') as f:
+        with tf.io.gfile.GFile(leaf_file_path, 'r') as f:
           lines = f.readlines()
           for line in lines:
             absl.logging.error(line)
@@ -165,12 +165,12 @@ class AirflowEndToEndTest(unittest.TestCase):
         os.path.join(self._airflow_home, 'dags', 'taxi_pipeline_simple.py'))
 
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
-    content = tf.gfile.ListDirectory(data_dir)
+    content = tf.io.gfile.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
     target_data_dir = os.path.join(self._airflow_home, 'taxi', 'data', 'simple')
     io_utils.copy_dir(data_dir, target_data_dir)
-    assert tf.gfile.IsDirectory(target_data_dir)
-    content = tf.gfile.ListDirectory(target_data_dir)
+    assert tf.io.gfile.isdir(target_data_dir)
+    content = tf.io.gfile.listdir(target_data_dir)
     assert content, 'content in {} is {}'.format(target_data_dir, content)
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),

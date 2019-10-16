@@ -25,7 +25,7 @@ from tfx.types import standard_artifacts
 class DriverTest(tf.test.TestCase):
 
   def testFetchWarmStartingModel(self):
-    mock_metadata = tf.test.mock.Mock()
+    mock_metadata = tf.compat.v1.test.mock.Mock()
     artifacts = []
     for aid in [3, 2, 1]:
       model = standard_artifacts.Model()

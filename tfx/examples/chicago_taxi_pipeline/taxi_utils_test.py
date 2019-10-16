@@ -151,21 +151,20 @@ class TaxiUtilsTest(tf.test.TestCase):
         estimator, train_spec, eval_spec)
     self.assertGreater(eval_result['loss'], 0.0)
     self.assertEqual(len(exports), 1)
-    self.assertGreaterEqual(len(tf.gfile.ListDirectory(exports[0])), 1)
+    self.assertGreaterEqual(len(tf.io.gfile.listdir(exports[0])), 1)
 
     # Export the eval saved model.
     eval_savedmodel_path = tfma.export.export_eval_savedmodel(
         estimator=estimator,
         export_dir_base=path_utils.eval_model_dir(output_dir),
         eval_input_receiver_fn=eval_input_receiver_fn)
-    self.assertGreaterEqual(
-        len(tf.gfile.ListDirectory(eval_savedmodel_path)), 1)
+    self.assertGreaterEqual(len(tf.io.gfile.listdir(eval_savedmodel_path)), 1)
 
     # Test exported serving graph.
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       metagraph_def = tf.compat.v1.saved_model.loader.load(
-          sess, [tf.saved_model.tag_constants.SERVING], exports[0])
-      self.assertIsInstance(metagraph_def, tf.MetaGraphDef)
+          sess, [tf.saved_model.SERVING], exports[0])
+      self.assertIsInstance(metagraph_def, tf.compat.v1.MetaGraphDef)
 
 
 if __name__ == '__main__':

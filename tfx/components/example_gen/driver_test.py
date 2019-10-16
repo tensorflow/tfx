@@ -41,7 +41,7 @@ class DriverTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._input_base_path)
 
     # Mock metadata.
-    self._mock_metadata = tf.test.mock.Mock()
+    self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._example_gen_driver = driver.Driver(self._mock_metadata)
 
     # Create input dict.

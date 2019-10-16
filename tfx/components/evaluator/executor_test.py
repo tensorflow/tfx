@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 import tensorflow as tf
 # TODO(jyzhao): BucketizeWithInputBoundaries error without this.
 from tensorflow.contrib.boosted_trees.python.ops import quantile_ops  # pylint: disable=unused-import
@@ -73,7 +74,7 @@ class ExecutorTest(tf.test.TestCase):
       exec_properties['fairness_indicator_thresholds'] = [
           0.1, 0.3, 0.5, 0.7, 0.9]
     except ImportError:
-      tf.logging.warning(
+      absl.logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
 
