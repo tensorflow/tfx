@@ -237,12 +237,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       """
       self._construct_pipeline_graph(pipeline, pipeline_root)
 
-    file_name = self._output_filename or pipeline.pipeline_args[
-        'pipeline_name'] + '.tar.gz'
+    file_name = self._output_filename or pipeline.pipeline_info.pipeline_name + '.tar.gz'
     # Create workflow spec and write out to package.
     self._compiler._create_and_write_workflow(  # pylint: disable=protected-access
         pipeline_func=_construct_pipeline,
-        pipeline_name=pipeline.pipeline_args['pipeline_name'],
-        pipeline_description=pipeline.pipeline_args.get('description', ''),
+        pipeline_name=pipeline.pipeline_info.pipeline_name,
         params_list=self._params,
         package_path=os.path.join(self._output_dir, file_name))

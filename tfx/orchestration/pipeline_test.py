@@ -110,11 +110,6 @@ class PipelineTest(tf.test.TestCase):
     self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
-    self.assertDictEqual(my_pipeline.pipeline_args, {
-        'pipeline_name': 'a',
-        'pipeline_root': 'b',
-        'additional_pipeline_args': {},
-    })
     self.assertEqual(my_pipeline.pipeline_info.pipeline_name, 'a')
     self.assertEqual(my_pipeline.pipeline_info.pipeline_root, 'b')
     self.assertEqual(my_pipeline.metadata_connection_config,
