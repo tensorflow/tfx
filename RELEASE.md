@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Offered unified CLI for tfx pipeline actions on various orchestrators
+    including Apache Airflow, Apache Beam and Kubeflow.
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
