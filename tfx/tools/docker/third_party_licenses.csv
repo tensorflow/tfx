@@ -128,6 +128,7 @@ numpy,https://raw.githubusercontent.com/numpy/numpy/master/LICENSE.txt,BSD-3-Cla
 oauth2client,https://raw.githubusercontent.com/google/oauth2client/master/LICENSE,Apache 2.0
 oauthlib,https://raw.githubusercontent.com/oauthlib/oauthlib/master/LICENSE,BSD
 opencv-python,https://raw.githubusercontent.com/skvark/opencv-python/master/LICENSE.txt,MIT
+opt-einsum,https://raw.githubusercontent.com/dgasmith/opt_einsum/master/LICENSE,MIT
 pandas,https://raw.githubusercontent.com/pandas-dev/pandas/master/LICENSE,3-Clause BSD
 pandocfilters,https://raw.githubusercontent.com/jgm/pandocfilters/master/LICENSE,3-Clause BSD
 parso,https://raw.githubusercontent.com/davidhalter/parso/master/LICENSE.txt,MIT

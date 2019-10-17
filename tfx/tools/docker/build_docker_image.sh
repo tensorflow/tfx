@@ -22,4 +22,4 @@ DOCKER_FILE=${DOCKER_FILE:-"Dockerfile"}
 GATHER_THIRD_PARTY_LICENSES=${GATHER_THIRD_PARTY_LICENSES:-"true"}
 
 # Run docker build command.
-docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} -f tfx/tools/docker/${DOCKER_FILE} . --build-arg gather_third_party_licenses=${GATHER_THIRD_PARTY_LICENSES}
+docker build -t ${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_TAG} -f tfx/tools/docker/${DOCKER_FILE} . --build-arg gather_third_party_licenses=${GATHER_THIRD_PARTY_LICENSES} "$@"
