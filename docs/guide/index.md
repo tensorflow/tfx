@@ -581,3 +581,11 @@ to run the TFX example pipeline on Kubeflow. TFX components have been
 containerized to compose the Kubeflow pipeline and the sample illustrates the
 ability to configure the pipeline to read large public dataset and execute
 training and data processing steps at scale in the cloud.
+
+## Command line interface for pipeline actions
+
+TFX provides a unified CLI which helps the perform full range of pipeline
+actions such as create, update, run, list, and delete pipelines on various
+orchestrators including Apache Airflow, Apache Beam, and Kubeflow. For details,
+please follow
+[these instructions](https://github.com/tensorflow/tfx/blob/master/docs/guide/cli.md).
