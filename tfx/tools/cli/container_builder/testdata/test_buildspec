@@ -1,8 +1,8 @@
-apiVersion: skaffold/v1beta13,
-kind: Config,
+apiVersion: skaffold/v1beta13
+kind: Config
 build:
   artifacts:
-  - image: gcr.io/test:dev,
-    workspace: .,
+  - image: gcr.io/test:dev
+    context: .
     docker:
       dockerfile: Dockerfile

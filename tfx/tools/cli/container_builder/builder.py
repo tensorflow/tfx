@@ -65,9 +65,9 @@ class ContainerBuilder(object):
       self._buildspec = buildspec.BuildSpec(filename=buildspec_filename)
       if target_image is not None:
         click.echo(
-            'Target image %s is not used. If the build spec is'
-            'provicded, update the target image in the build spec'
-            'file %s.' % target_image, buildspec_filename)
+            'Target image %s is not used. If the build spec is '
+            'provicded, update the target image in the build spec '
+            'file %s.' % (target_image, buildspec_filename))
     else:
       self._buildspec = buildspec.BuildSpec.load_default(
           filename=buildspec_filename,
@@ -82,4 +82,4 @@ class ContainerBuilder(object):
     """Build the container."""
     click.echo('Use skaffold to build the container image.')
     skaffold_cli = SkaffoldCli(cmd=self._skaffold_cmd)
-    skaffold_cli.build(config=self._buildspec.filename)
+    skaffold_cli.build(buildspec_filename=self._buildspec.filename)

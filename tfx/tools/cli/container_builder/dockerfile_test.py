@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import filecmp
 import os
+import tempfile
 import tensorflow as tf
 
 from tfx.tools.cli.container_builder import dockerfile
@@ -28,18 +29,23 @@ from tfx.tools.cli.container_builder import labels
 class DockerfileTest(tf.test.TestCase):
 
   def test_generate(self):
+    # change to a temporary working dir such that there is no setup.py
+    # in the working dir.
+    old_working_dir = os.getcwd()
+    tmp_working_dir = tempfile.mkdtemp()
+    os.chdir(tmp_working_dir)
+
     test_dockerfile_name = 'test_dockerfile'
     default_dockerfile_path = os.path.join(
         os.path.dirname(__file__), 'testdata',
         test_dockerfile_name)
-    generated_dockerfile_path = os.path.join(
-        '/tmp', labels.DOCKERFILE_NAME)
+    generated_dockerfile_path = labels.DOCKERFILE_NAME
     dockerfile.Dockerfile(filename=generated_dockerfile_path)
     self.assertTrue(
         filecmp.cmp(default_dockerfile_path, generated_dockerfile_path))
 
     # clean up
-    os.remove(generated_dockerfile_path)
+    os.chdir(old_working_dir)
 
 if __name__ == '__main__':
   tf.test.main()
