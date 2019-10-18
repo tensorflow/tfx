@@ -199,6 +199,10 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
   while True:
     deploy_status = api.projects().operations().get(name=op_name).execute()
     if deploy_status.get('done'):
+      # Set the new version as default.
+      api.projects().models().versions().setDefault(
+          name='{}/versions/{}'.format(model_name, deploy_status['response']
+                                       ['name'])).execute()
       break
     if 'error' in deploy_status:
       # The operation completed with an error.

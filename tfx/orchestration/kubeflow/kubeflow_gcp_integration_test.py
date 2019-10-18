@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import logging
 import os
 import subprocess
@@ -145,13 +146,14 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     versions = subprocess.run(versions_command, stdout=subprocess.PIPE)
 
     if versions.returncode == 0:
-      absl.logging.info('Model %s has versions %s' % (model_name, versions))
+      absl.logging.info('Model %s has versions %s' %
+                        (model_name, versions.stdout))
 
       # First line of the output is the header: [NAME] [DEPLOYMENT_URI] [STATE]
-      # Second line is the 'default' version, which needs to be deleted last,
-      # as such, need to flip the order of result lines.
+      # By specification of test case, the latest version is the default model,
+      # which needs to be deleted last.
       for version in versions.stdout.decode('utf-8').strip('\n').split(
-          '\n')[1:][::-1]:
+          '\n')[1:]:
         version = version.split()[0]
         absl.logging.info('Deleting version %s of model %s' %
                           (version, model_name))
@@ -318,33 +320,39 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
 
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
-    pipeline_name = 'kubeflow-aip-pusher-test-{}'.format(self._random_id())
+    pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(self._random_id())
     # AI Platform does not accept '-' in the model name.
-    model_name = ('%s_model' % pipeline_name).replace('-', '_')
+    model_name = ('%s_model' % pipeline_name_base).replace('-', '_')
+    self.addCleanup(self._delete_ai_platform_model, model_name)
 
-    def _pusher(model, name):
+    def _pusher(model, model_blessing, pipeline_name):
       return Pusher(
           custom_executor_spec=executor_spec.ExecutorClassSpec(
               ai_platform_pusher_executor.Executor),
           model=self._input_artifacts(pipeline_name, model),
-          model_blessing=self._input_artifacts(pipeline_name,
-                                               self._test_model_blessing),
+          model_blessing=self._input_artifacts(pipeline_name, model_blessing),
           custom_config={
               'ai_platform_serving_args': {
                   'model_name': model_name,
                   'project_id': self._gcp_project_id,
               }
           },
-          instance_name=name,
       )
 
-    pipeline = self._create_pipeline(pipeline_name, [
-        # Test creation of multiple versions under the same model_name.
-        _pusher(self._test_model_1, 'model_1'),
-        _pusher(self._test_model_2, 'model_2'),
+    # Test creation of multiple versions under the same model_name.
+    pipeline_name_1 = '%s-1' % pipeline_name_base
+    pipeline_1 = self._create_pipeline(pipeline_name_1, [
+        _pusher(self._test_model_1, copy.deepcopy(self._test_model_blessing),
+                pipeline_name_1),
     ])
-    self.addCleanup(self._delete_ai_platform_model, model_name)
-    self._compile_and_run_pipeline(pipeline)
+    self._compile_and_run_pipeline(pipeline_1)
+
+    pipeline_name_2 = '%s-2' % pipeline_name_base
+    pipeline_2 = self._create_pipeline(pipeline_name_2, [
+        _pusher(self._test_model_2, copy.deepcopy(self._test_model_blessing),
+                pipeline_name_2),
+    ])
+    self._compile_and_run_pipeline(pipeline_2)
 
 
 if __name__ == '__main__':

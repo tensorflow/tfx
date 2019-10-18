@@ -137,8 +137,18 @@ class RunnerTest(tf.test.TestCase):
     self._mock_api_client.projects().models().versions().create = mock_create
     mock_get = mock.Mock()
     self._mock_api_client.projects().operations().get = mock_get
+    mock_set_default = mock.Mock()
+    self._mock_api_client.projects().models().versions(
+    ).setDefault = mock_set_default
+    mock_set_default_execute = mock.Mock()
+    self._mock_api_client.projects().models().versions(
+    ).setDefault().execute = mock_set_default_execute
+
     mock_get.return_value.execute.return_value = {
         'done': 'Done',
+        'response': {
+            'name': model_version
+        },
     }
 
     runner.deploy_model_for_cmle_serving(serving_path, model_version,
@@ -157,6 +167,11 @@ class RunnerTest(tf.test.TestCase):
             'python_version': runner._get_caip_python_version(),
         }, body)
     mock_get.assert_called_with(name='op_name')
+
+    mock_set_default.assert_called_with(
+        name='projects/{}/models/{}/versions/{}'.format(
+            self._project_id, 'model_name', model_version))
+    mock_set_default_execute.assert_called_with()
 
 
 if __name__ == '__main__':
