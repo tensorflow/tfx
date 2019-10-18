@@ -1,11 +1,11 @@
 # LINT.IfChange
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
+**/*.py[cod]
+**/*$py.class
 
 # C extensions
-*.so
+**/*.so
 
 # Distribution / packaging
 .Python
@@ -127,5 +127,5 @@ dmypy.json
 .pyre/
 
 # pb2.py files
-*_pb2.py
+**/*_pb2.py
 # LINT.ThenChange(.dockerignore)
