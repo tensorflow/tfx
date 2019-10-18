@@ -52,7 +52,8 @@
     `component.outputs.output_name`).
 *   Updated Iris example to skip transform and use Keras model.
 *   Fixed the check for input artifact existence in base driver.
-*   Fixed bug in AI Platform Pusher that prevents pushes after first push.
+*   Fixed bug in AI Platform Pusher that prevents pushes after first model,
+    and not being marked as default.
 *   Replaced all usage of deprecated `tensorflow.logging` with `absl.logging`.
 *   Used special user agent for all HTTP requests through
     googleapiclient and apitools.

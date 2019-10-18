@@ -141,8 +141,6 @@ class BaseKubeflowTest(tf.test.TestCase):
   def setUpClass(cls):
     super(BaseKubeflowTest, cls).setUpClass()
 
-    random.seed(datetime.datetime.now())
-
     # Create a container image for use by test pipelines.
     base_container_image = _BASE_CONTAINER_IMAGE
 
@@ -225,6 +223,8 @@ class BaseKubeflowTest(tf.test.TestCase):
   @staticmethod
   def _random_id():
     """Generates a random string that is also a valid Kubernetes DNS name."""
+    random.seed(datetime.datetime.now())
+
     choices = string.ascii_lowercase + string.digits
     result = ''.join([random.choice(choices) for _ in range(10)])
     result = result + '-{}'.format(datetime.datetime.now().strftime('%s'))
