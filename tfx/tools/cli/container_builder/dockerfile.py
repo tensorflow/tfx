@@ -24,12 +24,12 @@ from typing import Text
 from tfx.tools.cli.container_builder import labels
 
 
-DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY = '''FROM tensorflow/tfx
+DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY = '''FROM tensorflow/tfx:0.14.0
 WORKDIR /pipeline
 COPY ./ ./
-RUN pip3 %s install'''
+RUN python3 %s install'''
 
-DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY = '''FROM tensorflow/tfx
+DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY = '''FROM tensorflow/tfx:0.14.0
 WORKDIR /pipeline
 COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"'''

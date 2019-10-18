@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import json
 import os
+import subprocess
 import sys
 
 import click
@@ -69,7 +70,7 @@ class KubeflowHandler(base_handler.BaseHandler):
         skaffold_cmd = self.flags_dict[labels.SKAFFOLD_CMD]
       self._build_pipeline_image(target_image, skaffold_cmd)
       os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
-    except ValueError:
+    except (ValueError, subprocess.CalledProcessError, RuntimeError):
       click.echo('No container image is built.')
     else:
       click.echo('New container image is built. Target image is available in '

@@ -61,7 +61,7 @@ class BuildSpec(object):
         'build': {
             'artifacts': [{
                 'image': target_image,
-                'workspace': build_context,
+                'context': build_context,
                 'docker': {
                     'dockerfile': dockerfile_name
                 }
@@ -80,8 +80,7 @@ class BuildSpec(object):
       if len(self._buildspec['build']['artifacts']) != 1:
         raise RuntimeError('The build spec contains multiple artifacts however'
                            'only one is supported.')
-      self._build_context = self._buildspec['build']['artifacts'][0][
-          'workspace']
+      self._build_context = self._buildspec['build']['artifacts'][0]['context']
 
   @property
   def filename(self):
