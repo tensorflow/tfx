@@ -15,10 +15,12 @@
 FROM ubuntu:16.04
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-# Need additional ppa since python 3.6 is not part of Ubuntu 16.04 by default.
+# Need additional ppa since python 3.6 and protobuf 3 
+# are not part of Ubuntu 16.04 by default.
 RUN apt-get update -y && \
   apt-get install --no-install-recommends -y -q software-properties-common && \
   add-apt-repository ppa:deadsnakes/ppa && \
+  add-apt-repository ppa:maarten-fonville/protobuf && \
   apt-get update -y && \
   apt-get install --no-install-recommends -y -q \
   build-essential \
@@ -35,6 +37,7 @@ RUN apt-get update -y && \
   unzip \
   git && \
   add-apt-repository -r ppa:deadsnakes/ppa && \
+  add-apt-repository -r ppa:maarten-fonville/protobuf && \
   apt-get autoclean && \
   apt-get autoremove --purge && \
   update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
