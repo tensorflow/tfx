@@ -22,6 +22,8 @@ uses the following [TFX](https://www.tensorflow.org/tfx) components:
   ensures that the model is "good enough" to be pushed to production.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
+* [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulk_inferrer.md)
+  batch inference on the model with unlabelled examples.
 
 Inference in the example is powered by:
 

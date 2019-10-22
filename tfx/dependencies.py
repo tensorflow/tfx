@@ -19,18 +19,19 @@ def make_required_install_packages():
   # six, and protobuf) with TF.
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
-      'absl-py>=0.1.6,<1',
+      'absl-py>=0.1.6,<0.9',
       'apache-beam[gcp]>=2.14,<3',
-      'click>=7.0,<8',
+      'click>=7,<8',
       'google-api-python-client>=1.7.8,<2',
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.14,<0.15',
       'protobuf>=3.7,<4',
+      'pyyaml>=3.12,<4',
       'six>=1.10,<2',
       'tensorflow-data-validation>=0.14.1,<0.15',
       'tensorflow-model-analysis>=0.14,<0.15',
       'tensorflow-transform>=0.14,<0.15',
-      'PyYAML',
+      'tfx-bsl>=0.15.1,<0.16',
   ]
 
 
@@ -38,7 +39,7 @@ def make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
   return [
       'apache-airflow>=1.10,<2',
-      'docker>=4.0.0,<5.0.0',
+      'docker>=4,<5',
       # LINT.IfChange
       'kfp==0.1.31.2; python_version >= "3.0"',
       # LINT.ThenChange(
@@ -46,9 +47,9 @@ def make_required_test_packages():
       #     testing/github/ubuntu/image/image.sh,
       #     testing/kubeflow/common.sh
       # )
-      'pytest>=5.0.0,<6.0.0',
+      'pytest>=5,<6',
       'tensorflow>=1.14,<2',
-      'tzlocal>=1.5,<2.0',
+      'tzlocal>=1.5,<2',
   ]
 
 

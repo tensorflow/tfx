@@ -108,9 +108,6 @@ def generate_output_split_names(input_config: example_gen_pb2.Input,
     raise RuntimeError('ExampleGen splits are missing.')
   if len(result) != len(set(result)):
     raise RuntimeError('Duplicated split name {}.'.format(result))
-  # TODO(jyzhao): support custom split for downstream components.
-  if not {'train', 'eval'}.issubset(result):
-    raise RuntimeError('ExampleGen output splits must contain train and eval.')
 
   return result
 

@@ -69,6 +69,7 @@ class ExecutorTest(tf.test.TestCase):
   def testDoBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed/')
+    self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
     mock_runner.deploy_model_for_cmle_serving.assert_called_with(
@@ -83,6 +84,7 @@ class ExecutorTest(tf.test.TestCase):
   def testDoNotBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/not_blessed/')
+    self._model_blessing.set_int_custom_property('blessed', 0)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
     self.assertEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
