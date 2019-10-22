@@ -225,6 +225,222 @@ class MetadataTest(tf.test.TestCase):
             index: 0
           }""", events[1].path)
 
+  def testRegisterExecutionUpdatedExecutionType(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_id = m.register_run_context_if_not_exists(self._pipeline_info)
+
+      # Puts in execution with less columns needed in MLMD schema first and
+      # puts in execution with more columns needed next. Verifies the schema
+      # update will not be breaking change.
+      exec_properties_one = {'arg_one': 1}
+      exec_properties_two = {'arg_one': 1, 'arg_two': 2}
+      eid_one = m.register_execution(
+          exec_properties=exec_properties_one,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          run_context_id=context_id)
+      eid_two = m.register_execution(
+          exec_properties=exec_properties_two,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          run_context_id=context_id)
+      [execution_one,
+       execution_two] = m.store.get_executions_by_id([eid_one, eid_two])
+      self.assertProtoEquals(
+          """
+        id: 1
+        type_id: 2
+        properties {
+          key: "state"
+          value {
+            string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
+          }
+        }""", execution_one)
+      self.assertProtoEquals(
+          """
+        id: 2
+        type_id: 2
+        properties {
+          key: "state"
+          value {
+            string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
+          }
+        }
+        properties {
+          key: "arg_two"
+          value {
+            string_value: "2"
+          }
+        }""", execution_two)
+
+  def testRegisterExecutionBackwardCompatibility(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      context_id = m.register_run_context_if_not_exists(self._pipeline_info)
+
+      # Puts in execution with more columns needed in MLMD schema first and
+      # puts in execution with less columns needed next. Verifies the schema
+      # update will not affect backward compatibility.
+      exec_properties_one = {'arg_one': 1}
+      exec_properties_two = {'arg_one': 1, 'arg_two': 2}
+      eid_two = m.register_execution(
+          exec_properties=exec_properties_two,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          run_context_id=context_id)
+      eid_one = m.register_execution(
+          exec_properties=exec_properties_one,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          run_context_id=context_id)
+      [execution_one,
+       execution_two] = m.store.get_executions_by_id([eid_one, eid_two])
+      self.assertProtoEquals(
+          """
+        id: 2
+        type_id: 2
+        properties {
+          key: "state"
+          value {
+            string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
+          }
+        }""", execution_one)
+      self.assertProtoEquals(
+          """
+        id: 1
+        type_id: 2
+        properties {
+          key: "state"
+          value {
+            string_value: "new"
+          }
+        }
+        properties {
+          key: "pipeline_name"
+          value {
+            string_value: "my_pipeline"
+          }
+        }
+        properties {
+          key: "pipeline_root"
+          value {
+            string_value: "/tmp"
+          }
+        }
+        properties {
+          key: "run_id"
+          value {
+            string_value: "my_run_id"
+          }
+        }
+        properties {
+          key: "component_id"
+          value {
+            string_value: "my_component"
+          }
+        }
+        properties {
+          key: "arg_one"
+          value {
+            string_value: "1"
+          }
+        }
+        properties {
+          key: "arg_two"
+          value {
+            string_value: "2"
+          }
+        }""", execution_two)
+
   def testFetchPreviousResult(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
 
@@ -242,13 +458,6 @@ class MetadataTest(tf.test.TestCase):
       m.publish_execution(eid, input_artifacts, output_artifacts)
 
       # Test previous_run.
-      self.assertEqual(
-          None,
-          m.previous_execution(
-              input_artifacts=input_artifacts,
-              exec_properties={},
-              pipeline_info=self._pipeline_info,
-              component_info=self._component_info))
       self.assertEqual(
           None,
           m.previous_execution(

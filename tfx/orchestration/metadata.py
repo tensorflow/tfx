@@ -41,10 +41,21 @@ EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
 # Context type, currently only run context is supported.
 _CONTEXT_TYPE_RUN = 'run'
+# Keys of execution type
+_EXECUTION_TYPE_KEY_CHECKSUM = 'checksum_md5'
+_EXECUTION_TYPE_KEY_PIPELINE_NAME = 'pipeline_name'
+_EXECUTION_TYPE_KEY_PIPELINE_ROOT = 'pipeline_root'
+_EXECUTION_TYPE_KEY_RUN_ID = 'run_id'
+_EXECUTION_TYPE_KEY_COMPONENT_ID = 'component_id'
+_EXECUTION_TYPE_RESERVED_KEYS = {
+    _EXECUTION_TYPE_KEY_CHECKSUM, _EXECUTION_TYPE_KEY_PIPELINE_NAME,
+    _EXECUTION_TYPE_KEY_PIPELINE_ROOT, _EXECUTION_TYPE_KEY_RUN_ID,
+    _EXECUTION_TYPE_KEY_COMPONENT_ID
+}
 
 
-def sqlite_metadata_connection_config(metadata_db_uri: Text
-                                     ) -> metadata_store_pb2.ConnectionConfig:
+def sqlite_metadata_connection_config(
+    metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create file based metadata connection config.
 
   Args:
@@ -61,9 +72,9 @@ def sqlite_metadata_connection_config(metadata_db_uri: Text
   return connection_config
 
 
-def mysql_metadata_connection_config(host: Text, port: int, database: Text,
-                                     username: Text, password: Text
-                                    ) -> metadata_store_pb2.ConnectionConfig:
+def mysql_metadata_connection_config(
+    host: Text, port: int, database: Text, username: Text,
+    password: Text) -> metadata_store_pb2.ConnectionConfig:
   """Convenience function to create mysql-based metadata connection config.
 
   Args:
@@ -118,9 +129,9 @@ class Metadata(object):
       raise RuntimeError('Metadata object is not in enter state')
     return self._store
 
-  def _prepare_artifact_type(self,
-                             artifact_type: metadata_store_pb2.ArtifactType
-                            ) -> metadata_store_pb2.ArtifactType:
+  def _prepare_artifact_type(
+      self, artifact_type: metadata_store_pb2.ArtifactType
+  ) -> metadata_store_pb2.ArtifactType:
     if artifact_type.id:
       return artifact_type
     type_id = self._store.put_artifact_type(
@@ -150,8 +161,9 @@ class Metadata(object):
           (artifact_in_metadata, current_artifact_state, expected_states))
 
   # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(self, raw_artifact_list: List[Artifact]
-                       ) -> List[metadata_store_pb2.Artifact]:
+  def publish_artifacts(
+      self,
+      raw_artifact_list: List[Artifact]) -> List[metadata_store_pb2.Artifact]:
     """Publish a list of artifacts if any is not already published."""
     artifact_list = []
     for raw_artifact in raw_artifact_list:
@@ -177,8 +189,8 @@ class Metadata(object):
     except tf.errors.NotFoundError:
       return []
 
-  def get_artifacts_by_type(self, type_name: Text
-                           ) -> List[metadata_store_pb2.Artifact]:
+  def get_artifacts_by_type(
+      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
     try:
       return self._store.get_artifacts_by_type(type_name)
     except tf.errors.NotFoundError:
@@ -197,29 +209,68 @@ class Metadata(object):
     event.type = event_type
     return event
 
+  # TODO(b/143081379): We might need to revisit schema evolution story.
   def _prepare_execution_type(self, type_name: Text,
                               exec_properties: Dict[Text, Any]) -> int:
-    """Get a execution type. Use existing type if available."""
+    """Get a execution type.
+
+    Uses existing type if schema is superset of what is needed. Otherwise tries
+    to register new execution type.
+
+    Args:
+      type_name: the name of the execution type
+      exec_properties: the execution properties included by the execution
+
+    Returns:
+      execution type id
+    Raises:
+      ValueError if new execution type conflicts with existing schema in MLMD.
+    """
     try:
-      execution_type = self._store.get_execution_type(type_name)
-      if execution_type is None:
+      existing_execution_type = self._store.get_execution_type(type_name)
+      if existing_execution_type is None:
         raise RuntimeError('Execution type is None for %s.' % type_name)
-      return execution_type.id
+      if all(k in existing_execution_type.properties
+             for k in exec_properties.keys()):
+        return existing_execution_type.id
+      else:
+        raise tf.errors.NotFoundError(None, None,
+                                      'No qualified execution type found.')
     except tf.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
       execution_type.properties['state'] = metadata_store_pb2.STRING
+      # If exec_properties contains new entries, execution type schema will be
+      # updated in MLMD.
       for k in exec_properties.keys():
+        assert k not in _EXECUTION_TYPE_RESERVED_KEYS, (
+            'execution properties with reserved key %s') % k
         execution_type.properties[k] = metadata_store_pb2.STRING
       # TODO(ruoyu): Find a better place / solution to the checksum logic.
       if 'module_file' in exec_properties:
-        execution_type.properties['checksum_md5'] = metadata_store_pb2.STRING
-      execution_type.properties['pipeline_name'] = metadata_store_pb2.STRING
-      execution_type.properties['pipeline_root'] = metadata_store_pb2.STRING
-      execution_type.properties['run_id'] = metadata_store_pb2.STRING
-      execution_type.properties['component_id'] = metadata_store_pb2.STRING
+        execution_type.properties[
+            _EXECUTION_TYPE_KEY_CHECKSUM] = metadata_store_pb2.STRING
+      execution_type.properties[
+          _EXECUTION_TYPE_KEY_PIPELINE_NAME] = metadata_store_pb2.STRING
+      execution_type.properties[
+          _EXECUTION_TYPE_KEY_PIPELINE_ROOT] = metadata_store_pb2.STRING
+      execution_type.properties[
+          _EXECUTION_TYPE_KEY_RUN_ID] = metadata_store_pb2.STRING
+      execution_type.properties[
+          _EXECUTION_TYPE_KEY_COMPONENT_ID] = metadata_store_pb2.STRING
 
-      return self._store.put_execution_type(
-          execution_type=execution_type, can_add_fields=True)
+      try:
+        execution_type_id = self._store.put_execution_type(
+            execution_type=execution_type, can_add_fields=True)
+        absl.logging.info('Registering a new execution type with id %s.' %
+                          execution_type_id)
+        return execution_type_id
+      except tf.errors.AlreadyExistsError:
+        warning_str = (
+            'missing or modified key in exec_properties comparing with '
+            'existing execution type with the same type name. Existing type: '
+            '%s, New type: %s') % (existing_execution_type, execution_type)
+        absl.logging.warning(warning_str)
+        raise ValueError(warning_str)
 
   # TODO(ruoyu): Make pipeline_info and component_info required once migration
   # to go/tfx-oss-artifact-passing finishes.
@@ -367,9 +418,9 @@ class Metadata(object):
         (execution, input_dict, output_dict))
     return output_dict
 
-  def _get_cached_execution_id(self, input_dict: Dict[Text, List[Artifact]],
-                               candidate_execution_ids: List[int]
-                              ) -> Optional[int]:
+  def _get_cached_execution_id(
+      self, input_dict: Dict[Text, List[Artifact]],
+      candidate_execution_ids: List[int]) -> Optional[int]:
     """Gets common execution ids that are related to all the artifacts in input.
 
     Args:
@@ -413,11 +464,10 @@ class Metadata(object):
     currrent_execution.id = target_execution.id
     return currrent_execution == target_execution
 
-  def previous_execution(self, input_artifacts: Dict[Text, List[Artifact]],
-                         exec_properties: Dict[Text, Any],
-                         pipeline_info: data_types.PipelineInfo,
-                         component_info: data_types.ComponentInfo
-                        ) -> Optional[int]:
+  def previous_execution(
+      self, input_artifacts: Dict[Text, List[Artifact]],
+      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo) -> Optional[int]:
     """Gets eligible previous execution that takes the same inputs.
 
     An eligible execution should take the same inputs, execution properties and
@@ -450,17 +500,16 @@ class Metadata(object):
           copy.deepcopy(expected_previous_execution), copy.deepcopy(execution)):
         candidate_execution_ids.append(execution.id)
     candidate_execution_ids.sort(reverse=True)
-    candidate_execution_ids = candidate_execution_ids[0:min(
-        len(candidate_execution_ids), MAX_EXECUTIONS_FOR_CACHE)]
+    candidate_execution_ids = candidate_execution_ids[
+        0:min(len(candidate_execution_ids), MAX_EXECUTIONS_FOR_CACHE)]
 
     return self._get_cached_execution_id(input_artifacts,
                                          candidate_execution_ids)
 
   # TODO(b/136031301): This should be merged with previous_run.
-  def fetch_previous_result_artifacts(self,
-                                      output_dict: Dict[Text, List[Artifact]],
-                                      execution_id: int
-                                     ) -> Dict[Text, List[Artifact]]:
+  def fetch_previous_result_artifacts(
+      self, output_dict: Dict[Text, List[Artifact]],
+      execution_id: int) -> Dict[Text, List[Artifact]]:
     """Fetches output with artifact ids produced by a previous run.
 
     Args:
