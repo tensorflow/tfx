@@ -67,6 +67,7 @@
     procedure.
 *   Added Kubeflow simple example that executes all components in-cluster.
 *   Depends on 'tfx_bsl>=0.15.1,<0.16'
+*   Fixed a bug that prevents updating execution type.
 
 ### Deprecations
 
