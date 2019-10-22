@@ -13,8 +13,11 @@
 # limitations under the License.
 """Python source file include taxi pipeline functions and necesasry utils.
 
-For a TFX pipeline to successfully run, a preprocessing_fn function needs to be
-provided. This file is equivalent to examples/chicago_taxi/preprocess.py.
+For a TFX pipeline to successfully run, a preprocessing_fn and a
+_build_estimator function needs to be provided.  This file contains both.
+
+This file is equivalent to examples/chicago_taxi/trainer/model.py and
+examples/chicago_taxi/preprocess.py.
 """
 
 from __future__ import division
@@ -23,7 +26,7 @@ from __future__ import print_function
 # Standard Imports
 
 import tensorflow as tf
-import tensorflow_transform as transform
+import tensorflow_transform as tft
 
 
 _CATEGORICAL_FEATURE_KEYS = [
@@ -53,6 +56,7 @@ _VOCAB_FEATURE_KEYS = [
     'company',
 ]
 
+# Keys
 _LABEL_KEY = 'tips'
 _FARE_KEY = 'fare'
 
@@ -93,19 +97,21 @@ def preprocessing_fn(inputs):
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
     # Preserve this feature as a dense float, setting nan's to the mean.
-    outputs[_transformed_name(key)] = transform.scale_to_z_score(
+    outputs[_transformed_name(key)] = tft.scale_to_z_score(
         _fill_in_missing(inputs[key]))
 
   for key in _VOCAB_FEATURE_KEYS:
     # Build a vocabulary for this feature.
-    outputs[_transformed_name(key)] = transform.compute_and_apply_vocabulary(
+    outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
         _fill_in_missing(inputs[key]),
         top_k=_VOCAB_SIZE,
         num_oov_buckets=_OOV_SIZE)
 
   for key in _BUCKET_FEATURE_KEYS:
-    outputs[_transformed_name(key)] = transform.bucketize(
-        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
+    outputs[_transformed_name(key)] = tft.bucketize(
+        _fill_in_missing(inputs[key]),
+        _FEATURE_BUCKET_COUNT,
+        always_return_num_quantiles=False)
 
   for key in _CATEGORICAL_FEATURE_KEYS:
     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
