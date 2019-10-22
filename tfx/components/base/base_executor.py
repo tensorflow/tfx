@@ -96,7 +96,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
     direct_num_workers = pipeline_options.view_as(
         DirectOptions).direct_num_workers
-    # TODO(b/141578059): refactor when direct_num_workers can be directly used
+    # TODO(b/142684737): refactor when direct_num_workers can be directly used
     # as argv. Currently runner and options need to be set separately for
     # multi-process, in other cases, use beam_pipeline_args to set pipeline.
     # Default value for direct_num_workers is 1 if unset:

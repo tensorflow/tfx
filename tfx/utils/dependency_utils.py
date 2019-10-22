@@ -107,8 +107,8 @@ def build_ephemeral_package() -> Text:
   Raises:
     RuntimeError: if dist directory has zero or multiple files.
   """
-  tmp_dir = os.path.join(tempfile.mkdtemp(), 'build')
-  tfx_root_dir = os.path.dirname(os.path.dirname(version.__file__))
+  tmp_dir = os.path.join(tempfile.mkdtemp(), 'build', 'tfx')
+  tfx_root_dir = os.path.dirname(os.path.dirname(__file__))
   absl.logging.info('Copying all content from install dir %s to temp dir %s',
                     tfx_root_dir, tmp_dir)
   shutil.copytree(tfx_root_dir, tmp_dir)

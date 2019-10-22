@@ -36,6 +36,8 @@
     python components. This is specifically for the Kubeflow orchestration
     engine, which requires containers built with the custom python code.
 *   Added experimental support for TFMA fairness indicator thresholds.
+*   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
+    including Airflow and Beam.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to

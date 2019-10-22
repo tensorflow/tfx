@@ -27,7 +27,6 @@ from __future__ import print_function
 import cgi
 import datetime
 import functools
-import multiprocessing
 import os
 import tempfile
 
@@ -148,12 +147,7 @@ class InteractiveContext(object):
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache,
         interactive_resolution=True)
-    try:
-      parallelism = multiprocessing.cpu_count()
-    except NotImplementedError:
-      absl.logging.info('Using a single process for Beam pipeline execution.')
-      parallelism = 1
-    beam_pipeline_args = ['--direct_num_workers=%d' % parallelism]
+    beam_pipeline_args = []
     additional_pipeline_args = {}
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():

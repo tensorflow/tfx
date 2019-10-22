@@ -70,7 +70,8 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
+            metadata_path=self._metadata_path,
+            direct_num_workers=1))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -92,7 +93,8 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
+            metadata_path=self._metadata_path,
+            direct_num_workers=1))
 
     # Assert cache execution.
     with metadata.Metadata(metadata_config) as m:
