@@ -4,7 +4,7 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 {{ notebook_content }}
 
-absl.logging.set_verbosity(tf.logging.INFO)
+absl.logging.set_verbosity(absl.logging.INFO)
 
 try:
   parallelism = multiprocessing.cpu_count()
