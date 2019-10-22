@@ -63,6 +63,7 @@
     upgrading procedure.
 *   TFX updated to use `tf.compat.v1` according to the TF 2.0 upgrading
     procedure.
+*   Added Kubeflow simple example that executes all components in-cluster.
 
 ### Deprecations
 
