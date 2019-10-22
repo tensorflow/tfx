@@ -38,6 +38,8 @@
 *   Added experimental support for TFMA fairness indicator thresholds.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
+*   Added BulkInferrer component to TFX pipeline, and corresponding offline
+    inference taxi pipeline.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
@@ -64,6 +66,7 @@
 *   TFX updated to use `tf.compat.v1` according to the TF 2.0 upgrading
     procedure.
 *   Added Kubeflow simple example that executes all components in-cluster.
+*   Depends on 'tfx_bsl>=0.15.1,<0.16'
 
 ### Deprecations
 

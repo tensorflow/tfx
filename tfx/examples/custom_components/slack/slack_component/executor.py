@@ -25,10 +25,10 @@ import signal
 
 import absl
 from slackclient import SlackClient
-import tensorflow as tf
 from typing import Any, Dict, List, NamedTuple, Text
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.util import model_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
@@ -205,7 +205,7 @@ class Executor(base_executor.BaseExecutor):
 
     # Fetch input URIs from input_dict.
     model_export_uri = artifact_utils.get_single_uri(input_dict['model_export'])
-    model_blessing_uri = artifact_utils.get_single_uri(
+    model_blessing = artifact_utils.get_single_instance(
         input_dict['model_blessing'])
 
     # Fetch output artifact from output_dict.
@@ -220,7 +220,7 @@ class Executor(base_executor.BaseExecutor):
     #   _fetch_slack_blessing().
     slack_response = None
     with Timeout(timeout_sec):
-      if tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
+      if model_utils.is_model_blessed(model_blessing):
         slack_response = self._fetch_slack_blessing(slack_token,
                                                     slack_channel_id,
                                                     model_export_uri)

@@ -265,3 +265,7 @@ class Artifact(json_utils.Jsonable):
   def set_int_custom_property(self, key: Text, value: int):
     """Set a custom property of int type."""
     self.artifact.custom_properties[key].int_value = builtins.int(value)
+
+  def get_int_custom_property(self, key: Text) -> int:
+    """Get a custom property of int type."""
+    return self.artifact.custom_properties[key].int_value

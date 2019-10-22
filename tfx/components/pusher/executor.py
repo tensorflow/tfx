@@ -23,6 +23,7 @@ import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.util import model_utils
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
@@ -64,13 +65,13 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if the model is blessed by validator.
     """
-    model_blessing_uri = artifact_utils.get_single_uri(
+    model_blessing = artifact_utils.get_single_instance(
         input_dict['model_blessing'])
     model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
-    if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
+    if not model_utils.is_model_blessed(model_blessing):
       model_push.set_int_custom_property('pushed', 0)
-      absl.logging.info('Model on %s was not blessed', model_blessing_uri)
+      absl.logging.info('Model on %s was not blessed', model_blessing.uri)
       return False
     return True
 

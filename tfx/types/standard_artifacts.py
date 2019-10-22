@@ -25,16 +25,20 @@ class Examples(artifact.Artifact):
   TYPE_NAME = 'ExamplesPath'
 
 
-class ExternalArtifact(artifact.Artifact):
-  TYPE_NAME = 'ExternalPath'
+class ExampleAnomalies(artifact.Artifact):
+  TYPE_NAME = 'ExampleValidationPath'
 
 
 class ExampleStatistics(artifact.Artifact):
   TYPE_NAME = 'ExampleStatisticsPath'
 
 
-class ExampleAnomalies(artifact.Artifact):
-  TYPE_NAME = 'ExampleValidationPath'
+class ExternalArtifact(artifact.Artifact):
+  TYPE_NAME = 'ExternalPath'
+
+
+class InferenceResult(artifact.Artifact):
+  TYPE_NAME = 'InferenceResult'
 
 
 class Model(artifact.Artifact):
@@ -59,3 +63,4 @@ class Schema(artifact.Artifact):
 
 class TransformGraph(artifact.Artifact):
   TYPE_NAME = 'TransformPath'
+
