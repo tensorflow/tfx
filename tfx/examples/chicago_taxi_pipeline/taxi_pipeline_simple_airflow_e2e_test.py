@@ -63,11 +63,17 @@ class AirflowEndToEndTest(unittest.TestCase):
 
   def _GetState(self, task_name: Text) -> Text:
     """Get a task state as a string."""
-    output = subprocess.check_output([
-        'airflow', 'task_state', self._dag_id, task_name, self._execution_date
-    ]).split()
-    # Some logs are emitted to stdout, so we take the last word as state.
-    return tf.compat.as_str(output[-1])
+    try:
+      output = subprocess.check_output([
+          'airflow', 'task_state', self._dag_id, task_name, self._execution_date
+      ]).split()
+      # Some logs are emitted to stdout, so we take the last word as state.
+      return tf.compat.as_str(output[-1])
+    except subprocess.CalledProcessError:
+      # For multi-processing, state checking might fail because database lock
+      # has not been released. 'none' will be treated as a pending state, so
+      # this state checking will be retried later.
+      return 'none'
 
   # TODO(b/130882241): Add validation on output artifact type and content.
   def _CheckOutputArtifacts(self, task: Text) -> None:

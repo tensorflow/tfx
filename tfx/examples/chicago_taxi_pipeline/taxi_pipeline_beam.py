@@ -62,13 +62,10 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 
 
 # TODO(b/137289334): rename this as simple after DAG visualization is done.
-def _create_pipeline(pipeline_name: Text,
-                     pipeline_root: Text,
-                     data_root: Text,
-                     module_file: Text,
-                     serving_model_dir: Text,
+def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                     module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
-                     direct_num_workers: int = 1) -> pipeline.Pipeline:
+                     direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -135,11 +132,8 @@ def _create_pipeline(pipeline_name: Text,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      # Note that direct_num_workers != 1 will enable multi-process for TFX,
-      # we hide the FnApiRunner[1] setting from user, but this is subject to
-      # change if Beam offers pure flag setup.
-      # [1]https://issues.apache.org/jira/browse/BEAM-3645
-      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers],
+      # TODO(b/141578059): The multi-processing API might change.
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
       additional_pipeline_args={},
   )
 
@@ -152,9 +146,9 @@ if __name__ == '__main__':
   try:
     parallelism = multiprocessing.cpu_count()
   except NotImplementedError:
-    absl.logging.info(
-        'Use single process as multiprocessing.cpu_count is not supported.')
     parallelism = 1
+  absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
+                    parallelism)
 
   BeamDagRunner().run(
       _create_pipeline(

@@ -9,8 +9,9 @@ absl.logging.set_verbosity(tf.logging.INFO)
 try:
   parallelism = multiprocessing.cpu_count()
 except NotImplementedError:
-  absl.logging.info('Using a single process for Beam pipeline execution.')
   parallelism = 1
+absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
+                  parallelism)
 
 tfx_pipeline = pipeline.Pipeline(
     pipeline_name=_pipeline_name,
@@ -19,7 +20,8 @@ tfx_pipeline = pipeline.Pipeline(
     enable_cache=True,
     metadata_connection_config=(
         metadata.sqlite_metadata_connection_config(_metadata_path)),
-    beam_pipeline_args = ['--direct_num_workers=%s' % parallelism],
+    # TODO(b/141578059): The multi-processing API might change.
+    beam_pipeline_args = ['--direct_num_workers=%d' % parallelism],
     additional_pipeline_args={})
 
 BeamDagRunner().run(tfx_pipeline)
