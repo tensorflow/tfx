@@ -109,9 +109,9 @@ class Driver(base_driver.BaseDriver):
     input_dict = channel_utils.unwrap_channel_dict(input_channels)
     for input_list in input_dict.values():
       for single_input in input_list:
-        absl.logging.info('Processing input %s.' % (single_input.uri))
-        absl.logging.info('single_input %s.' % (single_input))
-        absl.logging.info('single_input.artifact %s.' % (single_input.artifact))
+        absl.logging.debug('Processing input %s.' % single_input.uri)
+        absl.logging.debug('single_input %s.' % single_input)
+        absl.logging.debug('single_input.artifact %s.' % single_input.artifact)
 
         # Set the fingerprint of input.
         split_fingerprints = []
@@ -153,16 +153,16 @@ class Driver(base_driver.BaseDriver):
           # Using id because spans are the same for matched artifacts.
           latest_artifact = max(
               matched_artifacts, key=lambda artifact: artifact.id)
-          absl.logging.info('latest_artifact %s.' % (latest_artifact))
-          absl.logging.info('type(latest_artifact) %s.' %
-                            (type(latest_artifact)))
+          absl.logging.debug('latest_artifact %s.' % (latest_artifact))
+          absl.logging.debug('type(latest_artifact) %s.' %
+                             type(latest_artifact))
 
           single_input.set_artifact(latest_artifact)
         else:
           # TODO(jyzhao): whether driver should be read-only for metadata.
           [new_artifact] = self._metadata_handler.publish_artifacts(
               [single_input])  # pylint: disable=unbalanced-tuple-unpacking
-          absl.logging.info('Registered new input: %s' % (new_artifact))
+          absl.logging.debug('Registered new input: %s' % (new_artifact))
           single_input.set_artifact(new_artifact)
 
     exec_properties['input_config'] = json_format.MessageToJson(
