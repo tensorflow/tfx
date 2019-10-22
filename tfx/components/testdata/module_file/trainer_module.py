@@ -13,11 +13,12 @@
 # limitations under the License.
 """Python source file include taxi pipeline functions and necesasry utils.
 
-For a TFX pipeline to successfully run, a _build_estimator function needs to be
-provided. This file is equivalent to examples/chicago_taxi/trainer/model.py
+For a TFX pipeline to successfully run, a preprocessing_fn and a
+_build_estimator function needs to be provided.  This file contains both.
+
+This file is equivalent to examples/chicago_taxi/trainer/model.py and
+examples/chicago_taxi/preprocess.py.
 """
-# TODO(zhitaoli): Create IFTTT rule for this file and
-# tfx/examples/chicago_taxi_pipeline/taxi_util.py.
 
 from __future__ import division
 from __future__ import print_function
@@ -57,7 +58,9 @@ _VOCAB_FEATURE_KEYS = [
     'company',
 ]
 
+# Keys
 _LABEL_KEY = 'tips'
+_FARE_KEY = 'fare'
 
 
 def _transformed_name(key):
@@ -73,33 +76,27 @@ def _get_raw_feature_spec(schema):
   return schema_utils.schema_as_feature_spec(schema).feature_spec
 
 
-def _gzip_reader_fn():
+def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.compat.v1.TFRecordReader(
-      options=tf.io.TFRecordOptions(
-          compression_type=tf.compat.v1.python_io.TFRecordCompressionType.GZIP))
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def _build_estimator(tf_transform_output,
-                     config,
-                     hidden_units=None,
-                     warm_start_from=None):
+def _build_estimator(config, hidden_units=None, warm_start_from=None):
   """Build an estimator for predicting the tipping behavior of taxi riders.
 
   Args:
-    tf_transform_output: a TFTransformOutput.
-    config: tf.contrib.learn.RunConfig defining the runtime environment for the
+    config: tf.estimator.RunConfig defining the runtime environment for the
       estimator (including model_dir).
     hidden_units: [int], the layer sizes of the DNN (input layer first)
     warm_start_from: Optional directory to warm start from.
 
   Returns:
-    Resulting DNNLinearCombinedClassifier.
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
   """
-  transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec().copy())
-  transformed_feature_spec.pop(_transformed_name(_LABEL_KEY))
-
   real_valued_columns = [
       tf.feature_column.numeric_column(key, shape=())
       for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
@@ -116,10 +113,11 @@ def _build_estimator(tf_transform_output,
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
-          key, num_buckets=num_buckets, default_value=0)
-      for key, num_buckets in zip(
-          _transformed_names(_CATEGORICAL_FEATURE_KEYS),
-          _MAX_CATEGORICAL_FEATURE_VALUES)
+          key,
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              _transformed_names(_CATEGORICAL_FEATURE_KEYS),
+              _MAX_CATEGORICAL_FEATURE_VALUES)
   ]
   return tf.estimator.DNNLinearCombinedClassifier(
       config=config,
@@ -133,7 +131,7 @@ def _example_serving_receiver_fn(tf_transform_output, schema):
   """Build the serving in inputs.
 
   Args:
-    tf_transform_output: a TFTransformOutput.
+    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -157,7 +155,7 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
-    tf_transform_output: a TFTransformOutput.
+    tf_transform_output: A TFTransformOutput.
     schema: the schema of the input data.
 
   Returns:
@@ -201,7 +199,7 @@ def _input_fn(filenames, tf_transform_output, batch_size=200):
 
   Args:
     filenames: [str] list of CSV files to read data from.
-    tf_transform_output: a TFTransformOutput.
+    tf_transform_output: A TFTransformOutput.
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
@@ -209,14 +207,13 @@ def _input_fn(filenames, tf_transform_output, batch_size=200):
       Tensors, and indices is a single Tensor of label indices.
   """
   transformed_feature_spec = (
-      tf_transform_output.transformed_feature_spec())
+      tf_transform_output.transformed_feature_spec().copy())
 
-  transformed_features = tf.contrib.learn.io.read_batch_features(
-      filenames,
-      batch_size,
-      transformed_feature_spec,
-      reader=_gzip_reader_fn)
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
+  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
+      dataset).get_next()
   # We pop the label because we do not want to use it as a feature while we're
   # training.
   return transformed_features, transformed_features.pop(
@@ -278,8 +275,6 @@ def trainer_fn(hparams, schema):
   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
   estimator = _build_estimator(
-      tf_transform_output=tf_transform_output,
-
       # Construct layers sizes with exponetial decay
       hidden_units=[
           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
@@ -288,6 +283,7 @@ def trainer_fn(hparams, schema):
       config=run_config,
       warm_start_from=hparams.warm_start_from)
 
+  # Create an input receiver for TFMA processing
   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
       tf_transform_output, schema)
 
