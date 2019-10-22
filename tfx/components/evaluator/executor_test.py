@@ -21,14 +21,6 @@ import os
 import absl
 import tensorflow as tf
 
-# TODO(b/143103532): Remove once 1.x support is dropped.
-# pylint: disable=g-import-not-at-top
-try:
-  # We need to import this in order to register all quantiles ops, even though
-  # it's not directly used.
-  from tensorflow.contrib.boosted_trees.python.ops import quantile_ops as _  # pylint: disable=unused-import
-except ImportError:
-  pass
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
