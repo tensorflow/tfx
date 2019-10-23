@@ -36,11 +36,34 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 # and gcr.io/tfx-oss-public/ registries.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
 
+# Compatibility overrides: this is usually result of lags for CAIP releases
+# after tensorflow.
+_TF_COMPATIBILITY_OVERRIDE = {
+    # TODO(b/142654646): Support TF 1.15 in CAIP prediction service and drop
+    # this entry. This is generally considered safe since we are using same
+    # major version of TF.
+    '1.15': '1.14',
+}
+
 
 def _get_tf_runtime_version() -> Text:
+  """Returns the tensorflow runtime version used in Cloud AI Platform.
+
+  This is only used for prediction service.
+
+  Returns: same major.minor version of installed tensorflow, except when
+    overriden by _TF_COMPATIBILITY_OVERRIDE.
+  """
   # runtimeVersion should be same as <major>.<minor> of currently
-  # installed tensorflow version.
-  return '.'.join(tf.__version__.split('.')[0:2])
+  # installed tensorflow version, with certain compatibility hacks since
+  # some versions of TensorFlow are not yet supported by CAIP pusher.
+  tf_version = '.'.join(tf.__version__.split('.')[0:2])
+  if tf_version.startswith('2'):
+    absl.logging.warn(
+        'tensorflow 2.x may not be supported on CAIP predction service yet, '
+        'please check https://cloud.google.com/ml-engine/docs/runtime-version-list to ensure.'
+    )
+  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version, tf_version)
 
 
 def _get_caip_python_version() -> Text:
