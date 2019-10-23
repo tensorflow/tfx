@@ -21,7 +21,9 @@
 *   Branched serving examples under chicago_taxi_pipeline/ from
     chicago_taxi/ example.
 *   Introduced ImporterNode as a special TFX node to register external resource
-    into MLMD so that downstream nodes can use as input artifacts.
+    into MLMD so that downstream nodes can use as input artifacts. An example
+    `taxi_pipeline_importer.py` enabled by ImporterNode was added to showcase
+    the user journey of user-provided schema (issue #571).
 *   Supported beam arg 'direct_num_workers' for multi-processing on local.
 *   Improved naming of standard component inputs and outputs.
 *   Improved visualization functionality in the experimental TFX notebook
