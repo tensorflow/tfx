@@ -304,6 +304,10 @@ class Executor(base_executor.BaseExecutor):
         ],
         labels.TFT_STATISTICS_USE_TFDV_LABEL:
             True,
+        labels.PRE_TRANSFORM_STATS_OPTIONS:
+            tfdv.StatsOptions(),
+        labels.POST_TRANSFORM_STATS_OPTIONS:
+            tfdv.StatsOptions(),
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
@@ -468,6 +472,7 @@ class Executor(base_executor.BaseExecutor):
       stats_output_path: Text,
       schema: schema_pb2.Schema,
       use_tfdv=True,
+      stats_options=tfdv.StatsOptions(),
       use_deep_copy_optimization=False  # pylint: disable=unused-argument
   ) -> beam.pvalue.PDone:
     """Generates statistics.
@@ -477,6 +482,8 @@ class Executor(base_executor.BaseExecutor):
       stats_output_path: path where statistics is written to.
       schema: schema.
       use_tfdv: whether use TFDV for computing statistics.
+      stats_options: TFDV options for computing statistics. Used only when
+        use_tfdv is True.
       use_deep_copy_optimization: whether use deep copy optimization.
 
     Returns:
@@ -488,7 +495,8 @@ class Executor(base_executor.BaseExecutor):
 
     # pylint: disable=no-value-for-parameter
     return (pcollection
-            | 'ComputeTFDVStats' >> Executor._ComputeTFDVStats(schema)
+            | 'ComputeTFDVStats' >> Executor._ComputeTFDVStats(
+                schema, stats_options)
             | 'WriteStats' >> Executor._WriteStats(stats_output_path))
 
   @staticmethod
@@ -496,12 +504,15 @@ class Executor(base_executor.BaseExecutor):
   @beam.typehints.with_input_types(beam.typehints.Dict[str, beam.typehints.Any])
   @beam.typehints.with_output_types(statistics_pb2.DatasetFeatureStatisticsList)
   def _ComputeTFDVStats(pcollection: beam.pvalue.PCollection,
-                        schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
+                        schema: schema_pb2.Schema,
+                        stats_options: tfdv.StatsOptions
+                       ) -> beam.pvalue.PCollection:
     """Cmoputes Statistics with TFDV.
 
     Args:
       pcollection: pcollection of examples.
       schema: schema.
+      stats_options: TFDV options.
 
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
@@ -544,12 +555,13 @@ class Executor(base_executor.BaseExecutor):
               | 'EncodeTFDV' >> beam.Map(
                   EncodeTFDV, feature_specs=feature_specs_from_schema))
 
+    stats_options.schema = schema
     return (
         result
         |
         'BatchExamplesToArrowTables' >> batch_util.BatchExamplesToArrowTables()
         | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
-            tfdv.StatsOptions(schema=schema)))
+            stats_options))
 
   @staticmethod
   @beam.ptransform_fn
@@ -1051,7 +1063,8 @@ class Executor(base_executor.BaseExecutor):
                  pre_transform_feature_stats_path,
                  schema_proto,
                  use_deep_copy_optimization=True,
-                 use_tfdv=stats_use_tfdv))
+                 use_tfdv=stats_use_tfdv,
+                 stats_options=inputs[labels.PRE_TRANSFORM_STATS_OPTIONS]))
 
           transform_decode_fn = (
               self._GetDecodeFunction(raw_examples_data_format,
@@ -1097,7 +1110,8 @@ class Executor(base_executor.BaseExecutor):
              self._GenerateStats(
                  post_transform_feature_stats_path,
                  transformed_schema_proto,
-                 use_tfdv=stats_use_tfdv))
+                 use_tfdv=stats_use_tfdv,
+                 stats_options=inputs[labels.POST_TRANSFORM_STATS_OPTIONS]))
 
             if per_set_stats_output_paths:
               # TODO(b/67632871): Remove duplicate stats gen compute that is
@@ -1112,7 +1126,8 @@ class Executor(base_executor.BaseExecutor):
                 data | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
                     dataset.stats_output_path,
                     transformed_schema_proto,
-                    use_tfdv=stats_use_tfdv)
+                    use_tfdv=stats_use_tfdv,
+                    stats_options=inputs[labels.POST_TRANSFORM_STATS_OPTIONS])
 
           if materialize_output_paths:
             for dataset in transform_data_list:

@@ -24,6 +24,8 @@ COMPUTE_STATISTICS_LABEL = 'compute_statistics'
 MODULE_FILE = 'module_file'
 PREPROCESSING_FN = 'preprocessing_fn'
 TFT_STATISTICS_USE_TFDV_LABEL = 'tft_statistics_use_tfdv'
+PRE_TRANSFORM_STATS_OPTIONS = 'pre_transform_stats_options'
+POST_TRANSFORM_STATS_OPTIONS = 'post_transform_stats_options'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
