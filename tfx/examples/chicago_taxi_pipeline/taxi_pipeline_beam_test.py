@@ -103,6 +103,8 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         ]))
     self.assertIs(evaluator.inputs['model'],
                   evaluator.inputs['model_exports'])
+    self.assertIs(evaluator.outputs['evaluation'],
+                  evaluator.outputs['output'])
     model_validator = ModelValidator(
         examples=example_gen.outputs['examples'],
         model=trainer.outputs['model'])

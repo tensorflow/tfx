@@ -74,10 +74,13 @@ class EvaluatorSpec(ComponentSpec):
   OUTPUTS = {
       'output': ChannelParameter(type=standard_artifacts.ModelEvaluation),
   }
-  # TODO(b/139281215): these input names will be renamed in the future.
+  # TODO(b/139281215): these input / output names will be renamed in the future.
   # These compatibility aliases are provided for forwards compatibility.
   _INPUT_COMPATIBILITY_ALIASES = {
       'model': 'model_exports',
+  }
+  _OUTPUT_COMPATIBILITY_ALIASES = {
+      'evaluation': 'output',
   }
 
 
