@@ -33,6 +33,7 @@ taxi_eval_spec = [
 model_analyzer = components.Evaluator(
       examples=examples_gen.outputs['examples'],
       feature_slicing_spec=taxi_eval_spec,
-      model_exports=trainer.outputs['model']
+      model_exports=trainer.outputs['model'],
+      fairness_indicator_thresholds = [0.25, 0.5, 0.75]
       )
 ```
