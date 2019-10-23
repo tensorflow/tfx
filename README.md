@@ -58,7 +58,7 @@ but other *untested* combinations may also work.
 
 tfx                                                                                 | tensorflow    | tensorflow-data-validation | tensorflow-model-analysis | tensorflow-metadata | tensorflow-transform | ml-metadata | apache-beam[gcp] | pyarrow |
 ----------------------------------------------------------------------------------- | ------------- | -------------------------- | ------------------------- | ------------------- | -------------------- | ----------- | ---------------- | ------- |
-[GitHub master](https://github.com/tensorflow/tfx/blob/master/tfx/g3doc/RELEASE.md) | nightly (1.x) | 0.14.1                     | 0.14.0                    | 0.14.0              | 0.14.0               | 0.14.0      | 2.14.0           | 0.14.0  |
+[GitHub master](https://github.com/tensorflow/tfx/blob/master/RELEASE.md) | nightly (1.x) | 0.14.1                     | 0.14.0                    | 0.14.0              | 0.14.0               | 0.14.0      | 2.14.0           | 0.14.0  |
 0.14.0                                                                              | 1.14.0        | 0.14.1                     | 0.14.0                    | 0.14.0              | 0.14.0               | 0.14.0      | 2.14.0           | 0.14.0  |
 0.13.0                                                                              | 1.13.1        | 0.13.1                     | 0.13.2                    | 0.13.0              | 0.13.0               | 0.13.2      | 2.12.0           | n/a     |
 0.12.0                                                                              | 1.12          | 0.12.0                     | 0.12.1                    | 0.12.1              | 0.12.0               | 0.13.2      | 2.10.0           | n/a     |
