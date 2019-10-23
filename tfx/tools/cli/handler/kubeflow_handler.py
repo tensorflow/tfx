@@ -97,7 +97,8 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
-    response = self._client.list_pipelines()
+    # TODO(jyzhao): use metadata context to get the pipeline info.
+    response = self._client.list_pipelines(page_size=100)
 
     if response and response.pipelines:
       click.echo(response.pipelines)
@@ -191,6 +192,7 @@ class KubeflowHandler(base_handler.BaseHandler):
         experiment_name=experiment_name).id
 
     # List runs.
+    # TODO(jyzhao): use metadata context to get the run info.
     response = self._client.list_runs(experiment_id=experiment_id)
 
     if response and response.runs:

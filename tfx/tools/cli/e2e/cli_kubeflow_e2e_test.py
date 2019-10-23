@@ -76,7 +76,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._testdata_dir_updated)
 
     self._pipeline_name = 'chicago_taxi_pipeline_kubeflow' + (
-        '_%s' % datetime.datetime.now().strftime('%s'))
+        '_%s' % datetime.datetime.now().strftime('%s%f'))
     absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 
@@ -127,6 +127,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
 
   def tearDown(self):
     super(CliKubeflowEndToEndTest, self).tearDown()
+    self._cleanup_kfp_server()
     if self._old_kubeflow_home:
       os.environ['KUBEFLOW_HOME'] = self._old_kubeflow_home
     os.chdir(self._olddir)
@@ -148,8 +149,8 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     pipelines = tf.io.gfile.listdir(self._kubeflow_home)
     for pipeline_name in pipelines:
       if tf.io.gfile.isdir(pipeline_name):
-        self._delete_pipeline(pipeline_name)
         self._delete_experiment(pipeline_name)
+        self._delete_pipeline(pipeline_name)
         self._delete_pipeline_output(pipeline_name)
         self._delete_pipeline_metadata(pipeline_name)
 
@@ -163,6 +164,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     if self._client.get_experiment(experiment_name=pipeline_name):
       experiment_id = self._client.get_experiment(
           experiment_name=pipeline_name).id
+      self._delete_all_runs(experiment_id)
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
@@ -236,10 +238,10 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
     subprocess.run(command, check=True)
 
-  def _delete_all_runs(self):
+  def _delete_all_runs(self, experiment_id: Text):
     try:
-      # Get all runs.
-      response = self._client.list_runs()
+      # Get all runs related to the experiment_id.
+      response = self._client.list_runs(experiment_id)
       if response and response.runs:
         for run in response.runs:
           self._client._run_api.delete_run(id=run.id)
@@ -295,7 +297,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue('Pipeline "{}" already exists.'.format(self._pipeline_name),
                     result.output)
-    self._cleanup_kfp_server()
 
   def testPipelineUpdate(self):
     handler_pipeline_path = os.path.join(self._kubeflow_home,
@@ -327,7 +328,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-    self._cleanup_kfp_server()
 
   def testPipelineCompile(self):
 
@@ -391,7 +391,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn(
         'Pipeline {} deleted successfully.'.format(self._pipeline_name),
         result.output)
-    self._cleanup_kfp_server()
 
   def testPipelineList(self):
     # Create pipelines.
@@ -406,7 +405,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Listing all pipelines', result.output)
     self.assertIn(self._pipeline_name, result.output)
     self.assertIn(self._pipeline_name_v2, result.output)
-    self._cleanup_kfp_server()
 
   def testPipelineCreateAutoDetect(self):
     handler_pipeline_path = os.path.join(self._kubeflow_home,
@@ -431,7 +429,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       self.assertIn(
           'Pipeline "{}" created successfully.'.format(self._pipeline_name),
           result.output)
-    self._cleanup_kfp_server()
 
   def testPipelineSchemaError(self):
     # Try getting schema without creating pipeline.
@@ -475,7 +472,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn(
         'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
         result.output)
-    self._cleanup_kfp_server()
 
   def testRunCreate(self):
     # Try running a non-existent pipeline.
@@ -506,8 +502,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         result.output)
     self.assertIn('Run created for pipeline: {}'.format(self._pipeline_name),
                   result.output)
-    self._cleanup_kfp_server()
-    self._delete_all_runs()
 
   def testRunDelete(self):
     # Now create a pipeline.
@@ -524,7 +518,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Deleting run.', result.output)
     self.assertIn('Run deleted.', result.output)
-    self._cleanup_kfp_server()
 
   def testRunTerminate(self):
     # Now create a pipeline.
@@ -541,8 +534,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('CLI', result.output)
     self.assertIn('Terminating run.', result.output)
     self.assertIn('Run terminated.', result.output)
-    self._cleanup_kfp_server()
-    self._delete_all_runs()
 
   def testRunStatus(self):
     # Now create a pipeline.
@@ -560,8 +551,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Retrieving run status.', result.output)
     self.assertIn(str(run.id), result.output)
     self.assertIn(self._pipeline_name, result.output)
-    self._cleanup_kfp_server()
-    self._delete_all_runs()
 
   def testRunList(self):
     # Now create a pipeline.
@@ -583,8 +572,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertIn(str(run_1.id), result.output)
     self.assertIn(str(run_2.id), result.output)
     self.assertIn(self._pipeline_name, result.output)
-    self._cleanup_kfp_server()
-    self._delete_all_runs()
 
 
 if __name__ == '__main__':
