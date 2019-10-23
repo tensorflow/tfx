@@ -334,8 +334,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]
     return pipeline
 
-  def _get_kubeflow_metadata_config(self, pipeline_name: Text
-                                   ) -> kubeflow_pb2.KubeflowMetadataConfig:
+  def _get_kubeflow_metadata_config(
+      self, pipeline_name: Text) -> kubeflow_pb2.KubeflowMetadataConfig:
     config = kubeflow_pb2.KubeflowMetadataConfig()
     config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
     config.mysql_db_service_port.environment_variable = 'MYSQL_SERVICE_PORT'
@@ -365,7 +365,7 @@ class BaseKubeflowTest(tf.test.TestCase):
 
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
     self.addCleanup(self._delete_workflow, pipeline_name)
-    self.addCleanup(self._delete_pipeline_output, pipeline_name)
+    # self.addCleanup(self._delete_pipeline_output, pipeline_name)
     self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
 
     # Run the pipeline to completion.
