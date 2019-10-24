@@ -190,6 +190,7 @@ termcolor,https://raw.githubusercontent.com/hfeeki/termcolor/master/COPYING.txt,
 terminado,https://raw.githubusercontent.com/jupyter/terminado/master/LICENSE,BSD
 testpath,https://raw.githubusercontent.com/jupyter/testpath/master/LICENSE,MIT
 tfx,https://raw.githubusercontent.com/tensorflow/tfx/master/LICENSE,Apache 2.0
+tfx-bsl,https://raw.githubusercontent.com/tensorflow/tfx-bsl/master/LICENSE,Apache 2.0
 tfx-nightly,https://raw.githubusercontent.com/tensorflow/tfx/master/LICENSE,Apache 2.0
 torch,https://raw.githubusercontent.com/pytorch/pytorch/master/LICENSE,BSD-3-clause
 torchvision,https://raw.githubusercontent.com/pytorch/vision/master/LICENSE,BSD-3-clause
