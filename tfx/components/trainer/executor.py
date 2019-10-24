@@ -39,6 +39,19 @@ def _all_files_pattern(file_pattern: Text) -> Text:
   return '{}*'.format(file_pattern)
 
 
+class _HParamWrapper(object):
+  """Wrapper class to help migrate from contrib.HParam to new data structure."""
+
+  def __init__(self, **kwargs):
+    self._data = kwargs
+
+  def __getitem__(self, key):
+    return self._data[key]
+
+  def __getattr__(self, key):
+    return self._data[key]
+
+
 class Executor(base_executor.BaseExecutor):
   """Local trainer used by the TFX Trainer component.
 
@@ -181,7 +194,7 @@ class Executor(base_executor.BaseExecutor):
         warm_start_from = previous_model_dir
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
-    hparams = tf.contrib.training.HParams(
+    hparams = _HParamWrapper(
         # A list of uris for train files.
         train_files=train_files,
         # An optional single uri for transform graph produced by TFT. Will be

@@ -88,6 +88,10 @@
     namespace.
 
 ### For pipeline authors
+*   Deprecated the usage of `tf.contrib.training.HParams` in Trainer as it is
+    deprecated in TF 2.0. User module relying on member method of that class
+    will not be supported. Dot style property access will be the only supported
+    style from now on.
 
 ### For component authors
 
