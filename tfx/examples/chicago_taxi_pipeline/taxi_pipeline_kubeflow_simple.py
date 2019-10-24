@@ -70,7 +70,7 @@ def _create_pipeline(pipeline_name: Text,
                      data_root: Text,
                      module_file: Text,
                      serving_model_dir: Text,
-                     direct_num_workers: int = 1) -> pipeline.Pipeline:
+                     direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
   examples = external_input(data_root)
 

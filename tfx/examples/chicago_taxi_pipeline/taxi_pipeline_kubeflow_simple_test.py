@@ -40,10 +40,10 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     logical_pipeline = taxi_pipeline_kubeflow_simple._create_pipeline(
         pipeline_name=taxi_pipeline_kubeflow_simple._pipeline_name,
         pipeline_root=taxi_pipeline_kubeflow_simple._pipeline_root,
-        query=taxi_pipeline_kubeflow_simple._query,
+        data_root=taxi_pipeline_kubeflow_simple._data_root,
         module_file=taxi_pipeline_kubeflow_simple._module_file,
-        beam_pipeline_args=taxi_pipeline_kubeflow_simple._beam_pipeline_args,
-    )
+        serving_model_dir=taxi_pipeline_kubeflow_simple._serving_model_dir,
+        direct_num_workers=1)
     self.assertEqual(9, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
