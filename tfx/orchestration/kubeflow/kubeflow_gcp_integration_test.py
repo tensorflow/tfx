@@ -172,7 +172,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
   def setUp(self):
     super(KubeflowGCPIntegrationTest, self).setUp()
 
-    # Raw Example artifacts for testing.
+    # Example artifacts for testing.
     raw_train_examples = standard_artifacts.Examples(split='train')
     raw_train_examples.uri = os.path.join(
         self._intermediate_data_root,
