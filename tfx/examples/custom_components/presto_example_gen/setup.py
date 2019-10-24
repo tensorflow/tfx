@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package Setup script for TFX."""
+"""Package Setup script for presto based example gen component."""
 
 from __future__ import print_function
 
@@ -92,8 +92,8 @@ setup(
     ],
     namespace_packages=[],
     install_requires=[
-        'presto-python-client>=0.7.0,<0.8.0',
-        'tfx>=0.15.0dev,<0.16.0',
+        'presto-python-client>=0.7,<0.8',
+        'tfx>=0.15,<=0.16.0dev',
     ],
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),

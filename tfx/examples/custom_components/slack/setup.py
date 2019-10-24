@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package Setup script for TFX."""
+"""Package Setup script for slack custom component."""
 
 from __future__ import print_function
 
@@ -24,8 +24,8 @@ def _make_required_install_packages():
   # six, and protobuf) with TF.
   return [
       'slackclient>=2.0.0,<2.0.1',
-      'tfx>=0.15.0dev,<0.16.0',
-      'websocket-client>=0.56.0,<0.60.0',
+      'tfx>=0.15,<=0.16.0dev',
+      'websocket-client>=0.56,<0.60',
   ]
 
 

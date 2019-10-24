@@ -2,8 +2,35 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+# Version 0.15.0
+
+## Major Features and Improvements
+
 *   Offered unified CLI for tfx pipeline actions on various orchestrators
     including Apache Airflow, Apache Beam and Kubeflow.
+*   Polished experimental interactive notebook execution and visualizations
+    so they are ready for use.
+*   Added BulkInferrer component to TFX pipeline, and corresponding offline
+    inference taxi pipeline.
+*   Introduced ImporterNode as a special TFX node to register external resource
+    into MLMD so that downstream nodes can use as input artifacts. An example
+    `taxi_pipeline_importer.py` enabled by ImporterNode was added to showcase
+    the user journey of user-provided schema (issue #571).
+*   Added experimental support for TFMA fairness indicator thresholds.
+*   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
+    including Airflow and Beam.
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
@@ -20,10 +47,6 @@
     that can be updated regularly by upstream.
 *   Branched serving examples under chicago_taxi_pipeline/ from
     chicago_taxi/ example.
-*   Introduced ImporterNode as a special TFX node to register external resource
-    into MLMD so that downstream nodes can use as input artifacts. An example
-    `taxi_pipeline_importer.py` enabled by ImporterNode was added to showcase
-    the user journey of user-provided schema (issue #571).
 *   Supported beam arg 'direct_num_workers' for multi-processing on local.
 *   Improved naming of standard component inputs and outputs.
 *   Improved visualization functionality in the experimental TFX notebook
@@ -37,11 +60,8 @@
 *   Added container builder feature in the CLI tool for container-based custom
     python components. This is specifically for the Kubeflow orchestration
     engine, which requires containers built with the custom python code.
-*   Added experimental support for TFMA fairness indicator thresholds.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
-*   Added BulkInferrer component to TFX pipeline, and corresponding offline
-    inference taxi pipeline.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
@@ -68,8 +88,14 @@
 *   TFX updated to use `tf.compat.v1` according to the TF 2.0 upgrading
     procedure.
 *   Added Kubeflow simple example that executes all components in-cluster.
-*   Depends on 'tfx_bsl>=0.15.1,<0.16'
 *   Fixed a bug that prevents updating execution type.
+*   Depended on `apache-beam[gcp]>=2.16,<3`
+*   Depended on `ml-metadata>=0.15,<0.16`
+*   Depended on `tensorflow>=1.15,<3`
+*   Depended on `tensorflow-data-validation>=0.15,<0.16`
+*   Depended on `tensorflow-model-analysis>=0.15.2,<0.16`
+*   Depended on `tensorflow-transform>=0.15,<0.16`
+*   Depended on 'tfx_bsl>=0.15.1,<0.16'
 
 ### Deprecations
 
