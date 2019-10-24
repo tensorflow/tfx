@@ -51,7 +51,13 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 RUN python setup.py bdist_wheel
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) pip install $(find dist -name "tfx-*.whl")[docker_image]
+
+# TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
+# once we switch default tensorflow version in released image to TF 2.x.
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) pip install \
+  "tensorflow>=1.15,<2" \
+  "tensorflow-serving-api>=1.15,<2" \
+  $(find dist -name "tfx-*.whl")[docker_image]
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
