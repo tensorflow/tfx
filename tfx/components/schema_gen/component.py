@@ -84,7 +84,7 @@ class SchemaGen(base_component.BaseComponent):
         Tensorflow Transform component using the schema will parse input
         as tf.SparseTensor.
       output: Output `Schema` channel for schema result.
-      stats: Backwards compatibility alias for the 'stats' argument.
+      stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
         SchemaGen.  Required only if multiple SchemaGen components are declared
         in the same pipeline.
