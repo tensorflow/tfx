@@ -85,6 +85,12 @@ def _fill_in_missing(x):
       axis=1)
 
 
+@tf.function
+def _identity(x):
+  """Make sure everything still works when there is a tf.function used."""
+  return x
+
+
 def preprocessing_fn(inputs):
   """tf.transform's callback function for preprocessing inputs.
 
@@ -98,7 +104,7 @@ def preprocessing_fn(inputs):
   for key in _DENSE_FLOAT_FEATURE_KEYS:
     # Preserve this feature as a dense float, setting nan's to the mean.
     outputs[_transformed_name(key)] = tft.scale_to_z_score(
-        _fill_in_missing(inputs[key]))
+        _fill_in_missing(_identity(inputs[key])))
 
   for key in _VOCAB_FEATURE_KEYS:
     # Build a vocabulary for this feature.
