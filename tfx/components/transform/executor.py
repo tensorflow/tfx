@@ -634,48 +634,76 @@ class Executor(base_executor.BaseExecutor):
       del element_copy[_TRANSFORM_INTERNAL_FEATURE_FOR_KEY]
       yield (key, self._coder.encode(element_copy))
 
-  @staticmethod
-  @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
-  def _OptimizeRun(
-      pipeline: beam.Pipeline, input_cache_dir: Text, output_cache_dir: Text,
-      analyze_data_list: List[_Dataset], feature_spec: Mapping[Text, Any],
-      preprocessing_fn: Any, cache_source: beam.PTransform
-  ) -> Tuple[Dict[Text, Optional[_Dataset]], Dict[Text, Dict[
-      Text, beam.pvalue.PCollection]], bool]:
+  class _OptimizeRun(beam.PTransform):
     """Utilizes TFT cache if applicable and removes unused datasets."""
 
-    dataset_keys_list = [dataset.dataset_key for dataset in analyze_data_list]
-    if input_cache_dir is not None:
-      input_cache = (
-          pipeline
-          | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
-              input_cache_dir, dataset_keys_list, source=cache_source))
-    elif output_cache_dir is not None:
-      input_cache = {}
-    else:
-      # Using None here to indicate that this pipeline will not read or write
-      # cache.
-      input_cache = None
+    # pyformat: disable
+    def __init__(self,
+                 input_cache_dir: Text,
+                 output_cache_dir: Text,
+                 analyze_data_list: List[_Dataset],
+                 feature_spec: Mapping[Text, Any],
+                 preprocessing_fn: Any,
+                 cache_source: beam.PTransform):
+      # pyformat: enable
+      self._input_cache_dir = input_cache_dir
+      self._output_cache_dir = output_cache_dir
+      self._analyze_data_list = analyze_data_list
+      self._feature_spec = feature_spec
+      self._preprocessing_fn = preprocessing_fn
+      self._cache_source = cache_source
 
-    if input_cache is None:
-      # Cache is disabled so we won't be filtering out any datasets, and will
-      # always perform a flatten over all of them.
-      filtered_analysis_dataset_keys = dataset_keys_list
-      flat_data_required = True
-    else:
-      filtered_analysis_dataset_keys, flat_data_required = (
-          tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
-              preprocessing_fn, feature_spec, dataset_keys_list, input_cache))
+    # TODO(zoy): Remove this method once beam no longer pickles PTransforms,
+    # once https://issues.apache.org/jira/browse/BEAM-3812 is resolved.
+    def to_runner_api_pickled(self, context):
+      # Overriding to_runner_api_pickled and calling to_runner_api_parameter
+      # instead to make sure that beam doesn't try to pickle the
+      # preprocessing_fn with the PTransform instance since it may not be
+      # picklable.
+      return self.to_runner_api_parameter(context)
 
-    new_analyze_data_dict = {}
-    for dataset in analyze_data_list:
-      if dataset.dataset_key in filtered_analysis_dataset_keys:
-        new_analyze_data_dict[dataset.dataset_key] = dataset
+    def expand(
+        self, pipeline
+    ) -> Tuple[Dict[Text, Optional[_Dataset]],
+               Optional[Dict[Text, Dict[Text, beam.pvalue.PCollection]]],
+               bool]:
+      dataset_keys_list = [
+          dataset.dataset_key for dataset in self._analyze_data_list
+      ]
+      if self._input_cache_dir is not None:
+        input_cache = (
+            pipeline
+            | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
+                self._input_cache_dir,
+                dataset_keys_list,
+                source=self._cache_source))
+      elif self._output_cache_dir is not None:
+        input_cache = {}
       else:
-        new_analyze_data_dict[dataset.dataset_key] = None
+        # Using None here to indicate that this pipeline will not read or write
+        # cache.
+        input_cache = None
 
-    return (new_analyze_data_dict, input_cache, flat_data_required)
+      if input_cache is None:
+        # Cache is disabled so we won't be filtering out any datasets, and will
+        # always perform a flatten over all of them.
+        filtered_analysis_dataset_keys = dataset_keys_list
+        flat_data_required = True
+      else:
+        filtered_analysis_dataset_keys, flat_data_required = (
+            tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
+                self._preprocessing_fn, self._feature_spec, dataset_keys_list,
+                input_cache))
+
+      new_analyze_data_dict = {}
+      for dataset in self._analyze_data_list:
+        if dataset.dataset_key in filtered_analysis_dataset_keys:
+          new_analyze_data_dict[dataset.dataset_key] = dataset
+        else:
+          new_analyze_data_dict[dataset.dataset_key] = None
+
+      return (new_analyze_data_dict, input_cache, flat_data_required)
 
   def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
                           unused_outputs: Mapping[Text, Any]) -> Any:
