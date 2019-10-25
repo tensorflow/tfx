@@ -164,11 +164,11 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
           output_dict=output_dict,
           use_cached_results=use_cached_results)
 
-  def launch(self) -> int:
+  def launch(self) -> data_types.PreExecutionInfo:
     """Execute the component, includes driver, executor and publisher.
 
     Returns:
-      The execution id of the launch.
+      The execution decision of the launch.
     """
     absl.logging.info('Running driver for %s',
                       self._component_info.component_id)
@@ -190,4 +190,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
                         execution_decision.input_dict,
                         execution_decision.output_dict)
 
-    return execution_decision.execution_id
+    return data_types.PreExecutionInfo(
+        input_dict=execution_decision.input_dict,
+        execution_id=execution_decision.execution_id)

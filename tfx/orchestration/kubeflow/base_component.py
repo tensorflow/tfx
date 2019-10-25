@@ -114,6 +114,9 @@ class BaseComponent(object):
         command=_COMMAND,
         image=tfx_image,
         arguments=arguments,
+        output_artifact_paths={
+            'mlpipeline-ui-metadata': '/mlpipeline-ui-metadata.json',
+        },
     )
 
     absl.logging.info('Adding upstream dependencies for component {}'.format(

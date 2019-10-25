@@ -160,7 +160,7 @@ class InteractiveContext(object):
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component, pipeline_info, driver_args, self.metadata_connection_config,
         beam_pipeline_args, additional_pipeline_args)
-    execution_id = launcher.launch()
+    execution_id = launcher.launch().execution_id
 
     return execution_result.ExecutionResult(
         component=component,

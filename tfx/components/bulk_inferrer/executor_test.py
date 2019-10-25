@@ -67,11 +67,11 @@ class ExecutorTest(tf.test.TestCase):
     filepattern = os.path.join(
         prediction_log_path,
         executor._PREDICTION_LOGS_DIR_NAME) + '-?????-of-?????.gz'
-    for f in tf.io.gfile.glob(filepattern):
-      record_iterator = tf.compat.v1.python_io.tf_record_iterator(
+    for f in tf.gfile.Glob(filepattern):
+      record_iterator = tf.python_io.tf_record_iterator(
           path=f,
-          options=tf.compat.v1.python_io.TFRecordOptions(
-              tf.compat.v1.python_io.TFRecordCompressionType.GZIP))
+          options=tf.python_io.TFRecordOptions(
+              tf.python_io.TFRecordCompressionType.GZIP))
       for record_string in record_iterator:
         prediction_log = prediction_log_pb2.PredictionLog()
         prediction_log.MergeFromString(record_string)

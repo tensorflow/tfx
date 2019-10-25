@@ -49,6 +49,22 @@ class ExecutionDecision(object):
     self.use_cached_results = use_cached_results
 
 
+class PreExecutionInfo(object):
+  """PreExecutionInfo contains some information populated during pre-execution phase.
+
+  Attributes:
+    input_dict: Updated key -> types.Artifact for inputs that was used during
+      the actual execution.
+    execution_id: Registered execution_id for the execution.
+  """
+
+  def __init__(self,
+               input_dict: Dict[Text, List[types.Artifact]] = None,
+               execution_id: int = None):
+    self.input_dict = input_dict
+    self.execution_id = execution_id
+
+
 class DriverArgs(object):
   """Args to driver from orchestration system.
 
