@@ -59,11 +59,6 @@ _module_file = os.path.join(_input_bucket, 'taxi_utils.py')
 _serving_model_dir = os.path.join(_output_bucket, _pipeline_name,
                                   'serving_model')
 
-# Number of processes to be used for Beam workers in exeuction of Beam-based
-# components (ExampleGen, StatisticsGen, Transform, Evaluator, ModelValidator).
-# This should be set to number of cores in k8s nodes.
-_beam_num_workers = 4
-
 
 def _create_pipeline(pipeline_name: Text,
                      pipeline_root: Text,
@@ -136,10 +131,9 @@ def _create_pipeline(pipeline_name: Text,
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher
       ],
+
       # TODO(b/141578059): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers],
-      additional_pipeline_args={},
-  )
+      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers])
 
 
 if __name__ == '__main__':
@@ -166,4 +160,7 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          direct_num_workers=_beam_num_workers))
+
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))

@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import abc
 import json
+import multiprocessing
 import os
 import sys
 import absl
@@ -93,16 +94,22 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
     """Makes beam pipeline."""
+    # TODO(b/142684737): refactor when beam support multi-processing by args.
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
-    direct_num_workers = pipeline_options.view_as(
-        DirectOptions).direct_num_workers
-    # TODO(b/142684737): refactor when direct_num_workers can be directly used
-    # as argv. Currently runner and options need to be set separately for
-    # multi-process, in other cases, use beam_pipeline_args to set pipeline.
-    # Default value for direct_num_workers is 1 if unset:
-    #   https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
-    if direct_num_workers > 1:
-      absl.logging.info('Multi-process with %d workers' % direct_num_workers)
+    parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
+
+    if parallelism == 0:
+      try:
+        parallelism = multiprocessing.cpu_count()
+      except NotImplementedError as e:
+        absl.logging.warning('Cannot get cpu count: %s' % e)
+        parallelism = 1
+      pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
+
+    absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
+                      parallelism)
+
+    if parallelism > 1:
       return beam.Pipeline(
           options=pipeline_options,
           runner=fn_api_runner.FnApiRunner(
@@ -110,8 +117,8 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                   urn=python_urns.SUBPROCESS_SDK,
                   payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
                   (sys.executable or sys.argv[0]).encode('ascii'))))
-    else:
-      return beam.Pipeline(argv=self._beam_pipeline_args)
+
+    return beam.Pipeline(argv=self._beam_pipeline_args)
 
   def _get_tmp_dir(self) -> Text:
     """Get the temporary directory path."""
