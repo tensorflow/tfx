@@ -62,6 +62,8 @@
     engine, which requires containers built with the custom python code.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
+*   Added Kubeflow artifact visualization of inputs, outputs and
+    execution properties for components using a Markdown file.
 
 ## Bug fixes and other changes
 *   Bumped test dependency to kfp (Kubeflow Pipelines SDK) to
@@ -96,6 +98,8 @@
 *   Depended on `tensorflow-model-analysis>=0.15.2,<0.16`
 *   Depended on `tensorflow-transform>=0.15,<0.16`
 *   Depended on 'tfx_bsl>=0.15.1,<0.16'
+*   Made launcher return execution information, containing populated inputs,
+    outputs, and execution id.
 
 ### Deprecations
 
