@@ -16,6 +16,7 @@
 import tensorflow as tf
 
 # For component user to direct use tfx.components.[...] as an alias.
+from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
