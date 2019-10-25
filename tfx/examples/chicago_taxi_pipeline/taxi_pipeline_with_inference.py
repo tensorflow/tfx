@@ -17,11 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import multiprocessing
 import os
-
 import absl
-from absl import logging
 from typing import Text
 
 from tfx.components.bulk_inferrer.component import BulkInferrer
@@ -152,17 +149,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       # TODO(b/141578059): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
-try:
-  parallelism = multiprocessing.cpu_count()
-except NotImplementedError:
-  parallelism = 1
-absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                  parallelism)
 
 # To run this pipeline from the python CLI:
-#   $python taxi_pipeline_offline_inference.py
+#   $python taxi_pipeline_with_inference.py
 if __name__ == '__main__':
-  logging.set_verbosity(logging.INFO)
+  absl.logging.set_verbosity(absl.logging.INFO)
+
   BeamDagRunner().run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
@@ -171,4 +163,6 @@ if __name__ == '__main__':
           inference_data_root=_inference_data_root,
           module_file=_module_file,
           metadata_path=_metadata_path,
-          direct_num_workers=parallelism))
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))

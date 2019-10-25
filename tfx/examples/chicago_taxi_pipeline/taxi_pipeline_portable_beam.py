@@ -135,35 +135,34 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      additional_pipeline_args={
-          # LINT.IfChange
-          'beam_pipeline_args': [
-              # ----- Beam Args -----.
-              '--runner=PortableRunner',
-              # Points to the job server started in
-              # setup_beam_on_(flink|spark).sh
-              '--job_endpoint=localhost:8099',
-              '--environment_type=LOOPBACK',
-              # TODO(BEAM-6754): Utilize multicore in LOOPBACK environment.  # pylint: disable=g-bad-todo
-              # TODO(BEAM-5167): Use concurrency information from SDK Harness.  # pylint: disable=g-bad-todo
-              # Note; We use 100 worker threads to mitigate the issue with
-              # scheduling work between the Beam runner and SDK harness. Flink
-              # and Spark can process unlimited work items concurrently while
-              # SdkHarness can only process 1 work item per worker thread.
-              # Having 100 threads will let 100 tasks execute concurrently
-              # avoiding scheduling issue in most cases. In case the threads are
-              # exhausted, beam print the relevant message in the log.
-              '--experiments=worker_threads=100',
-              # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
-              '--experiments=pre_optimize=all',
-              # ----- Flink runner-specific Args -----.
-              # TODO(b/126725506): Set the task parallelism based on cpu cores.
-              # TODO(FLINK-10672): Obviate setting BATCH_FORCED.
-              '--execution_mode_for_batch=BATCH_FORCED',
-          ],
-          # LINT.ThenChange(setup/setup_beam_on_spark.sh)
-          # LINT.ThenChange(../chicago_taxi/setup_beam_on_flink.sh)
-      })
+      # LINT.IfChange
+      beam_pipeline_args=[
+          # ----- Beam Args -----.
+          '--runner=PortableRunner',
+          # Points to the job server started in
+          # setup_beam_on_(flink|spark).sh
+          '--job_endpoint=localhost:8099',
+          '--environment_type=LOOPBACK',
+          # TODO(BEAM-6754): Utilize multicore in LOOPBACK environment.  # pylint: disable=g-bad-todo
+          # TODO(BEAM-5167): Use concurrency information from SDK Harness.  # pylint: disable=g-bad-todo
+          # Note; We use 100 worker threads to mitigate the issue with
+          # scheduling work between the Beam runner and SDK harness. Flink
+          # and Spark can process unlimited work items concurrently while
+          # SdkHarness can only process 1 work item per worker thread.
+          # Having 100 threads will let 100 tasks execute concurrently
+          # avoiding scheduling issue in most cases. In case the threads are
+          # exhausted, beam print the relevant message in the log.
+          '--experiments=worker_threads=100',
+          # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
+          '--experiments=pre_optimize=all',
+          # ----- Flink runner-specific Args -----.
+          # TODO(b/126725506): Set the task parallelism based on cpu cores.
+          # TODO(FLINK-10672): Obviate setting BATCH_FORCED.
+          '--execution_mode_for_batch=BATCH_FORCED',
+      ],
+      # LINT.ThenChange(setup/setup_beam_on_spark.sh)
+      # LINT.ThenChange(setup/setup_beam_on_flink.sh)
+  )
 
 
 # TODO(jyzhao): consider using beam orchestrator after b/137294896.

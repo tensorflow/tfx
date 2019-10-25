@@ -129,7 +129,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      additional_pipeline_args={},
   )
 
 
