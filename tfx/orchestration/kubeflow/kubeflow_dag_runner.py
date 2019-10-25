@@ -21,6 +21,7 @@ import os
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
+from kubernetes import client as k8s_client
 from typing import Callable, List, Optional, Text
 
 from tfx import version
@@ -49,6 +50,49 @@ _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 _PIPELINE_ROOT = 'pipeline-root'
 
 
+def _mount_config_map_op(config_map_name: Text) -> OpFunc:
+  """Mounts all key-value pairs found in the named Kubernetes ConfigMap.
+
+  All key-value pairs in the ConfigMap are mounted as environment variables.
+
+  Args:
+    config_map_name: The name of the ConfigMap resource.
+
+  Returns:
+    An OpFunc for mounting the ConfigMap.
+  """
+
+  def mount_config_map(container_op: dsl.ContainerOp):
+    config_map_ref = k8s_client.V1ConfigMapEnvSource(
+        name=config_map_name, optional=True)
+    container_op.container.add_env_from(
+        k8s_client.V1EnvFromSource(config_map_ref=config_map_ref))
+
+  return mount_config_map
+
+
+def _mount_secret_op(secret_name: Text) -> OpFunc:
+  """Mounts all key-value pairs found in the named Kubernetes Secret.
+
+  All key-value pairs in the Secret are mounted as environment variables.
+
+  Args:
+    secret_name: The name of the Secret resource.
+
+  Returns:
+    An OpFunc for mounting the Secret.
+  """
+
+  def mount_secret(container_op: dsl.ContainerOp):
+    secret_ref = k8s_client.V1ConfigMapEnvSource(
+        name=secret_name, optional=True)
+
+    container_op.container.add_env_from(
+        k8s_client.V1EnvFromSource(secret_ref=secret_ref))
+
+  return mount_secret
+
+
 def get_default_pipeline_operator_funcs() -> List[OpFunc]:
   """Returns a default list of pipeline operator functions.
 
@@ -59,7 +103,13 @@ def get_default_pipeline_operator_funcs() -> List[OpFunc]:
   # installation.
   gcp_secret_op = gcp.use_gcp_secret(_KUBEFLOW_GCP_SECRET_NAME)
 
-  return [gcp_secret_op]
+  # Mounts configmap containing the MySQL DB to use for logging metadata.
+  mount_config_map_op = _mount_config_map_op('metadata-configmap')
+
+  # Mounts the secret containing the MySQL DB password.
+  mysql_password_op = _mount_secret_op('mysql-credential')
+
+  return [gcp_secret_op, mount_config_map_op, mysql_password_op]
 
 
 def get_default_kubeflow_metadata_config(
@@ -71,32 +121,26 @@ def get_default_kubeflow_metadata_config(
     container so the TFX component driver is able to communicate with MLMD in
     a Kubeflow cluster.
   """
-  # The default metadata configuration for a Kubeflow cluster can be found
-  # here:
-  # https://github.com/kubeflow/manifests/blob/master/metadata/base/metadata-db-deployment.yaml
-
-  # If deploying Kubeflow Pipelines outside of Kubeflow, that configuration
-  # lives here:
-  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/mysql/mysql-deployment.yaml
+  # The default metadata configuration for a Kubeflow Pipelines cluster is
+  # codified in a pair of Kubernetes ConfigMap and Secret that can be found in
+  # the following:
+  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-configmap.yaml
+  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-mysql-secret.yaml
 
   config = kubeflow_pb2.KubeflowMetadataConfig()
   # The environment variable to use to obtain the MySQL service host in the
-  # cluster that is backing Kubeflow Metadata.
-  config.mysql_db_service_host.environment_variable = 'METADATA_DB_SERVICE_HOST'
+  # cluster that is backing Kubeflow Metadata. Note that the key in the config
+  # map and therefore environment variable used, are lower-cased.
+  config.mysql_db_service_host.environment_variable = 'mysql_host'
   # The environment variable to use to obtain the MySQL service port in the
   # cluster that is backing Kubeflow Metadata.
-  config.mysql_db_service_port.environment_variable = 'METADATA_DB_SERVICE_PORT'
+  config.mysql_db_service_port.environment_variable = 'mysql_port'
   # The MySQL database name to use.
-  config.mysql_db_name.value = 'metadb'
+  config.mysql_db_name.environment_variable = 'mysql_database'
   # The MySQL database username.
-  config.mysql_db_user.value = 'root'
-  # The MySQL database password. It is currently set to `test` for the
-  # default install of Kubeflow Metadata:
-  # https://github.com/kubeflow/manifests/blob/master/metadata/base/metadata-db-secret.yaml
-  # Note that you should ideally use k8s secrets for username/passwords. If you
-  # do so, you can change this setting so the container obtains the value at
-  # runtime from the secred mounted as an environment variable.
-  config.mysql_db_password.value = 'test'
+  config.mysql_db_user.environment_variable = 'username'
+  # The MySQL database password.
+  config.mysql_db_password.environment_variable = 'password'
 
   return config
 

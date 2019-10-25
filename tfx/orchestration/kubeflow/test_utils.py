@@ -336,12 +336,9 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def _get_kubeflow_metadata_config(self, pipeline_name: Text
                                    ) -> kubeflow_pb2.KubeflowMetadataConfig:
-    config = kubeflow_pb2.KubeflowMetadataConfig()
-    config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
-    config.mysql_db_service_port.environment_variable = 'MYSQL_SERVICE_PORT'
+    config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
+    # Overwrite the DB name.
     config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)
-    config.mysql_db_user.value = 'root'
-    config.mysql_db_password.value = ''
     return config
 
   def _compile_and_run_pipeline(self, pipeline: tfx_pipeline.Pipeline):
