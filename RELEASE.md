@@ -63,8 +63,9 @@
     engine, which requires containers built with the custom python code.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
-*   Added Kubeflow artifact visualization of inputs, outputs and execution
-    properties for components using a Markdown file.
+*   Added Kubeflow artifact visualization of inputs, outputs and
+    execution properties for components using a Markdown file. Added Tensorboard
+    to Trainer components as well.
 
 ## Bug fixes and other changes
 
