@@ -17,7 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import multiprocessing
 import os
 import absl
 from typing import Text
@@ -145,22 +144,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/141578059): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-      additional_pipeline_args={},
-  )
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
 
 # To run this pipeline from the python CLI:
 #   $python taxi_pipeline_beam.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-
-  try:
-    parallelism = multiprocessing.cpu_count()
-  except NotImplementedError:
-    parallelism = 1
-  absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                    parallelism)
 
   BeamDagRunner().run(
       _create_pipeline(
@@ -171,4 +161,6 @@ if __name__ == '__main__':
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          direct_num_workers=parallelism))
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))

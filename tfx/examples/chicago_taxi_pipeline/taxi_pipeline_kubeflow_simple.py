@@ -131,7 +131,6 @@ def _create_pipeline(pipeline_name: Text,
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher
       ],
-
       # TODO(b/141578059): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers])
 
@@ -160,7 +159,6 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-
           # 0 means auto-detect based on on the number of CPUs available during
           # execution time.
           direct_num_workers=0))
