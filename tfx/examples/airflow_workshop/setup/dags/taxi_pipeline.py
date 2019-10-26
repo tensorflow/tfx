@@ -21,26 +21,26 @@ import datetime
 import logging
 import os
 
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+from tfx.components import CsvExampleGen
 
 # pylint: disable=line-too-long
-# from tfx.components.statistics_gen.component import StatisticsGen # Step 3
-# from tfx.components.schema_gen.component import SchemaGen # Step 3
-# from tfx.components.example_validator.component import ExampleValidator # Step 3
+# from tfx.components import StatisticsGen # Step 3
+# from tfx.components import SchemaGen # Step 3
+# from tfx.components import ExampleValidator # Step 3
 
-# from tfx.components.transform.component import Transform # Step 4
+# from tfx.components import Transform # Step 4
 
 from tfx.orchestration import pipeline
 
 # from tfx.proto import trainer_pb2 # Step 5
-# from tfx.components.trainer.component import Trainer # Step 5
+# from tfx.components import Trainer # Step 5
 
 # from tfx.proto import evaluator_pb2 # Step 6
-# from tfx.components.evaluator.component import Evaluator # Step 6
+# from tfx.components import Evaluator # Step 6
 
 # from tfx.proto import pusher_pb2 # Step 7
-# from tfx.components.model_validator.component import ModelValidator # Step 7
-# from tfx.components.pusher.component import Pusher # Step 7
+# from tfx.components import ModelValidator # Step 7
+# from tfx.components import Pusher # Step 7
 
 from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
 from tfx.utils.dsl_utils import csv_input
