@@ -94,6 +94,8 @@
     procedure.
 *   Added Kubeflow simple example that executes all components in-cluster.
 *   Fixed a bug that prevents updating execution type.
+*   Fixed a bug in model validator driver that reads across pipeline boundaries
+    when resolving latest blessed model.
 *   Depended on `apache-beam[gcp]>=2.16,<3`
 *   Depended on `ml-metadata>=0.15,<0.16`
 *   Depended on `tensorflow>=1.15,<3`
