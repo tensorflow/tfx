@@ -161,7 +161,7 @@ class _LineageGraphHelper(object):
       elif node_id > 0 and node_id >= label_anchor_id:
         # artifact label
         node_color += 'w'
-        type_name = dag.node[node_id - label_anchor_id]['_label_']
+        type_name = dag.nodes[node_id - label_anchor_id]['_label_']
         type_segments = re.split('([A-Z][a-z]+)', type_name)
         node_txt = ('\n').join([s for s in type_segments if s])
         node_labels[node_id] = node_txt
@@ -171,7 +171,7 @@ class _LineageGraphHelper(object):
       else:
         # execution label
         node_color += 'w'
-        type_name = dag.node[node_id + label_anchor_id]['_label_']
+        type_name = dag.nodes[node_id + label_anchor_id]['_label_']
         node_txt = type_name.split('.')[-1]
         node_labels[node_id] = node_txt
     pos = {}
