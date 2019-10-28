@@ -39,6 +39,7 @@ class Driver(base_driver.BaseDriver):
   def resolve_exec_properties(
       self,
       exec_properties: Dict[Text, Any],
+      pipeline_info: data_types.PipelineInfo,  # pylint: disable=unused-argument
       component_info: data_types.ComponentInfo
   ) -> Dict[Text, Any]:
     """Overrides BaseDriver.resolve_exec_properties()."""

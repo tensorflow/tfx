@@ -28,12 +28,14 @@ class Driver(base_driver.BaseDriver):
 
   def _fetch_last_blessed_model(
       self,
+      pipeline_name: Text,
       component_id: Text,
   ) -> Tuple[Optional[Text], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     previous_blessed_models = []
     for a in self._metadata_handler.get_artifacts_by_type('ModelBlessingPath'):
-      if (a.custom_properties['blessed'].int_value == 1 and
+      if (a.properties['pipeline_name'].string_value == pipeline_name and
+          a.custom_properties['blessed'].int_value == 1 and
           a.custom_properties['component_id'].string_value == component_id):
         previous_blessed_models.append(a)
 
@@ -47,15 +49,16 @@ class Driver(base_driver.BaseDriver):
     else:
       return None, None
 
+  # pyformat: disable
   def resolve_exec_properties(
-      self,
-      exec_properties: Dict[Text, Any],
-      component_info: data_types.ComponentInfo
-  ) -> Dict[Text, Any]:
+      self, exec_properties: Dict[Text, Any],
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo) -> Dict[Text, Any]:
+    # pyformat: enable
     """Overrides BaseDriver.resolve_exec_properties()."""
     (exec_properties['blessed_model'],
      exec_properties['blessed_model_id']) = self._fetch_last_blessed_model(
-         component_info.component_id)
+         pipeline_info.pipeline_name, component_info.component_id)
     exec_properties['component_id'] = component_info.component_id
     absl.logging.info('Resolved last blessed model {}'.format(
         exec_properties['blessed_model']))

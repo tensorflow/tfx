@@ -150,6 +150,7 @@ class BaseDriver(object):
   def resolve_exec_properties(
       self,
       exec_properties: Dict[Text, Any],
+      pipeline_info: data_types.PipelineInfo,  # pylint: disable=unused-argument
       component_info: data_types.ComponentInfo,  # pylint: disable=unused-argument
   ) -> Dict[Text, Any]:
     """Resolve execution properties.
@@ -159,6 +160,8 @@ class BaseDriver(object):
 
     Args:
       exec_properties: Original execution properties passed in.
+      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
+        related properties including pipeline_name, pipeline_root and run_id
       component_info: An instance of data_types.ComponentInfo, holding component
         related properties including component_type and component_id.
 
@@ -300,6 +303,7 @@ class BaseDriver(object):
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
       exec_properties = self.resolve_exec_properties(exec_properties,
+                                                     pipeline_info,
                                                      component_info)
       absl.logging.debug(
           'Execution properties for the upcoming execution are: %s',
