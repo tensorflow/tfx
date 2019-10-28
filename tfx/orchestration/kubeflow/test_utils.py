@@ -67,15 +67,16 @@ _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 # The GCP bucket to use to write output artifacts.
 _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-# The input data root location on GCS. The input files are never modified and
-# are safe for concurrent reads.
+# The input data root location on GCS. The input files are copied to a
+# test-local location.
 _DATA_ROOT = os.environ['KFP_E2E_DATA_ROOT']
 
 # The intermediate data root location on GCS. The intermediate test data files
 # are never modified and are safe for concurrent reads.
 _INTERMEDIATE_DATA_ROOT = os.environ['KFP_E2E_INTERMEDIATE_DATA_ROOT']
 
-# Location of the input taxi module file to be used in the test pipeline.
+# Location of the input taxi module file to be used in the test pipeline. The
+# file is copied to a test-local location.
 _TAXI_MODULE_FILE = os.environ['KFP_E2E_TAXI_MODULE_FILE']
 
 
@@ -210,11 +211,20 @@ class BaseKubeflowTest(tf.test.TestCase):
     self._gcp_project_id = _GCP_PROJECT_ID
     self._gcp_region = _GCP_REGION
     self._bucket_name = _BUCKET_NAME
-    self._data_root = _DATA_ROOT
     self._intermediate_data_root = _INTERMEDIATE_DATA_ROOT
-    self._taxi_module_file = _TAXI_MODULE_FILE
 
     self._test_output_dir = 'gs://{}/test_output'.format(self._bucket_name)
+
+    test_id = self._random_id()
+    self._data_root = 'gs://{}/{}/data'.format(self._bucket_name, test_id)
+
+    subprocess.run(['gsutil', 'cp', '-r', _DATA_ROOT, self._data_root],
+                   check=True)
+
+    self._taxi_module_file = 'gs://{}/{}/modules/taxi_utils.py'.format(
+        self._bucket_name, test_id)
+    subprocess.run(['gsutil', 'cp', _TAXI_MODULE_FILE, self._taxi_module_file],
+                   check=True)
 
   def tearDown(self):
     super(BaseKubeflowTest, self).tearDown()
@@ -334,8 +344,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]
     return pipeline
 
-  def _get_kubeflow_metadata_config(self, pipeline_name: Text
-                                   ) -> kubeflow_pb2.KubeflowMetadataConfig:
+  def _get_kubeflow_metadata_config(
+      self, pipeline_name: Text) -> kubeflow_pb2.KubeflowMetadataConfig:
     config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
     # Overwrite the DB name.
     config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)
