@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Text, cast
 
 from tfx import types
 from tfx.components.base import executor_spec
+from tfx.orchestration.config import base_component_config
+from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import container_common
 
@@ -32,9 +34,14 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
   """Responsible for launching a container executor."""
 
   @classmethod
-  def can_launch(cls,
-                 component_executor_spec: executor_spec.ExecutorSpec) -> bool:
+  def can_launch(
+      cls, component_executor_spec: executor_spec.ExecutorSpec,
+      component_config: base_component_config.BaseComponentConfig) -> bool:
     """Checks if the launcher can launch the executor spec."""
+    if component_config and not isinstance(
+        component_config, docker_component_config.DockerComponentConfig):
+      return False
+
     return isinstance(component_executor_spec,
                       executor_spec.ExecutorContainerSpec)
 
@@ -46,21 +53,35 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
 
     executor_container_spec = cast(executor_spec.ExecutorContainerSpec,
                                    self._component_executor_spec)
+    if self._component_config:
+      docker_config = cast(docker_component_config.DockerComponentConfig,
+                           self._component_config)
+    else:
+      docker_config = docker_component_config.DockerComponentConfig()
 
     # Replace container spec with jinja2 template.
     executor_container_spec = container_common.resolve_container_template(
         executor_container_spec, input_dict, output_dict, exec_properties)
 
+    absl.logging.info('Container spec: %s' % vars(executor_container_spec))
+    absl.logging.info('Docker config: %s' % vars(docker_config))
+
     # Call client.containers.run and wait for completion.
     # ExecutorContainerSpec follows k8s container spec which has different
     # names to Docker's container spec. It's intended to set command to docker's
     # entrypoint and args to docker's command.
-    client = docker.from_env()
+    if docker_config.docker_server_url:
+      client = docker.DockerClient(base_url=docker_config.docker_server_url)
+    else:
+      client = docker.from_env()
+
+    run_args = docker_config.to_run_args()
     container = client.containers.run(
         image=executor_container_spec.image,
         entrypoint=executor_container_spec.command,
         command=executor_container_spec.args,
-        detach=True)
+        detach=True,
+        **run_args)
 
     # Streaming logs
     for log in container.logs(stream=True):
@@ -69,7 +90,6 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
     if exit_code != 0:
       raise RuntimeError(
           'Container exited with error code "{}"'.format(exit_code))
-    # TODO(b/141192336): Support docker run args to client.containers.run call.
     # TODO(b/141192583): Report data to publisher
     # - report container digest
     # - report replaced command line entrypoints

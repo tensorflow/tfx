@@ -276,10 +276,12 @@ def main():
       '--component_launcher_class_path', type=str, required=True)
   parser.add_argument('--enable_cache', action='store_true')
   parser.add_argument('--serialized_component', type=str, required=True)
+  parser.add_argument('--component_config', type=str, required=True)
 
   args = parser.parse_args()
 
   component = json_utils.loads(args.serialized_component)
+  component_config = json_utils.loads(args.component_config)
   component_launcher_class = import_utils.import_class_by_path(
       args.component_launcher_class_path)
   if not issubclass(component_launcher_class,
@@ -306,7 +308,8 @@ def main():
       driver_args=driver_args,
       metadata_connection_config=connection_config,
       beam_pipeline_args=beam_pipeline_args,
-      additional_pipeline_args=additional_pipeline_args)
+      additional_pipeline_args=additional_pipeline_args,
+      component_config=component_config)
 
   execution_info = launcher.launch()
 

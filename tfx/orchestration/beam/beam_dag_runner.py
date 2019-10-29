@@ -28,8 +28,10 @@ from tfx.components.base import base_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
+from tfx.orchestration.config import base_component_config
+from tfx.orchestration.config import config_utils
+from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.orchestration.launcher import in_process_component_launcher
 
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
@@ -41,6 +43,7 @@ class _ComponentAsDoFn(beam.DoFn):
   def __init__(self, component: base_component.BaseComponent,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
+               component_config: base_component_config.BaseComponentConfig,
                tfx_pipeline: pipeline.Pipeline):
     """Initialize the _ComponentAsDoFn.
 
@@ -48,6 +51,7 @@ class _ComponentAsDoFn(beam.DoFn):
       component: Component that to be executed.
       component_launcher_class: The class of the launcher to launch the
         component.
+      component_config: component config to launch the component.
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
@@ -57,7 +61,8 @@ class _ComponentAsDoFn(beam.DoFn):
         driver_args=driver_args,
         metadata_connection_config=tfx_pipeline.metadata_connection_config,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
-        additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
+        additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
+        component_config=component_config)
     self._component_id = component.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -78,25 +83,21 @@ class _ComponentAsDoFn(beam.DoFn):
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
-  """Tfx runner on Beam.
+  """Tfx runner on Beam."""
 
-  The supported launcher classes are (in the order of preference):
-  `in_process_component_launcher.InProcessComponentLauncher`.
-  """
-
-  SUPPORTED_LAUNCHER_CLASSES = [
-      in_process_component_launcher.InProcessComponentLauncher
-  ]
-
-  def __init__(self, beam_orchestrator_args: Optional[List[Text]] = None):
+  def __init__(self,
+               beam_orchestrator_args: Optional[List[Text]] = None,
+               config: Optional[pipeline_config.PipelineConfig] = None):
     """Initializes BeamDagRunner as a TFX orchestrator.
 
     Args:
       beam_orchestrator_args: beam args for the beam orchestrator. Note that
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
+      config: Optional pipeline config for customizing the launching
+        of each component.
     """
-    super(BeamDagRunner, self).__init__()
+    super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 
   def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
@@ -132,7 +133,9 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         absl.logging.info('Component %s depends on %s.', component_id,
                           [s.producer.full_label for s in signals_to_wait])
 
-        component_launcher_class = self.find_component_launcher_class(component)
+        (component_launcher_class,
+         component_config) = config_utils.find_component_launch_info(
+             self._config, component)
 
         # Each signal is an empty PCollection. AsIter ensures component will be
         # triggered after upstream components are finished.
@@ -140,6 +143,6 @@ class BeamDagRunner(tfx_runner.TfxRunner):
             root
             | 'Run[%s]' % component_id >> beam.ParDo(
                 _ComponentAsDoFn(component, component_launcher_class,
-                                 tfx_pipeline),
+                                 component_config, tfx_pipeline),
                 *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
         absl.logging.info('Component %s is scheduled.', component_id)

@@ -83,6 +83,7 @@ class AirflowComponentTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
         additional_pipeline_args={},
+        component_config=None,
         ti=mock_ti)
     mock_component_launcher_class.create.assert_called_once()
     arg_list = mock_component_launcher_class.create.call_args_list
@@ -100,7 +101,8 @@ class AirflowComponentTest(tf.test.TestCase):
         enable_cache=True,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
-        additional_pipeline_args={})
+        additional_pipeline_args={},
+        component_config=None)
     mock_functools_partial.assert_called_once_with(
         airflow_component._airflow_component_launcher,
         component=self._component,
@@ -109,7 +111,8 @@ class AirflowComponentTest(tf.test.TestCase):
         driver_args=mock.ANY,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
-        additional_pipeline_args={})
+        additional_pipeline_args={},
+        component_config=None)
     arg_list = mock_functools_partial.call_args_list
     self.assertTrue(arg_list[0][1]['driver_args'].enable_cache)
 

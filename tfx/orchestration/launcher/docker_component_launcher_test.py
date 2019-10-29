@@ -29,6 +29,7 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
+from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
@@ -40,14 +41,16 @@ class DockerComponentLauncherTest(tf.test.TestCase):
   def testCanLaunch(self):
     self.assertTrue(
         docker_component_launcher.DockerComponentLauncher.can_launch(
-            executor_spec.ExecutorContainerSpec(image='test')))
+            executor_spec.ExecutorContainerSpec(image='test'),
+            component_config=None))
     self.assertFalse(
         docker_component_launcher.DockerComponentLauncher.can_launch(
-            executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)))
+            executor_spec.ExecutorClassSpec(base_executor.BaseExecutor),
+            component_config=None))
 
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(docker, 'from_env', autospec=True)
-  def testLaunch_succeed(self, mock_docker_client, mock_publisher):
+  def testLaunchSucceedsWithoutConfig(self, mock_docker_client, mock_publisher):
     mock_publisher.return_value.publish_execution.return_value = {}
     mock_run = mock_docker_client.return_value.containers.run
     mock_run.return_value.logs.return_value = []
@@ -63,8 +66,36 @@ class DockerComponentLauncherTest(tf.test.TestCase):
                          mock_kwargs['command'])
 
   @mock.patch.object(publisher, 'Publisher', autospec=True)
+  @mock.patch.object(docker, 'DockerClient', autospec=True)
+  def testLaunchSucceedsWithConfig(self, mock_docker_client, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+    mock_run = mock_docker_client.return_value.containers.run
+    mock_run.return_value.logs.return_value = []
+    mock_run.return_value.wait.return_value = {'StatusCode': 0}
+    docker_config = docker_component_config.DockerComponentConfig(
+        docker_server_url='http://mock.docker.server',
+        environment={'name': 'value'},
+        privileged=True,
+        volumes=['/local/etc:/local/etc'],
+        ports={'2222/tcp': 3333})
+    context = self._create_launcher_context(docker_config)
+
+    context['launcher'].launch()
+
+    mock_run.assert_called_once()
+    _, mock_kwargs = mock_run.call_args
+    self.assertEqual('gcr://test', mock_kwargs['image'])
+    self.assertListEqual([context['input_artifact'].uri],
+                         mock_kwargs['command'])
+    mock_docker_client.assert_called_with(base_url='http://mock.docker.server')
+    self.assertDictEqual({'name': 'value'}, mock_kwargs['environment'])
+    self.assertTrue(mock_kwargs['privileged'])
+    self.assertListEqual(['/local/etc:/local/etc'], mock_kwargs['volumes'])
+    self.assertDictEqual({'2222/tcp': 3333}, mock_kwargs['ports'])
+
+  @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(docker, 'from_env', autospec=True)
-  def testLaunch_errorCode(self, mock_docker_client, mock_publisher):
+  def testLaunchWithErrorCode(self, mock_docker_client, mock_publisher):
     mock_publisher.return_value.publish_execution.return_value = {}
     mock_run = mock_docker_client.return_value.containers.run
     mock_run.return_value.logs.return_value = []
@@ -74,7 +105,7 @@ class DockerComponentLauncherTest(tf.test.TestCase):
     with self.assertRaises(RuntimeError):
       launcher.launch()
 
-  def _create_launcher_context(self):
+  def _create_launcher_context(self, component_config=None):
     test_dir = self.get_temp_dir()
 
     connection_config = metadata_store_pb2.ConnectionConfig()
@@ -102,7 +133,8 @@ class DockerComponentLauncherTest(tf.test.TestCase):
         driver_args=driver_args,
         metadata_connection_config=connection_config,
         beam_pipeline_args=[],
-        additional_pipeline_args={})
+        additional_pipeline_args={},
+        component_config=component_config)
 
     return {'launcher': launcher, 'input_artifact': input_artifact}
 

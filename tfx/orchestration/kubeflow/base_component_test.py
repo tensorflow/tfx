@@ -67,6 +67,7 @@ class BaseComponentTest(tf.test.TestCase):
           pipeline_root=test_pipeline_root,
           tfx_image='container_image',
           kubeflow_metadata_config=self._metadata_config,
+          component_config=None,
       )
     self.tfx_component = statistics_gen
 
@@ -98,6 +99,8 @@ class BaseComponentTest(tf.test.TestCase):
         'tfx.orchestration.launcher.in_process_component_launcher.InProcessComponentLauncher',
         '--serialized_component',
         formatted_component_json,
+        '--component_config',
+        'null',
     ]
     self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
                      expected_args)

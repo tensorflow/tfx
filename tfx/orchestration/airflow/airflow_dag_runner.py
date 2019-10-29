@@ -19,28 +19,53 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+import absl
 from airflow import models
+
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
-from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.orchestration.config import config_utils
+from tfx.orchestration.config import pipeline_config
+
+
+class AirflowPipelineConfig(pipeline_config.PipelineConfig):
+  """Pipeline config for AirflowDagRunner."""
+
+  def __init__(self, airflow_dag_config: Dict[Text, Any] = None, **kwargs):
+    """Creates an instance of AirflowPipelineConfig.
+
+    Args:
+      airflow_dag_config: Configs of Airflow DAG model. See
+        https://airflow.apache.org/_api/airflow/models/dag/index.html#airflow.models.dag.DAG
+          for the full spec.
+      **kwargs: keyword args for PipelineConfig.
+    """
+
+    super(AirflowPipelineConfig, self).__init__(kwargs)
+    self.airflow_dag_config = airflow_dag_config or {}
 
 
 class AirflowDagRunner(tfx_runner.TfxRunner):
-  """Tfx runner on Airflow.
+  """Tfx runner on Airflow."""
 
-  The supported launcher classes are (in the order of preference):
-  `in_process_component_launcher.InProcessComponentLauncher`.
-  """
+  def __init__(self,
+               config: Optional[Union[Dict[Text, Any],
+                                      AirflowPipelineConfig]] = None):
+    """Creates an instance of AirflowDagRunner.
 
-  SUPPORTED_LAUNCHER_CLASSES = [
-      in_process_component_launcher.InProcessComponentLauncher
-  ]
-
-  def __init__(self, config=None):
-    super(AirflowDagRunner, self).__init__()
-    self._config = config or {}
+    Args:
+      config: Optional Airflow pipeline config for customizing the launching of
+        each component.
+    """
+    if config and not isinstance(config, AirflowPipelineConfig):
+      absl.logging.warning(
+          'Pass config as a dict type is going to deprecated in 0.1.16. Use AirflowPipelineConfig type instead.',
+          PendingDeprecationWarning)
+      config = AirflowPipelineConfig(airflow_dag_config=config)
+    super(AirflowDagRunner, self).__init__(config)
 
   def run(self, tfx_pipeline: pipeline.Pipeline):
     """Deploys given logical pipeline on Airflow.
@@ -54,7 +79,8 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
 
     # Merge airflow-specific configs with pipeline args
     airflow_dag = models.DAG(
-        dag_id=tfx_pipeline.pipeline_info.pipeline_name, **self._config)
+        dag_id=tfx_pipeline.pipeline_info.pipeline_name,
+        **self._config.airflow_dag_config)
     if 'tmp_dir' not in tfx_pipeline.additional_pipeline_args:
       tmp_dir = os.path.join(tfx_pipeline.pipeline_info.pipeline_root, '.temp',
                              '')
@@ -62,16 +88,20 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
 
     component_impl_map = {}
     for tfx_component in tfx_pipeline.components:
+
+      (component_launcher_class,
+       component_config) = config_utils.find_component_launch_info(
+           self._config, tfx_component)
       current_airflow_component = airflow_component.AirflowComponent(
           airflow_dag,
           component=tfx_component,
-          component_launcher_class=self.find_component_launcher_class(
-              tfx_component),
+          component_launcher_class=component_launcher_class,
           pipeline_info=tfx_pipeline.pipeline_info,
           enable_cache=tfx_pipeline.enable_cache,
           metadata_connection_config=tfx_pipeline.metadata_connection_config,
           beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
-          additional_pipeline_args=tfx_pipeline.additional_pipeline_args)
+          additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
+          component_config=component_config)
       component_impl_map[tfx_component] = current_airflow_component
       for upstream_node in tfx_component.upstream_nodes:
         assert upstream_node in component_impl_map, ('Components is not in '

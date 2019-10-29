@@ -25,6 +25,7 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_simple_v2'
@@ -70,7 +71,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # Airflow checks 'DAG' keyword to find the dag.
-airflow_pipeline = AirflowDagRunner(_airflow_config).run(
+airflow_pipeline = AirflowDagRunner(AirflowPipelineConfig(_airflow_config)).run(
     _create_pipeline(
         pipeline_name=_pipeline_name,
         pipeline_root=_pipeline_root,

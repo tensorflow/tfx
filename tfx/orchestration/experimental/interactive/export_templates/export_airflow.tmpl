@@ -1,6 +1,6 @@
 import absl
 import datetime
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
+from tfx.orchestration.airflow import airflow_dag_runner
 
 {{ notebook_content }}
 
@@ -29,4 +29,6 @@ tfx_pipeline = pipeline.Pipeline(
     additional_pipeline_args={})
 
 # 'DAG' below needs to be kept for Airflow to detect dag.
-DAG = AirflowDagRunner(_airflow_config).run(tfx_pipeline)
+DAG = airflow_dag_runner.AirflowDagRunner(
+    airflow_dag_runner.AirflowPipelineConfig(_airflow_config)).run(
+      tfx_pipeline)

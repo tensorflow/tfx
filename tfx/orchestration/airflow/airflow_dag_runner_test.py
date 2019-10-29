@@ -135,7 +135,9 @@ class AirflowDagRunnerTest(tf.test.TestCase):
         components=[
             component_d, component_c, component_a, component_b, component_e
         ])
-    runner = airflow_dag_runner.AirflowDagRunner(config=airflow_config)
+    runner = airflow_dag_runner.AirflowDagRunner(
+        airflow_dag_runner.AirflowPipelineConfig(
+            airflow_dag_config=airflow_config))
     runner.run(test_pipeline)
 
     mock_airflow_component_a.set_upstream.assert_not_called()
@@ -157,6 +159,16 @@ class AirflowDagRunnerTest(tf.test.TestCase):
         mock.call(mock_airflow_component_d)
     ],
                                                            any_order=True)
+
+  def testAirflowDagRunnerInitBackwardCompatible(self):
+    airflow_config = {
+        'schedule_interval': '* * * * *',
+        'start_date': datetime.datetime(2019, 1, 1)
+    }
+
+    runner = airflow_dag_runner.AirflowDagRunner(airflow_config)
+
+    self.assertEqual(airflow_config, runner._config.airflow_dag_config)
 
 
 if __name__ == '__main__':
