@@ -53,7 +53,6 @@ class BulkInferrer(base_component.BaseComponent):
       examples: types.Channel = None,
       model_export: Optional[types.Channel] = None,
       model_blessing: Optional[types.Channel] = None,
-      model_push: Optional[types.Channel] = None,
       data_spec: Optional[bulk_inferrer_pb2.DataSpec] = None,
       model_spec: Optional[bulk_inferrer_pb2.ModelSpec] = None,
       output: Optional[types.Channel] = None,
@@ -67,8 +66,6 @@ class BulkInferrer(base_component.BaseComponent):
         Trainer component.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
         Model Validator component.
-      model_push: A Channel of 'PushedModel' type, usually produced by Pusher
-        component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection.
       model_spec: bulk_inferrer_pb2.ModelSpec instance that describes model
@@ -85,7 +82,6 @@ class BulkInferrer(base_component.BaseComponent):
         examples=examples,
         model_export=model_export,
         model_blessing=model_blessing,
-        model_push=model_push,
         data_spec=data_spec or bulk_inferrer_pb2.DataSpec(),
         model_spec=model_spec or bulk_inferrer_pb2.ModelSpec(),
         output=output)
