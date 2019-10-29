@@ -1,4 +1,5 @@
 # Current version (not yet released; still in development)
+*   Added documentation for Fairness Indicators.
 
 ## Major Features and Improvements
 
