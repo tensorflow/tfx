@@ -20,6 +20,9 @@ toc:
 - heading: "Model Analysis"
 - title: "Get started with TFMA"
   path: /tfx/tutorials/model_analysis/tfma_basic
+- title: "Fairness Indicators tutorial"
+  path: https://github.com/tensorflow/fairness-indicators
+  status: external
 
 - heading: "Serving"
 - title: "Train and serve a model with REST"
