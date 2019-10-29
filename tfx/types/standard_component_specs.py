@@ -47,8 +47,6 @@ class BulkInferrerSpec(ComponentSpec):
       'model_blessing':
           ChannelParameter(
               type=standard_artifacts.ModelBlessing, optional=True),
-      'model_push':
-          ChannelParameter(type=standard_artifacts.PushedModel, optional=True),
   }
   OUTPUTS = {
       'output': ChannelParameter(type=standard_artifacts.InferenceResult),
