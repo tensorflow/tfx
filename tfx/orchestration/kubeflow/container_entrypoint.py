@@ -149,19 +149,19 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
 
       **Properties**:
 
-      **uri**: {uri}
+      **uri**: {uri},
 
-      **id**: {id}
+      **id**: {id},
 
-      **span**: {span}
+      **span**: {span},
 
-      **type_id**: {type_id}
+      **type_id**: {type_id},
 
-      **type_name**: {type_name}
+      **type_name**: {type_name},
 
-      **state**: {state}
+      **state**: {state},
 
-      **split**: {split}
+      **split**: {split},
 
       **producer_component**: {producer_component}
 
@@ -276,12 +276,10 @@ def main():
       '--component_launcher_class_path', type=str, required=True)
   parser.add_argument('--enable_cache', action='store_true')
   parser.add_argument('--serialized_component', type=str, required=True)
-  parser.add_argument('--component_config', type=str, required=True)
 
   args = parser.parse_args()
 
   component = json_utils.loads(args.serialized_component)
-  component_config = json_utils.loads(args.component_config)
   component_launcher_class = import_utils.import_class_by_path(
       args.component_launcher_class_path)
   if not issubclass(component_launcher_class,
@@ -308,8 +306,7 @@ def main():
       driver_args=driver_args,
       metadata_connection_config=connection_config,
       beam_pipeline_args=beam_pipeline_args,
-      additional_pipeline_args=additional_pipeline_args,
-      component_config=component_config)
+      additional_pipeline_args=additional_pipeline_args)
 
   execution_info = launcher.launch()
 

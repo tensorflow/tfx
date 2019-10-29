@@ -1,9 +1,6 @@
 # Current version (not yet released; still in development)
-*   Added documentation for Fairness Indicators.
 
 ## Major Features and Improvements
-*   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
-    platform specific settings for pipelines and components.
 
 ## Bug fixes and other changes
 
@@ -126,16 +123,6 @@
     examples/chicago_taxi_pipeline/
 *   Moved interactive notebook classes into `tfx.orchestration.experimental`
     namespace.
-*   Starting from 1.15, package `tensorflow` comes with GPU support. Users
-    won't need to choose between `tensorflow` and `tensorflow-gpu`. If any GPU
-    devices are available, processes spawned by all TFX components will try to
-    utilize them; note that in rare cases, this may exhaust the memory of the
-    device(s).
-*   Caveat: `tensorflow` 2.0.0 is an exception and does not have GPU
-    support. If `tensorflow-gpu` 2.0.0 is installed before installing
-    `tfx`, it will be replaced with `tensorflow` 2.0.0.
-    Re-install `tensorflow-gpu` 2.0.0 if needed.
-
 
 ### For pipeline authors
 
@@ -143,11 +130,6 @@
     deprecated in TF 2.0. User module relying on member method of that class
     will not be supported. Dot style property access will be the only supported
     style from now on.
-*   Any SavedModel produced by tf.Transform <=0.14 using any tf.contrib ops
-    (or tf.Transform ops that used tf.contrib ops such as tft.quantiles,
-    tft.bucketize, etc.) cannot be loaded with TF 2.0 since the contrib library
-    has been removed in 2.0. Please refer to this [issue]
-    (https://github.com/tensorflow/tfx/issues/838).
 
 ### For component authors
 

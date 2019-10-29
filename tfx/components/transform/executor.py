@@ -484,12 +484,39 @@ class Executor(base_executor.BaseExecutor):
         | 'WriteStats' >> Executor._WriteStats(stats_output_path))
 
   @staticmethod
+  def _EncodeTFDV(element: Dict[Text, Any], feature_specs):
+    """Encodes element in an in-memory format that TFDV expects."""
+    if _TRANSFORM_INTERNAL_FEATURE_FOR_KEY not in element:
+      raise ValueError(
+          'Expected _TRANSFORM_INTERNAL_FEATURE_FOR_KEY ({}) to exist in the '
+          'input but not found.'.format(_TRANSFORM_INTERNAL_FEATURE_FOR_KEY))
+
+    # TODO(b/123549935): Obviate the numpy array conversions by
+    # allowing TFDV to accept primitives in general, and TFT's
+    # input/output format in particular.
+    result = {}
+    for feature_name, feature_spec in feature_specs.items():
+      feature_value = element.get(feature_name)
+      if feature_value is None:
+        result[feature_name] = None
+      elif isinstance(feature_value, np.ndarray):
+        result[feature_name] = np.asarray(
+            feature_value, feature_spec.dtype.as_numpy_dtype).reshape(-1)
+      elif isinstance(feature_value, list):
+        result[feature_name] = np.asarray(feature_value,
+                                          feature_spec.dtype.as_numpy_dtype)
+      else:
+        result[feature_name] = np.asarray(
+            [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
+    return result
+
+  @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Dict[Text, Any])
   @beam.typehints.with_output_types(statistics_pb2.DatasetFeatureStatisticsList)
   def _ComputeTFDVStats(pcoll: beam.pvalue.PCollection,
                         schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
-    """Cmoputes Statistics with TFDV.
+    """Computes Statistics with TFDV.
 
     Args:
       pcoll: pcollection of examples.
@@ -501,32 +528,6 @@ class Executor(base_executor.BaseExecutor):
     feature_specs_from_schema = schema_utils.schema_as_feature_spec(
         schema).feature_spec
 
-    def EncodeTFDV(element, feature_specs):
-      """Encodes element in an in-memory format that TFDV expects."""
-      if _TRANSFORM_INTERNAL_FEATURE_FOR_KEY not in element:
-        raise ValueError(
-            'Expected _TRANSFORM_INTERNAL_FEATURE_FOR_KEY ({}) to exist in the '
-            'input but not found.'.format(_TRANSFORM_INTERNAL_FEATURE_FOR_KEY))
-
-      # TODO(b/123549935): Obviate the numpy array conversions by
-      # allowing TFDV to accept primitives in general, and TFT's
-      # input/output format in particular.
-      result = {}
-      for feature_name, feature_spec in feature_specs.items():
-        feature_value = element.get(feature_name)
-        if feature_value is None:
-          result[feature_name] = None
-        elif isinstance(feature_value, np.ndarray):
-          result[feature_name] = np.asarray(
-              feature_value, feature_spec.dtype.as_numpy_dtype).reshape(-1)
-        elif isinstance(feature_value, list):
-          result[feature_name] = np.asarray(
-              feature_value, feature_spec.dtype.as_numpy_dtype)
-        else:
-          result[feature_name] = np.asarray(
-              [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
-      return result
-
     # TODO(pachristopher): Remove encoding and batching steps once TFT
     # supports Arrow tables.
     # TODO(pachristopher): Explore if encoding TFT dict into serialized examples
@@ -534,8 +535,8 @@ class Executor(base_executor.BaseExecutor):
     # TFDV dict and then to Arrow tables.
     encoded = (
         pcoll
-        | 'EncodeTFDV'
-        >> beam.Map(EncodeTFDV, feature_specs=feature_specs_from_schema))
+        | 'EncodeTFDV' >> beam.Map(
+            Executor._EncodeTFDV, feature_specs=feature_specs_from_schema))
 
     return (
         encoded
