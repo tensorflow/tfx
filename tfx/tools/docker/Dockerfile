@@ -15,7 +15,7 @@
 FROM ubuntu:16.04
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-# Need additional ppa since python 3.6 and protobuf 3 
+# Need additional ppa since python 3.6 and protobuf 3
 # are not part of Ubuntu 16.04 by default.
 RUN apt-get update -y && \
   apt-get install --no-install-recommends -y -q software-properties-common && \
@@ -50,14 +50,15 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
-RUN python setup.py bdist_wheel
 
 # TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
 # once we switch default tensorflow version in released image to TF 2.x.
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) pip install \
-  "tensorflow>=1.15,<2" \
-  "tensorflow-serving-api>=1.15,<2" \
-  $(find dist -name "tfx-*.whl")[docker_image]
+# TODO(jxzheng): investigate why setuptools need to be re-installed
+
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install "tensorflow>=1.15,<2"
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install "tensorflow-serving-api>=1.15,<2"
+RUN python3 -m pip uninstall -y setuptools && python3 -m pip install "setuptools==41.4.0"
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
