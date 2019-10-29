@@ -2,6 +2,8 @@
 *   Added documentation for Fairness Indicators.
 
 ## Major Features and Improvements
+*   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
+    platform specific settings for pipelines and components.
 
 ## Bug fixes and other changes
 

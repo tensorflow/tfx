@@ -20,11 +20,9 @@ from __future__ import unicode_literals
 
 import abc
 from six import with_metaclass
-from typing import Any, Optional, Type
+from typing import Any, Optional
 
-from tfx.components.base import base_component
-from tfx.orchestration.launcher import base_component_launcher
-from tfx.utils import abc_utils
+from tfx.orchestration.config import pipeline_config
 
 
 class TfxRunner(with_metaclass(abc.ABCMeta, object)):
@@ -33,54 +31,14 @@ class TfxRunner(with_metaclass(abc.ABCMeta, object)):
   This is the base class for every TFX runner.
   """
 
-  # A list of component launcher classes that are supported by the current
-  # runner. List sequence determines the order in which launchers are chosen
-  # for each component being run.
-  # Subclasses must override this property by specifying a list of supported
-  # launcher classes, e.g.
-  # `SUPPORTED_LAUNCHER_CLASSES = [InProcessComponentLauncher]`.
-  SUPPORTED_LAUNCHER_CLASSES = abc_utils.abstract_property()
-
-  def __init__(self):
+  def __init__(self, config: Optional[pipeline_config.PipelineConfig] = None):
     """Initializes a TfxRunner instance.
-    """
-    self._supported_launcher_classes = self.__class__.SUPPORTED_LAUNCHER_CLASSES
-    self._validate_supported_launcher_classes()
-
-  def _validate_supported_launcher_classes(self):
-    if not self._supported_launcher_classes:
-      raise ValueError('component_launcher_classes must not be None or empty.')
-
-    if any([
-        not issubclass(cls, base_component_launcher.BaseComponentLauncher)
-        for cls in self._supported_launcher_classes
-    ]):
-      raise TypeError('Each item in supported_launcher_classes must be type of '
-                      'base_component_launcher.BaseComponentLauncher.')
-
-  def find_component_launcher_class(
-      self, component: base_component.BaseComponent
-  ) -> Type[base_component_launcher.BaseComponentLauncher]:
-    """Find a launcher in the runner which can launch the component.
-
-    The default lookup logic goes through the self._supported_launcher_classes
-    in order and returns the first one which can launch the executor_spec of
-    the component. Subclass may customize the logic by overriding the method.
 
     Args:
-      component: the component to launch.
-
-    Returns:
-      The found component launcher for the component.
-
-    Raises:
-      RuntimeError: if no supported launcher is found.
+      config: Optional pipeline config for customizing the launching
+        of each component.
     """
-    for component_launcher_class in self._supported_launcher_classes:
-      if component_launcher_class.can_launch(component.executor_spec):
-        return component_launcher_class
-    raise RuntimeError('No launcher can launch component "%s".' %
-                       component.component_id)
+    self._config = config or pipeline_config.PipelineConfig()
 
   @abc.abstractmethod
   def run(self, pipeline) -> Optional[Any]:

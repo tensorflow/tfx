@@ -34,6 +34,7 @@ from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
+from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import json_utils
@@ -56,17 +57,13 @@ class BaseComponent(object):
   """
 
   def __init__(
-      self,
-      component: tfx_base_component.BaseComponent,
+      self, component: tfx_base_component.BaseComponent,
       component_launcher_class: Type[
           base_component_launcher.BaseComponentLauncher],
-      depends_on: Set[dsl.ContainerOp],
-      pipeline: tfx_pipeline.Pipeline,
-      pipeline_name: Text,
-      pipeline_root: dsl.PipelineParam,
-      tfx_image: Text,
+      depends_on: Set[dsl.ContainerOp], pipeline: tfx_pipeline.Pipeline,
+      pipeline_name: Text, pipeline_root: dsl.PipelineParam, tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-  ):
+      component_config: base_component_config.BaseComponentConfig):
     """Creates a new Kubeflow-based component.
 
     This class essentially wraps a dsl.ContainerOp construct in Kubeflow
@@ -84,6 +81,7 @@ class BaseComponent(object):
       tfx_image: The container image to use for this component.
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
+      component_config: Component config to launch the component.
     """
     component_launcher_class_path = '.'.join([
         component_launcher_class.__module__, component_launcher_class.__name__
@@ -104,6 +102,8 @@ class BaseComponent(object):
         component_launcher_class_path,
         '--serialized_component',
         json_utils.dumps(component),
+        '--component_config',
+        json_utils.dumps(component_config),
     ]
 
     if pipeline.enable_cache:
