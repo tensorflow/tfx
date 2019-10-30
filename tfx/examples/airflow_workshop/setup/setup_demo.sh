@@ -23,7 +23,7 @@ NORMAL=$(tput sgr0)
 printf "${GREEN}Installing TFX workshop${NORMAL}\n\n"
 
 printf "${GREEN}Refreshing setuptools to avoid _NamespacePath issues${NORMAL}\n"
-pip uninstall setuptools -y && pip install setuptools
+pip uninstall setuptools -y && pip install setuptools==41.5.0
 
 printf "${GREEN}Installing httplib2 for Beam compatibility${NORMAL}\n"
 pip install httplib2==0.12.0
@@ -40,24 +40,24 @@ printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install tfx==0.14.0rc1
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
-pip install google-api-python-client
+pip install google-api-python-client==1.7.11
 
 printf "${GREEN}Installing required Jupyter version${NORMAL}\n"
-pip install ipykernel
+pip install ipykernel==5.1.3
 ipython kernel install --user --name=tfx
 pip install --upgrade notebook==5.7.8
 jupyter nbextension install --py --symlink --sys-prefix tensorflow_model_analysis
 jupyter nbextension enable --py --sys-prefix tensorflow_model_analysis
 
 printf "${GREEN}Installing packages used by the notebooks${NORMAL}\n"
-pip install matplotlib
-pip install papermill
-pip install pandas
-pip install networkx
+pip install matplotlib==3.1.1
+pip install papermill==1.2.1
+pip install pandas==0.25.2
+pip install networkx==2.4
 
 # # Docker images
 printf "${GREEN}Installing docker${NORMAL}\n"
-pip install docker
+pip install docker==4.1.0
 
 # Airflow
 # Set this to avoid the GPL version; no functionality difference either way
