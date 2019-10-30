@@ -149,19 +149,19 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
 
       **Properties**:
 
-      **uri**: {uri},
+      **uri**: {uri}
 
-      **id**: {id},
+      **id**: {id}
 
-      **span**: {span},
+      **span**: {span}
 
-      **type_id**: {type_id},
+      **type_id**: {type_id}
 
-      **type_name**: {type_name},
+      **type_name**: {type_name}
 
-      **state**: {state},
+      **state**: {state}
 
-      **split**: {split},
+      **split**: {split}
 
       **producer_component**: {producer_component}
 
