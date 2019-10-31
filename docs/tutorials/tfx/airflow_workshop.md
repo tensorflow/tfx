@@ -339,7 +339,7 @@ looks for anomalies and missing values in the dataset
 left corner
 * Click the refresh button on the right side of the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi by clicking the _Trigger_ button
+* Trigger the taxi pipeline by clicking the _Trigger_ button
 * Wait for the pipeline to complete
   * Once the component's dark green
   * Use the refresh button on the right side or refresh your page
@@ -356,7 +356,7 @@ tab.  Now return to that tab in your browser.
 
 ![Dive into data](images/airflow_workshop/step3notebook.png)
 
-### More advanced example
+### A more advanced example
 
 The example presented here is really only meant to get you started. For a more
 advanced example, see the [TensorFlow Data Validation Colab](
@@ -386,7 +386,7 @@ and serving.
 ![Transform](images/airflow_workshop/transform.png)
 
 * The [Transform](https://www.tensorflow.org/tfx/guide/transform) component 
-performs feature engineering on the dataset.
+performs feature engineering on the dataset
 
 ### In an editor:
 
@@ -399,10 +399,10 @@ performs feature engineering on the dataset.
 * Return to the DAGs list page in Airflow
 * Click the refresh button on the right side of the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger the taxi pipeline
+* Trigger the taxi pipeline by clicking the _Trigger_ button
 * Wait for the pipeline to complete
   * Once the component's dark green
-  * Use refresh on right side or refresh page
+  * Use the refresh button on the right side or refresh your page
 
 ![Feature Engineering](images/airflow_workshop/step4.png)
 
@@ -413,7 +413,7 @@ Return to the Jupyter tab in your browser.
 * Open `step4.ipynb`
 * Follow the instructions in the notebook
 
-### More advanced example
+### A more advanced example
 
 The example presented here is really only meant to get you started. For a more
 advanced example, see the [TensorFlow Transform Colab](
@@ -421,34 +421,34 @@ https://www.tensorflow.org/tfx/tutorials/transform/census).
 
 ## Step 5: Training your data
 
-Train a TensorFlow model with your nice, clean, transformed data.
+In this step, you'll train a TensorFlow model with your nice, clean, transformed data.
 
 * Include the transformations from step 4 so that they are applied consistently
-* Save the results as a SavedModel for production
+* Save the results as a `SavedModel` for production
 * Visualize and explore the training process using TensorBoard
-* Also save an EvalSavedModel for analysis of model performance
+* Also save an `EvalSavedModel` for analysis of model performance
 
 ### Components
 
-*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains the model
+*   The [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component trains the model
     using TensorFlow
     [Estimators](https://github.com/tensorflow/docs/blob/master/site/en/r1/guide/estimators.md)
 
 ### In an editor:
 
-* In ~/airflow/dags uncomment the lines marked `Step 5` in both 
+* In `~/airflow/dags`, uncomment the lines marked `# Step 5` in both 
 `taxi_pipeline.py` and `taxi_utils.py`
 * Take a moment to review the code that you uncommented
 
 ### In a browser:
 
-* Return to DAGs list page in Airflow
+* Return to the DAGs list page in Airflow
 * Click the refresh button on the right side for the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi
-* Wait for pipeline to complete
-  * All dark green
-  * Use refresh on right side or refresh page
+* Trigger the taxi pipeline by clicking the _Trigger_ button
+* Wait for the pipeline to complete
+  * Once the component's dark green
+  * Use the refresh button on the right side or refresh your page
 
 ![Training a Model](images/airflow_workshop/step5.png)
 
@@ -456,48 +456,48 @@ Train a TensorFlow model with your nice, clean, transformed data.
 
 Return to the Jupyter tab in your browser.
 
-* Open step5.ipynb
+* Open `step5.ipynb`
 * Follow the notebook
 
 ![Training a Model](images/airflow_workshop/step5tboard.png)
 
-### More advanced example
+### A more advanced example
 
 The example presented here is really only meant to get you started. For a more
-advanced example see the [TensorBoard Tutorial](
-https://www.tensorflow.org/tensorboard/r1/summaries).
+advanced example, see the [TensorBoard Tutorial](
+https://www.tensorflow.org/tensorboard/r1/summaries)
 
 ## Step 6: Analyzing your model's performance
 
-Understanding more than just the top level metrics.
+In this step you'll understand more than just the top level metrics. Some things to keep in mind are:
 
-* Users experience model performance for their queries only
-* Poor performance on slices of data can be hidden by top level metrics
+* Users experience model performance only for their queries
+* Poor performance on certain slices of data can be hidden by top level metrics
 * Model fairness is important
-* Often key subsets of users or data are very important, and may be small
+* Often, key subsets of users or data may be very important, and may be small. Some examples are:
     * Performance in critical but unusual conditions
     * Performance for key audiences such as influencers
 
 ### Components
 
-* [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator)
-performs deep analysis of the training results.
+* The [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) component
+performs deep analysis of the training results
 
 ### In an editor:
 
-* In ~/airflow/dags uncomment the lines marked `Step 6` in both
-`taxi_pipeline.py`
+* In `~/airflow/dags`, uncomment the lines marked `# Step 6` in both
+`taxi_pipeline.py` and `taxi_utils.py`
 * Take a moment to review the code that you uncommented
 
 ### In a browser:
 
-* Return to DAGs list page in Airflow
+* Return to the DAGs list page in Airflow
 * Click the refresh button on the right side for the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi
+* Trigger the taxi pipeline by clicking the _Trigger_ button
 * Wait for pipeline to complete
-  * All dark green
-  * Use refresh on right side or refresh page
+  * Once the component's dark green
+  * Use the refresh button on the right side or refresh your page
 
 ![Analyzing model performance](images/airflow_workshop/step6.png)
 
@@ -505,27 +505,28 @@ performs deep analysis of the training results.
 
 Return to the Jupyter tab in your browser.
 
-* Open step6.ipynb
+* Open `step6.ipynb`
 * Follow the notebook
 
 ![Analyzing model performance](images/airflow_workshop/step6notebook.png)
 
-### More advanced example
+### A more advanced example
 
 The example presented here is really only meant to get you started.
-For a more advanced example see the [TFMA Chicago Taxi Tutorial](
+For a more advanced example, see the [TFMA Chicago Taxi Tutorial](
 https://www.tensorflow.org/tfx/tutorials/model_analysis/chicago_taxi).
 
 ## Step 7: Preparing your model for production
 
-If the new model is ready, make it so.
+The model is now ready to serve. A few things to keep in mind before deploying 
+a model to production:
 
 * If you’re replacing a model that is currently in production, first make sure
 that the new one is better
-* ModelValidator tells the Pusher component if the model is OK
-* Pusher deploys SavedModels to well-known locations
+* `ModelValidator` tells the `Pusher` component if the model is OK
+* `Pusher` deploys `SavedModel`s to well-known locations
 
-Deployment targets receive new models from well-known locations
+Deployment targets receive new models from well-known locations such as:
 
 * TensorFlow Serving
 * TensorFlow Lite
@@ -534,23 +535,23 @@ Deployment targets receive new models from well-known locations
 
 ### Components
 
-* [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval)
-ensures that the model is "good enough" to be pushed to production.
-* [Pusher](https://www.tensorflow.org/tfx/guide/pusher)
-deploys the model to a serving infrastructure.
+* The [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval) component 
+ensures that the model is "good enough" to be pushed to production
+* The [Pusher](https://www.tensorflow.org/tfx/guide/pusher) component 
+deploys the model to a serving infrastructure
 
 ### In an editor:
 
-* In ~/airflow/dags uncomment the lines marked `Step 7` in both
-`taxi_pipeline.py`
+* In `~/airflow/dags`, uncomment the lines marked `# Step 7` in both
+`taxi_pipeline.py` and `taxi_utils.py`
 * Take a moment to review the code that you uncommented
 
 ### In a browser:
 
-* Return to DAGs list page in Airflow
+* Return to the DAGs list page in Airflow
 * Click the refresh button on the right side for the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi
+* Trigger the taxi pipeline by clicking the _Trigger_ button
 * Wait for pipeline to complete
   * All dark green
   * Use refresh on right side or refresh page
