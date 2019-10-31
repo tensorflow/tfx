@@ -22,7 +22,7 @@ and update your pipeline, and measure performance of your pipeline too.
 ### Learn more
 
 Please see the [TFX User Guide](https://www.tensorflow.org/tfx/guide) to learn
-more.
+more
 
 ## Step by step
 
@@ -552,24 +552,24 @@ deploys the model to a serving infrastructure
 * Click the refresh button on the right side for the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
 * Trigger the taxi pipeline by clicking the _Trigger_ button
-* Wait for pipeline to complete
-  * All dark green
-  * Use refresh on right side or refresh page
+* Wait for the pipeline to complete
+  * Once the component's dark green
+  * Use the refresh button on the right side or refresh your page
 
 ![Ready for production](images/airflow_workshop/step7.png)
 
 ## Next Steps
 
-You have now trained and validated your model, and exported a `SavedModel` file
+You have trained and validated your model, and exported a `SavedModel` file
 under the `~/airflow/saved_models/taxi` directory.  Your model is now
-ready for production.  You can now deploy your model to any of the TensorFlow
-deployment targets, including:
+ready for production.  You can now deploy your model to any of the following TensorFlow
+deployment targets:
 
-* [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving), for
+* [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving) for
 serving your model on a server or server farm and processing REST and/or gRPC
-inference requests.
-* [TensorFlow Lite](https://www.tensorflow.org/lite), for including your model
+inference requests
+* [TensorFlow Lite](https://www.tensorflow.org/lite) for including your model
 in an Android or iOS native mobile application, or in a Raspberry Pi, IoT, or
-microcontroller application.
-* [TensorFlow.js](https://www.tensorflow.org/js), for running your model in a
-web browser or Node.JS application.
+microcontroller application
+* [TensorFlow.js](https://www.tensorflow.org/js) for running your model in a
+web browser or Node.JS application
