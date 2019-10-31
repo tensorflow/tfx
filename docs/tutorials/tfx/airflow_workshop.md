@@ -223,7 +223,7 @@ cd ~/tfx/tfx/examples/airflow_workshop/setup
 
 You should review `setup_demo.sh` to see what it's doing.
 
-## Step 2: Bring up initial pipeline skeleton
+## Step 2: Bringing up initial pipeline skeleton
 
 ### Hello World
 
@@ -245,8 +245,8 @@ cd ~/tfx/tfx/examples/airflow_workshop/notebooks
 jupyter notebook
 ```
 
-You started Jupyter notebook in this step.  Later you will be running the
-notebooks in this folder.
+You have started Jupyter notebook in this step.  You will be running the
+notebooks in this folder later on.
 
 ### In a browser:
 
@@ -268,9 +268,9 @@ airflow webserver -p 7070
 
 ![DAG buttons](images/airflow_workshop/airflow_dag_buttons.png)
 
-* Use the button on the left to _enable_ the taxi DAG
-* Use the button on the right to _refresh_ the taxi DAG when you make changes
-* Use the button on the right to _trigger_ the taxi DAG
+* Use the _Enable_ button on the left to _enable_ the taxi DAG
+* Use the _Refresh_ button on the right to _refresh_ the taxi DAG when you make changes
+* Use the _Trigger_ button on the right to _trigger_ the taxi DAG
 * Click on taxi to go to the graph view of the taxt DAG
 
 ![Graph refresh button](images/airflow_workshop/graph_refresh_button.png)
@@ -292,22 +292,22 @@ airflow trigger_dag <your DAG>
 #### Waiting for the pipeline to complete
 
 After you've triggered your pipeline in the DAGs view, you can watch as your
-pipeline completes processing.  As each component runs the outline color of the
+pipeline completes processing.  As each component runs, the outline color of the
 component in the DAG graph will change to show its state.  When a component has
-finished processing the outline will turn dark green to show that it's done.
+finished processing, the outline will turn dark green to show that the component's done processing.
 
 Note: You need to use the _graph refresh_ button on the right or refresh the
 page to see the updated status of the components as they run.
 
-So far you only have the CsvExampleGen component in our pipeline, so you need
+So far you only have the `CsvExampleGen` component in your pipeline. You need
 to wait for it to turn dark green (~1 minutes).
 
 ![Setup complete](images/airflow_workshop/step2.png)
 
-## Step 3: Dive into your data
+## Step 3: Diving into your data
 
 The first task in any data science or ML project is to understand
-and clean the data.
+and clean the data. Generally, in this step, you will:
 
 * Understand the data types for each feature
 * Look for anomalies and missing values
@@ -318,31 +318,31 @@ and clean the data.
 ![Data Components](images/airflow_workshop/examplegen1.png)
 ![Data Components](images/airflow_workshop/examplegen2.png)
 
-* [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen)
-ingests and splits the input dataset.
-* [StatisticsGen](https://www.tensorflow.org/tfx/guide/statsgen)
-calculates statistics for the dataset.
-* [SchemaGen](https://www.tensorflow.org/tfx/guide/schemagen)
-SchemaGen examines the statistics and creates a data schema.
-* [ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval)
-looks for anomalies and missing values in the dataset.
+* The [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component 
+ingests and splits the input dataset
+* The [StatisticsGen](https://www.tensorflow.org/tfx/guide/statsgen) component
+calculates statistics for the input dataset
+* The [SchemaGen](https://www.tensorflow.org/tfx/guide/schemagen) component 
+SchemaGen examines the statistics and creates a data schema
+* The [ExampleValidator](https://www.tensorflow.org/tfx/guide/exampleval) component 
+looks for anomalies and missing values in the dataset
 
 ### In an editor:
 
-* In ~/airflow/dags uncomment the lines marked `Step 3` in
+* In `~/airflow/dags`, uncomment the lines marked `# Step 3` in
 `taxi_pipeline.py`
 * Take a moment to review the code that you uncommented
 
 ### In a browser:
 
-* Return to DAGs list page in Airflow by clicking on "DAGs" link in the top
+* Return to the DAGs list page in Airflow by clicking on the "DAGs" link in the top
 left corner
-* Click the refresh button on the right side for the taxi DAG
+* Click the refresh button on the right side of the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi
-* Wait for pipeline to complete
-  * All dark green
-  * Use refresh on right side or refresh page
+* Trigger taxi by clicking the _Trigger_ button
+* Wait for the pipeline to complete
+  * Once the component's dark green
+  * Use the refresh button on the right side or refresh your page
 
 ![Dive into data](images/airflow_workshop/step3.png)
 
@@ -351,57 +351,57 @@ left corner
 Earlier, you ran `jupyter notebook`, which opened a Jupyter session in a browser
 tab.  Now return to that tab in your browser.
 
-* Open step3.ipynb
-* Follow the notebook
+* Open `step3.ipynb`
+* Follow the instructions in the notebook
 
 ![Dive into data](images/airflow_workshop/step3notebook.png)
 
 ### More advanced example
 
 The example presented here is really only meant to get you started. For a more
-advanced example see the [TensorFlow Data Validation Colab](
+advanced example, see the [TensorFlow Data Validation Colab](
 https://www.tensorflow.org/tfx/tutorials/data_validation/chicago_taxi).
 
 For more information on using TFDV to explore and validate a
 dataset, [see the examples on tensorflow.org](
 https://www.tensorflow.org/tfx/data_validation).
 
-## Step 4: Feature engineering
+## Step 4: Engineering your features
 
-You can increase the predictive quality of your data and/or reduce
-dimensionality with feature engineering.
+In this step you'll increase the predictive quality of your data and/or reduce its
+dimensionality with feature engineering. Some feature engineering methods are:
 
 * Feature crosses
 * Vocabularies
 * Embeddings
-* PCA
+* PCA (Principal Component Analysis)
 * Categorical encoding
 
-One of the benefits of using TFX is that you will write your transformation
-code once, and the resulting transforms will be consistent between training
+One of the benefits of using TFX is that you will write your data transformation
+code once, and the resulting transforms will be consistent in all the steps between training
 and serving.
 
 ### Components
 
 ![Transform](images/airflow_workshop/transform.png)
 
-* [Transform](https://www.tensorflow.org/tfx/guide/transform)
+* The [Transform](https://www.tensorflow.org/tfx/guide/transform) component 
 performs feature engineering on the dataset.
 
 ### In an editor:
 
-* In ~/airflow/dags uncomment the lines marked `Step 4` in both
+* In `~/airflow/dags`, uncomment the lines marked `# Step 4` in both
 `taxi_pipeline.py` and `taxi_utils.py`
 * Take a moment to review the code that you uncommented
 
 ### In a browser:
 
-* Return to DAGs list page in Airflow
-* Click the refresh button on the right side for the taxi DAG
+* Return to the DAGs list page in Airflow
+* Click the refresh button on the right side of the taxi DAG
   * You should see "DAG [taxi] is now fresh as a daisy"
-* Trigger taxi
-* Wait for pipeline to complete
-  * All dark green
+* Trigger the taxi pipeline
+* Wait for the pipeline to complete
+  * Once the component's dark green
   * Use refresh on right side or refresh page
 
 ![Feature Engineering](images/airflow_workshop/step4.png)
@@ -410,16 +410,16 @@ performs feature engineering on the dataset.
 
 Return to the Jupyter tab in your browser.
 
-* Open step4.ipynb
-* Follow the notebook
+* Open `step4.ipynb`
+* Follow the instructions in the notebook
 
 ### More advanced example
 
 The example presented here is really only meant to get you started. For a more
-advanced example see the [TensorFlow Transform Colab](
+advanced example, see the [TensorFlow Transform Colab](
 https://www.tensorflow.org/tfx/tutorials/transform/census).
 
-## Step 5: Training
+## Step 5: Training your data
 
 Train a TensorFlow model with your nice, clean, transformed data.
 
@@ -467,7 +467,7 @@ The example presented here is really only meant to get you started. For a more
 advanced example see the [TensorBoard Tutorial](
 https://www.tensorflow.org/tensorboard/r1/summaries).
 
-## Step 6: Analyzing model performance
+## Step 6: Analyzing your model's performance
 
 Understanding more than just the top level metrics.
 
@@ -516,7 +516,7 @@ The example presented here is really only meant to get you started.
 For a more advanced example see the [TFMA Chicago Taxi Tutorial](
 https://www.tensorflow.org/tfx/tutorials/model_analysis/chicago_taxi).
 
-## Step 7: Ready for production
+## Step 7: Preparing your model for production
 
 If the new model is ready, make it so.
 
