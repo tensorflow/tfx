@@ -7,17 +7,17 @@ https://github.com/tensorflow/tfx)
 ## Introduction
 
 This tutorial is designed to introduce TensorFlow Extended (TFX)
-and help you learn to create your own machine learning
-pipelines.  It runs locally, and shows integration with TFX and TensorBoard
+and help you create your own machine learning
+pipelines. The tutorial code runs locally, and shows integration with TFX and TensorBoard
 as well as interaction with TFX in Jupyter notebooks.
 
 Key Term: A TFX pipeline is a Directed Acyclic Graph, or "DAG".  We will often
 refer to pipelines as DAGs.
 
-You'll follow a typical ML development process,
-starting by examining the dataset, and end up with a complete
+This tutorial follows a typical ML development process. 
+You will be start by examining the dataset, and end the tutorial with a fully
 working pipeline.  Along the way you'll explore ways to debug
-and update your pipeline, and measure performance.
+and update your pipeline, and measure performance of your pipeline too.
 
 ### Learn more
 
@@ -26,17 +26,17 @@ more.
 
 ## Step by step
 
-You'll gradually create your pipeline by working step by step,
-following a typical ML development process.  Here are the steps:
+In this tutorial, you'll get your pipeline working step by step. You will be 
+following a typical ML development process, namely:
 
-1. [Setup your environment](#step_1_setup_your_environment)
-1. [Bring up initial pipeline skeleton](
+1. [Setting up your environment](#step_1_setup_your_environment)
+1. [Bringing up an initial pipeline skeleton](
 #step_2_bring_up_initial_pipeline_skeleton)
-1. [Dive into your data](#step_3_dive_into_your_data)
-1. [Feature engineering](#step_4_feature_engineering)
-1. [Training](#step_5_training)
-1. [Analyzing model performance](#step_6_analyzing_model_performance)
-1. [Ready for production](#step_7_ready_for_production)
+1. [Diving into your data](#step_3_dive_into_your_data)
+1. [Engineering your features](#step_4_feature_engineering)
+1. [Training your data](#step_5_training)
+1. [Analyzing your model's performance](#step_6_analyzing_model_performance)
+1. [Preparing your model for production](#step_7_ready_for_production)
 
 ## Prerequisites
 
@@ -56,21 +56,21 @@ sudo apt-get install \
     python3-pip git software-properties-common
 ```
 
-If you are running Python 3.6 you should install python3.6-dev:
+If you are running Python 3.6, you should install python3.6-dev:
 
 ```bash
 sudo apt-get install python3.6-dev
 ```
 
-If you are running Python 3.7 you should install python3.7-dev:
+If you are running Python 3.7, you should install python3.7-dev:
 
 ```bash
 sudo apt-get install python3.7-dev
 ```
 
-In addition, if your system has a GCC version < 7 you should update GCC.
-Otherwise you will see errors when running `airflow webserver`. You can check
-your current version with:
+In addition, if your system has a GCC version < 7, you should update your GCC.
+Otherwise, you will see errors when running `airflow webserver`. You can check
+your current GCC version with:
 
 ```bash
 gcc --version
@@ -99,68 +99,69 @@ brew install python
 brew install git
 ```
 
-MacOS sometimes has problems forking threads when running Airflow, depending on
-the configuration. To avoid those problems you should edit your
+Depending on
+the configuration, MacOS sometimes has problems forking threads when running Airflow.
+To avoid those problems you should edit your
 `~/.bash_profile` and add the following line to the end of the file:
 
 ```bash
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 ```
 
-## Tutorial materials
+## Tutorial material
 
-The code for this tutorial is available at:
+The code for this tutorial is available at 
 [https://github.com/tensorflow/tfx/tree/master/tfx/examples/airflow_workshop](
 https://github.com/tensorflow/tfx/tree/master/tfx/examples/airflow_workshop)
 
-The code is organized by the steps that you're working on, so
+The tutorial code is organized by the steps that you're working on; so
 for each step you'll have the code you need and instructions
 on what to do with it.
 
-The tutorial files include both an exercise and the solution to
-the exercise, in case you get stuck.
+The tutorial files include both, an exercise and the solution to
+the exercise in case you get stuck.
 
 #### Exercise
 
-* taxi_pipeline.py
-* taxi_utils.py
+* `taxi_pipeline.py`
+* `taxi_utils.py`
 * taxi DAG
 
 #### Solution
 
-* taxi_pipeline_solution.py
-* taxi_utils_solution.py
+* `taxi_pipeline_solution.py`
+* `taxi_utils_solution.py`
 * taxi_solution DAG
 
 ## What you're doing
 
-You’re learning how to create an ML pipeline using TFX
+You’re learning how to create an ML pipeline using TFX. Google uses TFX pipelines for production ML. TFX pipelines 
+are appropriate when:
 
-* TFX pipelines are appropriate when you will be deploying a production ML
+* You will be deploying a production ML
 application
-* TFX pipelines are appropriate when datasets are large
-* TFX pipelines are appropriate when training/serving consistency is important
-* TFX pipelines are appropriate when version management for inference is
+* Datasets are large
+* Training/serving consistency is important
+* Version management for inference is
 important
-* Google uses TFX pipelines for production ML
 
-You’re following a typical ML development process
+You’re following a typical ML development process, namely:
 
-* Ingesting, understanding, and cleaning our data
+* Ingesting, understanding, and cleaning your data
 * Feature engineering
-* Training
-* Analyze model performance
-* Lather, rinse, repeat
-* Ready for production
+* Training your model
+* Analyze your model's performance
+* "Lather, rinse, repeat"-ing
+* Preparing your model for production
 
 ### Adding the code for each step
 
-The tutorial is designed so that all the code is included in the files, but all
+This tutorial is designed so that all the code is included in the files. However, all
 the code for steps 3-7 is commented out and marked with inline comments. The
 inline comments identify which step the line of code applies to. For example,
 the code for step 3 is marked with the comment `# Step 3`.
 
-The code that you will add for each step typically falls into 3 regions of the
+The code that you will add for each step typically falls into 4 regions of the
 code:
 
 * imports
@@ -168,9 +169,9 @@ code:
 * The list returned from the create_pipeline() call
 * The supporting code in taxi_utils.py
 
-As you go through the tutorial you'll uncomment the lines of code that apply to
+As you go through the tutorial, you'll uncomment the lines of code that apply to
 the tutorial step that you're currently working on.  That will add the code for
-that step, and update your pipeline.  As you do that **we strongly encourage
+that step, and update your pipeline.  As you do that, **we strongly encourage
 you to review the code that you're uncommenting**.
 
 ## Chicago Taxi Dataset
@@ -197,7 +198,7 @@ https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trip
 
 ### Model Goal - Binary classification
 
-Will the customer tip more or less than 20%?
+Will the customer tip more (Or less) than 20%?
 
 ## Step 1: Setup your environment
 
