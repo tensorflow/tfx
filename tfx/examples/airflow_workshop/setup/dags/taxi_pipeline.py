@@ -24,6 +24,14 @@ import os
 from tfx.components import CsvExampleGen
 
 # pylint: disable=line-too-long
+# Read before you proceed to Step 3. According to the Google Python style guide,
+# the component imports should actually be "from tfx import components"
+# and the component usage should be 
+# "example_gen = components.CsvExampleGen(input=examples)" (In the case of the
+# CsvExampleGen component)
+# However, in the interest of a better learning experience, those steps have been
+# avoided in this example
+# For more on the style guide: https://google.github.io/styleguide/pyguide.html#224-decision
 # from tfx.components import StatisticsGen # Step 3
 # from tfx.components import SchemaGen # Step 3
 # from tfx.components import ExampleValidator # Step 3
