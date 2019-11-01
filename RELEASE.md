@@ -113,6 +113,7 @@
     outputs, and execution id.
 *   Updated the default configuration for accessing MLMD from pipelines running
     in Kubeflow.
+*   Updated Airflow developer tutorial
 
 ### Deprecations
 
