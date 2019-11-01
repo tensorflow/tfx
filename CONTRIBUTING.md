@@ -73,7 +73,7 @@ all type hints stripped and is the easiest way for Python 2 users to use TFX.
 Python 2 support will be deprecated in 2020 due to
 [Python 2 not being supported beyond 2020](https://www.python.org/dev/peps/pep-0373/).
 
-If you must use Python 2 with source code:
+If you must use Python 2 with the source code:
 
 * run `python tfx/scripts/strip_type_hints.py` to strip all hints in the repo:
 this requires you to install the
