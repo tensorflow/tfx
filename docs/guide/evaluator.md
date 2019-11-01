@@ -1,6 +1,6 @@
 # The Evaluator TFX Pipeline Component
 
-The Evaluator component helps you understand how your model performs on different 
+The `Evaluator` component helps you understand how your model performs on different 
 subsets of your data by performing deep analysis on the training
 results of your models.
 
@@ -9,12 +9,12 @@ results of your models.
 
 ## Evaluator and TensorFlow Model Analysis
 
-Evaluator leverages the [TensorFlow Model Analysis](tfma.md) library to perform
+`Evaluator` leverages the [TensorFlow Model Analysis](tfma.md) library to perform
 model analysis. TFMA uses [Apache Beam](beam.md) for scalable processing.
 
 ## Using the Evaluator Component
 
-An Evaluator component is typically very easy to deploy and requires little
+An `Evaluator` component is typically very easy to deploy and requires little
 customization.
 Typical code looks like this:
 
