@@ -42,6 +42,10 @@ class ImporterNodeTest(tf.test.TestCase):
     self.assertEqual(
         impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].type_name,
         standard_artifacts.Examples.TYPE_NAME)
+    self.assertEqual(
+        impt.outputs[importer_node.IMPORT_RESULT_KEY].uri,
+        'm/y/u/r/i',
+    )
 
 
 class ImporterDriverTest(tf.test.TestCase):
