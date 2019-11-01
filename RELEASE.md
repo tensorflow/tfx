@@ -7,6 +7,9 @@
 
 ## Bug fixes and other changes
 
+*   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
+    (`tfx-bsl>=0.15.2`)
+
 ### Deprecations
 
 ## Breaking changes
