@@ -27,6 +27,7 @@ import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
+from tensorflow.contrib import training as contrib_training
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.utils import io_utils
@@ -117,7 +118,7 @@ class TaxiUtilsTest(tf.test.TestCase):
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     output_dir = os.path.join(temp_dir, 'output_dir')
-    hparams = tf.contrib.training.HParams(
+    hparams = contrib_training.HParams(
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,

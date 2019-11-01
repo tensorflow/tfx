@@ -32,6 +32,7 @@ from tensorflow_transform.beam.tft_beam_io import transform_fn_io
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
+from tensorflow.contrib import learn as contrib_learn
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -286,7 +287,7 @@ def _input_fn(filenames, transform_output, batch_size=200):
   transformed_metadata = metadata_io.read_metadata(metadata_dir)
   transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
 
-  transformed_features = tf.contrib.learn.io.read_batch_features(
+  transformed_features = contrib_learn.io.read_batch_features(
       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
   # We pop the label because we do not want to use it as a feature while we're
