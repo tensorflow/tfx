@@ -20,11 +20,11 @@ requires little
 customization. Typical code looks like this:
 
 ```python
-from tfx.components import StatisticsGen
+from tfx import components
 
 ...
 
-compute_eval_stats = StatisticsGen(
+compute_eval_stats = components.StatisticsGen(
       examples=example_gen.outputs['examples'],
       name='compute-eval-stats')
 ```
