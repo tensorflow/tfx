@@ -79,32 +79,33 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
 
   # Generates schema based on statistics files.
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs['output'], infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['output'],
-      schema=infer_schema.outputs['output'])
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=training_example_gen.outputs['examples'],
-      schema=infer_schema.outputs['output'],
+      examples=training_example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['output'],
-      transform_output=transform.outputs['transform_output'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
       examples=training_example_gen.outputs['examples'],
-      model_exports=trainer.outputs['output'],
+      model_exports=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
@@ -113,7 +114,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(
       examples=training_example_gen.outputs['examples'],
-      model=trainer.outputs['output'])
+      model=trainer.outputs['model'])
 
   inference_examples = external_input(inference_data_root)
 
@@ -129,7 +130,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   # Performs offline batch inference over inference examples.
   bulk_inferrer = BulkInferrer(
       examples=inference_example_gen.outputs['examples'],
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       # Empty data_spec.example_splits will result in using all splits.
       data_spec=bulk_inferrer_pb2.DataSpec(),

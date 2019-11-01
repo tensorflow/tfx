@@ -35,7 +35,7 @@ from tfx import components
 
 bulk_inferrer = components.BulkInferrer(
       examples=examples_gen.outputs['examples'],
-      model_export=trainer.outputs['output'],
+      model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       data_spec=bulk_inferrer_pb2.DataSpec(),
       model_spec=bulk_inferrer_pb2.ModelSpec()

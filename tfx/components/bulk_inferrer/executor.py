@@ -51,7 +51,7 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
         - examples: examples for inference.
-        - model_export: exported model.
+        - model: exported model.
         - model_blessing: model blessing result
       output_dict: Output dict from output key to a list of Artifacts.
         - output: bulk inference results.
@@ -66,11 +66,11 @@ class Executor(base_executor.BaseExecutor):
 
     if 'examples' not in input_dict:
       raise ValueError('\'examples\' is missing in input dict.')
-    if 'output' not in output_dict:
-      raise ValueError('\'output\' is missing in output dict.')
-    output = artifact_utils.get_single_instance(output_dict['output'])
-    if 'model_export' not in input_dict:
-      raise ValueError('Input models are not valid, model_export '
+    if 'inference_result' not in output_dict:
+      raise ValueError('\'inference_result\' is missing in output dict.')
+    output = artifact_utils.get_single_instance(output_dict['inference_result'])
+    if 'model' not in input_dict:
+      raise ValueError('Input models are not valid, model '
                        'need to be specified.')
     if 'model_blessing' in input_dict:
       model_blessing = artifact_utils.get_single_instance(
@@ -83,9 +83,9 @@ class Executor(base_executor.BaseExecutor):
       logging.info('Model blessing is not provided, exported model will be '
                    'used.')
 
-    model_export = artifact_utils.get_single_instance(
-        input_dict['model_export'])
-    model_path = path_utils.serving_model_path(model_export.uri)
+    model = artifact_utils.get_single_instance(
+        input_dict['model'])
+    model_path = path_utils.serving_model_path(model.uri)
     logging.info('Use exported model from %s.', model_path)
 
     data_spec = bulk_inferrer_pb2.DataSpec()
