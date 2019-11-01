@@ -48,21 +48,20 @@ class BulkInferrer(base_component.BaseComponent):
   SPEC_CLASS = BulkInferrerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(
-      self,
-      examples: types.Channel = None,
-      model_export: Optional[types.Channel] = None,
-      model_blessing: Optional[types.Channel] = None,
-      data_spec: Optional[bulk_inferrer_pb2.DataSpec] = None,
-      model_spec: Optional[bulk_inferrer_pb2.ModelSpec] = None,
-      output: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+  def __init__(self,
+               examples: types.Channel = None,
+               model: Optional[types.Channel] = None,
+               model_blessing: Optional[types.Channel] = None,
+               data_spec: Optional[bulk_inferrer_pb2.DataSpec] = None,
+               model_spec: Optional[bulk_inferrer_pb2.ModelSpec] = None,
+               inference_result: Optional[types.Channel] = None,
+               instance_name: Optional[Text] = None):
     """Construct an BulkInferrer component.
 
     Args:
       examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
         component. _required_
-      model_export: A Channel of 'ModelExportPath' type, usually produced by
+      model: A Channel of 'ModelExportPath' type, usually produced by
         Trainer component.
       model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
         Model Validator component.
@@ -70,19 +69,20 @@ class BulkInferrer(base_component.BaseComponent):
         selection.
       model_spec: bulk_inferrer_pb2.ModelSpec instance that describes model
         specification.
-      output: Channel of `InferenceResult` to store the inference results.
+      inference_result: Channel of `InferenceResult` to store the inference
+        results.
       instance_name: Optional name assigned to this specific instance of
         BulkInferrer. Required only if multiple BulkInferrer components are
         declared in the same pipeline.
     """
-    output = output or types.Channel(
+    inference_result = inference_result or types.Channel(
         type=standard_artifacts.InferenceResult,
         artifacts=[standard_artifacts.InferenceResult()])
     spec = BulkInferrerSpec(
         examples=examples,
-        model_export=model_export,
+        model=model,
         model_blessing=model_blessing,
         data_spec=data_spec or bulk_inferrer_pb2.DataSpec(),
         model_spec=model_spec or bulk_inferrer_pb2.ModelSpec(),
-        output=output)
+        inference_result=inference_result)
     super(BulkInferrer, self).__init__(spec=spec, instance_name=instance_name)

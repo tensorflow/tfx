@@ -42,14 +42,15 @@ class BulkInferrerSpec(ComponentSpec):
   INPUTS = {
       'examples':
           ChannelParameter(type=standard_artifacts.Examples),
-      'model_export':
+      'model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
       'model_blessing':
           ChannelParameter(
               type=standard_artifacts.ModelBlessing, optional=True),
   }
   OUTPUTS = {
-      'output': ChannelParameter(type=standard_artifacts.InferenceResult),
+      'inference_result':
+          ChannelParameter(type=standard_artifacts.InferenceResult),
   }
 
 

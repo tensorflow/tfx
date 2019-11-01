@@ -43,9 +43,8 @@ class ExecutorTest(tf.test.TestCase):
     self._examples = standard_artifacts.Examples(split='unlabelled')
     self._examples.uri = os.path.join(self._source_data_dir,
                                       'csv_example_gen/unlabelled/')
-    self._model_export = standard_artifacts.Model()
-    self._model_export.uri = os.path.join(self._source_data_dir,
-                                          'trainer/current/')
+    self._model = standard_artifacts.Model()
+    self._model.uri = os.path.join(self._source_data_dir, 'trainer/current/')
 
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._model_blessing.uri = os.path.join(self._source_data_dir,
@@ -81,11 +80,11 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithBlessedModel(self):
     input_dict = {
         'examples': [self._examples],
-        'model_export': [self._model_export],
+        'model': [self._model],
         'model_blessing': [self._model_blessing],
     }
     output_dict = {
-        'output': [self._inference_result],
+        'inference_result': [self._inference_result],
     }
     # Create exe properties.
     exec_properties = {
