@@ -65,10 +65,10 @@ A SchemaGen component is typically very easy to deploy and requires little
 customization. Typical code looks like this:
 
 ```python
-from tfx.components import SchemaGen
+from tfx import components
 
 ...
 
-infer_schema = SchemaGen(
+infer_schema = components.SchemaGen(
     statistics=computed_training_statistics.outputs['statistics'])
 ```
