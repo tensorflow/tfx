@@ -82,8 +82,8 @@ class ImporterDriver(base_driver.BaseDriver):
                 reimport=exec_properties[REIMPORT_OPTION_KEY])
     }
 
-    # output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
-    #   output_artifacts[IMPORT_RESULT_KEY])
+    output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
+      output_artifacts[IMPORT_RESULT_KEY])
 
     return data_types.ExecutionDecision(
         input_dict={},
