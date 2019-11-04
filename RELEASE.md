@@ -10,6 +10,7 @@
 
 *   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
     (`tfx-bsl>=0.15.2`)
+*   Fix problems with Airflow tutorial notebooks
 
 ### Deprecations
 
