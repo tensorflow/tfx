@@ -176,6 +176,7 @@ class BaseDriver(object):
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
+      exec_properties: Dict[Text, Any],
   ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
     result = channel_utils.unwrap_channel_dict(output_dict)
@@ -298,7 +299,9 @@ class BaseDriver(object):
           output_dict=output_dict,
           execution_id=execution_id,
           pipeline_info=pipeline_info,
-          component_info=component_info)
+          component_info=component_info,
+          exec_properties=exec_properties,
+      )
       absl.logging.debug(
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
