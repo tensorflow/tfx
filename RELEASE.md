@@ -4,6 +4,7 @@
 ## Major Features and Improvements
 *   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
     platform specific settings for pipelines and components.
+*   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
 
 ## Bug fixes and other changes
 
