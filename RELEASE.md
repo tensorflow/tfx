@@ -5,6 +5,8 @@
 *   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
     platform specific settings for pipelines and components.
 *   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
+*   Add KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
+    Kubernetes cluster.
 
 ## Bug fixes and other changes
 
