@@ -23,6 +23,5 @@ BUILD_CONTEXT = '.'
 DOCKERFILE_NAME = 'Dockerfile'
 SETUP_PY_FILENAME = 'setup.py'
 SKAFFOLD_VERSION = '0.38.0'
-SKAFFOLD_COMMAND = 'scaffold'
+SKAFFOLD_COMMAND = 'skaffold'
 SKAFFOLD_API_VERSION = 'skaffold/v1beta13'
-
