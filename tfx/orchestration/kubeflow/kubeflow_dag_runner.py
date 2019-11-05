@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Callable, List, Optional, Text, Type
 
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
-from typing import Callable, List, Optional, Text
 
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -31,6 +32,9 @@ from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.launcher import base_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.orchestration.launcher import kubernetes_component_launcher
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -154,6 +158,10 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
                tfx_image: Optional[Text] = None,
                kubeflow_metadata_config: Optional[
                    kubeflow_pb2.KubeflowMetadataConfig] = None,
+               # TODO(b/143883035): Figure out the best practice to put the
+               # SUPPORTED_LAUNCHER_CLASSES
+               supported_launcher_classes: List[Type[
+                   base_component_launcher.BaseComponentLauncher]] = None,
                **kwargs):
     """Creates a KubeflowDagRunnerConfig object.
 
@@ -179,9 +187,17 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
       tfx_image: The TFX container image to use in the pipeline.
       kubeflow_metadata_config: Runtime configuration to use to connect to
         Kubeflow metadata.
+      supported_launcher_classes: A list of component launcher classes that are
+        supported by the current pipeline. List sequence determines the order in
+        which launchers are chosen for each component being run.
       **kwargs: keyword args for PipelineConfig.
     """
-    super(KubeflowDagRunnerConfig, self).__init__(**kwargs)
+    supported_launcher_classes = supported_launcher_classes or [
+        in_process_component_launcher.InProcessComponentLauncher,
+        kubernetes_component_launcher.KubernetesComponentLauncher,
+    ]
+    super(KubeflowDagRunnerConfig, self).__init__(
+        supported_launcher_classes=supported_launcher_classes, **kwargs)
     self.pipeline_operator_funcs = (
         pipeline_operator_funcs or get_default_pipeline_operator_funcs())
     self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +27,11 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+from typing import Optional, Set, Text, Type
 
 import absl
 from kfp import dsl
 from kubernetes import client as k8s_client
-from typing import Optional, Set, Text, Type
 
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -142,3 +143,7 @@ class BaseComponent(object):
               value_from=k8s_client.V1EnvVarSource(
                   field_ref=k8s_client.V1ObjectFieldSelector(
                       field_path=field_path))))
+
+    # KFP default transformers adds pod env:
+    # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
+    self.container_op.add_pod_label('add-pod-env', 'true')
