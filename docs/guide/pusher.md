@@ -1,19 +1,19 @@
 # The Pusher TFX Pipeline Component
 
-The Pusher component is used to push a validated model to a
+The `Pusher` component is used to push a validated model to a
 [deployment target](index.md#deployment_targets) during model training or
 re-training.
-It relies on a [ModelValidator](modelval.md) component to ensure that the new
-model is "good enough" to be pushed to production.
+It relies on a [`ModelValidator`](modelval.md) component to ensure that the new
+model is good enough to be pushed to production.
 
-* Consumes: A Trained model in [SavedModel](
+* Consumes: A trained model as a [`SavedModel`](
 https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model) format
-* Emits: The same SavedModel, along with versioning metadata
+* Emits: The same `SavedModel` with versioning metadata
 
 ## Using the Pusher Component
 
-A Pusher pipeline component is typically very easy to deploy and requires little
-customization, since all of the work is done by the Pusher TFX component.
+A `Pusher` pipeline component is typically very easy to deploy and requires little
+customization.
 Typical code looks like this:
 
 ```python
