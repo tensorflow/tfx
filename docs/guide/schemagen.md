@@ -12,7 +12,7 @@ schema is best-effort and only tries to infer basic properties of the data. It i
 review and modify it as needed.
 
 * Consumes: Statistics from a `StatisticsGen` component
-* Output: A data schema proto
+* Emits: A data schema proto
 
 Here's an excerpt from a schema proto:
 
