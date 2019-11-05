@@ -5,8 +5,8 @@
 TFX is designed to be portable to multiple environments and orchestration
 frameworks. Developers can create custom orchestrators or add additional
 orchestrators in addition to the default orchestrators that are supported by
-TFX, namely [Airflow](airflow.md), [Beam](beam_orchestrator.md) and
-[Kubeflow](kubeflow.md).
+TFX (Namely [Airflow](airflow.md), [Beam](beam_orchestrator.md) and
+[Kubeflow](kubeflow.md)).
 
 All orchestrators must inherit from
 [TfxRunner](https://github.com/tensorflow/tfx/blob/master/tfx/orchestration/tfx_runner.py).
@@ -29,7 +29,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import tfx_runner
 
 class DirectDagRunner(tfx_runner.TfxRunner):
-  """Tfx direct DAG runner."""
+  """TFX direct DAG runner."""
 
   def run(self, pipeline):
     """Directly run components in topological order."""
