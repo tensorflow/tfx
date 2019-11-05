@@ -34,7 +34,7 @@ import absl
 import jinja2
 import nbformat
 from six.moves import builtins
-from typing import Text
+from typing import List, Optional, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
@@ -47,7 +47,6 @@ from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
 
-
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
 _CMD_LINE_PREFIX = '!'
@@ -56,6 +55,7 @@ _EXPORT_TEMPLATES_DIR = 'export_templates'
 
 def requires_ipython(fn):
   """Decorator for methods that can only be run in IPython."""
+
   @functools.wraps(fn)
   def run_if_ipython(*args, **kwargs):
     """Invokes `fn` if called from IPython, otherwise just emits a warning."""
@@ -109,8 +109,8 @@ class InteractiveContext(object):
     if not metadata_connection_config:
       # TODO(ccy): consider reconciling similar logic here with other instances
       # in tfx/orchestration/...
-      metadata_sqlite_path = os.path.join(
-          pipeline_root, self._DEFAULT_SQLITE_FILENAME)
+      metadata_sqlite_path = os.path.join(pipeline_root,
+                                          self._DEFAULT_SQLITE_FILENAME)
       metadata_connection_config = metadata.sqlite_metadata_connection_config(
           metadata_sqlite_path)
       absl.logging.warning(
@@ -127,14 +127,19 @@ class InteractiveContext(object):
     standard_visualizations.register_standard_visualizations()
 
   @requires_ipython
-  def run(self,
-          component: base_component.BaseComponent,
-          enable_cache: bool = True) -> execution_result.ExecutionResult:
+  def run(
+      self,
+      component: base_component.BaseComponent,
+      enable_cache: bool = True,
+      beam_pipeline_args: Optional[List[Text]] = None
+  ) -> execution_result.ExecutionResult:
     """Run a given TFX component in the interactive context.
 
     Args:
       component: Component instance to be run.
       enable_cache: whether caching logic should be enabled in the driver.
+      beam_pipeline_args: Optional Beam pipeline args for beam jobs within
+        executor. Executor will use beam DirectRunner as Default.
 
     Returns:
       execution_result.ExecutionResult object.
@@ -145,9 +150,8 @@ class InteractiveContext(object):
         pipeline_root=self.pipeline_root,
         run_id=run_id)
     driver_args = data_types.DriverArgs(
-        enable_cache=enable_cache,
-        interactive_resolution=True)
-    beam_pipeline_args = []
+        enable_cache=enable_cache, interactive_resolution=True)
+    beam_pipeline_args = beam_pipeline_args or []
     additional_pipeline_args = {}
     for name, output in component.outputs.get_all().items():
       for artifact in output.get():
@@ -163,13 +167,10 @@ class InteractiveContext(object):
     execution_id = launcher.launch().execution_id
 
     return execution_result.ExecutionResult(
-        component=component,
-        execution_id=execution_id)
+        component=component, execution_id=execution_id)
 
   @requires_ipython
-  def export_to_pipeline(self,
-                         notebook_filepath: Text,
-                         export_filepath: Text,
+  def export_to_pipeline(self, notebook_filepath: Text, export_filepath: Text,
                          runner_type: Text):
     """Exports a notebook to a .py file as a runnable pipeline.
 
@@ -203,10 +204,10 @@ class InteractiveContext(object):
         # invocations (e.g. !pip install ...).
         # Note: This will not work for magics invoked without the prefix when
         # %automagic is set.
-        sources.append(
-            ('\n'.join(line for line in cell_source.split('\n')
-                       if not (line.lstrip().startswith(_MAGIC_PREFIX) or
-                               line.lstrip().startswith(_CMD_LINE_PREFIX)))))
+        sources.append(('\n'.join(
+            line for line in cell_source.split('\n')
+            if not (line.lstrip().startswith(_MAGIC_PREFIX) or
+                    line.lstrip().startswith(_CMD_LINE_PREFIX)))))
 
       jinja_env = jinja2.Environment(
           loader=jinja2.PackageLoader(
