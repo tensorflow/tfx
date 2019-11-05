@@ -103,7 +103,7 @@ jedi,https://raw.githubusercontent.com/davidhalter/jedi/master/LICENSE.txt,MIT
 jinja2,https://raw.githubusercontent.com/pallets/jinja/master/LICENSE.rst,BSD
 joblib,https://raw.githubusercontent.com/joblib/joblib/master/LICENSE.txt,3-Clause BSD
 jsonschema,https://raw.githubusercontent.com/Julian/jsonschema/master/COPYING,MIT
-jupyter,https://raw.githubusercontent.com/jupyter/notebook/master/COPYING.md,BSD
+jupyter,https://raw.githubusercontent.com/jupyter/notebook/6.0.2/LICENSE,BSD
 jupyter-client,https://raw.githubusercontent.com/jupyter/jupyter_client/master/COPYING.md,BSD
 jupyter-console,https://raw.githubusercontent.com/jupyter/jupyter_console/master/COPYING.md,BSD
 jupyter-core,https://raw.githubusercontent.com/jupyter/jupyter_core/master/COPYING.md,BSD
