@@ -1,28 +1,28 @@
 # The Trainer TFX Pipeline Component
 
-The Trainer TFX pipeline component trains a TensorFlow model.
+The `Trainer` component trains a TensorFlow model
 
-Trainer consumes:
+Consumes:
 
-* Training tf.Examples transformed by a Transform pipeline component.
-* Eval tf.Examples transformed by a Transform pipeline component.
-* A data schema create by a SchemaGen pipeline component and optionally altered by
-the developer.
+* Training `tf.Example` records transformed by a Transform component
+* Eval `tf.Example` records transformed by a Transform component
+* A data schema create by a `SchemaGen` component which may have been altered by
+the developer
 
-Trainer emits: A SavedModel and an EvalSavedModel
+Emits: A `SavedModel` and an `EvalSavedModel`
 
 ## Trainer and TensorFlow
 
-Trainer makes extensive use of the Python
+`Trainer` makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
 ## Configuring a Trainer Component
 
-A Trainer pipeline component is typically very easy to develop and requires little
-customization, since all of the work is done by the Trainer TFX component.  Your
-TensorFlow modeling code however may be arbitrarily complex.
+A `Trainer` component is typically very easy to develop and requires little
+customization.  Your
+TensorFlow modeling code, however, may be arbitrarily complex.
 
-Caution: Developers are strongly encouraged to use the Estimator API at this
+**Caution:** Developers are strongly encouraged to use the Estimator API at this
 time.  In a later release we expect Keras to be much better supported than it
 currently is.
 
@@ -41,8 +41,7 @@ trainer = components.Trainer(
       tf_transform_dir=transform_training.outputs['output'],
       train_steps=10000,
       eval_steps=5000,
-      warm_starting=True
-      )
+      warm_starting=True)
 ```
 
 Trainer invokes a training module, which is specified in the `module_file`
@@ -51,11 +50,11 @@ parameter.  A typical training module looks like this:
 ```python
 # TFX will call this function
 def trainer_fn(hparams, schema):
-  """Build the estimator using the high level API.
+  """Build the estimator using the high level API
 
   Args:
-    hparams: Holds hyperparameters used to train the model as name/value pairs.
-    schema: Holds the schema of the training examples.
+    hparams: Holds hyperparameters used to train the model as name/value pairs
+    schema: Holds the schema of the training examples
 
   Returns:
     The estimator that will be used for training and eval
