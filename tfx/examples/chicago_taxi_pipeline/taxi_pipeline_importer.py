@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 import absl
+from tfx_bsl.version import __version__ as tfx_bsl_version
 from typing import Text
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -61,7 +62,12 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 # Path to user provided schema.
-_user_schema_path = os.path.join(_taxi_root, 'data', 'user_provided_schema')
+# TODO(b/143948771): clean-up this version switch once tfx_bsl 0.15.3 is out.
+if tfx_bsl_version > '0.15.2':
+  _user_schema_path = os.path.join(_taxi_root, 'data', 'user_provided_schema')
+else:
+  _user_schema_path = os.path.join(_taxi_root, 'data',
+                                   'user_provided_schema_legacy')
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
