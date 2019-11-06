@@ -104,10 +104,10 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(self._pipeline_path_v2))
 
     # Endpoint URL
-    self._endpoint = self._get_endpoint(
+    self._endpoint = 'https://' + self._get_endpoint(
         subprocess.check_output(
             'kubectl describe configmap inverse-proxy-config -n kubeflow'.split(
-                )))
+            ))) + '/pipeline'
     absl.logging.info('ENDPOINT: ' + self._endpoint)
 
     # Change home directories

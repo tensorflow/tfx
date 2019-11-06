@@ -20,70 +20,33 @@ from __future__ import print_function
 import os
 import absl
 import apache_beam as beam
+import numpy
 import tensorflow as tf
-from tfx_bsl.coders import csv_decoder
-from typing import Any, Dict, Iterable, List, Text
+import tensorflow_data_validation as tfdv
+from tensorflow_data_validation.coders import csv_decoder
+from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 
-@beam.typehints.with_input_types(List[csv_decoder.CSVCell],
-                                 List[csv_decoder.ColumnInfo])
-@beam.typehints.with_output_types(tf.train.Example)
-class _ParsedCsvToTfExample(beam.DoFn):
-  """A beam.DoFn to convert a parsed CSV line to a tf.Example."""
-
-  __slots__ = ['_column_handlers']
-
-  def __init__(self):
-    self._column_handlers = None
-
-  def _process_column_infos(self, column_infos: List[csv_decoder.ColumnInfo]):
-    column_handlers = []
-    for column_info in column_infos:
-      # pylint: disable=g-long-lambda
-      if column_info.type == csv_decoder.ColumnType.INT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            int64_list=tf.train.Int64List(value=[int(csv_cell)]))
-      elif column_info.type == csv_decoder.ColumnType.FLOAT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            float_list=tf.train.FloatList(value=[float(csv_cell)]))
-      elif column_info.type == csv_decoder.ColumnType.STRING:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[csv_cell]))
-      else:
-        handler_fn = None
-      column_handlers.append((column_info.name, handler_fn))
-
-    self._column_handlers = column_handlers
-
-  def process(
-      self, csv_cells: List[csv_decoder.CSVCell],
-      column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]:
-    if not self._column_handlers:
-      self._process_column_infos(column_infos)
-
-    # skip blank lines.
-    if not csv_cells:
-      return
-
-    if len(csv_cells) != len(self._column_handlers):
-      raise ValueError('Invalid CSV line: {}'.format(csv_cells))
-
-    feature = {}
-    for csv_cell, (column_name, handler_fn) in zip(csv_cells,
-                                                   self._column_handlers):
-      if not csv_cell:
-        feature[column_name] = tf.train.Feature()
-        continue
-      if not handler_fn:
-        raise ValueError(
-            'Internal error: failed to infer type of column {} while it'
-            'had at least some values {}'.format(column_name, csv_cell))
-      feature[column_name] = handler_fn(csv_cell)
-    yield tf.train.Example(features=tf.train.Features(feature=feature))
+def _dict_to_example(instance: tfdv.types.Example) -> tf.train.Example:
+  """Decoded CSV to tf example."""
+  feature = {}
+  for key, value in instance.items():
+    if value is None:
+      feature[key] = tf.train.Feature()
+    elif value.dtype == numpy.integer:
+      feature[key] = tf.train.Feature(
+          int64_list=tf.train.Int64List(value=value.tolist()))
+    elif value.dtype == numpy.float32:
+      feature[key] = tf.train.Feature(
+          float_list=tf.train.FloatList(value=value.tolist()))
+    else:
+      feature[key] = tf.train.Feature(
+          bytes_list=tf.train.BytesList(value=value.tolist()))
+  return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
 @beam.ptransform_fn
@@ -129,18 +92,12 @@ def _CsvToExample(  # pylint: disable=invalid-name
       raise RuntimeError(
           'Files in same split {} have different header.'.format(csv_pattern))
 
-  parsed_csv_lines = (
-      pipeline
-      | 'ReadFromText' >> beam.io.ReadFromText(
-          file_pattern=csv_pattern, skip_header_lines=1)
-      | 'ParseCSVLine' >> beam.ParDo(csv_decoder.ParseCSVLine(delimiter=',')))
-  column_infos = beam.pvalue.AsSingleton(
-      parsed_csv_lines
-      | 'InferColumnTypes' >> beam.CombineGlobally(
-          csv_decoder.ColumnTypeInferrer(column_names, skip_blank_lines=True)))
-
-  return (parsed_csv_lines
-          | 'ToTFExample' >> beam.ParDo(_ParsedCsvToTfExample(), column_infos))
+  decoder = csv_decoder.DecodeCSVToDict
+  return (pipeline
+          | 'ReadFromText' >> beam.io.ReadFromText(
+              file_pattern=csv_pattern, skip_header_lines=1)
+          | 'ParseCSV' >> decoder(column_names)
+          | 'ToTFExample' >> beam.Map(_dict_to_example))
 
 
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):

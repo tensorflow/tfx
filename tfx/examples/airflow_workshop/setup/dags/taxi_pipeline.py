@@ -13,10 +13,6 @@
 # limitations under the License.
 """Chicago taxi example using TFX."""
 
-# pylint: disable=unused-argument
-# pylint: disable=unused-import
-# pylint: disable=g-bad-import-order
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -24,41 +20,42 @@ from __future__ import print_function
 import datetime
 import logging
 import os
-from typing import Text
 
-from tfx.components import CsvExampleGen
-from tfx.orchestration import metadata
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
+
+# pylint: disable=line-too-long
+# from tfx.components.statistics_gen.component import StatisticsGen # Step 3
+# from tfx.components.schema_gen.component import SchemaGen # Step 3
+# from tfx.components.example_validator.component import ExampleValidator # Step 3
+
+# from tfx.components.transform.component import Transform # Step 4
+
 from tfx.orchestration import pipeline
 
-# from tfx.components import StatisticsGen # Step 3
-# from tfx.components import SchemaGen # Step 3
-# from tfx.components import ExampleValidator # Step 3
-
-# from tfx.components import Transform # Step 4
-
 # from tfx.proto import trainer_pb2 # Step 5
-# from tfx.components import Trainer # Step 5
+# from tfx.components.trainer.component import Trainer # Step 5
 
 # from tfx.proto import evaluator_pb2 # Step 6
-# from tfx.components import Evaluator # Step 6
+# from tfx.components.evaluator.component import Evaluator # Step 6
 
 # from tfx.proto import pusher_pb2 # Step 7
-# from tfx.components import ModelValidator # Step 7
-# from tfx.components import Pusher # Step 7
+# from tfx.components.model_validator.component import ModelValidator # Step 7
+# from tfx.components.pusher.component import Pusher # Step 7
 
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
-from tfx.utils.dsl_utils import external_input
+from tfx.orchestration.airflow.airflow_runner import AirflowDAGRunner
+from tfx.utils.dsl_utils import csv_input
 
 _pipeline_name = 'taxi'
 
+# pylint: enable=line-too-long
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
 _taxi_root = os.path.join(os.environ['HOME'], 'airflow')
-_data_root = os.path.join(_taxi_root, 'data', 'taxi_data')
+_data_root = os.path.join(_taxi_root, 'data/taxi_data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils.py')
+_taxi_module_file = os.path.join(_taxi_root, 'dags/taxi_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
@@ -71,6 +68,7 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 # Sqlite ML-metadata db path.
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
+_log_root = os.path.join(_tfx_root, 'logs')
 
 # Airflow-specific configs; these will be passed directly to airflow
 _airflow_config = {
@@ -78,13 +76,16 @@ _airflow_config = {
     'start_date': datetime.datetime(2019, 1, 1),
 }
 
+# Logging overrides
+logger_overrides = {
+    'log_root': _log_root,
+    'log_level': logging.INFO
+}
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
+
+def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
-  examples = external_input(data_root)
+  examples = csv_input(_data_root)
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input=examples)
@@ -95,9 +96,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # pylint: enable=line-too-long
 
   # Generates schema based on statistics files.
-  # infer_schema = SchemaGen( # Step 3
-  #     statistics=statistics_gen.outputs['statistics'], # Step 3
-  #     infer_feature_shape=False) # Step 3
+  # infer_schema = SchemaGen(
+  #     statistics=statistics_gen.outputs['statistics']) # Step 3
 
   # Performs anomaly detection based on statistics and data schema.
   # validate_stats = ExampleValidator( # Step 3
@@ -108,11 +108,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # transform = Transform( # Step 4
   #     examples=example_gen.outputs['examples'], # Step 4
   #     schema=infer_schema.outputs['schema'], # Step 4
-  #     module_file=module_file) # Step 4
+  #     module_file=_taxi_module_file) # Step 4
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   # trainer = Trainer( # Step 5
-  #     module_file=module_file, # Step 5
+  #     module_file=_taxi_module_file, # Step 5
   #     transformed_examples=transform.outputs['transformed_examples'], # Step 5
   #     schema=infer_schema.outputs['schema'], # Step 5
   #     transform_graph=transform.outputs['transform_graph'], # Step 5
@@ -154,21 +154,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           # model_validator, pusher # Step 7
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers]
+      metadata_db_root=_metadata_path,
+      additional_pipeline_args={'logger_args': logger_overrides},
   )
 
 
-# 'DAG' below need to be kept for Airflow to detect dag.
-DAG = AirflowDagRunner(_airflow_config).run(
-    _create_pipeline(
-        pipeline_name=_pipeline_name,
-        pipeline_root=_pipeline_root,
-        data_root=_data_root,
-        module_file=_module_file,
-        serving_model_dir=_serving_model_dir,
-        metadata_path=_metadata_path,
-        # 0 means auto-detect based on on the number of CPUs available during
-        # execution time.
-        direct_num_workers=0))
+airflow_pipeline = AirflowDAGRunner(
+    _airflow_config).run(_create_pipeline())

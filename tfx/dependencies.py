@@ -33,7 +33,7 @@ def make_required_install_packages():
       'tensorflow-data-validation>=0.15,<0.16',
       'tensorflow-model-analysis>=0.15.2,<0.16',
       'tensorflow-transform>=0.15,<0.16',
-      'tfx-bsl>=0.15.2,<0.16',
+      'tfx-bsl>=0.15.1,<0.16',
   ]
 
 
@@ -43,7 +43,7 @@ def make_required_test_packages():
       'apache-airflow>=1.10,<2',
       'docker>=4,<5',
       # LINT.IfChange
-      'kfp>=0.1.32.2; python_version >= "3.0"',
+      'kfp==0.1.31.2; python_version >= "3.0"',
       # LINT.ThenChange(
       #     testing/github/common.sh,
       #     testing/github/ubuntu/image/image.sh,

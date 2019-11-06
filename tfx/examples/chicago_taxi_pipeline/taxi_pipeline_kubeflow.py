@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago Taxi example using TFX DSL on Kubeflow with Google Cloud services."""
+"""Chicago Taxi example using TFX DSL on Kubeflow."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,16 +19,17 @@ from __future__ import print_function
 
 import os
 from typing import Dict, List, Text
+
+from tfx.components import BigQueryExampleGen
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import ModelValidator
+from tfx.components import Pusher
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.components.base import executor_spec
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import pipeline
@@ -36,7 +37,7 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 
-_pipeline_name = 'chicago_taxi_pipeline_kubeflow_gcp'
+_pipeline_name = 'chicago_taxi_pipeline_kubeflow'
 
 # Directory and data locations (uses Google Cloud Storage).
 _input_bucket = 'gs://my-bucket'
@@ -201,10 +202,7 @@ def _create_pipeline(
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher
       ],
-      additional_pipeline_args={
-          'beam_pipeline_args': beam_pipeline_args,
-      },
-  )
+      beam_pipeline_args=beam_pipeline_args)
 
 
 if __name__ == '__main__':

@@ -11,24 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago Taxi example using TFX DSL on Kubeflow (runs locally on cluster)."""
+"""Chicago Taxi example using TFX DSL on Kubeflow (runs components on pod)."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import os
-from kfp import onprem
 from typing import Text
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
+from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import ModelValidator
+from tfx.components import Pusher
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
@@ -36,39 +35,36 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import external_input
 
-_pipeline_name = 'chicago_taxi_pipeline_kubeflow_local'
+_pipeline_name = 'chicago_taxi_pipeline_kubeflow_simple'
 
-# This sample assumes a persistent volume (PV) is mounted as follows.
-_persistent_volume_claim = 'my-pvc'
-_persistent_volume = 'my-pv'
-_persistent_volume_mount = '/mnt'
-
-# All input and output data are kept in the PV.
-_input_base = os.path.join(_persistent_volume_mount, 'tfx')
-_output_base = os.path.join(_persistent_volume_mount, 'pipelines')
-_tfx_root = os.path.join(_output_base, 'tfx')
+# Directory and data locations (uses Google Cloud Storage).
+_input_bucket = 'gs://my-bucket'
+_output_bucket = 'gs://my-bucket'
+_tfx_root = os.path.join(_output_bucket, 'tfx')
 _pipeline_root = os.path.join(_tfx_root, _pipeline_name)
 
-# Training data is assumed to be in ./data/simple/*.csv in the PV.
-_data_root = os.path.join(_input_base, 'data', 'simple')
+# Training data is assumed to be in ./data/simple/*.csv
+_data_root = os.path.join(_input_bucket, 'data', 'simple')
 
-# Python module file to inject customized logic into the TFX components.
-# The Transform and Trainer both require user-defined functions to run
-# successfully. Copy taxi_utils.py to the PV in this directory.
-_module_file = os.path.join(_input_base, 'taxi_utils.py')
+# Google Cloud Platform project id to use when deploying this pipeline.
+_project_id = 'my-gcp-project'
 
-# Path which can be listened to by the model server.
-# Pusher will output the trained model here.
-_serving_model_dir = os.path.join(_output_base, _pipeline_name, 'serving_model')
+# Python module file to inject customized logic into the TFX components. The
+# Transform and Trainer both require user-defined functions to run successfully.
+# Copy this from the current directory to a GCS bucket and update the location
+# below.
+_module_file = os.path.join(_input_bucket, 'taxi_utils.py')
+# Path which can be listened to by the model server. Pusher will output the
+# trained model here.
+_serving_model_dir = os.path.join(_output_bucket, _pipeline_name,
+                                  'serving_model')
 
-# Number of processes to be used for Beam workers in execution of Beam-based
-# components (ExampleGen, StatisticsGen, Transform, Evaluator, ModelValidator).
-# This should be set to number of cores in k8s nodes.
-_beam_num_workers = 4
 
-
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
+def _create_pipeline(pipeline_name: Text,
+                     pipeline_root: Text,
+                     data_root: Text,
+                     module_file: Text,
+                     serving_model_dir: Text,
                      direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
   examples = external_input(data_root)
@@ -136,9 +132,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           trainer, model_analyzer, model_validator, pusher
       ],
       # TODO(b/141578059): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers],
-      additional_pipeline_args={},
-  )
+      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers])
 
 
 if __name__ == '__main__':
@@ -155,12 +149,8 @@ if __name__ == '__main__':
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
       # Specify custom docker image to use.
-      tfx_image=tfx_image,
-      pipeline_operator_funcs=(
-          kubeflow_dag_runner.get_default_pipeline_operator_funcs() + [
-              onprem.mount_pvc(_persistent_volume_claim, _persistent_volume,
-                               _persistent_volume_mount)
-          ]))
+      tfx_image=tfx_image
+  )
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
@@ -169,4 +159,6 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          direct_num_workers=_beam_num_workers))
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))

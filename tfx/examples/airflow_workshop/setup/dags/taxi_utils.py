@@ -25,6 +25,9 @@ import os  # pylint: disable=unused-import
 import tensorflow as tf  # pylint: disable=unused-import
 
 # import tensorflow_transform as tft # Step 4
+# from tensorflow_transform.beam.tft_beam_io import transform_fn_io # Step 4
+# from tensorflow_transform.saved import saved_transform_io # Step 4
+# from tensorflow_transform.tf_metadata import metadata_io # Step 4
 # from tensorflow_transform.tf_metadata import schema_utils # Step 4
 
 # import tensorflow_model_analysis as tfma # Step 5
@@ -139,7 +142,7 @@ _FARE_KEY = 'fare'
 #   taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
 #   tips = _fill_in_missing(inputs[_LABEL_KEY])
 #   outputs[_transformed_name(_LABEL_KEY)] = tf.where(
-#       tf.math.is_nan(taxi_fare),
+#       tf.is_nan(taxi_fare),
 #       tf.cast(tf.zeros_like(taxi_fare), tf.int64),
 #       # Test if the tip was > 20% of the fare.
 #       tf.cast(
@@ -237,13 +240,12 @@ _FARE_KEY = 'fare'
 #   # Notice that the inputs are raw features, not transformed features here.
 #   raw_feature_spec = _get_raw_feature_spec(schema)
 
-#   serialized_tf_example = tf.compat.v1.placeholder(
+#   serialized_tf_example = tf.placeholder(
 #       dtype=tf.string, shape=[None], name='input_example_tensor')
 
 #   # Add a parse_example operator to the tensorflow graph, which will parse
 #   # raw, untransformed, tf examples.
-#   features = tf.io.parse_example(
-#       serialized=serialized_tf_example, features=raw_feature_spec)
+#   features = tf.parse_example(serialized_tf_example, raw_feature_spec)
 
 #   # Now that we have our raw examples, process them through the tf-transform
 #   # function computed during the preprocessing step.
@@ -281,8 +283,7 @@ _FARE_KEY = 'fare'
 #   dataset = tf.data.experimental.make_batched_features_dataset(
 #       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
-#   transformed_features = tf.compat.v1.data.make_one_shot_iterator(
-#       dataset).get_next()
+#   transformed_features = dataset.make_one_shot_iterator().get_next()
 #   # We pop the label because we do not want to use it as a feature while we're
 #   # training.
 #   return transformed_features, transformed_features.pop(

@@ -25,6 +25,7 @@ import tensorflow as tf
 from tfx.orchestration.kubeflow import test_utils
 
 
+# DO_NOT_SUBMIT
 class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
   def testSimpleEnd2EndPipeline(self):

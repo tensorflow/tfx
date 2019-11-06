@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_kubeflow_local."""
+"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_kubeflow."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_local
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow
 from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 
 
@@ -37,18 +37,21 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     os.chdir(self._olddir)
 
   def testTaxiPipelineConstructionAndDefinitionFileExists(self):
-    logical_pipeline = taxi_pipeline_kubeflow_local._create_pipeline(
-        pipeline_name=taxi_pipeline_kubeflow_local._pipeline_name,
-        pipeline_root=taxi_pipeline_kubeflow_local._pipeline_root,
-        data_root=taxi_pipeline_kubeflow_local._data_root,
-        module_file=taxi_pipeline_kubeflow_local._module_file,
-        serving_model_dir=taxi_pipeline_kubeflow_local._serving_model_dir,
-        direct_num_workers=1)
+    logical_pipeline = taxi_pipeline_kubeflow._create_pipeline(
+        pipeline_name=taxi_pipeline_kubeflow._pipeline_name,
+        pipeline_root=taxi_pipeline_kubeflow._pipeline_root,
+        query=taxi_pipeline_kubeflow._query,
+        module_file=taxi_pipeline_kubeflow._module_file,
+        beam_pipeline_args=taxi_pipeline_kubeflow._beam_pipeline_args,
+        ai_platform_training_args=taxi_pipeline_kubeflow
+        ._ai_platform_training_args,
+        ai_platform_serving_args=taxi_pipeline_kubeflow
+        ._ai_platform_serving_args)
     self.assertEqual(9, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
-                             'chicago_taxi_pipeline_kubeflow_local.tar.gz')
+                             'chicago_taxi_pipeline_kubeflow.tar.gz')
     self.assertTrue(tf.io.gfile.exists(file_path))
 
 

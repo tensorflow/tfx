@@ -51,8 +51,10 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
         - examples: examples for inference.
-        - model: exported model.
+        - model_export: exported model.
         - model_blessing: model blessing result
+        - model_push: pushed model Either model_push or (model_export and
+          model_blessing) need to present.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: bulk inference results.
       exec_properties: A dict of execution properties.
@@ -66,28 +68,28 @@ class Executor(base_executor.BaseExecutor):
 
     if 'examples' not in input_dict:
       raise ValueError('\'examples\' is missing in input dict.')
-    if 'inference_result' not in output_dict:
-      raise ValueError('\'inference_result\' is missing in output dict.')
-    output = artifact_utils.get_single_instance(output_dict['inference_result'])
-    if 'model' not in input_dict:
-      raise ValueError('Input models are not valid, model '
-                       'need to be specified.')
-    if 'model_blessing' in input_dict:
+    if 'output' not in output_dict:
+      raise ValueError('\'output\' is missing in output dict.')
+    output = artifact_utils.get_single_instance(output_dict['output'])
+    if 'model_push' in input_dict:
+      model_push = artifact_utils.get_single_instance(input_dict['model_push'])
+      model_path = io_utils.get_only_uri_in_dir(model_push.uri)
+      logging.info('Use pushed model from %s.', model_path)
+    elif 'model_blessing' in input_dict and 'model_export' in input_dict:
       model_blessing = artifact_utils.get_single_instance(
           input_dict['model_blessing'])
       if not model_utils.is_model_blessed(model_blessing):
         output.set_int_custom_property('inferred', 0)
         logging.info('Model on %s was not blessed', model_blessing.uri)
         return
+      model_export = artifact_utils.get_single_instance(
+          input_dict['model_export'])
+      model_path = path_utils.serving_model_path(model_export.uri)
+      logging.info('Use exported model from %s.', model_path)
     else:
-      logging.info('Model blessing is not provided, exported model will be '
-                   'used.')
-
-    model = artifact_utils.get_single_instance(
-        input_dict['model'])
-    model_path = path_utils.serving_model_path(model.uri)
-    logging.info('Use exported model from %s.', model_path)
-
+      raise ValueError('Input models are not valid. Either model_push or '
+                       '(model_blessing and model_export) need to be '
+                       'specified.')
     data_spec = bulk_inferrer_pb2.DataSpec()
     json_format.Parse(exec_properties['data_spec'], data_spec)
     example_uris = {}

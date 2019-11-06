@@ -41,9 +41,9 @@ accuracy, timeliness, or completeness of any of the data provided at this site.
 The data provided at this site is subject to change at any time. It is
 understood that the data provided at this site is being used at one’s own risk.
 
-You can [read more](https://console.cloud.google.com/marketplace/details/city-of-chicago-public-data/chicago-taxi-trips)
-about the dataset in [Google BigQuery](https://cloud.google.com/bigquery/).
-Explore the full dataset in the
+You can [read more](https://cloud.google.com/bigquery/public-data/chicago-taxi) about
+the dataset in [Google BigQuery](https://cloud.google.com/bigquery/). Explore
+the full dataset in the
 [BigQuery UI](https://bigquery.cloud.google.com/dataset/bigquery-public-data:chicago_taxi_trips).
 
 ## Local prerequisites

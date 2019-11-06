@@ -26,7 +26,6 @@ import string
 import subprocess
 import tarfile
 import tempfile
-import time
 
 import absl
 import docker
@@ -68,16 +67,15 @@ _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 # The GCP bucket to use to write output artifacts.
 _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-# The input data root location on GCS. The input files are copied to a
-# test-local location.
+# The input data root location on GCS. The input files are never modified and
+# are safe for concurrent reads.
 _DATA_ROOT = os.environ['KFP_E2E_DATA_ROOT']
 
 # The intermediate data root location on GCS. The intermediate test data files
 # are never modified and are safe for concurrent reads.
 _INTERMEDIATE_DATA_ROOT = os.environ['KFP_E2E_INTERMEDIATE_DATA_ROOT']
 
-# Location of the input taxi module file to be used in the test pipeline. The
-# file is copied to a test-local location.
+# Location of the input taxi module file to be used in the test pipeline.
 _TAXI_MODULE_FILE = os.environ['KFP_E2E_TAXI_MODULE_FILE']
 
 
@@ -112,8 +110,8 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+      train_args=trainer_pb2.TrainArgs(num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model_exports=trainer.outputs['model'],
@@ -134,28 +132,6 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
       example_gen, statistics_gen, infer_schema, validate_stats, transform,
       trainer, model_analyzer, model_validator, pusher
   ]
-
-
-class _Timer(object):
-  """Helper class to time operations in Kubeflow e2e tests."""
-
-  def __init__(self, operation: Text):
-    """Creates a context object to measure time taken.
-
-    Args:
-      operation: A description of the operation being measured.
-    """
-    self._operation = operation
-
-  def __enter__(self):
-    self._start = time.time()
-
-  def __exit__(self, *unused_args):
-    self._end = time.time()
-
-    absl.logging.info(
-        'Timing Info >> Operation: %s Elapsed time in seconds: %d' %
-        (self._operation, self._end - self._start))
 
 
 class BaseKubeflowTest(tf.test.TestCase):
@@ -188,20 +164,17 @@ class BaseKubeflowTest(tf.test.TestCase):
     repo_base = os.environ['KFP_E2E_SRC']
 
     absl.logging.info('Building image {}'.format(container_image))
-    with _Timer('BuildingTFXContainerImage'):
-      _ = client.images.build(
-          path=repo_base,
-          dockerfile='tfx/tools/docker/Dockerfile',
-          tag=container_image,
-          buildargs={
-              # Skip license gathering for tests.
-              'gather_third_party_licenses': 'false',
-          },
-      )
-
+    _ = client.images.build(
+        path=repo_base,
+        dockerfile='tfx/tools/docker/Dockerfile',
+        tag=container_image,
+        buildargs={
+            # Skip license gathering for tests.
+            'gather_third_party_licenses': 'false',
+        },
+    )
     absl.logging.info('Pushing image {}'.format(container_image))
-    with _Timer('PushingTFXContainerImage'):
-      client.images.push(repository=container_image)
+    client.images.push(repository=container_image)
 
   @classmethod
   def _get_mysql_pod_name(cls):
@@ -237,20 +210,11 @@ class BaseKubeflowTest(tf.test.TestCase):
     self._gcp_project_id = _GCP_PROJECT_ID
     self._gcp_region = _GCP_REGION
     self._bucket_name = _BUCKET_NAME
+    self._data_root = _DATA_ROOT
     self._intermediate_data_root = _INTERMEDIATE_DATA_ROOT
+    self._taxi_module_file = _TAXI_MODULE_FILE
 
     self._test_output_dir = 'gs://{}/test_output'.format(self._bucket_name)
-
-    test_id = self._random_id()
-    self._data_root = 'gs://{}/{}/data'.format(self._bucket_name, test_id)
-
-    subprocess.run(['gsutil', 'cp', '-r', _DATA_ROOT, self._data_root],
-                   check=True)
-
-    self._taxi_module_file = 'gs://{}/{}/modules/taxi_utils.py'.format(
-        self._bucket_name, test_id)
-    subprocess.run(['gsutil', 'cp', _TAXI_MODULE_FILE, self._taxi_module_file],
-                   check=True)
 
   def tearDown(self):
     super(BaseKubeflowTest, self).tearDown()
@@ -295,8 +259,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         workflow_file,
     ]
     absl.logging.info('Launching workflow {}'.format(workflow_name))
-    with _Timer('RunningPipelineToCompletion'):
-      subprocess.run(run_command, check=True)
+    subprocess.run(run_command, check=True)
 
   def _delete_pipeline_output(self, pipeline_name: Text):
     """Deletes output produced by the named pipeline.
@@ -309,10 +272,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     prefix = 'test_output/{}'.format(pipeline_name)
     absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
-
-    with _Timer('ListingAndDeletingPipelineOutputsFromGCS'):
-      blobs = bucket.list_blobs(prefix=prefix)
-      bucket.delete_blobs(blobs)
+    blobs = bucket.list_blobs(prefix=prefix)
+    bucket.delete_blobs(blobs)
 
   def _delete_pipeline_metadata(self, pipeline_name: Text):
     """Drops the database containing metadata produced by the pipeline.
@@ -338,9 +299,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         'drop database {};'.format(db_name),
     ]
     absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
-
-    with _Timer('DeletingMLMDDatabase'):
-      subprocess.run(command, check=True)
+    subprocess.run(command, check=True)
 
   def _pipeline_root(self, pipeline_name: Text):
     return os.path.join(self._test_output_dir, pipeline_name)
@@ -375,8 +334,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]
     return pipeline
 
-  def _get_kubeflow_metadata_config(
-      self, pipeline_name: Text) -> kubeflow_pb2.KubeflowMetadataConfig:
+  def _get_kubeflow_metadata_config(self, pipeline_name: Text
+                                   ) -> kubeflow_pb2.KubeflowMetadataConfig:
     config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
     # Overwrite the DB name.
     config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,23 +17,19 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Callable, List, Optional, Text, Type
 
 from kfp import compiler
 from kfp import dsl
 from kfp import gcp
 from kubernetes import client as k8s_client
+from typing import Callable, List, Optional, Text
 
 from tfx import version
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
-from tfx.orchestration.config import config_utils
-from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
-from tfx.orchestration.launcher import kubernetes_component_launcher
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -45,7 +40,7 @@ from tfx.orchestration.launcher import kubernetes_component_launcher
 OpFunc = Callable[[dsl.ContainerOp], dsl.ContainerOp]
 
 # Default secret name for GCP credentials. This secret is installed as part of
-# a typical Kubeflow installation when the component is GKE.
+# a typical Kubeflow installation when the platform is GKE.
 _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
@@ -150,19 +145,16 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
-class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
+class KubeflowDagRunnerConfig(object):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
-  def __init__(self,
-               pipeline_operator_funcs: Optional[List[OpFunc]] = None,
-               tfx_image: Optional[Text] = None,
-               kubeflow_metadata_config: Optional[
-                   kubeflow_pb2.KubeflowMetadataConfig] = None,
-               # TODO(b/143883035): Figure out the best practice to put the
-               # SUPPORTED_LAUNCHER_CLASSES
-               supported_launcher_classes: List[Type[
-                   base_component_launcher.BaseComponentLauncher]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_operator_funcs: Optional[List[OpFunc]] = None,
+      tfx_image: Optional[Text] = None,
+      kubeflow_metadata_config: Optional[
+          kubeflow_pb2.KubeflowMetadataConfig] = None,
+  ):
     """Creates a KubeflowDagRunnerConfig object.
 
     The user can use pipeline_operator_funcs to apply modifications to
@@ -187,17 +179,7 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
       tfx_image: The TFX container image to use in the pipeline.
       kubeflow_metadata_config: Runtime configuration to use to connect to
         Kubeflow metadata.
-      supported_launcher_classes: A list of component launcher classes that are
-        supported by the current pipeline. List sequence determines the order in
-        which launchers are chosen for each component being run.
-      **kwargs: keyword args for PipelineConfig.
     """
-    supported_launcher_classes = supported_launcher_classes or [
-        in_process_component_launcher.InProcessComponentLauncher,
-        kubernetes_component_launcher.KubernetesComponentLauncher,
-    ]
-    super(KubeflowDagRunnerConfig, self).__init__(
-        supported_launcher_classes=supported_launcher_classes, **kwargs)
     self.pipeline_operator_funcs = (
         pipeline_operator_funcs or get_default_pipeline_operator_funcs())
     self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
@@ -209,14 +191,18 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
   """Kubeflow Pipelines runner.
 
   Constructs a pipeline definition YAML file based on the TFX logical pipeline.
+  The supported launcher classes are (in the order of preference):
+  `in_process_component_launcher.InProcessComponentLauncher`.
   """
 
-  def __init__(
-      self,
-      output_dir: Optional[Text] = None,
-      output_filename: Optional[Text] = None,
-      config: Optional[KubeflowDagRunnerConfig] = None,
-  ):
+  SUPPORTED_LAUNCHER_CLASSES = [
+      in_process_component_launcher.InProcessComponentLauncher
+  ]
+
+  def __init__(self,
+               output_dir: Optional[Text] = None,
+               output_filename: Optional[Text] = None,
+               config: Optional[KubeflowDagRunnerConfig] = None):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
     Args:
@@ -227,14 +213,13 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         Currently supports .tar.gz, .tgz, .zip, .yaml, .yml formats. See
         https://github.com/kubeflow/pipelines/blob/181de66cf9fa87bcd0fe9291926790c400140783/sdk/python/kfp/compiler/compiler.py#L851
         for format restriction.
-      config: An optional KubeflowDagRunnerConfig object to specify
-        runtime configuration when running the pipeline under Kubeflow.
+      config: An optional KubeflowDagRunnerConfig object to specify runtime
+        configuration when running the pipeline under Kubeflow.
     """
-    if config and not isinstance(config, KubeflowDagRunnerConfig):
-      raise TypeError('config must be type of KubeflowDagRunnerConfig.')
-    super(KubeflowDagRunner, self).__init__(config or KubeflowDagRunnerConfig())
+    super(KubeflowDagRunner, self).__init__()
     self._output_dir = output_dir or os.getcwd()
     self._output_filename = output_filename
+    self._config = config or KubeflowDagRunnerConfig()
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
 
@@ -258,20 +243,16 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for upstream_component in component.upstream_nodes:
         depends_on.add(component_to_kfp_op[upstream_component])
 
-      (component_launcher_class,
-       component_config) = config_utils.find_component_launch_info(
-           self._config, component)
-
       kfp_component = base_component.BaseComponent(
           component=component,
-          component_launcher_class=component_launcher_class,
+          component_launcher_class=self.find_component_launcher_class(
+              component),
           depends_on=depends_on,
           pipeline=pipeline,
           pipeline_name=pipeline.pipeline_info.pipeline_name,
           pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
-          kubeflow_metadata_config=self._config.kubeflow_metadata_config,
-          component_config=component_config)
+          kubeflow_metadata_config=self._config.kubeflow_metadata_config)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
