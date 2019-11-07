@@ -1,19 +1,8 @@
 # Current version (not yet released; still in development)
-*   Added documentation for Fairness Indicators.
 
 ## Major Features and Improvements
-*   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
-    platform specific settings for pipelines and components.
-*   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
-*   Added KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
-    Kubernetes cluster.
 
 ## Bug fixes and other changes
-
-*   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
-    (`tfx-bsl>=0.15.2`)
-*   Fixed problems with Airflow tutorial notebooks
-*   Fixed problems with ImporterNode under InteractiveContext
 
 ### Deprecations
 
@@ -42,6 +31,11 @@
 *   Added experimental support for TFMA fairness indicator thresholds.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
+*   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
+    platform specific settings for pipelines and components.
+*   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
+*   Added KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
+    Kubernetes cluster.
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
@@ -117,6 +111,9 @@
 *   Updated the default configuration for accessing MLMD from pipelines running
     in Kubeflow.
 *   Updated Airflow developer tutorial
+*   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
+    (`tfx-bsl>=0.15.2`)
+*   Added documentation for Fairness Indicators.
 
 ### Deprecations
 
