@@ -87,6 +87,14 @@ class ImporterDriverTest(tf.test.TestCase):
           execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].id,
           2 if reimport else 1)
 
+      self.assertNotEmpty(
+          self.output_dict[importer_node.IMPORT_RESULT_KEY].get())
+
+      self.assertEqual(
+          self.output_dict[importer_node.IMPORT_RESULT_KEY].get()[0].uri,
+          self.source_uri,
+      )
+
   def testImportArtifact(self):
     self._callImporterDriver(reimport=True)
 

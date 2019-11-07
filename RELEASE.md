@@ -5,14 +5,15 @@
 *   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
     platform specific settings for pipelines and components.
 *   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
-*   Add KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
+*   Added KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
     Kubernetes cluster.
 
 ## Bug fixes and other changes
 
 *   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
     (`tfx-bsl>=0.15.2`)
-*   Fix problems with Airflow tutorial notebooks
+*   Fixed problems with Airflow tutorial notebooks
+*   Fixed problems with ImporterNode under InteractiveContext
 
 ### Deprecations
 

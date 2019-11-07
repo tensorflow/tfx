@@ -24,6 +24,7 @@ from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.types import artifact
+from tfx.types import channel_utils
 from tfx.types import node_common
 
 # Constant to access importer importing result from importer output dict.
@@ -80,6 +81,10 @@ class ImporterDriver(base_driver.BaseDriver):
                 destination_channel=output_dict[IMPORT_RESULT_KEY],
                 reimport=exec_properties[REIMPORT_OPTION_KEY])
     }
+
+    output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
+        output_artifacts[IMPORT_RESULT_KEY])
+
     return data_types.ExecutionDecision(
         input_dict={},
         output_dict=output_artifacts,
@@ -134,8 +139,8 @@ class ImporterNode(base_node.BaseNode):
         been imported in before.
     """
     self._output_dict = {
-        'result': types.Channel(
-            type=artifact_type, artifacts=[artifact_type()])
+        IMPORT_RESULT_KEY:
+            types.Channel(type=artifact_type, artifacts=[artifact_type()])
     }
     self._source_uri = source_uri
     self._reimport = reimport
