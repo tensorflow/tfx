@@ -23,6 +23,7 @@ from typing import Any, Dict, Text, Union
 from kubernetes import client
 
 from tfx.orchestration.config import base_component_config
+from tfx.orchestration.launcher import container_common
 
 
 class KubernetesComponentConfig(base_component_config.BaseComponentConfig):
@@ -37,4 +38,4 @@ class KubernetesComponentConfig(base_component_config.BaseComponentConfig):
   def __init__(self, pod: Union[client.V1Pod, Dict[Text, Any]]):
     if not pod:
       raise ValueError('pod must have a value.')
-    self.pod = pod
+    self.pod = container_common.to_swagger_dict(pod)
