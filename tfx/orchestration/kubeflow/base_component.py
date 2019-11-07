@@ -36,6 +36,7 @@ from kubernetes import client as k8s_client
 from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.config import base_component_config
+from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import json_utils
@@ -102,7 +103,7 @@ class BaseComponent(object):
         '--component_launcher_class_path',
         component_launcher_class_path,
         '--serialized_component',
-        json_utils.dumps(component),
+        json_utils.dumps(node_wrapper.NodeWrapper(component)),
         '--component_config',
         json_utils.dumps(component_config),
     ]
