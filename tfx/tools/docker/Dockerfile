@@ -46,18 +46,21 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
+# TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
+# once we switch default tensorflow version in released image to TF 2.x.
+# TODO(jxzheng): investigate why setuptools need to be re-installed
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install \
+  "kubernetes>=10.0.1,<11" \
+  "tensorflow>=1.15,<3" \
+  "tensorflow-serving-api>=1.15,<3" \
+  "setuptools==41.4.0"
+
 # docker build command should be run under root directory of github checkout.
 ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
-# TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
-# once we switch default tensorflow version in released image to TF 2.x.
-# TODO(jxzheng): investigate why setuptools need to be re-installed
 
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install "tensorflow>=1.15,<2"
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install "tensorflow-serving-api>=1.15,<2"
-RUN python3 -m pip uninstall -y setuptools && python3 -m pip install "setuptools==41.4.0"
 RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools
