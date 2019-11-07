@@ -195,11 +195,7 @@ class SchemaGenSpec(ComponentSpec):
   }
   INPUTS = {
       # TODO(b/139281215): this will be renamed to 'statistics' in the future.
-      'stats':
-          ChannelParameter(
-              type=standard_artifacts.ExampleStatistics, optional=True),
-      'schema':
-          ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      'stats': ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
   OUTPUTS = {
       'output': ChannelParameter(type=standard_artifacts.Schema),

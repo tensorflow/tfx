@@ -44,17 +44,8 @@ class SchemaGen(base_component.BaseComponent):
 
   ## Example
   ```
-    # Generates an inferred schema based on given statistics files.
+    # Generates schema based on statistics files.
     infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-
-    # Provide an instance of schema that has already been implemented.
-    # Schema is the pipeline's expectation towards training data, under
-    # the assumption of which Transform and Trainer are implemented, and
-    # by which ExampleValidator validates which future training data and
-    # identify anomalies.
-    # Schema may have been inferred from previous executions of SchemaGen,
-    # or implemented manually.
-    fixed_schema = SchemaGen(schema=...)
   ```
   """
   # TODO(b/123941608): Update pydoc about how to use a user provided schema
@@ -64,7 +55,6 @@ class SchemaGen(base_component.BaseComponent):
 
   def __init__(self,
                statistics: Optional[types.Channel] = None,
-               schema: Optional[types.Channel] = None,
                infer_feature_shape: Optional[bool] = False,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
@@ -74,11 +64,7 @@ class SchemaGen(base_component.BaseComponent):
     Args:
       statistics: A Channel of `ExampleStatistics` type (required if spec is not
         passed). This should contain at least a `train` split. Other splits are
-        currently ignored. Exactly one of 'stats'/'statistics' or 'schema'
-        is required.
-      schema: A Channel of `Schema` type that provides an instance of Schema.
-        If provided, pass through this schema artifact as the output. Exactly
-        one of 'stats'/'statistics' or 'schema' is required.
+        currently ignored. _required_
       infer_feature_shape: Boolean value indicating whether or not to infer the
         shape of features. If the feature shape is not inferred, downstream
         Tensorflow Transform component using the schema will parse input
@@ -95,13 +81,8 @@ class SchemaGen(base_component.BaseComponent):
     output = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
 
-    if bool(statistics) == bool(schema):
-      raise ValueError(
-          'Exactly one of statistics or schema must be supplied.')
-
     spec = SchemaGenSpec(
         stats=statistics,
-        schema=schema,
         infer_feature_shape=infer_feature_shape,
         output=output)
     super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)

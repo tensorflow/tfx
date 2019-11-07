@@ -25,28 +25,12 @@ from tfx.types import standard_artifacts
 
 class SchemaGenTest(tf.test.TestCase):
 
-  def testConstructWithStats(self):
+  def testConstruct(self):
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
-
-  def testConstructWithSchema(self):
-    schema_gen = component.SchemaGen(
-        schema=channel_utils.as_channel([standard_artifacts.Schema()]))
-    self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
-
-  def testConstructWithBothStatsAndSchema(self):
-    with self.assertRaises(ValueError):
-      _ = component.SchemaGen(
-          statistics=channel_utils.as_channel(
-              [standard_artifacts.ExampleStatistics(split='train')]),
-          schema=channel_utils.as_channel([standard_artifacts.Schema()]))
-
-  def testConstructWithNeitherStatsNorSchema(self):
-    with self.assertRaises(ValueError):
-      _ = component.SchemaGen()
 
 
 if __name__ == '__main__':

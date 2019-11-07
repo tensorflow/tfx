@@ -47,8 +47,6 @@
 *   Added support for serialization and deserialization of components.
 *   Made component launcher extensible to support launching components on
     multiple platforms.
-*   Added option to use fixed Schema artifact for ExampleValidator, Transform
-    and Trainer.
 *   Simplified component package names.
 *   Introduced BaseNode as the base class of any node in a TFX pipeline DAG.
 *   Added docker component launcher to launch container component.
