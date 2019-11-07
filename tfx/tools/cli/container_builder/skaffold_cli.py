@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import re
 import subprocess
 import click
 from typing import Text
@@ -40,8 +41,16 @@ class SkaffoldCli(object):
       raise RuntimeError
 
   def build(self, buildspec_filename: Text = labels.BUILD_SPEC_FILENAME):
+    """Builds an image and return the image SHA."""
     if not os.path.exists(buildspec_filename):
       raise ValueError('Build spec: %s does not exist.' % buildspec_filename)
-    subprocess.run(
+    completed_process = subprocess.run(
         [self._cmd, 'build', '-f', buildspec_filename],
-        check=True)
+        check=True, stdout=subprocess.PIPE)
+    output = completed_process.stdout.decode('utf-8').split('\n')
+    for line in output:
+      line = line.strip()
+      m = re.search(r'sha256:[0-9a-f]{64}', line)
+      if m:
+        return m.group(0)
+    raise RuntimeError('SkaffoldCli: built image SHA is not found.')

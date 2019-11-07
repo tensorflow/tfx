@@ -33,6 +33,7 @@ class BuildSpec(object):
   Attributes:
     filename: build spec filename.
     build_context: build working directory.
+    target_image: target image with no tag.
     _buildspec: in-memory representation of the build spec.
   """
 
@@ -49,18 +50,42 @@ class BuildSpec(object):
                    target_image: Text = None,
                    build_context: Text = labels.BUILD_CONTEXT,
                    dockerfile_name: Text = labels.DOCKERFILE_NAME):
-    """Generate a default build spec yaml."""
+    """Generate a default build spec yaml.
+
+    Args:
+      filename: build spec filename.
+      target_image: target image path. If it contains the tag, the build spec
+        will also include it; If it does not, the build spec will tag it as
+        'lastest'.
+      build_context: local build context path.
+      dockerfile_name: dockerfile filename in the build_context.
+
+    Returns:
+      BuildSpec instance.
+    """
     if os.path.exists(filename):
       raise ValueError('BuildSpec: build spec file %s already exists.' %
                        filename)
     if target_image is None:
       raise ValueError('BuildSpec: target_image is not given.')
+
+    target_image_fields = target_image.split(':')
+    if len(target_image_fields) > 2:
+      raise ValueError('BuildSpec: target_image is in illegal form.')
+    target_image_with_no_tag = target_image_fields[0]
+    target_image_tag = 'latest' if len(
+        target_image_fields) <= 1 else target_image_fields[1]
     build_spec = {
         'apiVersion': labels.SKAFFOLD_API_VERSION,
         'kind': 'Config',
         'build': {
+            'tagPolicy': {
+                'envTemplate': {
+                    'template': '{{.IMAGE_NAME}}:' + target_image_tag
+                }
+            },
             'artifacts': [{
-                'image': target_image,
+                'image': target_image_with_no_tag,
                 'context': build_context,
                 'docker': {
                     'dockerfile': dockerfile_name
@@ -81,6 +106,7 @@ class BuildSpec(object):
         raise RuntimeError('The build spec contains multiple artifacts however'
                            'only one is supported.')
       self._build_context = self._buildspec['build']['artifacts'][0]['context']
+      self._target_image = self._buildspec['build']['artifacts'][0]['image']
 
   @property
   def filename(self):
@@ -89,3 +115,7 @@ class BuildSpec(object):
   @property
   def build_context(self):
     return self._build_context
+
+  @property
+  def target_image(self):
+    return self._target_image

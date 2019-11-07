@@ -79,7 +79,9 @@ class ContainerBuilder(object):
         setup_py_filename=setup_py_filename)
 
   def build(self):
-    """Build the container."""
+    """Build the container and return the built image path with SHA."""
     click.echo('Use skaffold to build the container image.')
     skaffold_cli = SkaffoldCli(cmd=self._skaffold_cmd)
-    skaffold_cli.build(buildspec_filename=self._buildspec.filename)
+    image_sha = skaffold_cli.build(buildspec_filename=self._buildspec.filename)
+    target_image = self._buildspec.target_image
+    return target_image + '@' + image_sha
