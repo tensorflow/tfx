@@ -179,7 +179,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           (e.reason, e.body))
 
     for log in logs:
-      absl.logging.info(log.encode())
+      absl.logging.info(log.decode().rstrip('\n'))
 
     resp = self._wait_pod(
         core_api,
