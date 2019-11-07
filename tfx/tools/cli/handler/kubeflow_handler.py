@@ -68,9 +68,8 @@ class KubeflowHandler(base_handler.BaseHandler):
         target_image = self.flags_dict[labels.TARGET_IMAGE]
       if labels.SKAFFOLD_CMD in self.flags_dict:
         skaffold_cmd = self.flags_dict[labels.SKAFFOLD_CMD]
-      self._build_pipeline_image(target_image, skaffold_cmd)
-      if target_image:
-        os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
+      target_image = self._build_pipeline_image(target_image, skaffold_cmd)
+      os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
     except (ValueError, subprocess.CalledProcessError, RuntimeError):
       click.echo('No container image is built.')
     else:
@@ -269,7 +268,7 @@ class KubeflowHandler(base_handler.BaseHandler):
   def _build_pipeline_image(self,
                             target_image: Optional[Text] = None,
                             skaffold_cmd: Optional[Text] = None) -> None:
-    builder.ContainerBuilder(
+    return builder.ContainerBuilder(
         target_image=target_image, skaffold_cmd=skaffold_cmd).build()
 
   def _get_pipeline_id(self, pipeline_name: Text) -> Text:
