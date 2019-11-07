@@ -143,6 +143,12 @@
     support. If `tensorflow-gpu` 2.0.0 is installed before installing
     `tfx`, it will be replaced with `tensorflow` 2.0.0.
     Re-install `tensorflow-gpu` 2.0.0 if needed.
+*   Caveat: MLMD schema auto-upgrade is now disabled by default. For users who
+    upgrades from 0.13 and do not want to lose the data in MLMD, please refer to
+    [MLMD documentation](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#upgrade-mlmd-library)
+    for guide to upgrade or downgrade MLMD database. Users who upgraded from TFX
+    0.14 should not be affected since there is not schema change between these
+    two versions.
 
 
 ### For pipeline authors

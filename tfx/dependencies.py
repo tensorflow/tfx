@@ -49,6 +49,7 @@ def make_required_test_packages():
       #     testing/github/ubuntu/image/image.sh,
       #     testing/kubeflow/common.sh
       # )
+      'kubernetes>=10.0',
       'pytest>=5,<6',
       'tzlocal>=1.5,<2',
   ]
