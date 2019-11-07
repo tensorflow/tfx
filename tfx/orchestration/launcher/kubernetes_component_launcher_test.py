@@ -68,7 +68,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     # Mock successful pod creation.
     core_api.create_namespaced_pod.return_value = client.V1Pod()
     core_api.read_namespaced_pod_log.return_value.stream.return_value = [
-        'log-1'
+        b'log-1'
     ]
     context = self._create_launcher_context()
 
@@ -128,7 +128,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     # Mock successful pod creation.
     core_api.create_namespaced_pod.return_value = client.V1Pod()
     core_api.read_namespaced_pod_log.return_value.stream.return_value = [
-        'log-1'
+        b'log-1'
     ]
     context = self._create_launcher_context()
 
@@ -181,7 +181,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     # Mock successful pod creation.
     core_api.create_namespaced_pod.return_value = client.V1Pod()
     core_api.read_namespaced_pod_log.return_value.stream.return_value = [
-        'log-1'
+        b'log-1'
     ]
     component_config = kubernetes_component_config.KubernetesComponentConfig(
         client.V1Pod(
