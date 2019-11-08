@@ -61,13 +61,7 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 # Sqlite ML-metadata db path.
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
-# Path to user provided schema.
-# TODO(b/143948771): clean-up this version switch once tfx_bsl 0.15.3 is out.
-if tfx_bsl_version > '0.15.2':
-  _user_schema_path = os.path.join(_taxi_root, 'data', 'user_provided_schema')
-else:
-  _user_schema_path = os.path.join(_taxi_root, 'data',
-                                   'user_provided_schema_legacy')
+_user_schema_path = os.path.join(_taxi_root, 'data', 'user_provided_schema')
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
