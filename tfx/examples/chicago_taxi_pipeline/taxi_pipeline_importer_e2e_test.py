@@ -36,14 +36,8 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
 
     self._pipeline_name = 'beam_test'
     self._data_root = os.path.join(os.path.dirname(__file__), 'data', 'simple')
-    # TODO(b/143948771): clean-up this version switch once tfx_bsl 0.15.3
-    # is out.
-    if tfx_bsl_version > '0.15.2':
-      self._user_schema_path = os.path.join(
-          os.path.dirname(__file__), 'data', 'user_provided_schema')
-    else:
-      self._user_schema_path = os.path.join(
-          os.path.dirname(__file__), 'data', 'user_provided_schema_legacy')
+    self._user_schema_path = os.path.join(
+        os.path.dirname(__file__), 'data', 'user_provided_schema')
     self._module_file = os.path.join(os.path.dirname(__file__), 'taxi_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
