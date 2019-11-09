@@ -4,6 +4,13 @@
 
 ## Bug fixes and other changes
 
+*   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
+    (`tfx-bsl>=0.15.2`)
+*   Fix problems with Airflow tutorial notebooks
+*   Performance improvements for the Transform Component (for its statistics
+    generation).
+*   Depended on `pyarrow>=0.14,<0.15`.
+
 ### Deprecations
 
 ## Breaking changes
