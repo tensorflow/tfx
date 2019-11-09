@@ -21,9 +21,9 @@ import os
 import absl
 import apache_beam as beam
 import numpy as np
+import pyarrow as pa
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
-from tensorflow_data_validation.utils import batch_util
 import tensorflow_transform as tft
 from tensorflow_transform import impl_helper
 import tensorflow_transform.beam as tft_beam
@@ -34,7 +34,8 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
-from typing import Any, Dict, Generator, List, Mapping, Sequence, Text, Tuple, Union, Optional
+import tfx_bsl
+from typing import Any, Dict, Generator, Iterable, List, Mapping, Sequence, Text, Tuple, Union, Optional
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
@@ -89,9 +90,6 @@ class _Status(object):
     return self._error_message
 
 
-# TODO(katsiapis): Introduce 'standardized' and 'transformed_and_standardized'
-# lifecycle properties of the _Dataset and make use of them for Statistics
-# generation.
 class _Dataset(object):
   """Dataset to be analyzed and/or transformed.
 
@@ -170,12 +168,16 @@ class _Dataset(object):
     return self._metadata
 
   @property
-  def encoded(self):
-    return self._encoded
+  def serialized(self):
+    return self._serialized
 
   @property
   def decoded(self):
     return self._decoded
+
+  @property
+  def standardized(self):
+    return self._standardized
 
   @property
   def transformed(self):
@@ -185,17 +187,25 @@ class _Dataset(object):
   def transformed_and_encoded(self):
     return self._transformed_and_encoded
 
+  @property
+  def transformed_and_standardized(self):
+    return self._transformed_and_standardized
+
   @index.setter
   def index(self, val):
     self._index = val
 
-  @encoded.setter
-  def encoded(self, val):
-    self._encoded = val
+  @serialized.setter
+  def serialized(self, val):
+    self._serialized = val
 
   @decoded.setter
   def decoded(self, val):
     self._decoded = val
+
+  @standardized.setter
+  def standardized(self, val):
+    self._standardized = val
 
   @transformed.setter
   def transformed(self, val):
@@ -204,6 +214,10 @@ class _Dataset(object):
   @transformed_and_encoded.setter
   def transformed_and_encoded(self, val):
     self._transformed_and_encoded = val
+
+  @transformed_and_standardized.setter
+  def transformed_and_standardized(self, val):
+    self._transformed_and_standardized = val
 
 
 def _GetSchemaProto(
@@ -408,7 +422,7 @@ class Executor(base_executor.BaseExecutor):
     # TODO(b/139538871): Implement telemetry, on top of pa.Table once available.
     return (
         pcoll
-        | 'DropNoneKeys' >> beam.Values()
+        | 'DropKeys' >> beam.Values()
         | 'Write' >> beam.io.WriteToTFRecord(
             transformed_example_path,
             file_name_suffix='.gz',
@@ -451,15 +465,16 @@ class Executor(base_executor.BaseExecutor):
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(
-      Union[
-          Tuple[bytes, Union[bytes, tf.train.Example]],  # Legacy format.
-          Dict[Text, Any]])                              # TFDV format.
+      Union[Tuple[bytes, Union[bytes, tf.train.Example]],  # Legacy format.
+            pa.Table])                                     # TFDV format.
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _GenerateStats(
       pcoll: beam.pvalue.PCollection,
       stats_output_path: Text,
       schema: schema_pb2.Schema,
+      # TODO(b/115684207): Remove this and all related code.
       use_tfdv=True,
+      # TODO(b/115684207): Remove this and all related code.
       examples_are_serialized=False
   ) -> beam.pvalue.PDone:
     """Generates statistics.
@@ -480,29 +495,66 @@ class Executor(base_executor.BaseExecutor):
     # pylint: disable=no-value-for-parameter
     return (
         pcoll
-        | 'ComputeTFDVStats' >> Executor._ComputeTFDVStats(schema)
+        | 'GenerateStatistics' >> tfdv.GenerateStatistics(
+            tfdv.StatsOptions(schema=schema))
         | 'WriteStats' >> Executor._WriteStats(stats_output_path))
 
+  # TODO(zhuo): Obviate this once TFXIO is used.
+  @beam.typehints.with_input_types(List[bytes])
+  @beam.typehints.with_output_types(pa.Table)
+  class _ToArrowTablesFn(beam.DoFn):
+    """Converts a batch of serialized examples to an Arrow Table."""
+
+    __slots__ = ['_serialized_schema', '_decoder']
+
+    def __init__(self, schema: schema_pb2.Schema):
+      self._serialized_schema = schema.SerializeToString()
+
+    def setup(self):
+      self._decoder = (
+          tfx_bsl.coders.example_coder.ExamplesToRecordBatchDecoder(
+              self._serialized_schema))
+
+    def process(self, element: List[bytes]) -> Iterable[pa.Table]:
+      yield pa.Table.from_batches([self._decoder.DecodeBatch(element)])
+
+  # TODO(zhuo): Obviate this once TFXIO is used.
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Dict[Text, Any])
-  @beam.typehints.with_output_types(statistics_pb2.DatasetFeatureStatisticsList)
-  def _ComputeTFDVStats(pcoll: beam.pvalue.PCollection,
-                        schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
-    """Cmoputes Statistics with TFDV.
+  @beam.typehints.with_input_types(Tuple[bytes, bytes])
+  @beam.typehints.with_output_types(pa.Table)
+  def _FromSerializedToArrowTables(
+      pcoll: beam.pvalue.PCollection,
+      schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
+    """Converts serialized examples to Arrow Tables.
 
     Args:
-      pcoll: pcollection of examples.
+      pcoll: PCollection of Transformed data.
       schema: schema.
 
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
-    feature_specs_from_schema = schema_utils.schema_as_feature_spec(
-        schema).feature_spec
+    kwargs = tfdv.utils.batch_util.GetBeamBatchKwargs(
+        tft_beam.Context.get_desired_batch_size())
+    return (
+        pcoll
+        | 'DropKeys' >> beam.Values()
+        | 'BatchElements' >> beam.BatchElements(**kwargs)
+        | 'ToArrowTables' >> beam.ParDo(Executor._ToArrowTablesFn(schema)))
 
-    def EncodeTFDV(element, feature_specs):
-      """Encodes element in an in-memory format that TFDV expects."""
+  @staticmethod
+  @beam.ptransform_fn
+  @beam.typehints.with_input_types(Dict[Text, Any])
+  @beam.typehints.with_output_types(pa.Table)
+  def _FromDictsToArrowTables(
+      pcoll: beam.pvalue.PCollection,
+      schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
+    """Converts Dicts to Arrow Tables."""
+
+    def ToLegacyTFDVExamples(
+        element: Dict[Text, Any], feature_specs: Dict[Text, Any]):
+      """Encodes element in a (legacy) in-memory format that TFDV expects."""
       if _TRANSFORM_INTERNAL_FEATURE_FOR_KEY not in element:
         raise ValueError(
             'Expected _TRANSFORM_INTERNAL_FEATURE_FOR_KEY ({}) to exist in the '
@@ -527,22 +579,23 @@ class Executor(base_executor.BaseExecutor):
               [feature_value], dtype=feature_spec.dtype.as_numpy_dtype)
       return result
 
+    feature_specs_from_schema = schema_utils.schema_as_feature_spec(
+        schema).feature_spec
+
     # TODO(pachristopher): Remove encoding and batching steps once TFT
     # supports Arrow tables.
+    #
     # TODO(pachristopher): Explore if encoding TFT dict into serialized examples
     # and then converting them to Arrow tables is cheaper than converting to
     # TFDV dict and then to Arrow tables.
-    encoded = (
-        pcoll
-        | 'EncodeTFDV'
-        >> beam.Map(EncodeTFDV, feature_specs=feature_specs_from_schema))
-
     return (
-        encoded
+        pcoll
+        | 'ToLegacyTFDVExamples'
+        >> beam.Map(
+            ToLegacyTFDVExamples, feature_specs=feature_specs_from_schema)
         | 'BatchExamplesToArrowTables'
-        >> batch_util.BatchExamplesToArrowTables()
-        | 'ComputeFeatureStatisticsTFDV' >> tfdv.GenerateStatistics(
-            tfdv.StatsOptions(schema=schema)))
+        >> tfdv.utils.batch_util.BatchExamplesToArrowTables(
+            tft_beam.Context.get_desired_batch_size()))
 
   @staticmethod
   @beam.ptransform_fn
@@ -605,6 +658,8 @@ class Executor(base_executor.BaseExecutor):
   @beam.typehints.with_output_types(Tuple[Optional[bytes], tf.train.Example])
   class _EncodeAsExamples(beam.DoFn):
     """Encodes data as tf.Examples based on the given metadata."""
+
+    __slots__ = ['_coder']
 
     def __init__(self):
       self._coder = None
@@ -980,11 +1035,14 @@ class Executor(base_executor.BaseExecutor):
 
         for dataset in analyze_data_list:
           infix = 'AnalysisIndex{}'.format(dataset.index)
-          dataset.encoded = (
+          dataset.serialized = (
               pipeline
               | 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(dataset))
+
+          # TODO(b/37788560): This is only needed for the TFT datasets that
+          # aren't cached.
           dataset.decoded = (
-              dataset.encoded
+              dataset.serialized
               | 'Decode[{}]'.format(infix)
               >> self._DecodeInputs(analyze_decode_fn))
 
@@ -1052,7 +1110,8 @@ class Executor(base_executor.BaseExecutor):
 
         if compute_statistics or materialize_output_paths:
           # Do not compute pre-transform stats if the input format is raw proto,
-          # as StatsGen would treat any input as tf.Example.
+          # as StatsGen would treat any input as tf.Example. Note that
+          # tf.SequenceExamples are wire-format compatible with tf.Examples.
           if (compute_statistics and
               not self._IsDataFormatProto(raw_examples_data_format)):
             # Aggregated feature stats before transformation.
@@ -1061,8 +1120,17 @@ class Executor(base_executor.BaseExecutor):
                 tft.TFTransformOutput.PRE_TRANSFORM_FEATURE_STATS_PATH)
 
             schema_proto = _GetSchemaProto(analyze_input_dataset_metadata)
+
+            if stats_use_tfdv:
+              for dataset in analyze_data_list:
+                infix = 'AnalysisIndex{}'.format(dataset.index)
+                dataset.standardized = (
+                    dataset.serialized
+                    | 'FromSerializedToArrowTables[{}]'.format(infix)
+                    >> self._FromSerializedToArrowTables(schema_proto))
+
             ([
-                dataset.decoded if stats_use_tfdv else dataset.encoded
+                dataset.standardized if stats_use_tfdv else dataset.serialized
                 for dataset in analyze_data_list
             ]
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
@@ -1081,12 +1149,12 @@ class Executor(base_executor.BaseExecutor):
           # prevent certain beam runner from doing large temp materialization.
           for dataset in transform_data_list:
             infix = 'TransformIndex{}'.format(dataset.index)
-            dataset.encoded = (
+            dataset.serialized = (
                 pipeline
                 | 'ReadDataset[{}]'.format(infix)
                 >> self._ReadExamples(dataset))
             dataset.decoded = (
-                dataset.encoded
+                dataset.serialized
                 | 'Decode[{}]'.format(infix)
                 >> self._DecodeInputs(transform_decode_fn))
             (dataset.transformed, metadata) = (
@@ -1103,16 +1171,25 @@ class Executor(base_executor.BaseExecutor):
           if compute_statistics:
             # Aggregated feature stats after transformation.
             _, metadata = transform_fn
-            post_transform_feature_stats_path = os.path.join(
-                transform_output_path,
-                tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
 
             # TODO(b/70392441): Retain tf.Metadata (e.g., IntDomain) in
             # schema. Currently input dataset schema only contains dtypes,
             # and other metadata is dropped due to roundtrip to tensors.
             transformed_schema_proto = _GetSchemaProto(metadata)
 
-            ([(dataset.transformed
+            if stats_use_tfdv:
+              for dataset in transform_data_list:
+                infix = 'TransformIndex{}'.format(dataset.index)
+                dataset.transformed_and_standardized = (
+                    dataset.transformed
+                    | 'FromDictsToArrowTables[{}]'.format(infix)
+                    >> self._FromDictsToArrowTables(transformed_schema_proto))
+
+            post_transform_feature_stats_path = os.path.join(
+                transform_output_path,
+                tft.TFTransformOutput.POST_TRANSFORM_FEATURE_STATS_PATH)
+
+            ([(dataset.transformed_and_standardized
                if stats_use_tfdv else dataset.transformed_and_encoded)
               for dataset in transform_data_list]
              | 'FlattenTransformedDatasets' >> beam.Flatten()
@@ -1123,13 +1200,13 @@ class Executor(base_executor.BaseExecutor):
                  use_tfdv=stats_use_tfdv))
 
             if per_set_stats_output_paths:
-              # TODO(b/67632871): Remove duplicate stats gen compute that is
+              # TODO(b/130885503): Remove duplicate stats gen compute that is
               # done both on a flattened view of the data, and on each span
               # below.
               for dataset in transform_data_list:
                 infix = 'TransformIndex{}'.format(dataset.index)
                 if stats_use_tfdv:
-                  data = dataset.transformed
+                  data = dataset.transformed_and_standardized
                 else:
                   data = dataset.transformed_and_encoded
                 data | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
@@ -1298,7 +1375,7 @@ class Executor(base_executor.BaseExecutor):
     """
     return data_format == labels.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(self, data_format: Text) -> Any:
+  def _GetDesiredBatchSize(self, data_format: Text) -> Optional[int]:
     """Returns batch size.
 
     Args:
