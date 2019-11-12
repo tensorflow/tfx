@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +21,10 @@ from __future__ import print_function
 import json
 import os
 import sys
+from typing import Any, Dict, Text
+
 import click
 import tensorflow as tf
-from typing import Dict, Text, Any
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler

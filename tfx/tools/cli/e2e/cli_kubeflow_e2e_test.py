@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,13 +28,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Text
 
 import absl
 from click import testing as click_testing
 import kfp
 import kfp_server_api
 import tensorflow as tf
-from typing import Text
 
 from google.cloud import storage
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import

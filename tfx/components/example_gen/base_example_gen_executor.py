@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +22,18 @@ import abc
 import bisect
 import hashlib
 import os
+from typing import Any, Dict, List, Text
+
 import absl
 import apache_beam as beam
 from six import with_metaclass
-from typing import Any, Dict, List, Text
+
+from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
-from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'

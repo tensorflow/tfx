@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +22,13 @@ import os
 import shutil
 import tempfile
 import textwrap
+from typing import Any, Dict, List, Text
 
 import jinja2
 import mock
 import nbformat
 from six.moves import builtins
 import tensorflow as tf
-from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.components.base import base_component

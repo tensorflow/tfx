@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,9 +22,9 @@ from __future__ import unicode_literals
 import itertools
 import os
 import tempfile
+from typing import Any, Dict, Text
 
 import tensorflow as tf
-from typing import Any, Dict, Text
 
 from tfx import types
 from tfx.components.base import base_component
@@ -104,10 +105,10 @@ class PipelineTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=['--runner=PortableRunner'],
         additional_pipeline_args={})
-    self.assertItemsEqual(
+    self.assertCountEqual(
         my_pipeline.components,
         [component_a, component_b, component_c, component_d, component_e])
-    self.assertItemsEqual(my_pipeline.components[0].downstream_nodes,
+    self.assertCountEqual(my_pipeline.components[0].downstream_nodes,
                           [component_b, component_c, component_e])
     self.assertEqual(my_pipeline.components[-1], component_e)
     self.assertEqual(my_pipeline.pipeline_info.pipeline_name, 'a')
@@ -115,7 +116,7 @@ class PipelineTest(tf.test.TestCase):
     self.assertEqual(my_pipeline.metadata_connection_config,
                      self._metadata_connection_config)
     self.assertTrue(my_pipeline.enable_cache)
-    self.assertItemsEqual(my_pipeline.beam_pipeline_args,
+    self.assertCountEqual(my_pipeline.beam_pipeline_args,
                           ['--runner=PortableRunner'])
     self.assertDictEqual(my_pipeline.additional_pipeline_args, {})
 
@@ -196,7 +197,7 @@ class PipelineTest(tf.test.TestCase):
     expected_artifact.pipeline_name = 'a'
     expected_artifact.pipeline_timestamp_ms = 0
     expected_artifact.producer_component = 'component_a'
-    self.assertItemsEqual(my_pipeline.components, [component_a, component_b])
+    self.assertCountEqual(my_pipeline.components, [component_a, component_b])
     self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,
                      'a')
     self.assertEqual(

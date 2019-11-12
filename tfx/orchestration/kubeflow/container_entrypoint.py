@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +24,11 @@ import logging
 import os
 import sys
 import textwrap
-
-import absl
 from typing import Dict, List, Text
 
+import absl
+
+from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.components.trainer import component as trainer_component
@@ -37,7 +39,6 @@ from tfx.types import artifact
 from tfx.types import channel
 from tfx.utils import import_utils
 from tfx.utils import json_utils
-from google.protobuf import json_format
 
 
 def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Text:
@@ -209,7 +210,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       A list of dumped markdown string, each of which represents a channel.
     """
     rendered_list = []
-    for name, channel in name_to_channel.items():  # pylint: disable=redefined-outer-name
+    for name, chnl in name_to_channel.items():
       # Need to look for materialized artifacts in the execution decision.
       rendered_artifacts = ''.join([
           _render_artifact_as_mdstr(single_artifact)
@@ -218,7 +219,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       rendered_list.append(
           '## {name}\n\n**Type**: {channel_type}\n\n{artifacts}'.format(
               name=name,
-              channel_type=channel.type_name,
+              channel_type=chnl.type_name,
               artifacts=rendered_artifacts))
 
     return rendered_list

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,14 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import builtins
-
+import json
 from typing import Any, Dict, Optional, Text
 
+from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.utils import json_utils
-from google.protobuf import json_format
 
 
 class ArtifactState(object):

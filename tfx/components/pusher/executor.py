@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Any, Dict, List, Text
+
 import absl
 import tensorflow as tf
-from typing import Any, Dict, List, Text
+
+from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import model_utils
@@ -29,7 +33,6 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from google.protobuf import json_format
 
 
 class Executor(base_executor.BaseExecutor):

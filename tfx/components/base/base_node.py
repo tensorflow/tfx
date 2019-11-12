@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from typing import Any, Dict, Optional, Text
 
 from six import with_metaclass
-
-from typing import Any, Dict, Optional, Text
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_driver
@@ -94,12 +94,12 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   @property
   @abc.abstractmethod
-  def inputs(self) -> node_common._PropertyDictWrapper:
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     pass
 
   @property
   @abc.abstractmethod
-  def outputs(self) -> node_common._PropertyDictWrapper:
+  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     pass
 
   @property

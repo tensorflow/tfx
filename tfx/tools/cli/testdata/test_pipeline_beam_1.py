@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Text
 
 import absl
-from typing import Text
+
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen

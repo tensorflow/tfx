@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import functools
+from typing import Any, Dict, List, Text, Type
+
 from airflow import models
 from airflow.operators import python_operator
-
-from typing import Any, Dict, List, Text, Type
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component

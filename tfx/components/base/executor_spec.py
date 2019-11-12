@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from typing import List, Text, Type
 
 from six import with_metaclass
-from typing import List, Text, Type
 
 from tfx.components.base import base_executor
 from tfx.utils import json_utils
@@ -45,6 +46,7 @@ class ExecutorClassSpec(ExecutorSpec):
     if not executor_class:
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
+    super(ExecutorClassSpec, self).__init__()
 
 
 class ExecutorContainerSpec(ExecutorSpec):
@@ -81,3 +83,4 @@ class ExecutorContainerSpec(ExecutorSpec):
     self.image = image
     self.command = command
     self.args = args
+    super(ExecutorContainerSpec, self).__init__()

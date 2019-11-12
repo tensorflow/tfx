@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,10 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from typing import Any, Dict, List, Optional, Text
 
 import absl
 from six import with_metaclass
-from typing import Any, Dict, List, Optional, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types

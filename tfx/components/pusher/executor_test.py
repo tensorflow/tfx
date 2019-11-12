@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,10 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+from google.protobuf import json_format
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):

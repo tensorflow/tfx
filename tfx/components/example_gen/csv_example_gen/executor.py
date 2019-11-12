@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Any, Dict, Iterable, List, Text
+
 import absl
 import apache_beam as beam
 import tensorflow as tf
 from tfx_bsl.coders import csv_decoder
-from typing import Any, Dict, Iterable, List, Text
+
 from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.types import artifact_utils
@@ -34,8 +37,6 @@ from tfx.utils import io_utils
 @beam.typehints.with_output_types(tf.train.Example)
 class _ParsedCsvToTfExample(beam.DoFn):
   """A beam.DoFn to convert a parsed CSV line to a tf.Example."""
-
-  __slots__ = ['_column_handlers']
 
   def __init__(self):
     self._column_handlers = None

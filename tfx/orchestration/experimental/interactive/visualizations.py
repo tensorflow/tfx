@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from typing import Text, Type
 
 # Standard Imports
 
 from six import with_metaclass
-
-from typing import Text, Type
 
 from tfx import types
 from tfx.utils import abc_utils

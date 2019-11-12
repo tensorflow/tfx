@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +23,11 @@ import copy
 import hashlib
 import os
 import types
+from typing import Any, Dict, List, Optional, Set, Text, Type
+
 import absl
 import tensorflow as tf
-from typing import Any, Dict, List, Optional, Set, Text, Type
+
 from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import

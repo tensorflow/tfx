@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,11 +21,12 @@ import datetime
 import json
 import sys
 import time
+from typing import Any, Dict, List, Text
+
 import absl
 from googleapiclient import discovery
 from googleapiclient import errors
 import tensorflow as tf
-from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx import version

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +25,10 @@ from apache_beam.testing import util
 import mock
 import tensorflow as tf
 from google.cloud import bigquery
+from google.protobuf import json_format
 from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
 
 
 @beam.ptransform_fn

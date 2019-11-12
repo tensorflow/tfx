@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
 from typing import Any, Dict, List, Optional, Text, Type
+
+import absl
 
 from tfx import types
 from tfx.components.base import base_driver
@@ -147,11 +149,11 @@ class ImporterNode(base_node.BaseNode):
     super(ImporterNode, self).__init__(instance_name=instance_name)
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:
+  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
 
   @property

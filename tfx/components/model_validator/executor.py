@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Any, Dict, List, Text
+
 import absl
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from typing import Any, Dict, List, Text
+
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils

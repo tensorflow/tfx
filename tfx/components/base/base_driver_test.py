@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,7 +110,7 @@ class BaseDriverTest(tf.test.TestCase):
         component_info=component_info)
     self.assertFalse(execution_decision.use_cached_results)
     self.assertEqual(execution_decision.execution_id, 1)
-    self.assertItemsEqual(execution_decision.exec_properties, exec_properties)
+    self.assertCountEqual(execution_decision.exec_properties, exec_properties)
     self.assertEqual(
         execution_decision.output_dict['output_a'][0].uri,
         os.path.join(pipeline_info.pipeline_root, component_info.component_id,
@@ -162,8 +163,8 @@ class BaseDriverTest(tf.test.TestCase):
         component_info=component_info)
     self.assertTrue(execution_decision.use_cached_results)
     self.assertEqual(execution_decision.execution_id, 1)
-    self.assertItemsEqual(execution_decision.exec_properties, exec_properties)
-    self.assertItemsEqual(execution_decision.output_dict,
+    self.assertCountEqual(execution_decision.exec_properties, exec_properties)
+    self.assertCountEqual(execution_decision.output_dict,
                           self._output_artifacts)
 
   def testVerifyInputArtifactsOk(self):

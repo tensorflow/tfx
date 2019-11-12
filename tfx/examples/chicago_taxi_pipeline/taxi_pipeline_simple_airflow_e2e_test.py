@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,14 +21,13 @@ import os
 import subprocess
 import tempfile
 import time
+from typing import Sequence, Set, Text
 
 import absl
 import pytest
 import tensorflow as tf
-from typing import Sequence, Set, Text
 
 import unittest
-
 from tfx.utils import io_utils
 
 
