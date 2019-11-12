@@ -61,11 +61,6 @@ _module_file = os.path.join(_input_base, 'taxi_utils.py')
 # Pusher will output the trained model here.
 _serving_model_dir = os.path.join(_output_base, _pipeline_name, 'serving_model')
 
-# Number of processes to be used for Beam workers in execution of Beam-based
-# components (ExampleGen, StatisticsGen, Transform, Evaluator, ModelValidator).
-# This should be set to number of cores in k8s nodes.
-_beam_num_workers = 4
-
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
@@ -136,7 +131,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           trainer, model_analyzer, model_validator, pusher
       ],
       # TODO(b/141578059): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%s' % direct_num_workers],
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
       additional_pipeline_args={},
   )
 
@@ -157,7 +152,10 @@ if __name__ == '__main__':
       # Specify custom docker image to use.
       tfx_image=tfx_image,
       pipeline_operator_funcs=(
-          kubeflow_dag_runner.get_default_pipeline_operator_funcs() + [
+          # If running on K8s Engine (GKE) on Google Cloud Platform (GCP),
+          # kubeflow_dag_runner.get_default_pipeline_operator_funcs() provides
+          # default configurations specifically for GKE on GCP, such as secrets.
+          [
               onprem.mount_pvc(_persistent_volume_claim, _persistent_volume,
                                _persistent_volume_mount)
           ]))
@@ -169,4 +167,6 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          direct_num_workers=_beam_num_workers))
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))
