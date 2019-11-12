@@ -64,3 +64,7 @@ class Schema(artifact.Artifact):
 class TransformGraph(artifact.Artifact):
   TYPE_NAME = 'TransformPath'
 
+
+# Still WIP and subject to change.
+class HyperParameters(artifact.Artifact):
+  TYPE_NAME = 'StudyBestHParamsPath'
