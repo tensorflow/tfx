@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Text
+
 import tensorflow as tf
 from tfx_bsl.version import __version__ as tfx_bsl_version
-from typing import Text
+
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_importer
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner

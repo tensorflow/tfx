@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,10 @@ from __future__ import print_function
 
 import datetime
 import os
+from typing import Any, Iterable, List, Optional, Text, Type
 
 import absl
 import apache_beam as beam
-from typing import Any, Iterable, List, Optional, Text, Type
 
 from tfx.components.base import base_component
 from tfx.orchestration import data_types

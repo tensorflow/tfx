@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +23,8 @@ import json
 import multiprocessing
 import os
 import sys
+from typing import Any, Dict, List, Optional, Text
+
 import absl
 import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
@@ -31,7 +34,7 @@ from apache_beam.portability.api import beam_runner_api_pb2
 from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
-from typing import Any, Dict, List, Optional, Text
+
 from tfx import types
 from tfx.types import artifact_utils
 from tfx.utils import dependency_utils

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,8 +21,9 @@ from __future__ import print_function
 import copy
 import logging
 import os
-import tensorflow as tf
 from typing import Any, Dict, Optional, Text
+
+import tensorflow as tf
 
 
 class LoggerConfig(object):

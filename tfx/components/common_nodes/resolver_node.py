@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -126,11 +127,11 @@ class ResolverNode(base_node.BaseNode):
     super(ResolverNode, self).__init__(instance_name=instance_name)
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper(self._input_dict)  # pylint: disable=protected-access
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:
+  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper(self._output_dict)  # pylint: disable=protected-access
 
   @property

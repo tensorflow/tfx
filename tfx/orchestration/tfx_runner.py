@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,8 +20,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import abc
-from six import with_metaclass
 from typing import Any, Optional
+
+from six import with_metaclass
 
 from tfx.orchestration.config import pipeline_config
 

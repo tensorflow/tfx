@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,9 @@ from __future__ import print_function
 
 import abc
 import inspect
+from typing import Any, Dict, Optional, Text
 
 from six import with_metaclass
-
-from typing import Any, Dict, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_driver
@@ -140,11 +140,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
     }
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return self.spec.inputs
 
   @property
-  def outputs(self) -> node_common._PropertyDictWrapper:
+  def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return self.spec.outputs
 
   @property

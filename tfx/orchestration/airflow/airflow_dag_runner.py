@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,10 +20,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+from typing import Any, Dict, Optional, Text, Union
+
 import absl
 from airflow import models
-
-from typing import Any, Dict, Optional, Text, Union
 
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner

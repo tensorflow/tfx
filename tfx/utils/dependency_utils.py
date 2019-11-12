@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,11 +22,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import List, Optional, Text
 
 import absl
 import apache_beam as beam
 import tensorflow as tf
-from typing import List, Optional, Text
+
 from tfx import dependencies
 from tfx import version
 from tfx.utils import io_utils

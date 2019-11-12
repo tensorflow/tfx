@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,10 +22,10 @@ import os
 import random
 import apache_beam as beam
 import tensorflow as tf
+from google.protobuf import json_format
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
-from google.protobuf import json_format
 
 
 @beam.ptransform_fn

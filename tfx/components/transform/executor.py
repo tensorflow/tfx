@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Text, Tuple, Union
+
 import absl
 import apache_beam as beam
 import numpy as np
@@ -35,7 +38,6 @@ from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 import tfx_bsl
-from typing import Any, Dict, Generator, Iterable, List, Mapping, Sequence, Text, Tuple, Union, Optional
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
@@ -508,10 +510,10 @@ class Executor(base_executor.BaseExecutor):
     __slots__ = ['_serialized_schema', '_decoder']
 
     def __init__(self, schema: schema_pb2.Schema):
-      self._serialized_schema = schema.SerializeToString()
+      self._serialized_schema = schema.SerializeToString()  # pylint: disable=assigning-non-slot
 
     def setup(self):
-      self._decoder = (
+      self._decoder = (  # pylint: disable=assigning-non-slot
           tfx_bsl.coders.example_coder.ExamplesToRecordBatchDecoder(
               self._serialized_schema))
 
@@ -662,13 +664,14 @@ class Executor(base_executor.BaseExecutor):
     __slots__ = ['_coder']
 
     def __init__(self):
-      self._coder = None
+      self._coder = None  # pylint: disable=assigning-non-slot
 
     def process(self, element: Dict[Text, Any],
                 metadata: Any) -> Generator[Tuple[Any, Any], None, None]:
       if self._coder is None:
-        self._coder = tft.coders.ExampleProtoCoder(
-            metadata.schema, serialized=False)
+        self._coder = tft.coders.ExampleProtoCoder(  # pylint: disable=assigning-non-slot
+            metadata.schema,
+            serialized=False)
 
       # Make sure that the synthetic key feature doesn't get encoded.
       assert _TRANSFORM_INTERNAL_FEATURE_FOR_KEY in element

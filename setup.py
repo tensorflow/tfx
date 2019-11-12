@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +16,12 @@
 
 from __future__ import print_function
 
+from distutils import spawn
 import glob
 import os
 import subprocess
 import sys
-from distutils.spawn import find_executable
+
 from setuptools import find_packages
 from setuptools import setup
 
@@ -35,7 +37,7 @@ elif os.path.exists('../vsprojects/Debug/protoc.exe'):
 elif os.path.exists('../vsprojects/Release/protoc.exe'):
   protoc = '../vsprojects/Release/protoc.exe'
 else:
-  protoc = find_executable('protoc')
+  protoc = spawn.find_executable('protoc')
 
 
 def generate_proto(source):

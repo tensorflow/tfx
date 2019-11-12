@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,10 +21,9 @@ from __future__ import print_function
 import abc
 import inspect
 import itertools
+from typing import Any, Dict, Optional, Text, Type
 
 from six import with_metaclass
-
-from typing import Any, Dict, Optional, Text, Type
 
 from google.protobuf import json_format
 from google.protobuf import message

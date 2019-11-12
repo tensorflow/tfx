@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from typing import Text
 
 import absl
 from presto_component.component import PrestoExampleGen
 from proto import presto_config_pb2
-from typing import Text
 
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator

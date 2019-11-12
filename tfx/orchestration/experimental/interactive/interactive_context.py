@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,12 +30,12 @@ import datetime
 import functools
 import os
 import tempfile
+from typing import List, Optional, Text
 
 import absl
 import jinja2
 import nbformat
 from six.moves import builtins
-from typing import List, Optional, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
@@ -231,7 +232,7 @@ class InteractiveContext(object):
       channel = item
       artifacts = channel.get()
       for artifact in artifacts:
-        artifact_heading = 'Artifact at %s' % cgi.escape(artifact.uri)
+        artifact_heading = 'Artifact at %s' % cgi.escape(artifact.uri)  # pylint: disable=deprecated-method
         display(HTML('<b>%s</b><br/><br/>' % artifact_heading))
         visualization = visualizations.get_registry().get_visualization(
             artifact.type_name)

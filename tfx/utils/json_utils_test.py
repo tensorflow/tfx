@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +41,7 @@ class JsonUtilsTest(tf.test.TestCase):
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(1, actual_obj.a)
     self.assertDictEqual({'a': 'b'}, actual_obj.b)
-    self.assertItemsEqual([True], actual_obj.c)
+    self.assertCountEqual([True], actual_obj.c)
 
   def testDumpsNestedJsonableObject(self):
     nested_obj = _DefaultJsonableObject(1, 2,

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,7 +133,7 @@ class BeamDagRunnerTest(tf.test.TestCase):
         ])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
-    self.assertItemsEqual(_executed_components, [
+    self.assertCountEqual(_executed_components, [
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'
     ])

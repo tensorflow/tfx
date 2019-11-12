@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +24,11 @@ import os
 import subprocess
 import sys
 import time
+from typing import List, Text
 import unittest
 
 import absl
 import tensorflow as tf
-
-from typing import List, Text
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec

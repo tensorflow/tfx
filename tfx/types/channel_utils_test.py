@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +34,7 @@ class ChannelUtilsTest(tf.test.TestCase):
     instance_b = Artifact('MyTypeName')
     chnl = channel_utils.as_channel([instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
-    self.assertItemsEqual(chnl.get(), [instance_a, instance_b])
+    self.assertCountEqual(chnl.get(), [instance_a, instance_b])
 
   def testEmptyArtifactCollectionAsChannelFail(self):
     with self.assertRaises(ValueError):
