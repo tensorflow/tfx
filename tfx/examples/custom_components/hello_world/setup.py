@@ -20,12 +20,6 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-def _make_required_install_packages():
-  return [
-      'tfx>=0.15.0,<0.16.0dev',
-  ]
-
-
 # Get version from version module.
 with open('hello_component/version.py') as fp:
   globals_dict = {}
@@ -63,7 +57,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     namespace_packages=[],
-    install_requires=_make_required_install_packages(),
+    install_requires=['tfx>=0.15.0,<0.16.0dev'],
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),
     include_package_data=True,
