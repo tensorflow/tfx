@@ -38,6 +38,7 @@ from tfx.components.base import base_component as tfx_base_component
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow import node_wrapper
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import json_utils
@@ -89,6 +90,9 @@ class BaseComponent(object):
         component_launcher_class.__module__, component_launcher_class.__name__
     ])
 
+    serialized_component = utils.replace_placeholder(
+        json_utils.dumps(node_wrapper.NodeWrapper(component)))
+
     arguments = [
         '--pipeline_name',
         pipeline_name,
@@ -103,7 +107,7 @@ class BaseComponent(object):
         '--component_launcher_class_path',
         component_launcher_class_path,
         '--serialized_component',
-        json_utils.dumps(node_wrapper.NodeWrapper(component)),
+        serialized_component,
         '--component_config',
         json_utils.dumps(component_config),
     ]
