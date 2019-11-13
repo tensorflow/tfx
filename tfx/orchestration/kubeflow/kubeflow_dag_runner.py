@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import re
 from typing import Callable, List, Optional, Text, Type
 
 from kfp import compiler
@@ -30,11 +31,13 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.experimental.runtime_parameter import runtime_string_parameter
 from tfx.orchestration.kubeflow import base_component
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
+from tfx.utils import json_utils
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -153,16 +156,17 @@ def get_default_kubeflow_metadata_config(
 class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
-  def __init__(self,
-               pipeline_operator_funcs: Optional[List[OpFunc]] = None,
-               tfx_image: Optional[Text] = None,
-               kubeflow_metadata_config: Optional[
-                   kubeflow_pb2.KubeflowMetadataConfig] = None,
-               # TODO(b/143883035): Figure out the best practice to put the
-               # SUPPORTED_LAUNCHER_CLASSES
-               supported_launcher_classes: List[Type[
-                   base_component_launcher.BaseComponentLauncher]] = None,
-               **kwargs):
+  def __init__(
+      self,
+      pipeline_operator_funcs: Optional[List[OpFunc]] = None,
+      tfx_image: Optional[Text] = None,
+      kubeflow_metadata_config: Optional[
+          kubeflow_pb2.KubeflowMetadataConfig] = None,
+      # TODO(b/143883035): Figure out the best practice to put the
+      # SUPPORTED_LAUNCHER_CLASSES
+      supported_launcher_classes: List[Type[
+          base_component_launcher.BaseComponentLauncher]] = None,
+      **kwargs):
     """Creates a KubeflowDagRunnerConfig object.
 
     The user can use pipeline_operator_funcs to apply modifications to
@@ -226,9 +230,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
         file. Defaults to pipeline_name.tar.gz when compiling a TFX pipeline.
         Currently supports .tar.gz, .tgz, .zip, .yaml, .yml formats. See
         https://github.com/kubeflow/pipelines/blob/181de66cf9fa87bcd0fe9291926790c400140783/sdk/python/kfp/compiler/compiler.py#L851
-        for format restriction.
-      config: An optional KubeflowDagRunnerConfig object to specify
-        runtime configuration when running the pipeline under Kubeflow.
+          for format restriction.
+      config: An optional KubeflowDagRunnerConfig object to specify runtime
+        configuration when running the pipeline under Kubeflow.
     """
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
@@ -237,6 +241,37 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._output_filename = output_filename
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
+    self._deduped_parameter_names = set()  # Set of unique param names used.
+
+  def _parse_parameter_from_component(
+      self, component: base_component.BaseComponent) -> None:
+    """Extract embedded RuntimeParameter placeholders from a component.
+
+    Extract embedded RuntimeParameter placeholders from a component, then append
+    the corresponding dsl.PipelineParam to KubeflowDagRunner.
+
+    Args:
+      component: a TFX component.
+    """
+
+    serialized_exec_properties = json_utils.dumps(component.exec_properties)
+    placeholders = re.findall(runtime_string_parameter.PARAMETER_PATTERN,
+                              serialized_exec_properties)
+    for placeholder in placeholders:
+      parameter = runtime_string_parameter.RuntimeStringParameter.parse(
+          placeholder)
+      if parameter.name not in self._deduped_parameter_names:
+        self._deduped_parameter_names.add(parameter.name)
+        dsl_parameter = dsl.PipelineParam(
+            name=parameter.name, value=parameter.default)
+        self._params.append(dsl_parameter)
+
+  def _parse_parameter_from_pipeline(self,
+                                     pipeline: tfx_pipeline.Pipeline) -> None:
+    """Extract all the RuntimeParameter placeholders from the pipeline."""
+
+    for component in pipeline.components:
+      self._parse_parameter_from_component(component)
 
   def _construct_pipeline_graph(self, pipeline: tfx_pipeline.Pipeline,
                                 pipeline_root: dsl.PipelineParam):
@@ -299,6 +334,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       logical pipeline definition.
       """
       self._construct_pipeline_graph(pipeline, pipeline_root)
+
+    # Need to run this first to get self._params populated. Then KFP compiler
+    # can correctly match default value with PipelineParam.
+    self._parse_parameter_from_pipeline(pipeline)
 
     file_name = self._output_filename or pipeline.pipeline_info.pipeline_name + '.tar.gz'
     # Create workflow spec and write out to package.

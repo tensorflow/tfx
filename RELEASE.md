@@ -1,6 +1,10 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Enable KubeflowDagRunner to recognize RuntimeStringParameter and interpret 
+    them as Argo workflow parameter, so that user can specify their values at
+    runtime. Currently only string-typed execution properties can be 
+    parameterized in this way.
 
 ## Bug fixes and other changes
 
