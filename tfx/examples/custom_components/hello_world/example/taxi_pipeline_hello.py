@@ -73,39 +73,40 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   example_gen = CsvExampleGen(input_base=examples)
 
   hello = HelloComponent(
-      input_data=example_gen.outputs.examples, name='HelloWorld')
+      input_data=example_gen.outputs['examples'], name='HelloWorld')
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(input_data=hello.outputs.output_data)
+  statistics_gen = StatisticsGen(examples=hello.outputs['output_data'])
 
   # Generates schema based on statistics files.
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs.output, infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs.output,
-      schema=infer_schema.outputs.output)
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
-      input_data=hello.outputs.output_data,
-      schema=infer_schema.outputs.output,
+      examples=hello.outputs['output_data'],
+      schema=infer_schema.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
-      transformed_examples=transform.outputs.transformed_examples,
-      schema=infer_schema.outputs.output,
-      transform_output=transform.outputs.transform_output,
+      transformed_examples=transform.outputs['transformed_examples'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
-      examples=hello.outputs.output_data,
-      model_exports=trainer.outputs.output,
+      examples=hello.outputs['output_data'],
+      model=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
@@ -113,13 +114,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(
-      examples=hello.outputs.output_data, model=trainer.outputs.output)
+      examples=hello.outputs['output_data'], model=trainer.outputs['model'])
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
   pusher = Pusher(
-      model_export=trainer.outputs.output,
-      model_blessing=model_validator.outputs.blessing,
+      model=trainer.outputs['model'],
+      model_blessing=model_validator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))

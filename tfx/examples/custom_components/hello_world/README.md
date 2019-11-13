@@ -14,9 +14,8 @@ and should not be relied on for productionization use.
 ## Prerequisites
 
 * Linux or MacOS
-* Python 3.6+
+* Python 2.7 or 3.6+
 * Git
 
 ### Required packages
-* [TensorFlow](https://tensorflow.org) is used for model training, evaluation and inference.
 * [TFX](https://pypi.org/project/tfx/)
