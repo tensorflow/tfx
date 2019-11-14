@@ -28,13 +28,13 @@ from typing import Any, Dict, Optional, Text, Type, Union
 
 from tfx.utils import json_utils
 
-# Regex pattern of data_types.RuntimeParameter.
+# Regex pattern of RuntimeStringParameter.
 PARAMETER_PATTERN = r'({{<RuntimeParameter>:.*?</RuntimeParameter>}})'
 
-# Tag of data_types.RuntimeParameter placeholders.
+# Tag of RuntimeStringParameter placeholders.
 PARAMETER_TAG = '{{<RuntimeParameter>: %s</RuntimeParameter>}}'
 
-# Capturing regex to untag the RuntimeParameter placeholders.
+# Capturing regex to untag the RuntimeStringParameter placeholders.
 PARAMETER_UNTAG = r'{{<RuntimeParameter>:(.*?)</RuntimeParameter>}}'
 
 
@@ -107,7 +107,7 @@ class RuntimeStringParameter(json_utils.Jsonable):
       placeholder: str-typed placeholder. Should be {{RuntimeParameter: ...}}
 
     Returns:
-      A RuntimeParameter parsed from the placeholder
+      A RuntimeStringParameter parsed from the placeholder
     """
     placeholder = placeholder.replace('\\', '')
     # Remove prefix and suffix.
@@ -115,7 +115,7 @@ class RuntimeStringParameter(json_utils.Jsonable):
     if content:
       return json_utils.loads(content.groups()[0])
     else:
-      raise ValueError('Invalid RuntimeParameter placeholder found %s' %
+      raise ValueError('Invalid RuntimeStringParameter placeholder found %s' %
                        placeholder)
 
   def __repr__(self):
