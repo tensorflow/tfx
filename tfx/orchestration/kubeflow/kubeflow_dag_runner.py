@@ -254,9 +254,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       component: a TFX component.
     """
 
-    serialized_exec_properties = json_utils.dumps(component.exec_properties)
+    serialized_component = json_utils.dumps(component)
     placeholders = re.findall(runtime_string_parameter.PARAMETER_PATTERN,
-                              serialized_exec_properties)
+                              serialized_component)
     for placeholder in placeholders:
       parameter = runtime_string_parameter.RuntimeStringParameter.parse(
           placeholder)
