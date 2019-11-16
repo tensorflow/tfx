@@ -50,6 +50,7 @@ checkout the PR branch to observe the behavior.
 # Merging External Contributions
 External contributions can be submitted normally as a GitHub PR.
 
+## Code review
 All submissions, including submissions by project members, require review. We
 use GitHub pull requests for this purpose. Consult GitHub Help for more
 information on using pull requests.
@@ -75,6 +76,6 @@ Python 2 support will be deprecated in 2020 due to
 
 If you must use Python 2 with the source code:
 
-* run `python tfx/scripts/strip_type_hints.py` to strip all hints in the repo:
+* Run `python tfx/scripts/strip_type_hints.py` to strip all hints in the repo:
 this requires you to install the
 [strip-hints](https://pypi.org/project/strip-hints/) PyPI package.
