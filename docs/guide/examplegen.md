@@ -1,45 +1,45 @@
 # The ExampleGen TFX Pipeline Component
 
-The ExampleGen TFX Pipeline component ingests data into TFX pipelines. It
+The ExampleGen TFX component ingests data into TFX pipelines. The component 
 consumes external files/services to generate Examples which will be read by
-other TFX components. It also provides consistent and configurable partition,
-and shuffles the dataset for ML best practice.
+other TFX components. It also provides a consistent and configurable partition,
+and shuffles the dataset as an ML best practice.
 
-*   Consumes: Data from external data sources such as CSV, `TFRecord` and BigQuery
+*   Consumes: Data from external data sources such as `CSV`, `TFRecord` and BigQuery
 *   Emits: `tf.Example` records
 
 ## ExampleGen and Other Components
 
 ExampleGen provides data to components that make use of the
 [TensorFlow Data Validation](tfdv.md) library, such as
-[SchemaGen](schemagen.md), [StatisticsGen](statsgen.md), and
-[Example Validator](exampleval.md). It also provides data to
-[Transform](transform.md), which makes use of the [TensorFlow Transform](tft.md)
+[`SchemaGen`](schemagen.md), [`StatisticsGen`](statsgen.md), and
+[`ExampleValidator`](exampleval.md). The ExampleGen component also provides data to the 
+[`Transform`](transform.md) component which makes use of the [TensorFlow Transform](tft.md)
 library, and ultimately to deployment targets during inference.
 
 ## How to use an ExampleGen Component
 
-For supported data sources (currently, CSV files, TFRecord files with TF Example
-data format, and results of BigQuery queries) the ExampleGen pipeline component
+For supported data sources (Currently, `CSV` files, TFRecord files in the TF Example
+data format, and results of BigQuery queries), the ExampleGen component
 is typically very easy to deploy and requires little customization. Typical code
 looks like this:
 
 ```python
+from tfx import components
 from tfx.utils.dsl_utils import csv_input
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 
 examples = csv_input(os.path.join(base_dir, 'data/simple'))
-example_gen = CsvExampleGen(input=examples)
+example_gen = components.CsvExampleGen(input=examples)
 ```
 
 or like below for importing external tf Examples directly:
 
 ```python
 from tfx.utils.dsl_utils import tfrecord_input
-from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
+from tfx import components
 
 examples = tfrecord_input(path_to_tfrecord_dir)
-example_gen = ImportExampleGen(input=examples)
+example_gen = components.ImportExampleGen(input=examples)
 ```
 
 ## Span, Version and Split
@@ -62,13 +62,14 @@ data.
 
 ### Custom input/output split
 
-Note: this feature is only available after TFX 0.14.
+Note: This feature is only available after TFX 0.14.
 
 To customize the train/eval split ratio which ExampleGen will output, set the
-`output_config` for ExampleGen component. For example:
+`output_config` parameter for the ExampleGen component. For example:
 
 ```python
-from  tfx.proto import example_gen_pb2
+from tfx.proto import example_gen_pb2
+from tfx import components
 
 # Input has a single split 'input_dir/*'.
 # Output 2 splits: train:eval=3:1.
@@ -78,7 +79,7 @@ output = example_gen_pb2.Output(
                  example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
              ]))
 examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, output_config=output)
+example_gen = components.CsvExampleGen(input=examples, output_config=output)
 ```
 
 Notice how the `hash_buckets` were set in this example.
@@ -88,6 +89,7 @@ ExampleGen component:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx import components
 
 # Input train split is 'input_dir/train/*', eval split is 'input_dir/eval/*'.
 # Output splits are generated one-to-one mapping from input splits.
@@ -96,13 +98,13 @@ input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
             ])
 examples = csv_input(input_dir)
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = components.CsvExampleGen(input=examples, input_config=input)
 ```
 
-For file based example gen (e.g. CsvExampleGen and ImportExampleGen), `pattern`
-is a glob relative file pattern that maps to input files with root directory
-given by input base path. For query-based example gen (e.g. BigQueryExampleGen,
-PrestoExampleGen), `pattern` is a SQL query.
+For file-based ExampleGen (e.g. `CsvExampleGen` and `ImportExampleGen`), `pattern`
+is a glob-relative file pattern that maps to input files with root directory
+given by input base path. For query-based `ExampleGen` (e.g. `BigQueryExampleGen`,
+`PrestoExampleGen`), `pattern` is a SQL query.
 
 By default, the entire input base dir is treated as a single input split, and
 the train and eval output split is generated with a 2:1 ratio.
@@ -113,15 +115,15 @@ for details.
 
 ### Span
 
-Note: this feature is only available after TFX 0.15.
+Note: This feature is only available after TFX 0.15.
 
-Span can be retrieved by using '{SPAN}' spec in the
+Span can be retrieved by using the '{SPAN}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
 
 *   This spec matches digits and maps the data into the relevant SPAN numbers.
     For example, 'data_{SPAN}-*.tfrecord' will collect files like
-    'data_12-a.tfrecord', 'date_12-b.tfrecord'.
-*   When SPAN spec is missing, it's assumed to be always Span '0'.
+    'data_12-a.tfrecord', 'date_12-b.tfrecord'
+*   When SPAN spec is missing, it's assumed to be always Span '0'
 *   If SPAN is specified, pipeline will process the latest span, and store the
     span number in metadata
 
@@ -145,17 +147,18 @@ splits {
 }
 ```
 
-when triggering the pipeline, it will process:
+When triggering the pipeline, it will process:
 
 *   '/tmp/span-02/train/data' as train split
 *   '/tmp/span-02/eval/data' as eval split
 
-with span number as '02'. If later on '/tmp/span-03/...' are ready, simply
+With span number as '02'. If later on '/tmp/span-03/...' are ready, simply
 trigger the pipeline again and it will pick up span '03' for processing. Below
 shows the code example for using span spec:
 
 ```python
 from  tfx.proto import example_gen_pb2
+from tfx import components
 
 input = example_gen_pb2.Input(splits=[
                 example_gen_pb2.Input.Split(name='train',
@@ -164,7 +167,7 @@ input = example_gen_pb2.Input(splits=[
                                             pattern='span-{SPAN}/eval/*')
             ])
 examples = csv_input('/tmp')
-example_gen = CsvExampleGen(input=examples, input_config=input)
+example_gen = components.CsvExampleGen(input=examples, input_config=input)
 ```
 
 Note: Retrieving a certain span is not supported yet. You can only fix the
@@ -177,31 +180,31 @@ Note: Version is not supported yet
 
 ## Custom ExampleGen
 
-Note: this feature is only available after TFX 0.14.
+Note: This feature is only available after TFX 0.14.
 
 If the currently available ExampleGen components don't fit your needs, create
-a custom ExampleGen, which will include a new executor extended from BaseExampleGenExecutor.
+a custom ExampleGen, which will include a new executor extended from `BaseExampleGenExecutor`.
 
 ### File-Based ExampleGen
 
-First, extend BaseExampleGenExecutor with a custom Beam PTransform, which
+First, extend `BaseExampleGenExecutor` with a custom Beam PTransform, which
 provides the conversion from your train/eval input split to TF examples. For
 example, the
-[CsvExampleGen executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/executor.py)
+[`CsvExampleGen` executor](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/executor.py)
 provides the conversion from an input CSV split to TF examples.
 
-Then, create a component with above executor, as done in [CsvExampleGen component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py).
+Then, create a component with above executor, as done in [`CsvExampleGen` component](https://github.com/tensorflow/tfx/blob/master/tfx/components/example_gen/csv_example_gen/component.py).
 Alternatively, pass a custom executor into the standard
 ExampleGen component as shown below.
 
 ```python
 from tfx.components.base import executor_spec
-from tfx.components.example_gen.component import FileBasedExampleGen
+from tfx import components
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.utils.dsl_utils import external_input
 
 examples = external_input(os.path.join(base_dir, 'data/simple'))
-example_gen = FileBasedExampleGen(
+example_gen = components.FileBasedExampleGen(
     input=examples,
     custom_executor_spec=executor_spec.ExecutorClassSpec(executor.Executor))
 ```
@@ -211,9 +214,9 @@ Now, we also support reading Avro and Parquet files using this
 
 ### Query-Based ExampleGen
 
-First, extend BaseExampleGenExecutor with a custom Beam PTransform, which reads
+First, extend `BaseExampleGenExecutor` with a custom Beam PTransform, which reads
 from the external data source. Then, create a simple component by
-extending QueryBasedExampleGen.
+extending `QueryBasedExampleGen`.
 
 This may or may not require additional connection configurations. For example,
 the
