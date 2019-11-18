@@ -90,13 +90,6 @@ with open('tfx/version.py') as fp:
   exec(fp.read(), globals_dict)  # pylint: disable=exec-used
 __version__ = globals_dict['__version__']
 
-# TODO(b/121329572): Remove the following comment after we can guarantee the
-# required versions of packages through kokoro release workflow.
-# Note: In order for the README to be rendered correctly, make sure to have the
-# following minimum required versions of the respective packages when building
-# and uploading the zip/wheel package to PyPI:
-# setuptools >= 38.6.0, wheel >= 0.31.0, twine >= 1.11.0
-
 # Get the long description from the README file.
 with open('README.md') as fp:
   _LONG_DESCRIPTION = fp.read()
