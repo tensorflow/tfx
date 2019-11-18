@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
 import kerastuner
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from typing import Text
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.examples.custom_components.tuner.tuner_component import component
 
@@ -73,7 +74,7 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   model.compile(
       optimizer=keras.optimizers.Adam(hparams.get('learning_rate')),
       loss='categorical_crossentropy',
-      metrics=['accuracy'])
+      metrics=[tf.keras.metrics.Accuracy(name='accuracy')])
   return model
 
 
