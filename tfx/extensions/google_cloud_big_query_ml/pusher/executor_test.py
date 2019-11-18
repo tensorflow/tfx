@@ -77,10 +77,8 @@ class ExecutorTest(tf.test.TestCase):
         return_value='gs://test_model_path',
         autospec=True).start()
 
-  @mock.patch.object(tf.io.gfile, 'exists', autospec=True)
-  def testDoBlessed(self, mock_tf_gfile):
+  def testDoBlessed(self):
     self.mock_check_blessing.return_value = True
-    mock_tf_gfile.return_value = True
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
     self.mock_bq.assert_called_once()
