@@ -16,9 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import absl
-import tensorflow as tf
 from typing import Any, Dict, List, Text
 from tfx import types
 from google.cloud import bigquery
@@ -63,14 +61,7 @@ class Executor(tfx_pusher_executor.Executor):
     model_export = artifact_utils.get_single_instance(
         input_dict['model_export'])
     model_export_uri = model_export.uri
-    model_blessing_uri = artifact_utils.get_single_uri(
-        input_dict['model_blessing'])
     model_push = artifact_utils.get_single_instance(output_dict['model_push'])
-
-    if not tf.io.gfile.exists(os.path.join(model_blessing_uri, 'BLESSED')):
-      model_push.set_int_custom_property('pushed', 0)
-      absl.logging.info('Model on %s was not blessed', model_blessing_uri)
-      return
 
     custom_config = exec_properties.get('custom_config', {})
     bigquery_serving_args = custom_config.get('bigquery_serving_args', None)
