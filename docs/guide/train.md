@@ -7,9 +7,12 @@ aware of, including the choice of a modeling API.
 [ExampleGen](examplegen.md)
 * Emits: Trained model in SavedModel format
 
-Caution: Developers are strongly encouraged to use the Estimator API at this
-time.  In a later release we expect Keras to be much better supported than it
-currently is.
+Note: TFX supports both TensorFlow 1.x and 2.0. However, Trainer does not
+currently support the Keras Model API. Use
+[estimators](https://www.tensorflow.org/guide/estimator) or
+[create an estimator from a Keras model](https://www.tensorflow.org/tutorials/estimator/keras_model_to_estimator)
+with
+[model_to_estimator](https://www.tensorflow.org/api_docs/python/tf/keras/estimator/model_to_estimator).
 
 Your model's input layer should consume from the SavedModel that was created by
 a [Transform](transform.md) component, and the layers of the Transform model should
