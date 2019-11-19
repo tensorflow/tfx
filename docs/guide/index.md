@@ -172,57 +172,59 @@ pipeline.
 TFX libraries include:
 
 *   [**TensorFlow Data Validation (TFDV)**](tfdv.md) is a library for analyzing
-and validating machine learning data. It is designed to be highly scalable and
-to work well with TensorFlow and TFX.  TFDV includes:
+    and validating machine learning data. It is designed to be highly scalable
+    and to work well with TensorFlow and TFX. TFDV includes:
 
-    * Scalable calculation of summary statistics of training and test data.
-    * Integration with a viewer for data distributions and statistics, as well
-    as faceted comparison of pairs of datasets (Facets).
-    * Automated data-schema generation to describe expectations about data like
-    required values, ranges, and vocabularies.
-    * A schema viewer to help you inspect the schema.
-    * Anomaly detection to identify anomalies, such as missing features, out-of-
-    range values, or wrong feature types, to name a few.
-    * An anomalies viewer so that you can see what features have anomalies and
-    learn more in order to correct them.
+    *   Scalable calculation of summary statistics of training and test data.
+    *   Integration with a viewer for data distributions and statistics, as well
+        as faceted comparison of pairs of datasets (Facets).
+    *   Automated data-schema generation to describe expectations about data
+        like required values, ranges, and vocabularies.
+    *   A schema viewer to help you inspect the schema.
+    *   Anomaly detection to identify anomalies, such as missing features,
+        out-of- range values, or wrong feature types, to name a few.
+    *   An anomalies viewer so that you can see what features have anomalies and
+        learn more in order to correct them.
 
 *   [**TensorFlow Transform (TFT)**](tft.md) is a library for preprocessing data
-with TensorFlow. TensorFlow Transform is useful for data that requires a full-
-pass, such as:
+    with TensorFlow. TensorFlow Transform is useful for data that requires a
+    full- pass, such as:
 
-    * Normalize an input value by mean and standard deviation.
-    * Convert strings to integers by generating a vocabulary over all input
-    values.
-    * Convert floats to integers by assigning them to buckets based on the
-    observed data distribution.
+    *   Normalize an input value by mean and standard deviation.
+    *   Convert strings to integers by generating a vocabulary over all input
+        values.
+    *   Convert floats to integers by assigning them to buckets based on the
+        observed data distribution.
 
-*   [**TensorFlow**](train.md) is used for training models with TFX.  It ingests
-training data and modeling code and creates a SavedModel result.  It also
-integrates a feature engineering pipeline created by TensorFlow Transform for
-preprocessing input data.
+*   [**TensorFlow**](train.md) is used for training models with TFX. It ingests
+    training data and modeling code and creates a SavedModel result. It also
+    integrates a feature engineering pipeline created by TensorFlow Transform
+    for preprocessing input data.
+
+    Note: TFX supports both TensorFlow 1.15 and 2.0. However, we do not yet support Keras models. For details, see [Designing TensorFlow Modeling Code For TFX](train.md).
 
 *   [**TensorFlow Model Analysis (TFMA)**](tfma.md) is a library for evaluating
-TensorFlow models. It is used along with TensorFlow to create an EvalSavedModel,
-which becomes the basis for its analysis.  It allows users to evaluate their
-models on large amounts of data in a distributed manner, using the same metrics
-defined in their trainer. These metrics can be computed over different slices of
-data and visualized in Jupyter notebooks.
+    TensorFlow models. It is used along with TensorFlow to create an
+    EvalSavedModel, which becomes the basis for its analysis. It allows users to
+    evaluate their models on large amounts of data in a distributed manner,
+    using the same metrics defined in their trainer. These metrics can be
+    computed over different slices of data and visualized in Jupyter notebooks.
 
-* [**TensorFlow Metadata (TFMD)**](https://github.com/tensorflow/metadata)
-provides standard representations
-for metadata that are useful when training machine learning models with
-TensorFlow. The metadata may be produced by hand or automatically during input
-data analysis, and may be consumed for data validation, exploration, and
-transformation. The metadata serialization formats include:
+*   [**TensorFlow Metadata (TFMD)**](https://github.com/tensorflow/metadata)
+    provides standard representations for metadata that are useful when training
+    machine learning models with TensorFlow. The metadata may be produced by
+    hand or automatically during input data analysis, and may be consumed for
+    data validation, exploration, and transformation. The metadata serialization
+    formats include:
 
-    * A schema describing tabular data (e.g., tf.Examples).
-    * A collection of summary statistics over such datasets.
+    *   A schema describing tabular data (e.g., tf.Examples).
+    *   A collection of summary statistics over such datasets.
 
-* [**ML Metadata (MLMD)**](mlmd.md)
-is a library for recording and retrieving metadata associated with ML developer
-and data scientist workflows.  Most often the metadata uses TFMD representations.
-MLMD manages persistence using [SQL-Lite](https://www.sqlite.org/index.html),
-[MySQL](https://www.mysql.com/), and other similar data stores.
+*   [**ML Metadata (MLMD)**](mlmd.md) is a library for recording and retrieving
+    metadata associated with ML developer and data scientist workflows. Most
+    often the metadata uses TFMD representations. MLMD manages persistence using
+    [SQL-Lite](https://www.sqlite.org/index.html),
+    [MySQL](https://www.mysql.com/), and other similar data stores.
 
 ### Supporting Technologies
 

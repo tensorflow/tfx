@@ -16,15 +16,18 @@ Trainer emits: A SavedModel and an EvalSavedModel
 Trainer makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
+Note: TFX supports both TensorFlow 1.x and 2.0. However, Trainer does not
+currently support the Keras Model API. Use
+[estimators](https://www.tensorflow.org/guide/estimator) or
+[create an estimator from a Keras model](https://www.tensorflow.org/tutorials/estimator/keras_model_to_estimator)
+with
+[model_to_estimator](https://www.tensorflow.org/api_docs/python/tf/keras/estimator/model_to_estimator).
+
 ## Configuring a Trainer Component
 
 A Trainer pipeline component is typically very easy to develop and requires little
 customization, since all of the work is done by the Trainer TFX component.  Your
 TensorFlow modeling code however may be arbitrarily complex.
-
-Caution: Developers are strongly encouraged to use the Estimator API at this
-time.  In a later release we expect Keras to be much better supported than it
-currently is.
 
 Typical code looks like this:
 
