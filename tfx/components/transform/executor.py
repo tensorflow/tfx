@@ -129,6 +129,12 @@ class _Dataset(object):
     self._stats_output_path = stats_output_path
     self._materialize_output_path = materialize_output_path
     self._index = None
+    self._serialized = None
+    self._decoded = None
+    self._standardized = None
+    self._transformed = None
+    self._transformed_and_encoded = None
+    self._transformed_and_standardized = None
 
   @property
   def file_pattern(self):
@@ -171,26 +177,32 @@ class _Dataset(object):
 
   @property
   def serialized(self):
+    assert self._serialized is not None
     return self._serialized
 
   @property
   def decoded(self):
+    assert self._decoded is not None
     return self._decoded
 
   @property
   def standardized(self):
+    assert self._standardized is not None
     return self._standardized
 
   @property
   def transformed(self):
+    assert self._transformed is not None
     return self._transformed
 
   @property
   def transformed_and_encoded(self):
+    assert self._transformed_and_encoded is not None
     return self._transformed_and_encoded
 
   @property
   def transformed_and_standardized(self):
+    assert self._transformed_and_standardized is not None
     return self._transformed_and_standardized
 
   @index.setter
@@ -1042,18 +1054,16 @@ class Executor(base_executor.BaseExecutor):
               pipeline
               | 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(dataset))
 
-          # TODO(b/37788560): This is only needed for the TFT datasets that
-          # aren't cached.
-          dataset.decoded = (
-              dataset.serialized
-              | 'Decode[{}]'.format(infix)
-              >> self._DecodeInputs(analyze_decode_fn))
-
         input_analysis_data = {}
         for key, dataset in new_analyze_data_dict.items():
           if dataset is None:
             input_analysis_data[key] = None
           else:
+            infix = 'AnalysisIndex{}'.format(dataset.index)
+            dataset.decoded = (
+                dataset.serialized
+                | 'Decode[{}]'.format(infix) >>
+                self._DecodeInputs(analyze_decode_fn))
             input_analysis_data[key] = dataset.decoded
 
         if flat_data_required:
@@ -1084,7 +1094,6 @@ class Executor(base_executor.BaseExecutor):
          >> tft_beam.WriteTransformFn(transform_output_path))
 
         if output_cache_dir is not None and cache_output is not None:
-          # TODO(b/37788560): Possibly make this part of the beam graph.
           tf.io.gfile.makedirs(output_cache_dir)
           absl.logging.debug('Using existing cache in: %s', input_cache_dir)
           if input_cache_dir is not None:
@@ -1098,18 +1107,12 @@ class Executor(base_executor.BaseExecutor):
                 self._CopyCache(full_span_cache_dir,
                                 os.path.join(output_cache_dir, span_cache_dir))
 
-          # TODO(b/138934800): Use dataset_keys directly once TFT 0.15 is
-          # released.
-          write_analysis_cache_kwargs = dict(
-              pipeline=pipeline,
-              cache_base_dir=output_cache_dir,
-              sink=self._GetCacheSink())
-          if tft.__version__ > '0.14.0':
-            write_analysis_cache_kwargs['dataset_keys'] = (
-                full_analyze_dataset_keys_list)
           (cache_output
-           | 'WriteCache' >>
-           analyzer_cache.WriteAnalysisCacheToFS(**write_analysis_cache_kwargs))
+           | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
+               pipeline=pipeline,
+               cache_base_dir=output_cache_dir,
+               sink=self._GetCacheSink(),
+               dataset_keys=full_analyze_dataset_keys_list))
 
         if compute_statistics or materialize_output_paths:
           # Do not compute pre-transform stats if the input format is raw proto,
