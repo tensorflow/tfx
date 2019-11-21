@@ -25,7 +25,6 @@ import subprocess
 import sys
 import time
 from typing import List, Text
-import unittest
 
 import absl
 import tensorflow as tf
@@ -319,8 +318,6 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  # TODO(b/142803184): Re-enable test once AIP Prediction supports TF 1.15
-  @unittest.skip('AI Platform Prediction not yet supports TF 1.15')
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
     pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(self._random_id())
