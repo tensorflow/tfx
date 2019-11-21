@@ -135,7 +135,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       ],
       # TODO(b/141578059): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-      additional_pipeline_args={},
   )
 
 
