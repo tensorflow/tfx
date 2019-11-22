@@ -41,6 +41,8 @@ class ResolverDriver(base_driver.BaseDriver):
   ResolverNode.
   """
 
+  # TODO(ruoyu): We need a better approach to let ResolverNode fail on
+  # incomplete data.
   def pre_execution(
       self,
       input_dict: Dict[Text, types.Channel],
@@ -58,8 +60,6 @@ class ResolverDriver(base_driver.BaseDriver):
     resolve_result = resolver.resolve(
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
-    if not resolve_result.has_complete_result:
-      raise RuntimeError('Cannot resolve all artifacts as needed.')
 
     return data_types.ExecutionDecision(
         input_dict={},
@@ -115,7 +115,7 @@ class ResolverNode(base_node.BaseNode):
     Args:
       instance_name: the name of the ResolverNode instance.
       resolver_class: the URI to the resource that needs to be registered.
-      resolver_configs: a dict of key to JsonableType representing configs that
+      resolver_configs: a dict of key to Jsonable type representing configs that
         will be used to construct the resolver.
       **kwargs: a key -> Channel dict, describing what are the Channels to be
         resolved. This is set by user through keyword args.
@@ -123,7 +123,11 @@ class ResolverNode(base_node.BaseNode):
     self._resolver_class = resolver_class
     self._resolver_configs = resolver_configs or {}
     self._input_dict = kwargs
-    self._output_dict = kwargs.copy()
+    self._output_dict = {}
+    for k, c in self._input_dict.items():
+      self._output_dict[k] = types.Channel(
+          type_name=c.type_name,
+          artifacts=[types.Artifact(type_name=c.type_name)])
     super(ResolverNode, self).__init__(instance_name=instance_name)
 
   @property

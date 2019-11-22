@@ -252,6 +252,8 @@ class TrainerSpec(ComponentSpec):
               type=standard_artifacts.TransformGraph, optional=True),
       'schema':
           ChannelParameter(type=standard_artifacts.Schema),
+      'base_model':
+          ChannelParameter(type=standard_artifacts.Model, optional=True),
   }
   OUTPUTS = {
       'output': ChannelParameter(type=standard_artifacts.Model),

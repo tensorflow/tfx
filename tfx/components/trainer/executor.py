@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 from typing import Any, Dict, List, Text
 
 import absl
@@ -41,7 +40,7 @@ def _all_files_pattern(file_pattern: Text) -> Text:
   return '{}*'.format(file_pattern)
 
 
-class _HParamWrapper(object):
+class TrainerFnArgs(object):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
   def __init__(self, **kwargs):
@@ -168,6 +167,10 @@ class Executor(base_executor.BaseExecutor):
     ]
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict['schema']))
+    # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
+    base_model = path_utils.serving_model_path(
+        artifact_utils.get_single_uri(
+            input_dict['base_model'])) if 'base_model' in input_dict else None
 
     train_args = trainer_pb2.TrainArgs()
     eval_args = trainer_pb2.EvalArgs()
@@ -185,18 +188,8 @@ class Executor(base_executor.BaseExecutor):
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
 
-    # Assemble warm start path if needed.
-    warm_start_from = None
-    if exec_properties.get('warm_starting') and exec_properties.get(
-        'warm_start_from'):
-      previous_model_dir = os.path.join(exec_properties['warm_start_from'],
-                                        path_utils.SERVING_MODEL_DIR)
-      if previous_model_dir and tf.io.gfile.exists(
-          os.path.join(previous_model_dir, self._CHECKPOINT_FILE_NAME)):
-        warm_start_from = previous_model_dir
-
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
-    hparams = _HParamWrapper(
+    train_fn_args = TrainerFnArgs(
         # A list of uris for train files.
         train_files=train_files,
         # An optional single uri for transform graph produced by TFT. Will be
@@ -212,12 +205,12 @@ class Executor(base_executor.BaseExecutor):
         train_steps=train_steps,
         # Number of eval steps.
         eval_steps=eval_steps,
-        # A single uri for the model directory to warm start from.
-        warm_start_from=warm_start_from)
+        # Base model that will be used for this training job.
+        base_model=base_model)
 
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
 
-    training_spec = trainer_fn(hparams, schema)
+    training_spec = trainer_fn(train_fn_args, schema)
 
     # Train the model
     absl.logging.info('Training model.')

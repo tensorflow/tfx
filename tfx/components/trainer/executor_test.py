@@ -49,11 +49,15 @@ class ExecutorTest(tf.test.TestCase):
                                         'transform/transform_output/')
     schema = standard_artifacts.Examples()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen/')
+    previous_model = standard_artifacts.Model()
+    previous_model.uri = os.path.join(self._source_data_dir,
+                                      'trainer/previous/')
 
     self._input_dict = {
         'examples': [train_examples, eval_examples],
         'transform_output': [transform_output],
         'schema': [schema],
+        'base_model': [previous_model]
     }
 
     # Create output dict.
