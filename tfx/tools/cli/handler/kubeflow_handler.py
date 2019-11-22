@@ -31,6 +31,7 @@ import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
+# Standard Imports.third_party.tfx.tools.cli.container_builder.labels as container_builder_labels
 from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
@@ -70,10 +71,13 @@ class KubeflowHandler(base_handler.BaseHandler):
         target_image = self.flags_dict[labels.TARGET_IMAGE]
       if labels.SKAFFOLD_CMD in self.flags_dict:
         skaffold_cmd = self.flags_dict[labels.SKAFFOLD_CMD]
-      target_image = self._build_pipeline_image(target_image, skaffold_cmd)
-      os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
+      if target_image is not None or os.path.exists(
+          container_builder_labels.BUILD_SPEC_FILENAME):
+        target_image = self._build_pipeline_image(target_image, skaffold_cmd)
+        os.environ[labels.KUBEFLOW_TFX_IMAGE_ENV] = target_image
     except (ValueError, subprocess.CalledProcessError, RuntimeError):
       click.echo('No container image is built.')
+      raise
     else:
       click.echo('New container image is built. Target image is available in '
                  'the build spec file.')
