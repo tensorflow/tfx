@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import absl
 from typing import Any, Dict, List, Text
 from tfx import types
@@ -50,8 +51,9 @@ class Executor(tfx_pusher_executor.Executor):
     Returns:
       None
     Raises:
-      ValueError: if bigquery_serving_args is not in
-      exec_properties.custom_config.
+      ValueError:
+        If bigquery_serving_args is not in exec_properties.custom_config.
+        If pipeline_root is not 'gs://...'
       RuntimeError: if the Big Query job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
@@ -67,9 +69,9 @@ class Executor(tfx_pusher_executor.Executor):
     bigquery_serving_args = custom_config.get('bigquery_serving_args', None)
     # if configuration is missing error out
     if bigquery_serving_args is None:
-      raise RuntimeError('Big Query ML configuration was not provided')
+      raise ValueError('Big Query ML configuration was not provided')
 
-    bg_model_uri = '`{}`.`{}`.`{}`'.format(
+    bq_model_uri = '`{}`.`{}`.`{}`'.format(
         bigquery_serving_args['project_id'],
         bigquery_serving_args['bq_dataset_id'],
         bigquery_serving_args['model_name'])
@@ -77,14 +79,19 @@ class Executor(tfx_pusher_executor.Executor):
     # Deploy the model.
     model_path = path_utils.serving_model_path(model_export_uri)
 
+    if not model_path.startswith('gs://'):
+      raise ValueError(
+          'pipeline_root must be gs:// for BigQuery ML Pusher.')
+
     absl.logging.info(
-        'Deploying the model to BigQuery ML for serving: {}'.format(
-            bigquery_serving_args))
+        'Deploying the model to BigQuery ML for serving: {} from {}'.format(
+            bigquery_serving_args, model_path))
 
     query = ("""
       CREATE OR REPLACE MODEL {}
       OPTIONS (model_type='tensorflow',
-               model_path='{}')""".format(bg_model_uri, model_path))
+               model_path='{}')""".format(bq_model_uri,
+                                          os.path.join(model_path, '*')))
 
     client = bigquery.Client()
 
@@ -95,8 +102,8 @@ class Executor(tfx_pusher_executor.Executor):
       raise RuntimeError('BigQuery ML Push failed: {}'.format(e))
 
     absl.logging.info('Successfully deployed model {} serving from {}'.format(
-        bg_model_uri, model_path))
+        bq_model_uri, model_path))
 
     # Setting the push_destination to bigquery uri
     model_push.set_int_custom_property('pushed', 1)
-    model_push.set_string_custom_property('pushed_model', bg_model_uri)
+    model_push.set_string_custom_property('pushed_model', bq_model_uri)
