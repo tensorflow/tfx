@@ -140,7 +140,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          latest_model_resolver, trainer, model_analyzer, model_validator,
+          pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(

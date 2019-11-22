@@ -90,7 +90,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(10, execution_count)
+      self.assertEqual(9, execution_count)
 
     self.assertPipelineExecution()
 
@@ -106,8 +106,8 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
             direct_num_workers=1))
 
     with metadata.Metadata(metadata_config) as m:
-      # 10 more executions.
-      self.assertEqual(20, len(m.store.get_executions()))
+      # 9 more executions.
+      self.assertEqual(18, len(m.store.get_executions()))
 
     # Two trainer outputs.
     self.assertExecutedTwice('Trainer')
