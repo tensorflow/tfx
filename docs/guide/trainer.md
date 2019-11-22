@@ -2,12 +2,15 @@
 
 The Trainer TFX pipeline component trains a TensorFlow model.
 
-Trainer consumes:
+Trainer takes:
 
-* Training tf.Examples transformed by a Transform pipeline component.
-* Eval tf.Examples transformed by a Transform pipeline component.
-* A data schema create by a SchemaGen pipeline component and optionally altered by
-the developer.
+*   tf.Examples used for training and eval.
+*   A user provided module file that defines the trainer logic.
+*   A data schema create by a SchemaGen pipeline component and optionally
+    altered by the developer.
+*   Proto definition of train args and eval args.
+*   Optional transform graph produced by upstream Transform component.
+*   Optional base models used for scenarios such as warmstart.
 
 Trainer emits: A SavedModel and an EvalSavedModel
 
@@ -36,16 +39,14 @@ from tfx import components
 
 ...
 
-trainer = components.Trainer(
-      module_file=taxi_pipeline_utils,
-      train_files=transform_training.outputs['output'],
-      eval_files=transform_eval.outputs['output'],
+trainer = Trainer(
+      module_file=module_file,
+      transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
-      tf_transform_dir=transform_training.outputs['output'],
-      train_steps=10000,
-      eval_steps=5000,
-      warm_starting=True
-      )
+      base_models=latest_model_resolver.outputs['latest_model'],
+      transform_graph=transform.outputs['transform_graph'],
+      train_args=trainer_pb2.TrainArgs(num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 ```
 
 Trainer invokes a training module, which is specified in the `module_file`
@@ -53,15 +54,19 @@ parameter.  A typical training module looks like this:
 
 ```python
 # TFX will call this function
-def trainer_fn(hparams, schema):
+def trainer_fn(trainer_fn_args, schema):
   """Build the estimator using the high level API.
 
   Args:
-    hparams: Holds hyperparameters used to train the model as name/value pairs.
+    trainer_fn_args: Holds args used to train the model as name/value pairs.
     schema: Holds the schema of the training examples.
 
   Returns:
-    The estimator that will be used for training and eval
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
   """
   # Number of nodes in the first layer of the DNN
   first_dnn_layer_size = 100
@@ -71,102 +76,56 @@ def trainer_fn(hparams, schema):
   train_batch_size = 40
   eval_batch_size = 40
 
+  tf_transform_output = tft.TFTransformOutput(trainer_fn_args.transform_output)
+
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.train_files,
-      hparams.tf_transform_dir,
+      trainer_fn_args.train_files,
+      tf_transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.eval_files,
-      hparams.tf_transform_dir,
+      trainer_fn_args.eval_files,
+      tf_transform_output,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
-      max_steps=hparams.train_steps)
+      max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
-      hparams.tf_transform_dir, schema)
+      tf_transform_output, schema)
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
       eval_input_fn,
-      steps=hparams.eval_steps,
+      steps=trainer_fn_args.eval_steps,
       exporters=[exporter],
       name='chicago-taxi-eval')
 
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=hparams.serving_model_dir)
+  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  warm_start_from = trainer_fn_args.base_models[
+      0] if trainer_fn_args.base_models else None
 
   estimator = _build_estimator(
-      tf_transform_dir=hparams.tf_transform_dir,
-
       # Construct layers sizes with exponetial decay
       hidden_units=[
           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
           for i in range(num_dnn_layers)
       ],
       config=run_config,
-      warm_start_from=hparams.warm_start_from)
-
-  # Input receiver for TFMA
-  receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-      hparams.tf_transform_dir, schema)
-
-  return TrainingSpec(estimator, train_spec, eval_spec, receiver_fn)
-
-
-def _build_estimator(tf_transform_dir,
-                     config,
-                     hidden_units=None,
-                     warm_start_from=None):
-  """Build an estimator for predicting the tipping behavior of taxi riders.
-
-  Args:
-    tf_transform_dir: directory in which the tf-transform model was written
-      during the preprocessing step.
-    config: tf.contrib.learn.RunConfig defining the runtime environment for the
-      estimator (including model_dir).
-    hidden_units: [int], the layer sizes of the DNN (input layer first)
-    warm_start_from: Optional directory to warm start from.
-
-  Returns:
-    Resulting DNNLinearCombinedClassifier.
-  """
-  metadata_dir = os.path.join(tf_transform_dir,
-                              transform_fn_io.TRANSFORMED_METADATA_DIR)
-  transformed_metadata = metadata_io.read_metadata(metadata_dir)
-  transformed_feature_spec = transformed_metadata.schema.as_feature_spec()
-
-  transformed_feature_spec.pop(_transformed_name(_LABEL_KEY))
-
-  real_valued_columns = [
-      tf.feature_column.numeric_column(key, shape=())
-      for key in _transformed_names(_DENSE_FLOAT_FEATURE_KEYS)
-  ]
-  categorical_columns = [
-      tf.feature_column.categorical_column_with_identity(
-          key, num_buckets=_VOCAB_SIZE + _OOV_SIZE, default_value=0)
-      for key in _transformed_names(_VOCAB_FEATURE_KEYS)
-  ]
-  categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(
-          key, num_buckets=_FEATURE_BUCKET_COUNT, default_value=0)
-      for key in _transformed_names(_BUCKET_FEATURE_KEYS)
-  ]
-  categorical_columns += [
-      tf.feature_column.categorical_column_with_identity(
-          key, num_buckets=num_buckets, default_value=0)
-      for key, num_buckets in zip(
-          _transformed_names(_CATEGORICAL_FEATURE_KEYS),  #
-          _MAX_CATEGORICAL_FEATURE_VALUES)
-  ]
-  return tf.estimator.DNNLinearCombinedClassifier(
-      config=config,
-      linear_feature_columns=categorical_columns,
-      dnn_feature_columns=real_valued_columns,
-      dnn_hidden_units=hidden_units or [100, 70, 50, 25],
       warm_start_from=warm_start_from)
+
+  # Create an input receiver for TFMA processing
+  receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
+      tf_transform_output, schema)
+
+  return {
+      'estimator': estimator,
+      'train_spec': train_spec,
+      'eval_spec': eval_spec,
+      'eval_input_receiver_fn': receiver_fn
+  }
 ```

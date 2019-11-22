@@ -22,7 +22,6 @@ from typing import Any, Dict, Optional, Text
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
-from tfx.components.trainer import driver
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
@@ -33,8 +32,7 @@ class Trainer(base_component.BaseComponent):
   """A TFX component to train a TensorFlow model.
 
   The Trainer component is used to train and eval a model using given inputs and
-  a user-supplied estimator.  This component includes a custom driver to
-  optionally grab previous model to warm start from.
+  a user-supplied estimator.
 
   ## Providing an estimator
   The TFX executor will use the estimator provided in the `module_file` file
@@ -98,7 +96,6 @@ class Trainer(base_component.BaseComponent):
 
   SPEC_CLASS = TrainerSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
-  DRIVER_CLASS = driver.Driver
 
   def __init__(
       self,
@@ -106,6 +103,7 @@ class Trainer(base_component.BaseComponent):
       transformed_examples: Optional[types.Channel] = None,
       transform_graph: Optional[types.Channel] = None,
       schema: types.Channel = None,
+      base_model: Optional[types.Channel] = None,
       module_file: Optional[Text] = None,
       trainer_fn: Optional[Text] = None,
       train_args: trainer_pb2.TrainArgs = None,
@@ -126,11 +124,14 @@ class Trainer(base_component.BaseComponent):
         the input transform graph if present.
       schema:  A Channel of 'SchemaPath' type, serving as the schema of training
         and eval data.
+      base_model: A Channel of 'Model' type, containing model that will be
+        used for training. This can be used for warmstart, transfer learning or
+        model ensembling.
       module_file: A path to python module file containing UDF model definition.
         The module_file must implement a function named `trainer_fn` at its
         top level. The function must have the following signature.
 
-        def trainer_fn(tf.contrib.training.HParams,
+        def trainer_fn(trainer.executor._TrainerFnArgs,
                        tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
           ...
 
@@ -186,6 +187,7 @@ class Trainer(base_component.BaseComponent):
         examples=examples,
         transform_output=transform_graph,
         schema=schema,
+        base_model=base_model,
         train_args=train_args,
         eval_args=eval_args,
         module_file=module_file,

@@ -29,6 +29,7 @@ from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.components.trainer import executor as trainer_executor
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
@@ -118,7 +119,7 @@ class TaxiUtilsTest(tf.test.TestCase):
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     output_dir = os.path.join(temp_dir, 'output_dir')
-    hparams = tf.contrib.training.HParams(
+    trainer_fn_args = trainer_executor.TrainerFnArgs(
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
@@ -131,10 +132,9 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_steps=1,
         eval_steps=1,
         verbosity='INFO',
-        warm_start_from=os.path.join(self._testdata_path,
-                                     'trainer/current/serving_model_dir'))
+        base_model=None)
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
-    training_spec = taxi_utils.trainer_fn(hparams, schema)
+    training_spec = taxi_utils.trainer_fn(trainer_fn_args, schema)
 
     estimator = training_spec['estimator']
     train_spec = training_spec['train_spec']
