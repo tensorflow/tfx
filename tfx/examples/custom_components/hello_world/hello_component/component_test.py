@@ -26,10 +26,6 @@ from tfx.types import standard_artifacts
 
 class HelloComponentTest(tf.test.TestCase):
 
-  def setUp(self):
-    super(HelloComponentTest, self).setUp()
-    self.name = 'HelloWorld'
-
   def testConstruct(self):
     train_examples_in = standard_artifacts.Examples(split='train')
     eval_examples_in = standard_artifacts.Examples(split='eval')
@@ -40,7 +36,7 @@ class HelloComponentTest(tf.test.TestCase):
             [train_examples_in, eval_examples_in]),
         output_data=channel_utils.as_channel(
             [train_examples_out, eval_examples_out]),
-        name=u'Testing123')
+        name='Testing123')
     self.assertEqual('ExamplesPath',
                      this_component.outputs['output_data'].type_name)
     artifact_collection = this_component.outputs['output_data'].get()

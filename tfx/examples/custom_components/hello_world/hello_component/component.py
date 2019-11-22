@@ -42,7 +42,7 @@ class HelloComponentSpec(types.ComponentSpec):
   PARAMETERS = {
       # These are parameters that will be passed in the call to
       # create an instance of this component.
-      'name': ExecutionParameter(type=Text),
+      'name': ExecutionParameter(type=(str, Text)),
   }
   INPUTS = {
       # This will be a dictionary with input artifacts, including URIs
@@ -84,7 +84,7 @@ class HelloComponent(base_component.BaseComponent):
     # upstream component.
     output_data = output_data or channel_utils.as_channel([
         standard_artifacts.Examples(split=artifact.split)
-        for artifact in input_data.outputs['examples'].get()
+        for artifact in input_data.get()
     ])
 
     spec = HelloComponentSpec(input_data=input_data,

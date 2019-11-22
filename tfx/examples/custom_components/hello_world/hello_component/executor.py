@@ -73,7 +73,7 @@ class Executor(base_executor.BaseExecutor):
       input_dir = instance.uri
       output_dir = artifact_utils.get_split_uri(
           output_dict['output_data'], split)
-      for filename in tf.gfile.ListDirectory(input_dir):
+      for filename in tf.io.gfile.listdir(input_dir):
         input_uri = os.path.join(input_dir, filename)
         output_uri = os.path.join(output_dir, filename)
         io_utils.copy_file(src=input_uri, dst=output_uri, overwrite=True)
