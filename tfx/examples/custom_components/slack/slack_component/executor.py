@@ -206,7 +206,7 @@ class Executor(base_executor.BaseExecutor):
     timeout_sec = exec_properties['timeout_sec']
 
     # Fetch input URIs from input_dict.
-    model_export_uri = artifact_utils.get_single_uri(input_dict['model_export'])
+    model_export_uri = artifact_utils.get_single_uri(input_dict['model'])
     model_blessing = artifact_utils.get_single_instance(
         input_dict['model_blessing'])
 
