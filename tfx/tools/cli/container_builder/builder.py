@@ -68,7 +68,7 @@ class ContainerBuilder(object):
       if target_image is not None:
         click.echo(
             'Target image %s is not used. If the build spec is '
-            'provicded, update the target image in the build spec '
+            'provided, update the target image in the build spec '
             'file %s.' % (target_image, buildspec_filename))
     else:
       self._buildspec = buildspec.BuildSpec.load_default(

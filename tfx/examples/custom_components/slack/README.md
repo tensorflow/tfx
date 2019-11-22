@@ -74,7 +74,7 @@ pip install -e .
 ```
 
 ## Step 3: Try Out Example
-### Copy the pipeline definition to Airflow's DAG directory
+### Copy the pipeline definition to Airflow's DAG directory (Local)
 
 The benefit of the local example is that you can edit any part of the pipeline
 and experiment very quickly with various components. The example comes with a
@@ -110,10 +110,49 @@ components will reside in `$TAXI_DIR`, let's copy it there:
 cp example/taxi_utils_slack.py $TAXI_DIR
 ```
 
-### Run the pipeline
+### Run the pipeline (Local)
 Follow similar steps in [Run the local example](https://github.com/tensorflow/tfx/tree/master/tfx/examples/chicago_taxi_pipeline#run-the-local-example)
 in our regular chicago_taxi_pipeline example to run the pipeline. Just note that
 the pipeline name is `chicago_taxi_slack`.
+
+### Compile the pipeline (GCP)
+Prepare a gcs bucket for the pipeline run root:
+
+```bash
+gsutil mb -p ${PROJECT_ID} gs://${BUCKET_NAME}
+```
+
+Let's copy the dataset CSV to the GCS where TFX ExampleGen will ingest it
+from:
+
+```bash
+cp data/simple/data.csv gs://${BUCKET_NAME}/data/simple/
+```
+Let's copy the TFX pipeline definition to the root of the slack example
+and update the _input_bucket/_update_bucket to gs://${BUCKET_NAME}:
+
+```bash
+cp example/taxi_pipeline_slack_kubeflow.py ./
+```
+
+You will also need to change the `slack_channel_id` field to your own Slack
+channel id in the pipeline definition:
+
+```bash
+sed -i 's/my-channel-id/{your-channel-id}/g' ./taxi_pipeline_slack_kubeflow.py
+```
+
+Compile the slack example. Under the hood, tfx CLI creates a container with the
+slack component installed using Skaffold and calls kubeflow dag runner:
+```bash
+tfx pipeline create --engine kubeflow --build_target_image ${target_image_name} \
+  --pipeline_path taxi_pipeline_slack_kubeflow.py
+```
+
+### Run the pipeline (GCP)
+Upload the generated chicago_taxi_slack.tar.gz and experiment in the Kubeflow
+Pipeline UI. Remember to input the pipeline-root to gs://${BUCKET_NAME}.
+
 
 ### Interact with Slack
 After the `Model Validator` phase succeeds, you will get a Slack message sent to
