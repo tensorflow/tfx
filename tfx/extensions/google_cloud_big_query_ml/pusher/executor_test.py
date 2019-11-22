@@ -77,6 +77,21 @@ class ExecutorTest(tf.test.TestCase):
         return_value='gs://test_model_path',
         autospec=True).start()
 
+  def testPipelineRoot(self):
+    self.mock_path_utils.return_value = '/none_gcs_pipeline_root'
+    with self.assertRaises(ValueError):
+      self._executor.Do(self._input_dict, self._output_dict,
+                        self._exec_properties)
+
+  def testBigQueryServingArgs(self):
+    temp_exec_properties = {
+        'custom_config': {},
+        'push_destination': None,
+    }
+    with self.assertRaises(ValueError):
+      self._executor.Do(self._input_dict, self._output_dict,
+                        temp_exec_properties)
+
   def testDoBlessed(self):
     self.mock_check_blessing.return_value = True
     self._executor.Do(self._input_dict, self._output_dict,
