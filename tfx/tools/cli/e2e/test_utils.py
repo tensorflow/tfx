@@ -66,7 +66,7 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
   """
-  examples = dsl_utils.csv_input(csv_input_location)
+  examples = dsl_utils.external_input(csv_input_location)
 
   example_gen = CsvExampleGen(input_base=examples)
   statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
