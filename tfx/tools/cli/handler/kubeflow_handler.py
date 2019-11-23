@@ -31,7 +31,7 @@ import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder
-# Standard Imports.third_party.tfx.tools.cli.container_builder.labels as container_builder_labels
+from tfx.tools.cli.container_builder import labels as container_builder_labels
 from tfx.tools.cli.handler import base_handler
 from tfx.utils import io_utils
 
