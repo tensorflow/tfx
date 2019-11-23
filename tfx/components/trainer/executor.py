@@ -170,7 +170,7 @@ class Executor(base_executor.BaseExecutor):
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     base_model = path_utils.serving_model_path(
         artifact_utils.get_single_uri(
-            input_dict['base_model'])) if 'base_model' in input_dict else None
+            input_dict['base_model'])) if input_dict.get('base_model') else None
 
     train_args = trainer_pb2.TrainArgs()
     eval_args = trainer_pb2.EvalArgs()
