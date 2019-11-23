@@ -44,7 +44,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.utils.dsl_utils import external_input
 
-_pipeline_name = 'chicago_taxi_beam'
+_pipeline_name = 'chicago_taxi_warmstart'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
@@ -140,7 +140,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          latest_model_resolver, trainer, model_analyzer, model_validator,
+          pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
@@ -150,7 +151,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # To run this pipeline from the python CLI:
-#   $python taxi_pipeline_beam.py
+#   $python taxi_pipeline_warmstart.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
 

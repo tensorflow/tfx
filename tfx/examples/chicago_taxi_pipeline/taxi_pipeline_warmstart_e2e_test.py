@@ -23,7 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_warmstart
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -73,7 +73,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
 
   def testTaxiPipelineWarmstart(self):
     BeamDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
+        taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -96,7 +96,7 @@ class TaxiPipelineWarmstartEndToEndTest(tf.test.TestCase):
 
     # Run pipeline again.
     BeamDagRunner().run(
-        taxi_pipeline_beam._create_pipeline(
+        taxi_pipeline_warmstart._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
