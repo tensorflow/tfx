@@ -18,6 +18,8 @@
 *   Depended on `pyarrow>=0.14,<0.15`.
 *   Raise exceptions when container building fails.
 *   Enhanced custom slack component by adding a kubeflow example.
+*   Allow windows style paths in Transform component cache.
+
 ### Deprecations
 
 ## Breaking changes

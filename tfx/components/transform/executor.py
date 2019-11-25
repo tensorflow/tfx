@@ -122,7 +122,9 @@ class _Dataset(object):
     self._file_pattern = file_pattern
     file_pattern_suffix = os.path.join(
         *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
-    self._dataset_key = analyzer_cache.make_dataset_key(file_pattern_suffix)
+    self._dataset_key = analyzer_cache.make_dataset_key(
+        # TODO(b/143087691): Remove this replace once TFT 0.16 is released.
+        file_pattern_suffix).replace('\\', '-')
     self._file_format = file_format
     self._data_format = data_format
     self._metadata = metadata
