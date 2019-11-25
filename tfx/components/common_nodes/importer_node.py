@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 import absl
 
@@ -35,37 +35,42 @@ IMPORT_RESULT_KEY = 'result'
 SOURCE_URI_KEY = 'source_uri'
 # Constant to access re-import option from importer exec_properties dict.
 REIMPORT_OPTION_KEY = 'reimport'
+# Constant to access splits from importer exec_properties dict.
+SPLIT_KEY = 'split'
 
 
 class ImporterDriver(base_driver.BaseDriver):
   """Driver for Importer."""
 
-  def _import_artifacts(
-      self,
-      source_uri: Text,
-      reimport: bool,
-      destination_channel: types.Channel,
-  ) -> List[types.Artifact]:
+  def _import_artifacts(self, source_uri: List[Text], reimport: bool,
+                        destination_channel: types.Channel,
+                        split: List[Text]) -> List[types.Artifact]:
     """Imports external resource in MLMD."""
-    absl.logging.info('Processing source uri: %s' % source_uri)
+    results = []
+    for uri, s in zip(source_uri, split):
+      absl.logging.info('Processing source uri: %s, split: %s' %
+                        (uri, s or 'NO_SPLIT'))
 
-    previous_artifacts = self._metadata_handler.get_artifacts_by_uri(source_uri)
-    result = types.Artifact(type_name=destination_channel.type_name)
-    result.uri = source_uri
+      previous_artifacts = self._metadata_handler.get_artifacts_by_uri(uri)
+      result = types.Artifact(type_name=destination_channel.type_name, split=s)
+      result.uri = uri
 
-    # If any registered artifact with the same uri also has the same
-    # fingerprint and user does not ask for re-import, just reuse the latest.
-    # Otherwise, register the external resource into MLMD using the type info
-    # in the destination channel.
-    if bool(previous_artifacts) and not reimport:
-      absl.logging.info('Reusing existing artifact')
-      result.set_artifact(max(previous_artifacts, key=lambda m: m.id))
-    else:
-      [registered_artifact] = self._metadata_handler.publish_artifacts([result])
-      absl.logging.info('Registered new artifact: %s' % registered_artifact)
-      result.set_artifact(registered_artifact)
+      # If any registered artifact with the same uri also has the same
+      # fingerprint and user does not ask for re-import, just reuse the latest.
+      # Otherwise, register the external resource into MLMD using the type info
+      # in the destination channel.
+      if bool(previous_artifacts) and not reimport:
+        absl.logging.info('Reusing existing artifact')
+        result.set_artifact(max(previous_artifacts, key=lambda m: m.id))
+      else:
+        [registered_artifact
+        ] = self._metadata_handler.publish_artifacts([result])
+        absl.logging.info('Registered new artifact: %s' % registered_artifact)
+        result.set_artifact(registered_artifact)
 
-    return [result]
+      results.append(result)
+
+    return results
 
   def pre_execution(
       self,
@@ -81,7 +86,8 @@ class ImporterDriver(base_driver.BaseDriver):
             self._import_artifacts(
                 source_uri=exec_properties[SOURCE_URI_KEY],
                 destination_channel=output_dict[IMPORT_RESULT_KEY],
-                reimport=exec_properties[REIMPORT_OPTION_KEY])
+                reimport=exec_properties[REIMPORT_OPTION_KEY],
+                split=exec_properties[SPLIT_KEY])
     }
 
     output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
@@ -128,24 +134,38 @@ class ImporterNode(base_node.BaseNode):
 
   def __init__(self,
                instance_name: Text,
-               source_uri: Text,
+               source_uri: Union[Text, List[Text]],
                artifact_type: Type[artifact.Artifact],
-               reimport: Optional[bool] = False):
+               reimport: Optional[bool] = False,
+               split: Optional[Union[Text, List[Text]]] = ''):
     """Init function for ImporterNode.
 
     Args:
       instance_name: the name of the ImporterNode instance.
-      source_uri: the URI to the resource that needs to be registered.
+      source_uri: the URI or list of URIs to the resources that need to be
+        registered.
       artifact_type: the type of the artifact to import.
       reimport: whether or not to re-import as a new artifact if the URI has
         been imported in before.
+      split: Names of splits to be given to each artifact. If source_uri is
+        given as list, split is mandatory, and must be the same length as
+        source_uri.
     """
+    self._source_uri = source_uri if isinstance(source_uri,
+                                                list) else [source_uri]
+    self._reimport = reimport
+    self._split = split if isinstance(split, list) else [split]
+
+    if len(self._source_uri) != len(self._split):
+      raise ValueError('split must be given when source_uri is given as list.')
+
     self._output_dict = {
         IMPORT_RESULT_KEY:
-            types.Channel(type=artifact_type, artifacts=[artifact_type()])
+            types.Channel(
+                type=artifact_type,
+                artifacts=[artifact_type(split=s) for s in self._split])
     }
-    self._source_uri = source_uri
-    self._reimport = reimport
+
     super(ImporterNode, self).__init__(instance_name=instance_name)
 
   @property
@@ -160,5 +180,6 @@ class ImporterNode(base_node.BaseNode):
   def exec_properties(self) -> Dict[Text, Any]:
     return {
         SOURCE_URI_KEY: self._source_uri,
-        REIMPORT_OPTION_KEY: self._reimport
+        REIMPORT_OPTION_KEY: self._reimport,
+        SPLIT_KEY: self._split,
     }
