@@ -17,7 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import os
+import random
 import subprocess
 import tempfile
 import time
@@ -113,6 +115,9 @@ class AirflowEndToEndTest(unittest.TestCase):
 
   def setUp(self):
     super(AirflowEndToEndTest, self).setUp()
+
+    random.seed(datetime.datetime.now())
+
     # setup airflow_home in a temp directory, config and init db.
     self._airflow_home = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
@@ -147,9 +152,18 @@ class AirflowEndToEndTest(unittest.TestCase):
     # Following fields are specific to the chicago_taxi_simple example.
     self._dag_id = 'chicago_taxi_simple'
     self._run_id = 'manual_run_id_1'
+
+    def _AblateDate(datestr):
+      date_format = '%Y-%m-%dT%H:%M:%S'
+      return (datetime.datetime.strptime(datestr, date_format) +
+              datetime.timedelta(seconds=random.randint(0, 3600))
+             ).strftime(date_format)
+
     # This execution date must be after the start_date in chicago_taxi_simple
-    # but before current execution date.
-    self._execution_date = '2019-02-01T01:01:01+01:01'
+    # but before current execution date. Moreover, introduce uniqueness in
+    # execution_date to prevent interference between multiple test processes.
+    self._execution_date = _AblateDate('2019-02-01T01:01:01')
+
     self._all_tasks = [
         'CsvExampleGen',
         'Evaluator',
