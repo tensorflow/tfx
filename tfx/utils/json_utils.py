@@ -37,6 +37,9 @@ _MODULE_KEY = '__module__'
 _CLASS_KEY = '__class__'
 _PROTO_VALUE_KEY = '__proto_value__'
 
+RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
+                             r'.*?})')
+
 
 class _ObjectType(object):
   """Internal class to hold supported types."""
@@ -86,14 +89,36 @@ JsonableType = Union[JsonableValue, JsonableList, JsonableDict]
 class _DefaultEncoder(json.JSONEncoder):
   """Default JSON Encoder which encodes Jsonable object to JSON."""
 
+  def encode(self, obj: Any) -> Text:
+    """Override encode to prevent redundant dumping."""
+    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == Text:
+      return self.default(obj)
+
+    return super(_DefaultEncoder, self).encode(obj)
+
   def default(self, obj: Any) -> Any:
-    if isinstance(obj, Jsonable):
+    # If obj is a str-typed RuntimeParameter, serialize it in place.
+    if obj.__class__.__name__ == 'RuntimeParameter' and obj.ptype == Text:
       dict_data = {
           _TFX_OBJECT_TYPE_KEY: _ObjectType.JSONABLE,
           _MODULE_KEY: obj.__class__.__module__,
           _CLASS_KEY: obj.__class__.__name__,
       }
       dict_data.update(obj.to_json_dict())
+      return dumps(dict_data)
+
+    if isinstance(obj, Jsonable):
+      dict_data = {
+          _TFX_OBJECT_TYPE_KEY: _ObjectType.JSONABLE,
+          _MODULE_KEY: obj.__class__.__module__,
+          _CLASS_KEY: obj.__class__.__name__,
+      }
+      # Need to first check the existence of str-typed runtime parameter.
+      data_patch = obj.to_json_dict()
+      for k, v in data_patch.items():
+        if v.__class__.__name__ == 'RuntimeParameter' and v.ptype == Text:
+          data_patch[k] = dumps(v)
+      dict_data.update(data_patch)
       return dict_data
 
     if inspect.isclass(obj):
