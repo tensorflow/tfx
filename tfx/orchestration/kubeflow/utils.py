@@ -22,19 +22,50 @@ import re
 from typing import Text
 from kfp import dsl
 
-from tfx.orchestration.experimental.runtime_parameter import runtime_string_parameter
+from tfx.orchestration import data_types
+from tfx.utils import json_utils
 
 
 def replace_placeholder(serialized_component: Text) -> Text:
   """Replaces the RuntimeParameter placeholders with kfp.dsl.PipelineParam."""
-  placeholders = re.findall(runtime_string_parameter.PARAMETER_PATTERN,
+  placeholders = re.findall(data_types.RUNTIME_PARAMETER_PATTERN,
                             serialized_component)
 
   for placeholder in placeholders:
-    parameter = runtime_string_parameter.RuntimeStringParameter.parse(
-        placeholder)
-    dsl_parameter = dsl.PipelineParam(name=parameter.name)
+    # We need to keep the level of escaping of original RuntimeParameter
+    # placeholder. This can be done by probing the pair of quotes around
+    # literal 'RuntimeParameter'.
+    placeholder = fix_brackets(placeholder)
+    cleaned_placeholder = placeholder.replace('\\', '')  # Clean escapes.
+    parameter = json_utils.loads(cleaned_placeholder)
+    dsl_parameter_str = str(dsl.PipelineParam(name=parameter.name))
+
     serialized_component = serialized_component.replace(placeholder,
-                                                        str(dsl_parameter))
+                                                        dsl_parameter_str)
 
   return serialized_component
+
+
+def fix_brackets(placeholder: Text) -> Text:
+  """Fix the imbalanced brackets in placeholder.
+
+  When ptype is not null, regex matching might grab a placeholder with }
+  missing. This function fix the missing bracket.
+
+  Args:
+    placeholder: string placeholder of RuntimeParameter
+
+  Returns:
+    Placeholder with re-balanced brackets.
+
+  Raises:
+    RuntimeError: if left brackets are less than right brackets.
+  """
+  lcount = placeholder.count('{')
+  rcount = placeholder.count('}')
+  if lcount < rcount:
+    raise RuntimeError(
+        'Unexpected redundant left brackets found in {}'.format(placeholder))
+  else:
+    patch = ''.join(['}'] * (lcount - rcount))
+    return placeholder + patch
