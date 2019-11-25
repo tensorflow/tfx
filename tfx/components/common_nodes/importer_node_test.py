@@ -29,20 +29,46 @@ from tfx.types import standard_artifacts
 
 class ImporterNodeTest(tf.test.TestCase):
 
-  def testImporterDefinition(self):
+  def testImporterDefinitionWithSingleUri(self):
     impt = importer_node.ImporterNode(
         instance_name='my_importer',
         source_uri='m/y/u/r/i',
         artifact_type=standard_artifacts.Examples)
     self.assertDictEqual(
         impt.exec_properties, {
-            importer_node.SOURCE_URI_KEY: 'm/y/u/r/i',
-            importer_node.REIMPORT_OPTION_KEY: False
+            importer_node.SOURCE_URI_KEY: ['m/y/u/r/i'],
+            importer_node.REIMPORT_OPTION_KEY: False,
+            importer_node.SPLIT_KEY: [''],
         })
     self.assertEmpty(impt.inputs.get_all())
     self.assertEqual(
         impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].type_name,
         standard_artifacts.Examples.TYPE_NAME)
+
+  def testImporterDefinitionWithMultipleUris(self):
+    impt = importer_node.ImporterNode(
+        instance_name='my_importer',
+        source_uri=['m/y/u/r/i/1', 'm/y/u/r/i/2'],
+        artifact_type=standard_artifacts.Examples,
+        split=['train', 'eval'])
+    self.assertDictEqual(
+        impt.exec_properties, {
+            importer_node.SOURCE_URI_KEY: ['m/y/u/r/i/1', 'm/y/u/r/i/2'],
+            importer_node.REIMPORT_OPTION_KEY: False,
+            importer_node.SPLIT_KEY: ['train', 'eval'],
+        })
+    self.assertEqual([
+        s.split
+        for s in impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].get()
+    ], ['train', 'eval'])
+
+  def testImporterDefinitionWithMultipleUrisBadSplitSpecification(self):
+    with self.assertRaises(ValueError):
+      _ = importer_node.ImporterNode(
+          instance_name='my_importer',
+          source_uri=['m/y/u/r/i/1', 'm/y/u/r/i/2'],
+          artifact_type=standard_artifacts.Examples,
+      )
 
 
 class ImporterDriverTest(tf.test.TestCase):
@@ -56,9 +82,16 @@ class ImporterDriverTest(tf.test.TestCase):
         importer_node.IMPORT_RESULT_KEY:
             types.Channel(type_name=self.artifact_type)
     }
-    self.source_uri = 'm/y/u/r/i'
-    self.existing_artifact = types.Artifact(type_name=self.artifact_type)
-    self.existing_artifact.uri = self.source_uri
+    self.source_uri = ['m/y/u/r/i/1', 'm/y/u/r/i/2']
+    self.split = ['train', 'eval']
+
+    self.existing_artifacts = []
+    for uri, split in zip(self.source_uri, self.split):
+      existing_artifact = types.Artifact(type_name=self.artifact_type)
+      existing_artifact.uri = uri
+      existing_artifact.split = split
+      self.existing_artifacts.append(existing_artifact)
+
     self.component_info = data_types.ComponentInfo(
         component_type='c_type', component_id='c_id')
     self.pipeline_info = data_types.PipelineInfo(
@@ -67,7 +100,7 @@ class ImporterDriverTest(tf.test.TestCase):
 
   def _callImporterDriver(self, reimport: bool):
     with metadata.Metadata(connection_config=self.connection_config) as m:
-      m.publish_artifacts([self.existing_artifact])
+      m.publish_artifacts(self.existing_artifacts)
       driver = importer_node.ImporterDriver(metadata_handler=m)
       execution_result = driver.pre_execution(
           component_info=self.component_info,
@@ -77,24 +110,25 @@ class ImporterDriverTest(tf.test.TestCase):
           output_dict=self.output_dict,
           exec_properties={
               importer_node.SOURCE_URI_KEY: self.source_uri,
-              importer_node.REIMPORT_OPTION_KEY: reimport
+              importer_node.REIMPORT_OPTION_KEY: reimport,
+              importer_node.SPLIT_KEY: self.split,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)
       self.assertEqual(
           execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].uri,
-          self.source_uri)
+          self.source_uri[0])
       self.assertEqual(
           execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].id,
-          2 if reimport else 1)
+          3 if reimport else 1)
 
       self.assertNotEmpty(
           self.output_dict[importer_node.IMPORT_RESULT_KEY].get())
 
-      self.assertEqual(
-          self.output_dict[importer_node.IMPORT_RESULT_KEY].get()[0].uri,
-          self.source_uri,
-      )
+      results = self.output_dict[importer_node.IMPORT_RESULT_KEY].get()
+      for res, uri, split in zip(results, self.source_uri, self.split):
+        self.assertEqual(res.uri, uri)
+        self.assertEqual(res.split, split)
 
   def testImportArtifact(self):
     self._callImporterDriver(reimport=True)
