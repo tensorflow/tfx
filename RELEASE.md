@@ -1,10 +1,15 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-*   Enabled KubeflowDagRunner to recognize RuntimeStringParameter and interpret
+*   Enabled KubeflowDagRunner to recognize RuntimeParameter and interpret 
     them as Argo workflow parameter, so that user can specify their values at
-    runtime. Currently only string-typed execution properties can be
-    parameterized in this way.
+    runtime. Currently only attributes in ComponentSpec.PARAMETERS and the uri
+    of external artifacts can be parameterized (cannot parameterize component
+    inputs/outputs).
+*   Allowed users to pass in a dict for attributes in ComponentSpec.PARAMETERS
+    when the expected argument is a protobuf message. This would save users the
+    efforts of constructing complex nested protobuf message in the component
+    interface.
 *   Added support in Trainer to use other model artifacts. This enables
     scenarios such as warmstart.
 

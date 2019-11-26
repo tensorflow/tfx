@@ -27,12 +27,13 @@ from kfp import gcp
 from kubernetes import client as k8s_client
 
 from tfx import version
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.experimental.runtime_parameter import runtime_string_parameter
 from tfx.orchestration.kubeflow import base_component
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -255,11 +256,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     """
 
     serialized_component = json_utils.dumps(component)
-    placeholders = re.findall(runtime_string_parameter.PARAMETER_PATTERN,
+    placeholders = re.findall(data_types.RUNTIME_PARAMETER_PATTERN,
                               serialized_component)
     for placeholder in placeholders:
-      parameter = runtime_string_parameter.RuntimeStringParameter.parse(
-          placeholder)
+      placeholder = placeholder.replace('\\', '')  # Clean escapes.
+      placeholder = utils.fix_brackets(placeholder)  # Fix brackets if needed.
+      parameter = json_utils.loads(placeholder)
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         dsl_parameter = dsl.PipelineParam(

@@ -17,12 +17,15 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+from typing import Text
 # Standard Imports
 
 import tensorflow as tf
+
 from tfx.components.example_gen import utils
+from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.utils import json_utils
 
 
 class UtilsTest(tf.test.TestCase):
@@ -135,6 +138,61 @@ class UtilsTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='train', pattern='train/*'),
             example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
         ]))
+    self.assertEqual(0, len(output_config.split_config.splits))
+
+  def testMakeOutputSplitNamesWithParameter(self):
+    split_name_param = data_types.RuntimeParameter(
+        name='split-name', ptype=Text, default=u'train')
+    split_names = utils.generate_output_split_names(
+        input_config={
+            'splits': [{
+                'name': split_name_param,
+                'pattern': 'train/*'
+            }, {
+                'name': 'eval',
+                'pattern': 'eval/*'
+            }]
+        },
+        output_config=example_gen_pb2.Output())
+    # Assert the json serialized version because RuntimeParameters only get
+    # serialized after that.
+    self.assertEqual(
+        json_utils.dumps([split_name_param, 'eval']),
+        json_utils.dumps(split_names))
+
+    split_names = utils.generate_output_split_names(
+        input_config=example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='single', pattern='single/*')
+        ]),
+        output_config={
+            'splitConfig': {
+                'splits': [{
+                    'name': split_name_param,
+                    'hashBuckets': 2
+                }, {
+                    'name': 'eval',
+                    'hashBuckets': 1
+                }]
+            }
+        })
+    # Assert the json serialized version because RuntimeParameters only get
+    # serialized after that.
+    self.assertEqual(
+        json_utils.dumps([split_name_param, 'eval']),
+        json_utils.dumps(split_names))
+
+  def testMakeDefaultOutputConfigWithParameter(self):
+    split_name_param = data_types.RuntimeParameter(
+        name='split-name', ptype=Text, default=u'train')
+    output_config = utils.make_default_output_config({
+        'splits': [{
+            'name': split_name_param,
+            'pattern': 'train/*'
+        }, {
+            'name': 'eval',
+            'pattern': 'eval/*'
+        }]
+    })
     self.assertEqual(0, len(output_config.split_config.splits))
 
 

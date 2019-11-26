@@ -50,10 +50,14 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
         split, can be overwritten by input_config.
       input_config: An example_gen_pb2.Input instance with Split.pattern as
         BigQuery sql string. If set, it overwrites the 'query' arg, and allows
-        different queries per split.
+        different queries per split. If any field is provided as a
+        RuntimeParameter, input_config should be constructed as a dict with the
+        same field names as Input proto message.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1.
+        size 2:1. If any field is provided as a RuntimeParameter,
+        input_config should be constructed as a dict with the same field names
+        as Output proto message.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       instance_name: Optional unique instance name. Necessary if multiple
