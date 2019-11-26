@@ -22,6 +22,13 @@ from typing import Any, Dict, List, Optional, Text, Type, Union
 from tfx import types
 from tfx.utils import json_utils
 
+# Regex pattern of RuntimeParameter.
+# Use \\* to deal with escaping in json-serialized version of objects.
+RUNTIME_PARAMETER_PATTERN = (r'({\\*"__class__\\*": \\*"RuntimeParameter\\*", '
+                             r'.*?})')
+
+PARAMETER_NAME_LITERAL = r'(\\*"RuntimeParameter\\*")'
+
 
 class ExecutionDecision(object):
   """ExecutionDecision records how executor should perform next execution.
@@ -62,11 +69,9 @@ class ExecutionInfo(object):
     execution_id: Registered execution_id for the execution.
   """
 
-  def __init__(self,
-               input_dict: Dict[Text, List[types.Artifact]],
+  def __init__(self, input_dict: Dict[Text, List[types.Artifact]],
                output_dict: Dict[Text, List[types.Artifact]],
-               exec_properties: Dict[Text, Any],
-               execution_id: int):
+               exec_properties: Dict[Text, Any], execution_id: int):
     self.input_dict = input_dict
     self.output_dict = output_dict
     self.exec_properties = exec_properties
@@ -133,18 +138,18 @@ class RuntimeParameter(json_utils.Jsonable):
   """Runtime parameter.
 
   Attributes:
-    name: The name of the runtime parameter
+    name: The name of the runtime parameter.
     default: Default value for runtime params when it's not explicitly
       specified.
-    ptype: The type of the runtime parameter
-    description: Description of the usage of the parameter
+    ptype: The type of the runtime parameter.
+    description: Description of the usage of the parameter.
   """
 
   def __init__(
       self,
       name: Text,
+      ptype: Type = None,  # pylint: disable=g-bare-generic
       default: Optional[Union[int, float, bool, Text]] = None,
-      ptype: Optional[Type] = None,  # pylint: disable=g-bare-generic
       description: Optional[Text] = None):
     if ptype and ptype not in [int, float, bool, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
@@ -156,11 +161,28 @@ class RuntimeParameter(json_utils.Jsonable):
     self.description = description
 
   def __repr__(self):
-    return ('RuntimeParam:\n  name: %s,\n  default: %s,\n  ptype: %s,\n  '
-            'description: %s') % (self.name, self.default, self.ptype,
-                                  self.description)
+    """Easily convert RuntimeParameter to str.
+
+    This provides a unified way to call str(x) when x can be either str or
+    RuntimeParameter. Note: if ptype == Text or None, the serialization will be
+    wrapped in double quotes.
+
+    Returns:
+      The json serialized version of RuntimeParameter.
+    """
+    return json_utils.dumps(self)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
             self.name == other.name and self.default == other.default and
             self.ptype == other.ptype and self.description == other.description)
+
+  def __hash__(self):
+    """RuntimeParameter is uniquely identified by its name."""
+    return self.name.__hash__()
+
+
+# TODO(jxzheng): Add checks against ptype in component interfaces.
+def check_parameter_type(parameter: RuntimeParameter, ptype: Type) -> bool:  # pylint: disable=g-bare-generic
+  """Helper function that returns True when parameter.ptype != ptype."""
+  return isinstance(parameter, RuntimeParameter) and parameter.ptype != ptype

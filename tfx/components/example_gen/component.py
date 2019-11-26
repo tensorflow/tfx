@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
@@ -55,9 +55,11 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
   def __init__(self,
-               input_config: example_gen_pb2.Input,
-               output_config: Optional[example_gen_pb2.Output] = None,
-               custom_config: Optional[example_gen_pb2.CustomConfig] = None,
+               input_config: Union[example_gen_pb2.Input, Dict[Text, Any]],
+               output_config: Optional[Union[example_gen_pb2.Output,
+                                             Dict[Text, Any]]] = None,
+               custom_config: Optional[Union[example_gen_pb2.CustomConfig,
+                                             Dict[Text, Any]]] = None,
                example_artifacts: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct an QueryBasedExampleGen component.
@@ -65,16 +67,22 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     Args:
       input_config: An
         [example_gen_pb2.Input](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-        instance, providing input configuration. _required_
+          instance, providing input configuration. If any field is provided as a
+        RuntimeParameter, input_config should be constructed as a dict with the
+        same field names as Input proto message. _required_
       output_config: An
         [example_gen_pb2.Output](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-        instance, providing output configuration. If unset, the default splits
+          instance, providing output configuration. If unset, the default splits
         will be labeled as 'train' and 'eval' with a distribution ratio of 2:1.
+        If any field is provided as a RuntimeParameter, output_config should be
+        constructed as a dict with the same field names as Output proto message.
       custom_config: An
         [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-        instance, providing custom configuration for ExampleGen.
-      example_artifacts: Channel of 'ExamplesPath' for output train and
-        eval examples.
+          instance, providing custom configuration for ExampleGen. If any field
+          is provided as a RuntimeParameter, output_config should be
+          constructed as a dict.
+      example_artifacts: Channel of 'ExamplesPath' for output train and eval
+        examples.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
     """
@@ -82,7 +90,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel_utils.as_channel([
-        standard_artifacts.Examples(split=split_name)
+        standard_artifacts.Examples(split=str(split_name))
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])
@@ -122,9 +130,12 @@ class FileBasedExampleGen(base_component.BaseComponent):
   def __init__(
       self,
       input: types.Channel = None,  # pylint: disable=redefined-builtin
-      input_config: Optional[example_gen_pb2.Input] = None,
-      output_config: Optional[example_gen_pb2.Output] = None,
-      custom_config: Optional[example_gen_pb2.CustomConfig] = None,
+      input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
+                                                               Any]]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
+                                                                 Any]]] = None,
+      custom_config: Optional[Union[example_gen_pb2.CustomConfig,
+                                    Dict[Text, Any]]] = None,
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       input_base: Optional[types.Channel] = None,
@@ -132,27 +143,25 @@ class FileBasedExampleGen(base_component.BaseComponent):
     """Construct a FileBasedExampleGen component.
 
     Args:
-      input: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory containing the data files.
-        _required_
+      input: A Channel of 'ExternalPath' type, which includes one artifact whose
+        uri is an external directory containing the data files. _required_
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-        instance, providing input configuration. If unset, the files under
-        input_base will be treated as a single dataset.
-      output_config: An example_gen_pb2.Output instance, providing the
-        output configuration. If unset, default splits will be 'train' and
+          instance, providing input configuration. If unset, the files under
+          input_base will be treated as a single dataset.
+      output_config: An example_gen_pb2.Output instance, providing the output
+        configuration. If unset, default splits will be 'train' and
         'eval' with size 2:1.
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
-      example_artifacts: Channel of 'ExamplesPath' for output train and
-        eval examples.
+      example_artifacts: Channel of 'ExamplesPath' for output train and eval
+        examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
       input_base: Backwards compatibility alias for the 'input' argument.
       instance_name: Optional unique instance name. Required only if multiple
-        ExampleGen components are declared in the same pipeline.
-
-      Either `input_base` or `input` must be present in the input arguments.
+        ExampleGen components are declared in the same pipeline.  Either
+        `input_base` or `input` must be present in the input arguments.
     """
     input = input or input_base
     # Configure inputs and outputs.
@@ -160,7 +169,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel_utils.as_channel([
-        standard_artifacts.Examples(split=split_name)
+        standard_artifacts.Examples(split=str(split_name))
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])

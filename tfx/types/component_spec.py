@@ -19,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import copy
 import inspect
 import itertools
-from typing import Any, Dict, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Text, Type
 
 from six import with_metaclass
 
@@ -102,7 +103,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
              'dict; got %s instead.') % (self.__class__, param_name, param))
 
     # Validate that the ComponentSpec class is well-formed.
-    # TODO(b/128836890): Make RuntimeParameter in compliance with this check.
     seen_arg_names = set()
     for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
                                          self.INPUTS.items(),
@@ -141,6 +141,39 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     outputs = {}
     self.exec_properties = {}
 
+    # Following three helper functions replace RuntimeParameters with its
+    # default values, so that later on we can leverage json_format library to do
+    # type check.
+    def _make_default_dict(dict_data: Dict[Text, Any]) -> Dict[Text, Any]:
+      """Generates a dict with parameters replaced by default values."""
+      copy_dict = copy.deepcopy(dict_data)
+      _put_default_dict(copy_dict)
+      return copy_dict
+
+    def _put_default_dict(dict_data: Dict[Text, Any]) -> None:
+      """Helper function to replace RuntimeParameter with its default value."""
+      for k, v in dict_data.items():
+        if isinstance(v, dict):
+          _put_default_dict(v)
+        elif isinstance(v, list):
+          _put_default_list(v)
+        elif v.__class__.__name__ == 'RuntimeParameter':
+          # Currently supporting int, float, bool, Text
+          ptype = v.ptype
+          dict_data[k] = ptype.__new__(ptype)
+
+    def _put_default_list(list_data: List[Any]) -> None:
+      """Helper function to replace RuntimeParameter with its default value."""
+      for index, item in enumerate(list_data):
+        if isinstance(item, dict):
+          _put_default_dict(item)
+        elif isinstance(item, list):
+          _put_default_list(item)
+        elif item.__class__.__name__ == 'RuntimeParameter':
+          # Currently supporting int, float, bool, Text
+          ptype = item.ptype
+          list_data[index] = ptype.__new__(ptype)
+
     # First, check that the arguments are set.
     for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
                                          self.INPUTS.items(),
@@ -164,12 +197,23 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       if arg.optional and arg_name not in self._raw_args:
         continue
       value = self._raw_args[arg_name]
+
       if (inspect.isclass(arg.type) and
           issubclass(arg.type, message.Message) and value):
         # Create deterministic json string as it will be stored in metadata for
         # cache check.
-        value = json_format.MessageToJson(value, sort_keys=True)
+        if isinstance(value, dict):
+          # If a dict is passed in, it might contains RuntimeParameter.
+          # Given the argument type is specified as pb, do the type-check by
+          # converting it to pb message.
+          dict_with_default = _make_default_dict(value)
+          json_format.ParseDict(dict_with_default, arg.type())
+          value = json_utils.dumps(value)
+        else:
+          value = json_format.MessageToJson(value, sort_keys=True)
+
       self.exec_properties[arg_name] = value
+
     for arg_name, arg in self.INPUTS.items():
       if arg.optional and not self._raw_args.get(arg_name):
         continue
@@ -240,10 +284,15 @@ class ExecutionParameter(_ComponentParameter):
             other.type == self.type and other.optional == self.optional)
 
   def type_check(self, arg_name: Text, value: Any):
+    """Perform type check to the parameter passed in."""
     # Can't type check generics. Note that we need to do this strange check form
     # since typing.GenericMeta (which became typing._GenericAlias in Python 3.7)
     # is not exposed.
-    if self.type.__class__.__name__ in ('GenericMeta', '_GenericAlias'):
+    # Also, bypass the typecheck if a dict is passed in, to enable the usage of
+    # RuntimeParameter.
+    if self.type.__class__.__name__ in (
+        'GenericMeta', '_GenericAlias') or isinstance(
+            value, dict) or value.__class__.__name__ == 'RuntimeParameter':
       return
     if not isinstance(value, self.type):
       raise TypeError('Expected type %s for parameter %r but got %s.' %

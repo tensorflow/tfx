@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import executor_spec
@@ -41,23 +41,28 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
   def __init__(
       self,
       input: types.Channel = None,  # pylint: disable=redefined-builtin
-      input_config: Optional[example_gen_pb2.Input] = None,
-      output_config: Optional[example_gen_pb2.Output] = None,
+      input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
+                                                               Any]]] = None,
+      output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
+                                                                 Any]]] = None,
       example_artifacts: Optional[types.Channel] = None,
       input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct an ImportExampleGen component.
 
     Args:
-      input: A Channel of 'ExternalPath' type, which includes one artifact
-        whose uri is an external directory with TFRecord files inside
-        (required).
+      input: A Channel of 'ExternalPath' type, which includes one artifact whose
+        uri is an external directory with TFRecord files inside (required).
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
-        single split.
+        single split. If any field is provided as a RuntimeParameter,
+        input_config should be constructed as a dict with the same field names
+        as Input proto message.
       output_config: An example_gen_pb2.Output instance, providing output
         configuration. If unset, default splits will be 'train' and 'eval' with
-        size 2:1.
+        size 2:1. If any field is provided as a RuntimeParameter,
+        output_config should be constructed as a dict with the same field names
+        as Output proto message.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       input_base: Backwards compatibility alias for the 'input' argument.
