@@ -276,16 +276,11 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     try:
       experiment_id = self._client.get_experiment(
           experiment_name=pipeline_name).id
-      absl.logging.info('Experiment id is %s' % experiment_id)
-
       pipeline_id = self._get_pipeline_id(pipeline_name)
-      absl.logging.info('Pipeline id is %s' % pipeline_id)
-
       run = self._client.run_pipeline(
           experiment_id=experiment_id,
           job_name=pipeline_name,
           pipeline_id=pipeline_id)
-      absl.logging.info('Run is %s' % run)
 
       return run
 
