@@ -87,6 +87,7 @@ class ComponentSpecTest(tf.test.TestCase):
     self.assertEqual(10, spec.exec_properties['folds'])
     self.assertIs(spec.inputs['input'], input_channel)
     self.assertIs(spec.outputs['output'], output_channel)
+    self.assertEqual(spec, spec)
 
     # Verify compatibility aliasing behavior.
     self.assertIs(spec.inputs['future_input_name'], spec.inputs['input'])

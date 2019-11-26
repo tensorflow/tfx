@@ -88,7 +88,7 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._parse_parameters()
 
   def __eq__(self, other):
-    return (isinstance(other.__class__, self.__class__) and
+    return (other.__class__ == self.__class__ and
             self.to_json_dict() == other.to_json_dict())
 
   def _validate_spec(self):
