@@ -42,37 +42,34 @@ def _gzip_reader_fn(filenames):
 
 
 def _example_serving_receiver_fn(schema):
-  """Build the serving in inputs.
+  """Build the serving inputs.
 
   Args:
     schema: the schema of the input data.
 
   Returns:
-    Tensorflow graph which parses examples, applying tf-transform to them.
+    serving_input_resiver_fn for serving this model, since no transformation is
+    required in this case it does not include a tf-transform graph.
   """
   raw_feature_spec = _get_raw_feature_spec(schema)
   raw_feature_spec.pop(_LABEL_KEY)
 
   raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
       raw_feature_spec, default_batch_size=None)
-  serving_input_receiver = raw_input_fn()
-
-  return tf.estimator.export.ServingInputReceiver(
-      serving_input_receiver.features, serving_input_receiver.receiver_tensors)
+  return raw_input_fn()
 
 
 def _eval_input_receiver_fn(schema):
-  """Build everything needed for the tf-model-analysis to run the model.
+  """Build the evalution inputs for the tf-model-analysis to run the model.
 
   Args:
     schema: the schema of the input data.
 
   Returns:
     EvalInputReceiver function, which contains:
-      - Tensorflow graph which parses raw untransformed features, applies the
-        tf-transform preprocessing operators.
-      - Set of raw, untransformed features.
-      - Label against which predictions will be compared.
+      - Features (dict of Tensors) to be passed to the model.
+      - Raw features as sereliazlied tf.Examples.
+      - Labels
   """
   # Notice that the inputs are raw features, not transformed features here.
   raw_feature_spec = _get_raw_feature_spec(schema)
@@ -95,7 +92,7 @@ def _eval_input_receiver_fn(schema):
 
 
 def _input_fn(filenames, schema, batch_size=200):
-  """Generates features and labels for training or evaluation.
+  """Input function for training and evaluation.
 
   Args:
     filenames: [str] list of CSV files to read data from.
@@ -136,9 +133,7 @@ def _keras_model_builder():
   model.compile(
       loss='sparse_categorical_crossentropy',
       optimizer=opt.Adam(lr=0.001),
-      metrics=[
-          tf.keras.metrics.BinaryAccuracy(name='accuracy')
-      ])
+      metrics=[tf.keras.metrics.BinaryAccuracy(name='accuracy')])
   absl.logging.info(model.summary())
   return model
 
