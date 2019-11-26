@@ -22,6 +22,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+from typing import Text
 from kfp import onprem
 import tensorflow as tf
 import yaml
@@ -37,9 +38,9 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 # 2-step pipeline under test.
 def _two_step_pipeline() -> tfx_pipeline.Pipeline:
   table_name = data_types.RuntimeParameter(
-      name='table-name', default='default-table')
+      name='table-name', ptype=Text, default='default-table')
   example_gen = big_query_example_gen_component.BigQueryExampleGen(
-      query='SELECT * FROM %s' % table_name)
+      query='SELECT * FROM %s' % str(table_name))
   statistics_gen = statistics_gen_component.StatisticsGen(
       examples=example_gen.outputs['examples'])
   return tfx_pipeline.Pipeline(

@@ -82,7 +82,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel_utils.as_channel([
-        standard_artifacts.Examples(split=split_name)
+        standard_artifacts.Examples(split=str(split_name))
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])
@@ -160,7 +160,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     example_artifacts = example_artifacts or channel_utils.as_channel([
-        standard_artifacts.Examples(split=split_name)
+        standard_artifacts.Examples(split=str(split_name))
         for split_name in utils.generate_output_split_names(
             input_config, output_config)
     ])

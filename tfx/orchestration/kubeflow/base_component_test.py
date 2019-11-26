@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import json
 import os
+from typing import Text
 from kfp import dsl
 import tensorflow as tf
 
@@ -122,7 +123,9 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
 
     test_pipeline_root = dsl.PipelineParam(name='pipeline-root-param')
     example_gen_output_name = data_types.RuntimeParameter(
-        name='example-gen-output-name', default='default-to-be-discarded')
+        name='example-gen-output-name',
+        ptype=Text,
+        default='default-to-be-discarded')
 
     examples = standard_artifacts.ExternalArtifact()
     example_gen = csv_example_gen_component.CsvExampleGen(
