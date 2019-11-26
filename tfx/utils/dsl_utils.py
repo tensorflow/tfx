@@ -35,7 +35,7 @@ def external_input(uri: Text) -> types.Channel:
     input channel.
   """
   instance = standard_artifacts.ExternalArtifact()
-  instance.uri = str(uri)
+  instance.uri = uri
   return channel_utils.as_channel([instance])
 
 
