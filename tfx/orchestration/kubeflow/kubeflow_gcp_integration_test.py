@@ -290,7 +290,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
 
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""
-    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
+    pipeline_name = 'ZZZ-kubeflow-aip-trainer-test-{}'.format(self._random_id())
     pipeline = self._create_pipeline(pipeline_name, [
         Trainer(
             custom_executor_spec=executor_spec.ExecutorClassSpec(
