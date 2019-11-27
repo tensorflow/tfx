@@ -105,7 +105,9 @@ class _Dataset(object):
   # might not be as self-describing).
   _FILE_PATTERN_SUFFIX_LENGTH = 6
 
-  def __init__(self, file_pattern: Text, file_format: Text, data_format: Text,
+  def __init__(self, file_pattern: Text,
+               file_format: Union[Text, int],
+               data_format: Union[Text, int],
                metadata: dataset_metadata.DatasetMetadata,
                stats_output_path: Optional[Text] = None,
                materialize_output_path: Optional[Text] = None):
@@ -403,9 +405,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       A PCollection containing KV pairs of bytes.
     """
-    if dataset.file_format != labels.FORMAT_TFRECORD:
-      raise ValueError('Unsupported input file format: {}'.format(
-          dataset.file_format))
+    assert dataset.file_format == labels.FORMAT_TFRECORD, dataset.file_format
 
     # TODO(b/139538871): Implement telemetry, on top of pa.Table once available.
     return (
@@ -438,7 +438,7 @@ class Executor(base_executor.BaseExecutor):
     # TODO(b/139538871): Implement telemetry, on top of pa.Table once available.
     return (
         pcoll
-        | 'DropKeys' >> beam.Values()
+        | 'Values' >> beam.Values()
         | 'Write' >> beam.io.WriteToTFRecord(
             transformed_example_path,
             file_name_suffix='.gz',
@@ -555,7 +555,7 @@ class Executor(base_executor.BaseExecutor):
         tft_beam.Context.get_desired_batch_size())
     return (
         pcoll
-        | 'DropKeys' >> beam.Values()
+        | 'Values' >> beam.Values()
         | 'BatchElements' >> beam.BatchElements(**kwargs)
         | 'ToArrowTables' >> beam.ParDo(Executor._ToArrowTablesFn(schema)))
 
@@ -1302,8 +1302,8 @@ class Executor(base_executor.BaseExecutor):
   # TODO(b/114444977): Remove the unused can_process_jointly argument.
   def _MakeDatasetList(
       self,
-      file_patterns: Sequence[Text],
-      file_formats: Sequence[Text],
+      file_patterns: Sequence[Union[Text, int]],
+      file_formats: Sequence[Union[Text, int]],
       data_format: Text,
       metadata: dataset_metadata.DatasetMetadata,
       can_process_jointly: bool,
@@ -1346,8 +1346,7 @@ class Executor(base_executor.BaseExecutor):
       dataset.index = index
     return result
 
-  @staticmethod
-  def _ShouldDecodeAsRawExample(data_format: Text) -> bool:
+  def _ShouldDecodeAsRawExample(self, data_format: Union[Text, int]) -> bool:
     """Returns true if data format should be decoded as raw example.
 
     Args:
@@ -1356,11 +1355,11 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if data format should be decoded as raw example.
     """
-    return (Executor._IsDataFormatSequenceExample(data_format) or
-            Executor._IsDataFormatProto(data_format))
+    return (self._IsDataFormatSequenceExample(data_format) or
+            self._IsDataFormatProto(data_format))
 
   @staticmethod
-  def _IsDataFormatSequenceExample(data_format: Text) -> bool:
+  def _IsDataFormatSequenceExample(data_format: Union[Text, int]) -> bool:
     """Returns true if data format is sequence example.
 
     Args:
@@ -1369,10 +1368,11 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if data format is sequence example.
     """
+    assert not isinstance(data_format, int), data_format
     return data_format == labels.FORMAT_TF_SEQUENCE_EXAMPLE
 
   @staticmethod
-  def _IsDataFormatProto(data_format: Text) -> bool:
+  def _IsDataFormatProto(data_format: Union[Text, int]) -> bool:
     """Returns true if data format is protocol buffer.
 
     Args:
@@ -1381,9 +1381,11 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if data format is protocol buffer.
     """
+    assert not isinstance(data_format, int), data_format
     return data_format == labels.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(self, data_format: Text) -> Optional[int]:
+  def _GetDesiredBatchSize(
+      self, data_format: Union[Text, int]) -> Optional[int]:
     """Returns batch size.
 
     Args:
@@ -1396,7 +1398,7 @@ class Executor(base_executor.BaseExecutor):
       return 1
     return None
 
-  def _GetDecodeFunction(self, data_format: Text,
+  def _GetDecodeFunction(self, data_format: Union[Text, int],
                          schema: dataset_schema.Schema) -> Any:
     """Returns the decode function for `data_format`.
 
