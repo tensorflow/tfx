@@ -43,9 +43,9 @@ from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'cifar10_beam'
 
-# This example assumes that the cifar10 data is stored in ~/cifar10/data and the
-# cifar10 utility function is in ~/cifar10.
-_cifar10_root = os.path.join(os.environ['HOME'], 'cifar10')
+# This example assumes that the cifar10 utility files are stored in the current
+# script directory and that data is stored in data/.
+_cifar10_root = os.path.dirname(os.path.abspath(__file__))
 _data_root = os.path.join(_cifar10_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
