@@ -84,30 +84,219 @@ connection_config.mysql.password = '...'
 store = metadata_store.MetadataStore(connection_config)
 ```
 
-### Upgrade MLMD library
+## Metadata Store
 
-When using a new MLMD release or your own build with an existing MLMD database,
-there may be database schema changes. Unless a breaking change is explicitly
-mentioned in the release note, all MLMD database schema changes are transparent
-for the MLMD API users.
+### Concepts
 
-When the MLMD library connects to the database, it compares the expected schema
-version of the MLMD library (`library_version`) with the schema version
-(`db_version`) recorded in the given database.
+The Metadata Store uses the following data model to record and retrieve metadata
+from the storage backend.
 
-*   If `library_version` is compatible with `db_version`, nothing happens.
-*   If `library_version` is newer than `db_version`, it runs a single migration
-    transaction to evolve the database by executing a series of migration
-    scripts. The migration script is provided together with any schema change
-    commit and enforced by change reviews and verified by continuous tests.
+*   `ArtifactType` describes an artifact's type and its properties that are
+    stored in the Metadata Store. These types can be registered on-the-fly with
+    the Metadata Store in code, or they can be loaded in the store from a
+    serialized format. Once a type is registered, its definition is available
+    throughout the lifetime of the store.
+*   `Artifact` describes a specific instances of an `ArtifactType`, and its
+    properties that are written to the Metadata Store.
+*   `ExecutionType` describes a type of component or step in a workflow, and its
+    runtime parameters.
+*   `Execution` is a record of a component run or a step in an ML workflow and
+    the runtime parameters. An Execution can be thought of as an instance of an
+    `ExecutionType`. Every time a developer runs an ML pipeline or step,
+    executions are recorded for each step.
+*   `Event` is a record of the relationship between an `Artifact` and
+    `Executions`. When an `Execution` happens, `Event`s record every Artifact
+    that was used by the `Execution`, and every `Artifact` that was produced.
+    These records allow for provenance tracking throughout a workflow. By
+    looking at all Events MLMD knows what Executions happened, what Artifacts
+    were created as a result, and can recurse back from any `Artifact` to all of
+    its upstream inputs.
+*   `ContextType` describes a type of conceptual group of `Artifacts` and
+    `Executions` in a workflow, and its structural properties. For example:
+    projects, pipeline runs, experiments, owners.
+*   `Context` is an instances of a `ContextType`. It captures the shared
+    information within the group. For example: project name, changelist commit
+    id, experiment annotations. It has a user-defined unique name within its
+    `ContextType`.
+*   `Attribution` is a record of the relationship between Artifacts and
+    Contexts.
+*   `Association` is a record of the relationship between Executions and
+    Contexts.
 
-    NOTE: If the migration transaction has errors, the transaction will rollback
-    and keep the original database unchanged. If this case happens, it is
-    possible that other concurrent transaction ran in the same database, or the
-    migration script's test fails to capture all cases. If it is the latter
-    case, please report issues for a fix or downgrade library to work with the
-    database.
+### Tracking ML Workflows with ML Metadata
 
-*   If `library_version` is older than `db_version`, MLMD library returns errors
-    to prevent any data loss. In this case, the user should upgrade the library
-    version before using that database.
+Below is a graph depicting how the low-level ML Metadata APIs can be used to
+track the execution of a training task, followed by code examples. Note that the
+code in this section shows the ML Metadata APIs to be used by ML platform
+developers to integrate their platform with ML Metadata, and not directly by
+developers. In addition, we will provide higher-level Python APIs that can be
+used by data scientists in notebook environments to record their experiment
+metadata.
+
+![ML Metadata Example Flow](images/mlmd_flow.png)
+
+1) Before executions can be recorded, ArtifactTypes have to be registered.
+
+```python
+# Create ArtifactTypes, e.g., Data and Model
+data_type = metadata_store_pb2.ArtifactType()
+data_type.name = "DataSet"
+data_type.properties["day"] = metadata_store_pb2.INT
+data_type.properties["split"] = metadata_store_pb2.STRING
+data_type_id = store.put_artifact_type(data_type)
+
+model_type = metadata_store_pb2.ArtifactType()
+model_type.name = "SavedModel"
+model_type.properties["version"] = metadata_store_pb2.INT
+model_type.properties["name"] = metadata_store_pb2.STRING
+model_type_id = store.put_artifact_type(model_type)
+```
+
+2) Before executions can be recorded, ExecutionTypes have to be registered for
+all steps in our ML workflow.
+
+```python
+# Create ExecutionType, e.g., Trainer
+trainer_type = metadata_store_pb2.ExecutionType()
+trainer_type.name = "Trainer"
+trainer_type.properties["state"] = metadata_store_pb2.STRING
+trainer_type_id = store.put_execution_type(trainer_type)
+```
+
+3) Once types are registered, we create a DataSet Artifact.
+
+```python
+# Declare input artifact of type DataSet
+data_artifact = metadata_store_pb2.Artifact()
+data_artifact.uri = 'path/to/data'
+data_artifact.properties["day"].int_value = 1
+data_artifact.properties["split"].string_value = 'train'
+data_artifact.type_id = data_type_id
+data_artifact_id = store.put_artifacts([data_artifact])
+```
+
+4) With the DataSet Artifact created, we can create the Execution for a Trainer
+run
+
+```python
+# Register the Execution of a Trainer run
+trainer_run = metadata_store_pb2.Execution()
+trainer_run.type_id = trainer_type_id
+trainer_run.properties["state"].string_value = "RUNNING"
+run_id = store.put_executions([trainer_run])
+```
+
+5) Declare input event and read data.
+
+```python
+# Declare the input event
+input_event = metadata_store_pb2.Event()
+input_event.artifact_id = data_artifact_id
+input_event.execution_id = run_id
+input_event.type = metadata_store_pb2.Event.DECLARED_INPUT
+
+# Submit input event to the Metadata Store
+store.put_events([input_event])
+```
+
+6) Now that the input is read, we declare the output artifact.
+
+```python
+# Declare output artifact of type SavedModel
+model_artifact = metadata_store_pb2.Artifact()
+model_artifact.uri = 'path/to/model/file'
+model_artifact.properties["version"].int_value = 1
+model_artifact.properties["name"].string_value = 'MNIST-v1'
+model_artifact.type_id = model_type_id
+model_artifact_id = store.put_artifacts(model_artifact)
+```
+
+7) With the Model Artifact created, we can record the output event.
+
+```python
+# Declare the output event
+output_event = metadata_store_pb2.Event()
+output_event.artifact_id = model_artifact_id
+output_event.execution_id = run_id
+output_event.type = metadata_store_pb2.Event.DECLARED_OUTPUT
+
+# Submit output event to the Metadata Store
+store.put_events([output_event])
+```
+
+8) Now that everything is recorded, the Execution can be marked as completed.
+
+```python
+trainer_run.id = run_id
+trainer_run.id.properties["state"].string_value = "COMPLETED"
+store.put_executions([trainer_run])
+```
+
+9) Then the artifacts and executions can be grouped to a Context (e.g.,
+experiment).
+
+```python
+# Similarly, create a ContextType, e.g., Experiment with a `note` property
+experiment_type = metadata_store_pb2.ContextType()
+experiment_type.name = "Experiment"
+experiment_type.properties["note"] = metadata_store_pb2.STRING
+experiment_type_id = store.put_context_type(experiment_type)
+
+# Group the model and the trainer run to an experiment.
+my_experiment = metadata_store_pb2.Context()
+my_experiment.type_id = experiment_type_id
+# Give the experiment a name
+my_experiment.name = "exp1"
+my_experiment.properties["note"].string_value = "My first experiment."
+experiment_id = store.put_contexts([my_experiment])
+
+attribution = metadata_store_pb2.Attribution()
+attribution.artifact_id = model_artifact_id
+attribution.context_id = experiment_id
+
+association = metadata_store_pb2.Association()
+association.execution_id = run_id
+attribution.context_id = experiment_id
+
+store.put_attributions_and_associations([attribution], [association])
+```
+
+### With remote grpc server
+
+1) Start a server with
+
+```bash
+bazel run -c opt --define grpc_no_ares=true  //ml_metadata/metadata_store:metadata_store_server
+```
+
+2) Create the client stub and use it in python
+
+```python
+from grpc import insecure_channel
+from ml_metadata.proto import metadata_store_pb2
+from ml_metadata.proto import metadata_store_service_pb2
+from ml_metadata.proto import metadata_store_service_pb2_grpc
+channel = insecure_channel('localhost:8080')
+stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(channel)
+```
+
+3) Use MLMD with RPC calls
+
+```python
+# Create ArtifactTypes, e.g., Data and Model
+data_type = metadata_store_pb2.ArtifactType()
+data_type.name = "DataSet"
+data_type.properties["day"] = metadata_store_pb2.INT
+data_type.properties["split"] = metadata_store_pb2.STRING
+request = metadata_store_service_pb2.PutArtifactTypeRequest()
+request.all_fields_match = True
+request.artifact_type.CopyFrom(data_type)
+stub.PutArtifactType(request)
+model_type = metadata_store_pb2.ArtifactType()
+model_type.name = "SavedModel"
+model_type.properties["version"] = metadata_store_pb2.INT
+model_type.properties["name"] = metadata_store_pb2.STRING
+request.artifact_type.CopyFrom(model_type)
+stub.PutArtifactType(request)
+```
+
