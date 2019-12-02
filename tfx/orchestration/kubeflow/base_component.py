@@ -22,6 +22,7 @@ components, thus ensuring that both types of pipeline definitions are
 compatible.
 Note: This requires Kubeflow Pipelines SDK to be installed.
 """
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
