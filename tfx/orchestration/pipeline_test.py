@@ -64,15 +64,14 @@ class PipelineTest(tf.test.TestCase):
 
   def setUp(self):
     super(PipelineTest, self).setUp()
-    tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir())
-    self._tmp_file = os.path.join(tmp_dir, self._testMethodName,
-                                  tempfile.mkstemp(prefix='cli_tmp_')[1])
-    self._tmp_dir = os.path.join(tmp_dir, self._testMethodName,
-                                 tempfile.mkdtemp(prefix='cli_tmp_')[1])
+    self._tmp_file = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName,
+        tempfile.mkstemp(prefix='cli_tmp_')[1])
     self._original_tmp_value = os.environ.get(
         'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
-        os.path.join(self._tmp_dir, 'metadata'))
+        os.path.join(self._tmp_file, 'metadata'))
 
   def tearDown(self):
     super(PipelineTest, self).tearDown()

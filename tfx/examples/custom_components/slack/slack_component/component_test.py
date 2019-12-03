@@ -39,7 +39,7 @@ class ComponentTest(tf.test.TestCase):
         slack_token='token',
         slack_channel_id='slack_channel_id',
         timeout_sec=3600)
-    self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
+    self.assertEqual('ModelBlessingPath',
                      slack_component.outputs['slack_blessing'].type_name)
 
 

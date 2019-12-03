@@ -79,11 +79,11 @@ class Tuner(base_component.BaseComponent):
     """Construct a Tuner component.
 
     Args:
-      examples: A Channel of type `standard_artifacts.Examples`, serving as the
-        source of examples that are used in tuning (required). Transformed
-        examples are not yet supported.
-      schema:  A Channel of type `standard_artifacts.Schema`, serving as the
-        schema of training and eval data.
+      examples: A Channel of 'ExamplesPath' type, serving as the source of
+        examples that are used in tuning (required). Transformed examples are
+        not supported yet.
+      schema:  A Channel of 'SchemaPath' type, serving as the schema of training
+        and eval data.
       module_file: A path to python module file containing UDF KerasTuner
         definition. Exactly one of 'module_file' or 'tuner_fn' must be supplied.
         The module_file must implement a function named `tuner_fn` at its top

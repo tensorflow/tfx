@@ -272,10 +272,10 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - input_data: A list of type `standard_artifacts.Examples` which
-          should contain two splits 'train' and 'eval'.
-        - schema: A list of type `standard_artifacts.Schema` which should
-          contain a single schema artifact.
+        - input_data: A list of 'ExamplesPath' type which should contain two
+          splits 'train' and 'eval'.
+        - schema: A list of 'SchemaPath' type which should contain a single
+          schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;

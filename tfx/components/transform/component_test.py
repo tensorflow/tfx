@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
+from tfx import types
 from tfx.components.transform import component
 from tfx.orchestration import data_types
 from tfx.types import channel_utils
@@ -35,12 +36,12 @@ class ComponentTest(tf.test.TestCase):
         standard_artifacts.Examples(split='eval'),
     ])
     self.schema = channel_utils.as_channel(
-        [standard_artifacts.Schema()])
+        [types.Artifact(type_name='SchemaPath')])
 
   def _verify_outputs(self, transform):
-    self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
+    self.assertEqual('TransformPath',
                      transform.outputs['transform_graph'].type_name)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+    self.assertEqual('ExamplesPath',
                      transform.outputs['transformed_examples'].type_name)
 
   def testConstructFromModuleFile(self):

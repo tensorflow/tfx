@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Text
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
-from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
@@ -129,24 +128,6 @@ class FileBasedExampleGenSpec(ComponentSpec):
   # These compatibility aliases are provided for forwards compatibility.
   _INPUT_COMPATIBILITY_ALIASES = {
       'input': 'input_base',
-  }
-
-
-class InfraValidatorSpec(ComponentSpec):
-  """InfraValidator component spec."""
-
-  PARAMETERS = {
-      'serving_spec': ExecutionParameter(type=infra_validator_pb2.ServingSpec)
-  }
-
-  INPUTS = {
-      'model': ChannelParameter(type=standard_artifacts.Model),
-      'examples': ChannelParameter(type=standard_artifacts.Examples,
-                                   optional=True),
-  }
-
-  OUTPUTS = {
-      'blessing': ChannelParameter(type=standard_artifacts.InfraBlessing),
   }
 
 

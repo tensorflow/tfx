@@ -51,11 +51,11 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - input_data: A list of type `standard_artifacts.Examples` which will
-          often contain two splits, 'train' and 'eval'.
+        - input_data: A list of 'ExamplesPath' type which will often contain
+          two splits, 'train' and 'eval'.
       output_dict: Output dict from key to a list of artifacts, including:
-        - output_data: A list of type `standard_artifacts.Examples` which will
-          usually contain the same splits as input_data.
+        - output_data: A list of 'ExamplesPath' type which will usually contain
+          the same splits as input_data.
       exec_properties: A dict of execution properties, including:
         - name: Optional unique name. Necessary iff multiple Hello components
           are declared in the same pipeline.

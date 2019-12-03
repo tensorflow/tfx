@@ -42,10 +42,6 @@ class InferenceResult(artifact.Artifact):
   TYPE_NAME = 'InferenceResult'
 
 
-class InfraBlessing(artifact.Artifact):
-  TYPE_NAME = 'ModelInfraBlessingPath'
-
-
 class Model(artifact.Artifact):
   TYPE_NAME = 'ModelExportPath'
 

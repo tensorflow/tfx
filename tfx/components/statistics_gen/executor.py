@@ -55,11 +55,11 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
-        - input_data: A list of type `standard_artifacts.Examples`. This should
-          contain both 'train' and 'eval' split.
+        - input_data: A list of 'ExamplesPath' type. This should contain both
+          'train' and 'eval' split.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: A list of type `standard_artifacts.ExampleStatistics`. This
-          should contain both the 'train' and 'eval' splits.
+        - output: A list of 'ExampleStatisticsPath' type. This should contain
+          both 'train' and 'eval' split.
       exec_properties: A dict of execution properties. Not used yet.
 
     Returns:

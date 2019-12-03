@@ -21,7 +21,6 @@ from __future__ import print_function
 # Standard Imports
 
 import tensorflow as tf
-from tfx.types import standard_artifacts
 from tfx.utils import dsl_utils
 
 
@@ -29,8 +28,7 @@ class DslUtilsTest(tf.test.TestCase):
 
   def testExternalInput(self):
     [input_artifact] = dsl_utils.external_input(uri='path').get()
-    self.assertEqual(standard_artifacts.ExternalArtifact.TYPE_NAME,
-                     input_artifact.type_name)
+    self.assertEqual('ExternalPath', input_artifact.type_name)
     self.assertEqual('path', input_artifact.uri)
 
 

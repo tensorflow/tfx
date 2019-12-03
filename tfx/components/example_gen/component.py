@@ -81,8 +81,8 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
           instance, providing custom configuration for ExampleGen. If any field
           is provided as a RuntimeParameter, output_config should be
           constructed as a dict.
-      example_artifacts: Channel of `standard_artifacts.Examples` for output
-        train and eval examples.
+      example_artifacts: Channel of 'ExamplesPath' for output train and eval
+        examples.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
     """
@@ -143,9 +143,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
     """Construct a FileBasedExampleGen component.
 
     Args:
-      input: A Channel of type `standard_artifacts.ExternalArtifact`, which
-        includes one artifact whose uri is an external directory containing
-        the data files. _required_
+      input: A Channel of 'ExternalPath' type, which includes one artifact whose
+        uri is an external directory containing the data files. _required_
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing input configuration. If unset, the files under

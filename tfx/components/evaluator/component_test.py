@@ -36,8 +36,7 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
         model_exports=channel_utils.as_channel([model_exports]))
-    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
   def testConstructWithSliceSpec(self):
     examples = standard_artifacts.Examples()
@@ -49,8 +48,7 @@ class ComponentTest(tf.test.TestCase):
             evaluator_pb2.SingleSlicingSpec(
                 column_for_slicing=['trip_start_hour'])
         ]))
-    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
   def testConstructWithFairnessThresholds(self):
     examples = standard_artifacts.Examples()
@@ -63,8 +61,7 @@ class ComponentTest(tf.test.TestCase):
                 column_for_slicing=['trip_start_hour'])
         ]),
         fairness_indicator_thresholds=[0.1, 0.3, 0.5, 0.9])
-    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
   def testConstructWithParameter(self):
     column_name = data_types.RuntimeParameter(name='column-name', ptype=Text)
@@ -78,8 +75,7 @@ class ComponentTest(tf.test.TestCase):
             'column_for_slicing': [column_name]
         }]},
         fairness_indicator_thresholds=[threshold])
-    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ class ComponentTest(tf.test.TestCase):
     eval_examples = standard_artifacts.Examples(split='eval')
     statistics_gen = component.StatisticsGen(
         examples=channel_utils.as_channel([train_examples, eval_examples]))
-    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
+    self.assertEqual('ExampleStatisticsPath',
                      statistics_gen.outputs['statistics'].type_name)
 
 

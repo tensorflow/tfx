@@ -70,10 +70,10 @@ class HelloComponent(base_component.BaseComponent):
     """Construct a HelloComponent.
 
     Args:
-      input_data: A Channel of type `standard_artifacts.Examples`. This will
-        often contain two splits: 'train', and 'eval'.
-      output_data: A Channel of type `standard_artifacts.Examples`. This will
-        usually contain the same splits as input_data.
+      input_data: A Channel of 'ExamplesPath' type. This will often contain
+        two splits, 'train', and 'eval'.
+      output_data: A Channel of 'ExamplesPath' type. This will usually contain
+        the same splits as input_data.
       name: Optional unique name. Necessary if multiple Hello components are
         declared in the same pipeline.
     """

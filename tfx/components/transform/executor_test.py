@@ -22,7 +22,6 @@ import os
 import tempfile
 import tensorflow as tf
 import tensorflow_transform as tft
-from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
@@ -30,7 +29,7 @@ from tfx.types import standard_artifacts
 
 
 # TODO(b/122478841): Add more detailed tests.
-class ExecutorTest(tft_unit.TransformTestCase):
+class ExecutorTest(tf.test.TestCase):
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
@@ -107,55 +106,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  # TODO(b/143355786): Remove _makeTestPipeline once TFX depends on TFT 0.16 and
-  # use self._makeTestPipeline instead.
-  def _makeTestPipeline(self):
-
-    class _TestPipeline(tft_unit.beam.Pipeline):
-      """Test pipeline class that retains pipeline metrics."""
-
-      @property
-      def metrics(self):
-        return self._run_result.metrics()
-
-      def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-          self._run_result = self.run()
-          self._run_result.wait_until_finish()
-
-    return _TestPipeline(
-        **tft_unit.test_helpers.make_test_beam_pipeline_kwargs())
-
-  # TODO(b/143355786): Remove _assertMetricsCounterEqual once TFX depends on TFT
-  # 0.16 and use self.assertMetricsCounterEqual instead.
-  def _assertMetricsCounterEqual(self, metrics, name, expected_count):
-    metric = metrics.query(
-        tft_unit.beam.metrics.metric.MetricsFilter().with_name(
-            name))['counters']
-    committed = sum([r.committed for r in metric])
-    attempted = sum([r.attempted for r in metric])
-    self.assertEqual(committed, attempted)
-    self.assertEqual(committed, expected_count)
-
-  def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
-    pipelines = []
-
-    def _create_pipeline_wrapper(*_):
-      result = self._makeTestPipeline()
-      pipelines.append(result)
-      return result
-
-    with tft_unit.mock.patch.object(
-        executor.Executor,
-        '_CreatePipeline',
-        autospec=True,
-        side_effect=_create_pipeline_wrapper):
-      transform_executor = executor.Executor()
-      transform_executor.Do(self._input_dict, self._output_dict,
-                            self._exec_properties)
-    assert len(pipelines) == 1
-    return pipelines[0].metrics
-
   def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
@@ -179,37 +129,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
-
-  def testCounters(self):
-    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
-
-    # The test data has 10036 instances in the train dataset, and 4964 instances
-    # in the eval dataset (obtained by running:
-    #   gqui third_party/tfx/components/testdata/csv_example_gen/train/data* \
-    #     'select count(*)'
-    # )
-    # Since the analysis dataset (train) is read twice (once for analysis and
-    # once for transform), the expected value of the num_instances counter is:
-    # 10036 * 2 + 4964 = 25036.
-    self._assertMetricsCounterEqual(metrics, 'num_instances', 25036)
-
-    # We expect 2 saved_models to be created because this is a 1 phase analysis
-    # preprocessing_fn.
-    self._assertMetricsCounterEqual(metrics, 'saved_models_created', 2)
-
-    # This should be the size of the preprocessing_fn's inputs dictionary which
-    # is 18 according to the schema.
-    self._assertMetricsCounterEqual(metrics, 'total_columns_count', 18)
-
-    # There are 9 features that are passed into tft analyzers in the
-    # preprocessing_fn.
-    self._assertMetricsCounterEqual(metrics, 'analyze_columns_count', 9)
-
-    # In addition, 7 features go through a pure TF map, not including the label,
-    # so we expect 9 + 7 + 1 = 17 transform columns.
-    self._assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
 
   def testDoWithCache(self):
     # First run that creates cache.
