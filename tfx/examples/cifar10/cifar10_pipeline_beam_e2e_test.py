@@ -28,6 +28,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
+# DO NOT SUBMIT: Revert this file, this is here to trigger kokoro.
 class Cifar10PipelineBeamEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
