@@ -82,7 +82,7 @@ def generate_output_split_names(
       same field names as Input proto message.
     output_config: example_gen_pb2.Output instance. If any field is provided as
       a RuntimeParameter, output_config should be constructed as a dict with the
-       same field names as Output proto message.
+      same field names as Output proto message.
 
   Returns:
     List of split names.
@@ -99,26 +99,31 @@ def generate_output_split_names(
   # logic based on parameter types.
   if isinstance(output_config, example_gen_pb2.Output):
     output_config = json_format.MessageToDict(
-        output_config, including_default_value_fields=True)
+        output_config,
+        including_default_value_fields=True,
+        preserving_proto_field_name=True)
   if isinstance(input_config, example_gen_pb2.Input):
     input_config = json_format.MessageToDict(
-        input_config, including_default_value_fields=True)
+        input_config,
+        including_default_value_fields=True,
+        preserving_proto_field_name=True)
 
-  if 'splitConfig' in output_config and 'splits' in output_config['splitConfig']:
+  if 'split_config' in output_config and 'splits' in output_config[
+      'split_config']:
     if 'splits' not in input_config:
       raise RuntimeError(
-          'ExampleGen instance specified output splits but no input split is specified.'
-      )
+          'ExampleGen instance specified output splits but no input split '
+          'is specified.')
     if len(input_config['splits']) != 1:
       # If output is specified, then there should only be one input split.
       raise RuntimeError(
-          'ExampleGen instance specified output splits but at the same time input has more than one split.'
-      )
-    for split in output_config['splitConfig']['splits']:
-      if not split['name'] or (isinstance(split['hashBuckets'], int) and
-                               split['hashBuckets'] <= 0):
+          'ExampleGen instance specified output splits but at the same time '
+          'input has more than one split.')
+    for split in output_config['split_config']['splits']:
+      if not split['name'] or (isinstance(split['hash_buckets'], int) and
+                               split['hash_buckets'] <= 0):
         raise RuntimeError('Str-typed output split name and int-typed '
-                           'hashBuckets are required.')
+                           'hash buckets are required.')
       result.append(split['name'])
   else:
     # If output is not specified, it will have the same split as the input.
@@ -152,7 +157,9 @@ def make_default_output_config(
   """Returns default output config based on input config."""
   if isinstance(input_config, example_gen_pb2.Input):
     input_config = json_format.MessageToDict(
-        input_config, including_default_value_fields=True)
+        input_config,
+        including_default_value_fields=True,
+        preserving_proto_field_name=True)
 
   if len(input_config['splits']) > 1:
     # Returns empty output split config as output split will be same as input.

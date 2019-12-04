@@ -32,7 +32,6 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import path_utils
 
-
 _POLLING_INTERVAL_IN_SECONDS = 30
 
 
@@ -45,7 +44,8 @@ class Executor(tfx_pusher_executor.Executor):
     push_destination = pusher_pb2.PushDestination(
         filesystem=pusher_pb2.PushDestination.Filesystem(
             base_directory=temp_dir))
-    return json_format.MessageToJson(push_destination)
+    return json_format.MessageToJson(
+        push_destination, preserving_proto_field_name=True)
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],

@@ -59,7 +59,8 @@ class ExecutorTest(tf.test.TestCase):
             json_format.MessageToJson(
                 pusher_pb2.PushDestination(
                     filesystem=pusher_pb2.PushDestination.Filesystem(
-                        base_directory=self._serving_model_dir))),
+                        base_directory=self._serving_model_dir)),
+                preserving_proto_field_name=True),
     }
     self._executor = executor.Executor()
 

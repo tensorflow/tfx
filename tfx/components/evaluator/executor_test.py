@@ -61,7 +61,8 @@ class ExecutorTest(tf.test.TestCase):
                         column_for_slicing=['trip_start_hour']),
                     evaluator_pb2.SingleSlicingSpec(
                         column_for_slicing=['trip_start_day', 'trip_miles']),
-                ]))
+                ]),
+                preserving_proto_field_name=True)
     }
 
     try:

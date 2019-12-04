@@ -169,5 +169,5 @@ class Driver(base_driver.BaseDriver):
           single_input.set_artifact(new_artifact)
 
     exec_properties['input_config'] = json_format.MessageToJson(
-        input_config, sort_keys=True)
+        input_config, sort_keys=True, preserving_proto_field_name=True)
     return input_dict

@@ -24,19 +24,19 @@
             "artifact": {
               "properties": {
                 "name": {
-                  "stringValue": "examples"
+                  "string_value": "examples"
                 },
                 "pipeline_name": {
-                  "stringValue": "test_pipeline"
+                  "string_value": "test_pipeline"
                 },
                 "producer_component": {
-                  "stringValue": "CsvExampleGen"
+                  "string_value": "CsvExampleGen"
                 },
                 "split": {
-                  "stringValue": "{{pipelineparam:op=;name=example-gen-output-name}}"
+                  "string_value": "{{pipelineparam:op=;name=example-gen-output-name}}"
                 },
                 "type_name": {
-                  "stringValue": "ExamplesPath"
+                  "string_value": "ExamplesPath"
                 }
               }
             },
@@ -78,19 +78,19 @@
             "artifact": {
               "properties": {
                 "name": {
-                  "stringValue": "output"
+                  "string_value": "output"
                 },
                 "pipeline_name": {
-                  "stringValue": "test_pipeline"
+                  "string_value": "test_pipeline"
                 },
                 "producer_component": {
-                  "stringValue": "StatisticsGen.foo"
+                  "string_value": "StatisticsGen.foo"
                 },
                 "split": {
-                  "stringValue": "train"
+                  "string_value": "train"
                 },
                 "type_name": {
-                  "stringValue": "ExampleStatisticsPath"
+                  "string_value": "ExampleStatisticsPath"
                 }
               }
             },
@@ -114,19 +114,19 @@
             "artifact": {
               "properties": {
                 "name": {
-                  "stringValue": "output"
+                  "string_value": "output"
                 },
                 "pipeline_name": {
-                  "stringValue": "test_pipeline"
+                  "string_value": "test_pipeline"
                 },
                 "producer_component": {
-                  "stringValue": "StatisticsGen.foo"
+                  "string_value": "StatisticsGen.foo"
                 },
                 "split": {
-                  "stringValue": "eval"
+                  "string_value": "eval"
                 },
                 "type_name": {
-                  "stringValue": "ExampleStatisticsPath"
+                  "string_value": "ExampleStatisticsPath"
                 }
               }
             },

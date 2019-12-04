@@ -75,7 +75,8 @@ class ExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='avro', pattern='avro/*.avro'),
-                ])),
+                ]),
+                preserving_proto_field_name=True),
         'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
@@ -84,7 +85,8 @@ class ExecutorTest(tf.test.TestCase):
                             name='train', hash_buckets=2),
                         example_gen_pb2.SplitConfig.Split(
                             name='eval', hash_buckets=1)
-                    ])))
+                    ])),
+                preserving_proto_field_name=True)
     }
 
     # Run executor.

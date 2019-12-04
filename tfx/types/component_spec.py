@@ -210,7 +210,8 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
           json_format.ParseDict(dict_with_default, arg.type())
           value = json_utils.dumps(value)
         else:
-          value = json_format.MessageToJson(value, sort_keys=True)
+          value = json_format.MessageToJson(
+              message=value, sort_keys=True, preserving_proto_field_name=True)
 
       self.exec_properties[arg_name] = value
 

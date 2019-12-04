@@ -63,6 +63,7 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('f', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
     ]
+    super(ExecutorTest, self).setUp()
 
   @mock.patch.multiple(
       executor,
@@ -117,7 +118,8 @@ class ExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='bq', pattern='SELECT i, f, s FROM `fake`'),
-                ])),
+                ]),
+                preserving_proto_field_name=True),
         'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
@@ -126,7 +128,8 @@ class ExecutorTest(tf.test.TestCase):
                             name='train', hash_buckets=2),
                         example_gen_pb2.SplitConfig.Split(
                             name='eval', hash_buckets=1)
-                    ])))
+                    ])),
+                preserving_proto_field_name=True)
     }
 
     # Run executor.

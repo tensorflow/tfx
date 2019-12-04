@@ -69,9 +69,13 @@ class ExecutorTest(tf.test.TestCase):
     # Create exec properties skeleton.
     self._exec_properties = {
         'train_args':
-            json_format.MessageToJson(trainer_pb2.TrainArgs(num_steps=1000)),
+            json_format.MessageToJson(
+                trainer_pb2.TrainArgs(num_steps=1000),
+                preserving_proto_field_name=True),
         'eval_args':
-            json_format.MessageToJson(trainer_pb2.EvalArgs(num_steps=500)),
+            json_format.MessageToJson(
+                trainer_pb2.EvalArgs(num_steps=500),
+                preserving_proto_field_name=True),
         'warm_starting':
             False,
     }

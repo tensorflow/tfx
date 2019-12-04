@@ -95,9 +95,11 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                     example_gen_pb2.Input.Split(
                         name='train', pattern='train/*'),
                     example_gen_pb2.Input.Split(name='eval', pattern='eval/*')
-                ])),
+                ]),
+                preserving_proto_field_name=True),
         'output_config':
-            json_format.MessageToJson(example_gen_pb2.Output())
+            json_format.MessageToJson(
+                example_gen_pb2.Output(), preserving_proto_field_name=True)
     }
 
     # Run executor.
@@ -120,7 +122,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='single', pattern='single/*'),
-                ])),
+                ]),
+                preserving_proto_field_name=True),
         'output_config':
             json_format.MessageToJson(
                 example_gen_pb2.Output(
