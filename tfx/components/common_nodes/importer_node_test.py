@@ -25,6 +25,7 @@ from tfx.components.common_nodes import importer_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ImporterNodeTest(tf.test.TestCase):
@@ -69,6 +70,21 @@ class ImporterNodeTest(tf.test.TestCase):
           source_uri=['m/y/u/r/i/1', 'm/y/u/r/i/2'],
           artifact_type=standard_artifacts.Examples,
       )
+
+  def testImporterNodeDumpsJsonRoundtrip(self):
+    instance_name = 'my_importer'
+    source_uris = ['m/y/u/r/i']
+    impt = importer_node.ImporterNode(
+        instance_name=instance_name,
+        source_uri=source_uris,
+        artifact_type=standard_artifacts.Examples)
+
+    # The following line will raise an assertion if object not JSONable.
+    json_text = json_utils.dumps(impt)
+
+    actual_obj = json_utils.loads(json_text)
+    self.assertEqual(actual_obj._instance_name, instance_name)
+    self.assertEqual(actual_obj._source_uri, source_uris)
 
 
 class ImporterDriverTest(tf.test.TestCase):
