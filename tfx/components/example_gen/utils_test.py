@@ -165,13 +165,13 @@ class UtilsTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='single', pattern='single/*')
         ]),
         output_config={
-            'splitConfig': {
+            'split_config': {
                 'splits': [{
                     'name': split_name_param,
-                    'hashBuckets': 2
+                    'hash_buckets': 2
                 }, {
                     'name': 'eval',
-                    'hashBuckets': 1
+                    'hash_buckets': 1
                 }]
             }
         })

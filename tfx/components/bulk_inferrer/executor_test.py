@@ -90,9 +90,12 @@ class ExecutorTest(tf.test.TestCase):
     # Create exe properties.
     exec_properties = {
         'data_spec':
-            json_format.MessageToJson(bulk_inferrer_pb2.DataSpec()),
+            json_format.MessageToJson(
+                bulk_inferrer_pb2.DataSpec(), preserving_proto_field_name=True),
         'model_spec':
-            json_format.MessageToJson(bulk_inferrer_pb2.ModelSpec()),
+            json_format.MessageToJson(
+                bulk_inferrer_pb2.ModelSpec(),
+                preserving_proto_field_name=True),
         'component_id':
             self.component_id,
     }

@@ -42,6 +42,7 @@ class ArtifactState(object):
   # Indicates that the artifact has been garbage collected.
   DELETED = 'deleted'
 
+
 # Default split of examples data.
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 
@@ -137,9 +138,14 @@ class Artifact(json_utils.Jsonable):
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
         'artifact':
-            json.loads(json_format.MessageToJson(self.artifact)),
+            json.loads(
+                json_format.MessageToJson(
+                    message=self.artifact, preserving_proto_field_name=True)),
         'artifact_type':
-            json.loads(json_format.MessageToJson(self.artifact_type)),
+            json.loads(
+                json_format.MessageToJson(
+                    message=self.artifact_type,
+                    preserving_proto_field_name=True)),
     }
 
   @classmethod

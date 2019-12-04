@@ -90,8 +90,8 @@ class BaseComponentTest(tf.test.TestCase):
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
         '{\n'
-        '  "mysqlDbServiceHost": {\n'
-        '    "environmentVariable": "MYSQL_SERVICE_HOST"\n'
+        '  "mysql_db_service_host": {\n'
+        '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
         '--beam_pipeline_args',
@@ -131,10 +131,10 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
     example_gen = csv_example_gen_component.CsvExampleGen(
         input=channel_utils.as_channel([examples]),
         output_config={
-            'splitConfig': {
+            'split_config': {
                 'splits': [{
                     'name': example_gen_output_name,
-                    'hashBuckets': 10
+                    'hash_buckets': 10
                 }]
             }
         })
@@ -198,8 +198,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
         '{\n'
-        '  "mysqlDbServiceHost": {\n'
-        '    "environmentVariable": "MYSQL_SERVICE_HOST"\n'
+        '  "mysql_db_service_host": {\n'
+        '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
         '--beam_pipeline_args',
@@ -220,8 +220,8 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '{{pipelineparam:op=;name=pipeline-root-param}}',
         '--kubeflow_metadata_config',
         '{\n'
-        '  "mysqlDbServiceHost": {\n'
-        '    "environmentVariable": "MYSQL_SERVICE_HOST"\n'
+        '  "mysql_db_service_host": {\n'
+        '    "environment_variable": "MYSQL_SERVICE_HOST"\n'
         '  }\n'
         '}',
         '--beam_pipeline_args',

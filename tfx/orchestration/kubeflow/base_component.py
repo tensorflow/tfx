@@ -99,7 +99,8 @@ class BaseComponent(object):
         '--pipeline_root',
         pipeline_root,
         '--kubeflow_metadata_config',
-        json_format.MessageToJson(kubeflow_metadata_config),
+        json_format.MessageToJson(
+            message=kubeflow_metadata_config, preserving_proto_field_name=True),
         '--beam_pipeline_args',
         json.dumps(pipeline.beam_pipeline_args),
         '--additional_pipeline_args',

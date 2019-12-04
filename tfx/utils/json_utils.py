@@ -130,10 +130,15 @@ class _DefaultEncoder(json.JSONEncoder):
 
     if isinstance(obj, message.Message):
       return {
-          _TFX_OBJECT_TYPE_KEY: _ObjectType.PROTO,
-          _MODULE_KEY: obj.__class__.__module__,
-          _CLASS_KEY: obj.__class__.__name__,
-          _PROTO_VALUE_KEY: json_format.MessageToJson(obj, sort_keys=True)
+          _TFX_OBJECT_TYPE_KEY:
+              _ObjectType.PROTO,
+          _MODULE_KEY:
+              obj.__class__.__module__,
+          _CLASS_KEY:
+              obj.__class__.__name__,
+          _PROTO_VALUE_KEY:
+              json_format.MessageToJson(
+                  message=obj, sort_keys=True, preserving_proto_field_name=True)
       }
 
     return super(_DefaultEncoder, self).default(obj)

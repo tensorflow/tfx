@@ -60,7 +60,8 @@ class DriverTest(tf.test.TestCase):
                         name='s1', pattern='span{SPAN}/split1/*'),
                     example_gen_pb2.Input.Split(
                         name='s2', pattern='span{SPAN}/split2/*')
-                ])),
+                ]),
+                preserving_proto_field_name=True),
     }
 
   def testResolveInputArtifacts(self):
@@ -95,7 +96,8 @@ class DriverTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(name='s1', pattern='split1/*'),
                     example_gen_pb2.Input.Split(name='s2', pattern='split2/*')
-                ])),
+                ]),
+                preserving_proto_field_name=True),
     }
 
     # Cache not hit.

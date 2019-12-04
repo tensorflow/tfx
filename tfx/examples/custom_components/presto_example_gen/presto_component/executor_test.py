@@ -86,9 +86,13 @@ class ExecutorTest(tf.test.TestCase):
               input_dict={},
               exec_properties={
                   'input_config':
-                      json_format.MessageToJson(example_gen_pb2.Input()),
+                      json_format.MessageToJson(
+                          example_gen_pb2.Input(),
+                          preserving_proto_field_name=True),
                   'custom_config':
-                      json_format.MessageToJson(example_gen_pb2.CustomConfig())
+                      json_format.MessageToJson(
+                          example_gen_pb2.CustomConfig(),
+                          preserving_proto_field_name=True)
               },
               split_pattern='SELECT i, f, s FROM `fake`'))
 
@@ -126,7 +130,8 @@ class ExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
                         name='bq', pattern='SELECT i, f, s FROM `fake`'),
-                ])),
+                ]),
+                preserving_proto_field_name=True),
         'custom_config':
             json_format.MessageToJson(example_gen_pb2.CustomConfig()),
         'output_config':
