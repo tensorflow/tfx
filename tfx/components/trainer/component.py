@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.trainer import executor
+from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TrainerSpec
@@ -104,10 +105,10 @@ class Trainer(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       schema: types.Channel = None,
       base_model: Optional[types.Channel] = None,
-      module_file: Optional[Text] = None,
-      trainer_fn: Optional[Text] = None,
-      train_args: trainer_pb2.TrainArgs = None,
-      eval_args: trainer_pb2.EvalArgs = None,
+      module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      trainer_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      train_args: Union[trainer_pb2.TrainArgs, Dict[Text, Any]] = None,
+      eval_args: Union[trainer_pb2.EvalArgs, Dict[Text, Any]] = None,
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
@@ -124,9 +125,9 @@ class Trainer(base_component.BaseComponent):
         the input transform graph if present.
       schema:  A Channel of 'SchemaPath' type, serving as the schema of training
         and eval data.
-      base_model: A Channel of 'Model' type, containing model that will be
-        used for training. This can be used for warmstart, transfer learning or
-        model ensembling.
+      base_model: A Channel of 'Model' type, containing model that will be used
+        for training. This can be used for warmstart, transfer learning or model
+        ensembling.
       module_file: A path to python module file containing UDF model definition.
         The module_file must implement a function named `trainer_fn` at its
         top level. The function must have the following signature.
@@ -140,11 +141,10 @@ class Trainer(base_component.BaseComponent):
           'train_spec': an instance of tf.estimator.TrainSpec
           'eval_spec': an instance of tf.estimator.EvalSpec
           'eval_input_receiver_fn': an instance of tfma.export.EvalInputReceiver
-
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
+            Exactly one of 'module_file' or 'trainer_fn' must be supplied.
       trainer_fn:  A python path to UDF model definition function. See
-        'module_file' for the required signature of the UDF.
-        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
+        'module_file' for the required signature of the UDF. Exactly one of
+        'module_file' or 'trainer_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance, containing args used for
         training. Current only num_steps is available.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.

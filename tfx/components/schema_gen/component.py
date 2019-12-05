@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.schema_gen import executor
+from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import SchemaGenSpec
 
@@ -54,29 +55,30 @@ class SchemaGen(base_component.BaseComponent):
   SPEC_CLASS = SchemaGenSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               statistics: Optional[types.Channel] = None,
-               infer_feature_shape: Optional[bool] = False,
-               output: Optional[types.Channel] = None,
-               stats: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      statistics: Optional[types.Channel] = None,
+      infer_feature_shape: Optional[Union[bool,
+                                          data_types.RuntimeParameter]] = False,
+      output: Optional[types.Channel] = None,
+      stats: Optional[types.Channel] = None,
+      instance_name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
     Args:
       statistics: A Channel of `ExampleStatistics` type (required if spec is not
         passed). This should contain at least a `train` split. Other splits are
         currently ignored. _required_
-      infer_feature_shape: Boolean value indicating whether or not to infer the
-        shape of features. If the feature shape is not inferred, downstream
-        Tensorflow Transform component using the schema will parse input
-        as tf.SparseTensor.
+      infer_feature_shape: Boolean (or RuntimeParameter) value indicating
+        whether or not to infer the shape of features. If the feature shape is
+        not inferred, downstream Tensorflow Transform component using the schema
+        will parse input as tf.SparseTensor.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
         SchemaGen.  Required only if multiple SchemaGen components are declared
-        in the same pipeline.
-
-      Either `statistics` or `stats` must be present in the input arguments.
+        in the same pipeline.  Either `statistics` or `stats` must be present in
+        the input arguments.
     """
     statistics = statistics or stats
     output = output or types.Channel(

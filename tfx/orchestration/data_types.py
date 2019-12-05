@@ -181,8 +181,3 @@ class RuntimeParameter(json_utils.Jsonable):
     """RuntimeParameter is uniquely identified by its name."""
     return self.name.__hash__()
 
-
-# TODO(jxzheng): Add checks against ptype in component interfaces.
-def check_parameter_type(parameter: RuntimeParameter, ptype: Type) -> bool:  # pylint: disable=g-bare-generic
-  """Helper function that returns True when parameter.ptype != ptype."""
-  return isinstance(parameter, RuntimeParameter) and parameter.ptype != ptype

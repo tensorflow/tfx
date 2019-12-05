@@ -17,11 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional, Text, Union
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.transform import executor
+from tfx.orchestration import data_types
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
@@ -60,20 +61,22 @@ class Transform(base_component.BaseComponent):
   SPEC_CLASS = TransformSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
 
-  def __init__(self,
-               examples: types.Channel = None,
-               schema: types.Channel = None,
-               module_file: Optional[Text] = None,
-               preprocessing_fn: Optional[Text] = None,
-               transform_graph: Optional[types.Channel] = None,
-               transformed_examples: Optional[types.Channel] = None,
-               input_data: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      examples: types.Channel = None,
+      schema: types.Channel = None,
+      module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      preprocessing_fn: Optional[Union[Text,
+                                       data_types.RuntimeParameter]] = None,
+      transform_graph: Optional[types.Channel] = None,
+      transformed_examples: Optional[types.Channel] = None,
+      input_data: Optional[types.Channel] = None,
+      instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type (required). This should
-        contain the two splits 'train' and 'eval'.
+      examples: A Channel of 'ExamplesPath' type (required). This should contain
+        the two splits 'train' and 'eval'.
       schema: A Channel of 'SchemaPath' type. This should contain a single
         schema artifact.
       module_file: The file path to a python module file, from which the
@@ -87,9 +90,9 @@ class Transform(base_component.BaseComponent):
         tf.SparseTensor.  Exactly one of 'module_file' or 'preprocessing_fn'
         must be supplied.
       preprocessing_fn: The path to python function that implements a
-         'preprocessing_fn'. See 'module_file' for expected signature of the
-         function. Exactly one of 'module_file' or 'preprocessing_fn' must
-         be supplied.
+        'preprocessing_fn'. See 'module_file' for expected signature of the
+        function. Exactly one of 'module_file' or 'preprocessing_fn' must be
+        supplied.
       transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;

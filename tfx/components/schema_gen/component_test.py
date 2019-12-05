@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.schema_gen import component
+from tfx.orchestration import data_types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -32,6 +33,17 @@ class SchemaGenTest(tf.test.TestCase):
             [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
+
+  def testConstructWithParameter(self):
+    infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=bool)
+    schema_gen = component.SchemaGen(
+        statistics=channel_utils.as_channel(
+            [standard_artifacts.ExampleStatistics(split='train')]),
+        infer_feature_shape=infer_shape)
+    self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
+    self.assertJsonEqual(
+        str(schema_gen.spec.exec_properties['infer_feature_shape']),
+        str(infer_shape))
 
 
 if __name__ == '__main__':

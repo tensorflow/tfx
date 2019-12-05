@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-from typing import Text
+from typing import Dict, List, Text
 import tensorflow as tf
 
 from google.protobuf.json_format import ParseError
@@ -89,11 +89,39 @@ class DataTypesTest(tf.test.TestCase):
     output_channel = Channel(type_name='OutputType')
 
     with self.assertRaisesRegexp(
-        ParseError,
-        'Failed to parse .* field: expected string or '
+        ParseError, 'Failed to parse .* field: expected string or '
         '(bytes-like object|buffer)'):
-      spec = _BasicComponentSpec(  # pylint: disable=unused-variable
+      _ = _BasicComponentSpec(
           folds=10, proto=proto, input=input_channel, output=output_channel)
+
+  def testTypeCheckWithRuntimeParameter(self):
+
+    class SimpleComponentSpec(ComponentSpec):
+      INPUTS = {}
+      OUTPUTS = {}
+      PARAMETERS = {
+          'x': ExecutionParameter(type=int),
+          'y': ExecutionParameter(type=int, optional=True),
+      }
+
+    parameter_int = data_types.RuntimeParameter(name='int', ptype=int)
+    parameter_str = data_types.RuntimeParameter(name='str', ptype=Text)
+
+    _ = SimpleComponentSpec(x=parameter_int)
+    with self.assertRaisesRegexp(TypeError, 'Expected type'):
+      _ = SimpleComponentSpec(x=42, y=parameter_str)
+
+    class ComponentSpecWithContainer(ComponentSpec):
+      INPUTS = {}
+      OUTPUTS = {}
+      PARAMETERS = {
+          'x': ExecutionParameter(type=Dict[Text, Text]),
+          'y': ExecutionParameter(type=List[int]),
+      }
+
+    _ = ComponentSpecWithContainer(x={u'key': parameter_str}, y=[parameter_int])
+    with self.assertRaisesRegexp(TypeError, 'Expecting value type'):
+      _ = ComponentSpecWithContainer(x={u'key': parameter_int}, y=[])
 
 
 if __name__ == '__main__':

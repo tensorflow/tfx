@@ -18,10 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
 import tensorflow as tf
 from tfx.components.base import executor_spec
 from tfx.components.pusher import component
 from tfx.components.pusher import executor
+from tfx.orchestration import data_types
 from tfx.proto import pusher_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -46,6 +48,16 @@ class ComponentTest(tf.test.TestCase):
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='push_destination')))
+    self.assertEqual('ModelPushPath', pusher.outputs['model_push'].type_name)
+
+  def testConstructWithParameter(self):
+    push_dir = data_types.RuntimeParameter(name='push-dir', ptype=Text)
+    pusher = component.Pusher(
+        model=self.model,
+        model_blessing=self.model_blessing,
+        push_destination={'filesystem': {
+            'base_directory': push_dir
+        }})
     self.assertEqual('ModelPushPath', pusher.outputs['model_push'].type_name)
 
   def testConstructNoDestination(self):
