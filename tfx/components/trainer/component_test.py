@@ -18,8 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
 import tensorflow as tf
 from tfx.components.trainer import component
+from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -51,6 +53,20 @@ class ComponentTest(tf.test.TestCase):
         eval_args=self.eval_args)
     self._verify_outputs(trainer)
     self.assertEqual(module_file, trainer.spec.exec_properties['module_file'])
+
+  def testConstructWithParameter(self):
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    n_steps = data_types.RuntimeParameter(name='n-steps', ptype=int)
+    trainer = component.Trainer(
+        module_file=module_file,
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        train_args=dict(num_steps=n_steps),
+        eval_args=dict(num_steps=n_steps))
+    self._verify_outputs(trainer)
+    self.assertJsonEqual(
+        str(module_file), str(trainer.spec.exec_properties['module_file']))
 
   def testConstructFromTrainerFn(self):
     trainer_fn = 'path.to.my_trainer_fn'

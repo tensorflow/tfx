@@ -18,9 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
 import tensorflow as tf
 from tfx import types
 from tfx.components.transform import component
+from tfx.orchestration import data_types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -51,6 +53,17 @@ class ComponentTest(tf.test.TestCase):
     )
     self._verify_outputs(transform)
     self.assertEqual(module_file, transform.spec.exec_properties['module_file'])
+
+  def testConstructWithParameter(self):
+    module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
+    transform = component.Transform(
+        examples=self.input_data,
+        schema=self.schema,
+        module_file=module_file,
+    )
+    self._verify_outputs(transform)
+    self.assertJsonEqual(
+        str(module_file), str(transform.spec.exec_properties['module_file']))
 
   def testConstructFromPreprocessingFn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'

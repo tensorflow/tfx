@@ -18,12 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Optional, Text
+from typing import Any, Dict, List, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.evaluator import executor
+from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import EvaluatorSpec
@@ -73,8 +74,10 @@ class Evaluator(base_component.BaseComponent):
       self,
       examples: types.Channel = None,
       model: types.Channel = None,
-      feature_slicing_spec: Optional[evaluator_pb2.FeatureSlicingSpec] = None,
-      fairness_indicator_thresholds: Optional[List[float]] = None,
+      feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
+                                           Dict[Text, Any]]] = None,
+      fairness_indicator_thresholds: Optional[List[Union[
+          float, data_types.RuntimeParameter]]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -83,25 +86,25 @@ class Evaluator(base_component.BaseComponent):
     Args:
       examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
         component. _required_
-      model: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component.  Will be deprecated in the future for the `model`
-        parameter.
+      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
+        component.  Will be deprecated in the future for the `model` parameter.
       feature_slicing_spec:
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
-        instance that describes how Evaluator should slice the data.
-      fairness_indicator_thresholds: Optional list of float threshold values for
-        use with TFMA fairness indicators. Experimental functionality: this
-        interface and functionality may change at any time. TODO(b/142653905):
-        add a link to additional documentation for TFMA fairness indicators
-        here.
+          instance that describes how Evaluator should slice the data. If any
+          field is provided as a RuntimeParameter, feature_slicing_spec should
+          be constructed as a dict with the same field names as
+          FeatureSlicingSpec proto message.
+      fairness_indicator_thresholds: Optional list of float (or
+        RuntimeParameter) threshold values for use with TFMA fairness
+          indicators. Experimental functionality: this interface and
+          functionality may change at any time. TODO(b/142653905): add a link to
+          additional documentation for TFMA fairness indicators here.
       output: Channel of `ModelEvalPath` to store the evaluation results.
-      model_exports: Backwards compatibility alias for the `model`
-        argument.
+      model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
         Evaluator. Required only if multiple Evaluator components are declared
-        in the same pipeline.
-
-      Either `model_exports` or `model` must be present in the input arguments.
+        in the same pipeline.  Either `model_exports` or `model` must be present
+        in the input arguments.
     """
     model_exports = model_exports or model
     output = output or types.Channel(

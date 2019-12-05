@@ -18,8 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
 import tensorflow as tf
+
 from tfx.components.evaluator import component
+from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -58,6 +61,20 @@ class ComponentTest(tf.test.TestCase):
                 column_for_slicing=['trip_start_hour'])
         ]),
         fairness_indicator_thresholds=[0.1, 0.3, 0.5, 0.9])
+    self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
+
+  def testConstructWithParameter(self):
+    column_name = data_types.RuntimeParameter(name='column-name', ptype=Text)
+    threshold = data_types.RuntimeParameter(name='threshold', ptype=float)
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model_exports=channel_utils.as_channel([model_exports]),
+        feature_slicing_spec={'specs': [{
+            'column_for_slicing': [column_name]
+        }]},
+        fairness_indicator_thresholds=[threshold])
     self.assertEqual('ModelEvalPath', evaluator.outputs['output'].type_name)
 
 

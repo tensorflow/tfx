@@ -20,7 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-
+from typing import Dict, List, Text
 # Standard Imports
 
 import tensorflow as tf
@@ -237,6 +237,33 @@ class ComponentSpecTest(tf.test.TestCase):
 
     # Okay since y is optional.
     _ = SimpleComponentSpec(x=10, z=Channel(type_name='Z'))
+
+  def testExecutionParameterTypeCheck(self):
+    int_parameter = ExecutionParameter(type=int)
+    int_parameter.type_check('int_parameter', 8)
+    with self.assertRaisesRegexp(TypeError, "Expected type <(class|type) 'int'>"
+                                 " for parameter u?'int_parameter'"):
+      int_parameter.type_check('int_parameter', 'string')
+
+    list_parameter = ExecutionParameter(type=List[int])
+    list_parameter.type_check('list_parameter', [])
+    list_parameter.type_check('list_parameter', [42])
+    with self.assertRaisesRegexp(TypeError, 'Expecting a list for parameter'):
+      list_parameter.type_check('list_parameter', 42)
+
+    with self.assertRaisesRegexp(TypeError, "Expecting item type <(class|type) "
+                                 "'int'> for parameter u?'list_parameter'"):
+      list_parameter.type_check('list_parameter', [42, 'wrong item'])
+
+    dict_parameter = ExecutionParameter(type=Dict[Text, int])
+    dict_parameter.type_check('dict_parameter', {})
+    dict_parameter.type_check('dict_parameter', {'key1': 1, 'key2': 2})
+    with self.assertRaisesRegexp(TypeError, 'Expecting a dict for parameter'):
+      dict_parameter.type_check('dict_parameter', 'simple string')
+
+    with self.assertRaisesRegexp(TypeError, "Expecting value type "
+                                 "<(class|type) 'int'>"):
+      dict_parameter.type_check('dict_parameter', {'key1': '1'})
 
 
 if __name__ == '__main__':

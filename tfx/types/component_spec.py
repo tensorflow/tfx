@@ -35,6 +35,57 @@ from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
 
+def _make_default(data: Any) -> Any:
+  """Replaces RuntimeParameter by its ptype's default.
+
+  Args:
+    data: an object possibly containing RuntimeParameter.
+
+  Returns:
+    A version of input data where RuntimeParameters are replaced with
+    the default values of their ptype.
+  """
+  if isinstance(data, dict):
+    copy_data = copy.deepcopy(data)
+    _put_default_dict(copy_data)
+    return copy_data
+  if isinstance(data, list):
+    copy_data = copy.deepcopy(data)
+    _put_default_list(copy_data)
+    return copy_data
+  if data.__class__.__name__ == 'RuntimeParameter':
+    ptype = data.ptype
+    return ptype.__new__(ptype)
+
+  return data
+
+
+def _put_default_dict(dict_data: Dict[Text, Any]) -> None:
+  """Helper function to replace RuntimeParameter with its default value."""
+  for k, v in dict_data.items():
+    if isinstance(v, dict):
+      _put_default_dict(v)
+    elif isinstance(v, list):
+      _put_default_list(v)
+    elif v.__class__.__name__ == 'RuntimeParameter':
+      # Currently supporting int, float, bool, Text
+      ptype = v.ptype
+      dict_data[k] = ptype.__new__(ptype)
+
+
+def _put_default_list(list_data: List[Any]) -> None:
+  """Helper function to replace RuntimeParameter with its default value."""
+  for index, item in enumerate(list_data):
+    if isinstance(item, dict):
+      _put_default_dict(item)
+    elif isinstance(item, list):
+      _put_default_list(item)
+    elif item.__class__.__name__ == 'RuntimeParameter':
+      # Currently supporting int, float, bool, Text
+      ptype = item.ptype
+      list_data[index] = ptype.__new__(ptype)
+
+
 class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   """A specification of the inputs, outputs and parameters for a component.
 
@@ -141,39 +192,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     outputs = {}
     self.exec_properties = {}
 
-    # Following three helper functions replace RuntimeParameters with its
-    # default values, so that later on we can leverage json_format library to do
-    # type check.
-    def _make_default_dict(dict_data: Dict[Text, Any]) -> Dict[Text, Any]:
-      """Generates a dict with parameters replaced by default values."""
-      copy_dict = copy.deepcopy(dict_data)
-      _put_default_dict(copy_dict)
-      return copy_dict
-
-    def _put_default_dict(dict_data: Dict[Text, Any]) -> None:
-      """Helper function to replace RuntimeParameter with its default value."""
-      for k, v in dict_data.items():
-        if isinstance(v, dict):
-          _put_default_dict(v)
-        elif isinstance(v, list):
-          _put_default_list(v)
-        elif v.__class__.__name__ == 'RuntimeParameter':
-          # Currently supporting int, float, bool, Text
-          ptype = v.ptype
-          dict_data[k] = ptype.__new__(ptype)
-
-    def _put_default_list(list_data: List[Any]) -> None:
-      """Helper function to replace RuntimeParameter with its default value."""
-      for index, item in enumerate(list_data):
-        if isinstance(item, dict):
-          _put_default_dict(item)
-        elif isinstance(item, list):
-          _put_default_list(item)
-        elif item.__class__.__name__ == 'RuntimeParameter':
-          # Currently supporting int, float, bool, Text
-          ptype = item.ptype
-          list_data[index] = ptype.__new__(ptype)
-
     # First, check that the arguments are set.
     for arg_name, arg in itertools.chain(self.PARAMETERS.items(),
                                          self.INPUTS.items(),
@@ -203,11 +221,6 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
         # Create deterministic json string as it will be stored in metadata for
         # cache check.
         if isinstance(value, dict):
-          # If a dict is passed in, it might contains RuntimeParameter.
-          # Given the argument type is specified as pb, do the type-check by
-          # converting it to pb message.
-          dict_with_default = _make_default_dict(value)
-          json_format.ParseDict(dict_with_default, arg.type())
           value = json_utils.dumps(value)
         else:
           value = json_format.MessageToJson(
@@ -286,18 +299,60 @@ class ExecutionParameter(_ComponentParameter):
 
   def type_check(self, arg_name: Text, value: Any):
     """Perform type check to the parameter passed in."""
-    # Can't type check generics. Note that we need to do this strange check form
-    # since typing.GenericMeta (which became typing._GenericAlias in Python 3.7)
-    # is not exposed.
-    # Also, bypass the typecheck if a dict is passed in, to enable the usage of
-    # RuntimeParameter.
-    if self.type.__class__.__name__ in (
-        'GenericMeta', '_GenericAlias') or isinstance(
-            value, dict) or value.__class__.__name__ == 'RuntimeParameter':
-      return
-    if not isinstance(value, self.type):
-      raise TypeError('Expected type %s for parameter %r but got %s.' %
-                      (self.type, arg_name, value))
+
+    # Following helper function is needed due to the lack of subscripted
+    # type check support in Python 3.7. Here we hold the assumption that no
+    # nested container type is declared as the parameter type.
+    # For example:
+    # Dict[Text, List[str]] <------ Not allowed.
+    # Dict[Text, Any] <------ Okay.
+    def _type_check_helper(value: Any, declared: Type):  # pylint: disable=g-bare-generic
+      """Helper type-checking function."""
+      if declared == Any:
+        return
+      if declared.__class__.__name__ in ('_GenericAlias', 'GenericMeta'):
+        # Should be dict or list
+        if declared.__origin__ in [Dict, dict]:  # pylint: disable=protected-access
+          key_type, val_type = declared.__args__[0], declared.__args__[1]
+          if not isinstance(value, dict):
+            raise TypeError('Expecting a dict for parameter %r, but got %s '
+                            'instead' % (arg_name, type(value)))
+          for k, v in value.items():
+            if key_type != Any and not isinstance(k, key_type):
+              raise TypeError('Expecting key type %s for parameter %r, '
+                              'but got %s instead.' %
+                              (str(key_type), arg_name, type(k)))
+            if val_type != Any and not isinstance(v, val_type):
+              raise TypeError('Expecting value type %s for parameter %r, '
+                              'but got %s instead.' % (
+                                  str(val_type), arg_name, type(v)))
+        elif declared.__origin__ in [List, list]:  # pylint: disable=protected-access
+          val_type = declared.__args__[0]
+          if not isinstance(value, list):
+            raise TypeError('Expecting a list for parameter %r, '
+                            'but got %s instead.' % (arg_name, type(value)))
+          if val_type == Any:
+            return
+          for item in value:
+            if not isinstance(item, val_type):
+              raise TypeError('Expecting item type %s for parameter %r, '
+                              'but got %s instead.' % (
+                                  str(val_type), arg_name, type(item)))
+        else:
+          raise TypeError('Unexpected type of parameter: %r' % arg_name)
+      elif isinstance(value, dict) and issubclass(declared, message.Message):
+        # If a dict is passed in and is compared against a pb message,
+        # do the type-check by converting it to pb message.
+        dict_with_default = _make_default(value)
+        json_format.ParseDict(dict_with_default, declared())
+      else:
+        if not isinstance(value, declared):
+          raise TypeError('Expected type %s for parameter %r '
+                          'but got %s instead.' % (
+                              str(declared), arg_name, value))
+
+    value_with_default = _make_default(value)
+    _type_check_helper(value_with_default, self.type)
 
 
 class ChannelParameter(_ComponentParameter):
