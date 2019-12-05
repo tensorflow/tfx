@@ -22,6 +22,8 @@ import collections
 import copy
 import hashlib
 import os
+import random
+import time
 import types
 from typing import Any, Dict, List, Optional, Set, Text, Type
 
@@ -34,6 +36,9 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 from tfx.orchestration import data_types
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import ArtifactState
+
+# Number of times to retry initialization of connection.
+_MAX_INIT_RETRY = 10
 
 # Maximum number of executions we look at for previous result.
 MAX_EXECUTIONS_FOR_CACHE = 100
@@ -113,8 +118,19 @@ class Metadata(object):
     # TODO(ruoyu): Establishing a connection pool instead of newing
     # a connection every time. Until then, check self._store before usage
     # in every method.
-    self._store = metadata_store.MetadataStore(self._connection_config)
-    return self
+    for _ in range(_MAX_INIT_RETRY):
+      try:
+        self._store = metadata_store.MetadataStore(self._connection_config)
+      except RuntimeError:
+        # MetadataStore could raise Aborted error if multiple concurrent
+        # connections try to execute initialization DDL in database.
+        # This is safe to retry.
+        time.sleep(random.random())
+        continue
+      else:
+        return self
+
+    raise RuntimeError('Failed to establish connection to Metadata storage.')
 
   def __exit__(self, exc_type: Optional[Type[Exception]],
                exc_value: Optional[Exception],
