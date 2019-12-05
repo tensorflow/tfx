@@ -12,6 +12,7 @@
     interface.
 *   Added support in Trainer to use other model artifacts. This enables
     scenarios such as warmstart.
+*   Removed tf.compat.v1 for iris example.
 
 ## Bug fixes and other changes
 
