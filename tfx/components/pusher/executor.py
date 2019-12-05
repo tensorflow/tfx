@@ -28,7 +28,6 @@ from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import model_utils
-from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -87,8 +86,8 @@ class Executor(base_executor.BaseExecutor):
       input_dict: Input dict from input key to a list of artifacts, including:
         - model_export: exported model from trainer.
         - model_blessing: model blessing path from model_validator.  A push
-        action delivers the model exports produced by Trainer to the destination
-        defined in component config.
+          action delivers the model exports produced by Trainer to the
+          destination defined in component config.
       output_dict: Output dict from key to a list of artifacts, including:
         - model_push: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.
@@ -142,13 +141,3 @@ class Executor(base_executor.BaseExecutor):
     model_push.set_string_custom_property('pushed_model', model_export_uri)
     model_push.set_int_custom_property('pushed_model_id', model_export.id)
     absl.logging.info('Model pushed to %s.', serving_path)
-
-    if exec_properties.get('custom_config'):
-      cmle_serving_args = exec_properties.get('custom_config',
-                                              {}).get('cmle_serving_args')
-      if cmle_serving_args is not None:
-        absl.logging.warn(
-            '\'cmle_serving_args\' is deprecated, please use custom executor '
-            'in tfx.extensions.google_cloud_ai_platform.pusher instead')
-        return runner.deploy_model_for_cmle_serving(
-            serving_path, model_version, cmle_serving_args)
