@@ -18,20 +18,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import logging
 import os
 import subprocess
 import sys
-import time
-from typing import List, Text
 import unittest
 
 import absl
 import tensorflow as tf
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
+from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.model_validator.component import ModelValidator
@@ -41,101 +38,14 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import test_utils
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
-from tfx.types import Artifact
-from tfx.types import Channel
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.utils import dsl_utils
 
 
 class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
-
-  @classmethod
-  def setUpClass(cls):
-    super(KubeflowGCPIntegrationTest, cls).setUpClass()
-
-    cls._mysql_portward_process = cls._setup_mysql_port_forward()
-
-  @classmethod
-  def tearDownClass(cls):
-    super(KubeflowGCPIntegrationTest, cls).tearDownClass()
-
-    cls._mysql_portward_process.kill()
-
-  @classmethod
-  def _setup_mysql_port_forward(cls):
-    """Establishes port forward to MLMD database in the cluster."""
-    pod_name = cls._get_mysql_pod_name()
-    mysql_portforward_command = [
-        'kubectl', '-n', 'kubeflow', 'port-forward', pod_name, '3306:3306'
-    ]
-    proc = subprocess.Popen(mysql_portforward_command, stdout=subprocess.PIPE)
-
-    # Wait while port forward to cluster is being established.
-    poll_mysql_port_command = ['lsof', '-i', ':3306']
-    result = subprocess.run(poll_mysql_port_command)
-    timeout = 10
-    for _ in range(timeout):
-      if result.returncode == 0:
-        break
-      absl.logging.info('Waiting while MySQL port-forward is established...')
-      time.sleep(1)
-
-      result = subprocess.run(poll_mysql_port_command)
-
-    if result.returncode != 0:
-      raise RuntimeError('Failed to establish MySQL port-forward to cluster.')
-
-    return proc
-
-  def _input_artifacts(self, pipeline_name: Text,
-                       input_artifacts: List[Artifact]) -> Channel:
-    """Publish input artifacts for test to MLMD and return channel to them."""
-    connection_config = metadata_store_pb2.ConnectionConfig(
-        mysql=metadata_store_pb2.MySQLDatabaseConfig(
-            host='127.0.0.1',
-            port=3306,
-            database=self._get_mlmd_db_name(pipeline_name),
-            user='root',
-            password=''))
-
-    dummy_artifact = (input_artifacts[0].type_name, self._random_id())
-    output_key = 'dummy_output_%s_%s' % dummy_artifact
-    producer_component_id = 'dummy_producer_id_%s_%s' % dummy_artifact
-    producer_component_type = 'dummy_producer_type_%s_%s' % dummy_artifact
-
-    # Input artifacts must have a unique name and producer in MLMD.
-    for artifact in input_artifacts:
-      artifact.name = output_key
-      artifact.pipeline_name = pipeline_name
-      artifact.producer_component = producer_component_id
-
-    with metadata.Metadata(connection_config=connection_config) as m:
-      # Register a dummy execution to metadata store as producer execution.
-      execution_id = m.register_execution(
-          exec_properties={},
-          pipeline_info=data_types.PipelineInfo(
-              pipeline_name=pipeline_name,
-              pipeline_root='/dummy_pipeline_root',
-              # test_utils uses pipeline_name as fixed WORKFLOW_ID.
-              run_id=pipeline_name,
-          ),
-          component_info=data_types.ComponentInfo(
-              component_type=producer_component_type,
-              component_id=producer_component_id))
-
-      # Publish the test input artifact from the dummy execution.
-      published_artifacts = m.publish_execution(
-          execution_id=execution_id,
-          input_dict={},
-          output_dict={output_key: input_artifacts})
-
-    return channel_utils.as_channel(published_artifacts[output_key])
 
   def _delete_ai_platform_model(self, model_name):
     """Delete pushed model in AI Platform."""
@@ -173,58 +83,69 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     super(KubeflowGCPIntegrationTest, self).setUp()
 
     # Example artifacts for testing.
-    raw_train_examples = standard_artifacts.Examples(split='train')
-    raw_train_examples.uri = os.path.join(
-        self._intermediate_data_root,
-        'csv_example_gen/examples/test-pipeline/train/')
-    raw_eval_examples = standard_artifacts.Examples(split='eval')
-    raw_eval_examples.uri = os.path.join(
-        self._intermediate_data_root,
-        'csv_example_gen/examples/test-pipeline/eval/')
-    self._test_raw_examples = [raw_train_examples, raw_eval_examples]
+    self.raw_examples_importer = ImporterNode(
+        instance_name='raw_examples',
+        source_uri=[
+            os.path.join(self._intermediate_data_root,
+                         'csv_example_gen/examples/test-pipeline/train/'),
+            os.path.join(self._intermediate_data_root,
+                         'csv_example_gen/examples/test-pipeline/eval/')
+        ],
+        artifact_type=standard_artifacts.Examples,
+        reimport=True,
+        split=['train', 'eval'])
 
     # Transformed Example artifacts for testing.
-    transformed_train_examples = standard_artifacts.Examples(split='train')
-    transformed_train_examples.uri = os.path.join(
-        self._intermediate_data_root,
-        'transform/transformed_examples/test-pipeline/train/')
-    transformed_eval_examples = standard_artifacts.Examples(split='eval')
-    transformed_eval_examples.uri = os.path.join(
-        self._intermediate_data_root,
-        'transform/transformed_examples/test-pipeline/eval/')
-    self._test_transformed_examples = [
-        transformed_train_examples, transformed_eval_examples
-    ]
+    self.transformed_examples_importer = ImporterNode(
+        instance_name='transformed_examples',
+        source_uri=[
+            os.path.join(self._intermediate_data_root,
+                         'transform/transformed_examples/test-pipeline/train/'),
+            os.path.join(self._intermediate_data_root,
+                         'transform/transformed_examples/test-pipeline/eval/')
+        ],
+        artifact_type=standard_artifacts.Examples,
+        reimport=True,
+        split=['train', 'eval'])
 
     # Schema artifact for testing.
-    schema = standard_artifacts.Schema()
-    schema.uri = os.path.join(self._intermediate_data_root,
-                              'schema_gen/output/test-pipeline/')
-    self._test_schema = [schema]
+    self.schema_importer = ImporterNode(
+        instance_name='schema',
+        source_uri=os.path.join(self._intermediate_data_root,
+                                'schema_gen/output/test-pipeline/'),
+        artifact_type=standard_artifacts.Schema,
+        reimport=True)
 
     # TransformGraph artifact for testing.
-    transform_graph = standard_artifacts.TransformGraph()
-    transform_graph.uri = os.path.join(
-        self._intermediate_data_root,
-        'transform/transform_output/test-pipeline/')
-    self._test_transform_graph = [transform_graph]
+    self.transform_graph_importer = ImporterNode(
+        instance_name='transform_graph',
+        source_uri=os.path.join(self._intermediate_data_root,
+                                'transform/transform_output/test-pipeline/'),
+        artifact_type=standard_artifacts.TransformGraph,
+        reimport=True)
 
     # Model artifact for testing.
-    model_1 = standard_artifacts.Model()
-    model_1.uri = os.path.join(self._intermediate_data_root,
-                               'trainer/output/test-pipeline/1/')
-    self._test_model_1 = [model_1]
+    self.model_1_importer = ImporterNode(
+        instance_name='model_1',
+        source_uri=os.path.join(self._intermediate_data_root,
+                                'trainer/output/test-pipeline/1/'),
+        artifact_type=standard_artifacts.Model,
+        reimport=True)
 
-    model_2 = standard_artifacts.Model()
-    model_2.uri = os.path.join(self._intermediate_data_root,
-                               'trainer/output/test-pipeline/2/')
-    self._test_model_2 = [model_2]
+    self.model_2_importer = ImporterNode(
+        instance_name='model_2',
+        source_uri=os.path.join(self._intermediate_data_root,
+                                'trainer/output/test-pipeline/2/'),
+        artifact_type=standard_artifacts.Model,
+        reimport=True)
 
     # ModelBlessing artifact for testing.
-    model_blessing = standard_artifacts.ModelBlessing()
-    model_blessing.uri = os.path.join(
-        self._intermediate_data_root, 'model_validator/blessing/test-pipeline/')
-    self._test_model_blessing = [model_blessing]
+    self.model_blessing_importer = ImporterNode(
+        instance_name='model_blessing',
+        source_uri=os.path.join(self._intermediate_data_root,
+                                'model_validator/blessing/test-pipeline/'),
+        artifact_type=standard_artifacts.ModelBlessing,
+        reimport=True)
 
   def testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
@@ -240,9 +161,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-statistics-gen-dataflow-test-{}'.format(
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        StatisticsGen(
-            examples=self._input_artifacts(pipeline_name,
-                                           self._test_raw_examples)),
+        self.raw_examples_importer,
+        StatisticsGen(examples=self.raw_examples_importer.outputs['result'])
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -251,10 +171,10 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-transform-dataflow-test-{}'.format(
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
+        self.raw_examples_importer, self.schema_importer,
         Transform(
-            examples=self._input_artifacts(pipeline_name,
-                                           self._test_raw_examples),
-            schema=self._input_artifacts(pipeline_name, self._test_schema),
+            examples=self.raw_examples_importer.outputs['result'],
+            schema=self.schema_importer.outputs['result'],
             module_file=self._taxi_module_file)
     ])
     self._compile_and_run_pipeline(pipeline)
@@ -264,11 +184,10 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
+        self.raw_examples_importer, self.model_1_importer,
         Evaluator(
-            examples=self._input_artifacts(pipeline_name,
-                                           self._test_raw_examples),
-            model_exports=self._input_artifacts(pipeline_name,
-                                                self._test_model_1),
+            examples=self.raw_examples_importer.outputs['result'],
+            model_exports=self.model_1_importer.outputs['result'],
             feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
                 evaluator_pb2.SingleSlicingSpec(
                     column_for_slicing=['trip_start_hour'])
@@ -281,10 +200,10 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
         self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
+        self.raw_examples_importer, self.model_1_importer,
         ModelValidator(
-            examples=self._input_artifacts(pipeline_name,
-                                           self._test_raw_examples),
-            model=self._input_artifacts(pipeline_name, self._test_model_1))
+            examples=self.raw_examples_importer.outputs['result'],
+            model=self.model_1_importer.outputs['result'])
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -292,17 +211,19 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     """Trainer-only test pipeline on AI Platform Training."""
     pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
     pipeline = self._create_pipeline(pipeline_name, [
+        self.schema_importer,
+        self.transformed_examples_importer,
+        self.transform_graph_importer,
         Trainer(
             custom_executor_spec=executor_spec.ExecutorClassSpec(
                 ai_platform_trainer_executor.Executor),
             module_file=self._taxi_module_file,
-            transformed_examples=self._input_artifacts(
-                pipeline_name, self._test_transformed_examples),
-            schema=self._input_artifacts(pipeline_name, self._test_schema),
-            transform_graph=self._input_artifacts(pipeline_name,
-                                                  self._test_transform_graph),
-            train_args=trainer_pb2.TrainArgs(num_steps=10000),
-            eval_args=trainer_pb2.EvalArgs(num_steps=5000),
+            transformed_examples=self.transformed_examples_importer
+            .outputs['result'],
+            schema=self.schema_importer.outputs['result'],
+            transform_graph=self.transform_graph_importer.outputs['result'],
+            train_args=trainer_pb2.TrainArgs(num_steps=10),
+            eval_args=trainer_pb2.EvalArgs(num_steps=5),
             custom_config={
                 'ai_platform_training_args': {
                     'project':
@@ -328,12 +249,12 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     model_name = ('%s_model' % pipeline_name_base).replace('-', '_')
     self.addCleanup(self._delete_ai_platform_model, model_name)
 
-    def _pusher(model, model_blessing, pipeline_name):
+    def _pusher(model_importer, model_blessing_importer):
       return Pusher(
           custom_executor_spec=executor_spec.ExecutorClassSpec(
               ai_platform_pusher_executor.Executor),
-          model=self._input_artifacts(pipeline_name, model),
-          model_blessing=self._input_artifacts(pipeline_name, model_blessing),
+          model=model_importer.outputs['result'],
+          model_blessing=model_blessing_importer.outputs['result'],
           custom_config={
               'ai_platform_serving_args': {
                   'model_name': model_name,
@@ -345,15 +266,17 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     # Test creation of multiple versions under the same model_name.
     pipeline_name_1 = '%s-1' % pipeline_name_base
     pipeline_1 = self._create_pipeline(pipeline_name_1, [
-        _pusher(self._test_model_1, copy.deepcopy(self._test_model_blessing),
-                pipeline_name_1),
+        self.model_1_importer,
+        self.model_blessing_importer,
+        _pusher(self.model_1_importer, self.model_blessing_importer),
     ])
     self._compile_and_run_pipeline(pipeline_1)
 
     pipeline_name_2 = '%s-2' % pipeline_name_base
     pipeline_2 = self._create_pipeline(pipeline_name_2, [
-        _pusher(self._test_model_2, copy.deepcopy(self._test_model_blessing),
-                pipeline_name_2),
+        self.model_2_importer,
+        self.model_blessing_importer,
+        _pusher(self.model_2_importer, self.model_blessing_importer),
     ])
     self._compile_and_run_pipeline(pipeline_2)
 
