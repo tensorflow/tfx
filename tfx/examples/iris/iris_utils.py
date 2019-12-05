@@ -41,7 +41,7 @@ def _gzip_reader_fn(filenames):
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def _example_serving_receiver_fn(schema):
+def _serving_input_receiver_fn(schema):
   """Build the serving inputs.
 
   Args:
@@ -74,21 +74,14 @@ def _eval_input_receiver_fn(schema):
   # Notice that the inputs are raw features, not transformed features here.
   raw_feature_spec = _get_raw_feature_spec(schema)
 
-  serialized_tf_example = tf.compat.v1.placeholder(
-      dtype=tf.string, shape=[None], name='input_example_tensor')
-
-  # Add a parse_example operator to the tensorflow graph, which will parse
-  # raw, untransformed, tf examples.
-  features = tf.io.parse_example(
-      serialized=serialized_tf_example, features=raw_feature_spec)
-
-  # The key name MUST be 'examples'.
-  receiver_tensors = {'examples': serialized_tf_example}
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  serving_input_receiver = raw_input_fn()
 
   return tfma.export.EvalInputReceiver(
-      features=features,
-      receiver_tensors=receiver_tensors,
-      labels=features.pop(_LABEL_KEY))
+      features=serving_input_receiver.features,
+      labels=serving_input_receiver.features.pop(_LABEL_KEY),
+      receiver_tensors=serving_input_receiver.receiver_tensors)
 
 
 def _input_fn(filenames, schema, batch_size=200):
@@ -100,8 +93,8 @@ def _input_fn(filenames, schema, batch_size=200):
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
-    A (features, indices) tuple where features is a dictionary of
-      Tensors, and indices is a single Tensor of label indices.
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
   """
 
   feature_spec = _get_raw_feature_spec(schema)
@@ -109,11 +102,9 @@ def _input_fn(filenames, schema, batch_size=200):
   dataset = tf.data.experimental.make_batched_features_dataset(
       filenames, batch_size, feature_spec, reader=_gzip_reader_fn)
 
-  features = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
-
   # We pop the label because we do not want to use it as a feature while we're
   # training.
-  return features, features.pop(_LABEL_KEY)
+  return dataset.map(lambda features: (features, features.pop(_LABEL_KEY)))
 
 
 def _keras_model_builder():
@@ -139,11 +130,11 @@ def _keras_model_builder():
 
 
 # TFX will call this function
-def trainer_fn(hparams, schema):
+def trainer_fn(trainer_fn_args, schema):
   """Build the estimator using the high level API.
 
   Args:
-    hparams: Holds hyperparameters used to train the model as name/value pairs.
+    trainer_fn_args: Holds args used to train the model as name/value pairs.
     schema: Holds the schema of the training examples.
 
   Returns:
@@ -158,42 +149,42 @@ def trainer_fn(hparams, schema):
   eval_batch_size = 40
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.train_files,
+      trainer_fn_args.train_files,
       schema,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.eval_files,
+      trainer_fn_args.eval_files,
       schema,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
-      max_steps=hparams.train_steps)
+      max_steps=trainer_fn_args.train_steps)
 
-  serving_receiver_fn = lambda: _example_serving_receiver_fn(schema)  # pylint: disable=g-long-lambda
+  serving_receiver_fn = lambda: _serving_input_receiver_fn(schema)
 
   exporter = tf.estimator.FinalExporter('iris', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
       eval_input_fn,
-      steps=hparams.eval_steps,
+      steps=trainer_fn_args.eval_steps,
       exporters=[exporter],
       name='iris-eval')
 
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=hparams.serving_model_dir)
+  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
 
   estimator = tf.keras.estimator.model_to_estimator(
       keras_model=_keras_model_builder(), config=run_config)
 
   # Create an input receiver for TFMA processing
-  receiver_fn = lambda: _eval_input_receiver_fn(schema)  # pylint: disable=g-long-lambda
+  eval_receiver_fn = lambda: _eval_input_receiver_fn(schema)
 
   return {
       'estimator': estimator,
       'train_spec': train_spec,
       'eval_spec': eval_spec,
-      'eval_input_receiver_fn': receiver_fn
+      'eval_input_receiver_fn': eval_receiver_fn
   }
