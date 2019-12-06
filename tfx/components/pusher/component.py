@@ -76,10 +76,10 @@ class Pusher(base_component.BaseComponent):
     """Construct a Pusher component.
 
     Args:
-      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
-        component. Will be deprecated in the future for the `model` parameter.
-      model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        ModelValidator component. _required_
+      model: A Channel of type `standard_artifacts.Model`, usually produced by
+        a Trainer component.
+      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
+        usually produced by a ModelValidator component. _required_
       push_destination: A pusher_pb2.PushDestination instance, providing info
         for tensorflow serving to load models. Optional if executor_class
         doesn't require push_destination. If any field is provided as a

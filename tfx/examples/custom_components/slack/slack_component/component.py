@@ -94,15 +94,16 @@ class SlackComponent(base_component.BaseComponent):
     """Construct a SlackComponent.
 
     Args:
-      model: A Channel of 'ModelExportPath' type, usually produced by
-        Trainer component.
-      model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        ModelValidator component.
+      model: A Channel of type `standard_artifacts.Model`, usually produced by
+        a Trainer component.
+      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
+        usually produced by a ModelValidator component.
       slack_token: A token used for setting up connection with Slack server.
       slack_channel_id: Slack channel id to communicate on.
       timeout_sec: Seconds to wait for response before default to reject.
-      slack_blessing: Optional output channel of 'ModelBlessingPath' with result
-        of blessing; will be created for you if not specified.
+      slack_blessing: Optional output channel of type
+        `standard_artifacts.ModelBlessing` with result of blessing; will be
+        created for you if not specified.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
         components are declared in the same pipeline.
     """

@@ -49,8 +49,9 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
     """Construct a CsvExampleGen component.
 
     Args:
-      input: A Channel of 'ExternalPath' type, which includes one artifact whose
-        uri is an external directory with csv files inside (required).
+      input: A Channel of type `standard_artifacts.ExternalArtifact`, which
+        includes one artifact whose uri is an external directory containing csv
+        files (required).
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split. If any field is provided as a RuntimeParameter,
