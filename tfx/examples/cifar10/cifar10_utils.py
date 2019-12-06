@@ -98,7 +98,7 @@ def _keras_model_builder():
   model.compile(
       optimizer=tf.keras.optimizers.SGD(lr=0.0001, momentum=0.9),
       loss='categorical_crossentropy',
-      metrics=[tf.keras.metrics.BinaryAccuracy(name='accuracy')])
+      metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
 
   absl.logging.info(model.summary())
   return model
