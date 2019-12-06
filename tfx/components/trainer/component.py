@@ -117,20 +117,22 @@ class Trainer(base_component.BaseComponent):
     """Construct a Trainer component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, serving as the source of
-        examples that are used in training (required). May be raw or
+      examples: A Channel of type `standard_artifacts.Examples`, serving as
+        the source of examples used in training (required). May be raw or
         transformed.
       transformed_examples: Deprecated field. Please set 'examples' instead.
-      transform_graph: An optional Channel of 'TransformPath' type, serving as
-        the input transform graph if present.
-      schema:  A Channel of 'SchemaPath' type, serving as the schema of training
-        and eval data.
-      base_model: A Channel of 'Model' type, containing model that will be used
-        for training. This can be used for warmstart, transfer learning or model
-        ensembling.
-      module_file: A path to python module file containing UDF model definition.
-        The module_file must implement a function named `trainer_fn` at its
-        top level. The function must have the following signature.
+      transform_graph: An optional Channel of type
+        `standard_artifacts.TransformGraph`, serving as the input transform
+        graph if present.
+      schema:  A Channel of type `standard_artifacts.Schema`, serving as the
+        schema of training and eval data.
+      base_model: A Channel of type `Model`, containing model that will be used
+        for training. This can be used for warmstart, transfer learning or
+        model ensembling.
+      module_file: A path to python module file containing UDF model
+        definition. The module_file must implement a function named
+        `trainer_fn` at its top level. The function must have the following
+        signature.
 
         def trainer_fn(trainer.executor._TrainerFnArgs,
                        tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
@@ -140,8 +142,9 @@ class Trainer(base_component.BaseComponent):
           'estimator': an instance of tf.estimator.Estimator
           'train_spec': an instance of tf.estimator.TrainSpec
           'eval_spec': an instance of tf.estimator.EvalSpec
-          'eval_input_receiver_fn': an instance of tfma.export.EvalInputReceiver
-            Exactly one of 'module_file' or 'trainer_fn' must be supplied.
+          'eval_input_receiver_fn': an instance of
+            tfma.export.EvalInputReceiver. Exactly one of 'module_file' or
+            'trainer_fn' must be supplied.
       trainer_fn:  A python path to UDF model definition function. See
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'trainer_fn' must be supplied.
@@ -154,7 +157,7 @@ class Trainer(base_component.BaseComponent):
         supported by Google Cloud ML Engine, refer to
         https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
       custom_executor_spec: Optional custom executor spec.
-      output: Optional 'ModelExportPath' channel for result of exported models.
+      output: Optional `Model` channel for result of exported models.
       transform_output: Backwards compatibility alias for the 'transform_graph'
         argument.
       instance_name: Optional unique instance name. Necessary iff multiple
@@ -165,7 +168,7 @@ class Trainer(base_component.BaseComponent):
         - When both or neither of 'module_file' and 'trainer_fn' is supplied.
         - When both or neither of 'examples' and 'transformed_examples'
             is supplied.
-        - When 'transformed_examples' is supplied but 'transform_output'
+        - When 'transformed_examples' is supplied but 'transform_graph'
             is not supplied.
     """
     transform_graph = transform_graph or transform_output

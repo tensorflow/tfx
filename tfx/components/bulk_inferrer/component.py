@@ -62,12 +62,12 @@ class BulkInferrer(base_component.BaseComponent):
     """Construct an BulkInferrer component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component. _required_
-      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
-        component.
-      model_blessing: A Channel of 'ModelBlessingPath' type, usually produced by
-        Model Validator component.
+      examples: A Channel of type `standard_artifacts.Examples`, usually
+        produced by an ExampleGen component. _required_
+      model: A Channel of type `standard_artifacts.Model`, usually produced by
+        a Trainer component.
+      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
+        usually produced by a ModelValidator component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection. If any field is provided as a RuntimeParameter, data_spec
         should be constructed as a dict with the same field names as DataSpec
@@ -76,8 +76,8 @@ class BulkInferrer(base_component.BaseComponent):
         specification. If any field is provided as a RuntimeParameter,
         model_spec should be constructed as a dict with the same field names as
         ModelSpec proto message.
-      inference_result: Channel of `InferenceResult` to store the inference
-        results.
+      inference_result: Channel of type `standard_artifacts.InferenceResult`
+        to store the inference results.
       instance_name: Optional name assigned to this specific instance of
         BulkInferrer. Required only if multiple BulkInferrer components are
         declared in the same pipeline.

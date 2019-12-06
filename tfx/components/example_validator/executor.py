@@ -47,10 +47,10 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - stats: A list of 'ExampleStatisticsPath' type which should contain
-          split 'eval'. Stats on other splits are ignored.
-        - schema: A list of 'SchemaPath' type which should contain a single
-          schema artifact.
+        - stats: A list of type `standard_artifacts.ExampleStatistics` which
+          should contain the 'eval' split. Stats on other splits are ignored.
+        - schema: A list of type `standard_artifacts.Schema` which should
+          contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
         - output: A list of 'ExampleValidationPath' artifact of size one. It
           will include a single pbtxt file which contains all anomalies found.

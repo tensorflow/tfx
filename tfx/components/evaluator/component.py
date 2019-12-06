@@ -84,10 +84,10 @@ class Evaluator(base_component.BaseComponent):
     """Construct an Evaluator component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by ExampleGen
-        component. _required_
-      model: A Channel of 'ModelExportPath' type, usually produced by Trainer
-        component.  Will be deprecated in the future for the `model` parameter.
+      examples: A Channel of type `standard_artifacts.Examples`, usually
+        produced by an ExampleGen component. _required_
+      model: A Channel of type `standard_artifacts.Model`, usually produced by
+        a Trainer component.
       feature_slicing_spec:
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
           instance that describes how Evaluator should slice the data. If any

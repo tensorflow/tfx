@@ -75,11 +75,12 @@ class ModelValidator(base_component.BaseComponent):
     """Construct a ModelValidator component.
 
     Args:
-      examples: A Channel of 'ExamplesPath' type, usually produced by
+      examples: A Channel of type `standard_artifacts.Examples`, usually
+        produced by an
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
         _required_
-      model: A Channel of 'ModelExportPath' type, usually produced by
-        [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
+      model: A Channel of type `standard_artifacts.Model`, usually produced by
+        a [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
         _required_
       blessing: Output channel of 'ModelBlessingPath' that contains the
         validation result.

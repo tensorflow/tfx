@@ -72,10 +72,11 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A Channel of 'ExampleStatisticsPath` type. This should contain
-        at least 'eval' split. Other splits are ignored currently.
-      schema: A Channel of "SchemaPath' type. _required_
-      output: Output channel of 'ExampleValidationPath' type.
+      statistics: A Channel of type `standard_artifacts.ExampleStatistics`.
+        This should contain at least 'eval' split. Other splits are currently
+        ignored.
+      schema: A Channel of type `standard_artifacts.Schema`. _required_
+      output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
         ExampleValidator. Required only if multiple ExampleValidator components
