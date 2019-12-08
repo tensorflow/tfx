@@ -51,10 +51,19 @@ from tfx.utils import io_utils
 
 
 RAW_EXAMPLE_KEY = 'raw_example'
+TEXT_FORMAT_EXAMPLE_KEY = 'text_example'
 
 # Schema to use if the input data should be decoded as raw example.
-_RAW_EXAMPLE_SCHEMA = schema_utils.schema_from_feature_spec(
-    {RAW_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string)})
+_RAW_EXAMPLE_SCHEMA = schema_utils.schema_from_feature_spec({
+    RAW_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string),
+})
+
+# Schema to use if the input data should be decoded as raw proto.
+_RAW_PROTO_SCHEMA = schema_utils.schema_from_feature_spec({
+    RAW_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string),
+    # Optional signature for passing raw example as text instead of binary.
+    TEXT_FORMAT_EXAMPLE_KEY: tf.io.FixedLenFeature([], tf.string)
+})
 
 # TODO(b/123519698): Simplify the code by removing the key structure.
 _TRANSFORM_INTERNAL_FEATURE_FOR_KEY = '__TFT_PASS_KEY__'
@@ -470,7 +479,11 @@ class Executor(base_executor.BaseExecutor):
     """
 
     if self._ShouldDecodeAsRawExample(data_format):
-      return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
+
+      if self._IsDataFormatProto(data_format):
+        return dataset_metadata.DatasetMetadata(_RAW_PROTO_SCHEMA)
+      else:
+        return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
     schema_proto = self._GetSchema(schema_path)
     # For compatibility with tensorflow_transform 0.13 and 0.14, we create and
     # then update a DatasetMetadata.
@@ -972,7 +985,8 @@ class Executor(base_executor.BaseExecutor):
     if compute_statistics:
       analyze_input_columns = list(
           set(list(analyze_input_columns) + list(transform_input_columns)))
-    if input_dataset_metadata.schema is _RAW_EXAMPLE_SCHEMA:
+    if (input_dataset_metadata.schema is _RAW_EXAMPLE_SCHEMA or
+        input_dataset_metadata.schema is _RAW_PROTO_SCHEMA):
       analyze_input_dataset_metadata = input_dataset_metadata
       transform_input_dataset_metadata = input_dataset_metadata
     else:
@@ -1410,7 +1424,11 @@ class Executor(base_executor.BaseExecutor):
       Function for decoding examples.
     """
     if self._ShouldDecodeAsRawExample(data_format):
-      if self._IsDataFormatSequenceExample(data_format):
+      if self._IsDataFormatProto(data_format):
+        # TEXT_FORMAT_EXAMPLE_KEY allows for passing text format protos instead
+        # of binary, but binary format is always used in the TFX pipeline.
+        return lambda x: {RAW_EXAMPLE_KEY: x, TEXT_FORMAT_EXAMPLE_KEY: b''}
+      elif self._IsDataFormatSequenceExample(data_format):
         absl.logging.warning(
             'TFX Transform doesn\'t officially support tf.SequenceExample, '
             'follow b/38235367 to track official support progress. We do not '
