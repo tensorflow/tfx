@@ -32,7 +32,7 @@ class ComponentTest(tf.test.TestCase):
     model_validator = component.ModelValidator(
         examples=channel_utils.as_channel([examples]),
         model=channel_utils.as_channel([model]))
-    self.assertEqual('ModelBlessingPath',
+    self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      model_validator.outputs['blessing'].type_name)
 
 

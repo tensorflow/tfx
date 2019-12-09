@@ -24,6 +24,7 @@ import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 
 
 class ComponentTest(tf.test.TestCase):
@@ -48,7 +49,7 @@ class ComponentTest(tf.test.TestCase):
         self.conn_config,
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -68,7 +69,7 @@ class ComponentTest(tf.test.TestCase):
         self.conn_config,
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -87,7 +88,7 @@ class ComponentTest(tf.test.TestCase):
         self.conn_config,
         self._extract_conn_config(
             presto_example_gen.exec_properties['custom_config']))
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)

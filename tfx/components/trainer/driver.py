@@ -24,6 +24,7 @@ import absl
 
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.types import standard_artifacts
 
 
 class Driver(base_driver.BaseDriver):
@@ -31,7 +32,7 @@ class Driver(base_driver.BaseDriver):
 
   def _fetch_latest_model(self):
     previous_models = self._metadata_handler.get_artifacts_by_type(
-        'ModelExportPath')
+        standard_artifacts.Model.TYPE_NAME)
     if previous_models:
       # TODO(b/138845899): consider use span instead of id.
       latest_model = max(previous_models, key=lambda artifact: artifact.id)

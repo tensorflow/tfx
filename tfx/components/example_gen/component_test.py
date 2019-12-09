@@ -81,7 +81,8 @@ class ComponentTest(tf.test.TestCase):
         ]))
     self.assertEqual({}, example_gen.inputs.get_all())
     self.assertEqual(base_driver.BaseDriver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                     example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -93,7 +94,8 @@ class ComponentTest(tf.test.TestCase):
         input=channel_utils.as_channel([input_base]))
     self.assertIn('input_base', example_gen.inputs.get_all())
     self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                     example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -106,7 +108,8 @@ class ComponentTest(tf.test.TestCase):
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     self.assertEqual(driver.Driver, example_gen.driver_class)
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                     example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
@@ -121,7 +124,8 @@ class ComponentTest(tf.test.TestCase):
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
                 example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
             ])))
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                     example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)
@@ -136,7 +140,8 @@ class ComponentTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
             example_gen_pb2.Input.Split(name='test', pattern='test/*')
         ]))
-    self.assertEqual('ExamplesPath', example_gen.outputs['examples'].type_name)
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                     example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
     self.assertEqual('eval', artifact_collection[1].split)

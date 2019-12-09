@@ -33,8 +33,9 @@ class TunerTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
 
   def _verify_output(self, tuner):
-    self.assertEqual('ModelExportPath', tuner.outputs['model'].type_name)
-    self.assertEqual('StudyBestHParamsPath',
+    self.assertEqual(standard_artifacts.Model.TYPE_NAME,
+                     tuner.outputs['model'].type_name)
+    self.assertEqual(standard_artifacts.HyperParameters.TYPE_NAME,
                      tuner.outputs['best_hparams'].type_name)
 
   def testConstructWithModuleFile(self):
