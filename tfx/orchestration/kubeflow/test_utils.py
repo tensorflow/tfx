@@ -28,7 +28,7 @@ import subprocess
 import tarfile
 import tempfile
 import time
-from typing import List, Text
+from typing import Any, Dict, List, Text
 
 import absl
 import docker
@@ -273,7 +273,10 @@ class BaseKubeflowTest(tf.test.TestCase):
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
-  def _run_workflow(self, workflow_file: Text, workflow_name: Text):
+  def _run_workflow(self,
+                    workflow_file: Text,
+                    workflow_name: Text,
+                    parameter: Dict[Text, Text] = None):
     """Runs the specified workflow with Argo.
 
     Blocks until the workflow has run (successfully or not) to completion.
@@ -281,8 +284,21 @@ class BaseKubeflowTest(tf.test.TestCase):
     Args:
       workflow_file: YAML file with Argo workflow spec for the pipeline.
       workflow_name: Name to use for the workflow.
+      parameter: mapping from pipeline parameter name to its runtime value.
     """
+
     # TODO(ajaygopinathan): Consider using KFP cli instead.
+    def _format_parameter(parameter: Dict[Text, Any]) -> Text:
+      """Format the pipeline parameter section of argo workflow."""
+      if parameter:
+        param_list = []
+        for k, v in parameter.items():
+          param_list.append('-p')
+          param_list.append('%s=%s' % (k, v))
+        return param_list
+      else:
+        return []
+
     run_command = [
         'argo',
         'submit',
@@ -295,7 +311,9 @@ class BaseKubeflowTest(tf.test.TestCase):
         'pipeline-runner',
         workflow_file,
     ]
-    absl.logging.info('Launching workflow {}'.format(workflow_name))
+    run_command += _format_parameter(parameter)
+    absl.logging.info('Launching workflow {} with parameter {}'.format(
+        workflow_name, _format_parameter(parameter)))
     with _Timer('RunningPipelineToCompletion'):
       subprocess.run(run_command, check=True)
 
@@ -383,11 +401,14 @@ class BaseKubeflowTest(tf.test.TestCase):
     config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)
     return config
 
-  def _compile_and_run_pipeline(self, pipeline: tfx_pipeline.Pipeline):
+  def _compile_and_run_pipeline(self,
+                                pipeline: tfx_pipeline.Pipeline,
+                                parameters: Dict[Text, Any] = None):
     """Compiles and runs a KFP pipeline.
 
     Args:
       pipeline: The logical pipeline to run.
+      parameters: Value of runtime paramters of the pipeline.
     """
     pipeline_name = pipeline.pipeline_info.pipeline_name
     config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
@@ -408,7 +429,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
 
     # Run the pipeline to completion.
-    self._run_workflow(pipeline_file, pipeline_name)
+    self._run_workflow(pipeline_file, pipeline_name, parameters)
 
     # Obtain workflow logs.
     get_logs_command = [
