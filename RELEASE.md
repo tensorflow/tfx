@@ -5,7 +5,8 @@
     them as Argo workflow parameter, so that user can specify their values at
     runtime. Currently only attributes in ComponentSpec.PARAMETERS and the uri
     of external artifacts can be parameterized (cannot parameterize component
-    inputs/outputs).
+    inputs/outputs). Added `taxi_pipeline_runtime_parameter.py` to demonstrate
+    its usage.
 *   Allowed users to pass in a dict for attributes in ComponentSpec.PARAMETERS
     when the expected argument is a protobuf message. This would save users the
     efforts of constructing complex nested protobuf message in the component
