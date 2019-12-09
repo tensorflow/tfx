@@ -21,13 +21,14 @@ from __future__ import print_function
 import tensorflow as tf
 from tfx.components.example_gen.big_query_example_gen import component
 from tfx.proto import example_gen_pb2
+from tfx.types import standard_artifacts
 
 
 class ComponentTest(tf.test.TestCase):
 
   def testConstruct(self):
     big_query_example_gen = component.BigQueryExampleGen(query='query')
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
     artifact_collection = big_query_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -42,7 +43,7 @@ class ComponentTest(tf.test.TestCase):
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
                 example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
             ])))
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
     artifact_collection = big_query_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)
@@ -56,7 +57,7 @@ class ComponentTest(tf.test.TestCase):
             example_gen_pb2.Input.Split(name='eval', pattern='query2'),
             example_gen_pb2.Input.Split(name='test', pattern='query3')
         ]))
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
     artifact_collection = big_query_example_gen.outputs['examples'].get()
     self.assertEqual('train', artifact_collection[0].split)

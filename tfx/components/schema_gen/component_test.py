@@ -31,7 +31,8 @@ class SchemaGenTest(tf.test.TestCase):
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]))
-    self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
+    self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
+                     schema_gen.outputs['schema'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
 
   def testConstructWithParameter(self):
@@ -40,7 +41,8 @@ class SchemaGenTest(tf.test.TestCase):
         statistics=channel_utils.as_channel(
             [standard_artifacts.ExampleStatistics(split='train')]),
         infer_feature_shape=infer_shape)
-    self.assertEqual('SchemaPath', schema_gen.outputs['schema'].type_name)
+    self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
+                     schema_gen.outputs['schema'].type_name)
     self.assertJsonEqual(
         str(schema_gen.spec.exec_properties['infer_feature_shape']),
         str(infer_shape))

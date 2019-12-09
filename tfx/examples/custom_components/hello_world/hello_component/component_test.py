@@ -41,7 +41,7 @@ class HelloComponentTest(tf.test.TestCase):
         output_data=channel_utils.as_channel(
             [train_examples_out, eval_examples_out]),
         name=u'Testing123')
-    self.assertEqual('ExamplesPath',
+    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      this_component.outputs['output_data'].type_name)
     artifact_collection = this_component.outputs['output_data'].get()
     self.assertEqual('train', artifact_collection[0].split)

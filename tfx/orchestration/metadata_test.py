@@ -120,14 +120,15 @@ class MetadataTest(tf.test.TestCase):
         properties {
           key: "type_name"
           value {
-            string_value: "ExamplesPath"
+            string_value: "%s"
           }
-        }""", artifact)
+        }""" % standard_artifacts.Examples.TYPE_NAME, artifact)
 
       # Test get artifact.
       self.assertListEqual([artifact], m.get_all_artifacts())
       self.assertListEqual([artifact], m.get_artifacts_by_uri('uri'))
-      self.assertListEqual([artifact], m.get_artifacts_by_type('ExamplesPath'))
+      self.assertListEqual([artifact], m.get_artifacts_by_type(
+          standard_artifacts.Examples.TYPE_NAME))
 
       # Test artifact state.
       m.check_artifact_state(artifact, ArtifactState.PUBLISHED)

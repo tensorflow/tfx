@@ -40,7 +40,8 @@ class ComponentTest(tf.test.TestCase):
     self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
 
   def _verify_outputs(self, trainer):
-    self.assertEqual('ModelExportPath', trainer.outputs['model'].type_name)
+    self.assertEqual(standard_artifacts.Model.TYPE_NAME,
+                     trainer.outputs['model'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'
