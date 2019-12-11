@@ -291,11 +291,11 @@ class BaseKubeflowTest(tf.test.TestCase):
     def _format_parameter(parameter: Dict[Text, Any]) -> Text:
       """Format the pipeline parameter section of argo workflow."""
       if parameter:
-        result = []
+        param_list = []
         for k, v in parameter.items():
-          result.append('-p')
-          result.append('%s=%s' % (k, v))
-        return result
+          param_list.append('-p')
+          param_list.append('%s=%s' % (k, v))
+        return param_list
       else:
         return []
 

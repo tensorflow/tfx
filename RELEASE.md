@@ -37,6 +37,14 @@
 
 ## Documentation updates
 
+# Version 0.15.1
+This is a bug fix version only.
+
+## Bug fixes and other changes
+*   Downgraded Tensorflow dependency in tfx docker image to 1.15
+    , to workaround Google Cloud AI Prediction service.
+
+
 # Version 0.15.0
 
 ## Major Features and Improvements

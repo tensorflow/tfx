@@ -51,8 +51,8 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # TODO(jxzheng): investigate why setuptools need to be re-installed
 RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install \
   "kubernetes>=10.0.1,<11" \
-  "tensorflow>=1.15,<3" \
-  "tensorflow-serving-api>=1.15,<3" \
+  "tensorflow>=1.15,<2" \
+  "tensorflow-serving-api>=1.15,<2" \
   "setuptools==41.4.0"
 
 # docker build command should be run under root directory of github checkout.
