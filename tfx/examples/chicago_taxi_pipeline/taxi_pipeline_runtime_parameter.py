@@ -39,24 +39,26 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import pusher_pb2
 from tfx.utils.dsl_utils import external_input
 
-pipeline_name = 'taxi_pipeline_with_parameters'
+_pipeline_name = 'taxi_pipeline_with_parameters'
 
 # Path of pipeline root, should be a GCS path.
-pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
-                             kfp.dsl.RUN_ID_PLACEHOLDER)
+_pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
+                              kfp.dsl.RUN_ID_PLACEHOLDER)
 
 
-# pylint: disable=redefined-outer-name
 def _create_parameterized_pipeline(
     pipeline_name: Text,
-    pipeline_root: Optional[Text] = pipeline_root,
-    enable_cache: Optional[bool] = True) -> pipeline.Pipeline:
+    pipeline_root: Optional[Text] = _pipeline_root,
+    enable_cache: Optional[bool] = True,
+    direct_num_workers: Optional[int] = 1) -> pipeline.Pipeline:
   """Creates a simple TFX pipeline with RuntimeParameter.
 
   Args:
     pipeline_name: The name of the pipeline.
     pipeline_root: The root of the pipeline output.
     enable_cache: Whether to enable cache in this pipeline.
+    direct_num_workers: Number of workers executing the underlying beam pipeline
+      in the executors.
 
   Returns:
     A logical TFX pipeline.Pipeline object.
@@ -135,8 +137,8 @@ def _create_parameterized_pipeline(
   model_validator = ModelValidator(
       examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
-  # Hack: ensuring push_destination can be correctly parameterized and
-  # interpreted.
+  # TODO(b/145949533) Currently we use this hack to ensure push_destination can
+  # be correctly parameterized and interpreted.
   # pipeline root will be specified as a dsl.PipelineParam with the name
   # pipeline-root, see:
   # https://github.com/tensorflow/tfx/blob/1c670e92143c7856f67a866f721b8a9368ede385/tfx/orchestration/kubeflow/kubeflow_dag_runner.py#L226
@@ -157,13 +159,15 @@ def _create_parameterized_pipeline(
           trainer, model_analyzer, model_validator, pusher
       ],
       enable_cache=enable_cache,
+      # TODO(b/141578059): The multi-processing API might change.
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 
 
 if __name__ == '__main__':
-  enable_cache = True
+  _enable_cache = True
   pipeline = _create_parameterized_pipeline(
-      pipeline_name, pipeline_root, enable_cache=enable_cache)
+      _pipeline_name, _pipeline_root, enable_cache=_enable_cache)
 
   # This pipeline automatically injects the Kubeflow TFX image if the
   # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
@@ -173,7 +177,7 @@ if __name__ == '__main__':
   config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=kubeflow_dag_runner
       .get_default_kubeflow_metadata_config(),
-      tfx_image=tfx_image or 'tensorflow/tfx:latest')
+      tfx_image=tfx_image)
   kfp_runner = kubeflow_dag_runner.KubeflowDagRunner(config=config)
 
   kfp_runner.run(pipeline)
