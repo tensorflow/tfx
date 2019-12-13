@@ -29,24 +29,38 @@ from tfx.tools.cli.container_builder import labels
 
 class DockerfileTest(tf.test.TestCase):
 
-  def test_generate(self):
-    # change to a temporary working dir such that there is no setup.py
-    # in the working dir.
-    old_working_dir = os.getcwd()
-    tmp_working_dir = tempfile.mkdtemp()
-    os.chdir(tmp_working_dir)
+  def setUp(self):
+    super(DockerfileTest, self).setUp()
+    # change to a temporary working dir such that
+    # there is no setup.py in the working dir.
+    self._old_working_dir = os.getcwd()
+    self._tmp_working_dir = tempfile.mkdtemp()
+    os.chdir(self._tmp_working_dir)
 
-    test_dockerfile_name = 'test_dockerfile'
-    default_dockerfile_path = os.path.join(
-        os.path.dirname(__file__), 'testdata',
-        test_dockerfile_name)
+  def tearDown(self):
+    super(DockerfileTest, self).tearDown()
+    os.chdir(self._old_working_dir)
+
+  def testGenerate(self):
     generated_dockerfile_path = labels.DOCKERFILE_NAME
     dockerfile.Dockerfile(filename=generated_dockerfile_path)
     self.assertTrue(
-        filecmp.cmp(default_dockerfile_path, generated_dockerfile_path))
+        filecmp.cmp(
+            os.path.join(
+                os.path.dirname(__file__), 'testdata', 'test_dockerfile'),
+            generated_dockerfile_path))
 
-    # clean up
-    os.chdir(old_working_dir)
+  def testGenerateWithBaseOverride(self):
+    generated_dockerfile_path = labels.DOCKERFILE_NAME
+    dockerfile.Dockerfile(
+        filename=generated_dockerfile_path,
+        base_image='my_customized_image:latest')
+    self.assertTrue(
+        filecmp.cmp(
+            os.path.join(
+                os.path.dirname(__file__), 'testdata',
+                'test_dockerfile_with_base'), generated_dockerfile_path))
+
 
 if __name__ == '__main__':
   tf.test.main()

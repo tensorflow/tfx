@@ -43,6 +43,7 @@ class ContainerBuilder(object):
 
   def __init__(self,
                target_image: Optional[Text] = None,
+               base_image: Optional[Text] = labels.BASE_IMAGE,
                skaffold_cmd: Optional[Text] = labels.SKAFFOLD_COMMAND,
                buildspec_filename: Optional[Text] = labels.BUILD_SPEC_FILENAME,
                dockerfile_name: Optional[Text] = labels.DOCKERFILE_NAME,
@@ -51,6 +52,7 @@ class ContainerBuilder(object):
 
     Args:
       target_image: the target image path to be built.
+      base_image: the image path to use as the base image.
       skaffold_cmd: skaffold command.
       buildspec_filename: the buildspec file path that is accessible to the
         current execution environment. It could be either absolute path or
@@ -78,7 +80,8 @@ class ContainerBuilder(object):
 
     Dockerfile(
         filename=os.path.join(self._buildspec.build_context, dockerfile_name),
-        setup_py_filename=setup_py_filename)
+        setup_py_filename=setup_py_filename,
+        base_image=base_image)
 
   def build(self):
     """Build the container and return the built image path with SHA."""

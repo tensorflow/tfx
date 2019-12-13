@@ -60,6 +60,13 @@ def pipeline_group() -> None:
     'the docker building script.'
 )
 @click.option(
+    '--build_base_image',
+    default=None,
+    type=str,
+    help='Container image path to be used as the base image. If not specified, '
+    'target image will be build based on the released TFX image.'
+)
+@click.option(
     '--skaffold_cmd',
     default=None,
     type=str,
@@ -82,6 +89,7 @@ def pipeline_group() -> None:
     help='Kubernetes namespace to connect to the KFP API.')
 def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
                     package_path: Text, build_target_image: Text,
+                    build_base_image: Text,
                     skaffold_cmd: Text, endpoint: Text, iap_client_id: Text,
                     namespace: Text) -> None:
   """Command definition to create a pipeline."""
@@ -92,6 +100,7 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   ctx.flags_dict[labels.PIPELINE_PACKAGE_PATH] = package_path
   ctx.flags_dict[labels.TARGET_IMAGE] = build_target_image
+  ctx.flags_dict[labels.BASE_IMAGE] = build_base_image
   ctx.flags_dict[labels.SKAFFOLD_CMD] = skaffold_cmd
   ctx.flags_dict[labels.ENDPOINT] = endpoint
   ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id

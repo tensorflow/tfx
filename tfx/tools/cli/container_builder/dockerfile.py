@@ -25,13 +25,12 @@ import click
 
 from tfx.tools.cli.container_builder import labels
 
-
-DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY = '''FROM tensorflow/tfx:0.14.0
+_DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY = '''FROM %s
 WORKDIR /pipeline
 COPY ./ ./
 RUN python3 %s install'''
 
-DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY = '''FROM tensorflow/tfx:0.14.0
+_DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY = '''FROM %s
 WORKDIR /pipeline
 COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"'''
@@ -44,23 +43,27 @@ class Dockerfile(object):
 
   Attributes:
     filename: dockerfile filename.
+    setup_py_filename: setup.py filename that defines the pipeline PIP package.
   """
 
   def __init__(self,
                filename: Text = labels.DOCKERFILE_NAME,
-               setup_py_filename: Text = labels.SETUP_PY_FILENAME):
+               setup_py_filename: Text = labels.SETUP_PY_FILENAME,
+               base_image: Text = labels.BASE_IMAGE):
     self.filename = filename
     if os.path.exists(self.filename):
       return
     if os.path.exists(setup_py_filename):
       click.echo('Generating Dockerfile with python package installation '
                  'based on %s.' % setup_py_filename)
-      self._generate_default(DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY %
-                             setup_py_filename)
-    else:
-      click.echo('No local %s, copying the directory and '
-                 'configuring the PYTHONPATH.' % setup_py_filename)
-      self._generate_default(DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY)
+      self._generate_default(_DEFAULT_DOCKERFILE_CONTENT_WITH_SETUP_PY %
+                             (base_image, setup_py_filename))
+      return
+
+    click.echo('No local %s, copying the directory and '
+               'configuring the PYTHONPATH.' % setup_py_filename)
+    self._generate_default(_DEFAULT_DOCKERFILE_CONTENT_WITHOUT_SETUP_PY %
+                           base_image)
 
   def _generate_default(self, contents):
     """Generate a dockerfile with the contents."""
