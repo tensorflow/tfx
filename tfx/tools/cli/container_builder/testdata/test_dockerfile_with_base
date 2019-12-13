@@ -1,4 +1,4 @@
-FROM tensorflow/tfx:0.16.0.dev
+FROM my_customized_image:latest
 WORKDIR /pipeline
 COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"
