@@ -28,7 +28,6 @@ from google.protobuf import json_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
@@ -136,20 +135,10 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    # TODO(zhitaoli): Deprecate this in a future version.
-    if exec_properties.get('custom_config', None):
-      cmle_args = exec_properties.get('custom_config',
-                                      {}).get('cmle_training_args')
-      if cmle_args:
-        executor_class_path = '.'.join([Executor.__module__, Executor.__name__])
-        absl.logging.warn(
-            'Passing \'cmle_training_args\' to trainer directly is deprecated, '
-            'please use extension executor at '
-            'tfx.extensions.google_cloud_ai_platform.trainer.executor instead')
-
-        return runner.start_cmle_training(input_dict, output_dict,
-                                          exec_properties, executor_class_path,
-                                          cmle_args)
+    custom_config = exec_properties.get('custom_config') or {}
+    if not isinstance(custom_config, dict):
+      raise ValueError('Expect custom_config to be a dict but got %s instead' %
+                       type(custom_config))
 
     trainer_fn = self._GetTrainerFn(exec_properties)
 
@@ -206,7 +195,9 @@ class Executor(base_executor.BaseExecutor):
         # Number of eval steps.
         eval_steps=eval_steps,
         # Base model that will be used for this training job.
-        base_model=base_model)
+        base_model=base_model,
+        # Additional parameters to pass to trainer function.
+        **custom_config)
 
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
 

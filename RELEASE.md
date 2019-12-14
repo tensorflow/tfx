@@ -14,6 +14,7 @@
 *   Added support in Trainer to use other model artifacts. This enables
     scenarios such as warmstart.
 *   Removed tf.compat.v1 for iris example.
+*   Updated trainer executor to pass through custom config to user module.
 
 ## Bug fixes and other changes
 

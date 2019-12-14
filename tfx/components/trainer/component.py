@@ -152,10 +152,8 @@ class Trainer(base_component.BaseComponent):
         training. Current only num_steps is available.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
         Current only num_steps is available.
-      custom_config: A dict which contains the training job parameters to be
-        passed to Google Cloud ML Engine.  For the full set of parameters
-        supported by Google Cloud ML Engine, refer to
-        https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
+      custom_config: A dict which contains addtional training job parameters
+        that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
       output: Optional `Model` channel for result of exported models.
       transform_output: Backwards compatibility alias for the 'transform_graph'
