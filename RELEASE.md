@@ -1,8 +1,9 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-*   Enabled KubeflowDagRunner to recognize RuntimeParameter and interpret 
-    them as Argo workflow parameter, so that user can specify their values at
+
+*   Enabled KubeflowDagRunner to recognize RuntimeParameter and interpret them
+    as Argo workflow parameter, so that user can specify their values at
     runtime. Currently only attributes in ComponentSpec.PARAMETERS and the uri
     of external artifacts can be parameterized (cannot parameterize component
     inputs/outputs). Added `taxi_pipeline_runtime_parameter.py` to demonstrate
@@ -29,6 +30,7 @@
 *   Allow windows style paths in Transform component cache.
 *   Fixed bug in CLI (--engine=kubeflow) which uses hard coded obslete image
     (TFX 0.14.0) as the base image.
+*   Allow users to specify the region to use when serving with for AI Platform.
 
 ### Deprecations
 
@@ -60,8 +62,8 @@
 *   Introduced `PipelineConfig` and `BaseComponentConfig` to control the
     platform specific settings for pipelines and components.
 *   Added a custom Executor of Pusher to push model to BigQuery ML for serving.
-*   Added KubernetesComponentLauncher to support launch ExecutorContainerSpec in a
-    Kubernetes cluster.
+*   Added KubernetesComponentLauncher to support launch ExecutorContainerSpec in
+    a Kubernetes cluster.
 *   Made model validator executor forward compatible with TFMA change.
 *   Added Iris flowers classification example.
 *   Added support for serialization and deserialization of components.
@@ -92,9 +94,9 @@
     engine, which requires containers built with the custom python code.
 *   Demonstrated DirectRunner multi-core processing in Chicago Taxi example,
     including Airflow and Beam.
-*   Added Kubeflow artifact visualization of inputs, outputs and
-    execution properties for components using a Markdown file. Added Tensorboard
-    to Trainer components as well.
+*   Added Kubeflow artifact visualization of inputs, outputs and execution
+    properties for components using a Markdown file. Added Tensorboard to
+    Trainer components as well.
 
 ## Bug fixes and other changes
 
@@ -156,15 +158,14 @@
     examples/chicago_taxi_pipeline/
 *   Moved interactive notebook classes into `tfx.orchestration.experimental`
     namespace.
-*   Starting from 1.15, package `tensorflow` comes with GPU support. Users
-    won't need to choose between `tensorflow` and `tensorflow-gpu`. If any GPU
-    devices are available, processes spawned by all TFX components will try to
-    utilize them; note that in rare cases, this may exhaust the memory of the
-    device(s).
-*   Caveat: `tensorflow` 2.0.0 is an exception and does not have GPU
-    support. If `tensorflow-gpu` 2.0.0 is installed before installing
-    `tfx`, it will be replaced with `tensorflow` 2.0.0.
-    Re-install `tensorflow-gpu` 2.0.0 if needed.
+*   Starting from 1.15, package `tensorflow` comes with GPU support. Users won't
+    need to choose between `tensorflow` and `tensorflow-gpu`. If any GPU devices
+    are available, processes spawned by all TFX components will try to utilize
+    them; note that in rare cases, this may exhaust the memory of the device(s).
+*   Caveat: `tensorflow` 2.0.0 is an exception and does not have GPU support. If
+    `tensorflow-gpu` 2.0.0 is installed before installing `tfx`, it will be
+    replaced with `tensorflow` 2.0.0. Re-install `tensorflow-gpu` 2.0.0 if
+    needed.
 *   Caveat: MLMD schema auto-upgrade is now disabled by default. For users who
     upgrades from 0.13 and do not want to lose the data in MLMD, please refer to
     [MLMD documentation](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#upgrade-mlmd-library)
@@ -172,18 +173,17 @@
     0.14 should not be affected since there is not schema change between these
     two versions.
 
-
 ### For pipeline authors
 
 *   Deprecated the usage of `tf.contrib.training.HParams` in Trainer as it is
     deprecated in TF 2.0. User module relying on member method of that class
     will not be supported. Dot style property access will be the only supported
     style from now on.
-*   Any SavedModel produced by tf.Transform <=0.14 using any tf.contrib ops
-    (or tf.Transform ops that used tf.contrib ops such as tft.quantiles,
+*   Any SavedModel produced by tf.Transform <=0.14 using any tf.contrib ops (or
+    tf.Transform ops that used tf.contrib ops such as tft.quantiles,
     tft.bucketize, etc.) cannot be loaded with TF 2.0 since the contrib library
-    has been removed in 2.0. Please refer to this [issue]
-    (https://github.com/tensorflow/tfx/issues/838).
+    has been removed in 2.0. Please refer to this
+    [issue](https://github.com/tensorflow/tfx/issues/838).
 
 ### For component authors
 

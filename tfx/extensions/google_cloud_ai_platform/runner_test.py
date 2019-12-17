@@ -163,6 +163,7 @@ class RunnerTest(tf.test.TestCase):
     self.assertDictEqual(
         {
             'name': 'v{}'.format(model_version),
+            'regions': ['us-central1'],
             'deployment_uri': serving_path,
             'runtime_version': runner._get_tf_runtime_version(),
             'python_version': runner._get_caip_python_version(),
@@ -174,6 +175,56 @@ class RunnerTest(tf.test.TestCase):
             self._project_id, 'model_name', model_version))
     mock_set_default_execute.assert_called_with()
 
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
+  )
+  def testDeployModelForCMLEServingWithCustomRegion(self, mock_discovery):
+    serving_path = os.path.join(self._output_data_dir, 'serving_path')
+    model_version = 'model_version'
+
+    mock_discovery.build.return_value = self._mock_api_client
+    mock_create = mock.Mock()
+    mock_create.return_value.execute.return_value = {'name': 'op_name'}
+    self._mock_api_client.projects().models().versions().create = mock_create
+    mock_get = mock.Mock()
+    self._mock_api_client.projects().operations().get = mock_get
+    mock_set_default = mock.Mock()
+    self._mock_api_client.projects().models().versions(
+    ).setDefault = mock_set_default
+    mock_set_default_execute = mock.Mock()
+    self._mock_api_client.projects().models().versions(
+    ).setDefault().execute = mock_set_default_execute
+
+    mock_get.return_value.execute.return_value = {
+        'done': 'Done',
+        'response': {
+            'name': model_version
+        },
+    }
+
+    self._cmle_serving_args['regions'] = ['custom-region']
+    runner.deploy_model_for_cmle_serving(serving_path, model_version,
+                                         self._cmle_serving_args)
+
+    mock_create.assert_called_with(
+        body=mock.ANY,
+        parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
+    (_, kwargs) = mock_create.call_args
+    body = kwargs['body']
+    self.assertDictEqual(
+        {
+            'name': 'v{}'.format(model_version),
+            'regions': ['custom-region'],
+            'deployment_uri': serving_path,
+            'runtime_version': runner._get_tf_runtime_version(),
+            'python_version': runner._get_caip_python_version(),
+        }, body)
+    mock_get.assert_called_with(name='op_name')
+
+    mock_set_default.assert_called_with(
+        name='projects/{}/models/{}/versions/{}'.format(
+            self._project_id, 'model_name', model_version))
+    mock_set_default_execute.assert_called_with()
 
 if __name__ == '__main__':
   tf.test.main()

@@ -192,11 +192,12 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
 
   model_name = cmle_serving_args['model_name']
   project_id = cmle_serving_args['project_id']
+  regions = cmle_serving_args.get('regions', ['us-central1'])
   runtime_version = _get_tf_runtime_version()
   python_version = _get_caip_python_version()
 
   api = discovery.build('ml', 'v1')
-  body = {'name': model_name}
+  body = {'name': model_name, 'regions': regions}
   parent = 'projects/{}'.format(project_id)
   try:
     api.projects().models().create(body=body, parent=parent).execute()
@@ -210,6 +211,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
 
   body = {
       'name': 'v{}'.format(model_version),
+      'regions': regions,
       'deployment_uri': serving_path,
       'runtime_version': runtime_version,
       'python_version': python_version,
