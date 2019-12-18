@@ -98,7 +98,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     training_inputs: Training input for AI Platform training job.
       'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred by
       the runner. For the full set of parameters supported, refer to
-        https://cloud.google.com/ml-engine/docs/tensorflow/deploying-models#creating_a_model_version.
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
 
   Returns:
     None
