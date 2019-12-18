@@ -8,6 +8,8 @@
     of external artifacts can be parameterized (cannot parameterize component
     inputs/outputs). Added `taxi_pipeline_runtime_parameter.py` to demonstrate
     its usage.
+*   Allowed users to access parameterized pipeline root when defining the
+    pipeline by providing `pipeline.ROOT_PARAMETER` in KubeflowDagRunner.
 *   Allowed users to pass in a dict for attributes in ComponentSpec.PARAMETERS
     when the expected argument is a protobuf message. This would save users the
     efforts of constructing complex nested protobuf message in the component
