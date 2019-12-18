@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper class to start TFX training jobs on CMLE."""
+"""Helper class to start TFX training jobs on AI Platform."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -80,24 +80,24 @@ def _get_caip_python_version() -> Text:
   return {2: '2.7', 3: '3.5'}[sys.version_info.major]
 
 
-def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
-                        output_dict: Dict[Text, List[types.Artifact]],
-                        exec_properties: Dict[Text, Any],
-                        executor_class_path: Text, training_inputs: Dict[Text,
-                                                                         Any]):
-  """Start a trainer job on CMLE.
+def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
+                       output_dict: Dict[Text, List[types.Artifact]],
+                       exec_properties: Dict[Text, Any],
+                       executor_class_path: Text, training_inputs: Dict[Text,
+                                                                        Any]):
+  """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
-  tfx.scripts.run_executor module on a CMLE training job interpreter.
+  tfx.scripts.run_executor module on a AI Platform training job interpreter.
 
   Args:
     input_dict: Passthrough input dict for tfx.components.Trainer.executor.
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input for CMLE training job. 'pythonModule',
-      'pythonVersion' and 'runtimeVersion' will be inferred by the runner. For
-      the full set of parameters supported, refer to
+    training_inputs: Training input for AI Platform training job.
+      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred by
+      the runner. For the full set of parameters supported, refer to
         https://cloud.google.com/ml-engine/docs/tensorflow/deploying-models#creating_a_model_version.
 
   Returns:
@@ -106,8 +106,8 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
     RuntimeError: if the Google Cloud AI Platform training job failed.
   """
   training_inputs = training_inputs.copy()
-  # Remove cmle_args from exec_properties so CMLE trainer doesn't call itself
-  for gaip_training_key in ['cmle_training_args', 'gaip_training_args']:
+  # Remove aip_args from exec_properties so AIP trainer doesn't call itself
+  for gaip_training_key in ['ai_platform_training_args', 'gaip_training_args']:
     if gaip_training_key in exec_properties.get('custom_config'):
       exec_properties['custom_config'].pop(gaip_training_key)
 
@@ -118,7 +118,7 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
   json_exec_properties = json.dumps(exec_properties)
   absl.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
-  # Configure CMLE job
+  # Configure AI Platform training job
   api_client = discovery.build('ml', 'v1')
 
   # We use custom containers to launch training on AI Platform, which invokes
@@ -138,22 +138,23 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
 
   training_inputs['args'] = job_args
 
-  # Pop project_id so CMLE doesn't complain about an unexpected parameter.
-  # It's been a stowaway in cmle_args and has finally reached its destination.
+  # Pop project_id so AIP doesn't complain about an unexpected parameter.
+  # It's been a stowaway in aip_args and has finally reached its destination.
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
 
   job_name = 'tfx_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
   job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
 
-  # Submit job to CMLE
-  absl.logging.info('Submitting job=\'{}\', project=\'{}\' to CMLE.'.format(
-      job_name, project))
+  # Submit job to AIP Training
+  absl.logging.info(
+      'Submitting job=\'{}\', project=\'{}\' to AI Platform.'.format(
+          job_name, project))
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
   request.execute()
 
-  # Wait for CMLE job to finish
+  # Wait for AIP Training job to finish
   job_id = '{}/jobs/{}'.format(project_id, job_name)
   request = api_client.projects().jobs().get(name=job_id)
   response = request.execute()
@@ -167,32 +168,32 @@ def start_cmle_training(input_dict: Dict[Text, List[types.Artifact]],
     absl.logging.error(err_msg)
     raise RuntimeError(err_msg)
 
-  # CMLE training complete
+  # AIP training complete
   absl.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
-def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
-                                  cmle_serving_args: Dict[Text, Any]):
-  """Deploys a model for serving with CMLE.
+def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
+                                    ai_platform_serving_args: Dict[Text, Any]):
+  """Deploys a model for serving with AI Platform.
 
   Args:
     serving_path: The path to the model. Must be a GCS URI.
     model_version: Version of the model being deployed. Must be different from
       what is currently being served.
-    cmle_serving_args: Dictionary containing arguments for pushing to CMLE. For
-      the full set of parameters supported, refer to
+    ai_platform_serving_args: Dictionary containing arguments for pushing to AI
+      Platform. For the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
   absl.logging.info(
-      'Deploying to model with version {} to CMLE for serving: {}'.format(
-          model_version, cmle_serving_args))
+      'Deploying to model with version {} to AI Platform for serving: {}'
+      .format(model_version, ai_platform_serving_args))
 
-  model_name = cmle_serving_args['model_name']
-  project_id = cmle_serving_args['project_id']
-  regions = cmle_serving_args.get('regions', ['us-central1'])
+  model_name = ai_platform_serving_args['model_name']
+  project_id = ai_platform_serving_args['project_id']
+  regions = ai_platform_serving_args.get('regions', ['us-central1'])
   runtime_version = _get_tf_runtime_version()
   python_version = _get_caip_python_version()
 
@@ -207,7 +208,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
     if e.resp.status == 409:  # pytype: disable=attribute-error
       absl.logging.warn('Model {} already exists'.format(model_name))
     else:
-      raise RuntimeError('CMLE Push failed: {}'.format(e))
+      raise RuntimeError('AI Platform Push failed: {}'.format(e))
 
   body = {
       'name': 'v{}'.format(model_version),
@@ -217,7 +218,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
       'python_version': python_version,
   }
 
-  # Push to CMLE, and record the operation name so we can poll for its state.
+  # Push to AIP, and record the operation name so we can poll for its state.
   model_name = 'projects/{}/models/{}'.format(project_id, model_name)
   response = api.projects().models().versions().create(
       body=body, parent=model_name).execute()
@@ -235,7 +236,7 @@ def deploy_model_for_cmle_serving(serving_path: Text, model_version: Text,
       # The operation completed with an error.
       absl.logging.error(deploy_status['error'])
       raise RuntimeError(
-          'Failed to deploy model to CMLE for serving: {}'.format(
+          'Failed to deploy model to AI Platform for serving: {}'.format(
               deploy_status['error']))
 
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
