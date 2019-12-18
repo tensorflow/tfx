@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import re
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import types
 from tfx.orchestration.experimental.interactive import notebook_formatters

@@ -23,7 +23,7 @@ import random
 import apache_beam as beam
 from apache_beam.testing import util
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.cloud import bigquery
 from google.protobuf import json_format
 from tfx.components.example_gen.big_query_example_gen import executor

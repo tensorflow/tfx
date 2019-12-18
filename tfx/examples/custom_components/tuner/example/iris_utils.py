@@ -21,8 +21,8 @@ from __future__ import print_function
 from typing import Dict, Text, Tuple
 import absl
 import kerastuner
-import tensorflow as tf
-from tensorflow import keras
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import keras
 from tensorflow_transform.tf_metadata import schema_utils
 from tuner_component import component
 

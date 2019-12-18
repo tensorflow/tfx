@@ -14,7 +14,7 @@
 # limitations under the License.
 """Subpackage for TFX components."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # For component user to direct use tfx.components.[...] as an alias.
 from tfx.components.bulk_inferrer.component import BulkInferrer

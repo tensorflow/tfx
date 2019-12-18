@@ -21,6 +21,7 @@ from __future__ import print_function
 import json
 from hello_component import component
 import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.types import artifact
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts

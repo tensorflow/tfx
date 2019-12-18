@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Text
 import absl
 from googleapiclient import discovery
 from googleapiclient import errors
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import types
 from tfx import version

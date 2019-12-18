@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Mapping, Text
 
 from absl import logging
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx_bsl.beam import run_inference
 from tfx_bsl.proto import model_spec_pb2
 

@@ -26,7 +26,7 @@ import subprocess
 import tempfile
 
 import requests
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_transform import coders as tft_coders
 from tensorflow_transform.tf_metadata import dataset_schema

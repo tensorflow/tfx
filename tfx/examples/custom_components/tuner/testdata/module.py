@@ -21,8 +21,8 @@ from __future__ import print_function
 from typing import Text
 import kerastuner
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import keras
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.examples.custom_components.tuner.tuner_component import component
 

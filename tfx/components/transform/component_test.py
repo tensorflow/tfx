@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.components.transform import component
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils

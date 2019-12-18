@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.components.model_validator import executor
 from tfx.types import artifact_utils

@@ -22,7 +22,8 @@ from __future__ import division
 from __future__ import print_function
 
 import absl
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tensorflow as tf2
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 
@@ -63,12 +64,12 @@ def preprocessing_fn(inputs):
   """
   outputs = {
       _transformed_name(_IMAGE_KEY):
-          tf.compat.v2.map_fn(
+          tf2.compat.v2.map_fn(
               _image_parser,
               tf.squeeze(inputs[_IMAGE_KEY], axis=1),
               dtype=tf.float32),
       _transformed_name(_LABEL_KEY):
-          tf.compat.v2.map_fn(
+          tf2.compat.v2.map_fn(
               _label_parser,
               tf.squeeze(inputs[_LABEL_KEY], axis=1),
               dtype=tf.float32)

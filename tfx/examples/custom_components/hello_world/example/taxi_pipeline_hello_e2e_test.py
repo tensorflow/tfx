@@ -22,7 +22,7 @@ import os
 from typing import Text
 
 import taxi_pipeline_hello
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner

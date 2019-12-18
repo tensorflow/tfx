@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import tempfile
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types

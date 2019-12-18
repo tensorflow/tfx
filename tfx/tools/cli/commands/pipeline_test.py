@@ -25,7 +25,7 @@ import sys
 
 from click import testing as click_testing
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.tools.cli.commands.pipeline import pipeline_group
 

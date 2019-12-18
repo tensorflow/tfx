@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.components.infra_validator import component
 from tfx.proto import infra_validator_pb2
 from tfx.types import channel_utils

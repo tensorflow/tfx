@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from presto_component import component
 from proto import presto_config_pb2
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import json_format
 from tfx.proto import example_gen_pb2

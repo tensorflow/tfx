@@ -24,7 +24,7 @@ from typing import Any, Dict, Iterable, List, Text, Tuple
 import apache_beam as beam
 import prestodb
 from proto import presto_config_pb2
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import json_format
 from tfx import types

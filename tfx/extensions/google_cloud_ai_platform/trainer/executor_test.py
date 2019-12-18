@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 # Standard Imports
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor

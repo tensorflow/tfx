@@ -23,7 +23,7 @@ import os
 from airflow import models
 import mock
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor

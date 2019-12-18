@@ -21,7 +21,7 @@ from __future__ import print_function
 import mock
 
 from six.moves import builtins
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.types import standard_artifacts

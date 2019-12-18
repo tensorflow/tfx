@@ -23,7 +23,7 @@ from typing import Any, Dict, Iterable, List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx_bsl.coders import csv_decoder
 
 from tfx import types

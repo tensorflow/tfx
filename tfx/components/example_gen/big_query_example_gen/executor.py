@@ -21,7 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text
 
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.cloud import bigquery
 from tfx import types

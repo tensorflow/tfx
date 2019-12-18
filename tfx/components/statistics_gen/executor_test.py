@@ -22,7 +22,7 @@ import os
 import tempfile
 
 from absl.testing import absltest
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils

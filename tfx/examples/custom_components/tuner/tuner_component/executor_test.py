@@ -21,7 +21,7 @@ from __future__ import print_function
 import json
 import os
 from kerastuner import HyperParameters
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2

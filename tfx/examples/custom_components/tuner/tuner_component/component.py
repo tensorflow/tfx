@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Optional, Text, NamedTuple
 import kerastuner
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import types
 from tfx.components.base import base_component

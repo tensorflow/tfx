@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Text
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.components.model_validator import driver
 from tfx.types import standard_artifacts

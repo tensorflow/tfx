@@ -28,7 +28,7 @@ import jinja2
 import mock
 import nbformat
 from six.moves import builtins
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import types
 from tfx.components.base import base_component

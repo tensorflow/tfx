@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Text
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.examples.cifar10 import cifar10_pipeline_beam
 from tfx.orchestration import metadata

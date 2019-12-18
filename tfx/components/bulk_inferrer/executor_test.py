@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import json_format
 from tensorflow_serving.apis import prediction_log_pb2

@@ -28,7 +28,7 @@ import json
 import os
 from typing import Any, Dict, List, Text
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils

@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import os  # pylint: disable=unused-import
 
-import tensorflow as tf  # pylint: disable=unused-import
+import tensorflow.compat.v1 as tf  # pylint: disable=unused-import
 
 # import tensorflow_transform as tft # Step 4
 # from tensorflow_transform.tf_metadata import schema_utils # Step 4

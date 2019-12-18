@@ -21,7 +21,7 @@ from __future__ import print_function
 import filecmp
 import os
 import tempfile
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels

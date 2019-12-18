@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.common_nodes import importer_node
