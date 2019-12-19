@@ -108,6 +108,7 @@ class TaxiUtilsTest(tf.test.TestCase):
                      'transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     # Clear annotations so we only have to test main schema.
+    transformed_schema.ClearField('annotation')
     for feature in transformed_schema.feature:
       feature.ClearField('annotation')
     self.assertEqual(transformed_schema, expected_transformed_schema)
