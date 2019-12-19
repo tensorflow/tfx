@@ -42,8 +42,9 @@ class Executor(base_executor.BaseExecutor):
       output_dict: Passthrough input dict for tfx.components.Trainer.executor.
       exec_properties: Mostly a passthrough input dict for
         tfx.components.Trainer.executor. custom_config.ai_platform_training_args
-        is consumed by this class.  For the full set of parameters supported by
-        Google Cloud AI Platform, refer to
+        and custom_config.ai_platform_training_job_id are consumed by this
+        class.  For the full set of parameters supported by Google Cloud AI
+        Platform, refer to
         https://cloud.google.com/ml-engine/docs/tensorflow/training-jobs#configuring_the_job
 
     Returns:
@@ -55,15 +56,16 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    if not exec_properties.get('custom_config',
-                               {}).get('ai_platform_training_args'):
+    custom_config = exec_properties.get('custom_config', {})
+    training_inputs = custom_config.get('ai_platform_training_args')
+    if training_inputs is None:
       err_msg = '\'ai_platform_training_args\' not found in custom_config.'
       absl.logging.error(err_msg)
       raise ValueError(err_msg)
 
-    training_inputs = exec_properties.get('custom_config',
-                                          {}).pop('ai_platform_training_args')
+    job_id = custom_config.get('ai_platform_training_job_id')
     executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
                                      tfx_trainer_executor.Executor.__name__)
     return runner.start_aip_training(input_dict, output_dict, exec_properties,
-                                     executor_class_path, training_inputs)
+                                     executor_class_path, training_inputs,
+                                     job_id)

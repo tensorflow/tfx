@@ -33,6 +33,7 @@
 *   Fixed bug in CLI (--engine=kubeflow) which uses hard coded obslete image
     (TFX 0.14.0) as the base image.
 *   Allow users to specify the region to use when serving with for AI Platform.
+*   Allow users to give deterministic job id to AI Platform Training job.
 
 ### Deprecations
 
