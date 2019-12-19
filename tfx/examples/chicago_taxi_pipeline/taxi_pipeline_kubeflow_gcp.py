@@ -54,7 +54,7 @@ _project_id = 'my-gcp-project'
 # below.
 _module_file = os.path.join(_input_bucket, 'taxi_utils.py')
 
-# Region to use for Dataflow jobs and AI Platform training jobs.
+# Region to use for Dataflow jobs and AI Platform jobs.
 #   Dataflow: https://cloud.google.com/dataflow/docs/concepts/regional-endpoints
 #   AI Platform: https://cloud.google.com/ml-engine/docs/tensorflow/regions
 _gcp_region = 'us-central1'
@@ -86,7 +86,7 @@ _ai_platform_serving_args = {
     # https://cloud.google.com/ml-engine/docs/regions
     # Note that serving currently only supports a single region:
     # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models#Model
-    'regions': ['us-central1'],
+    'regions': [_gcp_region],
 }
 
 # Beam args to run data processing on DataflowRunner.
@@ -225,8 +225,7 @@ if __name__ == '__main__':
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config,
       # Specify custom docker image to use.
-      tfx_image=tfx_image
-  )
+      tfx_image=tfx_image)
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(

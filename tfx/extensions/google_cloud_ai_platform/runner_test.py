@@ -172,7 +172,7 @@ class RunnerTest(tf.test.TestCase):
     self.assertDictEqual(
         {
             'name': 'v{}'.format(model_version),
-            'regions': ['us-central1'],
+            'regions': [],
             'deployment_uri': serving_path,
             'runtime_version': runner._get_tf_runtime_version(),
             'python_version': runner._get_caip_python_version(),
