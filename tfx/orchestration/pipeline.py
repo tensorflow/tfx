@@ -36,23 +36,6 @@ from tfx.orchestration import data_types
 # https://dev.mysql.com/doc/refman/5.6/en/identifiers.html
 MAX_PIPELINE_NAME_LENGTH = 63
 
-# Name of pipeline_root parameter.
-_PIPELINE_ROOT = 'pipeline-root'
-
-
-# Pipeline root is by default specified as a RuntimeParameter when runnning on
-# KubeflowDagRunner. This constant offers users an easy access to the pipeline
-# root placeholder when defining a pipeline. For example,
-#
-# pusher = Pusher(
-#     model_export=trainer.outputs['model'],
-#     model_blessing=model_validator.outputs['blessing'],
-#     push_destination=pusher_pb2.PushDestination(
-#         filesystem=pusher_pb2.PushDestination.Filesystem(
-#             base_directory=os.path.join(
-#                 str(pipeline.ROOT_PARAMETER), 'model_serving'))))
-ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
-
 
 class Pipeline(object):
   """Logical TFX pipeline object.

@@ -82,11 +82,6 @@ _ai_platform_training_args = {
 _ai_platform_serving_args = {
     'model_name': 'chicago_taxi',
     'project_id': _project_id,
-    # The region to use when serving the model. See available regions here:
-    # https://cloud.google.com/ml-engine/docs/regions
-    # Note that serving currently only supports a single region:
-    # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models#Model
-    'regions': ['us-central1'],
 }
 
 # Beam args to run data processing on DataflowRunner.

@@ -25,6 +25,7 @@ import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
+from tensorflow_transform.tf_metadata import schema_utils
 
 # Keys
 _LABEL_KEY = 'label'
@@ -32,7 +33,11 @@ _IMAGE_KEY = 'image_raw'
 
 
 def _transformed_name(key):
-  return key + '_xf'
+  return key + '_xf_input'
+
+
+def _get_raw_feature_spec(schema):
+  return schema_utils.schema_as_feature_spec(schema).feature_spec
 
 
 def _gzip_reader_fn(filenames):
@@ -78,13 +83,17 @@ def preprocessing_fn(inputs):
 
 def _keras_model_builder():
   """Build a keras model for image classification on cifar10 dataset."""
-  inputs = tf.keras.layers.Input(
-      shape=(32, 32, 3), name=_transformed_name(_IMAGE_KEY))
-  d1 = tf.keras.layers.Conv2D(64, kernel_size=3, activation='relu')(inputs)
-  d2 = tf.keras.layers.Conv2D(32, kernel_size=3, activation='relu')(d1)
-  d3 = tf.keras.layers.Flatten()(d2)
-  outputs = tf.keras.layers.Dense(10, activation='softmax')(d3)
-  model = tf.keras.Model(inputs=inputs, outputs=outputs)
+  model = tf.keras.Sequential([
+      tf.keras.layers.Conv2D(
+          64,
+          kernel_size=3,
+          activation='relu',
+          input_shape=(32, 32, 3),
+          name='image_raw_xf'),
+      tf.keras.layers.Conv2D(32, kernel_size=3, activation='relu'),
+      tf.keras.layers.Flatten(),
+      tf.keras.layers.Dense(10, activation='softmax')
+  ])
 
   model.compile(
       optimizer=tf.keras.optimizers.SGD(lr=0.0001, momentum=0.9),
@@ -95,16 +104,17 @@ def _keras_model_builder():
   return model
 
 
-def _serving_input_receiver_fn(tf_transform_output):
+def _example_serving_receiver_fn(tf_transform_output, schema):
   """Build the serving in inputs.
 
   Args:
     tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
 
   Returns:
     Tensorflow graph which parses examples, applying tf-transform to them.
   """
-  raw_feature_spec = tf_transform_output.raw_feature_spec()
+  raw_feature_spec = _get_raw_feature_spec(schema)
   raw_feature_spec.pop(_LABEL_KEY)
 
   raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
@@ -119,11 +129,12 @@ def _serving_input_receiver_fn(tf_transform_output):
       transformed_features, serving_input_receiver.receiver_tensors)
 
 
-def _eval_input_receiver_fn(tf_transform_output):
+def _eval_input_receiver_fn(tf_transform_output, schema):
   """Build everything needed for the tf-model-analysis to run the model.
 
   Args:
     tf_transform_output: A TFTransformOutput.
+    schema: the schema of the input data.
 
   Returns:
     EvalInputReceiver function, which contains:
@@ -133,20 +144,25 @@ def _eval_input_receiver_fn(tf_transform_output):
       - Label against which predictions will be compared.
   """
   # Notice that the inputs are raw features, not transformed features here.
-  raw_feature_spec = tf_transform_output.raw_feature_spec()
+  raw_feature_spec = _get_raw_feature_spec(schema)
 
-  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
-      raw_feature_spec, default_batch_size=None)
-  serving_input_receiver = raw_input_fn()
+  serialized_tf_example = tf.compat.v1.placeholder(
+      dtype=tf.string, shape=[None], name='input_example_tensor')
 
-  transformed_features = tf_transform_output.transform_raw_features(
-      serving_input_receiver.features)
-  transformed_labels = transformed_features.pop(_transformed_name(_LABEL_KEY))
+  # Add a parse_example operator to the tensorflow graph, which will parse
+  # raw, untransformed, tf examples.
+  features = tf.io.parse_example(
+      serialized=serialized_tf_example, features=raw_feature_spec)
+
+  transformed_features = tf_transform_output.transform_raw_features(features)
+  labels = transformed_features.pop(_transformed_name(_LABEL_KEY))
+
+  receiver_tensors = {'examples': serialized_tf_example}
 
   return tfma.export.EvalInputReceiver(
       features=transformed_features,
-      labels=transformed_labels,
-      receiver_tensors=serving_input_receiver.receiver_tensors)
+      receiver_tensors=receiver_tensors,
+      labels=labels)
 
 
 def _input_fn(filenames, tf_transform_output, batch_size):
@@ -158,8 +174,8 @@ def _input_fn(filenames, tf_transform_output, batch_size):
     batch_size: int First dimension size of the Tensors returned by input_fn
 
   Returns:
-    A dataset that contains (features, indices) tuple where features is a
-      dictionary of Tensors, and indices is a single Tensor of label indices.
+    A (features, indices) tuple where features is a dictionary of
+      Tensors, and indices is a single Tensor of label indices.
   """
   transformed_feature_spec = (
       tf_transform_output.transformed_feature_spec().copy())
@@ -167,19 +183,20 @@ def _input_fn(filenames, tf_transform_output, batch_size):
   dataset = tf.data.experimental.make_batched_features_dataset(
       filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
 
+  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
+      dataset).get_next()
   # We pop the label because we do not want to use it as a feature while we're
   # training.
-  return dataset.map(lambda features:  # pylint: disable=g-long-lambda
-                     (features, features.pop(_transformed_name(_LABEL_KEY))))
+  return transformed_features, transformed_features.pop(
+      _transformed_name(_LABEL_KEY))
 
 
 # TFX will call this function
-# TODO(jyzhao): move schema as trainer_fn_args.
-def trainer_fn(trainer_fn_args, schema):  # pylint: disable=unused-argument
+def trainer_fn(hparams, schema):
   """Build the estimator using the high level API.
 
   Args:
-    trainer_fn_args: Holds args used to train the model as name/value pairs.
+    hparams: Holds hyperparameters used to train the model as name/value pairs.
     schema: Holds the schema of the training examples.
 
   Returns:
@@ -192,45 +209,47 @@ def trainer_fn(trainer_fn_args, schema):  # pylint: disable=unused-argument
   train_batch_size = 32
   eval_batch_size = 32
 
-  tf_transform_output = tft.TFTransformOutput(trainer_fn_args.transform_output)
+  tf_transform_output = tft.TFTransformOutput(hparams.transform_output)
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      trainer_fn_args.train_files,
+      hparams.train_files,
       tf_transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      trainer_fn_args.eval_files,
+      hparams.eval_files,
       tf_transform_output,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
-      max_steps=trainer_fn_args.train_steps)
+      max_steps=hparams.train_steps)
 
-  serving_receiver_fn = lambda: _serving_input_receiver_fn(tf_transform_output)
+  serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
+      tf_transform_output, schema)
 
   exporter = tf.estimator.FinalExporter('cifar-10', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
       eval_input_fn,
-      steps=trainer_fn_args.eval_steps,
+      steps=hparams.eval_steps,
       exporters=[exporter],
       name='cifar-10')
 
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
   estimator = tf.keras.estimator.model_to_estimator(
       keras_model=_keras_model_builder(), config=run_config)
 
   # Create an input receiver for TFMA processing
-  eval_receiver_fn = lambda: _eval_input_receiver_fn(tf_transform_output)
+  receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
+      tf_transform_output, schema)
 
   return {
       'estimator': estimator,
       'train_spec': train_spec,
       'eval_spec': eval_spec,
-      'eval_input_receiver_fn': eval_receiver_fn
+      'eval_input_receiver_fn': receiver_fn
   }

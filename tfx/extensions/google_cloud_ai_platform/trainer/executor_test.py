@@ -54,7 +54,7 @@ class ExecutorTest(tf.test.TestCase):
     executor.Do(self._inputs, self._outputs, self._exec_properties)
     executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
                                      tfx_trainer_executor.Executor.__name__)
-    mock_runner.start_aip_training.assert_called_with(
+    mock_runner.start_cmle_training.assert_called_with(
         self._inputs,
         self._outputs,
         self._exec_properties,

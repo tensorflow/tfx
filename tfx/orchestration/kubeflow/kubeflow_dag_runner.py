@@ -55,6 +55,9 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 # Default TFX container image to use in KubeflowDagRunner.
 _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
+# Name of pipeline_root parameter.
+_PIPELINE_ROOT = 'pipeline-root'
+
 
 def _mount_config_map_op(config_map_name: Text) -> OpFunc:
   """Mounts all key-value pairs found in the named Kubernetes ConfigMap.
@@ -319,11 +322,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
-    pipeline_root = tfx_pipeline.ROOT_PARAMETER
-    # KFP DSL representation of pipeline root parameter.
-    dsl_pipeline_root = dsl.PipelineParam(
-        name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)
-    self._params.append(dsl_pipeline_root)
+    # TODO(b/128836890): Add component level runtime params.
+    # By default, pipeline root is specified as a pipeline parameter with a
+    # default value provided by the logical pipeline.
+    pipeline_root = dsl.PipelineParam(
+        name=_PIPELINE_ROOT, value=pipeline.pipeline_info.pipeline_root)
+    self._params.append(pipeline_root)
 
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
@@ -331,7 +335,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       Creates Kubeflow ContainerOps for each TFX component encountered in the
       logical pipeline definition.
       """
-      self._construct_pipeline_graph(pipeline, dsl_pipeline_root)
+      self._construct_pipeline_graph(pipeline, pipeline_root)
 
     # Need to run this first to get self._params populated. Then KFP compiler
     # can correctly match default value with PipelineParam.

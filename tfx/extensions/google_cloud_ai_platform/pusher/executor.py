@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom executor to push TFX model to AI Platform."""
+"""Custom executor to push TFX model to CMLE serving."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -77,8 +77,8 @@ class Executor(tfx_pusher_executor.Executor):
     # model_version is a timestamp mapped to trainer's exporter.
     model_version = os.path.basename(model_path)
     if ai_platform_serving_args is not None:
-      runner.deploy_model_for_aip_prediction(model_path, model_version,
-                                             ai_platform_serving_args)
+      runner.deploy_model_for_cmle_serving(model_path, model_version,
+                                           ai_platform_serving_args)
 
     model_push.set_int_custom_property('pushed', 1)
     model_push.set_string_custom_property('pushed_model', model_path)

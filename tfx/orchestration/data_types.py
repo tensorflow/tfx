@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Type, Union
-import warnings
 
 from tfx import types
 from tfx.utils import json_utils
@@ -135,12 +134,8 @@ class ComponentInfo(object):
     self.component_id = component_id
 
 
-# TODO(b/146361011): Implement a checking mechanism preventing users from using
-# RuntimeParameter in DAG runner other than Kubeflow Pipelines.
 class RuntimeParameter(json_utils.Jsonable):
   """Runtime parameter.
-
-  Currently only supported on KubeflowDagRunner.
 
   Attributes:
     name: The name of the runtime parameter.
@@ -156,9 +151,6 @@ class RuntimeParameter(json_utils.Jsonable):
       ptype: Type = None,  # pylint: disable=g-bare-generic
       default: Optional[Union[int, float, bool, Text]] = None,
       description: Optional[Text] = None):
-    warnings.warn('RuntimeParameter is only supported on KubeflowDagRunner '
-                  'currently.')
-
     if ptype and ptype not in [int, float, bool, Text]:
       raise RuntimeError('Only str and scalar runtime parameters are supported')
     if (default and ptype) and not isinstance(default, ptype):

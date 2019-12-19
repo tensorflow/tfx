@@ -22,6 +22,7 @@ import os
 from typing import Optional, Text
 
 import kfp
+from kfp import dsl
 
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -136,13 +137,19 @@ def _create_parameterized_pipeline(
   model_validator = ModelValidator(
       examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
+  # TODO(b/145949533) Currently we use this hack to ensure push_destination can
+  # be correctly parameterized and interpreted.
+  # pipeline root will be specified as a dsl.PipelineParam with the name
+  # pipeline-root, see:
+  # https://github.com/tensorflow/tfx/blob/1c670e92143c7856f67a866f721b8a9368ede385/tfx/orchestration/kubeflow/kubeflow_dag_runner.py#L226
+  pipeline_root_param = dsl.PipelineParam(name='pipeline-root')
   pusher = Pusher(
       model_export=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=os.path.join(
-                  str(pipeline.ROOT_PARAMETER), 'model_serving'))))
+                  str(pipeline_root_param), 'model_serving'))))
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
