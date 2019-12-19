@@ -21,7 +21,7 @@ import datetime
 import json
 import sys
 import time
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Optional, Text
 
 import absl
 from googleapiclient import discovery
@@ -82,9 +82,10 @@ def _get_caip_python_version() -> Text:
 
 def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
                        output_dict: Dict[Text, List[types.Artifact]],
-                       exec_properties: Dict[Text, Any],
-                       executor_class_path: Text, training_inputs: Dict[Text,
-                                                                        Any]):
+                       exec_properties: Dict[Text,
+                                             Any], executor_class_path: Text,
+                       training_inputs: Dict[Text,
+                                             Any], job_id: Optional[Text]):
   """Start a trainer job on AI Platform (AIP).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -95,27 +96,25 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input for AI Platform training job.
-      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred by
-      the runner. For the full set of parameters supported, refer to
+    training_inputs: Training input argment for AI Platform training job.
+      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
+      the full set of parameters, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-
+    job_id: Job ID for AI Platform Training job. If not supplied,
+      system-determined unique ID is given. Refer to
+    https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
   Returns:
     None
   Raises:
     RuntimeError: if the Google Cloud AI Platform training job failed.
   """
   training_inputs = training_inputs.copy()
-  # Remove aip_args from exec_properties so AIP trainer doesn't call itself
-  for gaip_training_key in ['ai_platform_training_args', 'gaip_training_args']:
-    if gaip_training_key in exec_properties.get('custom_config'):
-      exec_properties['custom_config'].pop(gaip_training_key)
 
   json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
   absl.logging.info('json_inputs=\'%s\'.', json_inputs)
   json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
   absl.logging.info('json_outputs=\'%s\'.', json_outputs)
-  json_exec_properties = json.dumps(exec_properties)
+  json_exec_properties = json.dumps(exec_properties, sort_keys=True)
   absl.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
   # Configure AI Platform training job
@@ -143,20 +142,21 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
 
-  job_name = 'tfx_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-  job_spec = {'jobId': job_name, 'trainingInput': training_inputs}
+  # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
+  job_id = job_id or 'tfx_%s' % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+  job_spec = {'jobId': job_id, 'trainingInput': training_inputs}
 
   # Submit job to AIP Training
   absl.logging.info(
       'Submitting job=\'{}\', project=\'{}\' to AI Platform.'.format(
-          job_name, project))
+          job_id, project))
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
   request.execute()
 
   # Wait for AIP Training job to finish
-  job_id = '{}/jobs/{}'.format(project_id, job_name)
-  request = api_client.projects().jobs().get(name=job_id)
+  job_name = '{}/jobs/{}'.format(project_id, job_id)
+  request = api_client.projects().jobs().get(name=job_name)
   response = request.execute()
   while response['state'] not in ('SUCCEEDED', 'FAILED'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)

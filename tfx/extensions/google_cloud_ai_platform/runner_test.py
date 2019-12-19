@@ -30,6 +30,7 @@ from tfx.extensions.google_cloud_ai_platform import runner
 class RunnerTest(tf.test.TestCase):
 
   def setUp(self):
+    super(RunnerTest, self).setUp()
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -40,9 +41,10 @@ class RunnerTest(tf.test.TestCase):
     self._training_inputs = {
         'project': self._project_id,
     }
+    self._job_id = 'my_jobid'
     self._exec_properties = {
         'custom_config': {
-            'gaip_training_args': self._training_inputs
+            'ai_platform_training_args': self._training_inputs,
         },
     }
     self._ai_platform_serving_args = {
@@ -67,7 +69,7 @@ class RunnerTest(tf.test.TestCase):
 
     runner.start_aip_training(self._inputs, self._outputs,
                               self._exec_properties, class_path,
-                              self._training_inputs)
+                              self._training_inputs, None)
 
     mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
@@ -82,7 +84,8 @@ class RunnerTest(tf.test.TestCase):
             },
             'args': [
                 '--executor_class_path', class_path, '--inputs', '{}',
-                '--outputs', '{}', '--exec-properties', '{"custom_config": {}}'
+                '--outputs', '{}', '--exec-properties', '{"custom_config": '
+                '{"ai_platform_training_args": {"project": "12345"}}}'
             ],
         }, body['trainingInput'])
     self.assertStartsWith(body['jobId'], 'tfx_')
@@ -104,9 +107,11 @@ class RunnerTest(tf.test.TestCase):
 
     class_path = 'foo.bar.class'
 
+    self._exec_properties['custom_config'][
+        'ai_platform_training_job_id'] = self._job_id
     runner.start_aip_training(self._inputs, self._outputs,
                               self._exec_properties, class_path,
-                              self._training_inputs)
+                              self._training_inputs, self._job_id)
 
     mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
@@ -119,10 +124,14 @@ class RunnerTest(tf.test.TestCase):
             },
             'args': [
                 '--executor_class_path', class_path, '--inputs', '{}',
-                '--outputs', '{}', '--exec-properties', '{"custom_config": {}}'
+                '--outputs', '{}', '--exec-properties', '{"custom_config": '
+                '{"ai_platform_training_args": '
+                '{"masterConfig": {"imageUri": "my-custom-image"}, '
+                '"project": "12345"}, '
+                '"ai_platform_training_job_id": "my_jobid"}}'
             ],
         }, body['trainingInput'])
-    self.assertStartsWith(body['jobId'], 'tfx_')
+    self.assertEqual(body['jobId'], 'my_jobid')
     mock_get.execute.assert_called_with()
 
   @mock.patch(

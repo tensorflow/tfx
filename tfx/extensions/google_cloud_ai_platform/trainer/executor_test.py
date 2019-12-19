@@ -30,6 +30,8 @@ from tfx.extensions.google_cloud_ai_platform.trainer.executor import Executor
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
+    super(ExecutorTest, self).setUp()
+
     self._output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -45,6 +47,9 @@ class ExecutorTest(tf.test.TestCase):
             },
         },
     }
+    self._executor_class_path = '%s.%s' % (
+        tfx_trainer_executor.Executor.__module__,
+        tfx_trainer_executor.Executor.__name__)
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
@@ -52,18 +57,28 @@ class ExecutorTest(tf.test.TestCase):
   def testDo(self, mock_runner):
     executor = Executor()
     executor.Do(self._inputs, self._outputs, self._exec_properties)
-    executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
-                                     tfx_trainer_executor.Executor.__name__)
     mock_runner.start_aip_training.assert_called_with(
-        self._inputs,
-        self._outputs,
-        self._exec_properties,
-        executor_class_path,
-        {
+        self._inputs, self._outputs, self._exec_properties,
+        self._executor_class_path, {
             'project': self._project_id,
             'jobDir': self._job_dir,
-        },
-    )
+        }, None)
+
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
+  )
+  def testDoWithJobIdOverride(self, mock_runner):
+    executor = Executor()
+    job_id = 'overridden_job_id'
+    self._exec_properties['custom_config'][
+        'ai_platform_training_job_id'] = job_id
+    executor.Do(self._inputs, self._outputs, self._exec_properties)
+    mock_runner.start_aip_training.assert_called_with(
+        self._inputs, self._outputs, self._exec_properties,
+        self._executor_class_path, {
+            'project': self._project_id,
+            'jobDir': self._job_dir,
+        }, job_id)
 
 
 if __name__ == '__main__':
