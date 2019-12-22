@@ -46,10 +46,12 @@ class TrainerFnArgs(object):
     self._data = kwargs
 
   def __getitem__(self, key):
-    return self._data[key]
+    # Defaults absent value as None
+    return self._data.get(key)
 
   def __getattr__(self, key):
-    return self._data[key]
+    # Defaults absent value as None
+    return self._data.get(key)
 
 
 class Executor(base_executor.BaseExecutor):
