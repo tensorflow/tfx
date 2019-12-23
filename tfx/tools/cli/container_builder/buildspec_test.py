@@ -18,58 +18,46 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import collections
 import os
 import tensorflow as tf
 import yaml
 
 from tfx.tools.cli.container_builder import buildspec
-from tfx.tools.cli.container_builder import labels
 
 
 class BuildSpecTest(tf.test.TestCase):
 
-  def _sort_list(self, data):
-    res = list()
-    for d in data:
-      if isinstance(d, list):
-        res.append(self._sort_list(d))
-      elif isinstance(d, dict):
-        res.append(self._sort_dict(d))
-      else:
-        res.append(d)
-    return res
+  def _generate_temp_path(self):
+    return os.path.join(self.create_tempdir().full_path, 'generated')
 
-  def _sort_dict(self, data):
-    res = collections.OrderedDict()
-    for k, v in sorted(data.items()):
-      if isinstance(v, dict):
-        res[k] = self._sort_dict(v)
-      elif isinstance(v, list):
-        res[k] = self._sort_list(v)
-      else:
-        res[k] = v
-    return res
-
-  def test_generate_clean(self):
-    test_buildspec_name = 'test_buildspec'
+  def _read_expected_buildspec(self, name):
     default_buildspec_path = os.path.join(
-        os.path.dirname(__file__), 'testdata',
-        test_buildspec_name)
-    build_spec = buildspec.BuildSpec.load_default(
-        filename=labels.BUILD_SPEC_FILENAME,
-        target_image='gcr.io/test:dev',
-        dockerfile_name=labels.DOCKERFILE_NAME)
+        os.path.dirname(__file__), 'testdata', name)
     with open(default_buildspec_path, 'r') as f:
       golden_buildspec = yaml.safe_load(f)
+    return golden_buildspec
+
+  def _read_generated_buildspec(self, build_spec):
     with open(build_spec.filename, 'r') as f:
-      generated_buildspec = yaml.safe_load(f)
+      return yaml.safe_load(f)
 
-    self.assertEqual(
-        self._sort_dict(generated_buildspec), self._sort_dict(golden_buildspec))
+  def test_generate_clean(self):
+    spec = buildspec.BuildSpec.load_default(
+        filename=self._generate_temp_path(),
+        target_image='gcr.io/test:dev')
 
-    # clean up
-    os.remove(build_spec.filename)
+    self.assertEqual(self._read_generated_buildspec(spec),
+                     self._read_expected_buildspec('test_buildspec'))
+
+  def test_generate_custom(self):
+    spec = buildspec.BuildSpec.load_default(
+        filename=self._generate_temp_path(),
+        build_context='/path/to/somewhere',
+        target_image='gcr.io/test:dev',
+        dockerfile_name='dev.Dockerfile')
+
+    self.assertEqual(self._read_generated_buildspec(spec),
+                     self._read_expected_buildspec('test_buildspec_custom'))
 
 if __name__ == '__main__':
   tf.test.main()

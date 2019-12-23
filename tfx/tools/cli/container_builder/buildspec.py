@@ -36,6 +36,8 @@ class BuildSpec(object):
     filename: build spec filename.
     build_context: build working directory.
     target_image: target image with no tag.
+    dockerfile_name: filename of a dockerfile
+    dockerfile_path: full path of a dockerfile
     _buildspec: in-memory representation of the build spec.
   """
 
@@ -50,8 +52,8 @@ class BuildSpec(object):
   @staticmethod
   def load_default(filename: Text = labels.BUILD_SPEC_FILENAME,
                    target_image: Text = None,
-                   build_context: Text = labels.BUILD_CONTEXT,
-                   dockerfile_name: Text = labels.DOCKERFILE_NAME):
+                   build_context: Text = None,
+                   dockerfile_name: Text = None):
     """Generate a default build spec yaml.
 
     Args:
@@ -77,6 +79,10 @@ class BuildSpec(object):
     target_image_with_no_tag = target_image_fields[0]
     target_image_tag = 'latest' if len(
         target_image_fields) <= 1 else target_image_fields[1]
+
+    build_context = build_context or labels.BUILD_CONTEXT
+    dockerfile_name = dockerfile_name or labels.DOCKERFILE_NAME
+
     build_spec = {
         'apiVersion': labels.SKAFFOLD_API_VERSION,
         'kind': 'Config',
@@ -107,8 +113,10 @@ class BuildSpec(object):
       if len(self._buildspec['build']['artifacts']) != 1:
         raise RuntimeError('The build spec contains multiple artifacts however'
                            'only one is supported.')
-      self._build_context = self._buildspec['build']['artifacts'][0]['context']
-      self._target_image = self._buildspec['build']['artifacts'][0]['image']
+      artifact = self._buildspec['build']['artifacts'][0]
+      self._build_context = artifact['context']
+      self._target_image = artifact['image']
+      self._dockerfile_name = artifact['docker']['dockerfile']
 
   @property
   def filename(self):
@@ -121,3 +129,11 @@ class BuildSpec(object):
   @property
   def target_image(self):
     return self._target_image
+
+  @property
+  def dockerfile_name(self):
+    return self._dockerfile_name
+
+  @property
+  def dockerfile_path(self):
+    return os.path.join(self.build_context, self.dockerfile_name)

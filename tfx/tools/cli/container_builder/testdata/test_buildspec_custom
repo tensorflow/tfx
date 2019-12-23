@@ -1,0 +1,11 @@
+apiVersion: skaffold/v1beta13
+kind: Config
+build:
+  artifacts:
+  - image: gcr.io/test
+    context: /path/to/somewhere
+    docker:
+      dockerfile: dev.Dockerfile
+  tagPolicy:
+    envTemplate:
+      template: '{{.IMAGE_NAME}}:dev'

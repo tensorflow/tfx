@@ -36,6 +36,8 @@ PIPELINE_PACKAGE_PATH = 'pipeline_package_path'
 TARGET_IMAGE = 'build_target_image'
 # Base container image path.
 BASE_IMAGE = 'build_base_image'
+# Build context directory.
+BUILD_CONTEXT = 'build_context'
 # Skaffold command
 SKAFFOLD_CMD = 'skaffold_cmd'
 # Client ID for IAP protected endpoint.

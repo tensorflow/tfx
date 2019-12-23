@@ -43,10 +43,11 @@ class ContainerBuilder(object):
 
   def __init__(self,
                target_image: Optional[Text] = None,
-               base_image: Optional[Text] = labels.BASE_IMAGE,
-               skaffold_cmd: Optional[Text] = labels.SKAFFOLD_COMMAND,
+               base_image: Optional[Text] = None,
+               skaffold_cmd: Optional[Text] = None,
                buildspec_filename: Optional[Text] = labels.BUILD_SPEC_FILENAME,
-               dockerfile_name: Optional[Text] = labels.DOCKERFILE_NAME,
+               build_context: Optional[Text] = None,
+               dockerfile_name: Optional[Text] = None,
                setup_py_filename: Optional[Text] = labels.SETUP_PY_FILENAME):
     """Initialization.
 
@@ -57,14 +58,18 @@ class ContainerBuilder(object):
       buildspec_filename: the buildspec file path that is accessible to the
         current execution environment. It could be either absolute path or
         relative path.
+      build_context: workspace directory which contains pipeline source codes.
+        The workspace directory is specified in the build spec and the default
+        workspace directory is '.'.
       dockerfile_name: the dockerfile name, which is stored in the workspace
-        directory. The workspace directory is specified in the build spec and
-        the default workspace directory is '.'.
+        directory. The dockerfile name is specified in the build spec and the
+        default name is 'Dockerfile'.
       setup_py_filename: the setup.py file name, which is used to build a
         python package for the workspace directory. If not specified, the
         whole directory is copied and PYTHONPATH is configured.
     """
-    self._skaffold_cmd = skaffold_cmd
+    base_image = base_image or labels.BASE_IMAGE
+    self._skaffold_cmd = skaffold_cmd or labels.SKAFFOLD_COMMAND
     if os.path.exists(buildspec_filename):
       self._buildspec = buildspec.BuildSpec(filename=buildspec_filename)
       if target_image is not None:
@@ -76,10 +81,11 @@ class ContainerBuilder(object):
       self._buildspec = buildspec.BuildSpec.load_default(
           filename=buildspec_filename,
           target_image=target_image,
+          build_context=build_context,
           dockerfile_name=dockerfile_name)
 
     Dockerfile(
-        filename=os.path.join(self._buildspec.build_context, dockerfile_name),
+        filename=self._buildspec.dockerfile_path,
         setup_py_filename=setup_py_filename,
         base_image=base_image)
 

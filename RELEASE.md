@@ -32,6 +32,8 @@
 *   Allow windows style paths in Transform component cache.
 *   Fixed bug in CLI (--engine=kubeflow) which uses hard coded obslete image
     (TFX 0.14.0) as the base image.
+*   Allow users to specify build context using --build_context flag in CLI
+    (--engine=kubeflow).
 *   Allow users to specify the region to use when serving with for AI Platform.
 *   Allow users to give deterministic job id to AI Platform Training job.
 *   System-managed artifact properties ("name", "state", "pipeline_name" and
