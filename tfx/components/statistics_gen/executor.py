@@ -67,13 +67,17 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    split_to_instance = {x.split: x for x in input_dict['input_data']}
+    split_uris = []
+    for artifact in input_dict['input_data']:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        uri = os.path.join(artifact.uri, split)
+        split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       # TODO(b/126263006): Support more stats_options through config.
       stats_options = options.StatsOptions()
-      for split, instance in split_to_instance.items():
+      for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))
-        input_uri = io_utils.all_files_pattern(instance.uri)
+        input_uri = io_utils.all_files_pattern(uri)
         output_uri = artifact_utils.get_split_uri(output_dict['output'], split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         _ = (
