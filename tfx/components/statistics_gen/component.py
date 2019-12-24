@@ -24,6 +24,7 @@ from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
 
@@ -67,11 +68,12 @@ class StatisticsGen(base_component.BaseComponent):
         declared in the same pipeline.
     """
     examples = examples or input_data
-    output = output or types.Channel(
-        type=standard_artifacts.ExampleStatistics,
-        artifacts=[
-            standard_artifacts.ExampleStatistics(split=split)
-            for split in artifact.DEFAULT_EXAMPLE_SPLITS
-        ])
+    if not output:
+      statistics_artifact = standard_artifacts.ExampleStatistics()
+      statistics_artifact.split_names = artifact_utils.encode_split_names(
+          artifact.DEFAULT_EXAMPLE_SPLITS)
+      output = types.Channel(
+          type=standard_artifacts.ExampleStatistics,
+          artifacts=[statistics_artifact])
     spec = StatisticsGenSpec(input_data=examples, output=output)
     super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
