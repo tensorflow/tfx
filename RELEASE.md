@@ -38,8 +38,6 @@
 ### Deprecations
 
 ## Breaking changes
-*   The "split" property on multiple artifacts has been replaced with the
-    JSON-encoded "split_names" property on a single grouped artifact.
 
 ### For pipeline authors
 

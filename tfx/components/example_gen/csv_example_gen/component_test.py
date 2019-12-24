@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen import component
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -34,10 +33,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      csv_example_gen.outputs['examples'].type_name)
     artifact_collection = csv_example_gen.outputs['examples'].get()
-    self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertEqual('train', artifact_collection[0].split)
+    self.assertEqual('eval', artifact_collection[1].split)
 
 
 if __name__ == '__main__':

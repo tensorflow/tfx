@@ -25,7 +25,7 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.types import artifact_utils
+from tfx.types import artifact
 from tfx.types import channel_utils
 from tfx.types import node_common
 
@@ -35,8 +35,8 @@ IMPORT_RESULT_KEY = 'result'
 SOURCE_URI_KEY = 'source_uri'
 # Constant to access re-import option from importer exec_properties dict.
 REIMPORT_OPTION_KEY = 'reimport'
-# Constant to access split names from importer exec_properties dict.
-SPLIT_KEY = 'split_names'
+# Constant to access splits from importer exec_properties dict.
+SPLIT_KEY = 'split'
 
 
 class ImporterDriver(base_driver.BaseDriver):
@@ -44,27 +44,15 @@ class ImporterDriver(base_driver.BaseDriver):
 
   def _import_artifacts(self, source_uri: List[Text], reimport: bool,
                         destination_channel: types.Channel,
-                        split_names: List[Text]) -> List[types.Artifact]:
+                        split: List[Text]) -> List[types.Artifact]:
     """Imports external resource in MLMD."""
     results = []
-    for uri, s in zip(source_uri, split_names):
+    for uri, s in zip(source_uri, split):
       absl.logging.info('Processing source uri: %s, split: %s' %
                         (uri, s or 'NO_SPLIT'))
 
-      # TODO(ccy): refactor importer to treat split name just like any other
-      # property.
-      unfiltered_previous_artifacts = self._metadata_handler.get_artifacts_by_uri(
-          uri)
-      # Filter by split name.
-      desired_split_names = artifact_utils.encode_split_names([s or ''])
-      previous_artifacts = []
-      for previous_artifact in unfiltered_previous_artifacts:
-        split_names = previous_artifact.properties.get('split_names', None)
-        if split_names and split_names.string_value == desired_split_names:
-          previous_artifacts.append(previous_artifact)
-
-      result = types.Artifact(type_name=destination_channel.type_name)
-      result.split_names = desired_split_names
+      previous_artifacts = self._metadata_handler.get_artifacts_by_uri(uri)
+      result = types.Artifact(type_name=destination_channel.type_name, split=s)
       result.uri = uri
 
       # If any registered artifact with the same uri also has the same
@@ -99,7 +87,7 @@ class ImporterDriver(base_driver.BaseDriver):
                 source_uri=exec_properties[SOURCE_URI_KEY],
                 destination_channel=output_dict[IMPORT_RESULT_KEY],
                 reimport=exec_properties[REIMPORT_OPTION_KEY],
-                split_names=exec_properties[SPLIT_KEY])
+                split=exec_properties[SPLIT_KEY])
     }
 
     output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
@@ -147,7 +135,7 @@ class ImporterNode(base_node.BaseNode):
   def __init__(self,
                instance_name: Text,
                source_uri: Union[Text, List[Text]],
-               artifact_type: Type[types.Artifact],
+               artifact_type: Type[artifact.Artifact],
                reimport: Optional[bool] = False,
                split: Optional[Union[Text, List[Text]]] = ''):
     """Init function for ImporterNode.
@@ -163,24 +151,19 @@ class ImporterNode(base_node.BaseNode):
         given as list, split is mandatory, and must be the same length as
         source_uri.
     """
-    # TODO(ccy): remove split from this interface, since it is not relevant to
-    # all artifact types.
     self._source_uri = source_uri if isinstance(source_uri,
                                                 list) else [source_uri]
     self._reimport = reimport
     self._split = split if isinstance(split, list) else [split]
 
-    if len(self._source_uri) > 1 and len(self._source_uri) != len(self._split):
+    if len(self._source_uri) != len(self._split):
       raise ValueError('split must be given when source_uri is given as list.')
 
-    artifacts = []
-    for split in self._split:
-      new_artifact = artifact_type()
-      new_artifact.split_names = artifact_utils.encode_split_names([split])
-      artifacts.append(new_artifact)
     self._output_dict = {
         IMPORT_RESULT_KEY:
-            types.Channel(type=artifact_type, artifacts=artifacts)
+            types.Channel(
+                type=artifact_type,
+                artifacts=[artifact_type(split=s) for s in self._split])
     }
 
     super(ImporterNode, self).__init__(instance_name=instance_name)

@@ -41,7 +41,7 @@ class ExecutorTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._output_data_dir)
     self._model_export = standard_artifacts.Model()
     self._model_export.uri = os.path.join(self._source_data_dir,
-                                          'trainer/current')
+                                          'trainer/current/')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
         'model_export': [self._model_export],

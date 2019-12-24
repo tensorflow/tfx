@@ -162,7 +162,7 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
 
       **state**: {state}
 
-      **split_names**: {split_names}
+      **split**: {split}
 
       **producer_component**: {producer_component}
 
@@ -174,7 +174,7 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
           type_id=str(single_artifact.type_id),
           type_name=single_artifact.type_name,
           state=single_artifact.state or 'None',
-          split_names=single_artifact.split_names or 'None',
+          split=single_artifact.split or 'None',
           producer_component=single_artifact.producer_component or 'None'))
 
 

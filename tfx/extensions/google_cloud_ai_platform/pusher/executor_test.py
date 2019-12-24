@@ -42,7 +42,7 @@ class ExecutorTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._output_data_dir)
     self._model_export = standard_artifacts.Model()
     self._model_export.uri = os.path.join(self._source_data_dir,
-                                          'trainer/current')
+                                          'trainer/current/')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
         'model_export': [self._model_export],
@@ -69,7 +69,7 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(executor, 'runner', autospec=True)
   def testDoBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
-                                            'model_validator/blessed')
+                                            'model_validator/blessed/')
     self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
@@ -82,7 +82,7 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(executor, 'runner', autospec=True)
   def testDoNotBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
-                                            'model_validator/not_blessed')
+                                            'model_validator/not_blessed/')
     self._model_blessing.set_int_custom_property('blessed', 0)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)

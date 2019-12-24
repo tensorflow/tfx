@@ -87,9 +87,9 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         instance_name='raw_examples',
         source_uri=[
             os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/train'),
+                         'csv_example_gen/examples/test-pipeline/train/'),
             os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/eval')
+                         'csv_example_gen/examples/test-pipeline/eval/')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -100,9 +100,9 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         instance_name='transformed_examples',
         source_uri=[
             os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/train'),
+                         'transform/transformed_examples/test-pipeline/train/'),
             os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/eval')
+                         'transform/transformed_examples/test-pipeline/eval/')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -112,7 +112,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.schema_importer = ImporterNode(
         instance_name='schema',
         source_uri=os.path.join(self._intermediate_data_root,
-                                'schema_gen/output/test-pipeline'),
+                                'schema_gen/output/test-pipeline/'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
 
@@ -120,7 +120,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.transform_graph_importer = ImporterNode(
         instance_name='transform_graph',
         source_uri=os.path.join(self._intermediate_data_root,
-                                'transform/transform_output/test-pipeline'),
+                                'transform/transform_output/test-pipeline/'),
         artifact_type=standard_artifacts.TransformGraph,
         reimport=True)
 
@@ -128,14 +128,14 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.model_1_importer = ImporterNode(
         instance_name='model_1',
         source_uri=os.path.join(self._intermediate_data_root,
-                                'trainer/output/test-pipeline/1'),
+                                'trainer/output/test-pipeline/1/'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
     self.model_2_importer = ImporterNode(
         instance_name='model_2',
         source_uri=os.path.join(self._intermediate_data_root,
-                                'trainer/output/test-pipeline/2'),
+                                'trainer/output/test-pipeline/2/'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
@@ -143,7 +143,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.model_blessing_importer = ImporterNode(
         instance_name='model_blessing',
         source_uri=os.path.join(self._intermediate_data_root,
-                                'model_validator/blessing/test-pipeline'),
+                                'model_validator/blessing/test-pipeline/'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True)
 

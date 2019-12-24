@@ -26,7 +26,6 @@ from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -43,14 +42,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    train_artifact = standard_artifacts.Examples(split='train')
+    train_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/train/')
+    eval_artifact = standard_artifacts.Examples(split='eval')
+    eval_artifact.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
     schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
+    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
 
     self._input_dict = {
-        'input_data': [examples],
+        'input_data': [train_artifact, eval_artifact],
         'schema': [schema_artifact],
     }
 
@@ -58,16 +58,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_output = standard_artifacts.TransformGraph()
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_output')
-    self._transformed_examples = standard_artifacts.Examples()
-    self._transformed_examples.uri = output_data_dir
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+    self._transformed_train_examples = standard_artifacts.Examples(
+        split='train')
+    self._transformed_train_examples.uri = os.path.join(output_data_dir,
+                                                        'train')
+    self._transformed_eval_examples = standard_artifacts.Examples(split='eval')
+    self._transformed_eval_examples.uri = os.path.join(output_data_dir, 'eval')
     temp_path_output = types.Artifact('TempPath')
     temp_path_output.uri = tempfile.mkdtemp()
 
     self._output_dict = {
         'transform_output': [self._transformed_output],
-        'transformed_examples': [self._transformed_examples],
+        'transformed_examples': [
+            self._transformed_train_examples, self._transformed_eval_examples
+        ],
         'temp_path': [temp_path_output],
     }
 
@@ -95,15 +99,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def _verify_transform_outputs(self):
     self.assertNotEqual(
-        0,
-        len(
-            tf.io.gfile.listdir(
-                os.path.join(self._transformed_examples.uri, 'train'))))
+        0, len(tf.io.gfile.listdir(self._transformed_train_examples.uri)))
     self.assertNotEqual(
-        0,
-        len(
-            tf.io.gfile.listdir(
-                os.path.join(self._transformed_examples.uri, 'eval'))))
+        0, len(tf.io.gfile.listdir(self._transformed_eval_examples.uri)))
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
@@ -216,7 +214,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def testDoWithCache(self):
     # First run that creates cache.
     output_cache_artifact = types.Artifact('OutputCache')
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
+    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE/')
 
     self._output_dict['cache_output_path'] = [output_cache_artifact]
 
@@ -233,7 +231,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     input_cache_artifact.uri = output_cache_artifact.uri
 
     output_cache_artifact = types.Artifact('OutputCache')
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
+    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE/')
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
 

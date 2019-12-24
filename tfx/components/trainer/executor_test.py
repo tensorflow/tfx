@@ -24,7 +24,6 @@ from google.protobuf import json_format
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -39,20 +38,23 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(self._source_data_dir,
-                                'transform/transformed_examples')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    train_examples = standard_artifacts.Examples(split='train')
+    train_examples.uri = os.path.join(self._source_data_dir,
+                                      'transform/transformed_examples/train/')
+    eval_examples = standard_artifacts.Examples(split='eval')
+    eval_examples.uri = os.path.join(self._source_data_dir,
+                                     'transform/transformed_examples/eval/')
     transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
-                                        'transform/transform_output')
+                                        'transform/transform_output/')
     schema = standard_artifacts.Examples()
-    schema.uri = os.path.join(self._source_data_dir, 'schema_gen')
+    schema.uri = os.path.join(self._source_data_dir, 'schema_gen/')
     previous_model = standard_artifacts.Model()
-    previous_model.uri = os.path.join(self._source_data_dir, 'trainer/previous')
+    previous_model.uri = os.path.join(self._source_data_dir,
+                                      'trainer/previous/')
 
     self._input_dict = {
-        'examples': [examples],
+        'examples': [train_examples, eval_examples],
         'transform_output': [transform_output],
         'schema': [schema],
         'base_model': [previous_model]

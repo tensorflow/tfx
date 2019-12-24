@@ -22,7 +22,6 @@ from typing import Text
 import tensorflow as tf
 from tfx.components.transform import component
 from tfx.orchestration import data_types
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -31,10 +30,10 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(ComponentTest, self).setUp()
-    examples_artifact = standard_artifacts.Examples()
-    examples_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
-    self.input_data = channel_utils.as_channel([examples_artifact])
+    self.input_data = channel_utils.as_channel([
+        standard_artifacts.Examples(split='train'),
+        standard_artifacts.Examples(split='eval'),
+    ])
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 

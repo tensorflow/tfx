@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tfx.components.example_validator import component
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -28,11 +27,9 @@ from tfx.types import standard_artifacts
 class ExampleValidatorTest(tf.test.TestCase):
 
   def testConstruct(self):
-    statistics_artifact = standard_artifacts.ExampleStatistics()
-    statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['eval'])
     example_validator = component.ExampleValidator(
-        statistics=channel_utils.as_channel([statistics_artifact]),
+        statistics=channel_utils.as_channel(
+            [standard_artifacts.ExampleStatistics(split='eval')]),
         schema=channel_utils.as_channel([standard_artifacts.Schema()]),
     )
     self.assertEqual(standard_artifacts.ExampleAnomalies.TYPE_NAME,

@@ -29,12 +29,14 @@ from tfx.orchestration import metadata
 from tfx.types import channel_utils
 
 
-def _generate_output_uri(base_output_dir: Text, name: Text,
-                         execution_id: int) -> Text:
+def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
+                         name: Text, execution_id: int) -> Text:
   """Generate uri for output artifact."""
 
-  # Generates output uri based on execution id.
-  uri = os.path.join(base_output_dir, name, str(execution_id))
+  # Generates outputs uri based on execution id and optional split.
+  # Last empty string forces this be to a directory.
+  uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
+                     '')
   if tf.io.gfile.exists(uri):
     msg = 'Output artifact uri %s already exists' % uri
     absl.logging.error(msg)
@@ -181,7 +183,8 @@ class BaseDriver(object):
                                    component_info.component_id)
     for name, output_list in result.items():
       for artifact in output_list:
-        artifact.uri = _generate_output_uri(base_output_dir, name, execution_id)
+        artifact.uri = _generate_output_uri(artifact, base_output_dir, name,
+                                            execution_id)
     return result
 
   def _fetch_cached_artifacts(

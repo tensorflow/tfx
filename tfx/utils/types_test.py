@@ -26,7 +26,6 @@ import tensorflow as tf
 from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.types import artifact
-from tfx.types import artifact_utils
 from tfx.utils import types
 
 
@@ -105,8 +104,8 @@ class TypesTest(tf.test.TestCase):
       tf_logging.warning = warn_mock
       my_artifact = artifact.Artifact('TestType')
       my_artifact.uri = '123'
-      my_artifact.split_names = artifact_utils.encode_split_names(['train'])
-      self.assertEqual('123/train', types.get_split_uri([my_artifact], 'train'))
+      my_artifact.split = 'train'
+      self.assertEqual('123', types.get_split_uri([my_artifact], 'train'))
       warn_mock.assert_called_once()
       self.assertIn('tfx.utils.types.get_split_uri has been renamed to',
                     warn_mock.call_args[0][5])

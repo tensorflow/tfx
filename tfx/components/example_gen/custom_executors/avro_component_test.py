@@ -28,7 +28,6 @@ from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
 
@@ -97,14 +96,15 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     # Get output paths.
     component_id = example_gen.id
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
-    examples = standard_artifacts.Examples()
-    examples.uri = output_path
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    train_examples = standard_artifacts.Examples(split='train')
+    train_examples.uri = os.path.join(output_path, 'train')
+    eval_examples = standard_artifacts.Examples(split='eval')
+    eval_examples.uri = os.path.join(output_path, 'eval')
 
     # Check Avro example gen outputs.
-    train_output_file = os.path.join(examples.uri, 'train',
+    train_output_file = os.path.join(train_examples.uri,
                                      'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(examples.uri, 'eval',
+    eval_output_file = os.path.join(eval_examples.uri,
                                     'data_tfrecord-00000-of-00001.gz')
     self.assertTrue(tf.io.gfile.exists(train_output_file))
     self.assertTrue(tf.io.gfile.exists(eval_output_file))
