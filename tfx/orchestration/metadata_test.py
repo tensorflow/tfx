@@ -106,6 +106,12 @@ class MetadataTest(tf.test.TestCase):
         type_id: 1
         uri: "uri"
         properties {
+          key: "split"
+          value {
+            string_value: ""
+          }
+        }
+        properties {
           key: "state"
           value {
             string_value: "published"

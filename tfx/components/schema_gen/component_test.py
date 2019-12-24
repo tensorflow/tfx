@@ -21,7 +21,6 @@ from __future__ import print_function
 import tensorflow as tf
 from tfx.components.schema_gen import component
 from tfx.orchestration import data_types
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -29,22 +28,18 @@ from tfx.types import standard_artifacts
 class SchemaGenTest(tf.test.TestCase):
 
   def testConstruct(self):
-    statistics_artifact = standard_artifacts.ExampleStatistics()
-    statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
     schema_gen = component.SchemaGen(
-        statistics=channel_utils.as_channel([statistics_artifact]))
+        statistics=channel_utils.as_channel(
+            [standard_artifacts.ExampleStatistics(split='train')]))
     self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
                      schema_gen.outputs['schema'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
 
   def testConstructWithParameter(self):
-    statistics_artifact = standard_artifacts.ExampleStatistics()
-    statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
     infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=bool)
     schema_gen = component.SchemaGen(
-        statistics=channel_utils.as_channel([statistics_artifact]),
+        statistics=channel_utils.as_channel(
+            [standard_artifacts.ExampleStatistics(split='train')]),
         infer_feature_shape=infer_shape)
     self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
                      schema_gen.outputs['schema'].type_name)

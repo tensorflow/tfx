@@ -18,8 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
 from typing import Any, Dict, List, Text
 
 import absl
@@ -38,7 +36,7 @@ from tfx.utils import path_utils
 
 
 def _all_files_pattern(file_pattern: Text) -> Text:
-  return os.path.join(file_pattern, '*')
+  return '{}*'.format(file_pattern)
 
 
 class TrainerFnArgs(object):

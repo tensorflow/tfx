@@ -26,7 +26,6 @@ from google.protobuf import json_format
 from tensorflow_serving.apis import prediction_log_pb2
 from tfx.components.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -42,12 +41,11 @@ class ExecutorTest(tf.test.TestCase):
     self.component_id = 'test_component'
 
     # Create input dict.
-    self._examples = standard_artifacts.Examples()
-    self._examples.uri = os.path.join(self._source_data_dir, 'csv_example_gen')
-    self._examples.split_names = artifact_utils.encode_split_names(
-        ['unlabelled'])
+    self._examples = standard_artifacts.Examples(split='unlabelled')
+    self._examples.uri = os.path.join(self._source_data_dir,
+                                      'csv_example_gen/unlabelled/')
     self._model = standard_artifacts.Model()
-    self._model.uri = os.path.join(self._source_data_dir, 'trainer/current')
+    self._model.uri = os.path.join(self._source_data_dir, 'trainer/current/')
 
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._model_blessing.uri = os.path.join(self._source_data_dir,

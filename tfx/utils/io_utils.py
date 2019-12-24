@@ -126,7 +126,7 @@ def load_csv_column_names(csv_file: Text) -> List[Text]:
 
 def all_files_pattern(file_pattern: Text) -> Text:
   """Returns file pattern suitable for Beam to locate multiple files."""
-  return os.path.join(file_pattern, '*')
+  return '{}*'.format(file_pattern)
 
 
 def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:

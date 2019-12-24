@@ -5,7 +5,7 @@
   "_exec_properties": {
     "custom_config": null,
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
-    "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": 10, \"name\": \"{{pipelineparam:op=;name=example-gen-output-name}}\"}]}}"
+        "output_config":"{\"split_config\": {\"splits\": [{\"hash_buckets\": 10, \"name\": \"{{pipelineparam:op=;name=example-gen-output-name}}\"}]}}"
   },
   "_id": "CsvExampleGen",
   "_inputs": {
@@ -20,36 +20,28 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
-          {
-            "__class__": "ExternalArtifact",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
-            "artifact": {
-              "properties": {
-                "type_name": {
-                  "string_value": "ExternalPath"
-                }
-              }
-            },
-            "artifact_type": {
-              "name": "ExternalPath",
-              "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split_names": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
-              }
-            }
-          }
-        ],
-        "type_name": "ExternalPath"
-      }
-    }
-  },
+        "_artifacts": [{
+          "__class__": "ExternalArtifact",
+          "__module__": "tfx.types.standard_artifacts",
+          "__tfx_object_type__": "jsonable",
+          "artifact": {
+            "properties": {
+              "split": {
+                "string_value": ""
+              },
+              "type_name": {
+                "string_value": "ExternalPath"}}},
+          "artifact_type": {
+            "name": "ExternalPath",
+            "properties": {
+              "name": "STRING",
+              "pipeline_name": "STRING",
+              "producer_component": "STRING",
+              "span": "INT",
+              "split": "STRING",
+              "state": "STRING",
+              "type_name": "STRING"}}}],
+        "type_name": "ExternalPath"}}},
   "_outputs": {
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
@@ -60,48 +52,37 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
-          {
-            "__class__": "Examples",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
-            "artifact": {
-              "properties": {
-                "name": {
-                  "string_value": "examples"
-                },
-                "pipeline_name": {
-                  "string_value": "test_pipeline"
-                },
-                "producer_component": {
-                  "string_value": "CsvExampleGen"
-                },
-                "split_names": {
-                  "string_value": "[\"{{pipelineparam:op=;name=example-gen-output-name}}\"]"
-                },
-                "type_name": {
-                  "string_value": "ExamplesPath"
-                }
-              }
-            },
-            "artifact_type": {
-              "name": "ExamplesPath",
-              "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split_names": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
-              }
-            }
-          }
-        ],
-        "type_name": "ExamplesPath"
-      }
-    }
-  },
+        "_artifacts": [{
+          "__class__": "Examples",
+          "__module__": "tfx.types.standard_artifacts",
+          "__tfx_object_type__": "jsonable",
+          "artifact": {
+            "properties": {
+              "name": {
+                "string_value": "examples"
+              },
+              "pipeline_name": {
+                "string_value": "test_pipeline"
+              },
+              "producer_component": {
+                "string_value": "CsvExampleGen"
+              },
+              "split": {
+                "string_value": "{{pipelineparam:op=;name=example-gen-output-name}}"
+              },
+              "type_name": {
+                "string_value": "ExamplesPath"}}},
+          "artifact_type": {
+            "name": "ExamplesPath",
+            "properties": {
+              "name": "STRING",
+              "pipeline_name": "STRING",
+              "producer_component": "STRING",
+              "span": "INT",
+              "split": "STRING",
+              "state": "STRING",
+              "type_name": "STRING"}}}],
+        "type_name": "ExamplesPath"}}},
   "_type": "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen",
   "driver_class": {
     "__class__": "Driver",
@@ -115,7 +96,4 @@
     "executor_class": {
       "__class__": "Executor",
       "__module__": "tfx.components.example_gen.csv_example_gen.executor",
-      "__tfx_object_type__": "class"
-    }
-  }
-}
+      "__tfx_object_type__": "class"}}}

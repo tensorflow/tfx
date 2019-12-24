@@ -32,8 +32,8 @@
                 "producer_component": {
                   "string_value": "CsvExampleGen"
                 },
-                "split_names": {
-                  "string_value": "[\"train\", \"eval\"]"
+                "split": {
+                  "string_value": "train"
                 },
                 "type_name": {
                   "string_value": "ExamplesPath"
@@ -47,7 +47,43 @@
                 "pipeline_name": "STRING",
                 "producer_component": "STRING",
                 "span": "INT",
-                "split_names": "STRING",
+                "split": "STRING",
+                "state": "STRING",
+                "type_name": "STRING"
+              }
+            }
+          },
+          {
+            "__class__": "Examples",
+            "__module__": "tfx.types.standard_artifacts",
+            "__tfx_object_type__": "jsonable",
+            "artifact": {
+              "properties": {
+                "name": {
+                  "string_value": "examples"
+                },
+                "pipeline_name": {
+                  "string_value": "test_pipeline"
+                },
+                "producer_component": {
+                  "string_value": "CsvExampleGen"
+                },
+                "split": {
+                  "string_value": "eval"
+                },
+                "type_name": {
+                  "string_value": "ExamplesPath"
+                }
+              }
+            },
+            "artifact_type": {
+              "name": "ExamplesPath",
+              "properties": {
+                "name": "STRING",
+                "pipeline_name": "STRING",
+                "producer_component": "STRING",
+                "span": "INT",
+                "split": "STRING",
                 "state": "STRING",
                 "type_name": "STRING"
               }
@@ -86,8 +122,8 @@
                 "producer_component": {
                   "string_value": "StatisticsGen.foo"
                 },
-                "split_names": {
-                  "string_value": "[\"train\", \"eval\"]"
+                "split": {
+                  "string_value": "train"
                 },
                 "type_name": {
                   "string_value": "ExampleStatisticsPath"
@@ -101,7 +137,43 @@
                 "pipeline_name": "STRING",
                 "producer_component": "STRING",
                 "span": "INT",
-                "split_names": "STRING",
+                "split": "STRING",
+                "state": "STRING",
+                "type_name": "STRING"
+              }
+            }
+          },
+          {
+            "__class__": "ExampleStatistics",
+            "__module__": "tfx.types.standard_artifacts",
+            "__tfx_object_type__": "jsonable",
+            "artifact": {
+              "properties": {
+                "name": {
+                  "string_value": "output"
+                },
+                "pipeline_name": {
+                  "string_value": "test_pipeline"
+                },
+                "producer_component": {
+                  "string_value": "StatisticsGen.foo"
+                },
+                "split": {
+                  "string_value": "eval"
+                },
+                "type_name": {
+                  "string_value": "ExampleStatisticsPath"
+                }
+              }
+            },
+            "artifact_type": {
+              "name": "ExampleStatisticsPath",
+              "properties": {
+                "name": "STRING",
+                "pipeline_name": "STRING",
+                "producer_component": "STRING",
+                "span": "INT",
+                "split": "STRING",
                 "state": "STRING",
                 "type_name": "STRING"
               }

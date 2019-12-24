@@ -20,12 +20,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-import os
-import re
 
 from typing import Dict, List, Text
-
-import absl
 
 from tfx.types.artifact import Artifact
 
@@ -81,8 +77,26 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
-def get_split_uri(artifact_list: List[Artifact],
-                  split: Text) -> Text:
+def _get_split_instance(artifact_list: List[Artifact], split: Text) -> Artifact:
+  """Get an instance of Artifact with matching split from given list.
+
+  Args:
+    artifact_list: A list of Artifact objects whose length must be one.
+    split: Name of split.
+
+  Returns:
+    The single Artifact object in artifact_list with matching split.
+
+  Raises:
+    ValueError: If number with matching split in artifact_list is not one.
+  """
+  matched = [x for x in artifact_list if x.split == split]
+  if len(matched) != 1:
+    raise ValueError('{} elements matches split {}'.format(len(matched), split))
+  return matched[0]
+
+
+def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   """Get the uri of Artifact with matching split from given list.
 
   Args:
@@ -95,45 +109,4 @@ def get_split_uri(artifact_list: List[Artifact],
   Raises:
     ValueError: If number with matching split in artifact_list is not one.
   """
-  matching_artifacts = []
-  for artifact in artifact_list:
-    split_names = decode_split_names(artifact.split_names)
-    if split in split_names:
-      matching_artifacts.append(artifact)
-  if len(matching_artifacts) != 1:
-    raise ValueError(
-        ('Expected exactly one artifact with split %r, but found matching '
-         'artifacts %s.') % (split, matching_artifacts))
-  return os.path.join(matching_artifacts[0].uri, split)
-
-
-def encode_split_names(splits: List[Text]) -> Text:
-  """Get the encoded representation of a list of split names."""
-  rewritten_splits = []
-  for split in splits:
-    # TODO(b/146759051): Remove workaround for RuntimeParameter object once
-    # this bug is clarified.
-    if split.__class__.__name__ == 'RuntimeParameter':
-      absl.logging.warning(
-          'RuntimeParameter provided for split name: this functionality may '
-          'not be supported in the future.')
-      split = str(split)
-      # Intentionally ignore split format check to pass through the template for
-      # now. This behavior is very fragile and should be fixed (see
-      # b/146759051).
-    elif not re.match('^([A-Za-z0-9][A-Za-z0-9_-]*)?$', split):
-      # TODO(ccy): Disallow empty split names once the importer removes split as
-      # a property for all artifacts.
-      raise ValueError(
-          ('Split names are expected to be alphanumeric (allowing dashes and '
-           'underscores, provided they are not the first character); got %r '
-           'instead.') % (split,))
-    rewritten_splits.append(split)
-  return json.dumps(rewritten_splits)
-
-
-def decode_split_names(split_names: Text) -> List[Text]:
-  """Decode an encoded list of split names."""
-  if not split_names:
-    return []
-  return json.loads(split_names)
+  return _get_split_instance(artifact_list, split).uri

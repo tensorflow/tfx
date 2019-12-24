@@ -33,8 +33,8 @@ from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 # Path to store model eval results for validation.
-CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model'
-BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model'
+CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model/'
+BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model/'
 
 
 class Executor(base_executor.BaseExecutor):

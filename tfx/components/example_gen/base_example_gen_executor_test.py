@@ -25,7 +25,6 @@ import tensorflow as tf
 from google.protobuf import json_format
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -76,14 +75,15 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    self._output_dict = {'examples': [examples]}
+    train_examples = standard_artifacts.Examples(split='train')
+    train_examples.uri = os.path.join(output_data_dir, 'train')
+    eval_examples = standard_artifacts.Examples(split='eval')
+    eval_examples.uri = os.path.join(output_data_dir, 'eval')
+    self._output_dict = {'examples': [train_examples, eval_examples]}
 
-    self._train_output_file = os.path.join(examples.uri, 'train',
+    self._train_output_file = os.path.join(train_examples.uri,
                                            'data_tfrecord-00000-of-00001.gz')
-    self._eval_output_file = os.path.join(examples.uri, 'eval',
+    self._eval_output_file = os.path.join(eval_examples.uri,
                                           'data_tfrecord-00000-of-00001.gz')
 
   def testDoInputSplit(self):

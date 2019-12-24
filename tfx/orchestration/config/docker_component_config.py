@@ -41,7 +41,7 @@ class DockerComponentConfig(base_component_config.BaseComponentConfig):
       key is either the host path or a volume name, and the value is a
       dictionary with the keys: {bind: mode}.
       For example:
-      `{'/home/user1': {'bind': '/mnt/vol2', 'mode': 'rw'},
+      `{'/home/user1/': {'bind': '/mnt/vol2', 'mode': 'rw'},
        '/var/www': {'bind': '/mnt/vol1', 'mode': 'ro'}}`
     additional_run_args: Additional run args to pass to
       `docker.client.containers.run`. See

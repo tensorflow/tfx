@@ -24,7 +24,6 @@ import tensorflow as tf
 from google.protobuf import json_format
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -38,13 +37,13 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    train_examples = standard_artifacts.Examples(split='train')
+    eval_examples = standard_artifacts.Examples(split='eval')
+    eval_examples.uri = os.path.join(source_data_dir, 'csv_example_gen/eval/')
     model_exports = standard_artifacts.Model()
-    model_exports.uri = os.path.join(source_data_dir, 'trainer/current')
+    model_exports.uri = os.path.join(source_data_dir, 'trainer/current/')
     input_dict = {
-        'examples': [examples],
+        'examples': [train_examples, eval_examples],
         'model_exports': [model_exports],
     }
 

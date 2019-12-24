@@ -240,10 +240,11 @@ def _create_formatters(formatters_spec):
 
 FORMATTER_REGISTRY = _create_formatters({
     Artifact: {
-        'attributes': ['type_name', 'uri', 'span', 'split_names'],
-        'title_format': (('<span class="class-name">Artifact</span> of type '
-                          '<span class="class-name">%r</span> (uri: %s)'),
-                         ['type_name', 'uri']),
+        'attributes': ['type_name', 'uri', 'span', 'split'],
+        'title_format': (
+            ('<span class="class-name">Artifact</span> of type '
+             '<span class="class-name">%r</span> (uri: %s)'),
+            ['type_name', 'uri']),
     },
     BaseComponent: {
         'attributes': ['inputs', 'outputs', 'exec_properties']
@@ -254,8 +255,7 @@ FORMATTER_REGISTRY = _create_formatters({
             ('<span class="class-name">Channel</span> of type '
              '<span class="class-name">%r</span> (%d artifact%s)'),
             [
-                'type_name',
-                lambda o: len(o._artifacts),  # pylint: disable=protected-access
+                'type_name', lambda o: len(o._artifacts),  # pylint: disable=protected-access
                 lambda o: '' if len(o._artifacts) == 1 else 's'  # pylint: disable=protected-access
             ]),
     },

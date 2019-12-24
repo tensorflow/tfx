@@ -91,7 +91,7 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertFalse(tf.io.gfile.exists(file_path))
 
   def testAllFilesPattern(self):
-    self.assertEqual('model/*', io_utils.all_files_pattern('model'))
+    self.assertEqual('model*', io_utils.all_files_pattern('model'))
 
   def testLoadCsvColumnNames(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')

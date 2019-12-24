@@ -124,7 +124,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
-                                      'transform/transform_output'),
+                                      'transform/transform_output/'),
         output_dir=output_dir,
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
         eval_files=os.path.join(self._testdata_path,

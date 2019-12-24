@@ -94,13 +94,11 @@ class Executor(base_executor.BaseExecutor):
     example_uris = {}
     if data_spec.example_splits:
       for example in input_dict['examples']:
-        for split in artifact_utils.decode_split_names(example.split_names):
-          if split in data_spec.example_splits:
-            example_uris[split] = os.path.join(example.uri, split)
+        if example.split in data_spec.example_splits:
+          example_uris[example.split] = example.uri
     else:
       for example in input_dict['examples']:
-        for split in artifact_utils.decode_split_names(example.split_names):
-          example_uris[split] = os.path.join(example.uri, split)
+        example_uris[example.split] = example.uri
     model_spec = bulk_inferrer_pb2.ModelSpec()
     json_format.Parse(exec_properties['model_spec'], model_spec)
     output_path = os.path.join(output.uri, _PREDICTION_LOGS_DIR_NAME)

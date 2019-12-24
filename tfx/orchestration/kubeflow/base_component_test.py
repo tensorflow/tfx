@@ -105,8 +105,6 @@ class BaseComponentTest(tf.test.TestCase):
         '--component_config',
         'null',
     ]
-    print('self.component.container_op',
-          repr(self.component.container_op.arguments))
     self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
                      expected_args)
 
@@ -237,8 +235,6 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '--component_config',
         'null',
     ]
-    print('statistics_gen', repr(self.statistics_gen.container_op.arguments))
-    print('example_gen', repr(self.example_gen.container_op.arguments))
     self.assertEqual(
         self.statistics_gen.container_op
         .arguments[:len(statistics_gen_expected_args)],
