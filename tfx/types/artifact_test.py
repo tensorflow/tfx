@@ -23,13 +23,15 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 from tfx.types import artifact
+from tfx.types import artifact_utils
 from tfx.utils import json_utils
 
 
 class ArtifactTest(tf.test.TestCase):
 
   def testArtifact(self):
-    instance = artifact.Artifact('MyTypeName', split='eval')
+    instance = artifact.Artifact('MyTypeName')
+    instance.split_names = artifact_utils.encode_split_names(['eval'])
 
     # Test property getters.
     self.assertEqual('', instance.uri)
@@ -37,7 +39,7 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(0, instance.type_id)
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
-    self.assertEqual('eval', instance.split)
+    self.assertEqual('["eval"]', instance.split_names)
     self.assertEqual(0, instance.span)
 
     # Test property setters.
@@ -53,8 +55,8 @@ class ArtifactTest(tf.test.TestCase):
     instance.state = artifact.ArtifactState.DELETED
     self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
 
-    instance.split = ''
-    self.assertEqual('', instance.split)
+    instance.split_names = ''
+    self.assertEqual('', instance.split_names)
 
     instance.span = 20190101
     self.assertEqual(20190101, instance.span)
@@ -68,9 +70,8 @@ class ArtifactTest(tf.test.TestCase):
         'string_value',
         instance.artifact.custom_properties['string_key'].string_value)
 
-    self.assertEqual(
-        'Artifact(type_name: MyTypeName, uri: /tmp/uri2, split: , id: 1)',
-        str(instance))
+    self.assertEqual('Artifact(type_name: MyTypeName, uri: /tmp/uri2, id: 1)',
+                     str(instance))
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)

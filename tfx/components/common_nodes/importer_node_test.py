@@ -24,6 +24,7 @@ from tfx import types
 from tfx.components.common_nodes import importer_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
 
@@ -59,7 +60,7 @@ class ImporterNodeTest(tf.test.TestCase):
             importer_node.SPLIT_KEY: ['train', 'eval'],
         })
     self.assertEqual([
-        s.split
+        artifact_utils.decode_split_names(s.split_names)[0]
         for s in impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].get()
     ], ['train', 'eval'])
 
@@ -105,7 +106,7 @@ class ImporterDriverTest(tf.test.TestCase):
     for uri, split in zip(self.source_uri, self.split):
       existing_artifact = types.Artifact(type_name=self.artifact_type)
       existing_artifact.uri = uri
-      existing_artifact.split = split
+      existing_artifact.split_names = artifact_utils.encode_split_names([split])
       self.existing_artifacts.append(existing_artifact)
 
     self.component_info = data_types.ComponentInfo(
@@ -144,7 +145,8 @@ class ImporterDriverTest(tf.test.TestCase):
       results = self.output_dict[importer_node.IMPORT_RESULT_KEY].get()
       for res, uri, split in zip(results, self.source_uri, self.split):
         self.assertEqual(res.uri, uri)
-        self.assertEqual(res.split, split)
+        self.assertEqual(
+            artifact_utils.decode_split_names(res.split_names)[0], split)
 
   def testImportArtifact(self):
     self._callImporterDriver(reimport=True)

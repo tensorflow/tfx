@@ -27,6 +27,7 @@ from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorf
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.examples.custom_components.tuner.testdata import module
 from tfx.examples.custom_components.tuner.tuner_component import executor
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 
@@ -52,15 +53,14 @@ class ExecutorTest(tf.test.TestCase):
         tmp_dir=self._output_data_dir, unique_id='1')
 
     # Create input dict.
-    train_examples = standard_artifacts.Examples(split='train')
-    train_examples.uri = 'path/train/'
-    eval_examples = standard_artifacts.Examples(split='eval')
-    eval_examples.uri = 'path/eval/'
+    examples = standard_artifacts.Examples()
+    examples.uri = 'path'
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._output_data_dir, 'schema')
 
     self._input_dict = {
-        'examples': [train_examples, eval_examples],
+        'examples': [examples],
         'schema': [schema],
     }
 
