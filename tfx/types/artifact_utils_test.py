@@ -30,42 +30,32 @@ class ArtifactUtilsTest(tf.test.TestCase):
 
   def testGetFromSingleList(self):
     """Test various retrieval utilities on a single list of Artifact."""
-    single_list = [artifact.Artifact('MyTypeName', split='eval')]
-    single_list[0].uri = '/tmp/evaluri'
-    self.assertEqual(single_list[0],
-                     artifact_utils.get_single_instance(single_list))
-    self.assertEqual('/tmp/evaluri', artifact_utils.get_single_uri(single_list))
-    self.assertEqual(single_list[0],
-                     artifact_utils._get_split_instance(single_list, 'eval'))
-    self.assertEqual('/tmp/evaluri',
-                     artifact_utils.get_split_uri(single_list, 'eval'))
+    artifacts = [artifact.Artifact('MyTypeName')]
+    artifacts[0].uri = '/tmp/evaluri'
+    artifacts[0].split_names = '["eval"]'
+    self.assertEqual(artifacts[0],
+                     artifact_utils.get_single_instance(artifacts))
+    self.assertEqual('/tmp/evaluri', artifact_utils.get_single_uri(artifacts))
+    self.assertEqual('/tmp/evaluri/eval',
+                     artifact_utils.get_split_uri(artifacts, 'eval'))
     with self.assertRaises(ValueError):
-      artifact_utils._get_split_instance(single_list, 'train')
-    with self.assertRaises(ValueError):
-      artifact_utils.get_split_uri(single_list, 'train')
+      artifact_utils.get_split_uri(artifacts, 'train')
 
-  def testGetFromSplitList(self):
+  def testGetFromSplits(self):
     """Test various retrieval utilities on a list of split Artifact."""
-    split_list = []
-    for split in ['train', 'eval']:
-      instance = artifact.Artifact('MyTypeName', split=split)
-      instance.uri = '/tmp/' + split
-      split_list.append(instance)
+    artifacts = [artifact.Artifact('MyTypeName')]
+    artifacts[0].uri = '/tmp'
+    artifacts[0].split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
 
-    with self.assertRaises(ValueError):
-      artifact_utils.get_single_instance(split_list)
+    self.assertEqual(artifacts[0].split_names, '["train", "eval"]')
 
-    with self.assertRaises(ValueError):
-      artifact_utils.get_single_uri(split_list)
-
-    self.assertEqual(split_list[0],
-                     artifact_utils._get_split_instance(split_list, 'train'))
+    self.assertIs(artifact_utils.get_single_instance(artifacts), artifacts[0])
+    self.assertEqual('/tmp', artifact_utils.get_single_uri(artifacts))
     self.assertEqual('/tmp/train',
-                     artifact_utils.get_split_uri(split_list, 'train'))
-    self.assertEqual(split_list[1],
-                     artifact_utils._get_split_instance(split_list, 'eval'))
+                     artifact_utils.get_split_uri(artifacts, 'train'))
     self.assertEqual('/tmp/eval',
-                     artifact_utils.get_split_uri(split_list, 'eval'))
+                     artifact_utils.get_split_uri(artifacts, 'eval'))
 
 
 if __name__ == '__main__':
