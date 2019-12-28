@@ -37,7 +37,7 @@ class DriverTest(tf.test.TestCase):
     model_blessing.set_int_custom_property('current_model_id', aid)
     model_blessing.set_string_custom_property('component_id', component_id)
     model_blessing.set_int_custom_property('blessed', is_blessed)
-    return model_blessing.artifact
+    return model_blessing.mlmd_artifact
 
   def testFetchLastBlessedModel(self):
     # Mock metadata.

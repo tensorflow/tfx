@@ -62,13 +62,13 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(20190101, instance.span)
 
     instance.set_int_custom_property('int_key', 20)
-    self.assertEqual(20,
-                     instance.artifact.custom_properties['int_key'].int_value)
+    self.assertEqual(
+        20, instance.mlmd_artifact.custom_properties['int_key'].int_value)
 
     instance.set_string_custom_property('string_key', 'string_value')
     self.assertEqual(
         'string_value',
-        instance.artifact.custom_properties['string_key'].string_value)
+        instance.mlmd_artifact.custom_properties['string_key'].string_value)
 
     self.assertEqual('Artifact(type_name: MyTypeName, uri: /tmp/uri2, id: 1)',
                      str(instance))
@@ -76,7 +76,7 @@ class ArtifactTest(tf.test.TestCase):
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
     other_instance = json_utils.loads(json_dict)
-    self.assertEqual(instance.artifact, other_instance.artifact)
+    self.assertEqual(instance.mlmd_artifact, other_instance.mlmd_artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 
   def testInvalidArtifact(self):

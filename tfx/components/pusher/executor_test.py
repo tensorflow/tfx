@@ -73,7 +73,7 @@ class ExecutorTest(tf.test.TestCase):
     self.assertNotEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
     self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
-        1, self._model_push.artifact.custom_properties['pushed'].int_value)
+        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
   def testDoNotBlessed(self):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
@@ -84,7 +84,7 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
     self.assertEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
     self.assertEqual(
-        0, self._model_push.artifact.custom_properties['pushed'].int_value)
+        0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
 
 if __name__ == '__main__':

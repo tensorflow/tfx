@@ -160,20 +160,31 @@ class Metadata(object):
 
   def update_artifact_state(self, artifact: metadata_store_pb2.Artifact,
                             new_state: Text) -> None:
+    """Update the state of a given artifact."""
     if not artifact.id:
       raise ValueError('Artifact id missing for %s' % artifact)
-    artifact.properties['state'].string_value = new_state
+    # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
+    # artifact protos into tfx.types.Artifact objects at a lower level.
+    if 'state' in artifact.properties:
+      artifact.properties['state'].string_value = new_state
+    else:
+      artifact.custom_properties['state'].string_value = new_state
     self._store.put_artifacts([artifact])
 
   # This should be atomic. However this depends on ML metadata transaction
   # support.
   def check_artifact_state(self, artifact: metadata_store_pb2.Artifact,
                            expected_states: Set[Text]) -> None:
+    """Check the given artifact is in an expected state."""
     if not artifact.id:
       raise ValueError('Artifact id missing for %s' % artifact)
     [artifact_in_metadata] = self._store.get_artifacts_by_id([artifact.id])
-    current_artifact_state = artifact_in_metadata.properties[
-        'state'].string_value
+    # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
+    # artifact protos into tfx.types.Artifact objects at a lower level.
+    if 'state' in artifact.properties:
+      current_artifact_state = artifact.properties['state'].string_value
+    else:
+      current_artifact_state = artifact.custom_properties['state'].string_value
     if current_artifact_state not in expected_states:
       raise RuntimeError(
           'Artifact state for %s is %s, but one of %s expected' %
@@ -187,12 +198,12 @@ class Metadata(object):
     artifact_list = []
     for raw_artifact in raw_artifact_list:
       artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
-      raw_artifact.set_artifact_type(artifact_type)
-      if not raw_artifact.artifact.id:
+      raw_artifact.set_mlmd_artifact_type(artifact_type)
+      if not raw_artifact.mlmd_artifact.id:
         raw_artifact.state = ArtifactState.PUBLISHED
-        [artifact_id] = self._store.put_artifacts([raw_artifact.artifact])
+        [artifact_id] = self._store.put_artifacts([raw_artifact.mlmd_artifact])
         raw_artifact.id = artifact_id
-      artifact_list.append(raw_artifact.artifact)
+      artifact_list.append(raw_artifact.mlmd_artifact)
     return artifact_list
 
   def get_all_artifacts(self) -> List[metadata_store_pb2.Artifact]:
@@ -399,31 +410,31 @@ class Metadata(object):
     if input_dict:
       for key, input_list in input_dict.items():
         for index, single_input in enumerate(input_list):
-          if not single_input.artifact.id:
+          if not single_input.mlmd_artifact.id:
             raise RuntimeError('input artifact %s has missing id' %
                                single_input)
           events.append(
               self._prepare_event(
                   execution_id=execution_id,
-                  artifact_id=single_input.artifact.id,
+                  artifact_id=single_input.mlmd_artifact.id,
                   key=key,
                   index=index,
                   event_type=metadata_store_pb2.Event.INPUT))
     if output_dict:
       for key, output_list in output_dict.items():
         for index, single_output in enumerate(output_list):
-          if not single_output.artifact.id:
+          if not single_output.mlmd_artifact.id:
             if state == EXECUTION_STATE_CACHED:
               raise RuntimeError(
                   'output artifact id not available for cached output: %s' %
                   single_output)
             [published_artifact] = self.publish_artifacts([single_output])  # pylint: disable=unbalanced-tuple-unpacking
-            single_output.set_artifact(published_artifact)
+            single_output.set_mlmd_artifact(published_artifact)
 
           events.append(
               self._prepare_event(
                   execution_id=execution_id,
-                  artifact_id=single_output.artifact.id,
+                  artifact_id=single_output.mlmd_artifact.id,
                   key=key,
                   index=index,
                   event_type=metadata_store_pb2.Event.OUTPUT))
@@ -453,7 +464,7 @@ class Metadata(object):
     input_ids = set()
     for input_list in input_dict.values():
       for single_input in input_list:
-        input_ids.add(single_input.artifact.id)
+        input_ids.add(single_input.mlmd_artifact.id)
 
     for execution_id in candidate_execution_ids:
       events = self._store.get_events_by_execution_ids([execution_id])
@@ -557,7 +568,7 @@ class Metadata(object):
         raise RuntimeError('Output name expected %s items but %s retrieved' %
                            (len(output_list), len(index_to_artifacts)))
       for index, output in enumerate(output_list):
-        output.set_artifact(index_to_artifacts[index])
+        output.set_mlmd_artifact(index_to_artifacts[index])
     return dict(output_dict)
 
   def search_artifacts(self, artifact_name: Text, pipeline_name: Text,
@@ -597,10 +608,19 @@ class Metadata(object):
           event.path.steps[0].key == artifact_name):
         matching_artifact_ids.add(event.artifact_id)
 
+    # Get relevant artifacts along with their types.
+    artifacts_by_id = self._store.get_artifacts_by_id(
+        list(matching_artifact_ids))
+    matching_artifact_type_ids = list(set(a.type_id for a in artifacts_by_id))
+    matching_artifact_types = self._store.get_artifact_types_by_id(
+        matching_artifact_type_ids)
+    artifact_types = dict(
+        zip(matching_artifact_type_ids, matching_artifact_types))
+
     result_artifacts = []
-    for a in self._store.get_artifacts_by_id(list(matching_artifact_ids)):
-      tfx_artifact = Artifact(a.properties['type_name'].string_value)
-      tfx_artifact.artifact = a
+    for a in artifacts_by_id:
+      tfx_artifact = Artifact(artifact_types[a.type_id].name)
+      tfx_artifact.set_mlmd_artifact(a)
       result_artifacts.append(tfx_artifact)
     return result_artifacts
 

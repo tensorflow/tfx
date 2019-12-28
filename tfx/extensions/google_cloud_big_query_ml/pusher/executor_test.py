@@ -98,7 +98,7 @@ class ExecutorTest(tf.test.TestCase):
                       self._exec_properties)
     self.mock_bq.assert_called_once()
     self.assertEqual(
-        1, self._model_push.artifact.custom_properties['pushed'].int_value)
+        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
   def testDoNotBlessed(self):
     self.mock_check_blessing.return_value = False

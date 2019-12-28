@@ -81,8 +81,7 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
-def get_split_uri(artifact_list: List[Artifact],
-                  split: Text) -> Text:
+def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   """Get the uri of Artifact with matching split from given list.
 
   Args:
