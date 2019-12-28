@@ -74,10 +74,10 @@ class ExecutorTest(tf.test.TestCase):
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        self._model_push.artifact.custom_properties['pushed_model']
+        self._model_push.mlmd_artifact.custom_properties['pushed_model']
         .string_value, mock.ANY, mock.ANY)
     self.assertEqual(
-        1, self._model_push.artifact.custom_properties['pushed'].int_value)
+        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
   @mock.patch.object(executor, 'runner', autospec=True)
   def testDoNotBlessed(self, mock_runner):
@@ -87,7 +87,7 @@ class ExecutorTest(tf.test.TestCase):
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
     self.assertEqual(
-        0, self._model_push.artifact.custom_properties['pushed'].int_value)
+        0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
     mock_runner.deploy_model_for_aip_prediction.assert_not_called()
 
 

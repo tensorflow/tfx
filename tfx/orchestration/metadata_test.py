@@ -25,6 +25,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
 
@@ -99,6 +100,8 @@ class MetadataTest(tf.test.TestCase):
       # Test publish artifact.
       artifact = standard_artifacts.Examples()
       artifact.uri = 'uri'
+      artifact.split_names = artifact_utils.encode_split_names(
+          ['train', 'eval'])
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
       self.assertProtoEquals(
@@ -106,17 +109,18 @@ class MetadataTest(tf.test.TestCase):
         type_id: 1
         uri: "uri"
         properties {
+          key: "split_names"
+          value {
+            string_value: "[\\"train\\", \\"eval\\"]"
+          }
+        }
+        custom_properties {
           key: "state"
           value {
             string_value: "published"
           }
         }
-        properties {
-          key: "type_name"
-          value {
-            string_value: "%s"
-          }
-        }""" % standard_artifacts.Examples.TYPE_NAME, artifact)
+        """, artifact)
 
       # Test get artifact.
       self.assertListEqual([artifact], m.get_all_artifacts())
@@ -484,10 +488,10 @@ class MetadataTest(tf.test.TestCase):
       new_output_dict = {'output': [new_output_artifact]}
       updated_output_dict = m.fetch_previous_result_artifacts(
           new_output_dict, eid)
-      previous_artifact = output_artifacts['output'][-1].artifact
-      current_artifact = updated_output_dict['output'][-1].artifact
+      previous_artifact = output_artifacts['output'][-1].mlmd_artifact
+      current_artifact = updated_output_dict['output'][-1].mlmd_artifact
       self.assertEqual(ArtifactState.PUBLISHED,
-                       current_artifact.properties['state'].string_value)
+                       current_artifact.custom_properties['state'].string_value)
       self.assertEqual(previous_artifact.id, current_artifact.id)
       self.assertEqual(previous_artifact.type_id, current_artifact.type_id)
 
@@ -561,7 +565,7 @@ class MetadataTest(tf.test.TestCase):
       output_artifact = types.Artifact(type_name='MyOutputArtifact')
       output_artifact.uri = 'my/uri'
       [published_artifact] = m.publish_artifacts([output_artifact])
-      output_artifact.artifact = published_artifact
+      output_artifact.set_mlmd_artifact(published_artifact)
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(

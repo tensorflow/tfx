@@ -25,23 +25,11 @@
             "__class__": "ExternalArtifact",
             "__module__": "tfx.types.standard_artifacts",
             "__tfx_object_type__": "jsonable",
-            "artifact": {
-              "properties": {
-                "type_name": {
-                  "string_value": "ExternalPath"
-                }
-              }
-            },
+            "artifact": {},
             "artifact_type": {
               "name": "ExternalPath",
               "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split_names": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
+                "split_names": "STRING"
               }
             }
           }
@@ -66,7 +54,7 @@
             "__module__": "tfx.types.standard_artifacts",
             "__tfx_object_type__": "jsonable",
             "artifact": {
-              "properties": {
+              "custom_properties": {
                 "name": {
                   "string_value": "examples"
                 },
@@ -75,25 +63,18 @@
                 },
                 "producer_component": {
                   "string_value": "CsvExampleGen"
-                },
+                }
+              },
+              "properties": {
                 "split_names": {
                   "string_value": "[\"{{pipelineparam:op=;name=example-gen-output-name}}\"]"
-                },
-                "type_name": {
-                  "string_value": "ExamplesPath"
                 }
               }
             },
             "artifact_type": {
               "name": "ExamplesPath",
               "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split_names": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
+                "split_names": "STRING"
               }
             }
           }

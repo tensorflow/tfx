@@ -29,7 +29,7 @@ from tfx.orchestration import metadata
 def _generate_tfx_artifact(mlmd_artifact: metadata_store_pb2.Artifact,
                            type_name: Text):
   result = types.Artifact(type_name=type_name)
-  result.set_artifact(mlmd_artifact)
+  result.set_mlmd_artifact(mlmd_artifact)
   return result
 
 

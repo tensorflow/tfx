@@ -94,17 +94,16 @@ class ImporterDriverTest(tf.test.TestCase):
     super(ImporterDriverTest, self).setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
-    self.artifact_type = 'Examples'
     self.output_dict = {
         importer_node.IMPORT_RESULT_KEY:
-            types.Channel(type_name=self.artifact_type)
+            types.Channel(type=standard_artifacts.Examples)
     }
     self.source_uri = ['m/y/u/r/i/1', 'm/y/u/r/i/2']
     self.split = ['train', 'eval']
 
     self.existing_artifacts = []
     for uri, split in zip(self.source_uri, self.split):
-      existing_artifact = types.Artifact(type_name=self.artifact_type)
+      existing_artifact = standard_artifacts.Examples()
       existing_artifact.uri = uri
       existing_artifact.split_names = artifact_utils.encode_split_names([split])
       self.existing_artifacts.append(existing_artifact)

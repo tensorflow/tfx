@@ -114,7 +114,8 @@ class Driver(base_driver.BaseDriver):
       for single_input in input_list:
         absl.logging.debug('Processing input %s.' % single_input.uri)
         absl.logging.debug('single_input %s.' % single_input)
-        absl.logging.debug('single_input.artifact %s.' % single_input.artifact)
+        absl.logging.debug('single_input.mlmd_artifact %s.' %
+                           single_input.mlmd_artifact)
 
         # Set the fingerprint of input.
         split_fingerprints = []
@@ -160,13 +161,13 @@ class Driver(base_driver.BaseDriver):
           absl.logging.debug('type(latest_artifact) %s.' %
                              type(latest_artifact))
 
-          single_input.set_artifact(latest_artifact)
+          single_input.set_mlmd_artifact(latest_artifact)
         else:
           # TODO(jyzhao): whether driver should be read-only for metadata.
           [new_artifact] = self._metadata_handler.publish_artifacts(
               [single_input])  # pylint: disable=unbalanced-tuple-unpacking
           absl.logging.debug('Registered new input: %s' % (new_artifact))
-          single_input.set_artifact(new_artifact)
+          single_input.set_mlmd_artifact(new_artifact)
 
     exec_properties['input_config'] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)
