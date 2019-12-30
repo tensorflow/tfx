@@ -87,9 +87,9 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         instance_name='raw_examples',
         source_uri=[
             os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/train'),
+                         'csv_example_gen/examples/test-pipeline'),
             os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/eval')
+                         'csv_example_gen/examples/test-pipeline')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -100,9 +100,9 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         instance_name='transformed_examples',
         source_uri=[
             os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/train'),
+                         'transform/transformed_examples/test-pipeline'),
             os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/eval')
+                         'transform/transformed_examples/test-pipeline')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,

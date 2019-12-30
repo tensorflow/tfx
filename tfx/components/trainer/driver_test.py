@@ -32,7 +32,7 @@ class DriverTest(tf.test.TestCase):
       model = standard_artifacts.Model()
       model.id = aid
       model.uri = 'uri-%d' % aid
-      artifacts.append(model.mlmd_artifact)
+      artifacts.append(model.artifact)
     mock_metadata.get_artifacts_by_type.return_value = artifacts
     trainer_driver = driver.Driver(mock_metadata)
     result = trainer_driver._fetch_latest_model()
