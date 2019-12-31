@@ -5,7 +5,7 @@
   "_exec_properties": {
     "custom_config": null,
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
-    "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": 10, \"name\": \"{{pipelineparam:op=;name=example-gen-output-name}}\"}]}}"
+    "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": {{pipelineparam:op=;name=example-gen-buckets}}, \"name\": \"examples\"}]}}"
   },
   "_id": "CsvExampleGen",
   "_inputs": {
@@ -67,7 +67,7 @@
               },
               "properties": {
                 "split_names": {
-                  "string_value": "[\"{{pipelineparam:op=;name=example-gen-output-name}}\"]"
+                  "string_value": "[\"examples\"]"
                 }
               }
             },
