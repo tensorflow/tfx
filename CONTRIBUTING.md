@@ -28,9 +28,8 @@ https://opensource.google.com/conduct/).
 # Contributing Guidelines
 
 ## Running Unit Tests
-
-We recommend using virtualenv and Python 3.6 and above for development. You can
-invoke all Python unit tests:
+We recommend using virtualenv and Python 3.5 and above for development. You can
+invoke all python unit tests:
 
 ```
 python setup.py test
@@ -55,8 +54,7 @@ automatically closed once internal change is submitted. You are welcome to
 checkout the PR branch to observe the behavior.
 
 # Merging External Contributions
-
-External contributions can be submitted normally as a GitHub PR.
+External contributions can be submitted normally as a Github PR.
 
 All submissions, including submissions by project members, require review. We
 use GitHub pull requests for this purpose. Consult GitHub Help for more
@@ -71,16 +69,15 @@ A TFX engineer will monitor all public PRs and look at the issue within 5
 business days to perform initial triage.
 
 ## Python 2 and type hints
-
-Starting from TFX 0.14, all Python source code on GitHub includes
-[Python 3 type hints](https://docs.python.org/3.6/library/typing.html). Python
+Starting from TFX 0.14, all python source code on github includes
+[Python 3 type hints](https://docs.python.org/3.5/library/typing.html). Python
 3.6 (or above) is the recommended version to develop this project.
 
 The Python 2 version of [tfx](https://pypi.org/project/tfx/) PyPI package has
-all type hints stripped and is the easiest way for Python 2 users.
+all type hints stripped and is the easiest way for python 2 users.
 
 Python 2 support will be deprecated in 2020, due to
-[Python 2 not supported beyond 2020](https://www.python.org/dev/peps/pep-0373/).
+[python 2 not supported beyong 2020](https://www.python.org/dev/peps/pep-0373/).
 
 If you must use Python 2 with source code:
 

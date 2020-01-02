@@ -20,7 +20,6 @@
 *   Updated trainer executor to pass through custom config to user module.
 *   Artifact type-specific properties can be defined through overriding the
     PROPERTIES dictionary of a `types.artifact.Artifact` subclass.
-*   Added new example of chicago_taxi_pipeline on Google Cloud Bigquery ML.
 
 ## Bug fixes and other changes
 

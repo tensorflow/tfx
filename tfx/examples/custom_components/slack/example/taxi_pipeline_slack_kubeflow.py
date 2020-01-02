@@ -145,7 +145,7 @@ def _create_pipeline():
       slack_channel_id=_slack_channel_id,
       timeout_sec=3600,
   )
-  # Checks whether the model passed the validation steps and pushes the model
+ # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
