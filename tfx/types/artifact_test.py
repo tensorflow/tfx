@@ -23,7 +23,6 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 from tfx.types import artifact
-from tfx.types import artifact_utils
 from tfx.utils import json_utils
 
 
@@ -31,7 +30,6 @@ class ArtifactTest(tf.test.TestCase):
 
   def testArtifact(self):
     instance = artifact.Artifact('MyTypeName')
-    instance.split_names = artifact_utils.encode_split_names(['eval'])
 
     # Test property getters.
     self.assertEqual('', instance.uri)
@@ -39,8 +37,13 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(0, instance.type_id)
     self.assertEqual('MyTypeName', instance.type_name)
     self.assertEqual('', instance.state)
-    self.assertEqual('["eval"]', instance.split_names)
-    self.assertEqual(0, instance.span)
+
+    # Default property does not have span or split_names.
+    with self.assertRaisesRegexp(AttributeError, "has no property 'span'"):
+      instance.span  # pylint: disable=pointless-statement
+    with self.assertRaisesRegexp(AttributeError,
+                                 "has no property 'split_names'"):
+      instance.split_names  # pylint: disable=pointless-statement
 
     # Test property setters.
     instance.uri = '/tmp/uri2'
@@ -55,11 +58,13 @@ class ArtifactTest(tf.test.TestCase):
     instance.state = artifact.ArtifactState.DELETED
     self.assertEqual(artifact.ArtifactState.DELETED, instance.state)
 
-    instance.split_names = ''
-    self.assertEqual('', instance.split_names)
-
-    instance.span = 20190101
-    self.assertEqual(20190101, instance.span)
+    # Default artifact does not have span.
+    with self.assertRaisesRegexp(AttributeError, "unknown property 'span'"):
+      instance.span = 20190101
+    # Default artifact does not have span.
+    with self.assertRaisesRegexp(AttributeError,
+                                 "unknown property 'split_names'"):
+      instance.split_names = ''
 
     instance.set_int_custom_property('int_key', 20)
     self.assertEqual(
@@ -78,6 +83,9 @@ class ArtifactTest(tf.test.TestCase):
     other_instance = json_utils.loads(json_dict)
     self.assertEqual(instance.mlmd_artifact, other_instance.mlmd_artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
+
+  def testArtifactSpecificProperties(self):
+    pass
 
   def testInvalidArtifact(self):
     with self.assertRaisesRegexp(ValueError,
@@ -104,6 +112,43 @@ class ArtifactTest(tf.test.TestCase):
         ValueError,
         'The "type_name" field must not be passed for Artifact subclass'):
       MyArtifact(type_name='OtherType')
+
+  def testArtifactProperties(self):
+
+    class MyCustomArtifact(artifact.Artifact):
+      TYPE_NAME = 'MyCustomArtifact'
+      PROPERTIES = {
+          'int1': artifact.Property(type=artifact.PropertyType.INT),
+          'int2': artifact.Property(type=artifact.PropertyType.INT),
+          'string1': artifact.Property(type=artifact.PropertyType.STRING),
+          'string2': artifact.Property(type=artifact.PropertyType.STRING),
+      }
+
+    my_artifact = MyCustomArtifact()
+    self.assertEqual(0, my_artifact.int1)
+    self.assertEqual(0, my_artifact.int2)
+    my_artifact.int1 = 111
+    my_artifact.int2 = 222
+    self.assertEqual('', my_artifact.string1)
+    self.assertEqual('', my_artifact.string2)
+    my_artifact.string1 = '111'
+    my_artifact.string2 = '222'
+    self.assertEqual(my_artifact.int1, 111)
+    self.assertEqual(my_artifact.int2, 222)
+    self.assertEqual(my_artifact.string1, '111')
+    self.assertEqual(my_artifact.string2, '222')
+
+    with self.assertRaisesRegexp(
+        AttributeError, "Cannot set unknown property 'invalid' on artifact"):
+      my_artifact.invalid = 1
+
+    with self.assertRaisesRegexp(
+        AttributeError, "Cannot set unknown property 'invalid' on artifact"):
+      my_artifact.invalid = 'x'
+
+    with self.assertRaisesRegexp(AttributeError,
+                                 "Artifact has no property 'invalid'"):
+      my_artifact.invalid  # pylint: disable=pointless-statement
 
 
 if __name__ == '__main__':

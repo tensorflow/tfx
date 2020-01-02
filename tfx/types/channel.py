@@ -63,6 +63,8 @@ class Channel(json_utils.Jsonable):
             'tfx.Artifact.')
       type_name = type.TYPE_NAME  # pytype: disable=attribute-error
 
+    self.type = type
+    # TODO(b/138664975): remove usage of type_name strings.
     self.type_name = type_name
     self._artifacts = artifacts or []
     self._validate_type()

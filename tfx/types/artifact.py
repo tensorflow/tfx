@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import builtins
+import enum
 import json
 from typing import Any, Dict, Optional, Text
 
@@ -47,6 +48,28 @@ class ArtifactState(object):
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 
 
+class PropertyType(enum.Enum):
+  INT = 1
+  STRING = 2
+
+
+class Property(object):
+  """Property specified for an Artifact."""
+  _ALLOWED_MLMD_TYPES = {
+      PropertyType.INT: metadata_store_pb2.INT,
+      PropertyType.STRING: metadata_store_pb2.STRING,
+  }
+
+  def __init__(self, type):  # pylint: disable=redefined-builtin
+    if type not in Property._ALLOWED_MLMD_TYPES:
+      raise ValueError('Property type must be one of %s.' %
+                       list(Property._ALLOWED_MLMD_TYPES.keys()))
+    self.type = type
+
+  def mlmd_type(self):
+    return Property._ALLOWED_MLMD_TYPES[self.type]
+
+
 class Artifact(json_utils.Jsonable):
   """TFX artifact used for orchestration.
 
@@ -59,11 +82,41 @@ class Artifact(json_utils.Jsonable):
   with the type for this artifact subclass. Users of the subclass may then omit
   the "type_name" field when construction the object.
 
+  A user may specify artifact type-specific properties for an Artifact subclass
+  by overriding the PROPERTIES dictionary, as detailed below.
+
   Note: the behavior of this class is experimental, without backwards
   compatibility guarantees, and may change in upcoming releases.
   """
 
+  # String artifact type name used to identify the type in ML Metadata
+  # database. Must be overridden by subclass.
+  #
+  # Example usage:
+  #
+  # TYPE_NAME = 'MyTypeName'
   TYPE_NAME = None
+
+  # Optional dictionary of property name strings as keys and `Property`
+  # objects as values, used to specify the artifact type's properties.
+  # Subsequently, this artifact property may be accessed as Python attributes
+  # of the artifact object.
+  #
+  # Example usage:
+  #
+  # PROPERTIES = {
+  #   'span': Property(type=PropertyType.INT),
+  #   # Comma separated of splits for an artifact. Empty string means artifact
+  #   # has no split.
+  #   'split_names': Property(type=PropertyType.STRING),
+  # }
+  #
+  # Subsequently, these properties can be stored and accessed as
+  # `myartifact.span` and `myartifact.split_name`, respectively.
+  PROPERTIES = None
+
+  # Initialization flag to support setattr / getattr behavior.
+  _initialized = False
 
   def __init__(self, type_name: Optional[Text] = None):
     """Construct an instance of Artifact.
@@ -103,15 +156,78 @@ class Artifact(json_utils.Jsonable):
     self._artifact_type = self._construct_artifact_type(type_name)
     # Underlying MLMD artifact proto object.
     self._artifact = metadata_store_pb2.Artifact()
+    # Initialization flag to prevent recursive getattr / setattr errors.
+    self._initialized = True
 
   def _construct_artifact_type(self, type_name):
     artifact_type = metadata_store_pb2.ArtifactType()
     artifact_type.name = type_name
-    # Comma separated of splits for an artifact. Empty string means artifact
-    # has no split. This will be removed soon and replaced with artifact
-    # type-specific properties.
-    artifact_type.properties['split_names'] = metadata_store_pb2.STRING
+    if self.__class__.PROPERTIES:
+      # Perform validation on PROPERTIES dictionary.
+      if not isinstance(self.__class__.PROPERTIES, dict):
+        raise ValueError(
+            'Artifact subclass %s.PROPERTIES is not a dictionary.' %
+            self.__class__)
+      for key, value in self.__class__.PROPERTIES.items():
+        if not (isinstance(key, (Text, bytes)) and isinstance(value, Property)):
+          raise ValueError(
+              ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
+               'type string and values of type artifact.Property.') %
+              self.__class__)
+
+      # Populate ML Metadata artifact properties dictionary.
+      for key, value in self.__class__.PROPERTIES.items():
+        artifact_type.properties[key] = value.mlmd_type()
     return artifact_type
+
+  def __getattr__(self, name: Text) -> Any:
+    """Custom __getattr__ to allow access to artifact properties."""
+    if name == '_artifact_type':
+      # Prevent infinite recursion when used with copy.deepcopy().
+      raise AttributeError()
+    if name not in self._artifact_type.properties:
+      raise AttributeError('Artifact has no property %r.' % name)
+    property_mlmd_type = self._artifact_type.properties[name]
+    if property_mlmd_type == metadata_store_pb2.STRING:
+      return self._artifact.properties[name].string_value
+    elif property_mlmd_type == metadata_store_pb2.INT:
+      return self._artifact.properties[name].int_value
+    else:
+      raise Exception('Unknown MLMD type %r for property %r.' %
+                      (property_mlmd_type, name))
+
+  def __setattr__(self, name: Text, value: Any):
+    """Custom __setattr__ to allow access to artifact properties."""
+    if not self._initialized:
+      object.__setattr__(self, name, value)
+      return
+    if name not in self._artifact_type.properties:
+      if name in Artifact.__dict__ or name in self.__dict__:
+        # Use any provided getter / setter if available.
+        object.__setattr__(self, name, value)
+        return
+      # In the case where we do not handle this via an explicit getter /
+      # setter, we assume that the user implied an artifact attribute store,
+      # and we raise an exception since such an attribute was not explicitly
+      # defined in the Artifact PROPERTIES dictionary.
+      raise AttributeError('Cannot set unknown property %r on artifact %r.' %
+                           (name, self))
+    property_mlmd_type = self._artifact_type.properties[name]
+    if property_mlmd_type == metadata_store_pb2.STRING:
+      if not isinstance(value, (Text, bytes)):
+        raise Exception(
+            'Expected string value for property %r; got %r instead.' %
+            (name, value))
+      self._artifact.properties[name].string_value = value
+    elif property_mlmd_type == metadata_store_pb2.INT:
+      if not isinstance(value, int):
+        raise Exception(
+            'Expected integer value for property %r; got %r instead.' %
+            (name, value))
+      self._artifact.properties[name].int_value = value
+    else:
+      raise Exception('Unknown MLMD type %r for property %r.' %
+                      (property_mlmd_type, name))
 
   def set_mlmd_artifact(self, artifact: metadata_store_pb2.Artifact):
     """Replace the MLMD artifact object on this artifact."""
@@ -215,13 +331,11 @@ class Artifact(json_utils.Jsonable):
   #       artifact (in a subsequent change, this information will move to the
   #       associated ML Metadata Event object).
   def _get_system_property(self, key: Text) -> Text:
-    if key in self._artifact.custom_properties:
-      return self._artifact.custom_properties[key].string_value
     if (key in self._artifact_type.properties and
         key in self._artifact.properties):
       # Legacy artifact types which have explicitly defined system properties.
       return self._artifact.properties[key].string_value
-    return ''
+    return self._artifact.custom_properties[key].string_value
 
   def _set_system_property(self, key: Text, value: Text):
     if (key in self._artifact_type.properties and
@@ -269,28 +383,6 @@ class Artifact(json_utils.Jsonable):
   def producer_component(self, producer_component: Text):
     """Set producer component of the artifact."""
     self._set_system_property('producer_component', producer_component)
-
-  # Type-specific artifacts properties. Will be deprecated soon in favor of a
-  # unified getter / setter interface.
-  @property
-  def span(self) -> int:
-    """Span of underlying artifact."""
-    return self._artifact.properties['span'].int_value
-
-  @span.setter
-  def span(self, span: int):
-    """Set span of underlying artifact."""
-    self._artifact.properties['span'].int_value = span
-
-  @property
-  def split_names(self) -> Text:
-    """Split of the underlying artifact is in."""
-    return self._artifact.properties['split_names'].string_value
-
-  @split_names.setter
-  def split_names(self, split: Text):
-    """Set state of the underlying artifact."""
-    self._artifact.properties['split_names'].string_value = split
 
   # Custom property accessors.
   def set_string_custom_property(self, key: Text, value: Text):

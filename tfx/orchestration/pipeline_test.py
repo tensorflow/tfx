@@ -196,7 +196,6 @@ class PipelineTest(tf.test.TestCase):
     expected_artifact = types.Artifact('channel_one')
     expected_artifact.name = 'one'
     expected_artifact.pipeline_name = 'a'
-    expected_artifact.pipeline_timestamp_ms = 0
     expected_artifact.producer_component = 'component_a'
     self.assertCountEqual(my_pipeline.components, [component_a, component_b])
     self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,

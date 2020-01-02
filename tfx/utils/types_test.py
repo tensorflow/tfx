@@ -27,6 +27,7 @@ from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-ten
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 from tfx.utils import types
 
 
@@ -103,7 +104,7 @@ class TypesTest(tf.test.TestCase):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock
-      my_artifact = artifact.Artifact('TestType')
+      my_artifact = standard_artifacts.Examples()
       my_artifact.uri = '123'
       my_artifact.split_names = artifact_utils.encode_split_names(['train'])
       self.assertEqual('123/train', types.get_split_uri([my_artifact], 'train'))
