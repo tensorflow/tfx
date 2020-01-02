@@ -29,6 +29,12 @@ def make_required_install_packages():
       'protobuf>=3.7,<4',
       'pyarrow>=0.14,<0.15',
       'pyyaml>=3.12,<4',
+      # TODO(b/146077129): Remove pinned version of scipy dependency after
+      # tensorflow dependency moves to 2.1.
+      # scipy < 1.4.1 causes segfaults due to pybind11
+      # Latest scipy pip for py2 is scipy==1.2.2
+      'scipy>=1.4.1,<2;python_version>="3"',
+      'scipy>=1.2.2,<2;python_version<"3"',
       'six>=1.10,<2',
       'tensorflow>=1.15,<3',
       'tensorflow-data-validation>=0.15,<0.16',
