@@ -18,6 +18,8 @@
     scenarios such as warmstart.
 *   Removed tf.compat.v1 for iris and cifar10 example.
 *   Updated trainer executor to pass through custom config to user module.
+*   Artifact type-specific properties can be defined through overriding the
+    PROPERTIES dictionary of a `types.artifact.Artifact` subclass.
 
 ## Bug fixes and other changes
 
