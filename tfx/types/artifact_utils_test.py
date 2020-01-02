@@ -22,15 +22,15 @@ from __future__ import unicode_literals
 # Standard Imports
 
 import tensorflow as tf
-from tfx.types import artifact
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 
 
 class ArtifactUtilsTest(tf.test.TestCase):
 
   def testGetFromSingleList(self):
     """Test various retrieval utilities on a single list of Artifact."""
-    artifacts = [artifact.Artifact('MyTypeName')]
+    artifacts = [standard_artifacts.Examples()]
     artifacts[0].uri = '/tmp/evaluri'
     artifacts[0].split_names = '["eval"]'
     self.assertEqual(artifacts[0],
@@ -43,7 +43,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
 
   def testGetFromSplits(self):
     """Test various retrieval utilities on a list of split Artifact."""
-    artifacts = [artifact.Artifact('MyTypeName')]
+    artifacts = [standard_artifacts.Examples()]
     artifacts[0].uri = '/tmp'
     artifacts[0].split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])

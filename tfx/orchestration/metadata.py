@@ -619,7 +619,7 @@ class Metadata(object):
 
     result_artifacts = []
     for a in artifacts_by_id:
-      tfx_artifact = Artifact(artifact_types[a.type_id].name)
+      tfx_artifact = Artifact(mlmd_artifact_type=artifact_types[a.type_id])
       tfx_artifact.set_mlmd_artifact(a)
       result_artifacts.append(tfx_artifact)
     return result_artifacts

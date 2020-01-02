@@ -46,7 +46,7 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
 
       resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       resolve_result = resolver.resolve(
-          m, {'input': types.Channel(type_name=artifact_one.type_name)})
+          m, {'input': types.Channel(type=artifact_one.type)})
 
       self.assertTrue(resolve_result.has_complete_result)
       self.assertEqual([

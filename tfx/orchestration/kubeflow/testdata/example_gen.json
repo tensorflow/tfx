@@ -27,13 +27,11 @@
             "__tfx_object_type__": "jsonable",
             "artifact": {},
             "artifact_type": {
-              "name": "ExternalPath",
-              "properties": {
-                "split_names": "STRING"
-              }
+              "name": "ExternalPath"
             }
           }
         ],
+        "type": null,
         "type_name": "ExternalPath"
       }
     }
@@ -74,11 +72,13 @@
             "artifact_type": {
               "name": "ExamplesPath",
               "properties": {
+                "span": "INT",
                 "split_names": "STRING"
               }
             }
           }
         ],
+        "type": null,
         "type_name": "ExamplesPath"
       }
     }

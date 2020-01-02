@@ -145,6 +145,13 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
   Returns:
     a md-formatted string representation of the artifact.
   """
+  span_str = 'None'
+  split_names_str = 'None'
+  if single_artifact.PROPERTIES:
+    if 'span' in single_artifact.PROPERTIES:
+      span_str = str(single_artifact.span)
+    if 'split_names' in single_artifact.PROPERTIES:
+      split_names_str = str(single_artifact.split_names)
   return textwrap.dedent("""\
       **Artifact: {name}**
 
@@ -170,11 +177,11 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
           name=single_artifact.name or 'None',
           uri=single_artifact.uri or 'None',
           id=str(single_artifact.id),
-          span=single_artifact.span or 'None',
+          span=span_str,
           type_id=str(single_artifact.type_id),
           type_name=single_artifact.type_name,
           state=single_artifact.state or 'None',
-          split_names=single_artifact.split_names or 'None',
+          split_names=split_names_str,
           producer_component=single_artifact.producer_component or 'None'))
 
 

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.utils.types."""
+"""Tests for tfx.utils.cgabbek."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -34,7 +34,7 @@ class ChannelTest(tf.test.TestCase):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock
-      channel.Channel(type_name='ExamplesPath')
+      channel.Channel(type=standard_artifacts.Examples)
       warn_mock.assert_called_once()
       self.assertIn(
           'tfx.utils.types.Channel has been renamed to tfx.types.Channel',

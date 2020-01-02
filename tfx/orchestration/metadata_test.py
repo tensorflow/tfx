@@ -22,7 +22,6 @@ from __future__ import print_function
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
-from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -541,7 +540,7 @@ class MetadataTest(tf.test.TestCase):
           component_info=self._component_info)
       input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
-      output_artifact = types.Artifact(type_name='MyOutputArtifact')
+      output_artifact = standard_artifacts.Examples()
       output_artifact.uri = 'my/uri'
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
@@ -562,7 +561,7 @@ class MetadataTest(tf.test.TestCase):
           component_info=self._component_info)
       input_artifact = standard_artifacts.Examples()
       m.publish_artifacts([input_artifact])
-      output_artifact = types.Artifact(type_name='MyOutputArtifact')
+      output_artifact = standard_artifacts.Examples()
       output_artifact.uri = 'my/uri'
       [published_artifact] = m.publish_artifacts([output_artifact])
       output_artifact.set_mlmd_artifact(published_artifact)
