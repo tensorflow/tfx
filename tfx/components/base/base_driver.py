@@ -117,15 +117,13 @@ class BaseDriver(object):
       Final execution properties that will be used in execution.
 
     Raises:
-      RuntimeError: for Channels that do not contain any artifact. This will be
-        reverted once we support Channel-based input resolution.
       ValueError: if in interactive mode, the given input channels have not been
         resolved.
     """
     result = {}
     for name, input_channel in input_dict.items():
-      artifacts = list(input_channel.get())
       if driver_args.interactive_resolution:
+        artifacts = list(input_channel.get())
         for artifact in artifacts:
           # Note: when not initialized, artifact.uri is '' and artifact.id is 0.
           if not artifact.uri or not artifact.id:
@@ -136,13 +134,12 @@ class BaseDriver(object):
                 '`interactive_context.run(component)` before their outputs can '
                 'be used in downstream components.') % (artifact, name))
         result[name] = artifacts
-        continue
-      # TODO(ruoyu): Remove once channel-based input resolution is supported.
-      if not artifacts:
-        raise RuntimeError('Channel-based input resolution is not supported.')
-      result[name] = self._metadata_handler.search_artifacts(
-          artifacts[0].name, pipeline_info.pipeline_name, pipeline_info.run_id,
-          artifacts[0].producer_component)
+      else:
+        result[name] = self._metadata_handler.search_artifacts(
+            artifact_name=input_channel.producer_info.key,
+            pipeline_name=pipeline_info.pipeline_name,
+            run_id=pipeline_info.run_id,
+            producer_component_id=input_channel.producer_info.component_id)
     return result
 
   def resolve_exec_properties(

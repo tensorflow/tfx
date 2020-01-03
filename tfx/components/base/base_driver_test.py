@@ -18,13 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import os
 import mock
 import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
+from tfx.types import channel
 from tfx.types import channel_utils
 
 
@@ -43,7 +43,11 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._input_dict = {
         'input_data':
-            types.Channel(type=_InputArtifact, artifacts=[_InputArtifact()])
+            types.Channel(
+                type=_InputArtifact,
+                artifacts=[_InputArtifact()],
+                producer_info=channel.ChannelProducerInfo(
+                    component_id='c', key='k'))
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -60,88 +64,61 @@ class BaseDriverTest(tf.test.TestCase):
             types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()])
     }
     self._input_artifacts = channel_utils.unwrap_channel_dict(self._input_dict)
-    self._output_artifacts = {
-        'output_data': [_OutputArtifact()],
-    }
+    self._output_artifacts = channel_utils.unwrap_channel_dict(
+        self._output_dict)
     self._exec_properties = {
         'key': 'value',
     }
     self._execution_id = 100
+    self._context_id = 123
+    self._driver_args = data_types.DriverArgs(enable_cache=True)
+    self._pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline_name',
+        pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
+        run_id='my_run_id')
+    self._component_info = data_types.ComponentInfo(
+        component_type='a.b.c', component_id='my_component_id')
 
   @mock.patch(
       'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
   )
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
-    input_dict = {
-        'input_a':
-            types.Channel(type=_InputArtifact, artifacts=[_InputArtifact()])
-    }
-    output_dict = {
-        'output_a':
-            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()])
-    }
-    execution_id = 1
-    context_id = 123
-    exec_properties = copy.deepcopy(self._exec_properties)
-    driver_args = data_types.DriverArgs(enable_cache=True)
-    pipeline_info = data_types.PipelineInfo(
-        pipeline_name='my_pipeline_name',
-        pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        run_id='my_run_id')
-    component_info = data_types.ComponentInfo(
-        component_type='a.b.c', component_id='my_component_id')
     self._mock_metadata.get_artifacts_by_info.side_effect = list(
-        input_dict['input_a'].get())
-    self._mock_metadata.register_execution.side_effect = [execution_id]
+        self._input_dict['input_data'].get())
+    self._mock_metadata.register_execution.side_effect = [self._execution_id]
     self._mock_metadata.previous_execution.side_effect = [None]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
-        context_id
+        self._context_id
     ]
 
     driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.pre_execution(
-        input_dict=input_dict,
-        output_dict=output_dict,
-        exec_properties=exec_properties,
-        driver_args=driver_args,
-        pipeline_info=pipeline_info,
-        component_info=component_info)
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties,
+        driver_args=self._driver_args,
+        pipeline_info=self._pipeline_info,
+        component_info=self._component_info)
     self.assertFalse(execution_decision.use_cached_results)
-    self.assertEqual(execution_decision.execution_id, 1)
-    self.assertCountEqual(execution_decision.exec_properties, exec_properties)
+    self.assertEqual(execution_decision.execution_id, self._execution_id)
+    self.assertCountEqual(execution_decision.exec_properties,
+                          self._exec_properties)
     self.assertEqual(
-        execution_decision.output_dict['output_a'][0].uri,
-        os.path.join(pipeline_info.pipeline_root, component_info.component_id,
-                     'output_a', str(execution_id)))
+        execution_decision.output_dict['output_data'][0].uri,
+        os.path.join(self._pipeline_info.pipeline_root,
+                     self._component_info.component_id, 'output_data',
+                     str(self._execution_id)))
 
   @mock.patch(
       'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
   )
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
-    input_dict = {
-        'input_a':
-            types.Channel(type=_InputArtifact, artifacts=[_InputArtifact()])
-    }
-    output_dict = {
-        'output_a':
-            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()])
-    }
-    execution_id = 1
-    context_id = 123
-    exec_properties = copy.deepcopy(self._exec_properties)
-    driver_args = data_types.DriverArgs(enable_cache=True)
-    pipeline_info = data_types.PipelineInfo(
-        pipeline_name='my_pipeline_name',
-        pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
-        run_id='my_run_id')
-    component_info = data_types.ComponentInfo(
-        component_type='a.b.c', component_id='my_component_id')
     self._mock_metadata.get_artifacts_by_info.side_effect = list(
-        input_dict['input_a'].get())
-    self._mock_metadata.register_execution.side_effect = [execution_id]
+        self._input_dict['input_data'].get())
+    self._mock_metadata.register_execution.side_effect = [self._execution_id]
     self._mock_metadata.previous_execution.side_effect = [2]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
-        context_id
+        self._context_id
     ]
     self._mock_metadata.fetch_previous_result_artifacts.side_effect = [
         self._output_artifacts
@@ -149,15 +126,16 @@ class BaseDriverTest(tf.test.TestCase):
 
     driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
     execution_decision = driver.pre_execution(
-        input_dict=input_dict,
-        output_dict=output_dict,
-        exec_properties=exec_properties,
-        driver_args=driver_args,
-        pipeline_info=pipeline_info,
-        component_info=component_info)
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties,
+        driver_args=self._driver_args,
+        pipeline_info=self._pipeline_info,
+        component_info=self._component_info)
     self.assertTrue(execution_decision.use_cached_results)
-    self.assertEqual(execution_decision.execution_id, 1)
-    self.assertCountEqual(execution_decision.exec_properties, exec_properties)
+    self.assertEqual(execution_decision.execution_id, self._execution_id)
+    self.assertCountEqual(execution_decision.exec_properties,
+                          self._exec_properties)
     self.assertCountEqual(execution_decision.output_dict,
                           self._output_artifacts)
 
