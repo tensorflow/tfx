@@ -48,6 +48,8 @@
     be replaced with references to the artifact subclasses defined in
     `types.standard_artfacts.*` or to custom subclasses of
     `types.artifact.Artifact`.
+*   Standard artifact TYPE_NAME strings were reconciled to match their class
+    names in `types.standard_artifacts`.
 *   The "split" property on multiple artifacts has been replaced with the
     JSON-encoded "split_names" property on a single grouped artifact.
 
