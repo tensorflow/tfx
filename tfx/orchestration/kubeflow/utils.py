@@ -69,3 +69,8 @@ def fix_brackets(placeholder: Text) -> Text:
   else:
     patch = ''.join(['}'] * (lcount - rcount))
     return placeholder + patch
+
+
+def sanitize_underscore(name: Text) -> Text:
+  """Sanitize the underscore in pythonic name for markdown visualization."""
+  return name.replace('_', '\\_')
