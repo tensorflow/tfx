@@ -21,6 +21,8 @@
 *   Artifact type-specific properties can be defined through overriding the
     PROPERTIES dictionary of a `types.artifact.Artifact` subclass.
 *   Added new example of chicago_taxi_pipeline on Google Cloud Bigquery ML.
+*   Supported hparams artifact as input in Trainer, this is for preparing the
+    tuner support.
 
 ## Bug fixes and other changes
 

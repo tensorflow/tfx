@@ -273,6 +273,9 @@ class TrainerSpec(ComponentSpec):
           ChannelParameter(type=standard_artifacts.Schema),
       'base_model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
+      'hyperparameters':
+          ChannelParameter(
+              type=standard_artifacts.HyperParameters, optional=True),
   }
   OUTPUTS = {
       'output': ChannelParameter(type=standard_artifacts.Model),

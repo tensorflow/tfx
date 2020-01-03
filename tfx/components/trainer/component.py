@@ -105,6 +105,7 @@ class Trainer(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       schema: types.Channel = None,
       base_model: Optional[types.Channel] = None,
+      hyperparameters: Optional[types.Channel] = None,
       module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       trainer_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       train_args: Union[trainer_pb2.TrainArgs, Dict[Text, Any]] = None,
@@ -129,6 +130,9 @@ class Trainer(base_component.BaseComponent):
       base_model: A Channel of type `Model`, containing model that will be used
         for training. This can be used for warmstart, transfer learning or
         model ensembling.
+      hyperparameters: A Channel of type `standard_artifacts.HyperParameters`,
+        serving as the hyperparameters for training module. Tuner's output best
+        hyperparameters can be feed into this.
       module_file: A path to python module file containing UDF model
         definition. The module_file must implement a function named
         `trainer_fn` at its top level. The function must have the following
@@ -189,6 +193,7 @@ class Trainer(base_component.BaseComponent):
         transform_output=transform_graph,
         schema=schema,
         base_model=base_model,
+        hyperparameters=hyperparameters,
         train_args=train_args,
         eval_args=eval_args,
         module_file=module_file,

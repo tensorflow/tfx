@@ -236,10 +236,16 @@ def trainer_fn(trainer_fn_args, schema):
       - eval_spec: Spec for eval.
       - eval_input_receiver_fn: Input function for eval.
   """
-  # Number of nodes in the first layer of the DNN
-  first_dnn_layer_size = 100
-  num_dnn_layers = 4
-  dnn_decay_factor = 0.7
+  if trainer_fn_args.hyperparameters:
+    hp = trainer_fn_args.hyperparameters
+    first_dnn_layer_size = hp.get('first_dnn_layer_size')
+    num_dnn_layers = hp.get('num_dnn_layers')
+    dnn_decay_factor = hp.get('dnn_decay_factor')
+  else:
+    # Number of nodes in the first layer of the DNN
+    first_dnn_layer_size = 100
+    num_dnn_layers = 4
+    dnn_decay_factor = 0.7
 
   train_batch_size = 40
   eval_batch_size = 40

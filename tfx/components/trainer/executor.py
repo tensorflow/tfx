@@ -18,15 +18,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
-
 from typing import Any, Dict, List, Text
 
 import absl
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_model_analysis as tfma
 
 from google.protobuf import json_format
+
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import types
 from tfx.components.base import base_executor
@@ -162,6 +164,13 @@ class Executor(base_executor.BaseExecutor):
     base_model = path_utils.serving_model_path(
         artifact_utils.get_single_uri(
             input_dict['base_model'])) if input_dict.get('base_model') else None
+    if input_dict.get('hyperparameters'):
+      hyperparameters_file = io_utils.get_only_uri_in_dir(
+          artifact_utils.get_single_uri(input_dict['hyperparameters']))
+      hyperparameters_config = json.loads(
+          file_io.read_file_to_string(hyperparameters_file))
+    else:
+      hyperparameters_config = None
 
     train_args = trainer_pb2.TrainArgs()
     eval_args = trainer_pb2.EvalArgs()
@@ -198,6 +207,8 @@ class Executor(base_executor.BaseExecutor):
         eval_steps=eval_steps,
         # Base model that will be used for this training job.
         base_model=base_model,
+        # An optional kerastuner.HyperParameters config.
+        hyperparameters=hyperparameters_config,
         # Additional parameters to pass to trainer function.
         **custom_config)
 
