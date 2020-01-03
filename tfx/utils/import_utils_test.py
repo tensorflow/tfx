@@ -37,7 +37,7 @@ class ImportUtilsTest(tf.test.TestCase):
 
   def testImportFuncFromSource(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
+    test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
     fn = import_utils.import_func_from_source(test_fn_file, 'test_fn')
     self.assertEqual(10, fn([1, 2, 3, 4]))
 
@@ -49,7 +49,7 @@ class ImportUtilsTest(tf.test.TestCase):
 
   def testImportFuncFromSourceMissingFunction(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    test_fn_file = os.path.join(source_data_dir, 'test_fn.py')
+    test_fn_file = os.path.join(source_data_dir, 'test_fn.ext')
     with self.assertRaises(AttributeError):
       import_utils.import_func_from_source(test_fn_file, 'non_existing')
 
