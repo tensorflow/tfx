@@ -41,7 +41,7 @@
     properties.
 *   Fixed loading trainer and transformation functions from python module files
     without the .py extension.
-
+*   Fix some ill-formed visualization when running on KFP.
 
 ### Deprecations
 

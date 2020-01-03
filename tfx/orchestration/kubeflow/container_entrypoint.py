@@ -33,6 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.components.trainer import component as trainer_component
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact
@@ -121,7 +122,8 @@ def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
     a md-formatted string representation of the channel.
   """
 
-  md_str = '**Type**: {}\n\n'.format(input_channel.type_name)
+  md_str = '**Type**: {}\n\n'.format(
+      utils.sanitize_underscore(input_channel.type_name))
   rendered_artifacts = []
   # List all artifacts in the channel.
   for single_artifact in input_channel.get():
@@ -175,15 +177,16 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
       **producer_component**: {producer_component}
 
       """.format(
-          name=single_artifact.name or 'None',
+          name=utils.sanitize_underscore(single_artifact.name) or 'None',
           uri=single_artifact.uri or 'None',
           id=str(single_artifact.id),
           span=span_str,
           type_id=str(single_artifact.type_id),
-          type_name=single_artifact.type_name,
+          type_name=utils.sanitize_underscore(single_artifact.type_name),
           state=single_artifact.state or 'None',
-          split_names=split_names_str,
-          producer_component=single_artifact.producer_component or 'None'))
+          split_names=utils.sanitize_underscore(split_names_str),
+          producer_component=utils.sanitize_underscore(
+              single_artifact.producer_component) or 'None'))
 
 
 def _dump_ui_metadata(component: base_component.BaseComponent,
@@ -199,7 +202,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       materialized inputs/outputs/execution properties and id.
   """
   exec_properties_list = [
-      '**{}**: {}'.format(name, exec_property)
+      '**{}**: {}'.format(utils.sanitize_underscore(name), exec_property)
       for name, exec_property in execution_info.exec_properties.items()
   ]
   src_str_exec_properties = '# Execution properties:\n{}'.format(
@@ -226,8 +229,8 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       ])
       rendered_list.append(
           '## {name}\n\n**Type**: {channel_type}\n\n{artifacts}'.format(
-              name=name,
-              channel_type=chnl.type_name,
+              name=utils.sanitize_underscore(name),
+              channel_type=utils.sanitize_underscore(chnl.type_name),
               artifacts=rendered_artifacts))
 
     return rendered_list
@@ -246,7 +249,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       'storage':
           'inline',
       'source':
-          '{exec_properties}\n{inputs}\n{outputs}'.format(
+          '{exec_properties}\n\n{inputs}\n\n{outputs}'.format(
               exec_properties=src_str_exec_properties,
               inputs=src_str_inputs,
               outputs=src_str_outputs),
