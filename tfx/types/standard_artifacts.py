@@ -23,7 +23,6 @@ from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
 
-
 # Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)
 # Comma separated of splits for an artifact. Empty string means artifact

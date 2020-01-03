@@ -34,6 +34,14 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 
 
+class _InputArtifact(types.Artifact):
+  TYPE_NAME = 'InputArtifact'
+
+
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
 class _FakeDriver(base_driver.BaseDriver):
   """Fake driver for testing purpose only."""
 
@@ -70,8 +78,8 @@ class _FakeExecutor(base_executor.BaseExecutor):
 class _FakeComponentSpec(types.ComponentSpec):
   """Fake component spec for testing purpose only."""
   PARAMETERS = {}
-  INPUTS = {'input': component_spec.ChannelParameter(type_name='InputPath')}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='OutputPath')}
+  INPUTS = {'input': component_spec.ChannelParameter(type=_InputArtifact)}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_OutputArtifact)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -86,7 +94,7 @@ class _FakeComponent(base_component.BaseComponent):
                output_channel: Optional[types.Channel] = None,
                custom_executor_spec: executor_spec.ExecutorSpec = None):
     output_channel = output_channel or types.Channel(
-        type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
+        type=_OutputArtifact, artifacts=[_OutputArtifact()])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
     super(_FakeComponent, self).__init__(
         spec=spec,

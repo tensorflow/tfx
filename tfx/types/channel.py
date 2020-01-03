@@ -18,7 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Iterable, Optional, Text, Type
+import inspect
+
+from typing import Iterable, Optional, Type
 
 from tfx.types.artifact import Artifact
 from tfx.utils import json_utils
@@ -35,39 +37,30 @@ class Channel(json_utils.Jsonable):
     type_name: A string representing the artifact type the Channel takes.
   """
 
-  # TODO(b/124763842): Consider replace type_name with ArtifactType.
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
   def __init__(
       self,
-      type_name: Optional[Text] = None,
       type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
       artifacts: Optional[Iterable[Artifact]] = None):
     """Initialization of Channel.
 
     Args:
-      type_name: Name of the type that should be fed into or read from the
-        Channel. If not specified, "type" must be specified instead.
-      type: Subclass of Artifact that represents the type of the Channel. If not
-        specified, "type_name" must be specified instead.
+      type: Subclass of Artifact that represents the type of this Channel.
       artifacts: (Optional) A collection of artifacts as the values that can be
         read from the Channel. This is used to construct a static Channel.
     """
-    if bool(type_name) == bool(type):
+    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
-          'Exactly one of "type" or "type_name" must be passed to the '
-          'constructor of Channel.')
-    if not type_name:
-      if not issubclass(type, Artifact):  # pytype: disable=wrong-arg-types
-        raise ValueError(
-            'Argument "type" of Channel constructor must be a subclass of'
-            'tfx.Artifact.')
-      type_name = type.TYPE_NAME  # pytype: disable=attribute-error
+          'Argument "type" of Channel constructor must be a subclass of '
+          'tfx.Artifact (got %r).' % (type,))
 
     self.type = type
-    # TODO(b/138664975): remove usage of type_name strings.
-    self.type_name = type_name
     self._artifacts = artifacts or []
     self._validate_type()
+
+  @property
+  def type_name(self):
+    return self.type.TYPE_NAME
 
   def __repr__(self):
     artifacts_str = '\n    '.join(repr(a) for a in self._artifacts)

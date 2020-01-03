@@ -76,8 +76,8 @@ example).
 class Executor(base_executor.BaseExecutor):
   """Executor for Slack component."""
   ...
-  def Do(self, input_dict: Dict[Text, List[types.TfxArtifact]],
-         output_dict: Dict[Text, List[types.TfxArtifact]],
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     ...
     # Fetch execution properties from exec_properties dict.
@@ -125,6 +125,7 @@ arguments which were passed in are compatible with the type info defined in the
 `ComponentSpec` class.
 
 ```python
+from tfx.types import standard_artifacts
 from slack_component import executor
 
 class SlackComponent(base_component.BaseComponent):
@@ -142,8 +143,8 @@ class SlackComponent(base_component.BaseComponent):
                slack_blessing: Optional[channel.Channel] = None,
                name: Optional[Text] = None):
     slack_blessing = slack_blessing or channel.Channel(
-        type_name='ModelBlessingPath',
-        artifacts=[types.TfxArtifact('ModelBlessingPath')])
+        type=standard_artifacts.ModelBlessing,
+        artifacts=[standard_artifacts.ModelBlessing()])
     spec = SlackComponentSpec(
         slack_token=slack_token,
         slack_channel_id=slack_channel_id,

@@ -43,6 +43,11 @@
 ### Deprecations
 
 ## Breaking changes
+*   Artifact type name strings to the `types.artifact.Artifact` and
+    `types.channel.Channel` classes are no longer supported; usage here should
+    be replaced with references to the artifact subclasses defined in
+    `types.standard_artfacts.*` or to custom subclasses of
+    `types.artifact.Artifact`.
 *   The "split" property on multiple artifacts has been replaced with the
     JSON-encoded "split_names" property on a single grouped artifact.
 

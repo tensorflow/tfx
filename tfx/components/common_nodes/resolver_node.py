@@ -125,9 +125,7 @@ class ResolverNode(base_node.BaseNode):
     self._input_dict = kwargs
     self._output_dict = {}
     for k, c in self._input_dict.items():
-      self._output_dict[k] = types.Channel(
-          type_name=c.type_name,
-          artifacts=[types.Artifact(type_name=c.type_name)])
+      self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
     super(ResolverNode, self).__init__(instance_name=instance_name)
 
   @property

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import builtins
 import enum
+import importlib
 import json
 from typing import Any, Dict, Optional, Text
 
@@ -118,7 +119,9 @@ class Artifact(json_utils.Jsonable):
   # Initialization flag to support setattr / getattr behavior.
   _initialized = False
 
-  def __init__(self, type_name: Optional[Text] = None):
+  def __init__(
+      self,
+      mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None):
     """Construct an instance of Artifact.
 
     Used by TFX internal implementation: create an empty Artifact with
@@ -128,32 +131,33 @@ class Artifact(json_utils.Jsonable):
     users.
 
     Args:
-      type_name: Name of underlying ArtifactType (optional if the ARTIFACT_TYPE
-        field is provided for the Artifact subclass).
+      mlmd_artifact_type: Proto message defining the underlying ArtifactType.
+        Optional and intended for internal use.
     """
-    # TODO(b/138664975): either deprecate or remove string-based artifact type
-    # definition before 0.16.0 release.
-    if self.__class__ != Artifact:
-      if type_name:
+    if self.__class__ == Artifact:
+      if not mlmd_artifact_type:
         raise ValueError(
-            ('The "type_name" field must not be passed for Artifact subclass '
-             '%s.') % self.__class__)
+            'The "mlmd_artifact_type" argument must be passed to specify a '
+            'type for this Artifact.')
+      if not isinstance(mlmd_artifact_type, metadata_store_pb2.ArtifactType):
+        raise ValueError(
+            'The "mlmd_artifact_type" argument must be an instance of the '
+            'proto message ml_metadata.proto.metadata_store_pb2.ArtifactType.')
+    else:
+      if mlmd_artifact_type:
+        raise ValueError(
+            'The "mlmd_artifact_type" argument must not be passed for '
+            'Artifact subclass %s.' % self.__class__)
       type_name = self.__class__.TYPE_NAME
       if not (type_name and isinstance(type_name, (str, Text))):
         raise ValueError(
             ('The Artifact subclass %s must override the TYPE_NAME attribute '
              'with a string type name identifier (got %r instead).') %
             (self.__class__, type_name))
+      mlmd_artifact_type = self._construct_artifact_type(type_name)
 
-    if not type_name:
-      raise ValueError(
-          'The "type_name" field must be passed to specify a type for this '
-          'Artifact.')
-
-    # Type name string.
-    self._type_name = type_name
     # MLMD artifact type proto object.
-    self._artifact_type = self._construct_artifact_type(type_name)
+    self._artifact_type = mlmd_artifact_type
     # Underlying MLMD artifact proto object.
     self._artifact = metadata_store_pb2.Artifact()
     # Initialization flag to prevent recursive getattr / setattr errors.
@@ -254,23 +258,34 @@ class Artifact(json_utils.Jsonable):
                 json_format.MessageToJson(
                     message=self._artifact_type,
                     preserving_proto_field_name=True)),
+        '__artifact_class_module__':
+            self.__class__.__module__,
+        '__artifact_class_name__':
+            self.__class__.__name__,
     }
 
   @classmethod
   def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
+    module_name = dict_data['__artifact_class_module__']
+    class_name = dict_data['__artifact_class_name__']
+    artifact_cls = getattr(importlib.import_module(module_name), class_name)
     artifact = metadata_store_pb2.Artifact()
     json_format.Parse(json.dumps(dict_data['artifact']), artifact)
     artifact_type = metadata_store_pb2.ArtifactType()
     json_format.Parse(json.dumps(dict_data['artifact_type']), artifact_type)
-    result = Artifact(artifact_type.name)
+    result = artifact_cls()
     result.set_mlmd_artifact_type(artifact_type)
     result.set_mlmd_artifact(artifact)
     return result
 
   # Read-only properties.
   @property
+  def type(self):
+    return self.__class__
+
+  @property
   def type_name(self):
-    return self._type_name
+    return self._artifact_type.name
 
   @property
   def artifact_type(self):

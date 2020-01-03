@@ -51,11 +51,7 @@ class ImporterDriver(base_driver.BaseDriver):
       absl.logging.info('Processing source uri: %s, split: %s' %
                         (uri, s or 'NO_SPLIT'))
 
-      # TODO(b/138664975): remove usages of `type_name` strings.
-      if destination_channel.type:
-        result = destination_channel.type()
-      else:
-        result = types.Artifact(type_name=destination_channel.type_name)
+      result = destination_channel.type()
 
       # TODO(ccy): refactor importer to treat split name just like any other
       # property.

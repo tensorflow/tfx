@@ -27,12 +27,17 @@ from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 
 
+class _MyArtifact(Artifact):
+  TYPE_NAME = 'MyTypeName'
+
+
 class ChannelUtilsTest(tf.test.TestCase):
 
   def testArtifactCollectionAsChannel(self):
-    instance_a = Artifact('MyTypeName')
-    instance_b = Artifact('MyTypeName')
+    instance_a = _MyArtifact()
+    instance_b = _MyArtifact()
     chnl = channel_utils.as_channel([instance_a, instance_b])
+    self.assertEqual(chnl.type, _MyArtifact)
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertCountEqual(chnl.get(), [instance_a, instance_b])
 
@@ -45,10 +50,10 @@ class ChannelUtilsTest(tf.test.TestCase):
       channel_utils.as_channel(artifacts='invalid artifacts')
 
   def testUnwrapChannelDict(self):
-    instance_a = Artifact('MyTypeName')
-    instance_b = Artifact('MyTypeName')
+    instance_a = _MyArtifact()
+    instance_b = _MyArtifact()
     channel_dict = {
-        'id': Channel('MyTypeName', artifacts=[instance_a, instance_b])
+        'id': Channel(_MyArtifact, artifacts=[instance_a, instance_b])
     }
     result = channel_utils.unwrap_channel_dict(channel_dict)
     self.assertDictEqual(result, {'id': [instance_a, instance_b]})
