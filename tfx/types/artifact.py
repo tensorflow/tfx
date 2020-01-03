@@ -266,6 +266,7 @@ class Artifact(json_utils.Jsonable):
 
   @classmethod
   def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
+    print('dict_data', dict_data)
     module_name = dict_data['__artifact_class_module__']
     class_name = dict_data['__artifact_class_name__']
     artifact_cls = getattr(importlib.import_module(module_name), class_name)

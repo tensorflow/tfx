@@ -14,9 +14,7 @@
 # limitations under the License.
 """A set of standard TFX Artifact types.
 
-Note: the artifact definitions here are expected to change. We expect to add
-support for defining artifact-specific properties and to reconcile the TYPE_NAME
-strings to match their class names in an upcoming release.
+Note: the artifact definitions here are expected to change.
 """
 
 from tfx.types.artifact import Artifact
@@ -31,7 +29,7 @@ SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 
 
 class Examples(Artifact):
-  TYPE_NAME = 'ExamplesPath'
+  TYPE_NAME = 'Examples'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
@@ -39,7 +37,7 @@ class Examples(Artifact):
 
 
 class ExampleAnomalies(Artifact):
-  TYPE_NAME = 'ExampleValidationPath'
+  TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
@@ -47,7 +45,7 @@ class ExampleAnomalies(Artifact):
 
 
 class ExampleStatistics(Artifact):
-  TYPE_NAME = 'ExampleStatisticsPath'
+  TYPE_NAME = 'ExampleStatistics'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
@@ -55,7 +53,7 @@ class ExampleStatistics(Artifact):
 
 
 class ExternalArtifact(Artifact):
-  TYPE_NAME = 'ExternalPath'
+  TYPE_NAME = 'ExternalArtifact'
 
 
 class InferenceResult(Artifact):
@@ -63,33 +61,33 @@ class InferenceResult(Artifact):
 
 
 class InfraBlessing(Artifact):
-  TYPE_NAME = 'ModelInfraBlessingPath'
+  TYPE_NAME = 'InfraBlessing'
 
 
 class Model(Artifact):
-  TYPE_NAME = 'ModelExportPath'
+  TYPE_NAME = 'Model'
 
 
 class ModelBlessing(Artifact):
-  TYPE_NAME = 'ModelBlessingPath'
+  TYPE_NAME = 'ModelBlessing'
 
 
 class ModelEvaluation(Artifact):
-  TYPE_NAME = 'ModelEvalPath'
+  TYPE_NAME = 'ModelEvaluation'
 
 
 class PushedModel(Artifact):
-  TYPE_NAME = 'ModelPushPath'
+  TYPE_NAME = 'PushedModel'
 
 
 class Schema(Artifact):
-  TYPE_NAME = 'SchemaPath'
+  TYPE_NAME = 'Schema'
 
 
 class TransformGraph(Artifact):
-  TYPE_NAME = 'TransformPath'
+  TYPE_NAME = 'TransformGraph'
 
 
 # Still WIP and subject to change.
 class HyperParameters(Artifact):
-  TYPE_NAME = 'StudyBestHParamsPath'
+  TYPE_NAME = 'HyperParameters'
