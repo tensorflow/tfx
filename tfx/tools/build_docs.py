@@ -48,7 +48,7 @@ from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 
 
-import tfx as tfx
+# Standard Imports.third_party.tfx as tfx
 # pylint: disable=unused-import
 from tfx import components
 from tfx import orchestration
