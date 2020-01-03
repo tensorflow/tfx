@@ -23,7 +23,6 @@ import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -49,7 +48,7 @@ class ComponentRunnerTest(tf.test.TestCase):
     tf.io.gfile.makedirs(os.path.dirname(input_path))
     file_io.write_string_to_file(input_path, 'test')
 
-    input_artifact = types.Artifact(type_name='InputPath')
+    input_artifact = test_utils._InputArtifact()
     input_artifact.uri = input_path
 
     component = test_utils._FakeComponent(

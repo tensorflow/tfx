@@ -138,7 +138,10 @@ class InteractiveContextTest(tf.test.TestCase):
 
     class _FakeComponentSpec(types.ComponentSpec):
       PARAMETERS = {}
-      INPUTS = {'input': component_spec.ChannelParameter(type_name='Foo')}
+      INPUTS = {
+          'input':
+              component_spec.ChannelParameter(type=standard_artifacts.Examples)
+      }
       OUTPUTS = {}
 
     class _FakeExecutor(base_executor.BaseExecutor):
@@ -157,7 +160,9 @@ class InteractiveContextTest(tf.test.TestCase):
         super(_FakeComponent, self).__init__(spec=spec)
 
     c = interactive_context.InteractiveContext()
-    foo = types.Channel(type_name='Foo', artifacts=[types.Artifact('Foo')])
+    foo = types.Channel(
+        type=standard_artifacts.Examples,
+        artifacts=[standard_artifacts.Examples()])
     component = _FakeComponent(_FakeComponentSpec(input=foo))
     with self.assertRaisesRegexp(ValueError, 'Unresolved input channel'):
       c.run(component)

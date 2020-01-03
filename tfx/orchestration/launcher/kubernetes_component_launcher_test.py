@@ -25,7 +25,6 @@ import mock
 import tensorflow as tf
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -242,7 +241,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
 
     pipeline_root = os.path.join(test_dir, 'Test')
 
-    input_artifact = types.Artifact(type_name='InputPath')
+    input_artifact = test_utils._InputArtifact()
     input_artifact.uri = os.path.join(test_dir, 'input')
 
     component = test_utils._FakeComponent(

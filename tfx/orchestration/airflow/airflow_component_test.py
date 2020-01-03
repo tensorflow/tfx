@@ -34,12 +34,20 @@ from tfx.orchestration.airflow import airflow_component
 from tfx.types import component_spec
 
 
+class _ArtifactTypeA(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeA'
+
+
+class _ArtifactTypeB(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeB'
+
+
 class _FakeComponentSpec(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
-      'input': component_spec.ChannelParameter(type_name='type_a'),
+      'input': component_spec.ChannelParameter(type=_ArtifactTypeA),
   }
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='type_b')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeB)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -57,8 +65,8 @@ class AirflowComponentTest(tf.test.TestCase):
     super(AirflowComponentTest, self).setUp()
     self._component = _FakeComponent(
         _FakeComponentSpec(
-            input=types.Channel(type_name='type_a'),
-            output=types.Channel(type_name='type_b')))
+            input=types.Channel(type=_ArtifactTypeA),
+            output=types.Channel(type=_ArtifactTypeB)))
     self._pipeline_info = data_types.PipelineInfo('name', 'root')
     self._driver_args = data_types.DriverArgs(True)
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(

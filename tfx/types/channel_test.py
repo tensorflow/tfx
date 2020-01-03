@@ -26,20 +26,32 @@ from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 
 
+class _MyType(Artifact):
+  TYPE_NAME = 'MyTypeName'
+
+
+class _AnotherType(Artifact):
+  TYPE_NAME = 'AnotherTypeName'
+
+
 class ChannelTest(tf.test.TestCase):
 
   def testValidChannel(self):
-    instance_a = Artifact('MyTypeName')
-    instance_b = Artifact('MyTypeName')
-    chnl = Channel('MyTypeName', artifacts=[instance_a, instance_b])
+    instance_a = _MyType()
+    instance_b = _MyType()
+    chnl = Channel(_MyType, artifacts=[instance_a, instance_b])
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertCountEqual(chnl.get(), [instance_a, instance_b])
 
   def testInvalidChannelType(self):
-    instance_a = Artifact('MyTypeName')
-    instance_b = Artifact('MyTypeName')
+    instance_a = _MyType()
+    instance_b = _MyType()
     with self.assertRaises(ValueError):
-      Channel('AnotherTypeName', artifacts=[instance_a, instance_b])
+      Channel(_AnotherType, artifacts=[instance_a, instance_b])
+
+  def testStringTypeNameNotAllowed(self):
+    with self.assertRaises(ValueError):
+      Channel('StringTypeName')
 
 
 if __name__ == '__main__':

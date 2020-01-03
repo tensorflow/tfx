@@ -25,9 +25,16 @@ from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact
 from tfx.types import component_spec
 from tfx.utils import json_utils
+
+
+class _InputArtifact(types.Artifact):
+  TYPE_NAME = "InputArtifact"
+
+
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = "OutputArtifact"
 
 
 class _BasicComponentSpec(types.ComponentSpec):
@@ -40,10 +47,10 @@ class _BasicComponentSpec(types.ComponentSpec):
               type=example_gen_pb2.Input, optional=True),
   }
   INPUTS = {
-      "input": component_spec.ChannelParameter(type_name="InputType"),
+      "input": component_spec.ChannelParameter(type=_InputArtifact),
   }
   OUTPUTS = {
-      "output": component_spec.ChannelParameter(type_name="OutputType"),
+      "output": component_spec.ChannelParameter(type=_OutputArtifact),
   }
 
 
@@ -57,7 +64,7 @@ class _BasicComponent(base_component.BaseComponent):
                folds: int = None,
                input: types.Channel = None):  # pylint: disable=redefined-builtin
     if not spec:
-      output = types.Channel(type_name="OutputType")
+      output = types.Channel(type=_OutputArtifact)
       spec = _BasicComponentSpec(folds=folds, input=input, output=output)
     super(_BasicComponent, self).__init__(spec=spec)
 
@@ -65,12 +72,13 @@ class _BasicComponent(base_component.BaseComponent):
 class ComponentTest(tf.test.TestCase):
 
   def testComponentBasic(self):
-    input_channel = types.Channel(type_name="InputType")
+    input_channel = types.Channel(type=_InputArtifact)
     component = _BasicComponent(folds=10, input=input_channel)
     self.assertEqual(component.id, "_BasicComponent")
     self.assertIs(input_channel, component.inputs["input"])
     self.assertIsInstance(component.outputs["output"], types.Channel)
-    self.assertEqual(component.outputs["output"].type_name, "OutputType")
+    self.assertEqual(component.outputs["output"].type, _OutputArtifact)
+    self.assertEqual(component.outputs["output"].type_name, "OutputArtifact")
 
   def testComponentSpecType(self):
 
@@ -171,19 +179,20 @@ class ComponentTest(tf.test.TestCase):
 
   def testJsonify(self):
     input_channel = types.Channel(
-        type_name="InputType",
-        artifacts=[artifact.Artifact(type_name="InputType")])
+        type=_InputArtifact, artifacts=[_InputArtifact()])
     component = _BasicComponent(folds=10, input=input_channel)
     json_dict = json_utils.dumps(component)
     recovered_component = json_utils.loads(json_dict)
     self.assertEqual(recovered_component.__class__, component.__class__)
     self.assertEqual(recovered_component.component_id, "_BasicComponent")
-    self.assertEqual(input_channel.type_name,
-                     recovered_component.inputs["input"].type_name)
+    self.assertEqual(input_channel.type,
+                     recovered_component.inputs["input"].type)
     self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
+    self.assertEqual(recovered_component.outputs["output"].type,
+                     _OutputArtifact)
     self.assertEqual(recovered_component.outputs["output"].type_name,
-                     "OutputType")
+                     "OutputArtifact")
     self.assertEqual(recovered_component.driver_class, component.driver_class)
     # Test re-dump.
     new_json_dict = json_utils.dumps(recovered_component)

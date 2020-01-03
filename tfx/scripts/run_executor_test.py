@@ -27,6 +27,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.scripts import run_executor
 from tfx.types import artifact_utils
+from tfx.types import standard_artifacts
 
 
 class ArgsCapture(object):
@@ -57,10 +58,12 @@ class RunExecutorTest(tf.test.TestCase):
   def testMainEmptyInputs(self):
     """Test executor class import under empty inputs/outputs."""
     inputs = {
-        'x': [types.Artifact(type_name='X'),
-              types.Artifact(type_name='X')]
+        'x': [
+            standard_artifacts.ExternalArtifact(),
+            standard_artifacts.ExternalArtifact()
+        ]
     }
-    outputs = {'y': [types.Artifact(type_name='Y')]}
+    outputs = {'y': [standard_artifacts.Examples()]}
     exec_properties = {'a': 'b'}
     args = [
         '--executor_class_path=%s.%s' %

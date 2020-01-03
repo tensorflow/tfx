@@ -30,6 +30,10 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
+class _TempPath(types.Artifact):
+  TYPE_NAME = 'TempPath'
+
+
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
@@ -62,7 +66,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_examples.uri = output_data_dir
     self._transformed_examples.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
-    temp_path_output = types.Artifact('TempPath')
+    temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
 
     self._output_dict = {
@@ -214,8 +218,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
 
   def testDoWithCache(self):
+
+    class InputCache(types.Artifact):
+      TYPE_NAME = 'InputCache'
+
+    class OutputCache(types.Artifact):
+      TYPE_NAME = 'OutputCache'
+
     # First run that creates cache.
-    output_cache_artifact = types.Artifact('OutputCache')
+    output_cache_artifact = OutputCache()
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
 
     self._output_dict['cache_output_path'] = [output_cache_artifact]
@@ -229,10 +240,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Second run from cache.
     self._output_data_dir = self._get_output_data_dir('2nd_run')
-    input_cache_artifact = types.Artifact('InputCache')
+    input_cache_artifact = InputCache()
     input_cache_artifact.uri = output_cache_artifact.uri
 
-    output_cache_artifact = types.Artifact('OutputCache')
+    output_cache_artifact = OutputCache()
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)

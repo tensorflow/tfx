@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Optional, Text
+from typing import Dict, Optional, Text, Type
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
@@ -27,8 +27,8 @@ from tfx.orchestration import metadata
 
 
 def _generate_tfx_artifact(mlmd_artifact: metadata_store_pb2.Artifact,
-                           type_name: Text):
-  result = types.Artifact(type_name=type_name)
+                           artifact_type: Type[types.Artifact]):
+  result = artifact_type()
   result.set_mlmd_artifact(mlmd_artifact)
   return result
 
@@ -57,13 +57,13 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
           reverse=True)
       if len(previous_artifacts) >= self._desired_num_of_artifact:
         artifacts_dict[k] = [
-            _generate_tfx_artifact(a, c.type_name)
+            _generate_tfx_artifact(a, c.type)
             for a in previous_artifacts[:self._desired_num_of_artifact]
         ]
         resolve_state_dict[k] = True
       else:
         artifacts_dict[k] = [
-            _generate_tfx_artifact(a, c.type_name) for a in previous_artifacts
+            _generate_tfx_artifact(a, c.type) for a in previous_artifacts
         ]
         resolve_state_dict[k] = False
 

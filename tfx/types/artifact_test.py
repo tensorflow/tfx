@@ -22,14 +22,19 @@ from __future__ import unicode_literals
 # Standard Imports
 
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
 from tfx.utils import json_utils
+
+
+class _MyArtifact(artifact.Artifact):
+  TYPE_NAME = 'MyTypeName'
 
 
 class ArtifactTest(tf.test.TestCase):
 
   def testArtifact(self):
-    instance = artifact.Artifact('MyTypeName')
+    instance = _MyArtifact()
 
     # Test property getters.
     self.assertEqual('', instance.uri)
@@ -88,8 +93,8 @@ class ArtifactTest(tf.test.TestCase):
     pass
 
   def testInvalidArtifact(self):
-    with self.assertRaisesRegexp(ValueError,
-                                 'The "type_name" field must be passed'):
+    with self.assertRaisesRegexp(
+        ValueError, 'The "mlmd_artifact_type" argument must be passed'):
       artifact.Artifact()
 
     class MyBadArtifact(artifact.Artifact):
@@ -101,17 +106,18 @@ class ArtifactTest(tf.test.TestCase):
         'The Artifact subclass .* must override the TYPE_NAME attribute '):
       MyBadArtifact()
 
-    class MyArtifact(artifact.Artifact):
+    class MyNewArtifact(artifact.Artifact):
       TYPE_NAME = 'MyType'
 
     # Okay without additional type_name argument.
-    MyArtifact()
+    MyNewArtifact()
 
     # Not okay to pass type_name on subclass.
     with self.assertRaisesRegexp(
         ValueError,
-        'The "type_name" field must not be passed for Artifact subclass'):
-      MyArtifact(type_name='OtherType')
+        'The "mlmd_artifact_type" argument must not be passed for Artifact '
+        'subclass'):
+      MyNewArtifact(mlmd_artifact_type=metadata_store_pb2.ArtifactType())
 
   def testArtifactProperties(self):
 
@@ -149,6 +155,13 @@ class ArtifactTest(tf.test.TestCase):
     with self.assertRaisesRegexp(AttributeError,
                                  "Artifact has no property 'invalid'"):
       my_artifact.invalid  # pylint: disable=pointless-statement
+
+  def testStringTypeNameNotAllowed(self):
+    with self.assertRaisesRegexp(
+        ValueError,
+        'The "mlmd_artifact_type" argument must be an instance of the proto '
+        'message'):
+      artifact.Artifact('StringTypeName')
 
 
 if __name__ == '__main__':

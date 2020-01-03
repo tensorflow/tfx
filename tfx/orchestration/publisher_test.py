@@ -25,6 +25,14 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 
 
+class _InputType(types.Artifact):
+  TYPE_NAME = 'InputType'
+
+
+class _OutputType(types.Artifact):
+  TYPE_NAME = 'OutputType'
+
+
 class PublisherTest(tf.test.TestCase):
 
   def setUp(self):
@@ -32,10 +40,10 @@ class PublisherTest(tf.test.TestCase):
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._mock_metadata.publish_execution = tf.compat.v1.test.mock.Mock()
     self._input_dict = {
-        'input_data': [types.Artifact(type_name='InputType')],
+        'input_data': [_InputType()],
     }
     self._output_dict = {
-        'output_data': [types.Artifact(type_name='OutputType')],
+        'output_data': [_OutputType()],
     }
     self._execution_id = 100
 

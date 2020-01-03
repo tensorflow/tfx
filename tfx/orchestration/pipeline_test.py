@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import itertools
 import os
 import tempfile
-from typing import Any, Dict, Text
+from typing import Any, Dict, Text, Type
 
 import tensorflow as tf
 
@@ -35,29 +35,68 @@ from tfx.orchestration import pipeline
 from tfx.types.component_spec import ChannelParameter
 
 
-def _make_fake_component_instance(name: Text, inputs: Dict[Text, types.Channel],
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
+def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
+                                  inputs: Dict[Text, types.Channel],
                                   outputs: Dict[Text, types.Channel]):
 
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
-    INPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
+    INPUTS = dict([(arg, ChannelParameter(type=channel.type))
                    for arg, channel in inputs.items()])
-    OUTPUTS = dict([(arg, ChannelParameter(type_name=channel.type_name))
+    OUTPUTS = dict([(arg, ChannelParameter(type=channel.type))
                     for arg, channel in outputs.items()] +
-                   [('output', ChannelParameter(type_name=name))])
+                   [('output', ChannelParameter(type=output_type))])
 
   class _FakeComponent(base_component.BaseComponent):
 
     SPEC_CLASS = _FakeComponentSpec
     EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-    def __init__(self, name: Text, spec_kwargs: Dict[Text, Any]):
-      spec = _FakeComponentSpec(
-          output=types.Channel(type_name=name), **spec_kwargs)
+    def __init__(
+        self,
+        type: Type[types.Artifact],  # pylint: disable=redefined-builtin
+        spec_kwargs: Dict[Text, Any]):
+      spec = _FakeComponentSpec(output=types.Channel(type=type), **spec_kwargs)
       super(_FakeComponent, self).__init__(spec=spec, instance_name=name)
 
   spec_kwargs = dict(itertools.chain(inputs.items(), outputs.items()))
-  return _FakeComponent(name, spec_kwargs)
+  return _FakeComponent(output_type, spec_kwargs)
+
+
+class _ArtifactTypeOne(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeOne'
+
+
+class _ArtifactTypeTwo(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeTwo'
+
+
+class _ArtifactTypeThree(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeThree'
+
+
+class _OutputTypeA(types.Artifact):
+  TYPE_NAME = 'OutputTypeA'
+
+
+class _OutputTypeB(types.Artifact):
+  TYPE_NAME = 'OutputTypeB'
+
+
+class _OutputTypeC(types.Artifact):
+  TYPE_NAME = 'OutputTypeC'
+
+
+class _OutputTypeD(types.Artifact):
+  TYPE_NAME = 'OutputTypeD'
+
+
+class _OutputTypeE(types.Artifact):
+  TYPE_NAME = 'OutputTypeE'
 
 
 class PipelineTest(tf.test.TestCase):
@@ -79,17 +118,18 @@ class PipelineTest(tf.test.TestCase):
     os.environ['TFX_TMP_DIR'] = self._original_tmp_value
 
   def testPipeline(self):
-    component_a = _make_fake_component_instance('component_a', {}, {})
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
     component_b = _make_fake_component_instance(
-        'component_b', {'a': component_a.outputs['output']}, {})
+        'component_b', _OutputTypeB, {'a': component_a.outputs['output']}, {})
     component_c = _make_fake_component_instance(
-        'component_c', {'a': component_a.outputs['output']}, {})
-    component_d = _make_fake_component_instance('component_d', {
+        'component_c', _OutputTypeC, {'a': component_a.outputs['output']}, {})
+    component_d = _make_fake_component_instance('component_d', _OutputTypeD, {
         'b': component_b.outputs['output'],
         'c': component_c.outputs['output']
     }, {})
     component_e = _make_fake_component_instance(
-        'component_e', {
+        'component_e', _OutputTypeE, {
             'a': component_a.outputs['output'],
             'b': component_b.outputs['output'],
             'd': component_d.outputs['output']
@@ -130,12 +170,14 @@ class PipelineTest(tf.test.TestCase):
           metadata_connection_config=self._metadata_connection_config)
 
   def testPipelineWithLoop(self):
-    channel_one = types.Channel(type_name='channel_one')
-    channel_two = types.Channel(type_name='channel_two')
-    channel_three = types.Channel(type_name='channel_three')
-    component_a = _make_fake_component_instance('component_a', {}, {})
+    channel_one = types.Channel(type=_ArtifactTypeOne)
+    channel_two = types.Channel(type=_ArtifactTypeTwo)
+    channel_three = types.Channel(type=_ArtifactTypeThree)
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
     component_b = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'one': channel_one
@@ -143,6 +185,7 @@ class PipelineTest(tf.test.TestCase):
         outputs={'two': channel_two})
     component_c = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'two': channel_two
@@ -150,6 +193,7 @@ class PipelineTest(tf.test.TestCase):
         outputs={'three': channel_three})
     component_d = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['output'],
             'three': channel_three
@@ -164,9 +208,12 @@ class PipelineTest(tf.test.TestCase):
           metadata_connection_config=self._metadata_connection_config)
 
   def testPipelineWithDuplicatedComponentId(self):
-    component_a = _make_fake_component_instance('component_a', {}, {})
-    component_b = _make_fake_component_instance('component_a', {}, {})
-    component_c = _make_fake_component_instance('component_a', {}, {})
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    component_b = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    component_c = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
 
     with self.assertRaises(RuntimeError):
       pipeline.Pipeline(
@@ -176,13 +223,17 @@ class PipelineTest(tf.test.TestCase):
           metadata_connection_config=self._metadata_connection_config)
 
   def testPipelineWithArtifactInfo(self):
-    artifacts_collection = [types.Artifact('channel_one')]
+    artifacts_collection = [_ArtifactTypeOne()]
     channel_one = types.Channel(
-        type_name='channel_one', artifacts=artifacts_collection)
+        type=_ArtifactTypeOne, artifacts=artifacts_collection)
     component_a = _make_fake_component_instance(
-        name='component_a', inputs={}, outputs={'one': channel_one})
+        name='component_a',
+        output_type=_OutputTypeA,
+        inputs={},
+        outputs={'one': channel_one})
     component_b = _make_fake_component_instance(
         name='component_b',
+        output_type=_OutputTypeB,
         inputs={
             'a': component_a.outputs['one'],
         },
@@ -193,7 +244,7 @@ class PipelineTest(tf.test.TestCase):
         pipeline_root='b',
         components=[component_b, component_a],
         metadata_connection_config=self._metadata_connection_config)
-    expected_artifact = types.Artifact('channel_one')
+    expected_artifact = _ArtifactTypeOne()
     expected_artifact.name = 'one'
     expected_artifact.pipeline_name = 'a'
     expected_artifact.producer_component = 'component_a'
@@ -215,7 +266,9 @@ class PipelineTest(tf.test.TestCase):
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})],
+        components=[
+            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
+        ],
         metadata_connection_config=self._metadata_connection_config)
     self.assertTrue(tf.io.gfile.exists(self._tmp_file))
 
@@ -224,7 +277,9 @@ class PipelineTest(tf.test.TestCase):
         pipeline_name='a',
         pipeline_root='b',
         log_root='c',
-        components=[_make_fake_component_instance('component_a', {}, {})],
+        components=[
+            _make_fake_component_instance('component_a', _OutputTypeA, {}, {})
+        ],
         metadata_connection_config=self._metadata_connection_config)
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
