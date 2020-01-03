@@ -39,6 +39,9 @@
 *   System-managed artifact properties ("name", "state", "pipeline_name" and
     "producer_component") are now stored as ML Metadata artifact custom
     properties.
+*   Fixed loading trainer and transformation functions from python module files
+    without the .py extension.
+
 
 ### Deprecations
 
