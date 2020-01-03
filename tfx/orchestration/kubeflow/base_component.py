@@ -126,6 +126,7 @@ class BaseComponent(object):
         },
     )
 
+
     absl.logging.info('Adding upstream dependencies for component {}'.format(
         self.container_op.name))
     for op in depends_on:
