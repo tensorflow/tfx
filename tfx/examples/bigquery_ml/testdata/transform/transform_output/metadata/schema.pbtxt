@@ -1,0 +1,296 @@
+feature {
+  name: "company"
+  type: BYTES
+  domain: "company"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "dropoff_census_tract"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "dropoff_community_area"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "dropoff_latitude"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "dropoff_longitude"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "fare"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "payment_type"
+  type: BYTES
+  domain: "payment_type"
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "pickup_census_tract"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "pickup_community_area"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "pickup_latitude"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "pickup_longitude"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "tips"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_miles"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_seconds"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_start_day"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_start_hour"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_start_month"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+feature {
+  name: "trip_start_timestamp"
+  type: INT
+  presence {
+    min_fraction: 1.0
+    min_count: 1
+  }
+  shape {
+    dim {
+      size: 1
+    }
+  }
+}
+string_domain {
+  name: "company"
+  value: "0118 - 42111 Godfrey S.Awir"
+  value: "1085 - 72312 N and W Cab Co"
+  value: "1469 - 64126 Omar Jada"
+  value: "24 Seven Taxi"
+  value: "303 Taxi"
+  value: "3152 - 97284 Crystal Abernathy"
+  value: "4623 - 27290 Jay Kim"
+  value: "5874 - 73628 Sergey Cab Corp."
+  value: "6574 - Babylon Express Inc."
+  value: "6743 - Luhak Corp"
+  value: "American United"
+  value: "Blue Diamond"
+  value: "Blue Ribbon Taxi Association Inc."
+  value: "Checker Taxi"
+  value: "Checker Taxi Affiliation"
+  value: "Chicago Carriage Cab Corp"
+  value: "Chicago Elite Cab Corp."
+  value: "Chicago Elite Cab Corp. (Chicago Carriag"
+  value: "Chicago Independents"
+  value: "Chicago Medallion Leasing INC"
+  value: "Chicago Medallion Management"
+  value: "Chicago Taxicab"
+  value: "Choice Taxi Association"
+  value: "City Service"
+  value: "Dispatch Taxi Affiliation"
+  value: "Flash Cab"
+  value: "Globe Taxi"
+  value: "Gold Coast Taxi"
+  value: "KOAM Taxi Association"
+  value: "Medallion Leasin"
+  value: "Metro Group"
+  value: "NA"
+  value: "Norshore Cab"
+  value: "Northwest Management LLC"
+  value: "Nova Taxi Affiliation Llc"
+  value: "Park Ridge Taxi and Livery"
+  value: "Patriot Taxi Dba Peace Taxi Associat"
+  value: "Service Taxi Association"
+  value: "Setare Inc"
+  value: "Star North Management LLC"
+  value: "Suburban Dispatch LLC"
+  value: "Sun Taxi"
+  value: "T.A.S. - Payment Only"
+  value: "Taxi Affiliation Service Yellow"
+  value: "Taxi Affiliation Services"
+  value: "Taxicab Insurance Agency, LLC"
+  value: "Top Cab Affiliation"
+  value: "Yellow Cab"
+}
+string_domain {
+  name: "payment_type"
+  value: "Cash"
+  value: "Credit Card"
+  value: "Mobile"
+  value: "No Charge"
+  value: "Prcard"
+  value: "Unknown"
+}
