@@ -49,6 +49,8 @@
 *   Fixed some ill-formed visualization when running on KFP.
 *   Removed system info from artifact properties and use channels to hold info
     for generating MLMD queries.
+*   Relied on MLMD context for inter component artifact resolution.
+*   Added pipeline level context and component run level context.
 
 ### Deprecations
 
@@ -62,6 +64,8 @@
     names in `types.standard_artifacts`.
 *   The "split" property on multiple artifacts has been replaced with the
     JSON-encoded "split_names" property on a single grouped artifact.
+*   Caching mechanism was shifted to rely on pipeline context. Caching will not
+    be triggered when running this version of TFX for the first time.
 
 ### For pipeline authors
 
