@@ -55,10 +55,12 @@ class ResolverDriverTest(tf.test.TestCase):
     super(ResolverDriverTest, self).setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
-    self.component_info = data_types.ComponentInfo(
-        component_type='c_type', component_id='c_id')
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name='p_name', pipeline_root='p_root', run_id='run_id')
+    self.component_info = data_types.ComponentInfo(
+        component_type='c_type',
+        component_id='c_id',
+        pipeline_info=self.pipeline_info)
     self.driver_args = data_types.DriverArgs(enable_cache=True)
     self.source_channel_key = 'source_channel'
     self.source_channels = {

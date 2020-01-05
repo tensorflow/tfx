@@ -108,10 +108,12 @@ class ImporterDriverTest(tf.test.TestCase):
       existing_artifact.split_names = artifact_utils.encode_split_names([split])
       self.existing_artifacts.append(existing_artifact)
 
-    self.component_info = data_types.ComponentInfo(
-        component_type='c_type', component_id='c_id')
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name='p_name', pipeline_root='p_root', run_id='run_id')
+    self.component_info = data_types.ComponentInfo(
+        component_type='c_type',
+        component_id='c_id',
+        pipeline_info=self.pipeline_info)
     self.driver_args = data_types.DriverArgs(enable_cache=True)
 
   def _callImporterDriver(self, reimport: bool):

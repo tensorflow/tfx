@@ -25,9 +25,10 @@ import os
 import random
 import time
 import types
-from typing import Any, Dict, List, Optional, Set, Text, Type
+from typing import Any, Dict, List, Optional, Set, Text, Type, Union
 
 import absl
+import six
 import tensorflow as tf
 
 from ml_metadata.metadata_store import metadata_store
@@ -47,9 +48,20 @@ MAX_EXECUTIONS_FOR_CACHE = 100
 EXECUTION_STATE_CACHED = 'cached'
 EXECUTION_STATE_COMPLETE = 'complete'
 EXECUTION_STATE_NEW = 'new'
-# Context type, currently only run context is supported.
-_CONTEXT_TYPE_RUN = 'run'
-# Keys of execution type
+# Context type, the following three types of contexts are supported:
+#  - pipeline level context is shared within one pipeline, across multiple
+#    pipeline runs.
+#  - pipeline run level context is shared within one pipeline run, across
+#    all component executions in that pipeline run.
+#  - component run level context is shared within one component run.
+_CONTEXT_TYPE_PIPELINE = 'pipeline'
+_CONTEXT_TYPE_PIPELINE_RUN = 'run'
+_CONTEXT_TYPE_COMPONENT_RUN = 'component_run'
+# Keys of context type properties.
+_CONTEXT_TYPE_KEY_PIPELINE_NAME = 'pipeline_name'
+_CONTEXT_TYPE_KEY_RUN_ID = 'run_id'
+_CONTEXT_TYPE_KEY_COMPONENT_ID = 'component_id'
+# Keys of execution type properties.
 _EXECUTION_TYPE_KEY_CHECKSUM = 'checksum_md5'
 _EXECUTION_TYPE_KEY_PIPELINE_NAME = 'pipeline_name'
 _EXECUTION_TYPE_KEY_PIPELINE_ROOT = 'pipeline_root'
@@ -348,32 +360,27 @@ class Metadata(object):
     execution.properties['state'].string_value = tf.compat.as_text(new_state)
     self._store.put_executions([execution])
 
-  def register_execution(self,
-                         exec_properties: Dict[Text, Any],
-                         pipeline_info: data_types.PipelineInfo,
-                         component_info: data_types.ComponentInfo,
-                         run_context_id: Optional[int] = None) -> int:
+  def register_execution(
+      self,
+      exec_properties: Dict[Text, Any],
+      pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo,
+      contexts: Optional[List[metadata_store_pb2.Context]] = None) -> int:
     """Create a new execution in metadata.
 
     Args:
       exec_properties: the execution properties of the execution.
       pipeline_info: optional pipeline info of the execution.
       component_info: optional component info of the execution.
-      run_context_id: context id for current run, link it with execution if
-        provided.
+      contexts: contexts for current run, link it with execution if provided.
 
     Returns:
       execution id of the new execution.
     """
     execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
                                         pipeline_info, component_info)
-    [execution_id] = self._store.put_executions([execution])
-
-    if run_context_id:
-      association = metadata_store_pb2.Association(
-          execution_id=execution_id, context_id=run_context_id)
-      self._store.put_attributions_and_associations(
-          attributions=[], associations=[association])
+    execution_id, _, _ = self._store.put_execution(execution, [], contexts or
+                                                   [])
 
     return execution_id
 
@@ -494,6 +501,8 @@ class Metadata(object):
     currrent_execution.id = target_execution.id
     return currrent_execution == target_execution
 
+  # TODO(ruoyu): Leverage artifact-context attribution to enhance performance
+  # once publishing execution adopts new pattern.
   def previous_execution(
       self, input_artifacts: Dict[Text, List[Artifact]],
       exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
@@ -524,8 +533,12 @@ class Metadata(object):
         exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info)
-    for execution in self._store.get_executions_by_type(
-        component_info.component_type):
+    context = self.get_pipeline_context(pipeline_info)
+    if context is None:
+      absl.logging.warning('Pipeline context not available for %s' %
+                           pipeline_info)
+      return None
+    for execution in self._store.get_executions_by_context(context.id):
       if self._is_eligible_previous_execution(
           copy.deepcopy(expected_previous_execution), copy.deepcopy(execution)):
         candidate_execution_ids.append(execution.id)
@@ -571,8 +584,8 @@ class Metadata(object):
         output.set_mlmd_artifact(index_to_artifacts[index])
     return dict(output_dict)
 
-  def search_artifacts(self, artifact_name: Text, pipeline_name: Text,
-                       run_id: Text,
+  def search_artifacts(self, artifact_name: Text,
+                       pipeline_info: data_types.PipelineInfo,
                        producer_component_id: Text) -> List[Artifact]:
     """Search artifacts that matches given info.
 
@@ -580,8 +593,7 @@ class Metadata(object):
       artifact_name: the name of the artifact that set by producer component.
         The name is logged both in artifacts and the events when the execution
         being published.
-      pipeline_name: the name of the pipeline that produces the artifact
-      run_id: the run id of the pipeline run that produces the artifact
+      pipeline_info: the information of the current pipeline
       producer_component_id: the id of the component that produces the artifact
 
     Returns:
@@ -592,16 +604,22 @@ class Metadata(object):
     """
     producer_execution = None
     matching_artifact_ids = set()
-    for execution in self._store.get_executions():
-      if (execution.properties['pipeline_name'].string_value == pipeline_name
-          and execution.properties['run_id'].string_value == run_id and
-          execution.properties['component_id'].string_value ==
-          producer_component_id):
+    # TODO(ruoyu): We need to revisit this when adding support for async
+    # execution.
+    context = self.get_pipeline_run_context(pipeline_info)
+    if context is None:
+      raise RuntimeError('Pipeline run context for %s does not exist' %
+                         pipeline_info)
+    for execution in self._store.get_executions_by_context(context.id):
+      if execution.properties[
+          'component_id'].string_value == producer_component_id:
         producer_execution = execution
+        break
     if not producer_execution:
       raise RuntimeError('Cannot find matching execution with pipeline name %s,'
                          'run id %s and component id %s' %
-                         (pipeline_name, run_id, producer_component_id))
+                         (pipeline_info.pipeline_name, pipeline_info.run_id,
+                          producer_component_id))
     for event in self._store.get_events_by_execution_ids(
         [producer_execution.id]):
       if (event.type == metadata_store_pb2.Event.OUTPUT and
@@ -625,7 +643,7 @@ class Metadata(object):
       result_artifacts.append(tfx_artifact)
     return result_artifacts
 
-  def get_all_runs(self, pipeline_name: Text) -> List[Text]:
+  def get_all_runs(self, pipeline_name: Text):
     """Get all runs for a given pipeline name.
 
     Args:
@@ -636,13 +654,12 @@ class Metadata(object):
     """
     result = []
     # TODO(b/139092990): support get_contexts_by_property.
-    for context in self._store.get_contexts_by_type(_CONTEXT_TYPE_RUN):
+    for context in self._store.get_contexts_by_type(_CONTEXT_TYPE_PIPELINE_RUN):
       if context.properties['pipeline_name'].string_value == pipeline_name:
         result.append(context.properties['run_id'].string_value)
     return result
 
-  def get_execution_states(
-      self, pipeline_info: data_types.PipelineInfo) -> Dict[Text, Text]:
+  def get_execution_states(self, pipeline_info: data_types.PipelineInfo):
     """Get components execution states for a given pipeline.
 
     Args:
@@ -651,80 +668,206 @@ class Metadata(object):
     Returns:
       A Dict of component id to its state mapping.
     """
-    run_context_id = self._get_run_context_id(pipeline_info)
+    pipeline_run_context = self._get_context_by_name(
+        _CONTEXT_TYPE_PIPELINE_RUN, pipeline_info.pipeline_run_context_name)
     result = {}
-    for execution in self._store.get_executions_by_context(run_context_id):
+    for execution in self._store.get_executions_by_context(
+        pipeline_run_context.id):
       result[execution.properties['component_id']
              .string_value] = execution.properties['state'].string_value
     return result
 
-  def _register_run_context(self,
-                            pipeline_info: data_types.PipelineInfo) -> int:
-    """Create a new context in metadata for current pipeline run.
+  def _register_context_type_if_not_exist(
+      self, context_type_name: Text,
+      properties: Dict[Text, 'metadata_store_pb2.PropertyType']) -> int:
+    """Registers a context type if not exist, otherwise returns existing one.
 
     Args:
-      pipeline_info: pipeline information for current run.
+      context_type_name: the name of the context.
+      properties: properties of the context.
 
     Returns:
-      context id of the new context.
+      id of the desired context type.
     """
-    try:
-      context_type = self._store.get_context_type(_CONTEXT_TYPE_RUN)
-      assert context_type, 'Context type is None for %s.' % (_CONTEXT_TYPE_RUN)
-      context_type_id = context_type.id
-    except tf.errors.NotFoundError:
-      context_type = metadata_store_pb2.ContextType(name=_CONTEXT_TYPE_RUN)
-      context_type.properties['pipeline_name'] = metadata_store_pb2.STRING
-      context_type.properties['run_id'] = metadata_store_pb2.STRING
-      # TODO(b/139485894): add DAG as properties.
-      context_type_id = self._store.put_context_type(context_type)
+    context_type = metadata_store_pb2.ContextType(name=context_type_name)
+    for k, t in properties.items():
+      context_type.properties[k] = t
+    context_type_id = self._store.put_context_type(
+        context_type, can_add_fields=True)
+
+    return context_type_id
+
+  def _register_context_if_not_exist(
+      self, context_type_name: Text, context_name: Text,
+      properties: Dict[Text, Union[int, float, Text]]
+  ) -> metadata_store_pb2.Context:
+    """Registers a context if not exist, otherwise returns the existing one.
+
+    Args:
+      context_type_name: the name of the context type desired.
+      context_name: the name of the context.
+      properties: properties to set in the context.
+
+    Returns:
+      id of the desired context
+
+    Raises:
+      RuntimeError: when meeting unexpected property type.
+    """
+    # TODO(ruoyu): Centralize the type definition / mapping along with Artifact
+    # property types.
+    property_type_mapping = {
+        int: metadata_store_pb2.INT,
+        six.binary_type: metadata_store_pb2.STRING,
+        six.text_type: metadata_store_pb2.STRING,
+        float: metadata_store_pb2.DOUBLE
+    }
+    context_type_id = self._register_context_type_if_not_exist(
+        context_type_name,
+        dict(
+            (k, property_type_mapping[type(k)]) for k, v in properties.items()))
 
     context = metadata_store_pb2.Context(
-        type_id=context_type_id, name=pipeline_info.run_context_name)
-    context.properties[
-        'pipeline_name'].string_value = pipeline_info.pipeline_name
-    context.properties['run_id'].string_value = pipeline_info.run_id
-    [context_id] = self._store.put_contexts([context])
+        type_id=context_type_id, name=context_name)
+    for k, v in properties.items():
+      if isinstance(v, int):
+        context.properties[k].int_value = v
+      elif isinstance(v, six.string_types):
+        context.properties[k].string_value = v
+      elif isinstance(v, float):
+        context.properties[k].double_value = v
+      else:
+        raise RuntimeError('Unexpected property type: %s' % type(v))
+    try:
+      [context_id] = self._store.put_contexts([context])
+      context.id = context_id
+    except tf.errors.AlreadyExistsError:
+      absl.logging.debug('Run context %s already exists.', context_name)
+      context = self._get_context_by_name(context_type_name, context_name)
+      assert context is not None, 'Run context is missing for %s.' % (
+          context_name)
 
-    return context_id
+    absl.logging.debug('ID of run context %s is %s.', context_name, context.id)
+    return context
 
-  def _get_run_context_id(
-      self, pipeline_info: data_types.PipelineInfo) -> Optional[int]:
-    """Get the context of current pipeline run from metadata.
+  def _get_context_by_name(
+      self, context_type_name: Text,
+      context_name: Text) -> Optional[metadata_store_pb2.Context]:
+    """Gets the context by context type name and context name.
 
     Args:
-      pipeline_info: pipeline information for current run.
+      context_type_name: name of the context type.
+      context_name: name of the context
 
     Returns:
-      a matched context id or None.
+      a matched context or None.
     """
-    # TODO(b/139092990): support get_contexts_by_name.
-    for context in self._store.get_contexts_by_type(_CONTEXT_TYPE_RUN):
-      if context.name == pipeline_info.run_context_name:
-        return context.id
+    # TODO(b/139092990): support get_contexts_by_type_and_name once ready.
+    for context in self._store.get_contexts_by_type(context_type_name):
+      if context.name == context_name:
+        return context
     return None
 
-  def register_run_context_if_not_exists(
-      self, pipeline_info: data_types.PipelineInfo) -> int:
-    """Create or get the context for current pipeline run.
+  def get_component_run_context(
+      self, component_info: data_types.ComponentInfo
+  ) -> Optional[metadata_store_pb2.Context]:
+    """Gets the context for the component run.
+
+    Args:
+      component_info: component information for the current component run.
+
+    Returns:
+      a matched context or None
+    """
+    return self._get_context_by_name(_CONTEXT_TYPE_COMPONENT_RUN,
+                                     component_info.component_run_context_name)
+
+  def get_pipeline_context(
+      self, pipeline_info: data_types.PipelineInfo
+  ) -> Optional[metadata_store_pb2.Context]:
+    """Gets the context for the pipeline run.
+
+    Args:
+      pipeline_info: pipeline information for the current pipeline run.
+
+    Returns:
+      a matched context or None
+    """
+    return self._get_context_by_name(_CONTEXT_TYPE_PIPELINE,
+                                     pipeline_info.pipeline_context_name)
+
+  def get_pipeline_run_context(
+      self, pipeline_info: data_types.PipelineInfo
+  ) -> Optional[metadata_store_pb2.Context]:
+    """Gets the context for the pipeline run.
+
+    Args:
+      pipeline_info: pipeline information for the current pipeline run.
+
+    Returns:
+      a matched context or None
+    """
+    if pipeline_info.run_id:
+      return self._get_context_by_name(_CONTEXT_TYPE_PIPELINE_RUN,
+                                       pipeline_info.pipeline_run_context_name)
+    else:
+      return None
+
+  def register_contexts_if_not_exists(
+      self, pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo
+  ) -> List[metadata_store_pb2.Context]:
+    """Creates or fetches the contexts needed for the run.
+
+    There are three potential contexts:
+      - Context for the pipeline.
+      - Context for the current pipeline run. This is optional, only available
+        when run_id is specified.
+      - Context for the current component run.
 
     Args:
       pipeline_info: pipeline information for current run.
+      component_info: component information for the current component run.
 
     Returns:
-      context id of the current run.
+      a list (of size three) of context.
     """
-    try:
-      run_context_id = self._register_run_context(pipeline_info)
-      absl.logging.debug('Created run context %s.',
-                         pipeline_info.run_context_name)
-    except tf.errors.AlreadyExistsError:
-      absl.logging.debug('Run context %s already exists.',
-                         pipeline_info.run_context_name)
-      run_context_id = self._get_run_context_id(pipeline_info)
-      assert run_context_id is not None, 'Run context is missing for %s.' % (
-          pipeline_info.run_context_name)
+    # Gets the pipeline level context.
+    result = []
+    pipeline_context = self._register_context_if_not_exist(
+        context_type_name=_CONTEXT_TYPE_PIPELINE,
+        context_name=pipeline_info.pipeline_context_name,
+        properties={
+            _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name
+        })
+    result.append(pipeline_context)
+    absl.logging.debug('Pipeline context [%s : %s]',
+                       pipeline_info.pipeline_context_name, pipeline_context.id)
+    # If run id exists, gets the pipeline run level context.
+    if pipeline_info.run_id:
+      pipeline_run_context = self._register_context_if_not_exist(
+          context_type_name=_CONTEXT_TYPE_PIPELINE_RUN,
+          context_name=pipeline_info.pipeline_run_context_name,
+          properties={
+              _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name,
+              _CONTEXT_TYPE_KEY_RUN_ID: pipeline_info.run_id
+          })
+      result.append(pipeline_run_context)
+      absl.logging.debug('Pipeline run context [%s : %s]',
+                         pipeline_info.pipeline_run_context_name,
+                         pipeline_run_context.id)
+    # Gets the component run level context.
+    component_run_context = self._register_context_if_not_exist(
+        context_type_name=_CONTEXT_TYPE_COMPONENT_RUN,
+        context_name=component_info.component_run_context_name,
+        properties={
+            _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name,
+            _CONTEXT_TYPE_KEY_RUN_ID: pipeline_info.run_id,
+            _CONTEXT_TYPE_KEY_COMPONENT_ID: component_info.component_id
+        })
+    result.append(component_run_context)
 
-    absl.logging.debug('ID of run context %s is %s.',
-                       pipeline_info.run_context_name, run_context_id)
-    return run_context_id
+    absl.logging.debug('Component run context [%s : %s]',
+                       component_info.component_run_context_name,
+                       component_run_context.id)
+    return result

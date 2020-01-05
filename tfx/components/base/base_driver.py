@@ -137,8 +137,7 @@ class BaseDriver(object):
       else:
         result[name] = self._metadata_handler.search_artifacts(
             artifact_name=input_channel.producer_info.key,
-            pipeline_name=pipeline_info.pipeline_name,
-            run_id=pipeline_info.run_id,
+            pipeline_info=pipeline_info,
             producer_component_id=input_channel.producer_info.component_id)
     return result
 
@@ -204,13 +203,13 @@ class BaseDriver(object):
     Returns:
       the id of the upcoming execution
     """
-    run_context_id = self._metadata_handler.register_run_context_if_not_exists(
-        pipeline_info)
+    contexts = self._metadata_handler.register_contexts_if_not_exists(
+        pipeline_info, component_info)
     execution_id = self._metadata_handler.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info,
-        run_context_id=run_context_id)
+        contexts=contexts)
     absl.logging.debug('Execution id of the upcoming component execution is %s',
                        execution_id)
     return execution_id

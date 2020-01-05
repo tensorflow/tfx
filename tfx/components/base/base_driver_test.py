@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import mock
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
@@ -77,7 +78,9 @@ class BaseDriverTest(tf.test.TestCase):
         pipeline_root=os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
         run_id='my_run_id')
     self._component_info = data_types.ComponentInfo(
-        component_type='a.b.c', component_id='my_component_id')
+        component_type='a.b.c',
+        component_id='my_component_id',
+        pipeline_info=self._pipeline_info)
 
   @mock.patch(
       'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
@@ -88,7 +91,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata.register_execution.side_effect = [self._execution_id]
     self._mock_metadata.previous_execution.side_effect = [None]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
-        self._context_id
+        metadata_store_pb2.Context()
     ]
 
     driver = base_driver.BaseDriver(metadata_handler=self._mock_metadata)
@@ -118,7 +121,7 @@ class BaseDriverTest(tf.test.TestCase):
     self._mock_metadata.register_execution.side_effect = [self._execution_id]
     self._mock_metadata.previous_execution.side_effect = [2]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
-        self._context_id
+        metadata_store_pb2.Context()
     ]
     self._mock_metadata.fetch_previous_result_artifacts.side_effect = [
         self._output_artifacts
