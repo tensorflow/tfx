@@ -51,7 +51,7 @@
     for generating MLMD queries.
 *   Relied on MLMD context for inter component artifact resolution.
 *   Added pipeline level context and component run level context.
-
+*   Included test data for examples/chicago_taxi_pipeline in package.
 ### Deprecations
 
 ## Breaking changes
