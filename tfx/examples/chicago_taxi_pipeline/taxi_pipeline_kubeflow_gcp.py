@@ -176,7 +176,10 @@ def _create_pipeline(
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000),
-      custom_config={'ai_platform_training_args': ai_platform_training_args})
+      custom_config={
+          ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+              ai_platform_training_args
+      })
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
@@ -198,7 +201,9 @@ def _create_pipeline(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
-      custom_config={'ai_platform_serving_args': ai_platform_serving_args})
+      custom_config={
+          ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
+      })
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,

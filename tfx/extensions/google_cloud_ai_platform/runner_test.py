@@ -24,7 +24,9 @@ import mock
 import tensorflow as tf
 
 from tfx import version
+
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.extensions.google_cloud_ai_platform.trainer import executor
 
 
 class RunnerTest(tf.test.TestCase):
@@ -44,7 +46,7 @@ class RunnerTest(tf.test.TestCase):
     self._job_id = 'my_jobid'
     self._exec_properties = {
         'custom_config': {
-            'ai_platform_training_args': self._training_inputs,
+            executor.TRAINING_ARGS_KEY: self._training_inputs,
         },
     }
     self._ai_platform_serving_args = {
@@ -107,8 +109,7 @@ class RunnerTest(tf.test.TestCase):
 
     class_path = 'foo.bar.class'
 
-    self._exec_properties['custom_config'][
-        'ai_platform_training_job_id'] = self._job_id
+    self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
     runner.start_aip_training(self._inputs, self._outputs,
                               self._exec_properties, class_path,
                               self._training_inputs, self._job_id)
