@@ -26,7 +26,10 @@ from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 
-_POLLING_INTERVAL_IN_SECONDS = 30
+
+# Keys to the items in custom_config passed as a part of exec_properties.
+TRAINING_ARGS_KEY = 'ai_platform_training_args'
+JOB_ID_KEY = 'ai_platform_training_job_id'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -57,13 +60,13 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     custom_config = exec_properties.get('custom_config', {})
-    training_inputs = custom_config.get('ai_platform_training_args')
+    training_inputs = custom_config.get(TRAINING_ARGS_KEY)
     if training_inputs is None:
-      err_msg = '\'ai_platform_training_args\' not found in custom_config.'
+      err_msg = '\'%s\' not found in custom_config.' % TRAINING_ARGS_KEY
       absl.logging.error(err_msg)
       raise ValueError(err_msg)
 
-    job_id = custom_config.get('ai_platform_training_job_id')
+    job_id = custom_config.get(JOB_ID_KEY)
     executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
                                      tfx_trainer_executor.Executor.__name__)
     return runner.start_aip_training(input_dict, output_dict, exec_properties,

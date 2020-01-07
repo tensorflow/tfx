@@ -225,7 +225,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
             train_args=trainer_pb2.TrainArgs(num_steps=10),
             eval_args=trainer_pb2.EvalArgs(num_steps=5),
             custom_config={
-                'ai_platform_training_args': {
+                ai_platform_trainer_executor.TRAINING_ARGS: {
                     'project':
                         self._gcp_project_id,
                     'region':
@@ -256,7 +256,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
           model=model_importer.outputs['result'],
           model_blessing=model_blessing_importer.outputs['result'],
           custom_config={
-              'ai_platform_serving_args': {
+              ai_platform_pusher_executor.SERVING_ARGS: {
                   'model_name': model_name,
                   'project_id': self._gcp_project_id,
               }

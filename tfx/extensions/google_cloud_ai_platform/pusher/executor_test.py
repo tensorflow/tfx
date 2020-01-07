@@ -24,7 +24,6 @@ import mock
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
-from tfx.extensions.google_cloud_ai_platform.pusher.executor import Executor
 from tfx.types import standard_artifacts
 
 
@@ -57,14 +56,14 @@ class ExecutorTest(tf.test.TestCase):
     }
     self._exec_properties = {
         'custom_config': {
-            'ai_platform_serving_args': {
+            executor.SERVING_ARGS_KEY: {
                 'model_name': 'model_name',
                 'project_id': 'project_id'
             },
         },
         'push_destination': None,
     }
-    self._executor = Executor()
+    self._executor = executor.Executor()
 
   @mock.patch.object(executor, 'runner', autospec=True)
   def testDoBlessed(self, mock_runner):

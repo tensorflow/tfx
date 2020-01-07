@@ -24,7 +24,7 @@ import mock
 import tensorflow as tf
 
 from tfx.components.trainer import executor as tfx_trainer_executor
-from tfx.extensions.google_cloud_ai_platform.trainer.executor import Executor
+from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -41,7 +41,7 @@ class ExecutorTest(tf.test.TestCase):
     self._outputs = {}
     self._exec_properties = {
         'custom_config': {
-            'ai_platform_training_args': {
+            ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
                 'project': self._project_id,
                 'jobDir': self._job_dir,
             },
@@ -55,7 +55,7 @@ class ExecutorTest(tf.test.TestCase):
       'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
   )
   def testDo(self, mock_runner):
-    executor = Executor()
+    executor = ai_platform_trainer_executor.Executor()
     executor.Do(self._inputs, self._outputs, self._exec_properties)
     mock_runner.start_aip_training.assert_called_with(
         self._inputs, self._outputs, self._exec_properties,
@@ -68,10 +68,10 @@ class ExecutorTest(tf.test.TestCase):
       'tfx.extensions.google_cloud_ai_platform.trainer.executor.runner'
   )
   def testDoWithJobIdOverride(self, mock_runner):
-    executor = Executor()
+    executor = ai_platform_trainer_executor.Executor()
     job_id = 'overridden_job_id'
     self._exec_properties['custom_config'][
-        'ai_platform_training_job_id'] = job_id
+        ai_platform_trainer_executor.JOB_ID_KEY] = job_id
     executor.Do(self._inputs, self._outputs, self._exec_properties)
     mock_runner.start_aip_training.assert_called_with(
         self._inputs, self._outputs, self._exec_properties,

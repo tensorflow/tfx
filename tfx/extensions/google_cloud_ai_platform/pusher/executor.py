@@ -26,7 +26,9 @@ from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.types import artifact_utils
 from tfx.utils import path_utils
 
-_POLLING_INTERVAL_IN_SECONDS = 30
+
+# Keys to the items in custom_config passed as a part of exec_properties.
+SERVING_ARGS_KEY = 'ai_platform_serving_args'
 
 
 class Executor(tfx_pusher_executor.Executor):
@@ -69,7 +71,7 @@ class Executor(tfx_pusher_executor.Executor):
 
     exec_properties_copy = exec_properties.copy()
     custom_config = exec_properties_copy.pop('custom_config', {})
-    ai_platform_serving_args = custom_config['ai_platform_serving_args']
+    ai_platform_serving_args = custom_config[SERVING_ARGS_KEY]
 
     # Deploy the model.
     model_path = path_utils.serving_model_path(model_export_uri)
