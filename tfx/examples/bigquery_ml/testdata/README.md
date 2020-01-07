@@ -1,4 +1,4 @@
-This is an instruction file for genrating the test data for the sample BigQuery
+This is an instruction file for generating the test data for the sample BigQuery
 ML publisher pipeline.
 
 TODO(b/145624746): Converge TFX test data once optional dense is supported.
@@ -12,7 +12,7 @@ Here we fill in the missing values before TFX pipeline starts as a result.
 Corresponding changes in taxi_utils_bqml.py file result in the need for a new
 test data set.
 
-The test data in this higherarchy is an exact replica of output directlory of
+The test data in this hierarchy is an exact replica of output directory of
 the chicago taxi pipeline that results from executing
 bigquery_ml/taxi_pipeline_kubeflow_gcp_bqml.py with a few minor modifications as
 follows.
@@ -20,7 +20,7 @@ follows.
 1. To generate a new set of test data set the number of rows / samples returned
    from BigQuery by modifying the Query in
    bigquery_ml/taxi_pipeline_kubeflow_gcp_bqml.py to limit the output to 1000.
-   sampel query is as follows.
+   sample query is as follows.
 
 ```sql
  SELECT
@@ -50,7 +50,7 @@ follows.
 
 2. To ensure consistency we will generate a CSV input.Run the query in BigQuery
    and save the results as a CSV file under testdata/csv
-3. Change the pipeline to acccept a CSV input instead of Biguqery query by using
+3. Change the pipeline to accept a CSV input instead of BigQuery query by using
    the sample below, where data_root contains the CSV file generated in step 2.
 
 ```python
@@ -60,7 +60,7 @@ follows.
   example_gen = CsvExampleGen(input=examples)
 ```
 
-4. Run the pipeline and copy all generated output from gcs to testdata. Output
+4. Run the pipeline and copy all generated output from GCS to testdata. Output
    path is defined in taxi_pipeline_kubeflow_gcp_bqml.py as follows.
 
 ```python
