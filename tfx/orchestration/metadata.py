@@ -668,9 +668,11 @@ class Metadata(object):
     Returns:
       A Dict of component id to its state mapping.
     """
-    pipeline_run_context = self._get_context_by_name(
+    pipeline_run_context = self._store.get_context_by_type_and_name(
         _CONTEXT_TYPE_PIPELINE_RUN, pipeline_info.pipeline_run_context_name)
     result = {}
+    if not pipeline_run_context:
+      return result
     for execution in self._store.get_executions_by_context(
         pipeline_run_context.id):
       result[execution.properties['component_id']
@@ -743,30 +745,13 @@ class Metadata(object):
       context.id = context_id
     except tf.errors.AlreadyExistsError:
       absl.logging.debug('Run context %s already exists.', context_name)
-      context = self._get_context_by_name(context_type_name, context_name)
+      context = self.store.get_context_by_type_and_name(context_type_name,
+                                                        context_name)
       assert context is not None, 'Run context is missing for %s.' % (
           context_name)
 
     absl.logging.debug('ID of run context %s is %s.', context_name, context.id)
     return context
-
-  def _get_context_by_name(
-      self, context_type_name: Text,
-      context_name: Text) -> Optional[metadata_store_pb2.Context]:
-    """Gets the context by context type name and context name.
-
-    Args:
-      context_type_name: name of the context type.
-      context_name: name of the context
-
-    Returns:
-      a matched context or None.
-    """
-    # TODO(b/139092990): support get_contexts_by_type_and_name once ready.
-    for context in self._store.get_contexts_by_type(context_type_name):
-      if context.name == context_name:
-        return context
-    return None
 
   def get_component_run_context(
       self, component_info: data_types.ComponentInfo
@@ -779,8 +764,8 @@ class Metadata(object):
     Returns:
       a matched context or None
     """
-    return self._get_context_by_name(_CONTEXT_TYPE_COMPONENT_RUN,
-                                     component_info.component_run_context_name)
+    return self.store.get_context_by_type_and_name(
+        _CONTEXT_TYPE_COMPONENT_RUN, component_info.component_run_context_name)
 
   def get_pipeline_context(
       self, pipeline_info: data_types.PipelineInfo
@@ -793,8 +778,8 @@ class Metadata(object):
     Returns:
       a matched context or None
     """
-    return self._get_context_by_name(_CONTEXT_TYPE_PIPELINE,
-                                     pipeline_info.pipeline_context_name)
+    return self.store.get_context_by_type_and_name(
+        _CONTEXT_TYPE_PIPELINE, pipeline_info.pipeline_context_name)
 
   def get_pipeline_run_context(
       self, pipeline_info: data_types.PipelineInfo
@@ -808,8 +793,8 @@ class Metadata(object):
       a matched context or None
     """
     if pipeline_info.run_id:
-      return self._get_context_by_name(_CONTEXT_TYPE_PIPELINE_RUN,
-                                       pipeline_info.pipeline_run_context_name)
+      return self.store.get_context_by_type_and_name(
+          _CONTEXT_TYPE_PIPELINE_RUN, pipeline_info.pipeline_run_context_name)
     else:
       return None
 

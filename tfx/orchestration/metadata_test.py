@@ -669,15 +669,17 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(len(contexts), 3)
       self.assertEqual(
           contexts[0],
-          m._get_context_by_name(metadata._CONTEXT_TYPE_PIPELINE,
-                                 self._pipeline_info.pipeline_context_name))
+          m.store.get_context_by_type_and_name(
+              metadata._CONTEXT_TYPE_PIPELINE,
+              self._pipeline_info.pipeline_context_name))
       self.assertEqual(
           contexts[1],
-          m._get_context_by_name(metadata._CONTEXT_TYPE_PIPELINE_RUN,
-                                 self._pipeline_info.pipeline_run_context_name))
+          m.store.get_context_by_type_and_name(
+              metadata._CONTEXT_TYPE_PIPELINE_RUN,
+              self._pipeline_info.pipeline_run_context_name))
       self.assertEqual(
           contexts[2],
-          m._get_context_by_name(
+          m.store.get_context_by_type_and_name(
               metadata._CONTEXT_TYPE_COMPONENT_RUN,
               self._component_info.component_run_context_name))
 
