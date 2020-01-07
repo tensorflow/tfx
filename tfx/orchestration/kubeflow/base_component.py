@@ -135,7 +135,7 @@ class BaseComponent(object):
     # TODO(b/140172100): Document the use of additional_pipeline_args.
     if _WORKFLOW_ID_KEY in pipeline.additional_pipeline_args:
       # Allow overriding pipeline's run_id externally, primarily for testing.
-      self.container_op.add_env_variable(
+      self.container_op.container.add_env_variable(
           k8s_client.V1EnvVar(
               name=_WORKFLOW_ID_KEY,
               value=pipeline.additional_pipeline_args[_WORKFLOW_ID_KEY]))
@@ -143,7 +143,7 @@ class BaseComponent(object):
       # Add the Argo workflow ID to the container's environment variable so it
       # can be used to uniquely place pipeline outputs under the pipeline_root.
       field_path = "metadata.labels['workflows.argoproj.io/workflow']"
-      self.container_op.add_env_variable(
+      self.container_op.container.add_env_variable(
           k8s_client.V1EnvVar(
               name=_WORKFLOW_ID_KEY,
               value_from=k8s_client.V1EnvVarSource(
