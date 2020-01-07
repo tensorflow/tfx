@@ -24,6 +24,7 @@ def make_required_install_packages():
       'apache-beam[gcp]>=2.16,<3',
       'click>=7,<8',
       'google-api-python-client>=1.7.8,<2',
+      'grpcio>=1.25,<2',
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.15,<0.16',
       'protobuf>=3.7,<4',
@@ -33,6 +34,7 @@ def make_required_install_packages():
       'tensorflow>=1.15,<3',
       'tensorflow-data-validation>=0.15,<0.16',
       'tensorflow-model-analysis>=0.15.2,<0.16',
+      'tensorflow-serving-api>=1.15,<3',
       'tensorflow-transform>=0.15,<0.16',
       'tfx-bsl>=0.15.3,<0.16',
   ]
