@@ -26,26 +26,35 @@ import tensorflow as tf
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
 
 def _generate_output_uri(base_output_dir: Text, name: Text,
                          execution_id: int) -> Text:
   """Generate uri for output artifact."""
+  return os.path.join(base_output_dir, name, str(execution_id))
 
-  # Generates output uri based on execution id.
-  uri = os.path.join(base_output_dir, name, str(execution_id))
-  if tf.io.gfile.exists(uri):
-    msg = 'Output artifact uri %s already exists' % uri
+
+def _prepare_output_paths(artifact: types.Artifact):
+  """Create output directories for output artifact."""
+  if tf.io.gfile.exists(artifact.uri):
+    msg = 'Output artifact uri %s already exists' % artifact.uri
     absl.logging.error(msg)
     raise RuntimeError(msg)
-  else:
-    # TODO(zhitaoli): Consider refactoring this out into something
-    # which can handle permission bits.
-    absl.logging.debug('Creating output artifact uri %s as directory', uri)
-    tf.io.gfile.makedirs(uri)
 
-  return uri
+  # TODO(zhitaoli): Consider refactoring this out into something
+  # which can handle permission bits.
+  absl.logging.debug('Creating output artifact uri %s as directory',
+                     artifact.uri)
+  tf.io.gfile.makedirs(artifact.uri)
+  # TODO(b/147242148): Avoid special-casing the "split_names" property.
+  if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
+    split_names = artifact_utils.decode_split_names(artifact.split_names)
+    for split in split_names:
+      split_dir = os.path.join(artifact.uri, split)
+      absl.logging.debug('Creating output split %s as directory', split_dir)
+      tf.io.gfile.makedirs(split_dir)
 
 
 class BaseDriver(object):
@@ -178,6 +187,8 @@ class BaseDriver(object):
     for name, output_list in result.items():
       for artifact in output_list:
         artifact.uri = _generate_output_uri(base_output_dir, name, execution_id)
+        _prepare_output_paths(artifact)
+
     return result
 
   def _fetch_cached_artifacts(
