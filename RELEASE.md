@@ -26,6 +26,7 @@
 
 ## Bug fixes and other changes
 
+*   Depends on `ml-metadata==0.21.0rc0`
 *   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
     (`tfx-bsl>=0.15.2`)
 *   Fixed problems with Airflow tutorial notebooks
