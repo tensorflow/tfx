@@ -22,17 +22,23 @@
         "__tfx_object_type__": "jsonable",
         "_artifacts": [
           {
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "ExternalArtifact",
             "__class__": "ExternalArtifact",
             "__module__": "tfx.types.standard_artifacts",
             "__tfx_object_type__": "jsonable",
             "artifact": {},
             "artifact_type": {
-              "name": "ExternalPath"
+              "name": "ExternalArtifact"
             }
           }
         ],
-        "type": null,
-        "type_name": "ExternalPath"
+        "producer_info": null,
+        "type": {
+          "__class__": "ExternalArtifact",
+          "__module__": "tfx.types.standard_artifacts",
+          "__tfx_object_type__": "class"
+        }
       }
     }
   },
@@ -48,6 +54,8 @@
         "__tfx_object_type__": "jsonable",
         "_artifacts": [
           {
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "Examples",
             "__class__": "Examples",
             "__module__": "tfx.types.standard_artifacts",
             "__tfx_object_type__": "jsonable",
@@ -70,7 +78,7 @@
               }
             },
             "artifact_type": {
-              "name": "ExamplesPath",
+              "name": "Examples",
               "properties": {
                 "span": "INT",
                 "split_names": "STRING"
@@ -78,8 +86,18 @@
             }
           }
         ],
-        "type": null,
-        "type_name": "ExamplesPath"
+        "producer_info": {
+          "__class__": "ChannelProducerInfo",
+          "__module__": "tfx.types.channel",
+          "__tfx_object_type__": "jsonable",
+          "component_id": "CsvExampleGen",
+          "key": "examples"
+        },
+        "type": {
+          "__class__": "Examples",
+          "__module__": "tfx.types.standard_artifacts",
+          "__tfx_object_type__": "class"
+        }
       }
     }
   },
