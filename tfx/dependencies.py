@@ -23,6 +23,7 @@ def make_required_install_packages():
       'absl-py>=0.1.6,<0.9',
       'apache-beam[gcp]>=2.16,<3',
       'click>=7,<8',
+      'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.25,<2',
       'jinja2>=2.7.3,<3',
@@ -44,7 +45,6 @@ def make_required_test_packages():
   """Prepare extra packages needed for 'python setup.py test'."""
   return [
       'apache-airflow>=1.10,<2',
-      'docker>=4,<5',
       # LINT.IfChange
       'kfp>=0.1.32.2; python_version >= "3.0"',
       # LINT.ThenChange(
