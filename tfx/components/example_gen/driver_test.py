@@ -108,7 +108,6 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(1, len(updated_input_dict))
     self.assertEqual(1, len(updated_input_dict['input_base']))
     updated_input_base = updated_input_dict['input_base'][0]
-    self.assertEqual(1, updated_input_base.id)
     self.assertEqual(self._input_base_path, updated_input_base.uri)
 
     # Cache hit.

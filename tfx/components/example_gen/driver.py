@@ -164,10 +164,8 @@ class Driver(base_driver.BaseDriver):
           single_input.set_mlmd_artifact(latest_artifact)
         else:
           # TODO(jyzhao): whether driver should be read-only for metadata.
-          [new_artifact] = self._metadata_handler.publish_artifacts(
-              [single_input])  # pylint: disable=unbalanced-tuple-unpacking
-          absl.logging.debug('Registered new input: %s' % (new_artifact))
-          single_input.set_mlmd_artifact(new_artifact)
+          self._metadata_handler.publish_artifacts([single_input])
+          absl.logging.debug('Registered new input: %s' % single_input)
 
     exec_properties['input_config'] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)
