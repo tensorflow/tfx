@@ -86,10 +86,8 @@ class ImporterDriver(base_driver.BaseDriver):
         absl.logging.info('Reusing existing artifact')
         result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
       else:
-        [registered_artifact
-        ] = self._metadata_handler.publish_artifacts([result])
-        absl.logging.info('Registered new artifact: %s' % registered_artifact)
-        result.set_mlmd_artifact(registered_artifact)
+        self._metadata_handler.publish_artifacts([result])
+        absl.logging.info('Registered new artifact: %s' % result)
 
       results.append(result)
 

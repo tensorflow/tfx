@@ -18,10 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Text
+
 # Standard Imports
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -51,6 +54,16 @@ class MetadataTest(tf.test.TestCase):
         component_type='a.b.d',
         component_id='my_component_2',
         pipeline_info=self._pipeline_info)
+
+  def check_artifact_state(self, metadata_handler: metadata.Metadata,
+                           target: types.Artifact, state: Text):
+    [artifact] = metadata_handler.store.get_artifacts_by_id([target.id])
+    if 'state' in artifact.properties:
+      current_artifact_state = artifact.properties['state'].string_value
+    else:
+      # This is for forward compatible for the artifact type cleanup.
+      current_artifact_state = artifact.custom_properties['state'].string_value
+    self.assertEqual(current_artifact_state, state)
 
   def testEmptyArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -132,11 +145,9 @@ class MetadataTest(tf.test.TestCase):
           standard_artifacts.Examples.TYPE_NAME))
 
       # Test artifact state.
-      m.check_artifact_state(artifact, ArtifactState.PUBLISHED)
+      self.check_artifact_state(m, artifact, ArtifactState.PUBLISHED)
       m.update_artifact_state(artifact, ArtifactState.DELETED)
-      m.check_artifact_state(artifact, ArtifactState.DELETED)
-      self.assertRaises(RuntimeError, m.check_artifact_state, artifact,
-                        ArtifactState.PUBLISHED)
+      self.check_artifact_state(m, artifact, ArtifactState.DELETED)
 
   def testExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -577,8 +588,7 @@ class MetadataTest(tf.test.TestCase):
       m.publish_artifacts([input_artifact])
       output_artifact = standard_artifacts.Examples()
       output_artifact.uri = 'my/uri'
-      [published_artifact] = m.publish_artifacts([output_artifact])
-      output_artifact.set_mlmd_artifact(published_artifact)
+      m.publish_artifacts([output_artifact])
       input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
       m.publish_execution(

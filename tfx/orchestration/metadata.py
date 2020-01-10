@@ -25,7 +25,7 @@ import os
 import random
 import time
 import types
-from typing import Any, Dict, List, Optional, Set, Text, Type, Union
+from typing import Any, Dict, List, Optional, Text, Type, Union
 
 import absl
 import six
@@ -183,40 +183,38 @@ class Metadata(object):
       artifact.custom_properties['state'].string_value = new_state
     self._store.put_artifacts([artifact])
 
-  # This should be atomic. However this depends on ML metadata transaction
-  # support.
-  def check_artifact_state(self, artifact: metadata_store_pb2.Artifact,
-                           expected_states: Set[Text]) -> None:
-    """Check the given artifact is in an expected state."""
-    if not artifact.id:
-      raise ValueError('Artifact id missing for %s' % artifact)
-    [artifact_in_metadata] = self._store.get_artifacts_by_id([artifact.id])
-    # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
-    # artifact protos into tfx.types.Artifact objects at a lower level.
-    if 'state' in artifact.properties:
-      current_artifact_state = artifact.properties['state'].string_value
-    else:
-      current_artifact_state = artifact.custom_properties['state'].string_value
-    if current_artifact_state not in expected_states:
-      raise RuntimeError(
-          'Artifact state for %s is %s, but one of %s expected' %
-          (artifact_in_metadata, current_artifact_state, expected_states))
+  def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
+                        state: Text) -> None:
+    """Updates or inserts a list of artifacts.
 
-  # TODO(ruoyu): Make this transaction-based once b/123573724 is fixed.
-  def publish_artifacts(
-      self,
-      raw_artifact_list: List[Artifact]) -> List[metadata_store_pb2.Artifact]:
-    """Publish a list of artifacts if any is not already published."""
-    artifact_list = []
-    for raw_artifact in raw_artifact_list:
-      artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
-      raw_artifact.set_mlmd_artifact_type(artifact_type)
-      if not raw_artifact.mlmd_artifact.id:
-        raw_artifact.state = ArtifactState.PUBLISHED
-        [artifact_id] = self._store.put_artifacts([raw_artifact.mlmd_artifact])
-        raw_artifact.id = artifact_id
-      artifact_list.append(raw_artifact.mlmd_artifact)
-    return artifact_list
+    This call will also update original tfx artifact list to contain the
+    artifact type info and artifact id.
+
+    Args:
+      tfx_artifact_list: A list of tfx.types.Artifact. This will be updated with
+        MLMD artifact type info and MLMD artifact id.
+      state: the artifact state to set.
+    """
+    for raw_artifact in tfx_artifact_list:
+      if not raw_artifact.type_id:
+        artifact_type = self._prepare_artifact_type(raw_artifact.artifact_type)
+        raw_artifact.set_mlmd_artifact_type(artifact_type)
+      raw_artifact.state = state
+    artifact_ids = self.store.put_artifacts(
+        [x.mlmd_artifact for x in tfx_artifact_list])
+    for a, aid in zip(tfx_artifact_list, artifact_ids):
+      a.id = aid
+
+  def publish_artifacts(self, tfx_artifact_list: List[Artifact]) -> None:
+    """Publish artifacts to MLMD.
+
+    This call will also update original tfx artifact list to contain the
+    artifact type info and artifact id.
+
+    Args:
+      tfx_artifact_list: A list of tfx.types.Artifact which will be updated
+    """
+    self._upsert_artifacts(tfx_artifact_list, ArtifactState.PUBLISHED)
 
   def get_all_artifacts(self) -> List[metadata_store_pb2.Artifact]:
     try:
@@ -435,8 +433,7 @@ class Metadata(object):
               raise RuntimeError(
                   'output artifact id not available for cached output: %s' %
                   single_output)
-            [published_artifact] = self.publish_artifacts([single_output])  # pylint: disable=unbalanced-tuple-unpacking
-            single_output.set_mlmd_artifact(published_artifact)
+            self.publish_artifacts([single_output])
 
           events.append(
               self._prepare_event(
