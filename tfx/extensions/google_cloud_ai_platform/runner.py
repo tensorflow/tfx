@@ -38,20 +38,14 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 # and gcr.io/tfx-oss-public/ registries.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
 
-# Compatibility overrides: this is usually result of lags for CAIP releases
-# after tensorflow.
-_TF_COMPATIBILITY_OVERRIDE = {
-    # TODO(b/142654646): Support TF 1.15 in CAIP prediction service and drop
-    # this entry. This is generally considered safe since we are using same
-    # major version of TF.
-    '1.15': '1.14',
-}
 
-
-def _get_tf_runtime_version() -> Text:
+def _get_tf_runtime_version(tf_version: Text) -> Text:
   """Returns the tensorflow runtime version used in Cloud AI Platform.
 
   This is only used for prediction service.
+
+  Args:
+    tf_version: version string returned from `tf.__version__`.
 
   Returns: same major.minor version of installed tensorflow, except when
     overriden by _TF_COMPATIBILITY_OVERRIDE.
@@ -59,13 +53,17 @@ def _get_tf_runtime_version() -> Text:
   # runtimeVersion should be same as <major>.<minor> of currently
   # installed tensorflow version, with certain compatibility hacks since
   # some versions of TensorFlow are not yet supported by CAIP pusher.
-  tf_version = '.'.join(tf.__version__.split('.')[0:2])
-  if tf_version.startswith('2'):
+  # TODO(b/142654646): Support TF 2 in CAIP prediction service and update this.
+  (major, minor) = tf_version.split('.')[0:2]
+  # 1.15 is the last released cloud runtime supported right now.
+  if (int(major), int(minor)) > (1, 15):
     absl.logging.warn(
-        'tensorflow 2.x may not be supported on CAIP predction service yet, '
-        'please check https://cloud.google.com/ml-engine/docs/runtime-version-list to ensure.'
+        'tensorflow version %s may not be supported on CAIP predction service yet, '
+        'please check https://cloud.google.com/ml-engine/docs/runtime-version-list to ensure.',
+        tf_version,
     )
-  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version, tf_version)
+    return '1.15'
+  return '.'.join([major, minor])
 
 
 def _get_caip_python_version() -> Text:
@@ -194,7 +192,7 @@ def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
   regions = ai_platform_serving_args.get('regions', [])
-  runtime_version = _get_tf_runtime_version()
+  runtime_version = _get_tf_runtime_version(tf.__version__)
   python_version = _get_caip_python_version()
 
   api = discovery.build('ml', 'v1')

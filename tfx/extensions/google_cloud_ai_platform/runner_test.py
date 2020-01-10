@@ -175,7 +175,7 @@ class RunnerTest(tf.test.TestCase):
             'name': 'v{}'.format(model_version),
             'regions': [],
             'deployment_uri': serving_path,
-            'runtime_version': runner._get_tf_runtime_version(),
+            'runtime_version': runner._get_tf_runtime_version(tf.__version__),
             'python_version': runner._get_caip_python_version(),
         }, body)
     mock_get.assert_called_with(name='op_name')
@@ -226,7 +226,7 @@ class RunnerTest(tf.test.TestCase):
             'name': 'v{}'.format(model_version),
             'regions': ['custom-region'],
             'deployment_uri': serving_path,
-            'runtime_version': runner._get_tf_runtime_version(),
+            'runtime_version': runner._get_tf_runtime_version(tf.__version__),
             'python_version': runner._get_caip_python_version(),
         }, body)
     mock_get.assert_called_with(name='op_name')
@@ -235,6 +235,12 @@ class RunnerTest(tf.test.TestCase):
         name='projects/{}/models/{}/versions/{}'.format(
             self._project_id, 'model_name', model_version))
     mock_set_default_execute.assert_called_with()
+
+  def testGetTensorflorRuntime(self):
+    self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
+    self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.0'))
+    self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.1'))
+    self.assertEqual('1.15', runner._get_tf_runtime_version('2.0.0'))
 
 
 if __name__ == '__main__':

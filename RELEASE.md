@@ -53,6 +53,8 @@
 *   Relied on MLMD context for inter component artifact resolution.
 *   Added pipeline level context and component run level context.
 *   Included test data for examples/chicago_taxi_pipeline in package.
+*   Capped version of Tensorflow runtime used in Google Cloud integration to 1.15.
+
 ### Deprecations
 
 ## Breaking changes
