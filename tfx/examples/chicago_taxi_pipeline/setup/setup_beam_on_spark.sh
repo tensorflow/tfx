@@ -22,7 +22,7 @@ if [ "${VIRTUAL_ENV:-unset}" == "unset" ]; then
   exit 1
 fi
 
-SPARK_VERSION="2.4.3"
+SPARK_VERSION="2.4.4"
 SPARK_NAME="spark-$SPARK_VERSION"
 SPARK_ROOT="$SPARK_NAME-bin-hadoop2.7"
 SPARK_BINARY="$SPARK_ROOT.tgz"
@@ -64,7 +64,7 @@ function start_spark() {
   echo "Spark running from $WORK_DIR/$SPARK_ROOT"
 }
 
-
+# TODO(b/139747527) Start the job server through the SDK automatically
 function start_job_server() {
   echo "Starting Beam Spark jobserver"
   cd $BEAM_DIR

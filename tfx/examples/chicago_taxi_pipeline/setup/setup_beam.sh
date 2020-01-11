@@ -18,7 +18,9 @@ WORK_DIR="/tmp/beam"
 BEAM_DIR="$WORK_DIR/beam"
 GIT_COMMAND=`which git`
 BEAM_REPO="https://github.com/apache/beam"
-BEAM_BRANCH="release-2.14.0"
+# LINT.IfChange
+BEAM_BRANCH="release-2.17.0"
+# LINT.ThenChange(../../../dependencies.py)
 
 
 # TODO(BEAM-2530): Support Java 11 when BEAM-2530 is done.
@@ -41,7 +43,7 @@ function check_java() {
   fi
 }
 
-# TODO(BEAM-6763): Use artifacts instead of building from source once they are
+# TODO(b/139747527): Use artifacts instead of building from source once they are
 # published.
 function install_beam(){
   echo "Installing Beam from source code at $BEAM_REPO Branch $BEAM_BRANCH"

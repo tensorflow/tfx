@@ -21,7 +21,9 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
       'absl-py>=0.1.6,<0.9',
-      'apache-beam[gcp]>=2.16,<3',
+      # LINT.IfChange
+      'apache-beam[gcp]>=2.17,<3',
+      # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'click>=7,<8',
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.25,<2',

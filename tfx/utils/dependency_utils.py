@@ -37,7 +37,7 @@ def _get_pypi_package_version() -> Optional[Text]:
   """Returns package version if TFX is installed from PyPI, otherwise None."""
   # We treat any integral patch version as published to PyPI, since development
   # packages always end with 'dev' or 'rc'.
-  if version.__version__.split('.')[2].isdigit():
+  if version.__version__.split('.')[-1].isdigit():
     return version.__version__
   else:
     return None
