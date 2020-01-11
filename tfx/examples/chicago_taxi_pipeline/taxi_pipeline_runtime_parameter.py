@@ -152,7 +152,7 @@ def _create_parameterized_pipeline(
           trainer, model_analyzer, model_validator, pusher
       ],
       enable_cache=enable_cache,
-      # TODO(b/141578059): The multi-processing API might change.
+      # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 

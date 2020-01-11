@@ -133,7 +133,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
           trainer, model_analyzer, model_validator, pusher
       ],
-      # TODO(b/141578059): The multi-processing API might change.
+      # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 
