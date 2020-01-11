@@ -23,6 +23,8 @@
 *   Added new example of chicago_taxi_pipeline on Google Cloud Bigquery ML.
 *   Supported hparams artifact as input in Trainer, this is for preparing the
     tuner support.
+*   Demonstrated multi-core processing in Flink and Spark Chicago Taxi
+    PortableRunner example.
 
 ## Bug fixes and other changes
 
@@ -54,6 +56,9 @@
 *   Added pipeline level context and component run level context.
 *   Included test data for examples/chicago_taxi_pipeline in package.
 *   Capped version of Tensorflow runtime used in Google Cloud integration to 1.15.
+*   Updated Chicago Taxi example dependencies to Beam 2.17.0, Flink 1.9.1, Spark
+    2.4.4.
+*   Depended on `apache-beam[gcp]>=2.17,<3`
 
 ### Deprecations
 
