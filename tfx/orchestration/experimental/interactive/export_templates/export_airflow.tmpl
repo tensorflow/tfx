@@ -23,7 +23,7 @@ tfx_pipeline = pipeline.Pipeline(
     # direct_num_workers=0 means auto-detect based on the number of CPUs
     # available during  execution time.
     #
-    # TODO(b/141578059): The multi-processing API might change.
+    # TODO(b/142684737): The multi-processing API might change.
     beam_pipeline_args = ['--direct_num_workers=0'],
 
     additional_pipeline_args={})
