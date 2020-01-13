@@ -145,13 +145,13 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                    outputs: Dict[Text, List[types.Artifact]],
                    exec_properties: Dict[Text, Any]) -> None:
     """Log inputs, outputs, and executor properties in a standard format."""
-    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
-    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(inputs))
-    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(outputs))
-    absl.logging.debug('Execution properties for %s are: %s',
-                       self.__class__.__name__, json.dumps(exec_properties))
+    absl.logging.info('Starting %s execution.', self.__class__.__name__)
+    absl.logging.info('Inputs for %s are: %s', self.__class__.__name__,
+                      artifact_utils.jsonify_artifact_dict(inputs))
+    absl.logging.info('Outputs for %s are: %s', self.__class__.__name__,
+                      artifact_utils.jsonify_artifact_dict(outputs))
+    absl.logging.info('Execution properties for %s are: %s',
+                      self.__class__.__name__, json.dumps(exec_properties))
 
 
 class EmptyExecutor(BaseExecutor):

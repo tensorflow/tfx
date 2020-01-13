@@ -86,7 +86,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         instance_name='raw_examples',
         source_uri=[
             os.path.join(self._testdata_root, 'csv_example_gen'),
-            os.path.join(self._testdata_root, 'csv_example_gen')
+            os.path.join(self._testdata_root, 'csv_example_gen'),
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -146,7 +146,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.model_blessing_importer.outputs['result'].get(
     )[0].set_int_custom_property('blessed', 1)
 
-  def testCsvExampleGenOnDataflowRunner(self):
+  def _testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
     pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
         self._random_id())
@@ -155,7 +155,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def testStatisticsGenOnDataflowRunner(self):
+  def _testStatisticsGenOnDataflowRunner(self):
     """StatisticsGen-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-statistics-gen-dataflow-test-{}'.format(
         self._random_id())
@@ -165,7 +165,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def testTransformOnDataflowRunner(self):
+  def _testTransformOnDataflowRunner(self):
     """Transform-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-transform-dataflow-test-{}'.format(
         self._random_id())
@@ -178,7 +178,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def testEvaluatorOnDataflowRunner(self):
+  def _testEvaluatorOnDataflowRunner(self):
     """Evaluator-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
         self._random_id())
@@ -194,7 +194,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def testModelValidatorOnDataflowRunner(self):
+  def _testModelValidatorOnDataflowRunner(self):
     """ModelValidator-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
         self._random_id())
