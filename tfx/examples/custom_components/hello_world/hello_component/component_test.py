@@ -18,8 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 from hello_component import component
 import tensorflow as tf
+from tfx.types import artifact
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -31,21 +33,21 @@ class HelloComponentTest(tf.test.TestCase):
     self.name = 'HelloWorld'
 
   def testConstruct(self):
-    train_examples_in = standard_artifacts.Examples(split='train')
-    eval_examples_in = standard_artifacts.Examples(split='eval')
-    train_examples_out = standard_artifacts.Examples(split='train')
-    eval_examples_out = standard_artifacts.Examples(split='eval')
+    input_data = standard_artifacts.Examples()
+    input_data.split_names = json.dumps(artifact.DEFAULT_EXAMPLE_SPLITS)
+    output_data = standard_artifacts.Examples()
+    output_data.split_names = json.dumps(artifact.DEFAULT_EXAMPLE_SPLITS)
     this_component = component.HelloComponent(
-        input_data=channel_utils.as_channel(
-            [train_examples_in, eval_examples_in]),
-        output_data=channel_utils.as_channel(
-            [train_examples_out, eval_examples_out]),
+        input_data=channel_utils.as_channel([input_data]),
+        output_data=channel_utils.as_channel([output_data]),
         name=u'Testing123')
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      this_component.outputs['output_data'].type_name)
     artifact_collection = this_component.outputs['output_data'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    for artifacts in artifact_collection:
+      split_list = json.loads(artifacts.split_names)
+      self.assertEqual(artifact.DEFAULT_EXAMPLE_SPLITS.sort(),
+                       split_list.sort())
 
 
 if __name__ == '__main__':

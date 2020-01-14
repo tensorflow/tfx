@@ -21,9 +21,9 @@ from __future__ import print_function
 import os
 from typing import Text
 
+import taxi_pipeline_hello
 import tensorflow as tf
 
-from tfx.examples.custom_components_hello_world import taxi_pipeline_hello
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -37,9 +37,7 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
         self._testMethodName)
 
     self._pipeline_name = 'hello_test'
-    self._data_root = os.path.join(os.path.dirname(__file__), 'data', 'simple')
-    self._module_file = os.path.join(os.path.dirname(__file__), 'taxi_utils.py')
-    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._data_root = os.path.join(os.path.dirname(__file__), '..', 'data')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
@@ -57,27 +55,16 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('CsvExampleGen')
     self.assertExecutedOnce('HelloComponent')
-    self.assertExecutedOnce('Evaluator')
-    self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('ModelValidator')
-    self.assertExecutedOnce('Pusher')
-    self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer')
-    self.assertExecutedOnce('Transform')
 
   def testTaxiPipelineHello(self):
     BeamDagRunner().run(
         taxi_pipeline_hello._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            metadata_path=self._metadata_path))
 
-    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
@@ -85,7 +72,6 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(9, execution_count)
 
     self.assertPipelineExecution()
 
@@ -94,18 +80,13 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
         taxi_pipeline_hello._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            metadata_path=self._metadata_path))
 
     # Assert cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      # 9 more cached executions.
-      self.assertEqual(18, len(m.store.get_executions()))
 
     self.assertPipelineExecution()
 
