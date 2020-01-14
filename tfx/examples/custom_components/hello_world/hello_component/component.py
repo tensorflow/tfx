@@ -30,7 +30,6 @@ from hello_component import executor
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
@@ -85,8 +84,7 @@ class HelloComponent(base_component.BaseComponent):
     # upstream component.
     if not output_data:
       examples_artifact = standard_artifacts.Examples()
-      examples_artifact.split_names = artifact_utils.encode_split_names(
-          [artifact.split for artifact in input_data.outputs['examples'].get()])
+      examples_artifact.split_names = input_data.get()[0].split_names
       output_data = channel_utils.as_channel([examples_artifact])
 
     spec = HelloComponentSpec(input_data=input_data,
