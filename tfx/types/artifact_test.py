@@ -21,6 +21,9 @@ from __future__ import unicode_literals
 
 # Standard Imports
 
+import absl
+import mock
+
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
@@ -29,6 +32,12 @@ from tfx.utils import json_utils
 
 class _MyArtifact(artifact.Artifact):
   TYPE_NAME = 'MyTypeName'
+  PROPERTIES = {
+      'int1': artifact.Property(type=artifact.PropertyType.INT),
+      'int2': artifact.Property(type=artifact.PropertyType.INT),
+      'string1': artifact.Property(type=artifact.PropertyType.STRING),
+      'string2': artifact.Property(type=artifact.PropertyType.STRING),
+  }
 
 
 class ArtifactTest(tf.test.TestCase):
@@ -120,17 +129,7 @@ class ArtifactTest(tf.test.TestCase):
       MyNewArtifact(mlmd_artifact_type=metadata_store_pb2.ArtifactType())
 
   def testArtifactProperties(self):
-
-    class MyCustomArtifact(artifact.Artifact):
-      TYPE_NAME = 'MyCustomArtifact'
-      PROPERTIES = {
-          'int1': artifact.Property(type=artifact.PropertyType.INT),
-          'int2': artifact.Property(type=artifact.PropertyType.INT),
-          'string1': artifact.Property(type=artifact.PropertyType.STRING),
-          'string2': artifact.Property(type=artifact.PropertyType.STRING),
-      }
-
-    my_artifact = MyCustomArtifact()
+    my_artifact = _MyArtifact()
     self.assertEqual(0, my_artifact.int1)
     self.assertEqual(0, my_artifact.int2)
     my_artifact.int1 = 111
@@ -162,6 +161,45 @@ class ArtifactTest(tf.test.TestCase):
         'The "mlmd_artifact_type" argument must be an instance of the proto '
         'message'):
       artifact.Artifact('StringTypeName')
+
+  @mock.patch('absl.logging.warning')
+  def testDeserialize(self, *unused_mocks):
+    original = _MyArtifact()
+    original.uri = '/my/path'
+    original.int1 = 111
+    original.int2 = 222
+    original.string1 = '111'
+    original.string2 = '222'
+
+    serialized = original.to_json_dict()
+
+    rehydrated = artifact.Artifact.from_json_dict(serialized)
+    absl.logging.warning.assert_not_called()
+    self.assertIs(rehydrated.__class__, _MyArtifact)
+    self.assertEqual(rehydrated.int1, 111)
+    self.assertEqual(rehydrated.int2, 222)
+    self.assertEqual(rehydrated.string1, '111')
+    self.assertEqual(rehydrated.string2, '222')
+
+  @mock.patch('absl.logging.warning')
+  def testDeserializeUnknownArtifactClass(self, *unused_mocks):
+    original = _MyArtifact()
+    original.uri = '/my/path'
+    original.int1 = 111
+    original.int2 = 222
+    original.string1 = '111'
+    original.string2 = '222'
+
+    serialized = original.to_json_dict()
+    serialized['__artifact_class_name__'] = 'MissingClassName'
+
+    rehydrated = artifact.Artifact.from_json_dict(serialized)
+    absl.logging.warning.assert_called_once()
+    self.assertIs(rehydrated.__class__, artifact.Artifact)
+    self.assertEqual(rehydrated.int1, 111)
+    self.assertEqual(rehydrated.int2, 222)
+    self.assertEqual(rehydrated.string1, '111')
+    self.assertEqual(rehydrated.string2, '222')
 
 
 if __name__ == '__main__':

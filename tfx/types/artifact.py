@@ -24,6 +24,8 @@ import importlib
 import json
 from typing import Any, Dict, Optional, Text
 
+import absl
+
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.utils import json_utils
@@ -268,12 +270,24 @@ class Artifact(json_utils.Jsonable):
   def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
     module_name = dict_data['__artifact_class_module__']
     class_name = dict_data['__artifact_class_name__']
-    artifact_cls = getattr(importlib.import_module(module_name), class_name)
     artifact = metadata_store_pb2.Artifact()
-    json_format.Parse(json.dumps(dict_data['artifact']), artifact)
     artifact_type = metadata_store_pb2.ArtifactType()
+    json_format.Parse(json.dumps(dict_data['artifact']), artifact)
     json_format.Parse(json.dumps(dict_data['artifact_type']), artifact_type)
-    result = artifact_cls()
+
+    # First, try to resolve the specific class used for the artifact; if this
+    # is not possible, use a generic artifact.Artifact object.
+    try:
+      artifact_cls = getattr(importlib.import_module(module_name), class_name)
+      result = artifact_cls()
+    except (AttributeError, ImportError):
+      absl.logging.warning((
+          'Could not load artifact class %s.%s; using fallback deserialization '
+          'for the relevant artifact. This behavior may not be supported in '
+          'the future; please make sure that any artifact classes can be '
+          'imported within your container or environment.') %
+                           (module_name, class_name))
+      result = Artifact(mlmd_artifact_type=artifact_type)
     result.set_mlmd_artifact_type(artifact_type)
     result.set_mlmd_artifact(artifact)
     return result
