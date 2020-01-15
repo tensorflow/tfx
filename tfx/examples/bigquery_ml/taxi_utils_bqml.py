@@ -314,21 +314,21 @@ def trainer_fn(hparams, schema):
   train_batch_size = 40
   eval_batch_size = 40
 
-  tf_transform_output = tft.TFTransformOutput(hparams.transform_output)
+  tf_transform_output = tft.TFTransformOutput(hparams['transform_output'])
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.train_files,
+      hparams['train_files'],
       tf_transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.eval_files,
+      hparams['eval_files'],
       tf_transform_output,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
-      max_steps=hparams.train_steps)
+      max_steps=hparams['train_steps'])
 
   serving_receiver_fn = lambda: _flat_input_serving_receiver_fn(  # pylint: disable=g-long-lambda
       tf_transform_output, schema)
@@ -336,14 +336,14 @@ def trainer_fn(hparams, schema):
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
       eval_input_fn,
-      steps=hparams.eval_steps,
+      steps=hparams['eval_steps'],
       exporters=[exporter],
       name='chicago-taxi-eval')
 
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=hparams.serving_model_dir)
+  run_config = run_config.replace(model_dir=hparams['serving_model_dir'])
 
   estimator = _build_estimator(
       # Construct layers sizes with exponetial decay
@@ -352,7 +352,7 @@ def trainer_fn(hparams, schema):
           for i in range(num_dnn_layers)
       ],
       config=run_config,
-      warm_start_from=hparams.warm_start_from)
+      warm_start_from=hparams['warm_start_from'])
 
   # Create an input receiver for TFMA processing
   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda

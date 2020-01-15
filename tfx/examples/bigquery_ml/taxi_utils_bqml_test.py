@@ -117,21 +117,31 @@ class TaxiUtilsTest(tf.test.TestCase):
 
     schema_file = os.path.join(self._testdata_path, 'schema_gen/schema.pbtxt')
     output_dir = os.path.join(temp_dir, 'output_dir')
-    hparams = tf.contrib.training.HParams(
-        train_files=os.path.join(self._testdata_path,
-                                 'transform/transformed_examples/train/*.gz'),
-        transform_output=os.path.join(self._testdata_path,
-                                      'transform/transform_output/'),
-        output_dir=output_dir,
-        serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
-        eval_files=os.path.join(self._testdata_path,
-                                'transform/transformed_examples/eval/*.gz'),
-        schema_file=schema_file,
-        train_steps=1,
-        eval_steps=1,
-        verbosity='INFO',
-        warm_start_from=os.path.join(self._testdata_path,
-                                     'trainer/current/serving_model_dir'))
+    hparams = {
+        'train_files':
+            os.path.join(self._testdata_path,
+                         'transform/transformed_examples/train/*.gz'),
+        'transform_output':
+            os.path.join(self._testdata_path, 'transform/transform_output/'),
+        'output_dir':
+            output_dir,
+        'serving_model_dir':
+            os.path.join(temp_dir, 'serving_model_dir'),
+        'eval_files':
+            os.path.join(self._testdata_path,
+                         'transform/transformed_examples/eval/*.gz'),
+        'schema_file':
+            schema_file,
+        'train_steps':
+            1,
+        'eval_steps':
+            1,
+        'verbosity':
+            'INFO',
+        'warm_start_from':
+            os.path.join(self._testdata_path,
+                         'trainer/current/serving_model_dir')
+    }
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     training_spec = taxi_utils_bqml.trainer_fn(hparams, schema)
 
