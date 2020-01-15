@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 import absl
 from click import testing as click_testing
@@ -411,7 +412,8 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Run pipeline.
     self._valid_run_and_check(pipeline_name)
 
-    # Run pipeline.
+    time.sleep(1)   # Sleep to ensure two pipelines have different timestamps.
+    # Run pipeline again.
     self._valid_run_and_check(pipeline_name)
 
     # List pipeline runs.
