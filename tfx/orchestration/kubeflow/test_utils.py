@@ -410,7 +410,7 @@ class BaseKubeflowTest(tf.test.TestCase):
                                 components: List[BaseComponent]):
     """Creates a pipeline with Beam DataflowRunner."""
     pipeline = self._create_pipeline(pipeline_name, components)
-    pipeline.additional_pipeline_args['beam_pipeline_args'] = [
+    pipeline.beam_pipeline_args = [
         '--runner=DataflowRunner',
         '--experiments=shuffle_mode=auto',
         '--project=' + self._gcp_project_id,
