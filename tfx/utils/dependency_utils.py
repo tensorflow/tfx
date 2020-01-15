@@ -68,7 +68,10 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   absl.logging.info('Attempting to infer TFX Python dependency for beam')
   dependency_flags = []
   pypi_version = _get_pypi_package_version()
-  if pypi_version:
+  # TODO(b/147438224): refactor once PortableRunner drops no-binary.
+  if (pypi_version and '--runner=PortableRunner' not in beam_pipeline_args and
+      '--runner=FlinkRunner' not in beam_pipeline_args and
+      '--runner=SparkRunner' not in beam_pipeline_args):
     requirements_file = _build_requirements_file()
     absl.logging.info('Added --requirements_file=%s to beam args',
                       requirements_file)
