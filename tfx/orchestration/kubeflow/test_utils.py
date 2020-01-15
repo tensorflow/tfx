@@ -235,6 +235,7 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseKubeflowTest, self).setUp()
+    self._old_cwd = os.getcwd()
     self._test_dir = tempfile.mkdtemp()
     os.chdir(self._test_dir)
 
@@ -246,18 +247,21 @@ class BaseKubeflowTest(tf.test.TestCase):
     self._test_output_dir = 'gs://{}/test_output'.format(self._bucket_name)
 
     test_id = self._random_id()
-    self._data_root = 'gs://{}/{}/data'.format(self._bucket_name, test_id)
+    test_dir = 'gs://{}/test_data/{}'.format(self._bucket_name, test_id)
 
+    self._data_root = os.path.join(test_dir, 'data')
     subprocess.run(['gsutil', 'cp', '-r', _DATA_ROOT, self._data_root],
                    check=True)
 
-    self._taxi_module_file = 'gs://{}/{}/modules/taxi_utils.py'.format(
-        self._bucket_name, test_id)
+    self._taxi_module_file = os.path.join(test_dir, 'modules', 'taxi_utils.py')
     subprocess.run(['gsutil', 'cp', _TAXI_MODULE_FILE, self._taxi_module_file],
                    check=True)
 
+    self.addCleanup(self._delete_test_dir, test_id)
+
   def tearDown(self):
     super(BaseKubeflowTest, self).tearDown()
+    os.chdir(self._old_cwd)
     shutil.rmtree(self._test_dir)
 
   @staticmethod
@@ -269,6 +273,14 @@ class BaseKubeflowTest(tf.test.TestCase):
     result = ''.join([random.choice(choices) for _ in range(10)])
     result = result + '-{}'.format(datetime.datetime.now().strftime('%s'))
     return result
+
+  def _delete_test_dir(self, test_id: Text):
+    """Deletes files for this test including the module file and data files.
+
+    Args:
+      test_id: Randomly generated id of the test.
+    """
+    self._delete_gcs_files('test_data/{}'.format(test_id))
 
   def _delete_workflow(self, workflow_name: Text):
     """Deletes the specified Argo workflow."""
@@ -324,21 +336,28 @@ class BaseKubeflowTest(tf.test.TestCase):
         time.sleep(_POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
+  def _delete_gcs_files(self, path: Text):
+    """Deletes files under specified path in the test bucket.
+
+    Args:
+      path: path(or prefix) of the file to delete.
+    """
+    client = storage.Client(project=self._gcp_project_id)
+    bucket = client.get_bucket(self._bucket_name)
+    absl.logging.info(
+        'Deleting files under GCS bucket path: {}'.format(path))
+
+    with _Timer('ListingAndDeletingFilesFromGCS'):
+      blobs = bucket.list_blobs(prefix=path)
+      bucket.delete_blobs(blobs)
+
   def _delete_pipeline_output(self, pipeline_name: Text):
     """Deletes output produced by the named pipeline.
 
     Args:
       pipeline_name: The name of the pipeline.
     """
-    client = storage.Client(project=self._gcp_project_id)
-    bucket = client.get_bucket(self._bucket_name)
-    prefix = 'test_output/{}'.format(pipeline_name)
-    absl.logging.info(
-        'Deleting output under GCS bucket prefix: {}'.format(prefix))
-
-    with _Timer('ListingAndDeletingPipelineOutputsFromGCS'):
-      blobs = bucket.list_blobs(prefix=prefix)
-      bucket.delete_blobs(blobs)
+    self._delete_gcs_files('test_output/{}'.format(pipeline_name))
 
   def _delete_pipeline_metadata(self, pipeline_name: Text):
     """Drops the database containing metadata produced by the pipeline.
