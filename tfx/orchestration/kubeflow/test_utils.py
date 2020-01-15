@@ -54,6 +54,9 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils import dsl_utils
 
+
+_POLLING_INTERVAL_IN_SECONDS = 10
+
 # The following environment variables need to be set prior to calling the test
 # in this file. All variables are required and do not have a default.
 
@@ -288,7 +291,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     """
 
     # TODO(ajaygopinathan): Consider using KFP cli instead.
-    def _format_parameter(parameter: Dict[Text, Any]) -> Text:
+    def _format_parameter(parameter: Dict[Text, Any]) -> List[Text]:
       """Format the pipeline parameter section of argo workflow."""
       if parameter:
         result = []
@@ -304,7 +307,6 @@ class BaseKubeflowTest(tf.test.TestCase):
         'submit',
         '--name',
         workflow_name,
-        '--watch',
         '--namespace',
         'kubeflow',
         '--serviceaccount',
@@ -316,6 +318,11 @@ class BaseKubeflowTest(tf.test.TestCase):
         workflow_name, _format_parameter(parameter)))
     with _Timer('RunningPipelineToCompletion'):
       subprocess.run(run_command, check=True)
+      # Wait in the loop while pipeline is running.
+      status = 'Running'
+      while status == 'Running':
+        time.sleep(_POLLING_INTERVAL_IN_SECONDS)
+        status = self._get_argo_pipeline_status(workflow_name)
 
   def _delete_pipeline_output(self, pipeline_name: Text):
     """Deletes output produced by the named pipeline.
@@ -354,7 +361,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '--user',
         'root',
         '--execute',
-        'drop database {};'.format(db_name),
+        'drop database if exists {};'.format(db_name),
     ]
     absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
 
@@ -401,6 +408,24 @@ class BaseKubeflowTest(tf.test.TestCase):
     config.mysql_db_name.value = self._get_mlmd_db_name(pipeline_name)
     return config
 
+  def _get_argo_pipeline_status(self, pipeline_name: Text) -> Text:
+    """Get Pipeline status.
+
+    Args:
+      pipeline_name: The name of the pipeline.
+
+    Returns:
+      Simple status string which is returned from `argo get` command.
+    """
+    get_workflow_command = [
+        'argo', '--namespace', 'kubeflow', 'get', pipeline_name
+    ]
+    output = subprocess.check_output(get_workflow_command).decode('utf-8')
+    absl.logging.info('Argo output ----\n%s', output)
+    match = re.search(r'^Status:\s+(.+)$', output, flags=re.MULTILINE)
+    self.assertIsNotNone(match)
+    return match.group(1)
+
   def _compile_and_run_pipeline(self,
                                 pipeline: tfx_pipeline.Pipeline,
                                 parameters: Dict[Text, Any] = None):
@@ -438,13 +463,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     logs_output = subprocess.check_output(get_logs_command).decode('utf-8')
 
     # Check if pipeline completed successfully.
-    get_workflow_command = [
-        'argo', '--namespace', 'kubeflow', 'get', pipeline_name
-    ]
-    output = subprocess.check_output(get_workflow_command).decode('utf-8')
-
-    self.assertIsNotNone(
-        re.search(r'^Status:\s+Succeeded$', output, flags=re.MULTILINE),
-        'Pipeline {} failed to complete successfully:\n{}'
-        '\nFailed workflow logs:\n{}'.format(pipeline_name, output,
+    status = self._get_argo_pipeline_status(pipeline_name)
+    self.assertEqual(
+        'Succeeded', status, 'Pipeline {} failed to complete successfully: {}'
+        '\nFailed workflow logs:\n{}'.format(pipeline_name, status,
                                              logs_output))
