@@ -113,10 +113,19 @@ def build_ephemeral_package() -> Text:
     RuntimeError: if dist directory has zero or multiple files.
   """
   tmp_dir = os.path.join(tempfile.mkdtemp(), 'build', 'tfx')
-  tfx_root_dir = os.path.dirname(os.path.dirname(__file__))
+  # Find the last directory named 'tfx' in this file's path and package it.
+  path_split = __file__.split(os.path.sep)
+  last_index = -1
+  for i in range(len(path_split)):
+    if path_split[i] == 'tfx':
+      last_index = i
+  if last_index < 0:
+    raise RuntimeError('Cannot locate directory \'tfx\' in the path %s' %
+                       __file__)
+  tfx_root_dir = os.path.sep.join(path_split[0:last_index + 1])
   absl.logging.info('Copying all content from install dir %s to temp dir %s',
                     tfx_root_dir, tmp_dir)
-  shutil.copytree(tfx_root_dir, tmp_dir)
+  shutil.copytree(tfx_root_dir, os.path.join(tmp_dir, 'tfx'))
   # Source directory default permission is 0555 but we need to be able to create
   # new setup.py file.
   os.chmod(tmp_dir, 0o720)
