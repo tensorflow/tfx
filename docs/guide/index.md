@@ -50,9 +50,9 @@ typed with an artifact type registered in the
 [ML Metadata](https://github.com/google/ml-metadata) defines, as described in
 [this document](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#concepts).
 TFX defines and implements its own artifact type ontology to realize its
-higher-level functionality. As of TFX 0.14,
-[10 known artifact types](https://github.com/tensorflow/tfx/blob/1e931c461ed38de51ae3e9975fd10a0cba75e58b/tfx/types/standard_artifacts.py)
-are defined and used throught the TFX system.
+higher-level functionality. As of TFX 0.15,
+[11 known artifact types](https://github.com/tensorflow/tfx/blob/0.15.0/tfx/types/standard_artifacts.py)
+are defined and used throughout the TFX system.
 
 An **artifact type** has a unique name and a schema of properties of its
 instances. TFX utilizes artifact type as how the artifact is used by components
@@ -70,10 +70,10 @@ such as TensorFlow SavedModel, ONNX, PMML or PKL (of various types of model
 objects in Python). In any case, models are always to be evaluated, analyzed and
 deployed for serving in pipelines.
 
-NOTE: As of TFX 0.14, *Examples* artifact is assumed to be `tensorflow::Example`
-protocol buffer in gzip-compressed TFRecord format. *Model* artifact is assumed
-to be TensorFlow SavedModel. Future versions of TFX may expand those artifact
-types to support more variants.
+NOTE: As of TFX 0.15, implementations of TFX components assume *Examples*
+artifact to be `tensorflow::Example` protocol buffer in gzip-compressed TFRecord
+format. Likewise, *Model* artifact is assumed to be TensorFlow SavedModel.
+Future versions of TFX may expand those artifact types to support more variants.
 
 In order to differentiate such possible variants of the same **artifact type**,
 the ML Metadata defines a set of **artifact properties**. For instance, one such
