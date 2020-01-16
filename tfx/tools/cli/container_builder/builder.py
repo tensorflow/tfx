@@ -43,11 +43,11 @@ class ContainerBuilder(object):
 
   def __init__(self,
                target_image: Optional[Text] = None,
-               base_image: Optional[Text] = labels.BASE_IMAGE,
-               skaffold_cmd: Optional[Text] = labels.SKAFFOLD_COMMAND,
-               buildspec_filename: Optional[Text] = labels.BUILD_SPEC_FILENAME,
-               dockerfile_name: Optional[Text] = labels.DOCKERFILE_NAME,
-               setup_py_filename: Optional[Text] = labels.SETUP_PY_FILENAME):
+               base_image: Optional[Text] = None,
+               skaffold_cmd: Optional[Text] = None,
+               buildspec_filename: Optional[Text] = None,
+               dockerfile_name: Optional[Text] = None,
+               setup_py_filename: Optional[Text] = None):
     """Initialization.
 
     Args:
@@ -64,7 +64,12 @@ class ContainerBuilder(object):
         python package for the workspace directory. If not specified, the
         whole directory is copied and PYTHONPATH is configured.
     """
-    self._skaffold_cmd = skaffold_cmd
+    base_image = base_image or labels.BASE_IMAGE
+    self._skaffold_cmd = skaffold_cmd or labels.SKAFFOLD_COMMAND
+    buildspec_filename = buildspec_filename or labels.BUILD_SPEC_FILENAME
+    dockerfile_name = dockerfile_name or labels.DOCKERFILE_NAME
+    setup_py_filename = setup_py_filename or labels.SETUP_PY_FILENAME
+
     if os.path.exists(buildspec_filename):
       self._buildspec = buildspec.BuildSpec(filename=buildspec_filename)
       if target_image is not None:
