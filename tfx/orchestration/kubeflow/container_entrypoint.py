@@ -304,7 +304,7 @@ def main():
                     base_component_launcher.BaseComponentLauncher):
     raise TypeError(
         'component_launcher_class "%s" is not subclass of base_component_launcher.BaseComponentLauncher'
-        % component_launcher_class)
+        % args)
 
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
