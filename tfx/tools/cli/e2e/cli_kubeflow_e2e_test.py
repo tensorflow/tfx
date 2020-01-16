@@ -246,7 +246,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
   def _delete_all_runs(self, experiment_id: Text):
     try:
       # Get all runs related to the experiment_id.
-      response = self._client.list_runs(experiment_id)
+      response = self._client.list_runs(experiment_id=experiment_id)
       if response and response.runs:
         for run in response.runs:
           self._client._run_api.delete_run(id=run.id)
