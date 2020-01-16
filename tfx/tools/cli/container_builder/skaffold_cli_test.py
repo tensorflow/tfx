@@ -26,7 +26,7 @@ import tensorflow.compat.v2 as tf
 
 from tfx.tools.cli.container_builder import skaffold_cli
 
-SAMPLE_SKAFFOLD_OUTPUT = b'{"imageName":"gcr.io/xx/my-image","tag":"gcr.io/xx/my-image:latest@sha256:25771cd26d4badd2158614799e1936ccbbfb8842ed16c84a3bf39985ccb9ab97"}'
+SAMPLE_SKAFFOLD_OUTPUT = b'{"builds":[{"imageName":"gcr.io/my-test/test","tag":"gcr.io/my-test/test:latest@sha256:f5ee0ecb19eb5dc970f15290f2c47c10d23e303d381aebef91929c2df2ce5004"}]}'
 
 
 class SkaffoldCliTest(tf.test.TestCase):
@@ -40,7 +40,7 @@ class SkaffoldCliTest(tf.test.TestCase):
     sha256 = cli.build()
     self.assertEqual(
         sha256,
-        'sha256:25771cd26d4badd2158614799e1936ccbbfb8842ed16c84a3bf39985ccb9ab97'
+        'sha256:f5ee0ecb19eb5dc970f15290f2c47c10d23e303d381aebef91929c2df2ce5004'
     )
 
 
