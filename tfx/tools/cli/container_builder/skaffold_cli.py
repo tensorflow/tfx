@@ -48,10 +48,10 @@ class SkaffoldCli(object):
     if not os.path.exists(buildspec_filename):
       raise ValueError('Build spec: %s does not exist.' % buildspec_filename)
     output = subprocess.check_output([
-        self._cmd, 'build', '-q', '--output="{{json .}}"', '-f',
+        self._cmd, 'build', '-q', '--output={{json .}}', '-f',
         buildspec_filename
-    ])
-    full_image_name_with_tag = json.loads(output)['tag']
+    ]).decode('utf-8')
+    full_image_name_with_tag = json.loads(output)['builds'][0]['tag']
     m = re.search(r'sha256:[0-9a-f]{64}', full_image_name_with_tag)
     if m is None:
       raise RuntimeError('SkaffoldCli: built image SHA is not found.')
