@@ -201,7 +201,8 @@ TFX libraries include:
     integrates a feature engineering pipeline created by TensorFlow Transform
     for preprocessing input data.
 
-    Note: TFX supports both TensorFlow 1.15 and 2.0. However, we do not yet support Keras models. For details, see [Designing TensorFlow Modeling Code For TFX](train.md).
+    Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
+    details, see [Designing TensorFlow Modeling Code For TFX](train.md).
 
 *   [**TensorFlow Model Analysis (TFMA)**](tfma.md) is a library for evaluating
     TensorFlow models. It is used along with TensorFlow to create an
