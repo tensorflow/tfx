@@ -43,13 +43,14 @@ RUN apt-get update -y && \
   update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
 
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
+RUN python3.6 -m pip install --upgrade pip && \
+  python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
 # once we switch default tensorflow version in released image to TF 2.x.
 # TODO(jxzheng): investigate why setuptools need to be re-installed
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install \
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install \
   "kubernetes>=10.0.1,<11" \
   "tensorflow>=1.15,<3" \
   "tensorflow-serving-api>=1.15,<3" \
@@ -61,7 +62,7 @@ ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
 
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install -e .
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
@@ -70,6 +71,8 @@ RUN patch /opt/venv/lib/python3.6/site-packages/googleapiclient/http.py \
   patch /opt/venv/lib/python3.6/site-packages/apitools/base/py/base_api.py \
   /tfx-src/tfx/tools/docker/patches/base_api.patch
 
+# TODO(zhitaoli): Ensure that license dependency is an exact match instead of
+# subset check.
 ARG gather_third_party_licenses=true
 RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
   /tfx-src/tfx/tools/docker/license.sh \
