@@ -72,27 +72,28 @@ _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 # The GCP bucket to use to write output artifacts.
 _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-# The input data root location on GCS. The input files are copied to a
-# test-local location.
-_DATA_ROOT = os.environ['KFP_E2E_DATA_ROOT']
+# The location of test data. The input files are copied to a test-local
+# location for each invocation, and cleaned up at the end of test.
+_TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-# The intermediate data root location on GCS. The intermediate test data files
-# are never modified and are safe for concurrent reads.
-_INTERMEDIATE_DATA_ROOT = os.environ['KFP_E2E_INTERMEDIATE_DATA_ROOT']
-
-# Location of the input taxi module file to be used in the test pipeline. The
-# file is copied to a test-local location.
-_TAXI_MODULE_FILE = os.environ['KFP_E2E_TAXI_MODULE_FILE']
+# The location of test user module
+# It is retrieved from inside the container subject to testing.
+_MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
 
 
-def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
-                          taxi_module_file: Text) -> List[BaseComponent]:
+def create_e2e_components(
+    pipeline_root: Text,
+    csv_input_location: Text,
+    transform_module: Text,
+    trainer_module: Text,
+) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
   Args:
     pipeline_root: The root of the pipeline output.
     csv_input_location: The location of the input data directory.
-    taxi_module_file: The location of the module file for Transform/Trainer.
+    transform_module: The location of the transform module file.
+    trainer_module: The location of the trainer module file.
 
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
@@ -110,14 +111,15 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=infer_schema.outputs['schema'],
-      module_file=taxi_module_file)
+      module_file=transform_module)
   trainer = Trainer(
-      module_file=taxi_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+      eval_args=trainer_pb2.EvalArgs(num_steps=5),
+      module_file=trainer_module,
+  )
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model_exports=trainer.outputs['model'],
@@ -242,20 +244,20 @@ class BaseKubeflowTest(tf.test.TestCase):
     self._gcp_project_id = _GCP_PROJECT_ID
     self._gcp_region = _GCP_REGION
     self._bucket_name = _BUCKET_NAME
-    self._intermediate_data_root = _INTERMEDIATE_DATA_ROOT
+    self._testdata_root = _TEST_DATA_ROOT
 
     self._test_output_dir = 'gs://{}/test_output'.format(self._bucket_name)
 
     test_id = self._random_id()
-    test_dir = 'gs://{}/test_data/{}'.format(self._bucket_name, test_id)
 
-    self._data_root = os.path.join(test_dir, 'data')
-    subprocess.run(['gsutil', 'cp', '-r', _DATA_ROOT, self._data_root],
+    self._testdata_root = 'gs://{}/test_data/{}'.format(self._bucket_name,
+                                                        test_id)
+    subprocess.run(['gsutil', 'cp', '-r', _TEST_DATA_ROOT, self._testdata_root],
                    check=True)
 
-    self._taxi_module_file = os.path.join(test_dir, 'modules', 'taxi_utils.py')
-    subprocess.run(['gsutil', 'cp', _TAXI_MODULE_FILE, self._taxi_module_file],
-                   check=True)
+    self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
+    self._transform_module = os.path.join(_MODULE_ROOT, 'transform_module.py')
+    self._trainer_module = os.path.join(_MODULE_ROOT, 'trainer_module.py')
 
     self.addCleanup(self._delete_test_dir, test_id)
 
