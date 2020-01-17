@@ -175,18 +175,14 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     """Execute underlying component implementation."""
     raise NotImplementedError
 
-  def _run_publisher(self, use_cached_results: bool, execution_id: int,
-                     input_dict: Dict[Text, List[types.Artifact]],
-                     output_dict: Dict[Text, List[types.Artifact]]) -> None:
+  def _run_publisher(self, output_dict: Dict[Text,
+                                             List[types.Artifact]]) -> None:
     """Publish execution result to ml metadata."""
 
     with metadata.Metadata(self._metadata_connection_config) as m:
       p = publisher.Publisher(metadata_handler=m)
       p.publish_execution(
-          execution_id=execution_id,
-          input_dict=input_dict,
-          output_dict=output_dict,
-          use_cached_results=use_cached_results)
+          component_info=self._component_info, output_artifacts=output_dict)
 
   def launch(self) -> data_types.ExecutionInfo:
     """Execute the component, includes driver, executor and publisher.
@@ -209,10 +205,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     absl.logging.info('Running publisher for %s',
                       self._component_info.component_id)
-    self._run_publisher(execution_decision.use_cached_results,
-                        execution_decision.execution_id,
-                        execution_decision.input_dict,
-                        execution_decision.output_dict)
+    self._run_publisher(output_dict=execution_decision.output_dict)
 
     return data_types.ExecutionInfo(
         input_dict=execution_decision.input_dict,

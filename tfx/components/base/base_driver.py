@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Text
 import absl
 import tensorflow as tf
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -199,12 +200,14 @@ class BaseDriver(object):
     return self._metadata_handler.fetch_previous_result_artifacts(
         output_artifacts_dict, cached_execution_id)
 
-  def _register_execution(self, exec_properties: Dict[Text, Any],
-                          pipeline_info: data_types.PipelineInfo,
-                          component_info: data_types.ComponentInfo):
-    """Register the upcoming execution in MLMD.
+  def _register_execution(
+      self, input_artifacts: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
+      component_info: data_types.ComponentInfo) -> metadata_store_pb2.Execution:
+    """Registers the upcoming execution in MLMD.
 
     Args:
+      input_artifacts: Dict of input artifacts.
       exec_properties: Dict of other execution properties.
       pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
         related properties including pipeline_name, pipeline_root and run_id
@@ -212,18 +215,18 @@ class BaseDriver(object):
         related properties including component_type and component_id.
 
     Returns:
-      the id of the upcoming execution
+      the registered execution
     """
     contexts = self._metadata_handler.register_contexts_if_not_exists(
         pipeline_info, component_info)
-    execution_id = self._metadata_handler.register_execution(
+    execution = self._metadata_handler.register_execution(
+        input_artifacts=input_artifacts,
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info,
         contexts=contexts)
-    absl.logging.debug('Execution id of the upcoming component execution is %s',
-                       execution_id)
-    return execution_id
+    absl.logging.debug('The upcoming component execution is %s', execution)
+    return execution
 
   def pre_execution(
       self,
@@ -261,15 +264,22 @@ class BaseDriver(object):
       RuntimeError: if any input as an empty uri.
     """
     # Step 1. Fetch inputs from metadata.
+    exec_properties = self.resolve_exec_properties(exec_properties,
+                                                   pipeline_info,
+                                                   component_info)
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    driver_args, pipeline_info)
     self.verify_input_artifacts(artifacts_dict=input_artifacts)
     absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
-    execution_id = self._register_execution(
+    contexts = self._metadata_handler.register_contexts_if_not_exists(
+        pipeline_info, component_info)
+    execution = self._metadata_handler.register_execution(
+        input_artifacts=input_artifacts,
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
-        component_info=component_info)
+        component_info=component_info,
+        contexts=contexts)
     output_artifacts = {}
     use_cached_results = False
 
@@ -295,24 +305,38 @@ class BaseDriver(object):
           absl.logging.warning(
               'Error when trying to get cached output artifacts')
           use_cached_results = False
-    if not use_cached_results:
+    if use_cached_results:
+      # If cache should be used, updates execution to reflect that. Note that
+      # with this update, publisher should / will be skipped.
+      self._metadata_handler.update_execution(
+          execution=execution,
+          component_info=component_info,
+          output_artifacts=output_artifacts,
+          execution_state=metadata.EXECUTION_STATE_CACHED,
+          contexts=contexts)
+    else:
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           output_dict=output_dict,
-          execution_id=execution_id,
+          execution_id=execution.id,
           pipeline_info=pipeline_info,
           component_info=component_info)
       absl.logging.debug(
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
-      exec_properties = self.resolve_exec_properties(exec_properties,
-                                                     pipeline_info,
-                                                     component_info)
+      # Updates the execution to reflect refreshed output artifacts and
+      # execution properties.
+      self._metadata_handler.update_execution(
+          execution=execution,
+          component_info=component_info,
+          output_artifacts=output_artifacts,
+          exec_properties=exec_properties,
+          contexts=contexts)
       absl.logging.debug(
           'Execution properties for the upcoming execution are: %s',
           exec_properties)
 
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
-                                        exec_properties, execution_id,
+                                        exec_properties, execution.id,
                                         use_cached_results)

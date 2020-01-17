@@ -24,6 +24,7 @@ from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.types import node_common
 from tfx.utils import json_utils
 
@@ -52,6 +53,15 @@ class ResolverDriver(base_driver.BaseDriver):
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
+    # Registers contexts and execution
+    contexts = self._metadata_handler.register_contexts_if_not_exists(
+        pipeline_info, component_info)
+    execution = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info,
+        contexts=contexts)
+    # Gets resolved artifacts.
     resolver_class = exec_properties[RESOLVER_CLASS]
     if exec_properties[RESOLVER_CONFIGS]:
       resolver = resolver_class(**exec_properties[RESOLVER_CONFIGS])
@@ -60,15 +70,20 @@ class ResolverDriver(base_driver.BaseDriver):
     resolve_result = resolver.resolve(
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
+    # Updates execution to reflect artifact resolution results and mark
+    # as cached.
+    self._metadata_handler.update_execution(
+        execution=execution,
+        component_info=component_info,
+        output_artifacts=resolve_result.per_key_resolve_result,
+        execution_state=metadata.EXECUTION_STATE_CACHED,
+        contexts=contexts)
 
     return data_types.ExecutionDecision(
         input_dict={},
         output_dict=resolve_result.per_key_resolve_result,
         exec_properties=exec_properties,
-        execution_id=self._register_execution(
-            exec_properties={},
-            pipeline_info=pipeline_info,
-            component_info=component_info),
+        execution_id=execution.id,
         use_cached_results=True)
 
 

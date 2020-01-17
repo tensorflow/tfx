@@ -65,50 +65,6 @@ class MetadataTest(tf.test.TestCase):
       current_artifact_state = artifact.custom_properties['state'].string_value
     self.assertEqual(current_artifact_state, state)
 
-  def testEmptyArtifact(self):
-    with metadata.Metadata(connection_config=self._connection_config) as m:
-      m.publish_artifacts([])
-      eid = m.register_execution(
-          exec_properties={},
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info)
-      m.publish_execution(eid, {}, {})
-      [execution] = m.store.get_executions_by_id([eid])
-      self.assertProtoEquals(
-          """
-        id: 1
-        type_id: 1
-        properties {
-          key: "state"
-          value {
-            string_value: "complete"
-          }
-        }
-        properties {
-          key: "pipeline_name"
-          value {
-            string_value: "my_pipeline"
-          }
-        }
-        properties {
-          key: "pipeline_root"
-          value {
-            string_value: "/tmp"
-          }
-        }
-        properties {
-          key: "run_id"
-          value {
-            string_value: "my_run_id"
-          }
-        }
-        properties {
-          key: "component_id"
-          value {
-            string_value: "my_component"
-          }
-        }""", execution)
-
   def testArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       self.assertListEqual([], m.get_all_artifacts())
@@ -153,10 +109,14 @@ class MetadataTest(tf.test.TestCase):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = m.register_contexts_if_not_exists(self._pipeline_info,
                                                    self._component_info)
-
       # Test prepare_execution.
       exec_properties = {'arg_one': 1}
-      eid = m.register_execution(
+      input_artifact = standard_artifacts.Examples()
+      output_artifact = standard_artifacts.Examples()
+      input_artifacts = {'input': [input_artifact]}
+      output_artifacts = {'output': [output_artifact]}
+      m.register_execution(
+          input_artifacts=input_artifacts,
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
@@ -204,20 +164,17 @@ class MetadataTest(tf.test.TestCase):
         }""", execution)
 
       # Test publish_execution.
-      input_artifact = standard_artifacts.Examples()
-      m.publish_artifacts([input_artifact])
-      output_artifact = standard_artifacts.Examples()
-      input_dict = {'input': [input_artifact]}
-      output_dict = {'output': [output_artifact]}
-      m.publish_execution(eid, input_dict, output_dict)
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts=output_artifacts)
       # Make sure artifacts in output_dict are published.
       self.assertEqual(ArtifactState.PUBLISHED, output_artifact.state)
       # Make sure execution state are changed.
-      [execution] = m.store.get_executions_by_id([eid])
+      [execution] = m.store.get_executions_by_id([execution.id])
       self.assertEqual(metadata.EXECUTION_STATE_COMPLETE,
                        execution.properties['state'].string_value)
       # Make sure events are published.
-      events = m.store.get_events_by_execution_ids([eid])
+      events = m.store.get_events_by_execution_ids([execution.id])
       self.assertEqual(2, len(events))
       self.assertEqual(input_artifact.id, events[0].artifact_id)
       self.assertEqual(metadata_store_pb2.Event.INPUT, events[0].type)
@@ -250,18 +207,20 @@ class MetadataTest(tf.test.TestCase):
       # update will not be breaking change.
       exec_properties_one = {'arg_one': 1}
       exec_properties_two = {'arg_one': 1, 'arg_two': 2}
-      eid_one = m.register_execution(
+      execution_one = m.register_execution(
+          input_artifacts={},
           exec_properties=exec_properties_one,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
-      eid_two = m.register_execution(
+      execution_two = m.register_execution(
+          input_artifacts={},
           exec_properties=exec_properties_two,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
-      [execution_one,
-       execution_two] = m.store.get_executions_by_id([eid_one, eid_two])
+      [execution_one, execution_two
+      ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       self.assertProtoEquals(
           """
         id: 1
@@ -359,21 +318,23 @@ class MetadataTest(tf.test.TestCase):
       # update will not affect backward compatibility.
       exec_properties_one = {'arg_one': 1}
       exec_properties_two = {'arg_one': 1, 'arg_two': 2}
-      eid_two = m.register_execution(
-          exec_properties=exec_properties_two,
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info,
-          contexts=contexts)
-      eid_one = m.register_execution(
+      execution_one = m.register_execution(
+          input_artifacts={},
           exec_properties=exec_properties_one,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
-      [execution_one,
-       execution_two] = m.store.get_executions_by_id([eid_one, eid_two])
+      execution_two = m.register_execution(
+          input_artifacts={},
+          exec_properties=exec_properties_two,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts)
+      [execution_one, execution_two
+      ] = m.store.get_executions_by_id([execution_one.id, execution_two.id])
       self.assertProtoEquals(
           """
-        id: 2
+        id: 1
         type_id: 4
         properties {
           key: "state"
@@ -413,7 +374,7 @@ class MetadataTest(tf.test.TestCase):
         }""", execution_one)
       self.assertProtoEquals(
           """
-        id: 1
+        id: 2
         type_id: 4
         properties {
           key: "state"
@@ -465,17 +426,18 @@ class MetadataTest(tf.test.TestCase):
       exec_properties = {'log_root': 'path'}
       contexts = m.register_contexts_if_not_exists(self._pipeline_info,
                                                    self._component_info)
-      eid = m.register_execution(
+      input_artifacts = {'input': [standard_artifacts.Examples()]}
+      execution = m.register_execution(
+          input_artifacts=input_artifacts,
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
-      input_artifact = standard_artifacts.Examples()
-      m.publish_artifacts([input_artifact])
-      output_artifact = standard_artifacts.Examples()
-      input_artifacts = {'input': [input_artifact]}
-      output_artifacts = {'output': [output_artifact]}
-      m.publish_execution(eid, input_artifacts, output_artifacts)
+      eid = execution.id
+      output_artifacts = {'output': [standard_artifacts.Examples()]}
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts=output_artifacts)
 
       # Test previous_run.
       self.assertEqual(
@@ -559,18 +521,17 @@ class MetadataTest(tf.test.TestCase):
       exec_properties = {'log_root': 'path'}
       contexts = m.register_contexts_if_not_exists(self._pipeline_info,
                                                    self._component_info)
-      eid = m.register_execution(
+      m.register_execution(
+          input_artifacts={'input': [standard_artifacts.Examples()]},
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
-      input_artifact = standard_artifacts.Examples()
-      m.publish_artifacts([input_artifact])
       output_artifact = standard_artifacts.Examples()
       output_artifact.uri = 'my/uri'
-      input_dict = {'input': [input_artifact]}
       output_dict = {'output': [output_artifact]}
-      m.publish_execution(eid, input_dict, output_dict)
+      m.publish_execution(
+          component_info=self._component_info, output_artifacts=output_dict)
       [artifact] = m.search_artifacts(
           artifact_name='output',
           pipeline_info=self._pipeline_info,
@@ -580,19 +541,24 @@ class MetadataTest(tf.test.TestCase):
   def testPublishSkippedExecution(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       exec_properties = {'log_root': 'path'}
-      eid = m.register_execution(
-          exec_properties=exec_properties,
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info)
-      input_artifact = standard_artifacts.Examples()
-      m.publish_artifacts([input_artifact])
       output_artifact = standard_artifacts.Examples()
       output_artifact.uri = 'my/uri'
-      m.publish_artifacts([output_artifact])
-      input_dict = {'input': [input_artifact]}
-      output_dict = {'output': [output_artifact]}
-      m.publish_execution(
-          eid, input_dict, output_dict, state=metadata.EXECUTION_STATE_CACHED)
+      output_artifacts = {'output': [output_artifact]}
+      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
+                                                   self._component_info)
+      execution = m.register_execution(
+          input_artifacts={'input': [standard_artifacts.Examples()]},
+          exec_properties=exec_properties,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts)
+      m.update_execution(
+          execution=execution,
+          component_info=self._component_info,
+          output_artifacts=output_artifacts,
+          execution_state=metadata.EXECUTION_STATE_CACHED,
+          contexts=contexts)
+      m.publish_execution(component_info=self._component_info)
 
   def testGetExecutionStates(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
@@ -607,18 +573,21 @@ class MetadataTest(tf.test.TestCase):
           [self._pipeline_info.run_id, self._pipeline_info2.run_id],
           m.get_all_runs('my_pipeline'))
 
-      eid = m.register_execution(
+      m.register_execution(
+          input_artifacts={},
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts_one)
-      m.publish_execution(eid, {}, {})
+      m.publish_execution(component_info=self._component_info)
       m.register_execution(
+          input_artifacts={},
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info2,
           contexts=contexts_two)
       m.register_execution(
+          input_artifacts={},
           exec_properties={},
           pipeline_info=self._pipeline_info2,
           component_info=self._component_info,
@@ -631,6 +600,65 @@ class MetadataTest(tf.test.TestCase):
               self._component_info2.component_id:
                   metadata.EXECUTION_STATE_NEW,
           }, states)
+
+  def testUpdateExecution(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
+                                                   self._component_info)
+      m.register_execution(
+          input_artifacts={},
+          exec_properties={'k': 'v1'},
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts)
+      [execution] = m.store.get_executions_by_context(
+          m.get_component_run_context(self._component_info).id)
+      self.assertEqual(execution.properties['k'].string_value, 'v1')
+      self.assertEqual(execution.properties['state'].string_value,
+                       metadata.EXECUTION_STATE_NEW)
+
+      m.update_execution(
+          execution,
+          self._component_info,
+          input_artifacts={'input_a': [standard_artifacts.Examples()]},
+          exec_properties={'k': 'v2'},
+          contexts=contexts)
+
+      [execution] = m.store.get_executions_by_context(
+          m.get_component_run_context(self._component_info).id)
+      self.assertEqual(execution.properties['k'].string_value, 'v2')
+      self.assertEqual(execution.properties['state'].string_value,
+                       metadata.EXECUTION_STATE_NEW)
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEqual(event.artifact_id, 1)
+      [artifact] = m.store.get_artifacts_by_context(
+          m.get_component_run_context(self._component_info).id)
+      self.assertEqual(artifact.id, 1)
+
+      aa = standard_artifacts.Examples()
+      aa.set_mlmd_artifact(artifact)
+      m.update_execution(
+          execution, self._component_info, input_artifacts={'input_a': [aa]})
+      [event] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEqual(event.type, metadata_store_pb2.Event.INPUT)
+
+      m.publish_execution(
+          self._component_info,
+          output_artifacts={'output': [standard_artifacts.Model()]},
+          exec_properties={'k': 'v3'})
+
+      [execution] = m.store.get_executions_by_context(
+          m.get_component_run_context(self._component_info).id)
+      self.assertEqual(execution.properties['k'].string_value, 'v3')
+      self.assertEqual(execution.properties['state'].string_value,
+                       metadata.EXECUTION_STATE_COMPLETE)
+      [_, event_b] = m.store.get_events_by_execution_ids([execution.id])
+      self.assertEqual(event_b.artifact_id, 2)
+      self.assertEqual(event_b.type, metadata_store_pb2.Event.OUTPUT)
+      [_, artifact_b] = m.store.get_artifacts_by_context(
+          m.get_component_run_context(self._component_info).id)
+      self.assertEqual(artifact_b.id, 2)
+      self.check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
 
   def testContext(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

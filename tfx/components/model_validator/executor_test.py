@@ -65,7 +65,7 @@ class ExecutorTest(tf.test.TestCase):
     exec_properties = {
         'blessed_model': os.path.join(self._source_data_dir, 'trainer/blessed'),
         'blessed_model_id': 123,
-        'component_id': self.component_id,
+        'current_component_id': self.component_id,
     }
 
     # Run executor.
@@ -82,7 +82,7 @@ class ExecutorTest(tf.test.TestCase):
     exec_properties = {
         'blessed_model': None,
         'blessed_model_id': None,
-        'component_id': self.component_id,
+        'current_component_id': self.component_id,
     }
 
     # Run executor.

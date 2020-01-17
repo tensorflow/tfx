@@ -18,11 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Text
+from typing import Any, Dict, List, Optional, Text
 
 import absl
 
 from tfx import types
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 
 
@@ -37,9 +38,10 @@ class Publisher(object):
     self._metadata_handler = metadata_handler
 
   def publish_execution(
-      self, execution_id: int, input_dict: Dict[Text, List[types.Artifact]],
-      output_dict: Dict[Text, List[types.Artifact]],
-      use_cached_results: bool) -> Dict[Text, List[types.Artifact]]:
+      self,
+      component_info: data_types.ComponentInfo,
+      output_artifacts: Optional[Dict[Text, List[types.Artifact]]] = None,
+      exec_properties: Optional[Dict[Text, Any]] = None):
     """Publishes a component execution to metadata.
 
     This function will do two things:
@@ -49,24 +51,19 @@ class Publisher(object):
        artifact to the execution, with type INPUT or OUTPUT respectively
 
     Args:
-      execution_id: the execution id for the
-      input_dict: key -> Artifacts that are used as inputs in the execution
-      output_dict: key -> Artifacts that are declared as outputs for the
+      component_info: the information of the component
+      output_artifacts: optional key -> Artifacts to be published as outputs
+        of the execution
+      exec_properties: optional execution properties to be published for the
         execution
-      use_cached_results: whether or not the execution has used cached results
 
     Returns:
       A dict containing output artifacts.
     """
-    absl.logging.debug('Whether cached results are used: %s',
-                       use_cached_results)
-    absl.logging.debug('Execution id: %s', execution_id)
-    absl.logging.debug('Inputs: %s', input_dict)
-    absl.logging.debug('Outputs: %s', output_dict)
+    absl.logging.debug('Outputs: %s', output_artifacts)
+    absl.logging.debug('Execution properties: %s', exec_properties)
 
-    final_execution_state = metadata.EXECUTION_STATE_CACHED if use_cached_results else metadata.EXECUTION_STATE_COMPLETE
-    return self._metadata_handler.publish_execution(
-        execution_id=execution_id,
-        input_dict=input_dict,
-        output_dict=output_dict,
-        state=final_execution_state)
+    self._metadata_handler.publish_execution(
+        component_info=component_info,
+        output_artifacts=output_artifacts,
+        exec_properties=exec_properties)

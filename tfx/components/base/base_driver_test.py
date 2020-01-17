@@ -71,6 +71,8 @@ class BaseDriverTest(tf.test.TestCase):
         'key': 'value',
     }
     self._execution_id = 100
+    self._execution = metadata_store_pb2.Execution()
+    self._execution.id = self._execution_id
     self._context_id = 123
     self._driver_args = data_types.DriverArgs(enable_cache=True)
     self._pipeline_info = data_types.PipelineInfo(
@@ -88,7 +90,7 @@ class BaseDriverTest(tf.test.TestCase):
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.get_artifacts_by_info.side_effect = list(
         self._input_dict['input_data'].get())
-    self._mock_metadata.register_execution.side_effect = [self._execution_id]
+    self._mock_metadata.register_execution.side_effect = [self._execution]
     self._mock_metadata.previous_execution.side_effect = [None]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
         metadata_store_pb2.Context()
@@ -118,7 +120,7 @@ class BaseDriverTest(tf.test.TestCase):
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.get_artifacts_by_info.side_effect = list(
         self._input_dict['input_data'].get())
-    self._mock_metadata.register_execution.side_effect = [self._execution_id]
+    self._mock_metadata.register_execution.side_effect = [self._execution]
     self._mock_metadata.previous_execution.side_effect = [2]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
         metadata_store_pb2.Context()
