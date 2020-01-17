@@ -52,7 +52,8 @@
 *   Fixed some ill-formed visualization when running on KFP.
 *   Removed system info from artifact properties and use channels to hold info
     for generating MLMD queries.
-*   Relied on MLMD context for inter component artifact resolution.
+*   Relied on MLMD context for inter component artifact resolution and execution
+    pubishing.
 *   Added pipeline level context and component run level context.
 *   Included test data for examples/chicago_taxi_pipeline in package.
 *   Capped version of Tensorflow runtime used in Google Cloud integration to 1.15.

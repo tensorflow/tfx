@@ -25,6 +25,7 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import node_common
@@ -102,6 +103,15 @@ class ImporterDriver(base_driver.BaseDriver):
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
+    # Registers contexts and execution.
+    contexts = self._metadata_handler.register_contexts_if_not_exists(
+        pipeline_info, component_info)
+    execution = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info,
+        contexts=contexts)
+    # Creates import artifacts entries.
     output_artifacts = {
         IMPORT_RESULT_KEY:
             self._import_artifacts(
@@ -110,6 +120,13 @@ class ImporterDriver(base_driver.BaseDriver):
                 reimport=exec_properties[REIMPORT_OPTION_KEY],
                 split_names=exec_properties[SPLIT_KEY])
     }
+    # Updates execution with import artifacts.
+    self._metadata_handler.update_execution(
+        execution=execution,
+        component_info=component_info,
+        output_artifacts=output_artifacts,
+        execution_state=metadata.EXECUTION_STATE_CACHED,
+        contexts=contexts)
 
     output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
         output_artifacts[IMPORT_RESULT_KEY])
@@ -117,11 +134,8 @@ class ImporterDriver(base_driver.BaseDriver):
     return data_types.ExecutionDecision(
         input_dict={},
         output_dict=output_artifacts,
-        exec_properties={},
-        execution_id=self._register_execution(
-            exec_properties={},
-            pipeline_info=pipeline_info,
-            component_info=component_info),
+        exec_properties=exec_properties,
+        execution_id=execution.id,
         use_cached_results=False)
 
 

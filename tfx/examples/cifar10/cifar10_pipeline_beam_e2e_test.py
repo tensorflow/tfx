@@ -88,25 +88,6 @@ class Cifar10PipelineBeamEndToEndTest(tf.test.TestCase):
 
     self.assertPipelineExecution()
 
-    # Run pipeline again.
-    BeamDagRunner().run(
-        cifar10_pipeline_beam._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
-
-    # Assert cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      # 9 more cached executions.
-      self.assertEqual(18, len(m.store.get_executions()))
-
-    self.assertPipelineExecution()
-
 
 if __name__ == '__main__':
   tf.test.main()
