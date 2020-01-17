@@ -22,7 +22,7 @@ import datetime
 import os
 from airflow import models
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_simple
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner

@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
 from tfx.orchestration.kubeflow.kubeflow_dag_runner import KubeflowDagRunner
 
