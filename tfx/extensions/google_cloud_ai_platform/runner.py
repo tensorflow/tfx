@@ -31,6 +31,7 @@ import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.types import artifact_utils
+from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -101,6 +102,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     job_id: Job ID for AI Platform Training job. If not supplied,
       system-determined unique ID is given. Refer to
     https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
+
   Returns:
     None
   Raises:
@@ -139,10 +141,15 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   # It's been a stowaway in aip_args and has finally reached its destination.
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
+  job_labels = telemetry_utils.get_labels_dict(tfx_executor=executor_class_path)
 
   # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
   job_id = job_id or 'tfx_%s' % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-  job_spec = {'jobId': job_id, 'trainingInput': training_inputs}
+  job_spec = {
+      'jobId': job_id,
+      'trainingInput': training_inputs,
+      'labels': job_labels,
+  }
 
   # Submit job to AIP Training
   absl.logging.info(
