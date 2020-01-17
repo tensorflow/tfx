@@ -201,6 +201,14 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.string1, '111')
     self.assertEqual(rehydrated.string2, '222')
 
+    serialized2 = rehydrated.to_json_dict()
+    rehydrated = artifact.Artifact.from_json_dict(serialized2)
+    self.assertIs(rehydrated.__class__, artifact.Artifact)
+    self.assertEqual(rehydrated.int1, 111)
+    self.assertEqual(rehydrated.int2, 222)
+    self.assertEqual(rehydrated.string1, '111')
+    self.assertEqual(rehydrated.string2, '222')
+
 
 if __name__ == '__main__':
   tf.test.main()
