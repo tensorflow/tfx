@@ -31,11 +31,13 @@ _PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow_v2'
 
 def _create_pipeline():
   pipeline_name = _PIPELINE_NAME
-  test_output_dir = 'gs://{}/test_output'.format(test_utils.BUCKET_NAME)
-  pipeline_root = os.path.join(test_output_dir, pipeline_name)
-  components = test_utils.create_e2e_components(pipeline_root,
-                                                test_utils.DATA_ROOT,
-                                                test_utils.TAXI_MODULE_FILE)
+  pipeline_root = os.path.join(test_utils.get_test_output_dir(), pipeline_name)
+  components = test_utils.create_e2e_components(
+      pipeline_root,
+      test_utils.get_csv_input_location(),
+      test_utils.get_transform_module(),
+      test_utils.get_trainer_module(),
+  )
   return tfx_pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,

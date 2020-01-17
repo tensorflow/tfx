@@ -85,10 +85,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.raw_examples_importer = ImporterNode(
         instance_name='raw_examples',
         source_uri=[
-            os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/train'),
-            os.path.join(self._intermediate_data_root,
-                         'csv_example_gen/examples/test-pipeline/eval')
+            os.path.join(self._testdata_root, 'csv_example_gen', 'train'),
+            os.path.join(self._testdata_root, 'csv_example_gen', 'eval')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -98,10 +96,10 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.transformed_examples_importer = ImporterNode(
         instance_name='transformed_examples',
         source_uri=[
-            os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/train'),
-            os.path.join(self._intermediate_data_root,
-                         'transform/transformed_examples/test-pipeline/eval')
+            os.path.join(self._testdata_root, 'transform',
+                         'transformed_examples', 'train'),
+            os.path.join(self._testdata_root, 'transform',
+                         'transformed_examples', 'eval')
         ],
         artifact_type=standard_artifacts.Examples,
         reimport=True,
@@ -110,39 +108,36 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     # Schema artifact for testing.
     self.schema_importer = ImporterNode(
         instance_name='schema',
-        source_uri=os.path.join(self._intermediate_data_root,
-                                'schema_gen/output/test-pipeline'),
+        source_uri=os.path.join(self._testdata_root, 'schema_gen'),
         artifact_type=standard_artifacts.Schema,
         reimport=True)
 
     # TransformGraph artifact for testing.
     self.transform_graph_importer = ImporterNode(
         instance_name='transform_graph',
-        source_uri=os.path.join(self._intermediate_data_root,
-                                'transform/transform_output/test-pipeline'),
+        source_uri=os.path.join(self._testdata_root, 'transform',
+                                'transform_output'),
         artifact_type=standard_artifacts.TransformGraph,
         reimport=True)
 
     # Model artifact for testing.
     self.model_1_importer = ImporterNode(
         instance_name='model_1',
-        source_uri=os.path.join(self._intermediate_data_root,
-                                'trainer/output/test-pipeline/1'),
+        source_uri=os.path.join(self._testdata_root, 'trainer', 'previous'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
     self.model_2_importer = ImporterNode(
         instance_name='model_2',
-        source_uri=os.path.join(self._intermediate_data_root,
-                                'trainer/output/test-pipeline/2'),
+        source_uri=os.path.join(self._testdata_root, 'trainer', 'current'),
         artifact_type=standard_artifacts.Model,
         reimport=True)
 
     # ModelBlessing artifact for testing.
     self.model_blessing_importer = ImporterNode(
         instance_name='model_blessing',
-        source_uri=os.path.join(self._intermediate_data_root,
-                                'model_validator/blessing/test-pipeline'),
+        source_uri=os.path.join(self._testdata_root, 'model_validator',
+                                'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
         reimport=True)
 
@@ -255,7 +250,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
           model=model_importer.outputs['result'],
           model_blessing=model_blessing_importer.outputs['result'],
           custom_config={
-              ai_platform_pusher_executor.SERVING_ARGS: {
+              ai_platform_pusher_executor.SERVING_ARGS_KEY: {
                   'model_name': model_name,
                   'project_id': self._gcp_project_id,
               }

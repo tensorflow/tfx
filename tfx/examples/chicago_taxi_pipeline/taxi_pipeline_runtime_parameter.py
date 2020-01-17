@@ -64,16 +64,23 @@ def _create_parameterized_pipeline(
   """
   # First, define the pipeline parameters.
   # Path to the CSV data file, under which there should be a data.csv file.
-  data_root_param = data_types.RuntimeParameter(
+  data_root = data_types.RuntimeParameter(
       name='data-root',
       default='gs://my-bucket/data',
       ptype=Text,
   )
 
-  # Path to the module file.
-  taxi_module_file_param = data_types.RuntimeParameter(
-      name='module-file',
-      default='gs://my-bucket/modules/taxi_utils.py',
+  # Path to the transform module file.
+  transform_module_file = data_types.RuntimeParameter(
+      name='transform-module',
+      default='gs://my-bucket/modules/transform_module.py',
+      ptype=Text,
+  )
+
+  # Path to the trainer module file.
+  trainer_module_file = data_types.RuntimeParameter(
+      name='trainer-module',
+      default='gs://my-bucket/modules/trainer_module.py',
       ptype=Text,
   )
 
@@ -98,8 +105,8 @@ def _create_parameterized_pipeline(
       ptype=Text,
   )
 
-  # The input data location is parameterized by _data_root_param
-  examples = external_input(data_root_param)
+  # The input data location is parameterized by data_root
+  examples = external_input(data_root)
   example_gen = CsvExampleGen(input=examples)
 
   statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
@@ -110,16 +117,16 @@ def _create_parameterized_pipeline(
       schema=infer_schema.outputs['schema'])
 
   # The module file used in Transform and Trainer component is paramterized by
-  # _taxi_module_file_param.
+  # transform_module_file.
   transform = Transform(
       input_data=example_gen.outputs['examples'],
       schema=infer_schema.outputs['schema'],
-      module_file=taxi_module_file_param)
+      module_file=transform_module_file)
 
   # The numbers of steps in train_args are specified as RuntimeParameter with
   # name 'train-steps' and 'eval-steps', respectively.
   trainer = Trainer(
-      module_file=taxi_module_file_param,
+      module_file=trainer_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_output=transform.outputs['transform_graph'],

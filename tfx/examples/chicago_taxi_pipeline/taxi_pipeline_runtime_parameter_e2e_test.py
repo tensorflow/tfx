@@ -36,7 +36,8 @@ class TaxiPipelineRuntimeParameterEndToEndTest(test_utils.BaseKubeflowTest):
 
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),
-        'module-file': self._taxi_module_file,
+        'transform-module': self._transform_module,
+        'trainer-module': self._trainer_module,
         'data-root': self._data_root,
         'train-steps': 10,
         'eval-steps': 5,

@@ -32,8 +32,11 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
     """End-to-End test for simple pipeline."""
     pipeline_name = 'kubeflow-e2e-test-{}'.format(self._random_id())
     components = test_utils.create_e2e_components(
-        self._pipeline_root(pipeline_name), self._data_root,
-        self._taxi_module_file)
+        self._pipeline_root(pipeline_name),
+        self._data_root,
+        self._transform_module,
+        self._trainer_module,
+    )
     pipeline = self._create_pipeline(pipeline_name, components)
 
     self._compile_and_run_pipeline(pipeline)

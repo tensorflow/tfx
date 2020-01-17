@@ -46,22 +46,44 @@ GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 # The GCP bucket to use to write output artifacts.
 BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
 
-# The input data root location on GCS. The input files are never modified and
-# are safe for concurrent reads.
-DATA_ROOT = os.environ['KFP_E2E_DATA_ROOT']
+# The location of test data. The input files are copied to a test-local
+# location for each invocation, and cleaned up at the end of test.
+TESTDATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 
-# Location of the input taxi module file to be used in the test pipeline.
-TAXI_MODULE_FILE = os.environ['KFP_E2E_TAXI_MODULE_FILE']
+# The location of test user module
+# It is retrieved from inside the container subject to testing.
+MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
 
 
-def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
-                          taxi_module_file: Text) -> List[BaseComponent]:
+def get_test_output_dir():
+  return 'gs://{}/test_output'.format(BUCKET_NAME)
+
+
+def get_csv_input_location():
+  return os.path.join(TESTDATA_ROOT, 'external', 'csv')
+
+
+def get_transform_module():
+  return os.path.join(MODULE_ROOT, 'transform_module.py')
+
+
+def get_trainer_module():
+  return os.path.join(MODULE_ROOT, 'trainer_module.py')
+
+
+def create_e2e_components(
+    pipeline_root: Text,
+    csv_input_location: Text,
+    transform_module: Text,
+    trainer_module: Text,
+) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
   Args:
     pipeline_root: The root of the pipeline output.
     csv_input_location: The location of the input data directory.
-    taxi_module_file: The location of the module file for Transform/Trainer.
+    transform_module: The location of the transform module file.
+    trainer_module: The location of the trainer module file.
 
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
@@ -78,14 +100,14 @@ def create_e2e_components(pipeline_root: Text, csv_input_location: Text,
   transform = Transform(
       input_data=example_gen.outputs['examples'],
       schema=infer_schema.outputs['output'],
-      module_file=taxi_module_file)
+      module_file=transform_module)
   trainer = Trainer(
-      module_file=taxi_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['output'],
       transform_output=transform.outputs['transform_output'],
       train_args=trainer_pb2.TrainArgs(num_steps=10),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+      eval_args=trainer_pb2.EvalArgs(num_steps=5),
+      module_file=trainer_module)
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model_exports=trainer.outputs['output'],
