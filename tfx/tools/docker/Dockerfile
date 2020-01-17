@@ -29,7 +29,6 @@ RUN apt-get update -y && \
   protobuf-compiler \
   libprotobuf-dev \
   python3.6-dev \
-  python3-pip \
   python3-setuptools \
   python3-virtualenv \
   python3-wheel \
@@ -41,6 +40,8 @@ RUN apt-get update -y && \
   apt-get autoclean && \
   apt-get autoremove --purge && \
   update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
+# This is to address b/144805438
+RUN wget https://bootstrap.pypa.io/get-pip.py && python3.6 get-pip.py
 
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3.6 -m pip install --upgrade pip && \
