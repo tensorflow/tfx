@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include taxi pipeline functions and necesasry utils.
+"""Python source file include taxi pipeline functions and necessary utils.
 
 For a TFX pipeline to successfully run, a preprocessing_fn and a
 _build_estimator function needs to be provided.  This file contains both.
@@ -24,7 +24,7 @@ examples/chicago_taxi/preprocess.py.
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow.compat.v1 as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
@@ -89,13 +89,13 @@ def _fill_in_missing(x):
   converts to a dense tensor. Otherwise it returns x as is.
 
   Args:
-    x: A `SparseTensor` of rank 2 or a tensor that is not an instnace of
+    x: A `SparseTensor` of rank 2 or a tensor that is not an instance of
       `SparseTensor`.  If input is a `SparseTensor` its dense shape should have
       size at most 1 in the second dimension.
 
   Returns:
     A rank 1 tensor where missing values of `x` have been filled in, or x as is
-    if x is not an instnace of `SparseTensor`
+    if x is not an instance of `SparseTensor`
   """
   if not isinstance(x, tf.SparseTensor):
     return x
@@ -346,7 +346,7 @@ def trainer_fn(hparams, schema):
   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
 
   estimator = _build_estimator(
-      # Construct layers sizes with exponetial decay
+      # Construct layers sizes with exponential decay
       hidden_units=[
           max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
           for i in range(num_dnn_layers)
