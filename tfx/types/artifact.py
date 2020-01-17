@@ -277,16 +277,22 @@ class Artifact(json_utils.Jsonable):
 
     # First, try to resolve the specific class used for the artifact; if this
     # is not possible, use a generic artifact.Artifact object.
+    result = None
     try:
       artifact_cls = getattr(importlib.import_module(module_name), class_name)
-      result = artifact_cls()
-    except (AttributeError, ImportError):
+      # If the artifact type is the base Artifact class, do not construct the
+      # object here since that constructor requires the mlmd_artifact_type
+      # argument.
+      if artifact_cls != Artifact:
+        result = artifact_cls()
+    except (AttributeError, ImportError, ValueError):
       absl.logging.warning((
           'Could not load artifact class %s.%s; using fallback deserialization '
           'for the relevant artifact. This behavior may not be supported in '
           'the future; please make sure that any artifact classes can be '
           'imported within your container or environment.') %
                            (module_name, class_name))
+    if not result:
       result = Artifact(mlmd_artifact_type=artifact_type)
     result.set_mlmd_artifact_type(artifact_type)
     result.set_mlmd_artifact(artifact)
