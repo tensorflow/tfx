@@ -22,7 +22,7 @@ import os
 import types
 
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam

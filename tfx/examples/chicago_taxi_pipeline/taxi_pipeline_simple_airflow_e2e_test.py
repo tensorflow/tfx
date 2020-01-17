@@ -25,7 +25,7 @@ from typing import Sequence, Set, Text
 
 import absl
 import pytest
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 import unittest
 from tfx.utils import io_utils
