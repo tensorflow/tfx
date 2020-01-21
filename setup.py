@@ -60,6 +60,10 @@ def generate_proto(source):
           'or install the binary package.\n')
       sys.exit(-1)
 
+    protoc_version_string = subprocess.check_output([protoc, '--version'])
+    sys.stderr.write(
+        'Using protoc:from {}; {} '.format(protoc, protoc_version_string))
+
     protoc_command = [protoc, '-I.', '--python_out=.', source]
     if subprocess.call(protoc_command) != 0:
       sys.exit(-1)

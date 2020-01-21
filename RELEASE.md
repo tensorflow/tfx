@@ -29,7 +29,6 @@
     object, instead of a connection config.
 *   Added a metadata adapter in Kubeflow to support logging the Argo pod ID as
     an execution property.
-*   Prototyped Tuner as a custom component, and create an e2e iris example.
 
 ## Bug fixes and other changes
 
