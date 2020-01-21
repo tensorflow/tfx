@@ -25,6 +25,7 @@ from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
@@ -79,12 +80,13 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
 
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component=example_gen,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=[],
         additional_pipeline_args={})
     self.assertEqual(

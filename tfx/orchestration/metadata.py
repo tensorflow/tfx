@@ -616,12 +616,12 @@ class Metadata(object):
     return None
 
   def _is_eligible_previous_execution(
-      self, currrent_execution: metadata_store_pb2.Execution,
+      self, current_execution: metadata_store_pb2.Execution,
       target_execution: metadata_store_pb2.Execution) -> bool:
-    currrent_execution.properties['run_id'].string_value = ''
+    current_execution.properties['run_id'].string_value = ''
     target_execution.properties['run_id'].string_value = ''
-    currrent_execution.id = target_execution.id
-    return currrent_execution == target_execution
+    current_execution.id = target_execution.id
+    return current_execution == target_execution
 
   # TODO(ruoyu): Leverage artifact-context attribution to enhance performance
   # once publishing execution adopts new pattern.

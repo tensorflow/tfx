@@ -28,6 +28,7 @@ from airflow.operators import python_operator
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 
@@ -68,7 +69,7 @@ def _airflow_component_launcher(
       component=component,
       pipeline_info=pipeline_info,
       driver_args=driver_args,
-      metadata_connection_config=metadata_connection_config,
+      metadata_connection=metadata.Metadata(metadata_connection_config),
       beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
