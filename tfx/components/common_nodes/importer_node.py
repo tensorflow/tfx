@@ -43,10 +43,25 @@ SPLIT_KEY = 'split_names'
 class ImporterDriver(base_driver.BaseDriver):
   """Driver for Importer."""
 
-  def _import_artifacts(self, source_uri: List[Text], reimport: bool,
-                        destination_channel: types.Channel,
-                        split_names: List[Text]) -> List[types.Artifact]:
-    """Imports external resource in MLMD."""
+  def _prepare_importer_outputs(
+      self, source_uri: List[Text], reimport: bool,
+      destination_channel: types.Channel,
+      split_names: List[Text]) -> List[types.Artifact]:
+    """Prepares a list of artifacts as output of importer.
+
+    If there are registered artifacts in MLMD already with the same uri, depend
+    on the reimport bit, reuse that so that it will not be re-registered.
+
+    Args:
+      source_uri: the uri of the source
+      reimport: if set to true, always re-register artifact. Otherwise reuse
+        already registered artifact with the same uri whenever possible
+      destination_channel: destination channel to import to
+      split_names: (deprecated) split names
+
+    Returns:
+      a list of artifacts that will be declared as the output of importer
+    """
     results = []
     for uri, s in zip(source_uri, split_names):
       absl.logging.info('Processing source uri: %s, split: %s' %
@@ -81,14 +96,9 @@ class ImporterDriver(base_driver.BaseDriver):
 
       # If any registered artifact with the same uri also has the same
       # fingerprint and user does not ask for re-import, just reuse the latest.
-      # Otherwise, register the external resource into MLMD using the type info
-      # in the destination channel.
       if bool(previous_artifacts) and not reimport:
         absl.logging.info('Reusing existing artifact')
         result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
-      else:
-        self._metadata_handler.publish_artifacts([result])
-        absl.logging.info('Registered new artifact: %s' % result)
 
       results.append(result)
 
@@ -114,7 +124,7 @@ class ImporterDriver(base_driver.BaseDriver):
     # Creates import artifacts entries.
     output_artifacts = {
         IMPORT_RESULT_KEY:
-            self._import_artifacts(
+            self._prepare_importer_outputs(
                 source_uri=exec_properties[SOURCE_URI_KEY],
                 destination_channel=output_dict[IMPORT_RESULT_KEY],
                 reimport=exec_properties[REIMPORT_OPTION_KEY],
