@@ -24,6 +24,7 @@ import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import test_utils
@@ -42,6 +43,7 @@ class ComponentRunnerTest(tf.test.TestCase):
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
 
     pipeline_root = os.path.join(test_dir, 'Test')
     input_path = os.path.join(test_dir, 'input')
@@ -65,7 +67,7 @@ class ComponentRunnerTest(tf.test.TestCase):
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=[],
         additional_pipeline_args={})
     self.assertEqual(
