@@ -28,6 +28,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.launcher import docker_component_launcher
@@ -110,6 +111,7 @@ class DockerComponentLauncherTest(tf.test.TestCase):
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
 
     pipeline_root = os.path.join(test_dir, 'Test')
 
@@ -131,7 +133,7 @@ class DockerComponentLauncherTest(tf.test.TestCase):
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=component_config)

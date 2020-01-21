@@ -25,6 +25,10 @@
     tuner support.
 *   Demonstrated multi-core processing in Flink and Spark Chicago Taxi
     PortableRunner example.
+*   Changed BaseComponentLauncher to require taking in an MLMD connection
+    object, instead of a connection config.
+*   Added a metadata adapter in Kubeflow to support logging the Argo pod ID as
+    an execution property.
 
 ## Bug fixes and other changes
 

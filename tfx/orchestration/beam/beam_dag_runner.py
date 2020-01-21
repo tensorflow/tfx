@@ -27,6 +27,7 @@ import apache_beam as beam
 
 from tfx.components.base import base_component
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import base_component_config
@@ -56,11 +57,13 @@ class _ComponentAsDoFn(beam.DoFn):
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
+    metadata_connection = metadata.Metadata(
+        tfx_pipeline.metadata_connection_config)
     self._component_launcher = component_launcher_class.create(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=tfx_pipeline.metadata_connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
         component_config=component_config)

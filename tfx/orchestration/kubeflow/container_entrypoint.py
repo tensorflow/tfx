@@ -33,6 +33,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.components.trainer import component as trainer_component
 from tfx.orchestration import data_types
+from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact
@@ -308,7 +309,8 @@ def main():
 
   kubeflow_metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
   json_format.Parse(args.kubeflow_metadata_config, kubeflow_metadata_config)
-  connection_config = _get_metadata_connection_config(kubeflow_metadata_config)
+  metadata_connection = kubeflow_metadata_adapter.KubeflowMetadataAdapter(
+      _get_metadata_connection_config(kubeflow_metadata_config))
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
   beam_pipeline_args = _make_beam_pipeline_args(args.beam_pipeline_args)
@@ -322,7 +324,7 @@ def main():
           pipeline_root=args.pipeline_root,
           run_id=os.environ['WORKFLOW_ID']),
       driver_args=driver_args,
-      metadata_connection_config=connection_config,
+      metadata_connection=metadata_connection,
       beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
