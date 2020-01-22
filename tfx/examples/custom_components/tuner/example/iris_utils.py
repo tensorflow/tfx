@@ -18,15 +18,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Text, Tuple
+from typing import Text
+
 import absl
 import kerastuner
 import tensorflow as tf
 from tensorflow import keras
+import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
-from tuner_component import component
 
 from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.examples.custom_components.tuner.tuner_component import component
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
@@ -42,34 +44,53 @@ def _gzip_reader_fn(filenames):
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def _pack(features: Dict[Text, tf.Tensor],
-          label: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-  """For reshaping the features and label to fit into the model.
-
-  For example, assume batch size is 5,
-    input features: Dict('feature1': tensor [[a], [b], [b], [a], [a]],
-                         'feature2': tensor [[x], [y], [y], [z], [z]])
-    input label: tensor [[1], [0], [0], [1], [1]]
-  after pack (stack and reshape), the tuple will be:
-    ( feature tensor [[a, x], [b, y], [b, y], [a, z], [a, z]],
-      label tensor [1, 0, 0, 1, 1])
+def _serving_input_receiver_fn(schema):
+  """Build the serving inputs.
 
   Args:
-    features: dict of feature tensor.
-    label: label tensor.
+    schema: the schema of the input data.
 
   Returns:
-    (features, label) tensor tuple.
+    serving_input_receiver_fn for serving this model, since no transformation is
+    required in this case it does not include a tf-transform graph.
   """
+  raw_feature_spec = _get_raw_feature_spec(schema)
+  raw_feature_spec.pop(_LABEL_KEY)
 
-  return tf.reshape(
-      tf.stack([features[key] for key in _FEATURE_KEYS], axis=1),
-      [-1, len(_FEATURE_KEYS)]), tf.reshape(label, [-1])
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  return raw_input_fn()
 
 
-def _make_input_dataset(file_pattern: Text,
-                        schema: schema_pb2.Schema,
-                        batch_size: int = 200) -> tf.data.Dataset:
+def _eval_input_receiver_fn(schema):
+  """Build the evalution inputs for the tf-model-analysis to run the model.
+
+  Args:
+    schema: the schema of the input data.
+
+  Returns:
+    EvalInputReceiver function, which contains:
+      - Features (dict of Tensors) to be passed to the model.
+      - Raw features as serialized tf.Examples.
+      - Labels
+  """
+  # Notice that the inputs are raw features, not transformed features here.
+  raw_feature_spec = _get_raw_feature_spec(schema)
+
+  raw_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+      raw_feature_spec, default_batch_size=None)
+  serving_input_receiver = raw_input_fn()
+
+  labels = serving_input_receiver.features.pop(_LABEL_KEY)
+  return tfma.export.EvalInputReceiver(
+      features=serving_input_receiver.features,
+      labels=labels,
+      receiver_tensors=serving_input_receiver.receiver_tensors)
+
+
+def _input_fn(file_pattern: Text,
+              schema: schema_pb2.Schema,
+              batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
@@ -79,7 +100,8 @@ def _make_input_dataset(file_pattern: Text,
       dataset to combine in a single batch
 
   Returns:
-    A tf.data.Dataset that contains features-label tuples.
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
   """
   feature_spec = _get_raw_feature_spec(schema)
 
@@ -88,15 +110,9 @@ def _make_input_dataset(file_pattern: Text,
       batch_size=batch_size,
       features=feature_spec,
       reader=_gzip_reader_fn,
-      label_key=_LABEL_KEY,
-      num_epochs=1)
+      label_key=_LABEL_KEY)
 
-  # The packed dataset contains ceil(record_num/batch_size) of tuples in format:
-  #   (feature tensor with shape(batch_size, features_size),
-  #    label tensor with shape(batch_size,))
-  pack_dataset = dataset.map(_pack)
-
-  return pack_dataset
+  return dataset
 
 
 def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
@@ -108,21 +124,85 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   Returns:
     A Keras Model.
   """
-  model = keras.Sequential()
-  model.add(
-      keras.layers.Dense(
-          8, activation='relu', input_shape=(len(_FEATURE_KEYS),)))
+  absl.logging.info('HyperParameters config: %s' % hparams.get_config())
+  inputs = [keras.layers.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
+  d = keras.layers.concatenate(inputs)
   for _ in range(hparams.get('num_layers')):  # pytype: disable=wrong-arg-types
-    model.add(keras.layers.Dense(8, activation='relu'))
-  model.add(keras.layers.Dense(3, activation='softmax'))
+    d = keras.layers.Dense(8, activation='relu')(d)
+  output = keras.layers.Dense(3, activation='softmax')(d)
+  model = keras.Model(inputs=inputs, outputs=output)
   model.compile(
       optimizer=keras.optimizers.Adam(hparams.get('learning_rate')),
-      loss='categorical_crossentropy',
-      metrics=[tf.keras.metrics.BinaryAccuracy(name='accuracy')])
+      loss='sparse_categorical_crossentropy',
+      metrics=[keras.metrics.CategoricalAccuracy(name='accuracy')])
   absl.logging.info(model.summary())
   return model
 
 
+# TFX will call this function
+def trainer_fn(trainer_fn_args, schema):
+  """Build the estimator using the high level API.
+
+  Args:
+    trainer_fn_args: Holds args used to train the model as name/value pairs.
+    schema: Holds the schema of the training examples.
+
+  Returns:
+    A dict of the following:
+      - estimator: The estimator that will be used for training and eval.
+      - train_spec: Spec for training.
+      - eval_spec: Spec for eval.
+      - eval_input_receiver_fn: Input function for eval.
+  """
+  train_batch_size = 40
+  eval_batch_size = 40
+
+  train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
+      trainer_fn_args.train_files,
+      schema,
+      batch_size=train_batch_size)
+
+  eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
+      trainer_fn_args.eval_files,
+      schema,
+      batch_size=eval_batch_size)
+
+  train_spec = tf.estimator.TrainSpec(
+      train_input_fn, max_steps=trainer_fn_args.train_steps)
+
+  serving_receiver_fn = lambda: _serving_input_receiver_fn(schema)
+
+  exporter = tf.estimator.FinalExporter('iris', serving_receiver_fn)
+  eval_spec = tf.estimator.EvalSpec(
+      eval_input_fn,
+      steps=trainer_fn_args.eval_steps,
+      exporters=[exporter],
+      name='iris-eval')
+
+  run_config = tf.estimator.RunConfig(
+      save_checkpoints_steps=999, keep_checkpoint_max=1)
+
+  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+
+  # TODO(jyzhao): change to native keras when supported.
+  estimator = tf.keras.estimator.model_to_estimator(
+      keras_model=_build_keras_model(
+          kerastuner.HyperParameters.from_config(
+              trainer_fn_args.hyperparameters)),
+      config=run_config)
+
+  # Create an input receiver for TFMA processing
+  eval_receiver_fn = lambda: _eval_input_receiver_fn(schema)
+
+  return {
+      'estimator': estimator,
+      'train_spec': train_spec,
+      'eval_spec': eval_spec,
+      'eval_input_receiver_fn': eval_receiver_fn
+  }
+
+
+# TFX will call this function
 def tuner_fn(working_dir: Text, train_data_pattern: Text,
              eval_data_pattern: Text,
              schema: schema_pb2.Schema) -> component.TunerFnResult:
@@ -156,5 +236,5 @@ def tuner_fn(working_dir: Text, train_data_pattern: Text,
 
   return component.TunerFnResult(
       tuner=tuner,
-      train_dataset=_make_input_dataset(train_data_pattern, schema, 10),
-      eval_dataset=_make_input_dataset(eval_data_pattern, schema, 10))
+      train_dataset=_input_fn(train_data_pattern, schema, 10),
+      eval_dataset=_input_fn(eval_data_pattern, schema, 10))

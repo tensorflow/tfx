@@ -30,7 +30,7 @@ from tfx.utils import import_utils
 from tfx.utils import io_utils
 
 # Default file name for generated best hyperparameters file.
-_DEFAULT_FILE_NAME = 'best_hparams.txt'
+_DEFAULT_FILE_NAME = 'best_hyperparameters.txt'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -74,17 +74,18 @@ class Executor(base_executor.BaseExecutor):
 
     tuner.search_space_summary()
     # TODO(jyzhao): assert v2 behavior as KerasTuner doesn't work in v1.
-    # TODO(jyzhao): make epochs configurable.
+    # TODO(jyzhao): make steps configurable or move search() to module file.
     tuner.search(
         tuner_spec.train_dataset,
-        epochs=5,
+        steps_per_epoch=1000,
+        validation_steps=500,
         validation_data=tuner_spec.eval_dataset)
     tuner.results_summary()
 
     best_hparams = tuner.oracle.get_best_trials(
         1)[0].hyperparameters.get_config()
     best_hparams_path = os.path.join(
-        artifact_utils.get_single_uri(output_dict['study_best_hparams_path']),
+        artifact_utils.get_single_uri(output_dict['best_hyperparameters']),
         _DEFAULT_FILE_NAME)
     io_utils.write_string_file(best_hparams_path, json.dumps(best_hparams))
     absl.logging.info('Best HParams is written to %s.' % best_hparams_path)
