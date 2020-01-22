@@ -48,7 +48,7 @@ def _serving_input_receiver_fn(schema):
     schema: the schema of the input data.
 
   Returns:
-    serving_input_resiver_fn for serving this model, since no transformation is
+    serving_input_receiver_fn for serving this model, since no transformation is
     required in this case it does not include a tf-transform graph.
   """
   raw_feature_spec = _get_raw_feature_spec(schema)
@@ -68,7 +68,7 @@ def _eval_input_receiver_fn(schema):
   Returns:
     EvalInputReceiver function, which contains:
       - Features (dict of Tensors) to be passed to the model.
-      - Raw features as sereliazlied tf.Examples.
+      - Raw features as serialized tf.Examples.
       - Labels
   """
   # Notice that the inputs are raw features, not transformed features here.
@@ -78,9 +78,10 @@ def _eval_input_receiver_fn(schema):
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
+  labels = serving_input_receiver.features.pop(_LABEL_KEY)
   return tfma.export.EvalInputReceiver(
       features=serving_input_receiver.features,
-      labels=serving_input_receiver.features.pop(_LABEL_KEY),
+      labels=labels,
       receiver_tensors=serving_input_receiver.receiver_tensors)
 
 
@@ -124,7 +125,7 @@ def _keras_model_builder():
   model.compile(
       loss='sparse_categorical_crossentropy',
       optimizer=opt.Adam(lr=0.001),
-      metrics=[tf.keras.metrics.BinaryAccuracy(name='accuracy')])
+      metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
   absl.logging.info(model.summary())
   return model
 
@@ -158,9 +159,8 @@ def trainer_fn(trainer_fn_args, schema):
       schema,
       batch_size=eval_batch_size)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
-      train_input_fn,
-      max_steps=trainer_fn_args.train_steps)
+  train_spec = tf.estimator.TrainSpec(
+      train_input_fn, max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _serving_input_receiver_fn(schema)
 

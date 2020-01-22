@@ -204,9 +204,8 @@ def trainer_fn(trainer_fn_args, schema):  # pylint: disable=unused-argument
       tf_transform_output,
       batch_size=eval_batch_size)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
-      train_input_fn,
-      max_steps=trainer_fn_args.train_steps)
+  train_spec = tf.estimator.TrainSpec(
+      train_input_fn, max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _serving_input_receiver_fn(tf_transform_output)
 

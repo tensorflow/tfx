@@ -6,3 +6,4 @@ TFX components:
 * HelloComponent
 * PrestoExampleGen
 * SlackComponent
+* Tuner

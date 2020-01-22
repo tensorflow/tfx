@@ -51,14 +51,13 @@ class TunerSpec(ComponentSpec):
   OUTPUTS = {
       'model_export_path':
           ChannelParameter(type=standard_artifacts.Model),
-      'study_best_hparams_path':
+      'best_hyperparameters':
           ChannelParameter(type=standard_artifacts.HyperParameters),
   }
   # TODO(b/139281215): these input / output names will be renamed in the future.
   # These compatibility aliases are provided for forwards compatibility.
   _OUTPUT_COMPATIBILITY_ALIASES = {
       'model': 'model_export_path',
-      'best_hparams': 'study_best_hparams_path',
   }
 
 
@@ -74,7 +73,7 @@ class Tuner(base_component.BaseComponent):
                module_file: Optional[Text] = None,
                tuner_fn: Optional[Text] = None,
                model: Optional[types.Channel] = None,
-               best_hparams: Optional[types.Channel] = None,
+               best_hyperparameters: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct a Tuner component.
 
@@ -96,9 +95,10 @@ class Tuner(base_component.BaseComponent):
       tuner_fn:  A python path to UDF model definition function. See
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'tuner_fn' must be supplied.
-      model: Optional 'ModelExportPath' channel for result of best model.
-      best_hparams: Optional 'StudyBestHParamsPath' channel for result of the
-        best hparams.
+      model: Optional Channel of type `standard_artifacts.Model` for result of
+        best model.
+      best_hyperparameters: Optional Channel of type
+        `standard_artifacts.HyperParameters` for result of the best hparams.
       instance_name: Optional unique instance name. Necessary if multiple Tuner
         components are declared in the same pipeline.
     """
@@ -108,7 +108,7 @@ class Tuner(base_component.BaseComponent):
 
     model = model or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
-    best_hparams = best_hparams or types.Channel(
+    best_hyperparameters = best_hyperparameters or types.Channel(
         type=standard_artifacts.HyperParameters,
         artifacts=[standard_artifacts.HyperParameters()])
     spec = TunerSpec(
@@ -117,5 +117,5 @@ class Tuner(base_component.BaseComponent):
         module_file=module_file,
         tuner_fn=tuner_fn,
         model_export_path=model,
-        study_best_hparams_path=best_hparams)
+        best_hyperparameters=best_hyperparameters)
     super(Tuner, self).__init__(spec=spec, instance_name=instance_name)
