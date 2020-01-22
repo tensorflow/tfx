@@ -237,11 +237,19 @@ class Artifact(json_utils.Jsonable):
 
   def set_mlmd_artifact(self, artifact: metadata_store_pb2.Artifact):
     """Replace the MLMD artifact object on this artifact."""
+    if not isinstance(artifact, metadata_store_pb2.Artifact):
+      raise ValueError(
+          ('Expected instance of metadata_store_pb2.Artifact, got %s '
+           'instead.') % (artifact,))
     self._artifact = artifact
 
   def set_mlmd_artifact_type(self,
                              artifact_type: metadata_store_pb2.ArtifactType):
     """Set entire ArtifactType in this object."""
+    if not isinstance(artifact_type, metadata_store_pb2.ArtifactType):
+      raise ValueError(
+          ('Expected instance of metadata_store_pb2.ArtifactType, got %s '
+           'instead.') % (artifact_type,))
     self._artifact_type = artifact_type
     self._artifact.type_id = artifact_type.id
 
