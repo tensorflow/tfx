@@ -26,6 +26,8 @@ SPAN_PROPERTY = Property(type=PropertyType.INT)
 # Comma separated of splits for an artifact. Empty string means artifact
 # has no split.
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
+# String value for a string-typed artifact.
+STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
 class Examples(Artifact):
@@ -81,6 +83,13 @@ class PushedModel(Artifact):
 
 class Schema(Artifact):
   TYPE_NAME = 'Schema'
+
+
+class StringType(Artifact):
+  TYPE_NAME = 'StringType'
+  PROPERTIES = {
+      'value': STRING_VALUE_PROPERTY,
+  }
 
 
 class TransformGraph(Artifact):
