@@ -67,6 +67,7 @@
 *   Fixed an issue that `build_ephemeral_package()` uses incorrect path to
     locate 'tfx' directory.
 *   Depended on `apache-beam[gcp]>=2.17,<3`
+*   The ImporterNode now allows specification of general artifact properties.
 
 ### Deprecations
 
