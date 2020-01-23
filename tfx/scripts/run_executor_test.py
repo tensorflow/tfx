@@ -21,7 +21,7 @@ from __future__ import print_function
 import json
 from typing import Any, Dict, List, Text
 
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx import types
 from tfx.components.base import base_executor
@@ -55,6 +55,15 @@ class FakeExecutor(base_executor.BaseExecutor):
 
 class RunExecutorTest(tf.test.TestCase):
 
+  def _runMain(self, inputs_str, outputs_str, exec_properties_str):
+    run_executor.main([
+        '--executor_class_path={}.{}'.format(
+            FakeExecutor.__module__, FakeExecutor.__name__),
+        '--inputs={}'.format(inputs_str),
+        '--outputs={}'.format(outputs_str),
+        '--exec-properties={}'.format(exec_properties_str)
+    ])
+
   def testMainEmptyInputs(self):
     """Test executor class import under empty inputs/outputs."""
     inputs = {
@@ -65,22 +74,36 @@ class RunExecutorTest(tf.test.TestCase):
     }
     outputs = {'y': [standard_artifacts.Examples()]}
     exec_properties = {'a': 'b'}
-    args = [
-        '--executor_class_path=%s.%s' %
-        (FakeExecutor.__module__, FakeExecutor.__name__),
-        '--inputs=%s' % artifact_utils.jsonify_artifact_dict(inputs),
-        '--outputs=%s' % artifact_utils.jsonify_artifact_dict(outputs),
-        '--exec-properties=%s' % json.dumps(exec_properties),
-    ]
+
     with ArgsCapture() as args_capture:
-      run_executor.main(args)
+      self._runMain(
+          inputs_str=artifact_utils.jsonify_artifact_dict(inputs),
+          outputs_str=artifact_utils.jsonify_artifact_dict(outputs),
+          exec_properties_str=json.dumps(exec_properties))
+
       # TODO(b/131417512): Add equal comparison to types.Artifact class so we
       # can use asserters.
-      self.assertSetEqual(
-          set(args_capture.input_dict.keys()), set(inputs.keys()))
-      self.assertSetEqual(
+      self.assertEqual(set(args_capture.input_dict.keys()), set(inputs.keys()))
+      self.assertEqual(
           set(args_capture.output_dict.keys()), set(outputs.keys()))
-      self.assertDictEqual(args_capture.exec_properties, exec_properties)
+      self.assertEqual(args_capture.exec_properties, exec_properties)
+
+  def testMainNonSerializedExecProperties(self):
+    inputs = {'x': [standard_artifacts.ExternalArtifact()]}
+    outputs = {'y': [standard_artifacts.Examples()]}
+    non_serialized_exec_properties = {'a': {'b': 'c'}}
+
+    with ArgsCapture() as args_capture:
+      self._runMain(
+          inputs_str=artifact_utils.jsonify_artifact_dict(inputs),
+          outputs_str=artifact_utils.jsonify_artifact_dict(outputs),
+          exec_properties_str=json.dumps(non_serialized_exec_properties))
+
+      self.assertEqual(set(args_capture.input_dict.keys()), set(inputs.keys()))
+      self.assertEqual(
+          set(args_capture.output_dict.keys()), set(outputs.keys()))
+      # exec_properties should be automatically JSON-serialized.
+      self.assertEqual(args_capture.exec_properties, {'a': '{"b": "c"}'})
 
 
 # TODO(zhitaoli): Add tests for:
