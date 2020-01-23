@@ -48,16 +48,13 @@ _pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
 def _create_parameterized_pipeline(
     pipeline_name: Text,
     pipeline_root: Optional[Text] = _pipeline_root,
-    enable_cache: Optional[bool] = True,
-    direct_num_workers: Optional[int] = 1) -> pipeline.Pipeline:
+    enable_cache: Optional[bool] = True) -> pipeline.Pipeline:
   """Creates a simple TFX pipeline with RuntimeParameter.
 
   Args:
     pipeline_name: The name of the pipeline.
     pipeline_root: The root of the pipeline output.
     enable_cache: Whether to enable cache in this pipeline.
-    direct_num_workers: Number of workers executing the underlying beam pipeline
-      in the executors.
 
   Returns:
     A logical TFX pipeline.Pipeline object.
@@ -160,7 +157,7 @@ def _create_parameterized_pipeline(
       ],
       enable_cache=enable_cache,
       # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
+      # beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 
 

@@ -165,4 +165,4 @@ if __name__ == '__main__':
           metadata_path=_metadata_path,
           # 0 means auto-detect based on on the number of CPUs available during
           # execution time.
-          direct_num_workers=0))
+          direct_num_workers=1))

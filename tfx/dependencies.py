@@ -23,7 +23,7 @@ def make_required_install_packages():
       'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
       # TODO(b/148241126): Temporarily pin on apache-beam 2.17.x
-      'apache-beam[gcp]>=2.17,<2.18',
+      'apache-beam[gcp]>=2.17,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'click>=7,<8',
       'docker>=4.1,<5',
