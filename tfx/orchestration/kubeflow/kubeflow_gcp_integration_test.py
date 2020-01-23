@@ -84,26 +84,19 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     # Example artifacts for testing.
     self.raw_examples_importer = ImporterNode(
         instance_name='raw_examples',
-        source_uri=[
-            os.path.join(self._testdata_root, 'csv_example_gen', 'train'),
-            os.path.join(self._testdata_root, 'csv_example_gen', 'eval')
-        ],
+        source_uri=os.path.join(self._testdata_root, 'csv_example_gen'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
-        split=['train', 'eval'])
+        properties={'split_names': '["train", "eval"]'})
 
     # Transformed Example artifacts for testing.
     self.transformed_examples_importer = ImporterNode(
         instance_name='transformed_examples',
-        source_uri=[
-            os.path.join(self._testdata_root, 'transform',
-                         'transformed_examples', 'train'),
-            os.path.join(self._testdata_root, 'transform',
-                         'transformed_examples', 'eval')
-        ],
+        source_uri=os.path.join(self._testdata_root, 'transform',
+                                'transformed_examples'),
         artifact_type=standard_artifacts.Examples,
         reimport=True,
-        split=['train', 'eval'])
+        properties={'split_names': '["train", "eval"]'})
 
     # Schema artifact for testing.
     self.schema_importer = ImporterNode(
@@ -139,7 +132,8 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         source_uri=os.path.join(self._testdata_root, 'model_validator',
                                 'blessed'),
         artifact_type=standard_artifacts.ModelBlessing,
-        reimport=True)
+        reimport=True,
+        custom_properties={'blessed': 1})
 
   def testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
@@ -169,7 +163,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         Transform(
             examples=self.raw_examples_importer.outputs['result'],
             schema=self.schema_importer.outputs['result'],
-            module_file=self._taxi_module_file)
+            module_file=self._transform_module)
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -211,7 +205,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         Trainer(
             custom_executor_spec=executor_spec.ExecutorClassSpec(
                 ai_platform_trainer_executor.Executor),
-            module_file=self._taxi_module_file,
+            module_file=self._trainer_module,
             transformed_examples=self.transformed_examples_importer
             .outputs['result'],
             schema=self.schema_importer.outputs['result'],
@@ -219,7 +213,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
             train_args=trainer_pb2.TrainArgs(num_steps=10),
             eval_args=trainer_pb2.EvalArgs(num_steps=5),
             custom_config={
-                ai_platform_trainer_executor.TRAINING_ARGS: {
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
                     'project':
                         self._gcp_project_id,
                     'region':
