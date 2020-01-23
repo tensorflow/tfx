@@ -69,3 +69,11 @@ message LocalDockerConfig {
   // docker-py library.
   int32 client_timeout_seconds = 3;
 }
+
+// Specification for validation criteria and thresholds.
+message ValidationSpec {
+  // If the model is not loaded until this time, validation will fail. Should
+  // be a positive number.
+  int32 max_loading_time_seconds = 1;
+}
+
