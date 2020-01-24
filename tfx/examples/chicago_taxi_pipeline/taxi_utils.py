@@ -335,8 +335,11 @@ def trainer_fn(trainer_fn_args, schema):
       exporters=[exporter],
       name='chicago-taxi-eval')
 
+  # Keep multiple checkpoint files for distributed training, note that
+  # keep_max_checkpoint should be greater or equal to the number of replicas to
+  # avoid race condition.
   run_config = tf.estimator.RunConfig(
-      save_checkpoints_steps=999, keep_checkpoint_max=1)
+      save_checkpoints_steps=999, keep_checkpoint_max=5)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
   warm_start_from = trainer_fn_args.base_model

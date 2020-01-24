@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import json
 import os
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from google.protobuf import json_format
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
@@ -95,6 +95,18 @@ class ExecutorTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(
             os.path.join(self._model_exports.uri, 'serving_model_dir')))
+
+  def _verify_model_exports_only_one_file(self):
+    self.assertEqual(
+        1,
+        len(
+            tf.io.gfile.listdir(
+                os.path.join(self._model_exports.uri, 'eval_model_dir'))))
+    self.assertEqual(
+        1,
+        len(
+            tf.io.gfile.listdir(
+                os.path.join(self._model_exports.uri, 'serving_model_dir'))))
 
   def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file

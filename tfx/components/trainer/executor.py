@@ -129,6 +129,8 @@ class Executor(base_executor.BaseExecutor):
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
+        - custom_config: Optional. Additional parameters to pass to trainer
+          function.
 
     Returns:
       None
@@ -186,7 +188,6 @@ class Executor(base_executor.BaseExecutor):
 
     output_path = artifact_utils.get_single_uri(output_dict['output'])
     serving_model_dir = path_utils.serving_model_dir(output_path)
-    eval_model_dir = path_utils.eval_model_dir(output_path)
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     train_fn_args = TrainerFnArgs(
@@ -225,10 +226,16 @@ class Executor(base_executor.BaseExecutor):
                       serving_model_dir)
 
     # Export an eval savedmodel for TFMA
-    absl.logging.info('Exporting eval_savedmodel for TFMA.')
-    tfma.export.export_eval_savedmodel(
-        estimator=training_spec['estimator'],
-        export_dir_base=eval_model_dir,
-        eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+    eval_model_dir = path_utils.eval_model_dir(output_path)
+    # For distributed training, master and worker(s) try to export multiple
+    # eval_savedmodels (b/147378113). To avoid that, only export
+    # eval_savedmodel if eval_model_dir does not exist as an intermediate
+    # solution until b/147378113 is resolved.
+    if not tf.io.gfile.exists(eval_model_dir):
+      absl.logging.info('Exporting eval_savedmodel for TFMA.')
+      tfma.export.export_eval_savedmodel(
+          estimator=training_spec['estimator'],
+          export_dir_base=eval_model_dir,
+          eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-    absl.logging.info('Exported eval_savedmodel to %s.', eval_model_dir)
+      absl.logging.info('Exported eval_savedmodel to %s.', eval_model_dir)

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 from typing import Dict, List, Text
+from absl import flags
 from tfx.components.base import executor_spec
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
@@ -37,7 +38,12 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 
+FLAGS = flags.FLAGS
+flags.DEFINE_bool('distributed_training', False,
+                  'If True, enable distributed training.')
+
 _pipeline_name = 'chicago_taxi_pipeline_kubeflow_gcp'
+
 
 # Directory and data locations (uses Google Cloud Storage).
 _input_bucket = 'gs://my-bucket'
@@ -231,6 +237,21 @@ if __name__ == '__main__':
       kubeflow_metadata_config=metadata_config,
       # Specify custom docker image to use.
       tfx_image=tfx_image)
+
+  if FLAGS.distributed_training:
+    _ai_platform_training_args = {
+        'project': _project_id,
+        'region': _gcp_region,
+        # You can specify the machine types, the number of replicas for workers
+        # and parameter servers.
+        # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
+        'scaleTier': 'CUSTOM',
+        'masterType': 'large_model',
+        'workerType': 'standard',
+        'parameterServerType': 'standard',
+        'workerCount': 1,
+        'parameterServerCount': 1
+    }
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
