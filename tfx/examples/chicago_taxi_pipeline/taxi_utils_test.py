@@ -148,6 +148,9 @@ class TaxiUtilsTest(tf.test.TestCase):
     self.assertIsInstance(eval_spec, tf.estimator.EvalSpec)
     self.assertIsInstance(eval_input_receiver_fn, types.FunctionType)
 
+    # Test keep_max_checkpoint in RunConfig
+    self.assertGreater(estimator._config.keep_checkpoint_max, 1)
+
     # Train for one step, then eval for one step.
     eval_result, exports = tf.estimator.train_and_evaluate(
         estimator, train_spec, eval_spec)
