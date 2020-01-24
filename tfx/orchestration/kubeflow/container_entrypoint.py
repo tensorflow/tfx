@@ -31,7 +31,6 @@ import absl
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
-from tfx.components.trainer import component as trainer_component
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -263,8 +262,9 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
   }]
   # Add Tensorboard view for Trainer.
   # TODO(b/142804764): Visualization based on component type seems a bit of
-  # arbitrary. We need a better way to improve this.
-  if isinstance(component, trainer_component.Trainer):
+  # arbitrary and fragile. We need a better way to improve this. See also
+  # b/146594754
+  if component.type == 'tfx.components.transform.component.Trainer':
     output_model = component.outputs['model'].get()[0]
 
     # Add Tensorboard view.
