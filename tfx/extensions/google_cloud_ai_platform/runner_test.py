@@ -54,18 +54,21 @@ class RunnerTest(tf.test.TestCase):
         'project_id': self._project_id,
     }
 
+  def _setUpTrainingMocks(self):
+    self._mock_create = mock.Mock()
+    self._mock_api_client.projects().jobs().create = self._mock_create
+    self._mock_get = mock.Mock()
+    self._mock_api_client.projects().jobs().get.return_value = self._mock_get
+    self._mock_get.execute.return_value = {
+        'state': 'SUCCEEDED',
+    }
+
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
   def testStartAIPTraining(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
-    mock_create = mock.Mock()
-    self._mock_api_client.projects().jobs().create = mock_create
-    mock_get = mock.Mock()
-    self._mock_api_client.projects().jobs().get.return_value = mock_get
-    mock_get.execute.return_value = {
-        'state': 'SUCCEEDED',
-    }
+    self._setUpTrainingMocks()
 
     class_path = 'foo.bar.class'
 
@@ -73,9 +76,9 @@ class RunnerTest(tf.test.TestCase):
                               self._exec_properties, class_path,
                               self._training_inputs, None)
 
-    mock_create.assert_called_with(
+    self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
-    (_, kwargs) = mock_create.call_args
+    (_, kwargs) = self._mock_create.call_args
     body = kwargs['body']
 
     default_image = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
@@ -91,32 +94,26 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['trainingInput'])
     self.assertStartsWith(body['jobId'], 'tfx_')
-    mock_get.execute.assert_called_with()
+    self._mock_get.execute.assert_called_with()
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
   def testStartAIPTrainingWithUserContainer(self, mock_discovery):
-    self._training_inputs['masterConfig'] = {'imageUri': 'my-custom-image'}
     mock_discovery.build.return_value = self._mock_api_client
-    mock_create = mock.Mock()
-    self._mock_api_client.projects().jobs().create = mock_create
-    mock_get = mock.Mock()
-    self._mock_api_client.projects().jobs().get.return_value = mock_get
-    mock_get.execute.return_value = {
-        'state': 'SUCCEEDED',
-    }
+    self._setUpTrainingMocks()
 
     class_path = 'foo.bar.class'
 
+    self._training_inputs['masterConfig'] = {'imageUri': 'my-custom-image'}
     self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
     runner.start_aip_training(self._inputs, self._outputs,
                               self._exec_properties, class_path,
                               self._training_inputs, self._job_id)
 
-    mock_create.assert_called_with(
+    self._mock_create.assert_called_with(
         body=mock.ANY, parent='projects/{}'.format(self._project_id))
-    (_, kwargs) = mock_create.call_args
+    (_, kwargs) = self._mock_create.call_args
     body = kwargs['body']
     self.assertDictContainsSubset(
         {
@@ -133,7 +130,7 @@ class RunnerTest(tf.test.TestCase):
             ],
         }, body['trainingInput'])
     self.assertEqual(body['jobId'], 'my_jobid')
-    mock_get.execute.assert_called_with()
+    self._mock_get.execute.assert_called_with()
 
   def _setUpPredictionMocks(self):
     self._serving_path = os.path.join(self._output_data_dir, 'serving_path')
