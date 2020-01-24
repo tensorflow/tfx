@@ -252,8 +252,12 @@ class BaseKubeflowTest(tf.test.TestCase):
 
     self._testdata_root = 'gs://{}/test_data/{}'.format(self._bucket_name,
                                                         test_id)
-    subprocess.run(['gsutil', 'cp', '-r', _TEST_DATA_ROOT, self._testdata_root],
-                   check=True)
+    subprocess.run(
+        ['gsutil', 'cp', '-r', _TEST_DATA_ROOT, self._testdata_root],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
     self._data_root = os.path.join(self._testdata_root, 'external', 'csv')
     self._transform_module = os.path.join(_MODULE_ROOT, 'transform_module.py')
