@@ -21,13 +21,19 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.components.trainer import executor
+from tfx.utils import io_utils
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -301,3 +307,32 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': receiver_fn
   }
+
+
+# TFX generic trainer will call this function
+def run_fn(fn_args: executor.TrainerFnArgs):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
+  training_spec = trainer_fn(fn_args, schema)
+
+  # Train the model
+  absl.logging.info('Training model.')
+  tf.estimator.train_and_evaluate(training_spec['estimator'],
+                                  training_spec['train_spec'],
+                                  training_spec['eval_spec'])
+  absl.logging.info('Training complete.  Model written to %s',
+                    fn_args.serving_model_dir)
+
+  # Export an eval savedmodel for TFMA
+  absl.logging.info('Exporting eval_savedmodel for TFMA.')
+  tfma.export.export_eval_savedmodel(
+      estimator=training_spec['estimator'],
+      export_dir_base=fn_args.eval_model_dir,
+      eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+  absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)

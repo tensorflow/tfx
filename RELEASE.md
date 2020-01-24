@@ -32,6 +32,8 @@
 *   Added a metadata adapter in Kubeflow to support logging the Argo pod ID as
     an execution property.
 *   Added a prototype Tuner component and an end-to-end iris example.
+*   Created new generic trainer executor for non estimator based model, e.g.,
+    native Keras.
 
 ## Bug fixes and other changes
 

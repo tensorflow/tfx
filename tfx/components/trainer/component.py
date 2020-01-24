@@ -29,6 +29,7 @@ from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TrainerSpec
 
 
+# TODO(b/147702778): update when switch generic executor as default.
 class Trainer(base_component.BaseComponent):
   """A TFX component to train a TensorFlow model.
 
@@ -107,6 +108,8 @@ class Trainer(base_component.BaseComponent):
       base_model: Optional[types.Channel] = None,
       hyperparameters: Optional[types.Channel] = None,
       module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      run_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
+      # TODO(b/147702778): deprecate trainer_fn.
       trainer_fn: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       train_args: Union[trainer_pb2.TrainArgs, Dict[Text, Any]] = None,
       eval_args: Union[trainer_pb2.EvalArgs, Dict[Text, Any]] = None,
@@ -133,12 +136,13 @@ class Trainer(base_component.BaseComponent):
       hyperparameters: A Channel of type `standard_artifacts.HyperParameters`,
         serving as the hyperparameters for training module. Tuner's output best
         hyperparameters can be feed into this.
-      module_file: A path to python module file containing UDF model
-        definition. The module_file must implement a function named
+      module_file: A path to python module file containing UDF model definition.
+
+        For default executor, The module_file must implement a function named
         `trainer_fn` at its top level. The function must have the following
         signature.
 
-        def trainer_fn(trainer.executor._TrainerFnArgs,
+        def trainer_fn(trainer.executor.TrainerFnArgs,
                        tensorflow_metadata.proto.v0.schema_pb2) -> Dict:
           ...
 
@@ -149,9 +153,17 @@ class Trainer(base_component.BaseComponent):
           'eval_input_receiver_fn': an instance of
             tfma.export.EvalInputReceiver. Exactly one of 'module_file' or
             'trainer_fn' must be supplied.
-      trainer_fn:  A python path to UDF model definition function. See
-        'module_file' for the required signature of the UDF. Exactly one of
-        'module_file' or 'trainer_fn' must be supplied.
+
+        For generic executor, The module_file must implement a function named
+        `run_fn` at its top level with function signature:
+        `def run_fn(trainer.executor.TrainerFnArgs)`, and the trained model must
+        be saved to TrainerFnArgs.serving_model_dir when execute this function.
+      run_fn:  A python path to UDF model definition function for generic
+        trainer. See 'module_file' for details. Exactly one of 'module_file' or
+        'run_fn' must be supplied if Trainer uses GenericExecutor.
+      trainer_fn:  A python path to UDF model definition function for estimator
+        based trainer. See 'module_file' for the required signature of the UDF.
+        Exactly one of 'module_file' or 'trainer_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance, containing args used for
         training. Current only num_steps is available.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
@@ -167,21 +179,23 @@ class Trainer(base_component.BaseComponent):
 
     Raises:
       ValueError:
-        - When both or neither of 'module_file' and 'trainer_fn' is supplied.
+        - When both or neither of 'module_file' and user function
+          (e.g., trainer_fn and run_fn) is supplied.
         - When both or neither of 'examples' and 'transformed_examples'
             is supplied.
         - When 'transformed_examples' is supplied but 'transform_graph'
             is not supplied.
     """
-    transform_graph = transform_graph or transform_output
-    if bool(module_file) == bool(trainer_fn):
+    if [bool(module_file), bool(run_fn), bool(trainer_fn)].count(True) != 1:
       raise ValueError(
-          "Exactly one of 'module_file' or 'trainer_fn' must be supplied")
+          "Exactly one of 'module_file', 'trainer_fn', or 'run_fn' must be supplied."
+      )
 
     if bool(examples) == bool(transformed_examples):
       raise ValueError(
           "Exactly one of 'example' or 'transformed_example' must be supplied.")
 
+    transform_graph = transform_graph or transform_output
     if transformed_examples and not transform_graph:
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
@@ -197,6 +211,7 @@ class Trainer(base_component.BaseComponent):
         train_args=train_args,
         eval_args=eval_args,
         module_file=module_file,
+        run_fn=run_fn,
         trainer_fn=trainer_fn,
         custom_config=custom_config,
         output=output)
