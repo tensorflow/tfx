@@ -217,7 +217,6 @@ def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
 
   body = {
       'name': 'v{}'.format(model_version),
-      'regions': regions,
       'deployment_uri': serving_path,
       'runtime_version': runtime_version,
       'python_version': python_version,

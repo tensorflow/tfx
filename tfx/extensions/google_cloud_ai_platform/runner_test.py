@@ -135,112 +135,127 @@ class RunnerTest(tf.test.TestCase):
     self.assertEqual(body['jobId'], 'my_jobid')
     mock_get.execute.assert_called_with()
 
+  def _setUpPredictionMocks(self):
+    self._serving_path = os.path.join(self._output_data_dir, 'serving_path')
+    self._model_version = 'model_version'
+
+    self._mock_models_create = mock.Mock()
+    self._mock_api_client.projects().models().create = self._mock_models_create
+
+    self._mock_versions_create = mock.Mock()
+    self._mock_versions_create.return_value.execute.return_value = {
+        'name': 'op_name'
+    }
+
+    self._mock_api_client.projects().models().versions(
+    ).create = self._mock_versions_create
+    self._mock_get = mock.Mock()
+    self._mock_api_client.projects().operations().get = self._mock_get
+
+    self._mock_set_default = mock.Mock()
+    self._mock_api_client.projects().models().versions(
+    ).setDefault = self._mock_set_default
+
+    self._mock_set_default_execute = mock.Mock()
+    self._mock_api_client.projects().models().versions().setDefault(
+    ).execute = self._mock_set_default_execute
+
+    self._mock_get.return_value.execute.return_value = {
+        'done': 'Done',
+        'response': {
+            'name': self._model_version,
+        },
+    }
+
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
   def testDeployModelForAIPPrediction(self, mock_discovery):
-    serving_path = os.path.join(self._output_data_dir, 'serving_path')
-    model_version = 'model_version'
-
     mock_discovery.build.return_value = self._mock_api_client
-    mock_create = mock.Mock()
-    mock_create.return_value.execute.return_value = {'name': 'op_name'}
-    self._mock_api_client.projects().models().versions().create = mock_create
-    mock_get = mock.Mock()
-    self._mock_api_client.projects().operations().get = mock_get
-    mock_set_default = mock.Mock()
-    self._mock_api_client.projects().models().versions(
-    ).setDefault = mock_set_default
-    mock_set_default_execute = mock.Mock()
-    self._mock_api_client.projects().models().versions().setDefault(
-    ).execute = mock_set_default_execute
+    self._setUpPredictionMocks()
 
-    mock_get.return_value.execute.return_value = {
-        'done': 'Done',
-        'response': {
-            'name': model_version
-        },
-    }
-
-    runner.deploy_model_for_aip_prediction(serving_path, model_version,
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
                                            self._ai_platform_serving_args)
 
-    mock_create.assert_called_with(
+    self._mock_models_create.assert_called_with(
+        body=mock.ANY,
+        parent='projects/{}'.format(self._project_id),
+    )
+    (_, models_create_kwargs) = self._mock_models_create.call_args
+    models_create_body = models_create_kwargs['body']
+    self.assertDictEqual({
+        'name': 'model_name',
+        'regions': []
+    }, models_create_body)
+
+    self._mock_versions_create.assert_called_with(
         body=mock.ANY,
         parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
-    (_, kwargs) = mock_create.call_args
-    body = kwargs['body']
+    (_, versions_create_kwargs) = self._mock_versions_create.call_args
+    versions_create_body = versions_create_kwargs['body']
     self.assertDictEqual(
         {
-            'name': 'v{}'.format(model_version),
-            'regions': [],
-            'deployment_uri': serving_path,
+            'name': 'v{}'.format(self._model_version),
+            'deployment_uri': self._serving_path,
             'runtime_version': runner._get_tf_runtime_version(tf.__version__),
             'python_version': runner._get_caip_python_version(),
-        }, body)
-    mock_get.assert_called_with(name='op_name')
+        }, versions_create_body)
+    self._mock_get.assert_called_with(name='op_name')
 
-    mock_set_default.assert_called_with(
+    self._mock_set_default.assert_called_with(
         name='projects/{}/models/{}/versions/{}'.format(
-            self._project_id, 'model_name', model_version))
-    mock_set_default_execute.assert_called_with()
+            self._project_id, 'model_name', self._model_version))
+    self._mock_set_default_execute.assert_called_with()
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
   def testDeployModelForAIPPredictionWithCustomRegion(self, mock_discovery):
-    serving_path = os.path.join(self._output_data_dir, 'serving_path')
-    model_version = 'model_version'
-
     mock_discovery.build.return_value = self._mock_api_client
-    mock_create = mock.Mock()
-    mock_create.return_value.execute.return_value = {'name': 'op_name'}
-    self._mock_api_client.projects().models().versions().create = mock_create
-    mock_get = mock.Mock()
-    self._mock_api_client.projects().operations().get = mock_get
-    mock_set_default = mock.Mock()
-    self._mock_api_client.projects().models().versions(
-    ).setDefault = mock_set_default
-    mock_set_default_execute = mock.Mock()
-    self._mock_api_client.projects().models().versions().setDefault(
-    ).execute = mock_set_default_execute
-
-    mock_get.return_value.execute.return_value = {
-        'done': 'Done',
-        'response': {
-            'name': model_version
-        },
-    }
+    self._setUpPredictionMocks()
 
     self._ai_platform_serving_args['regions'] = ['custom-region']
-    runner.deploy_model_for_aip_prediction(serving_path, model_version,
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
                                            self._ai_platform_serving_args)
 
-    mock_create.assert_called_with(
+    self._mock_models_create.assert_called_with(
+        body=mock.ANY,
+        parent='projects/{}'.format(self._project_id),
+    )
+    (_, models_create_kwargs) = self._mock_models_create.call_args
+    models_create_body = models_create_kwargs['body']
+    self.assertDictEqual({
+        'name': 'model_name',
+        'regions': ['custom-region']
+    }, models_create_body)
+
+    self._mock_versions_create.assert_called_with(
         body=mock.ANY,
         parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
-    (_, kwargs) = mock_create.call_args
-    body = kwargs['body']
+    (_, versions_create_kwargs) = self._mock_versions_create.call_args
+    versions_create_body = versions_create_kwargs['body']
     self.assertDictEqual(
         {
-            'name': 'v{}'.format(model_version),
-            'regions': ['custom-region'],
-            'deployment_uri': serving_path,
+            'name': 'v{}'.format(self._model_version),
+            'deployment_uri': self._serving_path,
             'runtime_version': runner._get_tf_runtime_version(tf.__version__),
             'python_version': runner._get_caip_python_version(),
-        }, body)
-    mock_get.assert_called_with(name='op_name')
+        }, versions_create_body)
+    self._mock_get.assert_called_with(name='op_name')
 
-    mock_set_default.assert_called_with(
+    self._mock_set_default.assert_called_with(
         name='projects/{}/models/{}/versions/{}'.format(
-            self._project_id, 'model_name', model_version))
-    mock_set_default_execute.assert_called_with()
+            self._project_id, 'model_name', self._model_version))
+    self._mock_set_default_execute.assert_called_with()
 
   def testGetTensorflorRuntime(self):
     self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.0'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.1'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('2.0.0'))
+    self.assertEqual('1.15', runner._get_tf_runtime_version('2.1.0'))
 
 
 if __name__ == '__main__':
