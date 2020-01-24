@@ -35,6 +35,7 @@
 
 ## Bug fixes and other changes
 
+*   Fixes missing Tensorboard link in KubeflowDagRunner.
 *   Depends on `apache-beam[gcp]>=2.17,<3`
 *   Depends on `ml-metadata==0.21.0rc0`
 *   Depends on `pyarrow>=0.14,<0.15`.
