@@ -56,11 +56,11 @@ class TrainerFnArgs(object):
     return self._data[key]
 
 
-class Executor(base_executor.BaseExecutor):
-  """Local trainer used by the TFX Trainer component.
+class GenericExecutor(base_executor.BaseExecutor):
+  """Local generic trainer executor for the TFX Trainer component.
 
   The Trainer executor supplements TensorFlow training with a component to
-  enable warm-start training of any user-specified tf.estimator. The Trainer is
+  enable warm-start training of any user-specified TF model. The Trainer is
   a library built on top of TensorFlow that is expected to be integrated into a
   custom user-specified binary.
 
@@ -68,85 +68,46 @@ class Executor(base_executor.BaseExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L104.
 
   For more details on the Trainer component itself, please refer to
-  https://tensorflow.org/tfx/guide/trainer.  For a tutorial on TF Estimator,
-  please refer to https://www.tensorflow.org/extend/estimators.
+  https://tensorflow.org/tfx/guide/trainer.  For a tutorial on Tensorflow,
+  please refer to https://www.tensorflow.org/tutorials.
 
   How to create a trainer callback function to be used by this Trainer executor:
-  An estimator can be executed by TFX by first creating a trainer_fn callback
-  method that returns an estimator and some additional parameters, similar to
-  https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py#L285.
-  This becomes the basis of the new Executor for Trainer. This Executor will
-  then train and evaluate this estimator using the
-  tf.estimator.train_and_evaluate API to train locally.
+  A model training can be executed by TFX by first creating a run_fn callback
+  method that defines, trains an TF Model and saves it to the provided location,
+  This becomes the basis of the Executor for GenericTrainer. This Executor will
+  then execute the run_fn with correct parameters by resolving the input
+  artifacts, output artifacts and execution properties.
   """
 
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def _GetTrainerFn(self, exec_properties: Dict[Text, Any]) -> Any:
-    """Loads and returns user-defined trainer_fn."""
+  def _GetFn(self, exec_properties: Dict[Text, Any], fn_name: Text) -> Any:
+    """Loads and returns user-defined function."""
 
     has_module_file = bool(exec_properties.get('module_file'))
-    has_trainer_fn = bool(exec_properties.get('trainer_fn'))
+    has_fn = bool(exec_properties.get(fn_name))
 
-    if has_module_file == has_trainer_fn:
+    if has_module_file == has_fn:
       raise ValueError(
-          "Neither or both of 'module_file' 'trainer_fn' have been supplied in "
+          'Neither or both of module file and user function have been supplied in '
           "'exec_properties'.")
 
     if has_module_file:
       return import_utils.import_func_from_source(
-          exec_properties['module_file'], 'trainer_fn')
+          exec_properties['module_file'], fn_name)
 
-    trainer_fn_path_split = exec_properties['trainer_fn'].split('.')
-    return import_utils.import_func_from_module(
-        '.'.join(trainer_fn_path_split[0:-1]), trainer_fn_path_split[-1])
+    fn_path_split = exec_properties[fn_name].split('.')
+    return import_utils.import_func_from_module('.'.join(fn_path_split[0:-1]),
+                                                fn_path_split[-1])
 
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
-    """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
-
-    The Trainer Executor invokes a training_fn callback function provided by
-    the user via the module_file parameter.  With the tf.estimator returned by
-    this function, the Trainer Executor then builds a TensorFlow model using the
-    user-provided tf.estimator.
-
-    Args:
-      input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
-        - examples: Examples used for training, must include 'train' and 'eval'
-          splits.
-        - transform_output: Optional input transform graph.
-        - schema: Schema of the data.
-      output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
-      exec_properties: A dict of execution properties.
-        - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
-          args for training.
-        - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
-          args for eval.
-        - module_file: Python module file containing UDF model definition.
-        - warm_starting: Whether or not we need to do warm starting.
-        - warm_start_from: Optional. If warm_starting is True, this is the
-          directory to find previous model to warm start on.
-        - custom_config: Optional. Additional parameters to pass to trainer
-          function.
-
-    Returns:
-      None
-
-    Raises:
-      ValueError: When neither or both of 'module_file' and 'trainer_fn'
-        are present in 'exec_properties'.
-    """
-    self._log_startup(input_dict, output_dict, exec_properties)
-
+  def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
+                 output_dict: Dict[Text, List[types.Artifact]],
+                 exec_properties: Dict[Text, Any]) -> TrainerFnArgs:
     custom_config = exec_properties.get('custom_config') or {}
     if not isinstance(custom_config, dict):
       raise ValueError('Expect custom_config to be a dict but got %s instead' %
                        type(custom_config))
-
-    trainer_fn = self._GetTrainerFn(exec_properties)
 
     # Set up training parameters
     train_files = [
@@ -188,9 +149,10 @@ class Executor(base_executor.BaseExecutor):
 
     output_path = artifact_utils.get_single_uri(output_dict['output'])
     serving_model_dir = path_utils.serving_model_dir(output_path)
+    eval_model_dir = path_utils.eval_model_dir(output_path)
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
-    train_fn_args = TrainerFnArgs(
+    return TrainerFnArgs(
         # A list of uris for train files.
         train_files=train_files,
         # An optional single uri for transform graph produced by TFT. Will be
@@ -198,6 +160,9 @@ class Executor(base_executor.BaseExecutor):
         transform_output=transform_output,
         # A single uri for the output directory of the serving model.
         serving_model_dir=serving_model_dir,
+        # A single uri for the output directory of the eval model.
+        # Note that this is estimator only, Keras doesn't require it for TFMA.
+        eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=eval_files,
         # A single uri for schema file.
@@ -213,9 +178,116 @@ class Executor(base_executor.BaseExecutor):
         # Additional parameters to pass to trainer function.
         **custom_config)
 
-    schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    """Uses a user-supplied run_fn to train a TensorFlow model locally.
 
-    training_spec = trainer_fn(train_fn_args, schema)
+    The Trainer Executor invokes a run_fn callback function provided by
+    the user via the module_file parameter. In this function, user defines the
+    model and train it, then save the model to the provided location.
+
+    Args:
+      input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
+        - examples: Examples used for training, must include 'train' and 'eval'
+          splits.
+        - transform_output: Optional input transform graph.
+        - schema: Schema of the data.
+      output_dict: Output dict from output key to a list of Artifacts.
+        - output: Exported model.
+      exec_properties: A dict of execution properties.
+        - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
+          args for training.
+        - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
+          args for eval.
+        - module_file: Python module file containing UDF model definition.
+        - warm_starting: Whether or not we need to do warm starting.
+        - warm_start_from: Optional. If warm_starting is True, this is the
+          directory to find previous model to warm start on.
+        - custom_config: Optional. Additional parameters to pass to trainer
+          function.
+
+    Returns:
+      None
+
+    Raises:
+      ValueError: When neither or both of 'module_file' and 'run_fn'
+        are present in 'exec_properties'.
+      RuntimeError: If run_fn failed to generate model in desired location.
+    """
+    self._log_startup(input_dict, output_dict, exec_properties)
+
+    fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
+    run_fn = self._GetFn(exec_properties, 'run_fn')
+
+    run_fn(fn_args)
+
+    # Train the model
+    absl.logging.info('Training model.')
+    run_fn(fn_args)
+    if not tf.io.gfile.exists(fn_args.serving_model_dir):
+      raise RuntimeError('run_fn failed to generate model.')
+    absl.logging.info('Training complete. Model written to %s',
+                      fn_args.serving_model_dir)
+
+
+class Executor(GenericExecutor):
+  """Local estimator based trainer executor used by the TFX Trainer component.
+
+  How to create a trainer callback function to be used by this Trainer executor:
+  An estimator can be executed by TFX by first creating a trainer_fn callback
+  method that returns an estimator and some additional parameters, similar to
+  https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py#L285.
+  This becomes the basis of the new Executor for Trainer. This Executor will
+  then train and evaluate this estimator using the
+  tf.estimator.train_and_evaluate API to train locally.
+  """
+
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    """Uses a user-supplied tf.estimator to train a TensorFlow model locally.
+
+    The Trainer Executor invokes a training_fn callback function provided by
+    the user via the module_file parameter.  With the tf.estimator returned by
+    this function, the Trainer Executor then builds a TensorFlow model using the
+    user-provided tf.estimator.
+
+    Args:
+      input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
+        - examples: Examples used for training, must include 'train' and 'eval'
+          splits.
+        - transform_output: Optional input transform graph.
+        - schema: Schema of the data.
+      output_dict: Output dict from output key to a list of Artifacts.
+        - output: Exported model.
+      exec_properties: A dict of execution properties.
+        - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
+          args for training.
+        - eval_args: JSON string of trainer_pb2.EvalArgs instance, providing
+          args for eval.
+        - module_file: Python module file containing UDF model definition.
+        - warm_starting: Whether or not we need to do warm starting.
+        - warm_start_from: Optional. If warm_starting is True, this is the
+          directory to find previous model to warm start on.
+        - custom_config: Optional. Additional parameters to pass to trainer
+          function.
+
+    Returns:
+      None
+
+    Raises:
+      ValueError: When neither or both of 'module_file' and 'trainer_fn'
+        are present in 'exec_properties'.
+    """
+    self._log_startup(input_dict, output_dict, exec_properties)
+
+    fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
+    trainer_fn = self._GetFn(exec_properties, 'trainer_fn')
+
+    schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
+    training_spec = trainer_fn(fn_args, schema)
 
     # Train the model
     absl.logging.info('Training model.')
@@ -223,19 +295,19 @@ class Executor(base_executor.BaseExecutor):
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
     absl.logging.info('Training complete.  Model written to %s',
-                      serving_model_dir)
+                      fn_args.serving_model_dir)
 
     # Export an eval savedmodel for TFMA
-    eval_model_dir = path_utils.eval_model_dir(output_path)
     # For distributed training, master and worker(s) try to export multiple
     # eval_savedmodels (b/147378113). To avoid that, only export
     # eval_savedmodel if eval_model_dir does not exist as an intermediate
     # solution until b/147378113 is resolved.
-    if not tf.io.gfile.exists(eval_model_dir):
+    if not tf.io.gfile.exists(fn_args.eval_model_dir):
       absl.logging.info('Exporting eval_savedmodel for TFMA.')
       tfma.export.export_eval_savedmodel(
           estimator=training_spec['estimator'],
-          export_dir_base=eval_model_dir,
+          export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-      absl.logging.info('Exported eval_savedmodel to %s.', eval_model_dir)
+      absl.logging.info('Exported eval_savedmodel to %s.',
+                        fn_args.eval_model_dir)

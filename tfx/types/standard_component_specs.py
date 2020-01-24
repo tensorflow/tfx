@@ -258,6 +258,7 @@ class TrainerSpec(ComponentSpec):
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
+      'run_fn': ExecutionParameter(type=(str, Text), optional=True),
       'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
       'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
   }

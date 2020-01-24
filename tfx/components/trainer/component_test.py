@@ -20,7 +20,9 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
+from tfx.components.base import executor_spec
 from tfx.components.trainer import component
+from tfx.components.trainer import executor
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import channel_utils
@@ -83,6 +85,20 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(trainer)
     self.assertEqual(trainer_fn, trainer.spec.exec_properties['trainer_fn'])
 
+  def testConstructFromRunFn(self):
+    run_fn = 'path.to.my_run_fn'
+    trainer = component.Trainer(
+        run_fn=run_fn,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            executor.GenericExecutor),
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        train_args=self.train_args,
+        eval_args=self.eval_args)
+    self._verify_outputs(trainer)
+    self.assertEqual(run_fn, trainer.spec.exec_properties['run_fn'])
+
   def testConstructWithoutTransformOutput(self):
     module_file = '/path/to/module/file'
     trainer = component.Trainer(
@@ -127,6 +143,16 @@ class ComponentTest(tf.test.TestCase):
       _ = component.Trainer(
           module_file='/path/to/module/file',
           trainer_fn='path.to.my_trainer_fn',
+          examples=self.examples,
+          transform_graph=self.transform_output,
+          schema=self.schema,
+          train_args=self.train_args,
+          eval_args=self.eval_args)
+
+    with self.assertRaises(ValueError):
+      _ = component.Trainer(
+          module_file='/path/to/module/file',
+          run_fn='path.to.my_run_fn',
           examples=self.examples,
           transform_graph=self.transform_output,
           schema=self.schema,

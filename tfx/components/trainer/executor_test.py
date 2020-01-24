@@ -108,6 +108,14 @@ class ExecutorTest(tf.test.TestCase):
             tf.io.gfile.listdir(
                 os.path.join(self._model_exports.uri, 'serving_model_dir'))))
 
+  def testGenericExecutor(self):
+    self._exec_properties['module_file'] = self._module_file
+    executor.GenericExecutor().Do(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties)
+    self._verify_model_exports()
+
   def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file
     self._trainer_executor.Do(
