@@ -67,7 +67,7 @@ _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 _TEMP_DIR_IN_TRANSFORM_OUTPUT = '.temp_path'
 
 # TODO(zhuo): Remove this branch after 0.22.
-if tft.__version__ <= '0.21':
+if tft.__version__ < '0.22':
   _create_batched_placeholders = (
       impl_helper.feature_spec_as_batched_placeholders)
 else:
