@@ -32,15 +32,15 @@ def make_required_install_packages():
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.21,<0.22',
       'protobuf>=3.7,<4',
-      'pyarrow>=0.14,<0.15',
+      'pyarrow>=0.15,<0.16',
       'pyyaml>=3.12,<4',
       'six>=1.10,<2',
       'tensorflow>=1.15,<3',
-      'tensorflow-data-validation>=0.15,<0.16',
-      'tensorflow-model-analysis>=0.15.2,<0.16',
+      'tensorflow-data-validation>=0.21,<0.22',
+      'tensorflow-model-analysis>=0.21,<0.22',
       'tensorflow-serving-api>=1.15,<3',
-      'tensorflow-transform>=0.15,<0.16',
-      'tfx-bsl>=0.15.3,<0.16',
+      'tensorflow-transform>=0.21,<0.22',
+      'tfx-bsl>=0.21,<0.22',
   ]
 
 
