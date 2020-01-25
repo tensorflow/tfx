@@ -50,7 +50,7 @@ class Channel(json_utils.Jsonable):
   into or read from it.
 
   Attributes:
-    type_name: A string representing the artifact type the Channel takes.
+    type: The artifact type class that the Channel takes.
   """
 
   # TODO(b/125348988): Add support for real Channel in addition to static ones.
