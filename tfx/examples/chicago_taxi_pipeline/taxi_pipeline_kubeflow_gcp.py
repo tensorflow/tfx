@@ -239,9 +239,7 @@ if __name__ == '__main__':
       tfx_image=tfx_image)
 
   if FLAGS.distributed_training:
-    _ai_platform_training_args = {
-        'project': _project_id,
-        'region': _gcp_region,
+    _ai_platform_training_args.update({
         # You can specify the machine types, the number of replicas for workers
         # and parameter servers.
         # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
@@ -249,9 +247,9 @@ if __name__ == '__main__':
         'masterType': 'large_model',
         'workerType': 'standard',
         'parameterServerType': 'standard',
-        'workerCount': 1,
+        'workerCount': 2,
         'parameterServerCount': 1
-    }
+    })
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
