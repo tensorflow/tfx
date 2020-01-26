@@ -72,9 +72,15 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
+    executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
+                                     self._executor.__class__.__name__)
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
         self._model_push.mlmd_artifact.custom_properties['pushed_model']
-        .string_value, mock.ANY, mock.ANY)
+        .string_value,
+        mock.ANY,
+        mock.ANY,
+        executor_class_path,
+    )
     self.assertEqual(
         1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
