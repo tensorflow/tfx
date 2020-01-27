@@ -112,8 +112,8 @@
 *   The execution caching mechanism was changed to rely on ML Metadata
     pipeline context. Existing cached executions will not be reused when running
     on this version of TFX for the first time.
-*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP and
-    Dataflow jobs submitted from TFX components.
+*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
+    BQML and Dataflow jobs submitted from TFX components.
 
 ### For pipeline authors
 
