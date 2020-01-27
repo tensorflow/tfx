@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import json
 import os
+
+import absl
 from kfp import dsl
 import tensorflow as tf
 
@@ -104,8 +106,17 @@ class BaseComponentTest(tf.test.TestCase):
         '--component_config',
         'null',
     ]
-    self.assertEqual(self.component.container_op.arguments[:len(expected_args)],
-                     expected_args)
+    try:
+      self.assertEqual(
+          self.component.container_op.arguments[:len(expected_args)],
+          expected_args)
+    except AssertionError:
+      # Print out full arguments for debugging.
+      absl.logging.error('==== BEGIN CONTAINER OP ARGUMENT DUMP ====')
+      absl.logging.error(
+          json.dumps(self.component.container_op.arguments, indent=2))
+      absl.logging.error('==== END CONTAINER OP ARGUMENT DUMP ====')
+      raise
 
   def testContainerOpName(self):
     self.assertEqual('StatisticsGen.foo', self.tfx_component.id)
@@ -232,14 +243,29 @@ class BaseComponentWithPipelineParamTest(tf.test.TestCase):
         '--component_config',
         'null',
     ]
-    self.assertEqual(
-        self.statistics_gen.container_op
-        .arguments[:len(statistics_gen_expected_args)],
-        statistics_gen_expected_args)
-
-    self.assertEqual(
-        self.example_gen.container_op
-        .arguments[:len(example_gen_expected_args)], example_gen_expected_args)
+    try:
+      self.assertEqual(
+          self.statistics_gen.container_op
+          .arguments[:len(statistics_gen_expected_args)],
+          statistics_gen_expected_args)
+      self.assertEqual(
+          self.example_gen.container_op.arguments[:len(example_gen_expected_args
+                                                      )],
+          example_gen_expected_args)
+    except AssertionError:
+      # Print out full arguments for debugging.
+      absl.logging.error(
+          '==== BEGIN STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
+      absl.logging.error(
+          json.dumps(self.statistics_gen.container_op.arguments, indent=2))
+      absl.logging.error(
+          '==== END STATISTICSGEN CONTAINER OP ARGUMENT DUMP ====')
+      absl.logging.error(
+          '==== BEGIN EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
+      absl.logging.error(
+          json.dumps(self.example_gen.container_op.arguments, indent=2))
+      absl.logging.error('==== END EXAMPLEGEN CONTAINER OP ARGUMENT DUMP ====')
+      raise
 
   def testContainerOpName(self):
     self.assertEqual('StatisticsGen.foo', self.tfx_statistics_gen.id)

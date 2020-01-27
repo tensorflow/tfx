@@ -18,6 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Optional, Text, Union
+
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -108,7 +111,12 @@ class Transform(base_component.BaseComponent):
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
     """
-    examples = examples or input_data
+    if input_data:
+      absl.logging.warning(
+          'The "input_data" argument to the Transform component has '
+          'been renamed to "examples" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      examples = input_data
     if bool(module_file) == bool(preprocessing_fn):
       raise ValueError(
           "Exactly one of 'module_file' or 'preprocessing_fn' must be supplied."
@@ -124,10 +132,10 @@ class Transform(base_component.BaseComponent):
       transformed_examples = types.Channel(
           type=standard_artifacts.Examples, artifacts=[example_artifact])
     spec = TransformSpec(
-        input_data=examples,
+        examples=examples,
         schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
-        transform_output=transform_graph,
+        transform_graph=transform_graph,
         transformed_examples=transformed_examples)
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)

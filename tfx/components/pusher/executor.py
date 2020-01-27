@@ -33,6 +33,14 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+# Key for model in executor input_dict.
+MODEL_KEY = 'model'
+# Key for model blessing in executor input_dict.
+MODEL_BLESSING_KEY = 'model_blessing'
+
+# Key for pushed model in executor output_dict.
+PUSHED_MODEL_KEY = 'pushed_model'
+
 
 class Executor(base_executor.BaseExecutor):
   """TFX Pusher executor to push the new TF model to a filesystem target.
@@ -68,8 +76,9 @@ class Executor(base_executor.BaseExecutor):
       True if the model is blessed by validator.
     """
     model_blessing = artifact_utils.get_single_instance(
-        input_dict['model_blessing'])
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
+        input_dict[MODEL_BLESSING_KEY])
+    model_push = artifact_utils.get_single_instance(
+        output_dict[PUSHED_MODEL_KEY])
     # TODO(jyzhao): should this be in driver or executor.
     if not model_utils.is_model_blessed(model_blessing):
       model_push.set_int_custom_property('pushed', 0)
@@ -101,10 +110,10 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
     if not self.CheckBlessing(input_dict, output_dict):
       return
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
+    model_push = artifact_utils.get_single_instance(
+        output_dict[PUSHED_MODEL_KEY])
     model_push_uri = model_push.uri
-    model_export = artifact_utils.get_single_instance(
-        input_dict['model_export'])
+    model_export = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
     model_export_uri = model_export.uri
     absl.logging.info('Model pushing.')
     # Copy the model we are pushing into

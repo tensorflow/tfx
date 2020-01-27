@@ -95,7 +95,7 @@ class ComponentTest(tf.test.TestCase):
     input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
         input=channel_utils.as_channel([input_base]))
-    self.assertIn('input_base', example_gen.inputs.get_all())
+    self.assertIn('input', example_gen.inputs.get_all())
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)

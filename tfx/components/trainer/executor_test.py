@@ -54,17 +54,17 @@ class ExecutorTest(tf.test.TestCase):
     previous_model.uri = os.path.join(self._source_data_dir, 'trainer/previous')
 
     self._input_dict = {
-        'examples': [examples],
-        'transform_output': [transform_output],
-        'schema': [schema],
-        'base_model': [previous_model]
+        executor.EXAMPLES_KEY: [examples],
+        executor.TRANSFORM_GRAPH_KEY: [transform_output],
+        executor.SCHEMA_KEY: [schema],
+        executor.BASE_MODEL_KEY: [previous_model]
     }
 
     # Create output dict.
     self._model_exports = standard_artifacts.Model()
     self._model_exports.uri = os.path.join(self._output_data_dir,
                                            'model_export_path')
-    self._output_dict = {'output': [self._model_exports]}
+    self._output_dict = {executor.OUTPUT_MODEL_KEY: [self._model_exports]}
 
     # Create exec properties skeleton.
     self._exec_properties = {
@@ -161,7 +161,7 @@ class ExecutorTest(tf.test.TestCase):
         os.path.join(hp_artifact.uri, 'hyperparameters.txt'),
         json.dumps(hyperparameters))
 
-    self._input_dict['hyperparameters'] = [hp_artifact]
+    self._input_dict[executor.HYPERPARAMETERS_KEY] = [hp_artifact]
 
     self._exec_properties['module_file'] = self._module_file
     self._trainer_executor.Do(

@@ -19,6 +19,8 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -195,7 +197,12 @@ class Trainer(base_component.BaseComponent):
       raise ValueError(
           "Exactly one of 'example' or 'transformed_example' must be supplied.")
 
-    transform_graph = transform_graph or transform_output
+    if transform_output:
+      absl.logging.warning(
+          'The "transform_output" argument to the Trainer component has '
+          'been renamed to "transform_graph" and is deprecated. Please update '
+          "your usage as support for this argument will be removed soon.")
+      transform_graph = transform_output
     if transformed_examples and not transform_graph:
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
@@ -204,7 +211,7 @@ class Trainer(base_component.BaseComponent):
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
     spec = TrainerSpec(
         examples=examples,
-        transform_output=transform_graph,
+        transform_graph=transform_graph,
         schema=schema,
         base_model=base_model,
         hyperparameters=hyperparameters,
@@ -214,7 +221,7 @@ class Trainer(base_component.BaseComponent):
         run_fn=run_fn,
         trainer_fn=trainer_fn,
         custom_config=custom_config,
-        output=output)
+        model=output)
     super(Trainer, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,

@@ -49,11 +49,11 @@ class ExecutorTest(tf.test.TestCase):
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
-        'stats': [eval_stats_artifact],
-        'schema': [schema_artifact],
+        executor.STATISTICS_KEY: [eval_stats_artifact],
+        executor.SCHEMA_KEY: [schema_artifact],
     }
     output_dict = {
-        'output': [validation_output],
+        executor.ANOMALIES_KEY: [validation_output],
     }
 
     exec_properties = {}

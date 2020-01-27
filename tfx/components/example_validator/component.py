@@ -19,6 +19,8 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -72,22 +74,27 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A Channel of type `standard_artifacts.ExampleStatistics`.
-        This should contain at least 'eval' split. Other splits are currently
+      statistics: A Channel of type `standard_artifacts.ExampleStatistics`. This
+        should contain at least 'eval' split. Other splits are currently
         ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
         ExampleValidator. Required only if multiple ExampleValidator components
-        are declared in the same pipeline.
-
-    Either `stats` or `statistics` must be present in the arguments.
+        are declared in the same pipeline.  Either `stats` or `statistics` must
+        be present in the arguments.
     """
-    statistics = statistics or stats
-    output = output or types.Channel(
+    if stats:
+      absl.logging.warning(
+          'The "stats" argument to the StatisticsGen component has '
+          'been renamed to "statistics" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      statistics = stats
+    anomalies = output or types.Channel(
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
-    spec = ExampleValidatorSpec(stats=statistics, schema=schema, output=output)
+    spec = ExampleValidatorSpec(
+        statistics=statistics, schema=schema, anomalies=anomalies)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

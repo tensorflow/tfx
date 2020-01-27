@@ -29,6 +29,12 @@ from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
+# Key for statistics in executor input_dict.
+STATISTICS_KEY = 'statistics'
+
+# Key for output schema in executor output_dict.
+SCHEMA_KEY = 'schema'
+
 # Default file name for generated schema file.
 _DEFAULT_FILE_NAME = 'schema.pbtxt'
 
@@ -60,9 +66,9 @@ class Executor(base_executor.BaseExecutor):
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
     train_stats_uri = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_split_uri(input_dict['stats'], 'train'))
+        artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], 'train'))
     output_uri = os.path.join(
-        artifact_utils.get_single_uri(output_dict['output']),
+        artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
 
     infer_feature_shape = exec_properties['infer_feature_shape']

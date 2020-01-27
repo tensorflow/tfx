@@ -54,8 +54,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     self._input_dict = {
-        'input_data': [examples],
-        'schema': [schema_artifact],
+        executor.EXAMPLES_KEY: [examples],
+        executor.SCHEMA_KEY: [schema_artifact],
     }
 
     # Create output dict.
@@ -70,9 +70,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
     temp_path_output.uri = tempfile.mkdtemp()
 
     self._output_dict = {
-        'transform_output': [self._transformed_output],
-        'transformed_examples': [self._transformed_examples],
-        'temp_path': [temp_path_output],
+        executor.TRANSFORM_GRAPH_KEY: [self._transformed_output],
+        executor.TRANSFORMED_EXAMPLES_KEY: [self._transformed_examples],
+        executor.TEMP_PATH_KEY: [temp_path_output],
     }
 
     # Create exec properties skeleton.

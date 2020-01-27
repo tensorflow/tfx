@@ -41,15 +41,15 @@ class ExecutorTest(tf.test.TestCase):
                                           'trainer/current')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
-        'model_export': [self._model_export],
-        'model_blessing': [self._model_blessing],
+        executor.MODEL_KEY: [self._model_export],
+        executor.MODEL_BLESSING_KEY: [self._model_blessing],
     }
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
     tf.io.gfile.makedirs(self._model_push.uri)
     self._output_dict = {
-        'model_push': [self._model_push],
+        executor.PUSHED_MODEL_KEY: [self._model_push],
     }
     self._serving_model_dir = os.path.join(self._output_data_dir,
                                            'serving_model_dir')

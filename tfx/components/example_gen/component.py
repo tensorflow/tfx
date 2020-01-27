@@ -20,6 +20,8 @@ from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -165,7 +167,12 @@ class FileBasedExampleGen(base_component.BaseComponent):
         ExampleGen components are declared in the same pipeline.  Either
         `input_base` or `input` must be present in the input arguments.
     """
-    input = input or input_base
+    if input_base:
+      absl.logging.warning(
+          'The "input_base" argument to the ExampleGen component has '
+          'been renamed to "input" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      input = input_base
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
@@ -176,7 +183,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
           utils.generate_output_split_names(input_config, output_config))
       example_artifacts = channel_utils.as_channel([artifact])
     spec = FileBasedExampleGenSpec(
-        input_base=input,
+        input=input,
         input_config=input_config,
         output_config=output_config,
         custom_config=custom_config,

@@ -27,7 +27,8 @@ import tensorflow as tf
 from tfx_bsl.coders import csv_decoder
 
 from tfx import types
-from tfx.components.example_gen import base_example_gen_executor
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
@@ -114,7 +115,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Raises:
     RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
+  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
   csv_pattern = os.path.join(input_base_uri, split_pattern)
   absl.logging.info(
       'Processing input csv data {} to TFExample.'.format(csv_pattern))
@@ -144,7 +145,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
           | 'ToTFExample' >> beam.ParDo(_ParsedCsvToTfExample(), column_infos))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """Generic TFX CSV example gen executor."""
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
