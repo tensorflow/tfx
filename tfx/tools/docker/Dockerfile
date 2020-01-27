@@ -12,11 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/tfx-oss-public/tfx_base:latest
-# Change to following base image if docker hub is preferred.
-# FROM tensorflow/tfx_base:latest
-
+FROM ubuntu:16.04
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
+
+# Need additional ppa since python 3.6 and protobuf 3
+# are not part of Ubuntu 16.04 by default.
+RUN apt-get update -y && \
+  apt-get install --no-install-recommends -y -q software-properties-common && \
+  add-apt-repository ppa:deadsnakes/ppa && \
+  add-apt-repository ppa:maarten-fonville/protobuf && \
+  apt-get update -y && \
+  apt-get install --no-install-recommends -y -q \
+  build-essential \
+  ca-certificates \
+  libsnappy-dev \
+  protobuf-compiler \
+  libprotobuf-dev \
+  python3.6-dev \
+  python3-setuptools \
+  python3-virtualenv \
+  python3-wheel \
+  wget \
+  unzip \
+  git && \
+  add-apt-repository -r ppa:deadsnakes/ppa && \
+  add-apt-repository -r ppa:maarten-fonville/protobuf && \
+  apt-get autoclean && \
+  apt-get autoremove --purge && \
+  update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
+# This is to address b/144805438
+RUN wget https://bootstrap.pypa.io/get-pip.py && python3.6 get-pip.py
 
 ENV VIRTUAL_ENV=/opt/venv
 RUN python3.6 -m pip install --upgrade pip && \

@@ -24,7 +24,6 @@ from google.cloud import bigquery
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.types import artifact_utils
 from tfx.utils import path_utils
-from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
@@ -94,14 +93,7 @@ class Executor(tfx_pusher_executor.Executor):
                model_path='{}')""".format(bq_model_uri,
                                           os.path.join(model_path, '*')))
 
-    # TODO(zhitaoli): Refactor the executor_class_path creation into a common
-    # utility function.
-    executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                     self.__class__.__name__)
-    default_query_job_config = bigquery.job.QueryJobConfig(
-        labels=telemetry_utils.get_labels_dict(
-            tfx_executor=executor_class_path))
-    client = bigquery.Client(default_query_job_config=default_query_job_config)
+    client = bigquery.Client()
 
     try:
       query_job = client.query(query)

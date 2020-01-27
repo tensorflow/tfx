@@ -2,22 +2,6 @@
 
 ## Major Features and Improvements
 
-## Bug fixes and other changes
-
-### Deprecations
-
-## Breaking changes
-
-### For pipeline authors
-
-### For component authors
-
-## Documentation updates
-
-# Version 0.21.0 (not yet released; still in development)
-
-## Major Features and Improvements
-
 *   TFX version 0.21.0 will be the last version of TFX supporting Python 2.
 *   Added support for `RuntimeParameter`s to allow users can specify templated
     values at runtime. This is currently only supported in Kubeflow Pipelines.
@@ -48,19 +32,12 @@
 *   Added a metadata adapter in Kubeflow to support logging the Argo pod ID as
     an execution property.
 *   Added a prototype Tuner component and an end-to-end iris example.
-*   Created new generic trainer executor for non estimator based model, e.g.,
-    native Keras.
 
 ## Bug fixes and other changes
-*   Refactored common dependencies in the TFX dockerfile to a base image to
-    improve the reliability of image building process.
+
 *   Fixes missing Tensorboard link in KubeflowDagRunner.
-*   Depends on `apache-beam[gcp]>=2.17,<3`.
-*   Depends on `ml-metadata>=0.21,<0.22`.
-*   Depends on `tensorflow-data-validation>=0.21,<0.22`.
-*   Depends on `tensorflow-model-analysis>=0.21,<0.22`.
-*   Depends on `tensorflow-transform>=0.21,<0.22`.
-*   Depends on `tfx-bsl>=0.21,<0.22`.
+*   Depends on `apache-beam[gcp]>=2.17,<3`
+*   Depends on `ml-metadata==0.21.0rc0`
 *   Depends on `pyarrow>=0.14,<0.15`.
 *   Removed `tf.compat.v1` usage for iris and cifar10 examples.
 *   CSVExampleGen: started using the CSV decoding utilities in `tfx-bsl`
@@ -112,8 +89,8 @@
 *   The execution caching mechanism was changed to rely on ML Metadata
     pipeline context. Existing cached executions will not be reused when running
     on this version of TFX for the first time.
-*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
-    BQML and Dataflow jobs submitted from TFX components.
+*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP and
+    Dataflow jobs submitted from TFX components.
 
 ### For pipeline authors
 

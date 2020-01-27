@@ -177,12 +177,8 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   absl.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
-def deploy_model_for_aip_prediction(
-    serving_path: Text,
-    model_version: Text,
-    ai_platform_serving_args: Dict[Text, Any],
-    executor_class_path: Text,
-):
+def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
+                                    ai_platform_serving_args: Dict[Text, Any]):
   """Deploys a model for serving with AI Platform.
 
   Args:
@@ -192,8 +188,6 @@ def deploy_model_for_aip_prediction(
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
       Platform. For the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
-    executor_class_path: class path for TFX core default trainer.
-
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
@@ -221,13 +215,11 @@ def deploy_model_for_aip_prediction(
     else:
       raise RuntimeError('AI Platform Push failed: {}'.format(e))
 
-  job_labels = telemetry_utils.get_labels_dict(tfx_executor=executor_class_path)
   body = {
       'name': 'v{}'.format(model_version),
       'deployment_uri': serving_path,
       'runtime_version': runtime_version,
       'python_version': python_version,
-      'labels': job_labels,
   }
 
   # Push to AIP, and record the operation name so we can poll for its state.

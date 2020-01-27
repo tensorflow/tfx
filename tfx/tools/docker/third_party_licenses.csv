@@ -150,15 +150,12 @@ pyarrow,https://raw.githubusercontent.com/apache/arrow/master/LICENSE.txt,Apache
 pyasn1,https://raw.githubusercontent.com/etingof/pyasn1/master/LICENSE.rst,BSD
 pyasn1-modules,https://raw.githubusercontent.com/etingof/pyasn1-modules/master/LICENSE.txt,BSD
 pycparser,https://raw.githubusercontent.com/eliben/pycparser/master/LICENSE,BSD-3-Clause
-pycurl,https://raw.githubusercontent.com/pycurl/pycurl/master/COPYING-LGPL,LGPL+MIT
 pydot,https://raw.githubusercontent.com/erocarrera/pydot/master/LICENSE,MIT
 pyglet,https://raw.githubusercontent.com/adamlwgriffiths/Pyglet/master/LICENSE,3-Clause BSD
 pygments,https://bitbucket.org/birkenfeld/pygments-main/raw/7941677dc77d4f2bf0bbd6140ade85a9454b8b80/LICENSE,BSD
-pygobject,https://raw.githubusercontent.com/GNOME/pygobject/mainline/COPYING,LGPL 2.1
 pymongo,https://raw.githubusercontent.com/mher/pymongo/master/LICENSE,Apache 2.0
 pyparsing,https://raw.githubusercontent.com/pyparsing/pyparsing/master/LICENSE,MIT
 pyrsistent,https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENCE.mit,MIT
-python-apt,https://raw.githubusercontent.com/excid3/python-apt/master/COPYING.GPL,GPLv2
 python-dateutil,https://raw.githubusercontent.com/dateutil/dateutil/283a3a3a67245e1d5791e5478ce6ff688f2c348a/LICENSE,"Apache Software License, BSD License (Dual License)"
 python-editor,https://raw.githubusercontent.com/fmoo/python-editor/master/LICENSE,Apache v2
 python-snappy,https://raw.githubusercontent.com/andrix/python-snappy/master/LICENSE,BSD
@@ -206,7 +203,6 @@ typing,https://raw.githubusercontent.com/python/typing/master/LICENSE,PSF
 tzlocal,https://raw.githubusercontent.com/regebro/tzlocal/master/LICENSE.txt,MIT
 uritemplate,https://github.com/python-hyper/uritemplate/blob/master/LICENSE,BSD 3-Clause License or Apache 2.0
 urllib3,https://raw.githubusercontent.com/urllib3/urllib3/master/LICENSE.txt,MIT
-virtualenv,https://raw.githubusercontent.com/pypa/virtualenv/master/LICENSE.txt,MIT
 wcwidth,https://raw.githubusercontent.com/jquast/wcwidth/master/LICENSE.txt,MIT
 webencodings,https://raw.githubusercontent.com/gsnedders/python-webencodings/master/LICENSE,BSD
 websocket-client,https://raw.githubusercontent.com/websocket-client/websocket-client/master/LICENSE,LGPL

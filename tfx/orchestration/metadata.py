@@ -25,7 +25,6 @@ import os
 import random
 import time
 import types
-
 from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
@@ -209,7 +208,7 @@ class Metadata(object):
       a.id = aid
 
   def publish_artifacts(self, tfx_artifact_list: List[Artifact]) -> None:
-    """Publishes artifacts to MLMD.
+    """Publish artifacts to MLMD.
 
     This call will also update original tfx artifact list to contain the
     artifact type info and artifact id.
@@ -219,15 +218,25 @@ class Metadata(object):
     """
     self._upsert_artifacts(tfx_artifact_list, ArtifactState.PUBLISHED)
 
+  def get_all_artifacts(self) -> List[metadata_store_pb2.Artifact]:
+    try:
+      return self.store.get_artifacts()
+    except tf.errors.NotFoundError:
+      return []
+
   def get_artifacts_by_uri(self,
                            uri: Text) -> List[metadata_store_pb2.Artifact]:
-    """Fetches artifacts given uri."""
-    return self.store.get_artifacts_by_uri(uri)
+    try:
+      return self.store.get_artifacts_by_uri(uri)
+    except tf.errors.NotFoundError:
+      return []
 
   def get_artifacts_by_type(
       self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
-    """Fetches artifacts given artifact type name."""
-    return self.store.get_artifacts_by_type(type_name)
+    try:
+      return self.store.get_artifacts_by_type(type_name)
+    except tf.errors.NotFoundError:
+      return []
 
   def _prepare_event(self,
                      event_type: metadata_store_pb2.Event.Type,
@@ -253,7 +262,7 @@ class Metadata(object):
   # TODO(b/143081379): We might need to revisit schema evolution story.
   def _prepare_execution_type(self, type_name: Text,
                               exec_properties: Dict[Text, Any]) -> int:
-    """Gets execution type given execution type name and properties.
+    """Get a execution type.
 
     Uses existing type if schema is superset of what is needed. Otherwise tries
     to register new execution type.
@@ -568,6 +577,44 @@ class Metadata(object):
         artifact_state=ArtifactState.PUBLISHED,
         contexts=contexts)
 
+  def _get_cached_execution_id(
+      self, input_dict: Dict[Text, List[Artifact]],
+      candidate_execution_ids: List[int]) -> Optional[int]:
+    """Gets common execution ids that are related to all the artifacts in input.
+
+    Args:
+      input_dict: input used by a component run.
+      candidate_execution_ids: a list of id of candidate execution.
+
+    Returns:
+      a qualified execution id or None.
+
+    """
+    input_ids = set()
+    for input_list in input_dict.values():
+      for single_input in input_list:
+        input_ids.add(single_input.mlmd_artifact.id)
+
+    for execution_id in candidate_execution_ids:
+      events = self.store.get_events_by_execution_ids([execution_id])
+      execution_input_ids = set(
+          event.artifact_id for event in events if event.type in [
+              metadata_store_pb2.Event.INPUT,
+              metadata_store_pb2.Event.DECLARED_INPUT
+          ]
+      )
+      if input_ids == execution_input_ids:
+        absl.logging.debug(
+            'Found matching execution with all input artifacts: %s' %
+            execution_id)
+        return execution_id
+      else:
+        absl.logging.debug(
+            'Execution %d does not match desired input artifacts', execution_id)
+    absl.logging.debug(
+        'No execution matching type id and input artifacts found')
+    return None
+
   def _is_eligible_previous_execution(
       self, current_execution: metadata_store_pb2.Execution,
       target_execution: metadata_store_pb2.Execution) -> bool:
@@ -576,16 +623,16 @@ class Metadata(object):
     current_execution.id = target_execution.id
     return current_execution == target_execution
 
-  def get_cached_outputs(
+  # TODO(ruoyu): Leverage artifact-context attribution to enhance performance
+  # once publishing execution adopts new pattern.
+  def previous_execution(
       self, input_artifacts: Dict[Text, List[Artifact]],
       exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo
-  ) -> Optional[Dict[Text, List[Artifact]]]:
-    """Fetches cached output artifacts if any.
+      component_info: data_types.ComponentInfo) -> Optional[int]:
+    """Gets eligible previous execution that takes the same inputs.
 
-    Returns the output artifacts of a cached execution if any. An eligible
-    cached execution should take the same input artifacts, execution properties
-    and is associated with the same pipeline context.
+    An eligible execution should take the same inputs, execution properties and
+    with the same pipeline and component properties.
 
     Args:
       input_artifacts: inputs used by the run.
@@ -594,131 +641,70 @@ class Metadata(object):
       component_info: info of the current component.
 
     Returns:
-      Dict of cached output artifacts if eligible cached execution is found.
-      Otherwise, return None.
+      Execution id of previous run that takes the input dict. None if not found.
     """
     absl.logging.debug(
-        ('Trying to fetch cached output artifacts with the following info: \n'
-         'input_artifacts: %s \n'
-         'exec_properties: %s \n'
-         'component_info %s') %
-        (input_artifacts, exec_properties, component_info))
+        'Checking previous run for execution_type_name %s and input_artifacts %s',
+        component_info.component_type, input_artifacts)
 
-    # Step 0: Finds the context of the pipeline. No context means no valid cache
-    # results.
-    context = self.get_pipeline_context(pipeline_info)
-    if context is None:
-      absl.logging.warning('Pipeline context not available for %s' %
-                           pipeline_info)
-      return None
-
-    # Step 1: Finds historical executions related to the context in step 0.
-    historical_executions = dict(
-        (e.id, e) for e in self._store.get_executions_by_context(context.id))
-
-    # Step 2: Filters historical executions to find those that used all the
-    # given inputs as input artifacts. The result of this step is a set of
-    # reversely sorted execution ids.
-    input_ids = set()
-    for input_list in input_artifacts.values():
-      for single_input in input_list:
-        input_ids.add(single_input.mlmd_artifact.id)
-    artifact_to_executions = collections.defaultdict(set)
-    for event in self.store.get_events_by_artifact_ids(list(input_ids)):
-      artifact_to_executions[event.artifact_id].add(event.execution_id)
-    common_execution_ids = sorted(
-        set.intersection(
-            set(historical_executions.keys()),
-            *(artifact_to_executions.values())),
-        reverse=True)
-
-    # Step 3: Filters candidate executions further based on the followings:
-    #   - Shares the given properties
-    #   - Is in complete state
-    # The maximum number of candidates is capped by MAX_EXECUTIONS_FOR_CACHE.
+    # Ids of candidate executions which share the same execution property as
+    # current.
+    candidate_execution_ids = []
     expected_previous_execution = self._prepare_execution(
         EXECUTION_STATE_COMPLETE,
         exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info)
-
-    candidate_execution_ids = [
-        e_id for e_id in common_execution_ids  # pylint: disable=g-complex-comprehension
-        if self._is_eligible_previous_execution(
-            copy.deepcopy(expected_previous_execution),
-            copy.deepcopy(historical_executions[e_id]))
-    ]
+    context = self.get_pipeline_context(pipeline_info)
+    if context is None:
+      absl.logging.warning('Pipeline context not available for %s' %
+                           pipeline_info)
+      return None
+    for execution in self.store.get_executions_by_context(context.id):
+      if self._is_eligible_previous_execution(
+          copy.deepcopy(expected_previous_execution), copy.deepcopy(execution)):
+        candidate_execution_ids.append(execution.id)
+    candidate_execution_ids.sort(reverse=True)
     candidate_execution_ids = candidate_execution_ids[
         0:min(len(candidate_execution_ids), MAX_EXECUTIONS_FOR_CACHE)]
 
-    # Step 4: Traverse all candidates, if the input artifacts of a candidate
-    # match given input artifacts, return the output artifacts of that execution
-    # as result. Note that this is necessary since a candidate execution might
-    # use more than the given artifacts.
-    execution_to_events = collections.defaultdict(list)
-    for event in self.store.get_events_by_execution_ids(
-        candidate_execution_ids):
-      execution_to_events[event.execution_id].append(event)
-    for execution_id, events in execution_to_events.items():
-      cached_outputs = self._get_outputs_of_execution(
-          desired_input_ids=input_ids, execution_id=execution_id, events=events)
-      if cached_outputs is not None:
-        return cached_outputs
+    return self._get_cached_execution_id(input_artifacts,
+                                         candidate_execution_ids)
 
-    return None
-
-  def _get_outputs_of_execution(
-      self, desired_input_ids: Set[int], execution_id: int,
-      events: List[metadata_store_pb2.Event]
-  ) -> Optional[Dict[Text, List[Artifact]]]:
-    """Fetches outputs produced by a historical execution with desired inputs.
-
-    If the desired input ids are not exactly the same as the input artifacts
-    of the given execution id, return nothing. Otherwise, return the output
-    artifacts in the format of key -> List[Artifact].
+  # TODO(b/136031301): This should be merged with previous_run.
+  def fetch_previous_result_artifacts(
+      self, output_dict: Dict[Text, List[Artifact]],
+      execution_id: int) -> Dict[Text, List[Artifact]]:
+    """Fetches output with artifact ids produced by a previous run.
 
     Args:
-      desired_input_ids: artifact ids of desired inputs.
+      output_dict: a dict from name to a list of output Artifact objects.
       execution_id: the id of the execution that produced the outputs.
-      events: events related to the execution id.
 
     Returns:
-      A dict of key -> List[Artifact] as the result
+      Original output_dict with artifact id inserted.
+
+    Raises:
+      RuntimeError: path change without clean metadata.
     """
 
-    execution_input_ids = set(event.artifact_id
-                              for event in events
-                              if event.type == metadata_store_pb2.Event.INPUT)
-    # Only needs to compare the length of the input ids set since we only need
-    # to rule out the case that past execution uses more inputs than given
-    # inputs.
-    if len(desired_input_ids) != len(execution_input_ids):
-      absl.logging.debug('Execution %s does not match all inputs' %
-                         execution_id)
-      return None
-
-    absl.logging.debug('Execution %s matches all inputs' % execution_id)
-    result = collections.defaultdict(list)
-
-    output_events = [
-        event for event in events
-        if event.type in [metadata_store_pb2.Event.OUTPUT]
-    ]
-    output_events.sort(key=lambda e: e.path.steps[1].index)
-    cached_output_artifacts = self.store.get_artifacts_by_id(
-        [e.artifact_id for e in output_events])
-    artifact_types = self.store.get_artifact_types_by_id(
-        [a.type_id for a in cached_output_artifacts])
-
-    for event, mlmd_artifact, artifact_type in zip(output_events,
-                                                   cached_output_artifacts,
-                                                   artifact_types):
-      key = event.path.steps[0].key
-      tfx_artifact = Artifact(mlmd_artifact_type=artifact_type)
-      tfx_artifact.set_mlmd_artifact(mlmd_artifact)
-      result[key].append(tfx_artifact)
-
-    return result
+    name_to_index_to_artifacts = collections.defaultdict(dict)
+    for event in self.store.get_events_by_execution_ids([execution_id]):
+      if event.type == metadata_store_pb2.Event.OUTPUT:
+        [artifact] = self.store.get_artifacts_by_id([event.artifact_id])
+        output_key = event.path.steps[0].key
+        output_index = event.path.steps[1].index
+        name_to_index_to_artifacts[output_key][output_index] = artifact
+    for output_name, output_list in output_dict.items():
+      if output_name not in name_to_index_to_artifacts:
+        raise RuntimeError('Unmatched output name from previous execution.')
+      index_to_artifacts = name_to_index_to_artifacts[output_name]
+      if len(output_list) != len(index_to_artifacts):
+        raise RuntimeError('Output name expected %s items but %s retrieved' %
+                           (len(output_list), len(index_to_artifacts)))
+      for index, output in enumerate(output_list):
+        output.set_mlmd_artifact(index_to_artifacts[index])
+    return dict(output_dict)
 
   def search_artifacts(self, artifact_name: Text,
                        pipeline_info: data_types.PipelineInfo,
@@ -778,6 +764,42 @@ class Metadata(object):
       tfx_artifact.set_mlmd_artifact_type(artifact_types[a.type_id])
       result_artifacts.append(tfx_artifact)
     return result_artifacts
+
+  def get_all_runs(self, pipeline_name: Text):
+    """Get all runs for a given pipeline name.
+
+    Args:
+      pipeline_name: name of the pipeline.
+
+    Returns:
+      A List of run id.
+    """
+    result = []
+    # TODO(b/139092990): support get_contexts_by_property.
+    for context in self.store.get_contexts_by_type(_CONTEXT_TYPE_PIPELINE_RUN):
+      if context.properties['pipeline_name'].string_value == pipeline_name:
+        result.append(context.properties['run_id'].string_value)
+    return result
+
+  def get_execution_states(self, pipeline_info: data_types.PipelineInfo):
+    """Get components execution states for a given pipeline.
+
+    Args:
+      pipeline_info: target pipeline's information.
+
+    Returns:
+      A Dict of component id to its state mapping.
+    """
+    pipeline_run_context = self.store.get_context_by_type_and_name(
+        _CONTEXT_TYPE_PIPELINE_RUN, pipeline_info.pipeline_run_context_name)
+    result = {}
+    if not pipeline_run_context:
+      return result
+    for execution in self.store.get_executions_by_context(
+        pipeline_run_context.id):
+      result[execution.properties['component_id']
+             .string_value] = execution.properties['state'].string_value
+    return result
 
   def _register_context_type_if_not_exist(
       self, context_type_name: Text,

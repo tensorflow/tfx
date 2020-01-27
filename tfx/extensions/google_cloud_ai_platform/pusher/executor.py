@@ -72,22 +72,15 @@ class Executor(tfx_pusher_executor.Executor):
     exec_properties_copy = exec_properties.copy()
     custom_config = exec_properties_copy.pop('custom_config', {})
     ai_platform_serving_args = custom_config[SERVING_ARGS_KEY]
-    if not ai_platform_serving_args:
-      raise ValueError(
-          '\'ai_platform_serving_args\' is missing in \'custom_config\'')
+
     # Deploy the model.
     model_path = path_utils.serving_model_path(model_export_uri)
     # Note: we do not have a logical model version right now. This
     # model_version is a timestamp mapped to trainer's exporter.
     model_version = os.path.basename(model_path)
-    executor_class_path = '%s.%s' % (self.__class__.__module__,
-                                     self.__class__.__name__)
-    runner.deploy_model_for_aip_prediction(
-        model_path,
-        model_version,
-        ai_platform_serving_args,
-        executor_class_path,
-    )
+    if ai_platform_serving_args is not None:
+      runner.deploy_model_for_aip_prediction(model_path, model_version,
+                                             ai_platform_serving_args)
 
     model_push.set_int_custom_property('pushed', 1)
     model_push.set_string_custom_property('pushed_model', model_path)
