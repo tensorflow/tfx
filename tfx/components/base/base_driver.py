@@ -192,14 +192,6 @@ class BaseDriver(object):
 
     return result
 
-  def _fetch_cached_artifacts(
-      self, output_dict: Dict[Text, types.Channel],
-      cached_execution_id: int) -> Dict[Text, List[types.Artifact]]:
-    """Fetch cached output artifacts."""
-    output_artifacts_dict = channel_utils.unwrap_channel_dict(output_dict)
-    return self._metadata_handler.fetch_previous_result_artifacts(
-        output_artifacts_dict, cached_execution_id)
-
   def _register_execution(
       self, input_artifacts: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
@@ -280,32 +272,17 @@ class BaseDriver(object):
         pipeline_info=pipeline_info,
         component_info=component_info,
         contexts=contexts)
-    output_artifacts = {}
     use_cached_results = False
+    output_artifacts = None
 
     if driver_args.enable_cache:
-      # TODO(b/136031301): Combine Step 3 and Step 4b after finish migration to
-      # go/tfx-oss-artifact-passing.
       # Step 3. Decide whether a new execution is needed.
-      cached_execution_id = self._metadata_handler.previous_execution(
+      output_artifacts = self._metadata_handler.get_cached_outputs(
           input_artifacts=input_artifacts,
           exec_properties=exec_properties,
           pipeline_info=pipeline_info,
           component_info=component_info)
-      if cached_execution_id:
-        absl.logging.debug('Found cached_execution: %s', cached_execution_id)
-        # Step 4b. New execution not needed. Fetch cached output artifacts.
-        try:
-          output_artifacts = self._fetch_cached_artifacts(
-              output_dict=output_dict, cached_execution_id=cached_execution_id)
-          absl.logging.debug('Cached output artifacts are: %s',
-                             output_artifacts)
-          use_cached_results = True
-        except RuntimeError:
-          absl.logging.warning(
-              'Error when trying to get cached output artifacts')
-          use_cached_results = False
-    if use_cached_results:
+    if output_artifacts is not None:
       # If cache should be used, updates execution to reflect that. Note that
       # with this update, publisher should / will be skipped.
       self._metadata_handler.update_execution(
@@ -314,6 +291,7 @@ class BaseDriver(object):
           output_artifacts=output_artifacts,
           execution_state=metadata.EXECUTION_STATE_CACHED,
           contexts=contexts)
+      use_cached_results = True
     else:
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.

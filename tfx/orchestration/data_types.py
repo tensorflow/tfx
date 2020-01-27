@@ -115,6 +115,13 @@ class PipelineInfo(object):
     self.pipeline_root = pipeline_root
     self.run_id = run_id
 
+  def __repr__(self):
+    return ('PipelineInfo('
+            'pipeline_name: %s, '
+            'pipeline_root: %s, '
+            'run_id: %s)') % (self.pipeline_name, self.pipeline_root,
+                              self.run_id)
+
   @property
   def pipeline_run_context_name(self) -> Text:
     """Context name for the current pipeline run."""
@@ -141,6 +148,13 @@ class ComponentInfo(object):
     self.component_type = component_type
     self.component_id = component_id
     self.pipeline_info = pipeline_info
+
+  def __repr__(self):
+    return ('ComponentInfo('
+            'component_type: %s, '
+            'component_id: %s, '
+            'pipeline_info: %s)') % (self.component_type, self.component_id,
+                                     self.pipeline_info)
 
   @property
   def component_run_context_name(self) -> Text:
