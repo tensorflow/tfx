@@ -325,7 +325,7 @@ class BeamHandlerTest(tf.test.TestCase):
     }
     handler = beam_handler.BeamHandler(flags_dict)
     # Create fake schema in pipeline root.
-    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'output', '3')
+    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'schema', '3')
     tf.io.gfile.makedirs(schema_path)
     with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
       f.write('SCHEMA')

@@ -109,6 +109,11 @@
     names in `types.standard_artifacts`.
 *   The "split" property on multiple artifacts has been replaced with the
     JSON-encoded "split_names" property on a single grouped artifact.
+*   When custom executors are created for the ExampleGen, Pusher and Trainer
+    components, instead of accessing entries in `input_dict` and `output_dict`
+    with hard-coded string keys (e.g. `'model'`, `'examples'`, etc.), these
+    executors should use the new `*_KEY` properties defined in the base
+    executor's module file (e.g. `MODEL_KEY`, `EXAMPLES_KEY`, etc.).
 *   The execution caching mechanism was changed to rely on ML Metadata
     pipeline context. Existing cached executions will not be reused when running
     on this version of TFX for the first time.

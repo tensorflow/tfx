@@ -38,6 +38,20 @@ from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+# Key for base model in executor input_dict.
+BASE_MODEL_KEY = 'base_model'
+# Key for examples in executor input_dict.
+EXAMPLES_KEY = 'examples'
+# Key for hyperparameters in executor input_dict.
+HYPERPARAMETERS_KEY = 'hyperparameters'
+# Key for schema in executor input_dict.
+SCHEMA_KEY = 'schema'
+# Key for transform graph in executor input_dict.
+TRANSFORM_GRAPH_KEY = 'transform_graph'
+
+# Key for output model in executor output_dict.
+OUTPUT_MODEL_KEY = 'model'
+
 
 def _all_files_pattern(file_pattern: Text) -> Text:
   return os.path.join(file_pattern, '*')
@@ -112,24 +126,24 @@ class GenericExecutor(base_executor.BaseExecutor):
     # Set up training parameters
     train_files = [
         _all_files_pattern(
-            artifact_utils.get_split_uri(input_dict['examples'], 'train'))
+            artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], 'train'))
     ]
     transform_output = artifact_utils.get_single_uri(
-        input_dict['transform_output']) if input_dict.get(
-            'transform_output', None) else None
+        input_dict[TRANSFORM_GRAPH_KEY]) if input_dict.get(
+            TRANSFORM_GRAPH_KEY, None) else None
     eval_files = [
         _all_files_pattern(
-            artifact_utils.get_split_uri(input_dict['examples'], 'eval'))
+            artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], 'eval'))
     ]
     schema_file = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_single_uri(input_dict['schema']))
+        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     base_model = path_utils.serving_model_path(
-        artifact_utils.get_single_uri(
-            input_dict['base_model'])) if input_dict.get('base_model') else None
-    if input_dict.get('hyperparameters'):
+        artifact_utils.get_single_uri(input_dict[BASE_MODEL_KEY])
+    ) if input_dict.get(BASE_MODEL_KEY) else None
+    if input_dict.get(HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_single_uri(input_dict['hyperparameters']))
+          artifact_utils.get_single_uri(input_dict[HYPERPARAMETERS_KEY]))
       hyperparameters_config = json.loads(
           file_io.read_file_to_string(hyperparameters_file))
     else:
@@ -147,7 +161,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     train_steps = train_args.num_steps or None
     eval_steps = eval_args.num_steps or None
 
-    output_path = artifact_utils.get_single_uri(output_dict['output'])
+    output_path = artifact_utils.get_single_uri(output_dict[OUTPUT_MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
 

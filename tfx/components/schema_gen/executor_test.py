@@ -44,10 +44,10 @@ class ExecutorTest(tf.test.TestCase):
     schema_output.uri = os.path.join(output_data_dir, 'schema_output')
 
     input_dict = {
-        'stats': [statistics_artifact],
+        executor.STATISTICS_KEY: [statistics_artifact],
     }
     output_dict = {
-        'output': [schema_output],
+        executor.SCHEMA_KEY: [schema_output],
     }
 
     exec_properties = {'infer_feature_shape': False}

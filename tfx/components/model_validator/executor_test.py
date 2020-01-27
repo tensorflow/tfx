@@ -44,16 +44,14 @@ class ExecutorTest(tf.test.TestCase):
     model = standard_artifacts.Model()
     model.uri = os.path.join(self._source_data_dir, 'trainer/current')
     self._input_dict = {
-        'examples': [eval_examples],
-        'model': [model],
+        executor.EXAMPLES_KEY: [eval_examples],
+        executor.MODEL_KEY: [model],
     }
 
     # Create output dict.
     self._blessing = standard_artifacts.ModelBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self._output_dict = {
-        'blessing': [self._blessing]
-    }
+    self._output_dict = {executor.BLESSING_KEY: [self._blessing]}
 
     # Create context
     self._tmp_dir = os.path.join(output_data_dir, '.temp')

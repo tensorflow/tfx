@@ -13,10 +13,10 @@
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
     "_compat_aliases": {
-      "input": "input_base"
+      "input_base": "input"
     },
     "_data": {
-      "input_base": {
+      "input": {
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",

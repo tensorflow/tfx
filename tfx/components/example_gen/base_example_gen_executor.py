@@ -37,6 +37,11 @@ from tfx.types import artifact_utils
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
+# Key for input in executor input_dict.
+INPUT_KEY = 'input'
+
+# Key for output examples in executor output_dict.
+EXAMPLES_KEY = 'examples'
 
 
 def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int]) -> int:

@@ -19,6 +19,8 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -67,7 +69,12 @@ class StatisticsGen(base_component.BaseComponent):
         StatisticsGen.  Required only if multiple StatisticsGen components are
         declared in the same pipeline.
     """
-    examples = examples or input_data
+    if input_data:
+      absl.logging.warning(
+          'The "input_data" argument to the StatisticsGen component has '
+          'been renamed to "examples" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      examples = input_data
     if not output:
       statistics_artifact = standard_artifacts.ExampleStatistics()
       statistics_artifact.split_names = artifact_utils.encode_split_names(
@@ -75,5 +82,5 @@ class StatisticsGen(base_component.BaseComponent):
       output = types.Channel(
           type=standard_artifacts.ExampleStatistics,
           artifacts=[statistics_artifact])
-    spec = StatisticsGenSpec(input_data=examples, output=output)
+    spec = StatisticsGenSpec(examples=examples, statistics=output)
     super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)

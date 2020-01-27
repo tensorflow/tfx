@@ -222,11 +222,11 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
     # Get the latest SchemaGen output.
     schemagen_outputs = tf.io.gfile.listdir(
-        os.path.join(pipeline_root, 'SchemaGen', 'output', ''))
+        os.path.join(pipeline_root, 'SchemaGen', 'schema', ''))
     latest_schema_folder = max(schemagen_outputs, key=int)
 
     # Copy schema to current dir.
-    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'output',
+    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'schema',
                                       latest_schema_folder, 'schema.pbtxt')
     curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
     io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)

@@ -63,11 +63,11 @@ class ExecutorTest(absltest.TestCase):
     stats.uri = output_data_dir
     stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     input_dict = {
-        'input_data': [examples],
+        executor.EXAMPLES_KEY: [examples],
     }
 
     output_dict = {
-        'output': [stats],
+        executor.STATISTICS_KEY: [stats],
     }
 
     # Run executor.

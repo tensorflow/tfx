@@ -50,6 +50,19 @@ from tfx.utils import import_utils
 from tfx.utils import io_utils
 
 
+# Key for examples in executor input_dict.
+EXAMPLES_KEY = 'examples'
+# Key for schema in executor input_dict.
+SCHEMA_KEY = 'schema'
+
+# Key for temp path, for internal use only.
+TEMP_PATH_KEY = 'temp_path'
+
+# Key for transform graph in executor output_dict.
+TRANSFORM_GRAPH_KEY = 'transform_graph'
+# Key for output model in executor output_dict.
+TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
+
 RAW_EXAMPLE_KEY = 'raw_example'
 
 # Schema to use if the input data should be decoded as raw example.
@@ -298,18 +311,18 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    train_data_uri = artifact_utils.get_split_uri(input_dict['input_data'],
+    train_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                   'train')
-    eval_data_uri = artifact_utils.get_split_uri(input_dict['input_data'],
+    eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                  'eval')
     schema_file = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_single_uri(input_dict['schema']))
+        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
-        output_dict['transform_output'])
+        output_dict[TRANSFORM_GRAPH_KEY])
     transformed_train_output = artifact_utils.get_split_uri(
-        output_dict['transformed_examples'], 'train')
+        output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
     transformed_eval_output = artifact_utils.get_split_uri(
-        output_dict['transformed_examples'], 'eval')
+        output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 

@@ -44,14 +44,16 @@ class ExecutorTest(tf.test.TestCase):
     model_exports = standard_artifacts.Model()
     model_exports.uri = os.path.join(source_data_dir, 'trainer/current')
     input_dict = {
-        'examples': [examples],
-        'model_exports': [model_exports],
+        executor.EXAMPLES_KEY: [examples],
+        executor.MODEL_KEY: [model_exports],
     }
 
     # Create output dict.
     eval_output = standard_artifacts.ModelEvaluation()
     eval_output.uri = os.path.join(output_data_dir, 'eval_output')
-    output_dict = {'output': [eval_output]}
+    output_dict = {
+        executor.EVALUATION_KEY: [eval_output],
+    }
 
     # Create exec proterties.
     exec_properties = {

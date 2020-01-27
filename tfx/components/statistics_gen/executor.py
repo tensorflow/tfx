@@ -33,6 +33,13 @@ from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
+
+# Key for examples in executor input_dict.
+EXAMPLES_KEY = 'examples'
+
+# Key for output statistics in executor output_dict.
+STATISTICS_KEY = 'statistics'
+
 # Default file name for stats generated.
 _DEFAULT_FILE_NAME = 'stats_tfrecord'
 
@@ -68,7 +75,7 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     split_uris = []
-    for artifact in input_dict['input_data']:
+    for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
         uri = os.path.join(artifact.uri, split)
         split_uris.append((split, uri))
@@ -78,7 +85,8 @@ class Executor(base_executor.BaseExecutor):
       for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(uri)
-        output_uri = artifact_utils.get_split_uri(output_dict['output'], split)
+        output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
+                                                  split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         _ = (
             p

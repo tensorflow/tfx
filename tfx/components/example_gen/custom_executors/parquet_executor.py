@@ -26,7 +26,8 @@ import apache_beam as beam
 import tensorflow as tf
 
 from tfx import types
-from tfx.components.example_gen import base_example_gen_executor
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.components.example_gen.utils import dict_to_example
 from tfx.types import artifact_utils
 
@@ -54,7 +55,7 @@ def _ParquetToExample(  # pylint: disable=invalid-name
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
+  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
   parquet_pattern = os.path.join(input_base_uri, split_pattern)
   absl.logging.info(
       'Processing input parquet data {} to TFExample.'.format(parquet_pattern))
@@ -65,7 +66,7 @@ def _ParquetToExample(  # pylint: disable=invalid-name
           | 'ToTFExample' >> beam.Map(dict_to_example))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """TFX example gen executor for processing parquet format.
 
   Data type conversion:

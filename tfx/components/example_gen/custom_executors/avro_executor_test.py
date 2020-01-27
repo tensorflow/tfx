@@ -23,6 +23,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from google.protobuf import json_format
+from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -39,7 +40,7 @@ class ExecutorTest(tf.test.TestCase):
     # Create input dict.
     input_base = standard_artifacts.ExternalArtifact()
     input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {'input_base': [input_base]}
+    self._input_dict = {INPUT_KEY: [input_base]}
 
   def testAvroToExample(self):
     with beam.Pipeline() as pipeline:

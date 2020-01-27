@@ -20,6 +20,8 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -106,15 +108,20 @@ class Evaluator(base_component.BaseComponent):
         in the same pipeline.  Either `model_exports` or `model` must be present
         in the input arguments.
     """
-    model_exports = model_exports or model
-    output = output or types.Channel(
+    if model_exports:
+      absl.logging.warning(
+          'The "model_exports" argument to the Evaluator component has '
+          'been renamed to "model" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      model = model_exports
+    evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
         artifacts=[standard_artifacts.ModelEvaluation()])
     spec = EvaluatorSpec(
         examples=examples,
-        model_exports=model_exports,
+        model=model,
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
         fairness_indicator_thresholds=fairness_indicator_thresholds,
-        output=output)
+        evaluation=evaluation)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

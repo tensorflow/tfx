@@ -32,6 +32,14 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+# Key for examples in executor input_dict.
+EXAMPLES_KEY = 'examples'
+# Key for model in executor input_dict.
+MODEL_KEY = 'model'
+
+# Key for model blessing in executor output_dict.
+BLESSING_KEY = 'blessing'
+
 # Path to store model eval results for validation.
 CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model'
 BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model'
@@ -169,12 +177,12 @@ class Executor(base_executor.BaseExecutor):
     self._temp_path = self._get_tmp_dir()
     absl.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 
-    eval_examples_uri = artifact_utils.get_split_uri(input_dict['examples'],
+    eval_examples_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                      'eval')
-    blessing = artifact_utils.get_single_instance(output_dict['blessing'])
+    blessing = artifact_utils.get_single_instance(output_dict[BLESSING_KEY])
 
     # Current model.
-    current_model = artifact_utils.get_single_instance(input_dict['model'])
+    current_model = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
     absl.logging.info('Using {} as current model.'.format(current_model.uri))
     blessing.set_string_custom_property('current_model', current_model.uri)
     blessing.set_int_custom_property('current_model_id', current_model.id)

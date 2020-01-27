@@ -9,10 +9,10 @@
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
     "_compat_aliases": {
-      "examples": "input_data"
+      "input_data": "examples"
     },
     "_data": {
-      "input_data": {
+      "examples": {
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
@@ -70,10 +70,10 @@
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
     "_compat_aliases": {
-      "statistics": "output"
+      "output": "statistics"
     },
     "_data": {
-      "output": {
+      "statistics": {
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
@@ -87,7 +87,7 @@
             "artifact": {
               "custom_properties": {
                 "name": {
-                  "string_value": "output"
+                  "string_value": "statistics"
                 },
                 "pipeline_name": {
                   "string_value": "test_pipeline"
@@ -116,7 +116,7 @@
           "__module__": "tfx.types.channel",
           "__tfx_object_type__": "jsonable",
           "component_id": "StatisticsGen.foo",
-          "key": "output"
+          "key": "statistics"
         },
         "type": {
           "__class__": "ExampleStatistics",

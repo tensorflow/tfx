@@ -26,7 +26,8 @@ import apache_beam as beam
 import tensorflow as tf
 
 from tfx import types
-from tfx.components.example_gen import base_example_gen_executor
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.types import artifact_utils
 
 
@@ -53,7 +54,7 @@ def _ImportExample(  # pylint: disable=invalid-name
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
+  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
   absl.logging.info(
       'Reading input TFExample data {}.'.format(input_split_pattern))
@@ -67,7 +68,7 @@ def _ImportExample(  # pylint: disable=invalid-name
           | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """Generic TFX import example gen executor."""
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:

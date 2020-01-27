@@ -23,6 +23,7 @@ import os
 import mock
 import tensorflow as tf
 
+from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
 
@@ -44,15 +45,15 @@ class ExecutorTest(tf.test.TestCase):
                                           'trainer/current')
     self._model_blessing = standard_artifacts.ModelBlessing()
     self._input_dict = {
-        'model_export': [self._model_export],
-        'model_blessing': [self._model_blessing],
+        tfx_pusher_executor.MODEL_KEY: [self._model_export],
+        tfx_pusher_executor.MODEL_BLESSING_KEY: [self._model_blessing],
     }
 
     self._model_push = standard_artifacts.PushedModel()
     self._model_push.uri = os.path.join(self._output_data_dir, 'model_push')
     tf.io.gfile.makedirs(self._model_push.uri)
     self._output_dict = {
-        'model_push': [self._model_push],
+        tfx_pusher_executor.PUSHED_MODEL_KEY: [self._model_push],
     }
     self._exec_properties = {
         'custom_config': {

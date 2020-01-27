@@ -65,9 +65,10 @@ class Executor(tfx_pusher_executor.Executor):
       return
 
     model_export = artifact_utils.get_single_instance(
-        input_dict['model_export'])
+        input_dict[tfx_pusher_executor.MODEL_KEY])
     model_export_uri = model_export.uri
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
+    model_push = artifact_utils.get_single_instance(
+        output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
 
     exec_properties_copy = exec_properties.copy()
     custom_config = exec_properties_copy.pop('custom_config', {})

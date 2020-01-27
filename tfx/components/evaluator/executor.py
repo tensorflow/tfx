@@ -32,6 +32,14 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+# Key for examples in executor input_dict.
+EXAMPLES_KEY = 'examples'
+# Key for model in executor input_dict.
+MODEL_KEY = 'model'
+
+# Key for anomalies in executor output_dict.
+EVALUATION_KEY = 'evaluation'
+
 
 class Executor(base_executor.BaseExecutor):
   """Generic TFX model evaluator executor."""
@@ -75,18 +83,17 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       None
     """
-    if 'model_exports' not in input_dict:
-      raise ValueError('\'model_exports\' is missing in input dict.')
-    if 'examples' not in input_dict:
-      raise ValueError('\'examples\' is missing in input dict.')
-    if 'output' not in output_dict:
-      raise ValueError('\'output\' is missing in output dict.')
+    if EXAMPLES_KEY not in input_dict:
+      raise ValueError('EXAMPLES_KEY is missing from input dict.')
+    if MODEL_KEY not in input_dict:
+      raise ValueError('MODEL_KEY is missing from input dict.')
+    if EVALUATION_KEY not in output_dict:
+      raise ValueError('EVALUATION_KEY is missing from output dict.')
 
     self._log_startup(input_dict, output_dict, exec_properties)
 
     # Extract input artifacts
-    model_exports_uri = artifact_utils.get_single_uri(
-        input_dict['model_exports'])
+    model_exports_uri = artifact_utils.get_single_uri(input_dict[MODEL_KEY])
 
     feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
     json_format.Parse(exec_properties['feature_slicing_spec'],
@@ -94,7 +101,7 @@ class Executor(base_executor.BaseExecutor):
     slice_spec = self._get_slice_spec_from_feature_slicing_spec(
         feature_slicing_spec)
 
-    output_uri = artifact_utils.get_single_uri(output_dict['output'])
+    output_uri = artifact_utils.get_single_uri(output_dict[EVALUATION_KEY])
 
     eval_model_path = path_utils.eval_model_path(model_exports_uri)
 
@@ -122,7 +129,7 @@ class Executor(base_executor.BaseExecutor):
       (pipeline
        | 'ReadData' >> beam.io.ReadFromTFRecord(
            file_pattern=io_utils.all_files_pattern(
-               artifact_utils.get_split_uri(input_dict['examples'], 'eval')))
+               artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], 'eval')))
        |
        'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
            eval_shared_model=eval_shared_model,
