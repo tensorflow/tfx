@@ -175,7 +175,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
         self.raw_examples_importer, self.model_1_importer,
         Evaluator(
             examples=self.raw_examples_importer.outputs['result'],
-            model_exports=self.model_1_importer.outputs['result'],
+            model=self.model_1_importer.outputs['result'],
             feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
                 evaluator_pb2.SingleSlicingSpec(
                     column_for_slicing=['trip_start_hour'])
