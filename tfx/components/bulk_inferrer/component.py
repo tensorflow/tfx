@@ -42,7 +42,7 @@ class BulkInferrer(base_component.BaseComponent):
     # Uses BulkInferrer to inference on examples.
     bulk_inferrer = BulkInferrer(
         examples=example_gen.outputs['examples'],
-        model=trainer.outputs['output'])
+        model=trainer.outputs['model'])
   ```
   """
 

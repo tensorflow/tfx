@@ -105,7 +105,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses TFMA to compute a evaluation statistics over features of a model.
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['model'],
+      model=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(
           specs=[evaluator_pb2.SingleSlicingSpec()]))
 

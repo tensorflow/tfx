@@ -102,8 +102,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
-      examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['model'])
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   # Performs quality validation of a candidate model (compared to a baseline).
   model_validator = ModelValidator(

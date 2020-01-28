@@ -111,9 +111,10 @@ def _create_parameterized_pipeline(
 
   statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
   infer_schema = SchemaGen(
-      stats=statistics_gen.outputs['statistics'], infer_feature_shape=False)
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
   validate_stats = ExampleValidator(
-      stats=statistics_gen.outputs['statistics'],
+      statistics=statistics_gen.outputs['statistics'],
       schema=infer_schema.outputs['schema'])
 
   # The module file used in Transform and Trainer component is paramterized by
@@ -136,7 +137,7 @@ def _create_parameterized_pipeline(
   # The name of slicing column is specified as a RuntimeParameter.
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['model'],
+      model=trainer.outputs['model'],
       feature_slicing_spec=dict(specs=[{
           'column_for_slicing': [slicing_column]
       }]))
