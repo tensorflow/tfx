@@ -43,6 +43,40 @@ You can read more about the dataset in
 
 // TODO(ruoyu): Add instruction for generating the dataset.
 
+## Run example on Apache Beam
+
+#### 1. Download examples
+
+First, download the example via git.
+
+```
+git clone https://github.com/tensorflow/tfx.git
+```
+
+#### 2. Move example files to home directory
+
+The Cifar10 example script `cifar10_pipeline_beam.py` assumes that all files
+related to the example are located at home directory. To move all example files
+to your home directory, run below command.
+
+```
+cp -r tfx/tfx/examples/cifar10 ~/
+```
+
+#### 3. Run Cifar10 examples
+
+Run below command.
+
+```
+cd cifar10
+python cifar10_pipeline_beam.py
+```
+
+This example outputs a serving model at `serving_model` directory.
+
+```
+ls serving_model
+```
 
 # Learn more
 
