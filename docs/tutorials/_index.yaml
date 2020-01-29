@@ -1,10 +1,14 @@
 book_path: /tfx/_book.yaml
 project_path: /tfx/_project.yaml
 title: TFX tutorials
-description: <!--no description-->
 landing_page:
   nav: left
   custom_css_path: /site-assets/css/style.css
+  meta_tags:
+  - name: description
+    content: >
+      Learn how to move models to production with TFX. Follow end-to-end examples for beginners and
+      users. Create and manage machine learning pipelines with TensorFlow.
   rows:
   - heading: "TensorFlow in Production tutorials"
     items:
