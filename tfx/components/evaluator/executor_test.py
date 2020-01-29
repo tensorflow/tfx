@@ -20,7 +20,8 @@ from __future__ import print_function
 
 import os
 import absl
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow_model_analysis as tfma
 from google.protobuf import json_format
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
@@ -28,9 +29,29 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
-class ExecutorTest(tf.test.TestCase):
+class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
 
-  def testDo(self):
+  @absl.testing.parameterized.named_parameters(('eval_config', {
+      'eval_config':
+          json_format.MessageToJson(
+              tfma.EvalConfig(slicing_specs=[
+                  tfma.SlicingSpec(feature_keys=['trip_start_hour']),
+                  tfma.SlicingSpec(
+                      feature_keys=['trip_start_day', 'trip_miles']),
+              ]),
+              preserving_proto_field_name=True)
+  }), ('legacy_feature_slicing', {
+      'feature_slicing_spec':
+          json_format.MessageToJson(
+              evaluator_pb2.FeatureSlicingSpec(specs=[
+                  evaluator_pb2.SingleSlicingSpec(
+                      column_for_slicing=['trip_start_hour']),
+                  evaluator_pb2.SingleSlicingSpec(
+                      column_for_slicing=['trip_start_day', 'trip_miles']),
+              ]),
+              preserving_proto_field_name=True),
+  }))
+  def testDo(self, exec_properties):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
     output_data_dir = os.path.join(
@@ -55,19 +76,6 @@ class ExecutorTest(tf.test.TestCase):
         executor.EVALUATION_KEY: [eval_output],
     }
 
-    # Create exec proterties.
-    exec_properties = {
-        'feature_slicing_spec':
-            json_format.MessageToJson(
-                evaluator_pb2.FeatureSlicingSpec(specs=[
-                    evaluator_pb2.SingleSlicingSpec(
-                        column_for_slicing=['trip_start_hour']),
-                    evaluator_pb2.SingleSlicingSpec(
-                        column_for_slicing=['trip_start_day', 'trip_miles']),
-                ]),
-                preserving_proto_field_name=True)
-    }
-
     try:
       # Need to import the following module so that the fairness indicator
       # post-export metric is registered.  This may raise an ImportError if the
@@ -75,7 +83,8 @@ class ExecutorTest(tf.test.TestCase):
       # indicators.
       import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
       exec_properties['fairness_indicator_thresholds'] = [
-          0.1, 0.3, 0.5, 0.7, 0.9]
+          0.1, 0.3, 0.5, 0.7, 0.9
+      ]
     except ImportError:
       absl.logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
@@ -87,9 +96,6 @@ class ExecutorTest(tf.test.TestCase):
 
     # Check evaluator outputs.
     self.assertTrue(
-        # TODO(b/141490237): Update to only check eval_config.json after TFMA
-        # released with corresponding change.
-        tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config')) or
         tf.io.gfile.exists(os.path.join(eval_output.uri, 'eval_config.json')))
     self.assertTrue(
         tf.io.gfile.exists(os.path.join(eval_output.uri, 'metrics')))

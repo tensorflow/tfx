@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Text
 
+import tensorflow_model_analysis as tfma
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
@@ -60,8 +61,12 @@ class EvaluatorSpec(ComponentSpec):
   """Evaluator component spec."""
 
   PARAMETERS = {
+      'eval_config':
+          ExecutionParameter(type=tfma.EvalConfig, optional=True),
+      # TODO(mdreves): Deprecated, use eval_config.slicing_specs.
       'feature_slicing_spec':
-          ExecutionParameter(type=evaluator_pb2.FeatureSlicingSpec),
+          ExecutionParameter(type=evaluator_pb2.FeatureSlicingSpec,
+                             optional=True),
       # This parameter is experimental: its interface and functionality may
       # change at any time.
       'fairness_indicator_thresholds':
