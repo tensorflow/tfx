@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from tfx.components.evaluator import component
 from tfx.orchestration import data_types
@@ -80,6 +81,17 @@ class ComponentTest(tf.test.TestCase):
         fairness_indicator_thresholds=[threshold])
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
+
+  def testConstructWithEvalConfig(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model_exports=channel_utils.as_channel([model_exports]),
+        eval_config=tfma.EvalConfig(
+            slicing_specs=[tfma.SlicingSpec(feature_keys=['trip_start_hour'])]))
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['output'].type_name)
 
 
 if __name__ == '__main__':

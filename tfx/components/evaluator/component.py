@@ -21,6 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Optional, Text, Union
 
 import absl
+import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.components.base import base_component
@@ -65,7 +66,8 @@ class Evaluator(base_component.BaseComponent):
     # Uses TFMA to compute a evaluation statistics over features of a model.
     model_analyzer = Evaluator(
         examples=example_gen.outputs['examples'],
-        model=trainer.outputs['model'])
+        model=trainer.outputs['model'],
+        eval_config=tfma.EvalConfig(...))
   ```
   """
 
@@ -82,7 +84,8 @@ class Evaluator(base_component.BaseComponent):
           float, data_types.RuntimeParameter]]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      eval_config: Optional[tfma.EvalConfig] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -107,7 +110,12 @@ class Evaluator(base_component.BaseComponent):
         Evaluator. Required only if multiple Evaluator components are declared
         in the same pipeline.  Either `model_exports` or `model` must be present
         in the input arguments.
+      eval_config: Instance of tfma.EvalConfig containg configuration settings
+        for running the evaluation.
     """
+    if eval_config is not None and feature_slicing_spec is not None:
+      raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
+                       "must be supplied.")
     if model_exports:
       absl.logging.warning(
           'The "model_exports" argument to the Evaluator component has '
@@ -123,5 +131,6 @@ class Evaluator(base_component.BaseComponent):
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
         fairness_indicator_thresholds=fairness_indicator_thresholds,
-        evaluation=evaluation)
+        evaluation=evaluation,
+        eval_config=eval_config)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
