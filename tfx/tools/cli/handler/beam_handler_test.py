@@ -357,7 +357,7 @@ class BeamHandlerTest(tf.test.TestCase):
     handler = beam_handler.BeamHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()
-    self.assertIn("['python', '" + self.pipeline_path + "']",
+    self.assertIn("[%s, '%s']" % (sys.executable, self.pipeline_path),
                   captured.contents())
 
   def testCreateRunNoPipeline(self):

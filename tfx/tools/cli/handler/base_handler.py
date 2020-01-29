@@ -136,7 +136,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
 
     # Run dsl with mock environment to store pipeline args in temp_file.
-    self._subprocess_call(['python', pipeline_dsl_path], env=temp_env)
+    self._subprocess_call([sys.executable, pipeline_dsl_path], env=temp_env)
     if os.stat(temp_file).st_size != 0:
       # Load pipeline_args from temp_file for TFX pipelines
       with open(temp_file, 'r') as f:
