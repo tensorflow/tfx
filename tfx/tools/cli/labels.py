@@ -50,3 +50,9 @@ PIPELINE_ID = 'pipeline_id'
 EXPERIMENT_ID = 'experiment_id'
 # Environment variable for the default Kubeflow TFX image.
 KUBEFLOW_TFX_IMAGE_ENV = 'KUBEFLOW_TFX_IMAGE'
+
+# Template specific labels.
+# Destination directory path to copy files
+DESTINATION_PATH = 'destination_path'
+# Model kind of the copying template
+MODEL = 'model'

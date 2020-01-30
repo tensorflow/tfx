@@ -12,26 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Main script to invoke CLI."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import click
-from tfx.tools.cli.commands.pipeline import pipeline_group
-from tfx.tools.cli.commands.run import run_group
-from tfx.tools.cli.commands.template import template_group
-
-
-@click.group('cli')
-def cli_group():
-  click.echo('CLI')
-
-
-cli_group.add_command(pipeline_group)
-cli_group.add_command(run_group)
-cli_group.add_command(template_group)
-
-if __name__ == '__main__':
-  cli_group()
