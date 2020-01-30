@@ -21,6 +21,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import os
 from typing import Text, Dict, Any, List
 import click
@@ -28,9 +29,32 @@ import click
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx.tools.cli import labels
+from tfx.utils import io_utils
 
 _PLACEHOLDER_PIPELINE_NAME = '{{PIPELINE_NAME}}'
 _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
+
+_TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
+_ADDITIONAL_FILE_PATHS = {
+    'taxi': [  # template name
+        _TemplateFilePath('examples/chicago_taxi_pipeline/data/simple/data.csv',
+                          'data/data.csv'),
+    ],
+}
+
+
+def _tfx_src_dir() -> Text:
+  """Get tfx directory in the source tree.
+
+    We should find tfx
+    from tfx/tools/cli/handler/template_handler.py.
+  Returns:
+    Path to the directory containing tfx sources.
+  """
+  return os.path.dirname(  # tfx/
+      os.path.dirname(  # tools/
+          os.path.dirname(  # cli/
+              os.path.dirname(os.path.abspath(__file__)))))  # handler/
 
 
 def _templates_src_dir() -> Text:
@@ -41,13 +65,7 @@ def _templates_src_dir() -> Text:
   Returns:
     Path to the directory containing template sources.
   """
-  return os.path.join(
-      os.path.dirname(  # tfx/
-          os.path.dirname(  # tools/
-              os.path.dirname(  # cli/
-                  os.path.dirname(os.path.abspath(__file__))))),  # handler/
-      'experimental',
-      'templates')
+  return os.path.join(_tfx_src_dir(), 'experimental', 'templates')
 
 
 def list_template() -> List[Text]:
@@ -117,6 +135,7 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
   """
   pipeline_name = _sanitize_pipeline_name(flags_dict[labels.PIPELINE_NAME])
   template_dir = os.path.join(_templates_src_dir(), flags_dict[labels.MODEL])
+  destination_dir = flags_dict[labels.DESTINATION_PATH]
   if not os.path.isdir(template_dir):
     raise ValueError('Model {} does not exist.'.format(
         flags_dict[labels.MODEL]))
@@ -125,5 +144,9 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
       _PLACEHOLDER_PIPELINE_NAME: pipeline_name,
   }
   _copy_and_replace_placeholder_dir(template_dir,
-                                    flags_dict[labels.DESTINATION_PATH],
+                                    destination_dir,
                                     replace_dict)
+  for additional_file in _ADDITIONAL_FILE_PATHS[flags_dict[labels.MODEL]]:
+    src_path = os.path.join(_tfx_src_dir(), additional_file.src)
+    dst_path = os.path.join(destination_dir, additional_file.dst)
+    io_utils.copy_file(src_path, dst_path)
