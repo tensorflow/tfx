@@ -12,3 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Hyperparameters for the taxi model.
+
+These hyperparameters can be tweaked to affect model training performance.
+"""
+
+HIDDEN_UNITS = [16, 8]
+
+TRAIN_BATCH_SIZE = 40
+EVAL_BATCH_SIZE = 40

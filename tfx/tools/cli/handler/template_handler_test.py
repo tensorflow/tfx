@@ -43,6 +43,8 @@ class TemplateHandlerTest(tf.test.TestCase):
     copied_files = os.listdir(test_dir)
     self.assertNotEqual(copied_files, [])
     self.assertContainsSubset(['__init__.py'], copied_files)
+    data_path = os.path.join(test_dir, 'data', 'data.csv')
+    self.assertTrue(os.path.exists(data_path))
 
   def testEscapePipelineName(self):
     # pylint: disable=protected-access
