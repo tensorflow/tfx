@@ -1,4 +1,4 @@
-FROM tensorflow/tfx:0.21.0.dev
+FROM tensorflow/tfx:0.22.0.dev
 WORKDIR /pipeline
 COPY ./ ./
 ENV PYTHONPATH="/pipeline:${PYTHONPATH}"
