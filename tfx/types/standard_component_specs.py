@@ -65,16 +65,20 @@ class EvaluatorSpec(ComponentSpec):
           ExecutionParameter(type=tfma.EvalConfig, optional=True),
       # TODO(mdreves): Deprecated, use eval_config.slicing_specs.
       'feature_slicing_spec':
-          ExecutionParameter(type=evaluator_pb2.FeatureSlicingSpec,
-                             optional=True),
+          ExecutionParameter(
+              type=evaluator_pb2.FeatureSlicingSpec, optional=True),
       # This parameter is experimental: its interface and functionality may
       # change at any time.
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
   }
   INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'model': ChannelParameter(type=standard_artifacts.Model),
+      'examples':
+          ChannelParameter(type=standard_artifacts.Examples),
+      'model':
+          ChannelParameter(type=standard_artifacts.Model),
+      'baseline_model':
+          ChannelParameter(type=standard_artifacts.Model, optional=True),
   }
   OUTPUTS = {
       'evaluation': ChannelParameter(type=standard_artifacts.ModelEvaluation),
