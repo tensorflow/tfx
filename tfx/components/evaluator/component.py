@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
-
 import absl
 import tensorflow_model_analysis as tfma
 
@@ -78,6 +77,7 @@ class Evaluator(base_component.BaseComponent):
       self,
       examples: types.Channel = None,
       model: types.Channel = None,
+      baseline_model: Optional[types.Channel] = None,
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
@@ -93,6 +93,8 @@ class Evaluator(base_component.BaseComponent):
         produced by an ExampleGen component. _required_
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a Trainer component.
+      baseline_model: An optional channel of type 'standard_artifacts.Model' as
+        the baseline model for model diff and model validation purpose.
       feature_slicing_spec:
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
           instance that describes how Evaluator should slice the data. If any
@@ -122,12 +124,14 @@ class Evaluator(base_component.BaseComponent):
           'been renamed to "model" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       model = model_exports
+
     evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
         artifacts=[standard_artifacts.ModelEvaluation()])
     spec = EvaluatorSpec(
         examples=examples,
         model=model,
+        baseline_model=baseline_model,
         feature_slicing_spec=(feature_slicing_spec or
                               evaluator_pb2.FeatureSlicingSpec()),
         fairness_indicator_thresholds=fairness_indicator_thresholds,

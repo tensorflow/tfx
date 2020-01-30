@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 import tensorflow_model_analysis as tfma
 
 from tfx.components.evaluator import component
@@ -37,6 +37,17 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
         model=channel_utils.as_channel([model_exports]))
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+
+  def testConstructWithBaselineModel(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    baseline_model = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        baseline_model=channel_utils.as_channel([baseline_model]))
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
 
