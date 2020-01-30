@@ -36,9 +36,6 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
       'eval_config':
           json_format.MessageToJson(
               tfma.EvalConfig(
-                  model_specs=[
-                      tfma.ModelSpec(),
-                  ],
                   slicing_specs=[
                       tfma.SlicingSpec(feature_keys=['trip_start_hour']),
                       tfma.SlicingSpec(
