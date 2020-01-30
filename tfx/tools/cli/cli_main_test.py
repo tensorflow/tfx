@@ -45,6 +45,10 @@ class CliTest(tf.test.TestCase):
     result = self.runner.invoke(cli_group, ['run'])
     self.assertIn('CLI', result.output)
 
+  def testCliTemplate(self):
+    result = self.runner.invoke(cli_group, ['template'])
+    self.assertIn('CLI', result.output)
+
   def testCliInvalidCommand(self):
     result = self.runner.invoke(cli_group, ['pipelin'])
     self.assertNotEqual(0, result.exit_code)
