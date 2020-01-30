@@ -118,10 +118,11 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   ## Example
   ```
+  from tfx.utils.dsl_utils import external_input
   _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
   _data_root = os.path.join(_taxi_root, 'data', 'simple')
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = FileBasedExampleGen(input=external_input(_data_root))
   ```
   """
 
