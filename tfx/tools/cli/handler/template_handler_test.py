@@ -34,17 +34,26 @@ class TemplateHandlerTest(tf.test.TestCase):
 
   def testCopy(self):
     test_dir = self.create_tempdir().full_path
+    pipeline_name = 'my_pipeline'
     flags = {
         labels.MODEL: 'taxi',
         labels.DESTINATION_PATH: test_dir,
-        labels.PIPELINE_NAME: 'my_pipeline'
+        labels.PIPELINE_NAME: pipeline_name
     }
     template_handler.copy_template(flags)
     copied_files = os.listdir(test_dir)
     self.assertNotEqual(copied_files, [])
-    self.assertContainsSubset(['__init__.py'], copied_files)
-    data_path = os.path.join(test_dir, 'data', 'data.csv')
-    self.assertTrue(os.path.exists(data_path))
+    self.assertContainsSubset(['__init__.py', 'pipeline.py'], copied_files)
+    self.assertTrue(
+        os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
+
+    with open(os.path.join(test_dir, 'configs.py')) as fp:
+      configs_py_content = fp.read()
+    self.assertIn(pipeline_name, configs_py_content)
+    with open(os.path.join(test_dir, 'model.py')) as fp:
+      model_py_content = fp.read()
+    self.assertNotIn('from tfx.experimental.templates.taxi import',
+                     model_py_content)
 
   def testEscapePipelineName(self):
     # pylint: disable=protected-access
