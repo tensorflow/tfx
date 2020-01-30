@@ -14,7 +14,7 @@
 
 ## Documentation updates
 
-# Version 0.21.0 (not yet released; still in development)
+# Version 0.21.0
 
 ## Major Features and Improvements
 
@@ -39,12 +39,8 @@
 *   Artifact type-specific properties can be defined through overriding the
     `PROPERTIES` dictionary of a `types.artifact.Artifact` subclass.
 *   Added new example of chicago_taxi_pipeline on Google Cloud Bigquery ML.
-*   Added support for an hparams artifact as an input to Trainer in
-    preparation for tuner support.
 *   Added support for multi-core processing in the Flink and Spark Chicago Taxi
     PortableRunner example.
-*   Changed `BaseComponentLauncher` to require the user to pass in an ML
-    Metadata connection object instead of a ML Metadata connection config.
 *   Added a metadata adapter in Kubeflow to support logging the Argo pod ID as
     an execution property.
 *   Added a prototype Tuner component and an end-to-end iris example.
@@ -55,6 +51,8 @@
     `template`.
 
 ## Bug fixes and other changes
+*   Added support for an hparams artifact as an input to Trainer in
+    preparation for tuner support.
 *   Refactored common dependencies in the TFX dockerfile to a base image to
     improve the reliability of image building process.
 *   Fixes missing Tensorboard link in KubeflowDagRunner.
@@ -92,6 +90,8 @@
     publishing.
 *   Added pipeline level context and component run level context.
 *   Included test data for examples/chicago_taxi_pipeline in package.
+*   Changed `BaseComponentLauncher` to require the user to pass in an ML
+    Metadata connection object instead of a ML Metadata connection config.
 *   Capped version of Tensorflow runtime used in Google Cloud integration to
     1.15.
 *   Updated Chicago Taxi example dependencies to Beam 2.17.0, Flink 1.9.1, Spark
@@ -99,33 +99,30 @@
 *   Fixed an issue where `build_ephemeral_package()` used an incorrect path to
     locate the `tfx` directory.
 *   The ImporterNode now allows specification of general artifact properties.
+*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
+    BQML and Dataflow jobs submitted from TFX components.
 
 ### Deprecations
 
 ## Breaking changes
+
+### For pipeline authors
+*   Standard artifact TYPE_NAME strings were reconciled to match their class
+    names in `types.standard_artifacts`.
+*   The "split" property on multiple artifacts has been replaced with the
+    JSON-encoded "split_names" property on a single grouped artifact.
+*   The execution caching mechanism was changed to rely on ML Metadata
+    pipeline context. Existing cached executions will not be reused when running
+    on this version of TFX for the first time.
+*   The "split" property on multiple artifacts has been replaced with the
+    JSON-encoded "split_names" property on a single grouped artifact.
+
+### For component authors
 *   Artifact type name strings to the `types.artifact.Artifact` and
     `types.channel.Channel` classes are no longer supported; usage here should
     be replaced with references to the artifact subclasses defined in
     `types.standard_artfacts.*` or to custom subclasses of
     `types.artifact.Artifact`.
-*   Standard artifact TYPE_NAME strings were reconciled to match their class
-    names in `types.standard_artifacts`.
-*   The "split" property on multiple artifacts has been replaced with the
-    JSON-encoded "split_names" property on a single grouped artifact.
-*   When custom executors are created for the ExampleGen, Pusher and Trainer
-    components, instead of accessing entries in `input_dict` and `output_dict`
-    with hard-coded string keys (e.g. `'model'`, `'examples'`, etc.), these
-    executors should use the new `*_KEY` properties defined in the base
-    executor's module file (e.g. `MODEL_KEY`, `EXAMPLES_KEY`, etc.).
-*   The execution caching mechanism was changed to rely on ML Metadata
-    pipeline context. Existing cached executions will not be reused when running
-    on this version of TFX for the first time.
-*   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
-    BQML and Dataflow jobs submitted from TFX components.
-
-### For pipeline authors
-
-### For component authors
 
 ## Documentation updates
 
