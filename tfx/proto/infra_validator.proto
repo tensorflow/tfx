@@ -62,8 +62,8 @@ message LocalDockerConfig {
   // Optional docker client base URL where docker server is hosted. Default to
   // your running platform's OS, e.g. "unix://var/run/docker.sock"
   string client_base_url = 1;
-  // Optional docker API version to specify. Default to None, which will use the
-  // installed docker version.
+  // Optional docker API version to specify. If unspecified, it will use the
+  // installed docker client version.
   string client_api_version = 2;
   // Optional docker client timeout seconds. Default to the constant defined in
   // docker-py library.
