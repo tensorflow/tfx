@@ -78,6 +78,7 @@ class Evaluator(base_component.BaseComponent):
       examples: types.Channel = None,
       model: types.Channel = None,
       baseline_model: Optional[types.Channel] = None,
+      # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
@@ -96,6 +97,7 @@ class Evaluator(base_component.BaseComponent):
       baseline_model: An optional channel of type 'standard_artifacts.Model' as
         the baseline model for model diff and model validation purpose.
       feature_slicing_spec:
+        Deprecated, please use eval_config instead. Only support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
           instance that describes how Evaluator should slice the data. If any
           field is provided as a RuntimeParameter, feature_slicing_spec should
@@ -113,17 +115,27 @@ class Evaluator(base_component.BaseComponent):
         in the same pipeline.  Either `model_exports` or `model` must be present
         in the input arguments.
       eval_config: Instance of tfma.EvalConfig containg configuration settings
-        for running the evaluation.
+        for running the evaluation. This config has options for both estimator
+        and Keras.
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
                        "must be supplied.")
+    if eval_config is None and feature_slicing_spec is None:
+      feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
+      absl.logging.info('Neither eval_config nor feature_slicing_spec is '
+                        'passed, the model is treated as estimator.')
+
     if model_exports:
       absl.logging.warning(
           'The "model_exports" argument to the Evaluator component has '
           'been renamed to "model" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       model = model_exports
+
+    if feature_slicing_spec:
+      absl.logging.warning('feature_slicing_spec is deprecated, please use '
+                           'eval_config instead.')
 
     evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
@@ -132,8 +144,7 @@ class Evaluator(base_component.BaseComponent):
         examples=examples,
         model=model,
         baseline_model=baseline_model,
-        feature_slicing_spec=(feature_slicing_spec or
-                              evaluator_pb2.FeatureSlicingSpec()),
+        feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
         evaluation=evaluation,
         eval_config=eval_config)

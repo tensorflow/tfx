@@ -144,6 +144,8 @@ class Executor(base_executor.BaseExecutor):
             """Cannot support more than two models. There are {} models in this
              eval_config.""".format(len(eval_config.model_specs)))
       models = {}
+      if not eval_config.model_specs:
+        eval_config.model_specs.add()
       for model_spec in eval_config.model_specs:
         if model_spec.signature_name != 'eval':
           tags = [tf.saved_model.SERVING]
@@ -161,9 +163,11 @@ class Executor(base_executor.BaseExecutor):
               input_dict[MODEL_KEY], tags)
           absl.logging.info('Using {} for model eval.'.format(
               models[model_spec.name].model_path))
-    elif 'feature_slicing_spec' in exec_properties and exec_properties[
-        'feature_slicing_spec']:
+    else:
       eval_config = None
+      assert ('feature_slicing_spec' in exec_properties and
+              exec_properties['feature_slicing_spec']
+             ), 'both eval_config and feature_slicing_spec are unset.'
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
       json_format.Parse(exec_properties['feature_slicing_spec'],
                         feature_slicing_spec)
@@ -171,8 +175,6 @@ class Executor(base_executor.BaseExecutor):
           feature_slicing_spec)
       models = _get_eval_saved_model(input_dict[MODEL_KEY])
       absl.logging.info('Using {} for model eval.'.format(models.model_path))
-    else:
-      raise ValueError('eval_config or feature_slicing_spec is missing.')
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
