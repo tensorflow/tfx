@@ -52,6 +52,9 @@
 *   Added an iris example with native Keras.
 
 ## Bug fixes and other changes
+*   Fixed "invalid spec: spec.arguments.parameters[6].name 'pipeline-root' is
+    not unique" error when the user include `pipeline.ROOT_PARAMETER` and run
+    pipeline on KFP.
 *   Added support for an hparams artifact as an input to Trainer in
     preparation for tuner support.
 *   Refactored common dependencies in the TFX dockerfile to a base image to
