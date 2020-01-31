@@ -259,6 +259,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       placeholder = placeholder.replace('\\', '')  # Clean escapes.
       placeholder = utils.fix_brackets(placeholder)  # Fix brackets if needed.
       parameter = json_utils.loads(placeholder)
+      # Escape pipeline root because it will be added later.
+      if parameter.name == tfx_pipeline.ROOT_PARAMETER.name:
+        continue
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         dsl_parameter = dsl.PipelineParam(
