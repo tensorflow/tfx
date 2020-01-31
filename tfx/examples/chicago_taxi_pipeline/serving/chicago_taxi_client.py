@@ -26,7 +26,6 @@ import subprocess
 import tempfile
 
 import requests
-import tensorflow as tf
 
 from tensorflow_transform import coders as tft_coders
 from tensorflow_transform.tf_metadata import dataset_schema
@@ -34,6 +33,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 
 from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.utils import io_utils
 
@@ -191,4 +191,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.app.run()
+  app.run(main)
