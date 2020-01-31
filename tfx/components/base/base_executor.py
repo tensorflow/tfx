@@ -29,9 +29,8 @@ import absl
 import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
-from apache_beam.portability import python_urns
-from apache_beam.portability.api import beam_runner_api_pb2
 from apache_beam.runners.portability import fn_api_runner
+from apache_beam.transforms import environments
 from future.utils import with_metaclass
 import tensorflow as tf
 
@@ -124,10 +123,9 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       return beam.Pipeline(
           options=pipeline_options,
           runner=fn_api_runner.FnApiRunner(
-              default_environment=beam_runner_api_pb2.Environment(
-                  urn=python_urns.SUBPROCESS_SDK,
-                  payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
-                  (sys.executable or sys.argv[0]).encode('ascii'))))
+              default_environment=environments.SubprocessSDKEnvironment(
+                  command_string='%s -m apache_beam.runners.worker.sdk_worker_main'
+                  % (sys.executable or sys.argv[0]))))
 
     return beam.Pipeline(argv=self._beam_pipeline_args)
 
