@@ -22,23 +22,23 @@ import os
 from typing import Text
 
 import absl
+import tensorflow_model_analysis as tfma
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
-from tfx.components import Pusher
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
+from tfx.components.base import executor_spec
+from tfx.components.trainer.executor import GenericExecutor
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import external_input
 
-_pipeline_name = 'iris'
+_pipeline_name = 'iris_native_keras'
 
 # This example assumes that Iris flowers data is stored in ~/iris/data and the
 # utility function is in ~/iris. Feel free to customize as needed.
@@ -46,10 +46,7 @@ _iris_root = os.path.join(os.environ['HOME'], 'iris')
 _data_root = os.path.join(_iris_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_iris_root, 'iris_utils.py')
-# Path which can be listened to by the model server.  Pusher will output the
-# trained model here.
-_serving_model_dir = os.path.join(_iris_root, 'serving_model', _pipeline_name)
+_module_file = os.path.join(_iris_root, 'iris_utils_native_keras.py')
 
 # Directory and data locations.  This example assumes all of the flowers
 # example code and metadata library is relative to $HOME, but you can store
@@ -62,7 +59,7 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
+                     module_file: Text,
                      metadata_path: Text) -> pipeline.Pipeline:
   """Implements the Iris flowers pipeline with TFX."""
   examples = external_input(data_root)
@@ -82,9 +79,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       statistics=statistics_gen.outputs['statistics'],
       schema=infer_schema.outputs['schema'])
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
+  # Uses user-provided Python function that trains a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=example_gen.outputs['examples'],
       schema=infer_schema.outputs['schema'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
@@ -92,27 +90,23 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
   model_analyzer = Evaluator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
-
-  # Performs quality validation of a candidate model (compared to a baseline).
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
-
-  # Checks whether the model passed the validation steps and pushes the model
-  # to a file destination if check passed.
-  pusher = Pusher(
+      examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)))
+      eval_config=tfma.EvalConfig(
+          slicing_specs=[tfma.SlicingSpec(feature_keys=['sepal_length'])]))
+
+  # TODO(jyzhao): support model validation in evaluator and pusher component.
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, trainer,
-          model_analyzer, model_validator, pusher
+          example_gen,
+          statistics_gen,
+          infer_schema,
+          validate_stats,
+          trainer,
+          model_analyzer,
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
@@ -121,7 +115,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # To run this pipeline from the python CLI:
-#   $python iris_pipeline_beam.py
+#   $python iris_pipeline_native_keras.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   BeamDagRunner().run(
@@ -130,5 +124,4 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
-          serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path))

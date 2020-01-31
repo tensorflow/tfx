@@ -49,6 +49,7 @@
 *   Updated to support passing `tfma.EvalConfig` in evaluator when calling TFMA.
 *   Users can create a pipeline using a new experimental CLI command,
     `template`.
+*   Added an iris example with native Keras.
 
 ## Bug fixes and other changes
 *   Added support for an hparams artifact as an input to Trainer in

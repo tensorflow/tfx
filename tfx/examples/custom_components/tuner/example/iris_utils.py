@@ -134,7 +134,7 @@ def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   model.compile(
       optimizer=keras.optimizers.Adam(hparams.get('learning_rate')),
       loss='sparse_categorical_crossentropy',
-      metrics=[keras.metrics.CategoricalAccuracy(name='accuracy')])
+      metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
   absl.logging.info(model.summary())
   return model
 
