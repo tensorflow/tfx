@@ -29,8 +29,11 @@ class ComponentTest(tf.test.TestCase):
   def testConstruct(self):
     model = standard_artifacts.Model()
     serving_spec = infra_validator_pb2.ServingSpec()
+    validation_spec = infra_validator_pb2.ValidationSpec()
     infra_validator = component.InfraValidator(
-        model=channel_utils.as_channel([model]), serving_spec=serving_spec)
+        model=channel_utils.as_channel([model]),
+        serving_spec=serving_spec,
+        validation_spec=validation_spec)
 
     # Check channels have been created with proper type.
     self.assertEqual(standard_artifacts.Model,
@@ -39,9 +42,8 @@ class ComponentTest(tf.test.TestCase):
                      infra_validator.outputs['blessing'].type)
 
     # Check exec_properties have been populated.
-    self.assertEqual(
-        '{}',  # Empty dictionary
-        infra_validator.exec_properties['serving_spec'])
+    self.assertIn('serving_spec', infra_validator.exec_properties)
+    self.assertIn('validation_spec', infra_validator.exec_properties)
 
 
 if __name__ == '__main__':

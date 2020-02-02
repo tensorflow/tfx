@@ -61,6 +61,13 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
     self._container = None
     self._client = None
 
+  def __repr__(self):
+    attrs = dict(image_uri=self._image_uri)
+    return '<{class_name} {attrs}>'.format(
+        class_name=self.__class__.__name__,
+        attrs=' '.join('{}={}'.format(key, value)
+                       for key, value in attrs.items()))
+
   def _MakeDockerClientFromConfig(
       self, config: infra_validator_pb2.LocalDockerConfig):
     params = {}
@@ -149,14 +156,14 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
       # 'paused', 'exited', or 'dead'. Status other than 'created' and 'running'
       # indicates failure.
       elif self._container.status != 'created':
-        logging.info('Container has reached %s state before available; marking '
-                     'model as not blessed.', self._container.status)
+        logging.error('Container has reached %s state before available; marking'
+                      ' model as not blessed.', self._container.status)
         return False
       else:
         time.sleep(_MODEL_STATE_POLLING_INTERVALS_SECONDS)
 
     # Deadline exceeded.
-    logging.info('Deadline has exceeded; marking model as not blessed.')
+    logging.error('Deadline has exceeded; marking model as not blessed.')
     return False
 
   def Stop(self):

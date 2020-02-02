@@ -22,16 +22,16 @@ import mock
 import tensorflow as tf
 
 from google.protobuf import json_format
+from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import get_model_status_pb2
+from tensorflow_serving.apis import regression_pb2
 from tfx.components.infra_validator.model_server_clients import base_client
 from tfx.components.infra_validator.model_server_clients import tensorflow_serving_client
 
 TensorFlowServingClient = tensorflow_serving_client.TensorFlowServingClient
 GetModelStatusResponse = get_model_status_pb2.GetModelStatusResponse
-START = get_model_status_pb2.ModelVersionStatus.State.START
 LOADING = get_model_status_pb2.ModelVersionStatus.State.LOADING
 AVAILABLE = get_model_status_pb2.ModelVersionStatus.State.AVAILABLE
-UNLOADING = get_model_status_pb2.ModelVersionStatus.State.UNLOADING
 END = get_model_status_pb2.ModelVersionStatus.State.END
 ModelState = base_client.ModelState
 
@@ -43,10 +43,14 @@ class TensorflowServingClientTest(tf.test.TestCase):
     self.model_stub_patcher = mock.patch('tensorflow_serving.apis.model_service_pb2_grpc.ModelServiceStub')  # pylint: disable=line-too-long
     self.model_stub_cls = self.model_stub_patcher.start()
     self.model_stub = self.model_stub_cls.return_value
+    self.prediction_stub_patcher = mock.patch('tensorflow_serving.apis.prediction_service_pb2_grpc.PredictionServiceStub')  # pylint: disable=line-too-long
+    self.prediction_stub_cls = self.prediction_stub_patcher.start()
+    self.prediction_stub = self.prediction_stub_cls.return_value
 
   def tearDown(self):
     super(TensorflowServingClientTest, self).tearDown()
     self.model_stub_patcher.stop()
+    self.prediction_stub_patcher.stop()
 
   @staticmethod
   def _CreateResponse(payload):
@@ -126,6 +130,40 @@ class TensorflowServingClientTest(tf.test.TestCase):
 
     # Check result.
     self.assertEqual(result, ModelState.NOT_READY)
+
+  def testIssueRequests_NoErrorIfSucceeded(self):
+    # Prepare requests and client.
+    r1 = classification_pb2.ClassificationRequest()
+    r2 = classification_pb2.ClassificationRequest()
+    r3 = regression_pb2.RegressionRequest()
+    client = TensorFlowServingClient('localhost:1234', 'a_model_name')
+
+    # Call.
+    client.IssueRequests([r1, r2, r3])
+
+    # Check calls
+    self.prediction_stub.Classify.assert_called_with(r1)
+    self.prediction_stub.Classify.assert_called_with(r2)
+    self.prediction_stub.Regress.assert_called_with(r3)
+
+  def testIssueRequests_RaiseValueErrorOnUnrecognizedRequestType(self):
+    # Prepare requests and client.
+    not_a_request = 'i am a request'
+    client = TensorFlowServingClient('localhost:1234', 'a_model_name')
+
+    # Call
+    with self.assertRaisesRegexp(ValueError, 'Unsupported request type'):
+      client.IssueRequests([not_a_request])
+
+  def testIssueRequests_RaiseRpcErrorIfRpcFailed(self):
+    # Prepare client and a side effect.
+    request = classification_pb2.ClassificationRequest()
+    client = TensorFlowServingClient('localhost:1234', 'a_model_name')
+    self.prediction_stub.Classify.side_effect = grpc.RpcError
+
+    # Call.
+    with self.assertRaises(grpc.RpcError):
+      client.IssueRequests([request])
 
 
 if __name__ == '__main__':

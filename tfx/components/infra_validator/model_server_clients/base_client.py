@@ -20,7 +20,9 @@ from __future__ import print_function
 import abc
 import enum
 import six
-from typing import Any
+from typing import List
+
+from tfx.components.infra_validator import types
 
 
 class ModelState(enum.Enum):
@@ -46,13 +48,14 @@ class BaseModelServerClient(six.with_metaclass(abc.ABCMeta, object)):
     pass
 
   @abc.abstractmethod
-  def IssueRequests(self, requests: Any) -> bool:
+  def IssueRequests(self, requests: List[types.Request]) -> None:
     """Issue requests against model server.
 
     Args:
       requests: A list of request protos.
 
-    Returns:
-      Whether request succeeded.
+    Raises:
+      ValueError: If request is not compatible with the client.
+      grpc.RpcError: If RPC Fails.
     """
     pass

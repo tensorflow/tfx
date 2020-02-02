@@ -145,13 +145,21 @@ class InfraValidatorSpec(ComponentSpec):
   """InfraValidator component spec."""
 
   PARAMETERS = {
-      'serving_spec': ExecutionParameter(type=infra_validator_pb2.ServingSpec)
+      'serving_spec':
+          ExecutionParameter(type=infra_validator_pb2.ServingSpec),
+      'validation_spec':
+          ExecutionParameter(type=infra_validator_pb2.ValidationSpec),
+      'request_spec':
+          ExecutionParameter(
+              type=infra_validator_pb2.RequestSpec,
+              optional=True)
   }
 
   INPUTS = {
-      'model': ChannelParameter(type=standard_artifacts.Model),
-      'examples': ChannelParameter(type=standard_artifacts.Examples,
-                                   optional=True),
+      'model':
+          ChannelParameter(type=standard_artifacts.Model),
+      'examples':
+          ChannelParameter(type=standard_artifacts.Examples, optional=True),
   }
 
   OUTPUTS = {
