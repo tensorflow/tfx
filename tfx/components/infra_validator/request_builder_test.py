@@ -22,9 +22,11 @@ import os
 import mock
 import tensorflow as tf
 
+from google.protobuf import json_format
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import regression_pb2
 from tfx.components.infra_validator import request_builder
+from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
@@ -133,6 +135,145 @@ class RequestBuilderTest(tf.test.TestCase):
 
   def assertStringFeature(self, feature: tf.train.Feature):
     self.assertEqual(len(feature.bytes_list.value), 1)
+
+
+def _create_request_spec(request_spec_dict):
+  request_spec = infra_validator_pb2.RequestSpec()
+  json_format.ParseDict(request_spec_dict, request_spec)
+  return request_spec
+
+
+class BuildRequestsTest(tf.test.TestCase):
+
+  def setUp(self):
+    super(BuildRequestsTest, self).setUp()
+    patcher = mock.patch('tfx.components.infra_validator.request_builder.RequestBuilder')  # pylint: disable=line-too-long
+    self.builder_cls = patcher.start()
+    self.builder = self.builder_cls.return_value
+    self.addCleanup(patcher.stop)
+
+  def testTensorFlowServingClassify(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'CLASSIFY'
+        }
+    })
+    examples = mock.Mock()
+
+    # Call build_requests.
+    request_builder.build_requests(
+        model_name='foo',
+        examples=examples,
+        request_spec=request_spec)
+
+    # Check RequestBuilder calls.
+    self.builder_cls.assert_called_with(model_name='foo', max_examples=1)
+    self.builder.BuildClassificationRequests.assert_called()
+
+  def testTensorFlowServingRegress(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'REGRESS'
+        }
+    })
+    examples = standard_artifacts.Examples()
+
+    # Call build_requests.
+    request_builder.build_requests(
+        model_name='foo',
+        examples=examples,
+        request_spec=request_spec)
+
+    # Check RequestBuilder calls.
+    self.builder_cls.assert_called_with(model_name='foo', max_examples=1)
+    self.builder.BuildRegressionRequests.assert_called()
+
+  def testSplitNames(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'CLASSIFY'
+        },
+        'split_name': 'train'
+    })
+    examples = standard_artifacts.Examples()
+
+    # Call build_requests.
+    request_builder.build_requests(
+        model_name='foo',
+        examples=examples,
+        request_spec=request_spec)
+
+    # Check RequestBuilder calls.
+    self.builder.ReadFromExamplesArtifact.assert_called_with(
+        examples, split_name='train')
+
+  def testMaxExamples(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'CLASSIFY'
+        },
+        'max_examples': 123
+    })
+    examples = standard_artifacts.Examples()
+
+    # Call build_requests.
+    request_builder.build_requests(
+        model_name='foo',
+        examples=examples,
+        request_spec=request_spec)
+
+    # Check RequestBuilder calls.
+    self.builder_cls.assert_called_with(model_name='foo', max_examples=123)
+
+  def testSignatureName(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'CLASSIFY',
+            'signature_name': 'my_signature_name'
+        }
+    })
+    examples = standard_artifacts.Examples()
+
+    # Call build_requests.
+    request_builder.build_requests(
+        model_name='foo',
+        examples=examples,
+        request_spec=request_spec)
+
+    # Check RequestBuilder calls.
+    self.builder.SetSignatureName.assert_called_with('my_signature_name')
+
+  def testEmptyServingBinary(self):
+    # Prepare empty request spec and examples.
+    request_spec = _create_request_spec({})
+    examples = standard_artifacts.Examples()
+
+    with self.assertRaisesRegexp(ValueError, 'Invalid RequestSpec'):
+      request_builder.build_requests(
+          model_name='foo',
+          examples=examples,
+          request_spec=request_spec)
+
+  def testInvalidTensorFlowServingRpcKind(self):
+    # Prepare arguments.
+    request_spec = _create_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'TF_SERVING_RPC_KIND_UNSPECIFIED'
+        }
+    })
+    examples = standard_artifacts.Examples()
+
+    with self.assertRaisesRegexp(ValueError,
+                                 'Invalid TensorFlowServingRpcKind'):
+      request_builder.build_requests(
+          model_name='foo',
+          examples=examples,
+          request_spec=request_spec)
 
 
 if __name__ == '__main__':
