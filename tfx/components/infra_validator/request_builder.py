@@ -25,7 +25,55 @@ from typing import List, Optional, Text
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import regression_pb2
 from tfx import types
+from tfx.components.infra_validator import types as infra_validator_types
+from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
+
+TensorFlowServingRpcKind = infra_validator_pb2.TensorFlowServingRpcKind
+_TENSORFLOW_SERVING = 'tensorflow_serving'
+_DEFAULT_MAX_EXAMPLES = 1
+
+
+def build_requests(  # pylint: disable=invalid-name
+    model_name: Text,
+    examples: types.Artifact,
+    request_spec: infra_validator_pb2.RequestSpec
+) -> List[infra_validator_types.Request]:
+  """Build a list of request protos to be queried against the model server.
+
+  Args:
+    model_name: Name of the model. For example, tensorflow `SavedModel` is saved
+      under directory `{model_name}/{version}`. The same directory structure is
+      reused in a tensorflow serving, and you need to specify `model_name` in
+      the request to access it.
+    examples: An `Examples` artifact which contains gzipped TFRecord file
+      containing `tf.train.Example`.
+    request_spec: A `RequestSpec` config.
+
+  Returns:
+    A list of request protos.
+  """
+  split_name = request_spec.split_name or None
+  builder = RequestBuilder(
+      max_examples=request_spec.max_examples or _DEFAULT_MAX_EXAMPLES,
+      model_name=model_name
+  )
+  builder.ReadFromExamplesArtifact(examples, split_name=split_name)
+
+  kind = request_spec.WhichOneof('serving_binary')
+  if kind == _TENSORFLOW_SERVING:
+    spec = request_spec.tensorflow_serving
+    if spec.signature_name:
+      builder.SetSignatureName(spec.signature_name)
+    if spec.rpc_kind == TensorFlowServingRpcKind.CLASSIFY:
+      return builder.BuildClassificationRequests()
+    elif spec.rpc_kind == TensorFlowServingRpcKind.REGRESS:
+      return builder.BuildRegressionRequests()
+    else:
+      raise ValueError('Invalid TensorFlowServingRpcKind {}'.format(
+          spec.rpc_kind))
+  else:
+    raise ValueError('Invalid RequestSpec {}'.format(request_spec))
 
 
 class RequestBuilder(object):
