@@ -23,6 +23,7 @@ import sys
 
 import tensorflow as tf
 
+from tfx.dsl.components import bridge_test
 from tfx.orchestration.kubeflow import test_utils
 
 
@@ -38,6 +39,15 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
         self._trainer_module,
     )
     pipeline = self._create_pipeline(pipeline_name, components)
+
+    self._compile_and_run_pipeline(pipeline)
+
+  def testNewPythonComponentsEnd2EndPipeline(self):
+    """End-to-End test for pipeline with new python components."""
+    pipeline_name = 'kubeflow-e2e-python-components-test-{}'.format(
+        self._random_id())
+    tasks = bridge_test.create_text_split_gfile_pipeline_tasks()
+    pipeline = self._create_pipeline(pipeline_name, tasks)
 
     self._compile_and_run_pipeline(pipeline)
 

@@ -27,6 +27,12 @@ SPAN_PROPERTY = Property(type=PropertyType.INT)
 # has no split.
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 
+ANY_ARTIFACT_TYPE_NAME = 'Any'
+
+
+class AnyArtifact(Artifact):
+  TYPE_NAME = ANY_ARTIFACT_TYPE_NAME
+
 
 class Examples(Artifact):
   TYPE_NAME = 'Examples'
@@ -90,3 +96,4 @@ class TransformGraph(Artifact):
 # Still WIP and subject to change.
 class HyperParameters(Artifact):
   TYPE_NAME = 'HyperParameters'
+
