@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+* Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
 
 ### Deprecations
 
