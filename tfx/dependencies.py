@@ -48,7 +48,7 @@ def make_required_test_packages():
   return [
       'apache-airflow>=1.10,<2',
       # LINT.IfChange
-      'kfp>=0.1.32.2,<0.2.1; python_version >= "3.0"',
+      'kfp>=0.1.32.2; python_version >= "3.0"',
       # LINT.ThenChange(
       #     testing/github/common.sh,
       #     testing/github/ubuntu/image/image.sh,

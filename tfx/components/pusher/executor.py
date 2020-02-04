@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import time
 from typing import Any, Dict, List, Text
 
 import absl
@@ -122,10 +121,6 @@ class Executor(base_executor.BaseExecutor):
     # Note: we do not have a logical model version right now. This
     # model_version is a timestamp mapped to trainer's exporter.
     model_version = os.path.basename(model_path)
-    if model_version == path_utils.SERVING_MODEL_DIR:
-      # For Keras, model will be directly generated under SERVING_MODEL_DIR,
-      # use timestamp as version so it can be picked up by servo.
-      model_version = str(int(time.time()))
     absl.logging.info('Model version is %s', model_version)
     io_utils.copy_dir(model_path, os.path.join(model_push_uri, model_version))
     absl.logging.info('Model written to %s.', model_push_uri)

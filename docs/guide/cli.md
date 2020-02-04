@@ -50,9 +50,6 @@ Optional flags:
 *   --iap_client_id
 *   --namespace
 *   --package_path
-*   --build_target_image
-*   --build_base_image
-*   --skaffold_cmd
 
 Examples:
 
@@ -76,8 +73,7 @@ Kubeflow:
     --package_path=<path_to_package_file> \
     --client_id=<IAP_client_id> \
     --namespace=<kubernetes_namespace> \
-    --endpoint=<endpoint_url> \
-    --skaffold_cmd=<path_to_skaffold_binary>
+    --endpoint=<endpoint_url>
 
 To autodetect engine from user environment, simply avoid using the engine flag
 like the example below. For more details, check the flags section.
@@ -104,7 +100,6 @@ Optional flags:
 *   --iap_client_id
 *   --namespace
 *   --package_path
-*   --skaffold_cmd
 
 Examples:
 
@@ -128,8 +123,7 @@ Kubeflow:
     --package_path=<path_to_package_file> \
     --client_id=<IAP_client_id> \
     --namespace=<kubernetes_namespace>
-    --endpoint=<endpoint_url> \
-    --skaffold_cmd=<path_to_skaffold_binary>
+    --endpoint=<endpoint_url>
 
 #### compile
 

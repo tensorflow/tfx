@@ -104,7 +104,8 @@ class NotebookFormatter(object):
   def __init__(self,
                cls: Type[object],
                attributes: List[Text] = None,
-               title_format: Tuple[Text, List[Union[Text, Callable]]] = None):  # pylint: disable=g-bare-generic
+               title_format: Tuple[Text, List[Union[Text, Callable]]] = None,
+               _show_artifact_attributes: Optional[bool] = False):  # pylint: disable=g-bare-generic
     """Constructs a NotebookFormatter.
 
     Args:
@@ -118,10 +119,13 @@ class NotebookFormatter(object):
         in "attributes" above) or callback callable objects taking as input the
         object to be formatted and returning the value for that position of the
         format string. If not specified, the default title format will be used.
+      _show_artifact_attributes: For a formatter of an Artifact object, show
+        the Artifact type-specific properties for each artifact.
     """
     self.cls = cls
     self.attributes = attributes or []
     self.title_format = title_format or NotebookFormatter._DEFAULT_TITLE_FORMAT
+    self._show_artifact_attributes = _show_artifact_attributes
 
   def _extended_getattr(self, obj: object, property_name: Text) -> object:
     """Get a possibly nested attribute of a given object."""
@@ -194,6 +198,11 @@ class NotebookFormatter(object):
                         obj: object,
                         seen_elements: set) -> Text:  # pylint: disable=g-bare-generic
     """Render the attributes section of an object."""
+    if self._show_artifact_attributes and isinstance(obj, Artifact):
+      artifact_attributes = sorted((obj.PROPERTIES or {}).keys())
+      attributes = self.attributes + artifact_attributes
+    else:
+      attributes = self.attributes
     attr_trs = []
     for property_name in self.attributes:
       value = self._extended_getattr(obj, property_name)
@@ -240,7 +249,8 @@ def _create_formatters(formatters_spec):
 
 FORMATTER_REGISTRY = _create_formatters({
     Artifact: {
-        'attributes': ['type_name', 'uri', 'span', 'split_names'],
+        'attributes': ['type', 'uri'],
+        '_show_artifact_attributes': True,
         'title_format': (('<span class="class-name">Artifact</span> of type '
                           '<span class="class-name">%r</span> (uri: %s)'),
                          ['type_name', 'uri']),

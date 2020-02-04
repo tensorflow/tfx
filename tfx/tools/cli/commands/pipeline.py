@@ -121,11 +121,6 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
 )
 @click.option(
-    '--skaffold_cmd',
-    default=None,
-    type=str,
-    help='Skaffold program command.')
-@click.option(
     '--endpoint',
     default=None,
     type=str,
@@ -142,15 +137,13 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
 def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
-                    package_path: Text, skaffold_cmd: Text,
-                    endpoint: Text, iap_client_id: Text,
+                    package_path: Text, endpoint: Text, iap_client_id: Text,
                     namespace: Text) -> None:
   """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   ctx.flags_dict[labels.PIPELINE_PACKAGE_PATH] = package_path
-  ctx.flags_dict[labels.SKAFFOLD_CMD] = skaffold_cmd
   ctx.flags_dict[labels.ENDPOINT] = endpoint
   ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
   ctx.flags_dict[labels.NAMESPACE] = namespace
