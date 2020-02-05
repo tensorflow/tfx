@@ -36,8 +36,8 @@ class PublisherTest(tf.test.TestCase):
 
   def setUp(self):
     super(PublisherTest, self).setUp()
-    self._mock_metadata = tf.compat.v1.test.mock.Mock()
-    self._mock_metadata.publish_execution = tf.compat.v1.test.mock.Mock()
+    self._mock_metadata = tf.test.mock.Mock()
+    self._mock_metadata.publish_execution = tf.test.mock.Mock()
     self._output_dict = {
         'output_data': [_OutputType()],
     }
