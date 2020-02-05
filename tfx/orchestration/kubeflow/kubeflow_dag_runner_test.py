@@ -24,7 +24,7 @@ import tarfile
 import tempfile
 from typing import Text
 from kfp import onprem
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import yaml
 
 from ml_metadata.proto import metadata_store_pb2

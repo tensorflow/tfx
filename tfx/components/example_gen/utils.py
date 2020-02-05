@@ -21,7 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text, Union
 
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.proto import example_gen_pb2
 from google.protobuf import json_format

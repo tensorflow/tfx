@@ -23,7 +23,7 @@ import logging
 import os
 from typing import Any, Dict, Optional, Text
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 class LoggerConfig(object):

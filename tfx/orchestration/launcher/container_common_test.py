@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from kubernetes import client
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.components.base import executor_spec
 from tfx.orchestration.launcher import container_common

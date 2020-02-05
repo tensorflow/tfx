@@ -21,7 +21,7 @@ from __future__ import print_function
 import logging
 import os
 # Standard Imports
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import logging_utils
 

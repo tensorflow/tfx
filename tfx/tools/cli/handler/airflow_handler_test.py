@@ -23,7 +23,7 @@ import os
 import sys
 import click
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler

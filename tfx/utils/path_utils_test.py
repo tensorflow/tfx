@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 # Standard Imports
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.utils import path_utils
 
 

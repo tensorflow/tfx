@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Text
 
 import click
 from six import with_metaclass
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.tools.cli import labels
 from tfx.utils import io_utils

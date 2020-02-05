@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 # Standard Imports
 
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
 from tfx.types import standard_artifacts
 from tfx.utils import channel
