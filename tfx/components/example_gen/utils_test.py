@@ -20,7 +20,7 @@ from __future__ import print_function
 from typing import Text
 # Standard Imports
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types

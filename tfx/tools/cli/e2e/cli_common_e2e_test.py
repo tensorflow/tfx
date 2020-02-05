@@ -23,7 +23,7 @@ import locale
 import os
 
 from click import testing as click_testing
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.tools.cli.cli_main import cli_group
 

@@ -23,7 +23,7 @@ import re
 from typing import Any, Dict, List, Text
 
 import absl
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import json_format
 from tfx import types

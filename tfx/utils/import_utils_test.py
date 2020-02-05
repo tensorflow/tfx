@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import os
 # Standard Imports
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.utils import import_utils
 from tfx.utils.testdata import test_fn
 

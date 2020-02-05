@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Text
 
 import absl
 import docker
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.cloud import storage
 from ml_metadata.proto import metadata_store_pb2

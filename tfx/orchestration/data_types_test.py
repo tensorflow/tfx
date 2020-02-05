@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import json
 from typing import Dict, List, Text
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf.json_format import ParseError
 from tfx.orchestration import data_types

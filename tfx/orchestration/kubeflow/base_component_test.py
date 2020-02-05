@@ -23,7 +23,7 @@ import os
 
 import absl
 from kfp import dsl
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.csv_example_gen import component as csv_example_gen_component

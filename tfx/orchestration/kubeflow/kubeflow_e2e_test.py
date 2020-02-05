@@ -21,7 +21,7 @@ from __future__ import print_function
 import logging
 import sys
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx.orchestration.kubeflow import test_utils
 

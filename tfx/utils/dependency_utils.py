@@ -26,7 +26,7 @@ from typing import List, Optional, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import dependencies
 from tfx import version

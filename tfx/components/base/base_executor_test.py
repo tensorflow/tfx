@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Text
 
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import StandardOptions
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tfx import types
 from tfx.components.base import base_executor

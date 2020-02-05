@@ -36,7 +36,7 @@ import absl
 from click import testing as click_testing
 import kfp
 import kfp_server_api
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.cloud import storage
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import

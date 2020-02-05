@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import random
 import apache_beam as beam
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import json_format
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2

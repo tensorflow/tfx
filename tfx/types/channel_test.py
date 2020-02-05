@@ -21,7 +21,7 @@ from __future__ import unicode_literals
 
 # Standard Imports
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 
