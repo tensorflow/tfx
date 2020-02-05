@@ -203,6 +203,7 @@ tornado,https://raw.githubusercontent.com/tornadoweb/tornado/stable/LICENSE,Apac
 trainer,https://raw.githubusercontent.com/kubeflow/pipelines/master/LICENSE,Apache 2.0
 traitlets,https://raw.githubusercontent.com/ipython/traitlets/master/COPYING.md,BSD
 typing,https://raw.githubusercontent.com/python/typing/master/LICENSE,PSF
+typing-extensions,https://raw.githubusercontent.com/python/typing/master/typing_extensions/LICENSE,PSF
 tzlocal,https://raw.githubusercontent.com/regebro/tzlocal/master/LICENSE.txt,MIT
 uritemplate,https://github.com/python-hyper/uritemplate/blob/master/LICENSE,BSD 3-Clause License or Apache 2.0
 urllib3,https://raw.githubusercontent.com/urllib3/urllib3/master/LICENSE.txt,MIT
