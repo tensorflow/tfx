@@ -118,10 +118,12 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   ## Example
   ```
+  from tfx.utils.dsl_utils import external_input
+
   _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
   _data_root = os.path.join(_taxi_root, 'data', 'simple')
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = FileBasedExampleGen(input=external_input(_data_root))
   ```
   """
 
@@ -147,8 +149,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
     Args:
       input: A Channel of type `standard_artifacts.ExternalArtifact`, which
-        includes one artifact whose uri is an external directory containing
-        the data files. _required_
+        includes one artifact whose uri is an external directory containing the
+        data files. _required_
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing input configuration. If unset, the files under
