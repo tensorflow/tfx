@@ -30,6 +30,7 @@ from tfx.components import ExampleValidator
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.orchestration import metadata
@@ -79,11 +80,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       statistics=statistics_gen.outputs['statistics'],
       schema=infer_schema.outputs['schema'])
 
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
+      module_file=module_file)
+
   # Uses user-provided Python function that trains a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-      examples=example_gen.outputs['examples'],
+      examples=transform.outputs['transformed_examples'],
+      transform_graph=transform.outputs['transform_graph'],
       schema=infer_schema.outputs['schema'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -105,6 +113,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           statistics_gen,
           infer_schema,
           validate_stats,
+          transform,
           trainer,
           model_analyzer,
       ],
