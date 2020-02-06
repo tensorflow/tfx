@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import time
 from typing import Text
 
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
@@ -28,7 +29,7 @@ from tfx.utils import io_utils
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
 
-# TODO(b/127149760): simplify this.
+# TODO(b/127149760): simplify this PPP-esque structure.
 #
 # Directory structure of exported model for estimator based trainer:
 #   |-- <ModelExportPath>
@@ -80,3 +81,14 @@ def serving_model_path(output_uri: Text) -> Text:
   else:
     # If dir doesn't match estimator structure, use serving model root directly.
     return serving_model_dir(output_uri)
+
+
+def get_serving_model_version(output_uri: Text) -> Text:
+  """Returns version of the serving model."""
+  # Note: TFX doesn't have a logical model version right now, use timestamp as
+  # version. For estimator serving model, directly use the timestamp name of the
+  # exported folder. For keras serving model, returns the current timestamp.
+  version = os.path.basename(serving_model_path(output_uri))
+  if not version.isdigit():
+    version = str(int(time.time()))
+  return version

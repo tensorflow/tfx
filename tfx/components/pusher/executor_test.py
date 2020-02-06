@@ -86,6 +86,19 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(
         0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
+  def testKerasModel(self):
+    self._model_export.uri = os.path.join(self._source_data_dir,
+                                          'trainer/keras')
+    self._model_blessing.uri = os.path.join(self._source_data_dir,
+                                            'model_validator/blessed')
+    self._model_blessing.set_int_custom_property('blessed', 1)
+    self._executor.Do(self._input_dict, self._output_dict,
+                      self._exec_properties)
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
+    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
+    self.assertEqual(
+        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+
 
 if __name__ == '__main__':
   tf.test.main()
