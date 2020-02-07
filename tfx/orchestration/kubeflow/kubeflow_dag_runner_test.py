@@ -131,6 +131,25 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
       self.assertIsNotNone(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
+
+      containers = [
+          c for c in pipeline['spec']['templates'] if 'container' in c
+      ]
+      self.assertEqual(2, len(containers))
+
+  def testMountGcpServiceAccount(self):
+    kubeflow_dag_runner.KubeflowDagRunner(
+        config=kubeflow_dag_runner.KubeflowDagRunnerConfig(
+            pipeline_operator_funcs=kubeflow_dag_runner
+            .get_default_pipeline_operator_funcs(use_gcp_sa=True))).run(
+                _two_step_pipeline())
+    file_path = os.path.join(self.test_dir, 'two_step_pipeline.tar.gz')
+    self.assertTrue(tf.io.gfile.exists(file_path))
+
+    with tarfile.TarFile.open(file_path).extractfile(
+        'pipeline.yaml') as pipeline_file:
+      self.assertIsNotNone(pipeline_file)
       pipeline = yaml.load(pipeline_file)
 
       containers = [

@@ -53,6 +53,8 @@
 *   Added an iris example with native Keras.
 
 ## Bug fixes and other changes
+*   Switched the default behavior of KubeflowDagRunner to not mounting GCP
+    secret.
 *   Fixed "invalid spec: spec.arguments.parameters[6].name 'pipeline-root' is
     not unique" error when the user include `pipeline.ROOT_PARAMETER` and run
     pipeline on KFP.

@@ -99,14 +99,18 @@ def _mount_secret_op(secret_name: Text) -> OpFunc:
   return mount_secret
 
 
-def get_default_pipeline_operator_funcs() -> List[OpFunc]:
+def get_default_pipeline_operator_funcs(
+    use_gcp_sa: bool = False) -> List[OpFunc]:
   """Returns a default list of pipeline operator functions.
+
+  Args:
+    use_gcp_sa: If true, mount a GCP service account secret to each pod, with
+      the name _KUBEFLOW_GCP_SECRET_NAME.
 
   Returns:
     A list of functions with type OpFunc.
   """
-  # Enables authentication for GCP services in a typical GKE Kubeflow
-  # installation.
+  # Enables authentication for GCP services if needed.
   gcp_secret_op = gcp.use_gcp_secret(_KUBEFLOW_GCP_SECRET_NAME)
 
   # Mounts configmap containing the MySQL DB to use for logging metadata.
@@ -114,8 +118,10 @@ def get_default_pipeline_operator_funcs() -> List[OpFunc]:
 
   # Mounts the secret containing the MySQL DB password.
   mysql_password_op = _mount_secret_op('mysql-credential')
-
-  return [gcp_secret_op, mount_config_map_op, mysql_password_op]
+  if use_gcp_sa:
+    return [gcp_secret_op, mount_config_map_op, mysql_password_op]
+  else:
+    return [mount_config_map_op, mysql_password_op]
 
 
 def get_default_kubeflow_metadata_config(
