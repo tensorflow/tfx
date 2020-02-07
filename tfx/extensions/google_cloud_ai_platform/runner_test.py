@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
 # Standard Imports
 import mock
 import tensorflow as tf
@@ -194,12 +195,13 @@ class RunnerTest(tf.test.TestCase):
     versions_create_body = versions_create_kwargs['body']
     labels = telemetry_utils.get_labels_dict(
         tfx_executor=self._executor_class_path)
+    runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
             'name': 'v{}'.format(self._model_version),
             'deployment_uri': self._serving_path,
-            'runtime_version': runner._get_tf_runtime_version(tf.__version__),
-            'python_version': runner._get_caip_python_version(),
+            'runtime_version': runtime_version,
+            'python_version': runner._get_caip_python_version(runtime_version),
             'labels': labels,
         }, versions_create_body)
     self._mock_get.assert_called_with(name='op_name')
@@ -240,12 +242,13 @@ class RunnerTest(tf.test.TestCase):
     versions_create_body = versions_create_kwargs['body']
     labels = telemetry_utils.get_labels_dict(
         tfx_executor=self._executor_class_path)
+    runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
             'name': 'v{}'.format(self._model_version),
             'deployment_uri': self._serving_path,
-            'runtime_version': runner._get_tf_runtime_version(tf.__version__),
-            'python_version': runner._get_caip_python_version(),
+            'runtime_version': runtime_version,
+            'python_version': runner._get_caip_python_version(runtime_version),
             'labels': labels,
         }, versions_create_body)
     self._mock_get.assert_called_with(name='op_name')
@@ -255,12 +258,21 @@ class RunnerTest(tf.test.TestCase):
             self._project_id, 'model_name', self._model_version))
     self._mock_set_default_execute.assert_called_with()
 
-  def testGetTensorflorRuntime(self):
+  def testGetTensorflowRuntime(self):
     self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.0'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('1.15.1'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('2.0.0'))
     self.assertEqual('1.15', runner._get_tf_runtime_version('2.1.0'))
+
+  def testGetCaipPythonVersion(self):
+    if sys.version_info.major == 2:
+      self.assertEqual('2.7', runner._get_caip_python_version('1.14'))
+      self.assertEqual('2.7', runner._get_caip_python_version('1.15'))
+    else:  # 3.x
+      self.assertEqual('3.5', runner._get_caip_python_version('1.14'))
+      self.assertEqual('3.7', runner._get_caip_python_version('1.15'))
+      self.assertEqual('3.7', runner._get_caip_python_version('2.1'))
 
 
 if __name__ == '__main__':

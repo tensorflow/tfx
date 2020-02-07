@@ -67,16 +67,25 @@ def _get_tf_runtime_version(tf_version: Text) -> Text:
   return '.'.join([major, minor])
 
 
-def _get_caip_python_version() -> Text:
+def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
   """Returns supported python version on Cloud AI Platform.
 
   See
   https://cloud.google.com/ml-engine/docs/tensorflow/versioning#set-python-version-training
 
+  Args:
+    caip_tf_runtime_version: version string returned from
+      _get_tf_runtime_version().
+
   Returns:
-    '2.7' for PY2 or '3.5' for PY3.
+    '2.7' for PY2. '3.5' or '3.7' for PY3 depending on caip_tf_runtime_version.
   """
-  return {2: '2.7', 3: '3.5'}[sys.version_info.major]
+  if sys.version_info.major == 2:
+    return '2.7'
+  (major, minor) = caip_tf_runtime_version.split('.')[0:2]
+  if (int(major), int(minor)) >= (1, 15):
+    return '3.7'
+  return '3.5'
 
 
 def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
@@ -206,7 +215,7 @@ def deploy_model_for_aip_prediction(
   project_id = ai_platform_serving_args['project_id']
   regions = ai_platform_serving_args.get('regions', [])
   runtime_version = _get_tf_runtime_version(tf.__version__)
-  python_version = _get_caip_python_version()
+  python_version = _get_caip_python_version(runtime_version)
 
   api = discovery.build('ml', 'v1')
   body = {'name': model_name, 'regions': regions}
