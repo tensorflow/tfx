@@ -1,6 +1,9 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Pipelines compiled using KubeflowDagRunner now defaults to using the
+    gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
+    performing operations on pipeline metadata.
 
 ## Bug fixes and other changes
 * Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.

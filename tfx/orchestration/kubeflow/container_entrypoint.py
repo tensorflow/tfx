@@ -24,7 +24,7 @@ import logging
 import os
 import sys
 import textwrap
-from typing import Dict, List, Text
+from typing import Dict, List, Text, Union
 
 import absl
 
@@ -53,10 +53,10 @@ def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Text:
   return os.getenv(config_value.environment_variable)
 
 
-# TODO(ajaygopinathan): Add unit tests for these helper functions.
 def _get_metadata_connection_config(
     kubeflow_metadata_config: kubeflow_pb2.KubeflowMetadataConfig
-) -> metadata_store_pb2.ConnectionConfig:
+) -> Union[metadata_store_pb2.ConnectionConfig,
+           metadata_store_pb2.MetadataStoreClientConfig]:
   """Constructs a metadata connection config.
 
   Args:
@@ -64,20 +64,52 @@ def _get_metadata_connection_config(
       valid metadata connection config in a Kubeflow cluster.
 
   Returns:
-    A metadata_store_pb2.ConnectionConfig object.
+    A Union of metadata_store_pb2.ConnectionConfig and
+    metadata_store_pb2.MetadataStoreClientConfig object.
   """
-  connection_config = metadata_store_pb2.ConnectionConfig()
+  config_type = kubeflow_metadata_config.WhichOneof('connection_config')
 
-  connection_config.mysql.host = _get_config_value(
-      kubeflow_metadata_config.mysql_db_service_host)
-  connection_config.mysql.port = int(
-      _get_config_value(kubeflow_metadata_config.mysql_db_service_port))
-  connection_config.mysql.database = _get_config_value(
-      kubeflow_metadata_config.mysql_db_name)
-  connection_config.mysql.user = _get_config_value(
-      kubeflow_metadata_config.mysql_db_user)
-  connection_config.mysql.password = _get_config_value(
-      kubeflow_metadata_config.mysql_db_password)
+  if config_type is None:
+    absl.logging.warning(
+        'Providing mysql configuration through KubeflowMetadataConfig will be '
+        'deprecated soon. Use one of KubeflowGrpcMetadataConfig or'
+        'KubeflowMySqlMetadataConfig instead')
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.mysql.host = _get_config_value(
+        kubeflow_metadata_config.mysql_db_service_host)
+    connection_config.mysql.port = int(
+        _get_config_value(kubeflow_metadata_config.mysql_db_service_port))
+    connection_config.mysql.database = _get_config_value(
+        kubeflow_metadata_config.mysql_db_name)
+    connection_config.mysql.user = _get_config_value(
+        kubeflow_metadata_config.mysql_db_user)
+    connection_config.mysql.password = _get_config_value(
+        kubeflow_metadata_config.mysql_db_password)
+    return connection_config
+
+  assert config_type == 'grpc_config', ('expected oneof grpc_config')
+
+  return _get_grpc_metadata_connection_config(
+      kubeflow_metadata_config.grpc_config)
+
+
+def _get_grpc_metadata_connection_config(
+    kubeflow_metadata_config: kubeflow_pb2.KubeflowGrpcMetadataConfig
+) -> metadata_store_pb2.MetadataStoreClientConfig:
+  """Constructs a metadata grpc connection config.
+
+  Args:
+    kubeflow_metadata_config: Configuration parameters to use for constructing a
+      valid metadata connection config in a Kubeflow cluster.
+
+  Returns:
+    A metadata_store_pb2.MetadataStoreClientConfig object.
+  """
+  connection_config = metadata_store_pb2.MetadataStoreClientConfig()
+  connection_config.host = _get_config_value(
+      kubeflow_metadata_config.grpc_service_host)
+  connection_config.port = int(
+      _get_config_value(kubeflow_metadata_config.grpc_service_port))
 
   return connection_config
 

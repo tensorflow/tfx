@@ -113,15 +113,12 @@ def get_default_pipeline_operator_funcs(
   # Enables authentication for GCP services if needed.
   gcp_secret_op = gcp.use_gcp_secret(_KUBEFLOW_GCP_SECRET_NAME)
 
-  # Mounts configmap containing the MySQL DB to use for logging metadata.
-  mount_config_map_op = _mount_config_map_op('metadata-configmap')
-
-  # Mounts the secret containing the MySQL DB password.
-  mysql_password_op = _mount_secret_op('mysql-credential')
+  # Mounts configmap containing Metadata gRPC server configuration.
+  mount_config_map_op = _mount_config_map_op('metadata-grpc-configmap')
   if use_gcp_sa:
-    return [gcp_secret_op, mount_config_map_op, mysql_password_op]
+    return [gcp_secret_op, mount_config_map_op]
   else:
-    return [mount_config_map_op, mysql_password_op]
+    return [mount_config_map_op]
 
 
 def get_default_kubeflow_metadata_config(
@@ -134,25 +131,17 @@ def get_default_kubeflow_metadata_config(
     a Kubeflow cluster.
   """
   # The default metadata configuration for a Kubeflow Pipelines cluster is
-  # codified in a pair of Kubernetes ConfigMap and Secret that can be found in
-  # the following:
-  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-configmap.yaml
-  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-mysql-secret.yaml
+  # codified as a Kubernetes ConfigMap
+  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-grpc-configmap.yaml
 
   config = kubeflow_pb2.KubeflowMetadataConfig()
-  # The environment variable to use to obtain the MySQL service host in the
-  # cluster that is backing Kubeflow Metadata. Note that the key in the config
-  # map and therefore environment variable used, are lower-cased.
-  config.mysql_db_service_host.environment_variable = 'mysql_host'
-  # The environment variable to use to obtain the MySQL service port in the
-  # cluster that is backing Kubeflow Metadata.
-  config.mysql_db_service_port.environment_variable = 'mysql_port'
-  # The MySQL database name to use.
-  config.mysql_db_name.environment_variable = 'mysql_database'
-  # The MySQL database username.
-  config.mysql_db_user.environment_variable = 'username'
-  # The MySQL database password.
-  config.mysql_db_password.environment_variable = 'password'
+  # The environment variable to use to obtain the Metadata gRPC service host in
+  # the cluster that is backing Kubeflow Metadata. Note that the key in the
+  # config map and therefore environment variable used, are lower-cased.
+  config.grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_HOST'
+  # The environment variable to use to obtain the Metadata grpc service port in
+  # the cluster that is backing Kubeflow Metadata.
+  config.grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_PORT'
 
   return config
 
