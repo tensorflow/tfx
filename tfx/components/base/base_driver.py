@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Text
 import absl
 import tensorflow.compat.v1 as tf
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -191,34 +190,6 @@ class BaseDriver(object):
         _prepare_output_paths(artifact)
 
     return result
-
-  def _register_execution(
-      self, input_artifacts: Dict[Text, List[types.Artifact]],
-      exec_properties: Dict[Text, Any], pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo) -> metadata_store_pb2.Execution:
-    """Registers the upcoming execution in MLMD.
-
-    Args:
-      input_artifacts: Dict of input artifacts.
-      exec_properties: Dict of other execution properties.
-      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
-        related properties including pipeline_name, pipeline_root and run_id
-      component_info: An instance of data_types.ComponentInfo, holding component
-        related properties including component_type and component_id.
-
-    Returns:
-      the registered execution
-    """
-    contexts = self._metadata_handler.register_contexts_if_not_exists(
-        pipeline_info, component_info)
-    execution = self._metadata_handler.register_execution(
-        input_artifacts=input_artifacts,
-        exec_properties=exec_properties,
-        pipeline_info=pipeline_info,
-        component_info=component_info,
-        contexts=contexts)
-    absl.logging.debug('The upcoming component execution is %s', execution)
-    return execution
 
   def pre_execution(
       self,
