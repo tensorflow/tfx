@@ -375,11 +375,6 @@ class Metadata(object):
     absl.logging.debug('Prepared EXECUTION:\n %s', execution)
     return execution
 
-  def _update_execution_state(self, execution: metadata_store_pb2.Execution,
-                              new_state: Text) -> None:
-    execution.properties['state'].string_value = tf.compat.as_text(new_state)
-    self.store.put_executions([execution])
-
   def _artifact_and_event_pairs(
       self,
       artifact_dict: Dict[Text, List[Artifact]],
