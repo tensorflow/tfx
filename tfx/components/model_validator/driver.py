@@ -39,10 +39,10 @@ class Driver(base_driver.BaseDriver):
     for a in self._metadata_handler.get_artifacts_by_type('ModelBlessing'):
       # TODO(ccy): get pipeline name from MLMD context.
       if 'pipeline_name' in a.properties:
-        pipeline_name = a.properties['pipeline_name'].string_value
+        p = a.properties['pipeline_name'].string_value
       else:
-        pipeline_name = a.custom_properties['pipeline_name'].string_value
-      if (pipeline_name == pipeline_name and
+        p = a.custom_properties['pipeline_name'].string_value
+      if (p == pipeline_name and
           a.custom_properties['blessed'].int_value == 1 and
           a.custom_properties['component_id'].string_value == component_id):
         previous_blessed_models.append(a)
