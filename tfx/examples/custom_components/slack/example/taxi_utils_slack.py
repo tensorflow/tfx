@@ -297,11 +297,11 @@ def _input_fn(filenames, transform_output, batch_size=200):
 
 
 # TFX will call this function
-def trainer_fn(hparams, schema):
+def trainer_fn(trainer_fn_args, schema):
   """Build the estimator using the high level API.
 
   Args:
-    hparams: Holds hyperparameters used to train the model as name/value pairs.
+    trainer_fn_args: Holds args used to train the model as name/value pairs.
     schema: Holds the schema of the training examples.
 
   Returns:
@@ -320,33 +320,33 @@ def trainer_fn(hparams, schema):
   eval_batch_size = 40
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.train_files,
-      hparams.transform_output,
+      trainer_fn_args.train_files,
+      trainer_fn_args.transform_output,
       batch_size=train_batch_size)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-      hparams.eval_files,
-      hparams.transform_output,
+      trainer_fn_args.eval_files,
+      trainer_fn_args.transform_output,
       batch_size=eval_batch_size)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
-      max_steps=hparams.train_steps)
+      max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
-      hparams.transform_output, schema)
+      trainer_fn_args.transform_output, schema)
 
   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
   eval_spec = tf.estimator.EvalSpec(
       eval_input_fn,
-      steps=hparams.eval_steps,
+      steps=trainer_fn_args.eval_steps,
       exporters=[exporter],
       name='chicago-taxi-eval')
 
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=hparams.serving_model_dir)
+  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
 
   estimator = _build_estimator(
       # Construct layers sizes with exponetial decay
@@ -355,11 +355,11 @@ def trainer_fn(hparams, schema):
           for i in range(num_dnn_layers)
       ],
       config=run_config,
-      warm_start_from=hparams.warm_start_from)
+      warm_start_from=trainer_fn_args.base_model)
 
   # Create an input receiver for TFMA processing
   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
-      hparams.transform_output, schema)
+      trainer_fn_args.transform_output, schema)
 
   return {
       'estimator': estimator,
