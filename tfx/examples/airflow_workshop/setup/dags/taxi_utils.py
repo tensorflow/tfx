@@ -69,22 +69,18 @@ _FARE_KEY = 'fare'
 # def _transformed_name(key):
 #   return key + '_xf'
 
-
 # def _transformed_names(keys):
 #   return [_transformed_name(key) for key in keys]
-
 
 # # Tf.Transform considers these features as "raw"
 # def _get_raw_feature_spec(schema):
 #   return schema_utils.schema_as_feature_spec(schema).feature_spec
-
 
 # def _gzip_reader_fn(filenames):
 #   """Small utility returning a record reader that can read gzip'ed files."""
 #   return tf.data.TFRecordDataset(
 #       filenames,
 #       compression_type='GZIP')
-
 
 # def _fill_in_missing(x):
 #   """Replace missing values in a SparseTensor.
@@ -104,7 +100,6 @@ _FARE_KEY = 'fare'
 #           tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
 #           default_value),
 #       axis=1)
-
 
 # def preprocessing_fn(inputs):
 #   """tf.transform's callback function for preprocessing inputs.
@@ -196,7 +191,6 @@ _FARE_KEY = 'fare'
 #       dnn_hidden_units=hidden_units or [100, 70, 50, 25],
 #       warm_start_from=warm_start_from)
 
-
 # def _example_serving_receiver_fn(tf_transform_output, schema):
 #   """Build the serving in inputs.
 
@@ -219,7 +213,6 @@ _FARE_KEY = 'fare'
 
 #   return tf.estimator.export.ServingInputReceiver(
 #       transformed_features, serving_input_receiver.receiver_tensors)
-
 
 # def _eval_input_receiver_fn(tf_transform_output, schema):
 #   """Build everything needed for the tf-model-analysis to run the model.
@@ -263,7 +256,6 @@ _FARE_KEY = 'fare'
 #       receiver_tensors=receiver_tensors,
 #       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
-
 # def _input_fn(filenames, tf_transform_output, batch_size=200):
 #   """Generates features and labels for training or evaluation.
 
@@ -289,14 +281,13 @@ _FARE_KEY = 'fare'
 #   return transformed_features, transformed_features.pop(
 #       _transformed_name(_LABEL_KEY))
 
-
 # # TFX will call this function
-# def trainer_fn(hparams, schema):
+# def trainer_fn(trainer_fn_args, schema):
 #   """Build the estimator using the high level API.
 
 #   Args:
-#     hparams: Holds hyperparameters used to train the model as
-#              name/value pairs.
+#     trainer_fn_args: Holds hyperparameters used to train the model as
+#                      name/value pairs.
 #     schema: Holds the schema of the training examples.
 
 #   Returns:
@@ -314,21 +305,22 @@ _FARE_KEY = 'fare'
 #   train_batch_size = 40
 #   eval_batch_size = 40
 
-#   tf_transform_output = tft.TFTransformOutput(hparams.transform_output)
+#   tf_transform_output = tft.TFTransformOutput(
+#       trainer_fn_args.transform_output)
 
 #   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-#       hparams.train_files,
+#       trainer_fn_args.train_files,
 #       tf_transform_output,
 #       batch_size=train_batch_size)
 
 #   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
-#       hparams.eval_files,
+#       trainer_fn_args.eval_files,
 #       tf_transform_output,
 #       batch_size=eval_batch_size)
 
 #   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
 #       train_input_fn,
-#       max_steps=hparams.train_steps)
+#       max_steps=trainer_fn_args.train_steps)
 
 #   serving_receiver_fn = lambda: _example_serving_receiver_fn(  # pylint: disable=g-long-lambda
 #       tf_transform_output, schema)
@@ -336,14 +328,14 @@ _FARE_KEY = 'fare'
 #   exporter = tf.estimator.FinalExporter('chicago-taxi', serving_receiver_fn)
 #   eval_spec = tf.estimator.EvalSpec(
 #       eval_input_fn,
-#       steps=hparams.eval_steps,
+#       steps=trainer_fn_args.eval_steps,
 #       exporters=[exporter],
 #       name='chicago-taxi-eval')
 
 #   run_config = tf.estimator.RunConfig(
 #       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-#   run_config = run_config.replace(model_dir=hparams.serving_model_dir)
+#   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
 
 #   estimator = _build_estimator(
 #       # Construct layers sizes with exponetial decay
@@ -352,7 +344,7 @@ _FARE_KEY = 'fare'
 #           for i in range(num_dnn_layers)
 #       ],
 #       config=run_config,
-#       warm_start_from=hparams.warm_start_from)
+#       warm_start_from=trainer_fn_args.base_model)
 
 #   # Create an input receiver for TFMA processing
 #   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda
