@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.components.base import executor_spec
 from tfx.components.trainer import component
 from tfx.components.trainer import executor

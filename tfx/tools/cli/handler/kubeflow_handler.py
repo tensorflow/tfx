@@ -27,7 +27,7 @@ from typing import Any, Dict, Optional, Text
 import click
 import kfp
 from tabulate import tabulate
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.container_builder import builder

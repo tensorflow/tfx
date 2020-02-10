@@ -23,7 +23,7 @@ import os
 import sys
 import click
 import mock
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import beam_handler

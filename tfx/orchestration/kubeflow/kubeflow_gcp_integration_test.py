@@ -24,7 +24,7 @@ import subprocess
 import sys
 
 import absl
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx.components.base import executor_spec
 from tfx.components.common_nodes.importer_node import ImporterNode

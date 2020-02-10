@@ -23,7 +23,7 @@ import re
 from typing import Any, Dict, List, Text
 
 import absl
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from google.protobuf import json_format
 from tfx import types

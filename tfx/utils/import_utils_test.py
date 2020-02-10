@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import os
 # Standard Imports
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.utils import import_utils
 from tfx.utils.testdata import test_fn
 

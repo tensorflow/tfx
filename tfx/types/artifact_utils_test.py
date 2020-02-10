@@ -21,7 +21,7 @@ from __future__ import unicode_literals
 
 # Standard Imports
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 

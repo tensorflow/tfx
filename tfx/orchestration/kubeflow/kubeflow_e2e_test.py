@@ -21,7 +21,7 @@ from __future__ import print_function
 import logging
 import sys
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx.orchestration.kubeflow import test_utils
 

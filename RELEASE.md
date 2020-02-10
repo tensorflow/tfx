@@ -4,7 +4,6 @@
 *   Pipelines compiled using KubeflowDagRunner now defaults to using the
     gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
     performing operations on pipeline metadata.
-*   Added tfx model rewriting and tflite rewriter.
 
 ## Bug fixes and other changes
 * Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.

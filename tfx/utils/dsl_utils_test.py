@@ -20,7 +20,7 @@ from __future__ import print_function
 
 # Standard Imports
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.types import standard_artifacts
 from tfx.utils import dsl_utils
 

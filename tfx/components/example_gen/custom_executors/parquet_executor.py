@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow.compat.v1 as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 
 from tfx import types
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
