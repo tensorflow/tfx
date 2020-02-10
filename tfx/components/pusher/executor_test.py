@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
+import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+
 from google.protobuf import json_format
 from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
@@ -64,25 +65,75 @@ class ExecutorTest(tf.test.TestCase):
     }
     self._executor = executor.Executor()
 
+  def assertDirectoryEmpty(self, path):
+    self.assertEqual(len(tf.io.gfile.listdir(path)), 0)
+
+  def assertDirectoryNotEmpty(self, path):
+    self.assertGreater(len(tf.io.gfile.listdir(path)), 0)
+
   def testDoBlessed(self):
+    # Prepare blessed ModelBlessing.
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
+
+    # Run executor with blessed.
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
+
+    # Check model successfully pushed.
+    self.assertDirectoryNotEmpty(self._serving_model_dir)
+    self.assertDirectoryNotEmpty(self._model_push.uri)
     self.assertEqual(
         1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 
   def testDoNotBlessed(self):
+    # Prepare not blessed ModelBlessing.
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/not_blessed')
     self._model_blessing.set_int_custom_property('blessed', 0)
+
+    # Run executor with not blessed.
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
-    self.assertEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
+
+    # Check model not pushed.
+    self.assertDirectoryEmpty(self._serving_model_dir)
+    self.assertDirectoryEmpty(self._model_push.uri)
+    self.assertEqual(
+        0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+
+  def testDo_ModelBlessedAndInfraBlessed_Pushed(self):
+    # Prepare blessed ModelBlessing and blessed InfraBlessing.
+    self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 1)  # Blessed.
+    input_dict = {'infra_blessing': [infra_blessing]}
+    input_dict.update(self._input_dict)
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is pushed.
+    self.assertDirectoryNotEmpty(self._serving_model_dir)
+    self.assertDirectoryNotEmpty(self._model_push.uri)
+    self.assertEqual(
+        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+
+  def testDo_InfraNotBlessed_NotPushed(self):
+    # Prepare blessed ModelBlessing and **not** blessed InfraBlessing.
+    self._model_blessing.set_int_custom_property('blessed', 1)  # Blessed.
+    infra_blessing = standard_artifacts.InfraBlessing()
+    infra_blessing.set_int_custom_property('blessed', 0)  # Not blessed.
+    input_dict = {'infra_blessing': [infra_blessing]}
+    input_dict.update(self._input_dict)
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is not pushed.
+    self.assertDirectoryEmpty(self._serving_model_dir)
+    self.assertDirectoryEmpty(self._model_push.uri)
     self.assertEqual(
         0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
 

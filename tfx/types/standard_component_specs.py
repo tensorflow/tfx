@@ -192,6 +192,8 @@ class PusherSpec(ComponentSpec):
   INPUTS = {
       'model': ChannelParameter(type=standard_artifacts.Model),
       'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
+      'infra_blessing': ChannelParameter(type=standard_artifacts.InfraBlessing,
+                                         optional=True),
   }
   OUTPUTS = {
       'pushed_model': ChannelParameter(type=standard_artifacts.PushedModel),
