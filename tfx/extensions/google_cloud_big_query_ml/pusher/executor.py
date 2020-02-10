@@ -58,13 +58,14 @@ class Executor(tfx_pusher_executor.Executor):
       RuntimeError: if the Big Query job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    if not self.CheckBlessing(input_dict, output_dict):
+    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
+    if not self.CheckBlessing(input_dict):
+      model_push.set_int_custom_property('pushed', 0)
       return
 
     model_export = artifact_utils.get_single_instance(
         input_dict['model_export'])
     model_export_uri = model_export.uri
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
 
     custom_config = exec_properties.get('custom_config', {})
     bigquery_serving_args = custom_config.get('bigquery_serving_args', None)
