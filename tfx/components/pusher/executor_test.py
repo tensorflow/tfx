@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx.components.pusher import executor

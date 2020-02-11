@@ -25,7 +25,7 @@ import sys
 import tarfile
 import tempfile
 import mock
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler

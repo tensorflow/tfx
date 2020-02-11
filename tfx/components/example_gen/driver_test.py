@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import re
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen import driver
@@ -42,7 +42,7 @@ class DriverTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._input_base_path)
 
     # Mock metadata.
-    self._mock_metadata = tf.test.mock.Mock()
+    self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._example_gen_driver = driver.Driver(self._mock_metadata)
 
     # Create input dict.

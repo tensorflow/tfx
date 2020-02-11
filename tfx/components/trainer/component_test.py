@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tfx.components.base import executor_spec
 from tfx.components.trainer import component
 from tfx.components.trainer import executor

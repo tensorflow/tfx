@@ -28,7 +28,7 @@ import time
 
 import absl
 from click import testing as click_testing
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils

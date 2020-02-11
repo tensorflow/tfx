@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2

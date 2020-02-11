@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 import mock
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen

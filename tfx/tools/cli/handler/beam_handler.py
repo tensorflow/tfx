@@ -24,7 +24,7 @@ import sys
 from typing import Any, Dict, Text
 
 import click
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import base_handler

@@ -20,7 +20,7 @@ from __future__ import print_function
 import os
 from typing import List, Text
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from google.protobuf import text_format
 from google.protobuf.message import Message

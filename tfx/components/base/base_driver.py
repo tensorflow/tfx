@@ -21,7 +21,7 @@ import os
 from typing import Any, Dict, List, Text
 
 import absl
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx import types
 from tfx.orchestration import data_types
