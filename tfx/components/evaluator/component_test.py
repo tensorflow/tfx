@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Text
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
 from tfx.components.evaluator import component

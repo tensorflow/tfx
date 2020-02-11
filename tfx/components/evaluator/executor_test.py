@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import absl
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from google.protobuf import json_format
 from tfx.components.evaluator import executor

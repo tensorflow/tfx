@@ -32,7 +32,7 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.runners.portability import fn_api_runner
 from apache_beam.transforms import environments
 from future.utils import with_metaclass
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx import types
 from tfx.types import artifact_utils

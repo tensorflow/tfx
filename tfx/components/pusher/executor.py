@@ -22,7 +22,7 @@ import os
 from typing import Any, Dict, List, Text
 
 from absl import logging
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx import types

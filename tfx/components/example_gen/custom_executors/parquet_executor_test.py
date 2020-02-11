@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import apache_beam as beam
 from apache_beam.testing import util
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from google.protobuf import json_format
 from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.components.example_gen.custom_executors import parquet_executor

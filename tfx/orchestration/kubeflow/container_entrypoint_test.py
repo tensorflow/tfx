@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration.kubeflow import container_entrypoint

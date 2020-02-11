@@ -23,7 +23,7 @@ import json
 from typing import Dict, List, Text
 # Standard Imports
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tfx.proto import example_gen_pb2
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel

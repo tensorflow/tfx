@@ -25,7 +25,7 @@ import os
 from absl import logging
 from click import testing as click_testing
 import mock
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from tfx.tools.cli.commands.template import template_group
 from tfx.tools.cli.handler import template_handler

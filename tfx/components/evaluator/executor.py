@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
 from google.protobuf import json_format

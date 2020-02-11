@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import data_types

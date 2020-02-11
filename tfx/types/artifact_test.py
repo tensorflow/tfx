@@ -24,7 +24,7 @@ from __future__ import unicode_literals
 import absl
 import mock
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
 from tfx.utils import json_utils

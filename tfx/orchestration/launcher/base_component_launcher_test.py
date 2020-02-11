@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import mock
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types

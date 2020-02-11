@@ -24,7 +24,7 @@ import sys
 
 import absl
 import mock
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import dependency_utils
 

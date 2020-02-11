@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tfx.components.trainer import driver
 from tfx.types import standard_artifacts
 
@@ -26,7 +26,7 @@ from tfx.types import standard_artifacts
 class DriverTest(tf.test.TestCase):
 
   def testFetchWarmStartingModel(self):
-    mock_metadata = tf.test.mock.Mock()
+    mock_metadata = tf.compat.v1.test.mock.Mock()
     artifacts = []
     for aid in [3, 2, 1]:
       model = standard_artifacts.Model()

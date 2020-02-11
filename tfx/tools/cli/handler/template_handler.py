@@ -26,7 +26,7 @@ import os
 from typing import Text, Dict, Any, List
 import click
 
-import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
+import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.utils import io_utils

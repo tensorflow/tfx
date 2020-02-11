@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Optional, Text
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx import types
 from tfx.components.base import base_component
