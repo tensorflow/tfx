@@ -195,8 +195,14 @@ class Artifact(json_utils.Jsonable):
       raise AttributeError('Artifact has no property %r.' % name)
     property_mlmd_type = self._artifact_type.properties[name]
     if property_mlmd_type == metadata_store_pb2.STRING:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return ''
       return self._artifact.properties[name].string_value
     elif property_mlmd_type == metadata_store_pb2.INT:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return 0
       return self._artifact.properties[name].int_value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
