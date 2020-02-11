@@ -61,20 +61,22 @@ _CONTEXT_TYPE_PIPELINE = 'pipeline'
 _CONTEXT_TYPE_PIPELINE_RUN = 'run'
 _CONTEXT_TYPE_COMPONENT_RUN = 'component_run'
 # Keys of context type properties.
+_CONTEXT_TYPE_KEY_COMPONENT_ID = 'component_id'
 _CONTEXT_TYPE_KEY_PIPELINE_NAME = 'pipeline_name'
 _CONTEXT_TYPE_KEY_RUN_ID = 'run_id'
-_CONTEXT_TYPE_KEY_COMPONENT_ID = 'component_id'
 # Keys of execution type properties.
 _EXECUTION_TYPE_KEY_CHECKSUM = 'checksum_md5'
+_EXECUTION_TYPE_KEY_COMPONENT_ID = 'component_id'
 _EXECUTION_TYPE_KEY_PIPELINE_NAME = 'pipeline_name'
 _EXECUTION_TYPE_KEY_PIPELINE_ROOT = 'pipeline_root'
 _EXECUTION_TYPE_KEY_RUN_ID = 'run_id'
-_EXECUTION_TYPE_KEY_COMPONENT_ID = 'component_id'
-_EXECUTION_TYPE_RESERVED_KEYS = frozenset((
-    _EXECUTION_TYPE_KEY_CHECKSUM, _EXECUTION_TYPE_KEY_PIPELINE_NAME,
-    _EXECUTION_TYPE_KEY_PIPELINE_ROOT, _EXECUTION_TYPE_KEY_RUN_ID,
-    _EXECUTION_TYPE_KEY_COMPONENT_ID
-))
+_EXECUTION_TYPE_KEY_STATE = 'state'
+_EXECUTION_TYPE_RESERVED_KEYS = frozenset(
+    (_EXECUTION_TYPE_KEY_CHECKSUM, _EXECUTION_TYPE_KEY_PIPELINE_NAME,
+     _EXECUTION_TYPE_KEY_PIPELINE_ROOT, _EXECUTION_TYPE_KEY_RUN_ID,
+     _EXECUTION_TYPE_KEY_COMPONENT_ID, _EXECUTION_TYPE_KEY_STATE))
+# Keys for artifact properties.
+_ARTIFACT_TYPE_KEY_STATE = 'state'
 
 
 def sqlite_metadata_connection_config(
@@ -183,10 +185,11 @@ class Metadata(object):
       raise ValueError('Artifact id missing for %s' % artifact)
     # TODO(b/146936257): unify artifact access logic by wrapping raw MLMD
     # artifact protos into tfx.types.Artifact objects at a lower level.
-    if 'state' in artifact.properties:
-      artifact.properties['state'].string_value = new_state
+    if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
+      artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value = new_state
     else:
-      artifact.custom_properties['state'].string_value = new_state
+      artifact.custom_properties[
+          _ARTIFACT_TYPE_KEY_STATE].string_value = new_state
     self.store.put_artifacts([artifact])
 
   def _upsert_artifacts(self, tfx_artifact_list: List[Artifact],
@@ -231,6 +234,39 @@ class Metadata(object):
       self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
     """Fetches artifacts given artifact type name."""
     return self.store.get_artifacts_by_type(type_name)
+
+  # TODO(b/145751019): Remove this once migrated to use MLMD built-in states.
+  def _get_artifact_state(
+      self, artifact: metadata_store_pb2.Artifact) -> Optional[Text]:
+    """Gets artifact state string if available."""
+    if _ARTIFACT_TYPE_KEY_STATE in artifact.properties:
+      return artifact.properties[_ARTIFACT_TYPE_KEY_STATE].string_value
+    elif _ARTIFACT_TYPE_KEY_STATE in artifact.custom_properties:
+      return artifact.custom_properties[_ARTIFACT_TYPE_KEY_STATE].string_value
+    else:
+      return None
+
+  def get_published_artifacts_by_type_within_context(
+      self, type_names: List[Text],
+      context_id: int) -> Dict[Text, List[metadata_store_pb2.Artifact]]:
+    """Fetches artifacts given artifact type name and context id."""
+    result = dict((type_name, []) for type_name in type_names)
+    all_artifacts_in_context = self.store.get_artifacts_by_context(context_id)
+    for type_name in type_names:
+      try:
+        artifact_type = self.store.get_artifact_type(type_name)
+        if artifact_type is None:
+          raise tf.errors.NotFoundError(None, None, 'No type found.')
+      except tf.errors.NotFoundError:
+        absl.logging.warning('Artifact type %s not registered' % type_name)
+        continue
+
+      result[type_name] = [
+          a for a in all_artifacts_in_context
+          if a.type_id == artifact_type.id and
+          self._get_artifact_state(a) == ArtifactState.PUBLISHED
+      ]
+    return result
 
   def _prepare_event(self,
                      event_type: metadata_store_pb2.Event.Type,
@@ -282,7 +318,8 @@ class Metadata(object):
                                       'No qualified execution type found.')
     except tf.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
-      execution_type.properties['state'] = metadata_store_pb2.STRING
+      execution_type.properties[
+          _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
       # If exec_properties contains new entries, execution type schema will be
       # updated in MLMD.
       for k in exec_properties.keys():
@@ -326,7 +363,8 @@ class Metadata(object):
   ) -> metadata_store_pb2.Execution:
     """Updates the execution proto with given type and state."""
     if state is not None:
-      execution.properties['state'].string_value = tf.compat.as_text(state)
+      execution.properties[
+          _EXECUTION_TYPE_KEY_STATE].string_value = tf.compat.as_text(state)
     exec_properties = exec_properties or {}
     # TODO(ruoyu): Enforce a formal rule for execution schema change.
     for k, v in exec_properties.items():
@@ -555,7 +593,8 @@ class Metadata(object):
     ]
     contexts = [ctx for ctx in contexts if ctx is not None]
     # If execution state is already in final state, skips publishing.
-    if execution.properties['state'].string_value in FINAL_EXECUTION_STATES:
+    if execution.properties[
+        _EXECUTION_TYPE_KEY_STATE].string_value in FINAL_EXECUTION_STATES:
       return
     self.update_execution(
         execution=execution,

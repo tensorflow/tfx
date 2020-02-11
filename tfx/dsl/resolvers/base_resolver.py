@@ -24,6 +24,7 @@ from typing import Dict, List, Text
 from six import with_metaclass
 
 from tfx import types
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 
 
@@ -58,12 +59,15 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
   def resolve(
       self,
+      pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
       source_channels: Dict[Text, types.Channel],
   ) -> ResolveResult:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:
+      pipeline_info: PipelineInfo of the current pipeline. We do not want to
+        query artifacts across pipeline boundary.
       metadata_handler: a read-only handler to query MLMD.
       source_channels: a key -> channel dict which contains the info of the
         source channels.

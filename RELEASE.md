@@ -5,6 +5,8 @@
     gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
     performing operations on pipeline metadata.
 *   Added tfx model rewriting and tflite rewriter.
+*   Added LatestBlessedModelResolver as an experimental feature which gets the
+    latest model that was blessed by model validator.
 
 ## Bug fixes and other changes
 * Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
