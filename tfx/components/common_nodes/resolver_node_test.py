@@ -71,7 +71,15 @@ class ResolverDriverTest(tf.test.TestCase):
     existing_artifact = standard_artifacts.Examples()
     existing_artifact.uri = 'my/uri'
     with metadata.Metadata(connection_config=self.connection_config) as m:
+      contexts = m.register_contexts_if_not_exists(self.pipeline_info,
+                                                   self.component_info)
       m.publish_artifacts([existing_artifact])
+      m.register_execution(
+          pipeline_info=self.pipeline_info,
+          component_info=self.component_info,
+          input_artifacts={'a': [existing_artifact]},
+          exec_properties={},
+          contexts=contexts)
       driver = resolver_node.ResolverDriver(metadata_handler=m)
       execution_result = driver.pre_execution(
           component_info=self.component_info,

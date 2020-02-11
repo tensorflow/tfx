@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
+from tfx.components.model_validator import constants
 from tfx.components.model_validator import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -44,14 +45,14 @@ class ExecutorTest(tf.test.TestCase):
     model = standard_artifacts.Model()
     model.uri = os.path.join(self._source_data_dir, 'trainer/current')
     self._input_dict = {
-        executor.EXAMPLES_KEY: [eval_examples],
-        executor.MODEL_KEY: [model],
+        constants.EXAMPLES_KEY: [eval_examples],
+        constants.MODEL_KEY: [model],
     }
 
     # Create output dict.
     self._blessing = standard_artifacts.ModelBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self._output_dict = {executor.BLESSING_KEY: [self._blessing]}
+    self._output_dict = {constants.BLESSING_KEY: [self._blessing]}
 
     # Create context
     self._tmp_dir = os.path.join(output_data_dir, '.temp')
@@ -73,7 +74,8 @@ class ExecutorTest(tf.test.TestCase):
     # Check model validator outputs.
     self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(
+            os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
   def testDoWithoutBlessedModel(self):
     # Create exe properties.
@@ -90,7 +92,8 @@ class ExecutorTest(tf.test.TestCase):
     # Check model validator outputs.
     self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(
+            os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
 
 if __name__ == '__main__':

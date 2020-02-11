@@ -634,8 +634,42 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(artifact_b.id, 2)
       self._check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
 
+  def testGetArtifactsByContextAndType(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts_one = m.register_contexts_if_not_exists(self._pipeline_info,
+                                                       self._component_info)
+      contexts_two = m.register_contexts_if_not_exists(self._pipeline_info3,
+                                                       self._component_info)
+      artifact_one = standard_artifacts.Model()
+      artifact_two = standard_artifacts.Examples()
+      artifact_three = standard_artifacts.Examples()
+      m.publish_artifacts([artifact_one, artifact_two, artifact_three])
+      m.register_execution(
+          input_artifacts={
+              'a': [artifact_one],
+              'b': [artifact_two]
+          },
+          exec_properties={},
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts_one)
+      m.register_execution(
+          input_artifacts={'a': [artifact_three]},
+          exec_properties={},
+          pipeline_info=self._pipeline_info3,
+          component_info=self._component_info,
+          contexts=contexts_two)
+
+      result = m.get_published_artifacts_by_type_within_context(
+          [artifact_two.type_name], contexts_one[0].id)
+      self.assertEqual(len(result), 1)
+      self.assertEqual(result[artifact_two.type_name][0].id, artifact_two.id)
+
   def testContext(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
+                                                   self._component_info)
+      # Duplicated call should succeed.
       contexts = m.register_contexts_if_not_exists(self._pipeline_info,
                                                    self._component_info)
 

@@ -68,6 +68,7 @@ class ResolverDriver(base_driver.BaseDriver):
     else:
       resolver = resolver_class()
     resolve_result = resolver.resolve(
+        pipeline_info=pipeline_info,
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
     # Updates execution to reflect artifact resolution results and mark

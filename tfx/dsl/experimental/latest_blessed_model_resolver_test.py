@@ -22,16 +22,17 @@ from __future__ import print_function
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.components.model_validator import constants as model_validator
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
 
 
-class LatestArtifactsResolverTest(tf.test.TestCase):
+class LatestBlessedModelResolverTest(tf.test.TestCase):
 
   def setUp(self):
-    super(LatestArtifactsResolverTest, self).setUp()
+    super(LatestBlessedModelResolverTest, self).setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
     self._pipeline_info = data_types.PipelineInfo(
@@ -41,38 +42,63 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
         component_id='my_component',
         pipeline_info=self._pipeline_info)
 
-  def testGetLatestArtifact(self):
+  def _set_model_blessing_bit(self, artifact: types.Artifact, model_id: int,
+                              is_blessed: int):
+    artifact.mlmd_artifact.custom_properties[
+        model_validator.ARTIFACT_PROPERTY_BLESSED_KEY].int_value = is_blessed
+    artifact.mlmd_artifact.custom_properties[
+        model_validator
+        .ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value = model_id
+
+  def testGetLatestBlessedModelArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = m.register_contexts_if_not_exists(self._pipeline_info,
                                                    self._component_info)
-      artifact_one = standard_artifacts.Examples()
-      artifact_one.uri = 'uri_one'
-      m.publish_artifacts([artifact_one])
-      artifact_two = standard_artifacts.Examples()
-      artifact_two.uri = 'uri_two'
-      m.publish_artifacts([artifact_two])
-      m.publish_artifacts([artifact_one, artifact_two])
+      # Model with id 1, will be blessed.
+      model_one = standard_artifacts.Model()
+      model_one.uri = 'model_one'
+      m.publish_artifacts([model_one])
+      # Model with id 2, will be blessed.
+      model_two = standard_artifacts.Model()
+      model_two.uri = 'model_two'
+      m.publish_artifacts([model_two])
+      # Model with id 3, will not be blessed.
+      model_three = standard_artifacts.Model()
+      model_three.uri = 'model_three'
+      m.publish_artifacts([model_three])
+
+      model_blessing_one = standard_artifacts.ModelBlessing()
+      self._set_model_blessing_bit(model_blessing_one, model_one.id, 1)
+      model_blessing_two = standard_artifacts.ModelBlessing()
+      self._set_model_blessing_bit(model_blessing_two, model_two.id, 1)
+      m.publish_artifacts([model_blessing_one, model_blessing_two])
+
       m.register_execution(
           input_artifacts={
-              'a': [artifact_one, artifact_two],
+              'a': [model_one, model_two, model_three],
+              'b': [model_blessing_one, model_blessing_two]
           },
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
 
-      resolver = latest_artifacts_resolver.LatestArtifactsResolver()
+      resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
       resolve_result = resolver.resolve(
           pipeline_info=self._pipeline_info,
           metadata_handler=m,
-          source_channels={'input': types.Channel(type=artifact_one.type)})
-
+          source_channels={
+              'model':
+                  types.Channel(type=standard_artifacts.Model),
+              'model_blessing':
+                  types.Channel(type=standard_artifacts.ModelBlessing)
+          })
       self.assertTrue(resolve_result.has_complete_result)
       self.assertEqual([
           artifact.uri
-          for artifact in resolve_result.per_key_resolve_result['input']
-      ], ['uri_two'])
-      self.assertTrue(resolve_result.per_key_resolve_state['input'])
+          for artifact in resolve_result.per_key_resolve_result['model']
+      ], ['model_two'])
+      self.assertTrue(resolve_result.per_key_resolve_state['model'])
 
 
 if __name__ == '__main__':

@@ -28,21 +28,10 @@ import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.model_validator import constants
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-
-# Key for examples in executor input_dict.
-EXAMPLES_KEY = 'examples'
-# Key for model in executor input_dict.
-MODEL_KEY = 'model'
-
-# Key for model blessing in executor output_dict.
-BLESSING_KEY = 'blessing'
-
-# Path to store model eval results for validation.
-CURRENT_MODEL_EVAL_RESULT_PATH = 'eval_results/current_model'
-BLESSED_MODEL_EVAL_RESULT_PATH = 'eval_results/blessed_model'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -105,9 +94,9 @@ class Executor(base_executor.BaseExecutor):
                                 current_model_dir: Text,
                                 blessed_model_dir: Text) -> bool:
     current_model_eval_result_path = os.path.join(
-        self._temp_path, CURRENT_MODEL_EVAL_RESULT_PATH)
+        self._temp_path, constants.CURRENT_MODEL_EVAL_RESULT_PATH)
     blessed_model_eval_result_path = os.path.join(
-        self._temp_path, BLESSED_MODEL_EVAL_RESULT_PATH)
+        self._temp_path, constants.BLESSED_MODEL_EVAL_RESULT_PATH)
 
     with self._make_beam_pipeline() as pipeline:
       eval_data = (
@@ -177,27 +166,33 @@ class Executor(base_executor.BaseExecutor):
     self._temp_path = self._get_tmp_dir()
     absl.logging.info('Using temp path {} for tft.beam'.format(self._temp_path))
 
-    eval_examples_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                     'eval')
-    blessing = artifact_utils.get_single_instance(output_dict[BLESSING_KEY])
+    eval_examples_uri = artifact_utils.get_split_uri(
+        input_dict[constants.EXAMPLES_KEY], 'eval')
+    blessing = artifact_utils.get_single_instance(
+        output_dict[constants.BLESSING_KEY])
 
-    # Current model.
-    current_model = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
+    # Current model to be validated.
+    current_model = artifact_utils.get_single_instance(
+        input_dict[constants.MODEL_KEY])
     absl.logging.info('Using {} as current model.'.format(current_model.uri))
-    blessing.set_string_custom_property('current_model', current_model.uri)
-    blessing.set_int_custom_property('current_model_id', current_model.id)
+    blessing.set_string_custom_property(
+        constants.ARTIFACT_PROPERTY_CURRENT_MODEL_URI_KEY, current_model.uri)
+    blessing.set_int_custom_property(
+        constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY, current_model.id)
 
     # Denote model component_name.
     component_id = exec_properties['current_component_id']
     blessing.set_string_custom_property('component_id', component_id)
 
-    # Blessed model.
+    # Previous blessed model to be validated against.
     blessed_model_dir = exec_properties['blessed_model']
     blessed_model_id = exec_properties['blessed_model_id']
     absl.logging.info('Using {} as blessed model.'.format(blessed_model_dir))
     if blessed_model_dir:
-      blessing.set_string_custom_property('blessed_model', blessed_model_dir)
-      blessing.set_int_custom_property('blessed_model_id', blessed_model_id)
+      blessing.set_string_custom_property(
+          constants.ARTIFACT_PROPERTY_BLESSED_MODEL_URI_KEY, blessed_model_dir)
+      blessing.set_int_custom_property(
+          constants.ARTIFACT_PROPERTY_BLESSED_MODEL_ID_KEY, blessed_model_id)
 
     absl.logging.info('Validating model.')
     # TODO(b/125853306): support customized slice spec.
@@ -208,11 +203,15 @@ class Executor(base_executor.BaseExecutor):
         blessed_model_dir=blessed_model_dir)
 
     if blessed:
-      io_utils.write_string_file(os.path.join(blessing.uri, 'BLESSED'), '')
-      blessing.set_int_custom_property('blessed', 1)
+      io_utils.write_string_file(
+          os.path.join(blessing.uri, constants.BLESSED_FILE_NAME), '')
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.BLESSED_VALUE)
     else:
-      io_utils.write_string_file(os.path.join(blessing.uri, 'NOT_BLESSED'), '')
-      blessing.set_int_custom_property('blessed', 0)
+      io_utils.write_string_file(
+          os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.NOT_BLESSED_VALUE)
     absl.logging.info('Blessing result {} written to {}.'.format(
         blessed, blessing.uri))
 
