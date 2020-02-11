@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
+
 from typing import Any, Dict, List, Text
 
 import jinja2
@@ -47,10 +49,20 @@ def resolve_container_template(
       'output_dict': output_dict,
       'exec_properties': exec_properties,
   }
-  return executor_spec.ExecutorContainerSpec(
-      image=_render_text(container_spec_tmpl.image, context),
-      command=_render_items(container_spec_tmpl.command, context),
-      args=_render_items(container_spec_tmpl.args, context))
+  # Making a copy to keep any additional attributes
+  resolved_spec = copy.copy(container_spec_tmpl)
+  resolved_spec.image = _render_text(container_spec_tmpl.image, context)
+  resolved_spec.command = _render_items(container_spec_tmpl.command, context)
+  resolved_spec.args = _render_items(container_spec_tmpl.args, context)
+  resolved_spec.input_path_uris = {
+      path: _render_text(uri, context)
+      for path, uri in (container_spec_tmpl.input_path_uris or {}).items()
+  }
+  resolved_spec.output_path_uris = {
+      path: _render_text(uri, context)
+      for path, uri in (container_spec_tmpl.output_path_uris or {}).items()
+  }
+  return resolved_spec
 
 
 def _render_items(items: List[Text], context: Dict[Text, Any]) -> List[Text]:

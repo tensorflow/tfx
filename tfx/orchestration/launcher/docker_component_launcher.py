@@ -18,10 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import shutil
+import tempfile
 from typing import Any, Dict, List, Text, cast
 
 import absl
 import docker
+import tensorflow as tf
 
 from tfx import types
 from tfx.components.base import executor_spec
@@ -77,11 +81,38 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
       client = docker.from_env()
 
     run_args = docker_config.to_run_args()
+
+    # Preparing the volume mounts for input and output files
+    volume_mounts = run_args.pop('volumes', {}) or {}
+    container_path_to_host_path = {}
+    host_artifact_dir = tempfile.mkdtemp()
+    for path in (list((executor_container_spec.input_path_uris or {}).keys()) +
+                 list((executor_container_spec.output_path_uris or {}).keys())):
+      container_dir = os.path.dirname(path)  # TODO(avolkov) Fix for Windows
+      container_filename = os.path.basename(path)
+      host_dir = os.path.join(host_artifact_dir,
+                              container_dir.replace('/', '_'))
+      host_path = os.path.join(host_dir, container_filename)
+      os.makedirs(host_dir)
+      container_path_to_host_path[path] = host_path
+      volume_mounts[host_dir] = dict(
+          bind=container_dir,
+          mode='rw',
+      )
+
+    # Downloading the input files
+    for path, uri in (executor_container_spec.input_path_uris or {}).items():
+      src = uri
+      dst = container_path_to_host_path[path]
+      absl.logging.info('Downloading from "{}" to "{}"'.format(src, dst))
+      tf.io.gfile.copy(src, dst)
+
     container = client.containers.run(
         image=executor_container_spec.image,
         entrypoint=executor_container_spec.command,
         command=executor_container_spec.args,
         detach=True,
+        volumes=volume_mounts,
         **run_args)
 
     # Streaming logs
@@ -91,6 +122,29 @@ class DockerComponentLauncher(base_component_launcher.BaseComponentLauncher):
     if exit_code != 0:
       raise RuntimeError(
           'Container exited with error code "{}"'.format(exit_code))
+
+    # Uploading the output files
+    for path, uri in (executor_container_spec.output_path_uris or {}).items():
+      src = container_path_to_host_path[path]
+      dst = uri
+      absl.logging.info('Uploading from "{}" to "{}"'.format(src, dst))
+      # Workaround for b/150515270
+      if tf.io.gfile.exists(dst):
+        if tf.io.gfile.isdir(dst):
+          if tf.io.gfile.glob(dst + '/*'):
+            absl.logging.error(
+                'Output artifact URI "{}" is an existing non-empty directory.'
+                .format(dst))
+          else:
+            tf.io.gfile.rmtree(dst)
+        else:
+          absl.logging.error(
+              'Destination URI already exists: "{}"..'.format(dst))
+      tf.io.gfile.copy(src, dst)
+
+    # Cleaning up the temporary directory with artifact files.
+    shutil.rmtree(host_artifact_dir)
+
     # TODO(b/141192583): Report data to publisher
     # - report container digest
     # - report replaced command line entrypoints

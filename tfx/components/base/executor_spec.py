@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import List, Text, Type
+from typing import Dict, List, Optional, Text, Type
 
 from six import with_metaclass
 
@@ -57,8 +57,15 @@ class ExecutorContainerSpec(ExecutorSpec):
 
   spec = ExecutorContainerSpec(
     image='docker/whalesay',
-    command=['cowsay'],
-    args=['hello wolrd'])
+    command=['sh', '-c', 'cowsay "$0" > $1'],
+    args=[
+        'hello world',
+        '/tmp/output.txt',
+    ],
+    output_path_uris={
+        '/tmp/output.txt': '{{output_dict["text"][0].uri}}',
+    },
+  )
 
   Attributes:
     image: Container image that has executor application. Assumption is that
@@ -72,15 +79,30 @@ class ExecutorContainerSpec(ExecutorSpec):
       if this is not provided. The Jinja templating mechanism is used for
       constructing a user-specified command-line invocation based on input and
       output metadata at runtime.
+    input_path_uris: Maps local container paths to input artifact URIs.
+      The keys are container-local paths. The values are URIs.
+      At this moment only GCS URIs are supported (also local paths when running
+      locally).
+      When container starts, the artifact data will be made available at those
+      local paths (downloaded or mounted).
+    output_path_uris: Maps local container paths to output artifact URIs.
+      When container finishes, the data from the specified paths will be stored
+      at the provided URIs (uploaded or mounted).
   """
 
-  def __init__(self,
-               image: Text,
-               command: List[Text] = None,
-               args: List[Text] = None):
+  def __init__(
+      self,
+      image: Text,
+      command: List[Text] = None,
+      args: List[Text] = None,
+      input_path_uris: Optional[Dict[Text, Text]] = None,
+      output_path_uris: Optional[Dict[Text, Text]] = None,
+  ):
     if not image:
       raise ValueError('image cannot be None or empty.')
     self.image = image
     self.command = command
     self.args = args
+    self.input_path_uris = input_path_uris
+    self.output_path_uris = output_path_uris
     super(ExecutorContainerSpec, self).__init__()

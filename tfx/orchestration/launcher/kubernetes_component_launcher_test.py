@@ -31,6 +31,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import kubernetes_component_config
+from tfx.orchestration.launcher import _grep_component
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
@@ -235,7 +236,83 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
             }
         }, pod_manifest)
 
-  def _create_launcher_context(self, component_config=None):
+  @mock.patch.dict(os.environ, {
+      'KFP_NAMESPACE': 'ns-1',
+      'KFP_POD_NAME': 'pod-1'
+  })
+  @mock.patch.object(publisher, 'Publisher', autospec=True)
+  @mock.patch.object(config, 'load_incluster_config', autospec=True)
+  @mock.patch.object(client, 'CoreV1Api', autospec=True)
+  def testLaunch_withIoDrivers(self, mock_core_api_cls,
+                               mock_incluster_config, mock_publisher):
+    mock_publisher.return_value.publish_execution.return_value = {}
+    core_api = mock_core_api_cls.return_value
+    core_api.read_namespaced_pod.side_effect = [
+        self._mock_launcher_pod(),
+        client.rest.ApiException(status=404),  # Mock no existing pod state.
+        self._mock_executor_pod(
+            'Pending'),  # Mock pending state after creation.
+        self._mock_executor_pod('Running'),  # Mock running state after pending.
+        self._mock_executor_pod('Succeeded'),  # Mock Succeeded state.
+    ]
+    # Mock successful pod creation.
+    core_api.create_namespaced_pod.return_value = client.V1Pod()
+    core_api.read_namespaced_pod_log.return_value.stream.return_value = [
+        b'log-1'
+    ]
+
+    test_dir = self.get_temp_dir()
+    input_artifact = test_utils._InputArtifact()
+    input_artifact.uri = os.path.join(test_dir, 'input')
+    output_artifact = test_utils._OutputArtifact()
+    output_artifact.uri = os.path.join(test_dir, 'output')
+    pattern = '7'
+
+    task = test_utils._FakeComponent(
+        name='FakeTask',
+        input_channel=channel_utils.as_channel([input_artifact]),
+        output_channel=channel_utils.as_channel([output_artifact]),
+        custom_executor_spec=executor_spec.ExecutorContainerSpec(
+            image='alpine',
+            command=['sh', '-c', 'grep "$2" <"$0" >"$1"'],
+            args=[
+                '/tmp/inputs/input1/data',
+                '/tmp/outputs/output1/data',
+                pattern,  # '{{exec_properties.pattern}}',
+            ],
+            input_path_uris={
+                '/tmp/inputs/input1/data': '{{input_dict["input"][0].uri}}',
+            },
+            output_path_uris={
+                '/tmp/outputs/output1/data': '{{output_dict["output"][0].uri}}',
+            },
+        )
+    )
+
+    context = self._create_launcher_context(task=task)
+
+    context['launcher'].launch()
+
+    core_api.create_namespaced_pod.assert_called_once()
+    core_api.read_namespaced_pod_log.assert_called_once()
+    _, mock_kwargs = core_api.create_namespaced_pod.call_args
+    self.assertEqual('ns-1', mock_kwargs['namespace'])
+    actual_pod_spec = mock_kwargs['body']
+    expected_pod_spec = _grep_component.get_expected_k8s_launcher_pod_spec(
+        input1_uri=input_artifact.uri,
+        output1_uri=output_artifact.uri,
+        pattern=pattern,
+    )
+    expected_pod_spec['metadata'][
+        'name'] = 'test-123-fakecomponent-faketask-123'
+    expected_pod_spec['metadata']['ownerReferences'][0]['name'] = 'wf-1'
+    expected_pod_spec['metadata']['ownerReferences'][0]['uid'] = 'wf-uid-1'
+    expected_pod_spec['metadata']['ownerReferences'][0]['name'] = 'wf-1'
+    expected_pod_spec['spec']['serviceAccount'] = 'sa-1'
+
+    self.assertDictEqual(expected_pod_spec, actual_pod_spec)
+
+  def _create_launcher_context(self, component_config=None, task=None):
     test_dir = self.get_temp_dir()
 
     connection_config = metadata_store_pb2.ConnectionConfig()
@@ -247,7 +324,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     input_artifact = test_utils._InputArtifact()
     input_artifact.uri = os.path.join(test_dir, 'input')
 
-    component = test_utils._FakeComponent(
+    component = task or test_utils._FakeComponent(
         name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]),
         custom_executor_spec=executor_spec.ExecutorContainerSpec(

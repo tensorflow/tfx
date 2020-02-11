@@ -105,6 +105,8 @@
 *   Added a Chicago Taxi example with native Keras.
 *   Updated TFLite converter to work with TF2.
 *   Enabled filtering by artifact producer and output key in ResolverNode.
+*   Added support for automatically downloading input data to files and
+    uploading output data from files to container-based components.
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.

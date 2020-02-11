@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
 import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Text, cast
@@ -47,6 +48,119 @@ def _sanitize_pod_name(pod_name: Text) -> Text:
   pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
   pod_name = re.sub(r'^[-]+', '', pod_name)
   return re.sub(r'[-]+', '-', pod_name)
+
+
+def _add_io_drivers_to_pod(
+    pod_manifest: Dict[Text, Any],
+    container_spec: executor_spec.ExecutorContainerSpec,
+):
+  """Modifies the pod spec by adding containers that download and upload the data."""
+  need_data_drivers = container_spec.input_path_uris or container_spec.output_path_uris
+
+  if not need_data_drivers:
+    return
+
+  pod_spec = pod_manifest['spec']
+  containers = pod_spec['containers']
+  init_containers = pod_spec.setdefault(
+      'initContainers', [])  # type: List[Dict[Text, Any]]
+
+  main_container = None  # type: Dict[Text, Any]
+  for c in containers:
+    if c['name'] == 'main':
+      main_container = c
+      # Moving the main container to init containers
+      containers.remove(main_container)
+      # Adding dummy container, so that the list is not empty
+      if not containers:
+        containers.append(dict(
+            name='dummy',
+            image='alpine',
+            command=['true'],
+        ))
+
+      break
+
+  if not main_container:
+    raise ValueError('Pod spec must have a container with name "main".')
+
+  init_containers.append(main_container)
+
+  volumes = pod_spec.setdefault('volumes', [])
+  main_container_volume_mounts = main_container.setdefault('volumeMounts', [])
+  if container_spec.input_path_uris:
+    volume_mounts = []
+    downloader_container = dict(
+        name='downloader',
+        image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
+        command=[
+            'sh', '-e', '-c',
+            '''\
+while (( $# > 0 )); do
+  gsutil rsync "$0" "$1"
+  shift 2
+done
+'''
+        ],
+        args=[],
+        volumeMounts=volume_mounts,
+    )
+    init_containers.insert(0, downloader_container)
+    for art_path, art_uri in container_spec.input_path_uris.items():
+      volume_name = _sanitize_pod_name(art_path)
+      art_dir = os.path.dirname(art_path)  # TODO(avolkov) Deduplicate
+      volumes.append(dict(
+          name=volume_name,
+          emptyDir={},
+      ))
+      volume_mounts.append(dict(
+          name=volume_name,
+          mountPath=art_dir,
+      ))
+      main_container_volume_mounts.append(dict(
+          name=volume_name,
+          mountPath=art_dir,
+      ))
+      downloader_container['args'].extend([
+          art_uri, art_path
+      ])
+
+  if container_spec.output_path_uris:
+    volume_mounts = []
+    uploader_container = dict(
+        name='uploader',
+        image='gcr.io/google.com/cloudsdktool/cloud-sdk:latest',
+        command=[
+            'sh', '-e', '-c',
+            '''\
+while (( $# > 0 )); do
+  gsutil rsync "$0" "$1"
+  shift 2
+done
+'''
+        ],
+        args=[],
+        volumeMounts=volume_mounts,
+    )
+    init_containers.append(uploader_container)
+    for art_path, art_uri in container_spec.output_path_uris.items():
+      volume_name = _sanitize_pod_name(art_path)
+      art_dir = os.path.dirname(art_path)
+      volumes.append(dict(
+          name=volume_name,
+          emptyDir={},
+      ))
+      volume_mounts.append(dict(
+          name=volume_name,
+          mountPath=art_dir,
+      ))
+      main_container_volume_mounts.append(dict(
+          name=volume_name,
+          mountPath=art_dir,
+      ))
+      uploader_container['args'].extend([
+          art_path, art_uri
+      ])
 
 
 class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
@@ -221,6 +335,9 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         'command': container_spec.command,
         'args': container_spec.args,
     })
+
+    _add_io_drivers_to_pod(pod_manifest, container_spec)
+
     return pod_manifest
 
   def _get_pod(self, core_api: client.CoreV1Api, pod_name: Text,

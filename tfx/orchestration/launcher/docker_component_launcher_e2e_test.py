@@ -19,16 +19,22 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+from typing import List, Text
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
+from tfx.components.common_nodes import importer_node
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.launcher import _grep_component
 from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.types import component_spec
+from tfx.types import standard_artifacts
 
 
 class _HelloWorldSpec(component_spec.ComponentSpec):
@@ -74,6 +80,41 @@ def _create_pipeline(
   )
 
 
+def _create_component_io_pipeline(
+    input_uri: Text,
+    pattern: Text,
+):
+  """A sample pipeline that uses Importer and Grep."""
+  import_grep_input_task = importer_node.ImporterNode(
+      instance_name='import_grep_input_task',
+      source_uri=input_uri,
+      artifact_type=standard_artifacts.ExternalArtifact,
+  )
+  grep_task = _grep_component.GrepComponent(
+      input1=import_grep_input_task.outputs['result'],
+      pattern=pattern,
+  )
+
+  return [
+      import_grep_input_task,
+      grep_task,
+  ]
+
+
+def _get_output_artifacts(
+    m: metadata.Metadata,
+    execution_name_substring: Text,
+) -> List[metadata_store_pb2.Artifact]:
+  output_artifacts = []
+  for execution in m.store.get_executions():
+    if execution_name_substring and execution_name_substring not in execution.name:
+      continue
+    for event in m.store.get_events_by_execution_ids([execution.id]):
+      artifact = m.store.get_artifacts_by_id([event.artifact_id])[0]
+      output_artifacts.append(artifact)
+  return output_artifacts
+
+
 class DockerComponentLauncherE2eTest(tf.test.TestCase):
 
   def setUp(self):
@@ -108,6 +149,53 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       self.assertEqual(1, len(m.store.get_executions()))
+
+  def testLaunchingComponentWithIO(self):
+    # Initialize the input data
+    input_uri = os.path.join(self._pipeline_root, 'input1.txt')
+
+    tf.io.gfile.makedirs(os.path.dirname(input_uri))
+    with tf.io.gfile.GFile(input_uri, 'w') as f:
+      for i in range(20):
+        f.write(str(i))
+
+    # Create the pipeline graph
+    tasks = _create_component_io_pipeline(
+        input_uri=input_uri,
+        pattern='7',
+    )
+
+    # Launch the pipeline
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+
+    beam_dag_runner.BeamDagRunner(
+        config=pipeline_config.PipelineConfig(
+            supported_launcher_classes=[
+                docker_component_launcher.DockerComponentLauncher,
+                in_process_component_launcher.InProcessComponentLauncher,
+            ],
+            default_component_configs=[
+                docker_component_config.DockerComponentConfig()
+            ])).run(
+                pipeline.Pipeline(
+                    pipeline_name=self._pipeline_name,
+                    pipeline_root=self._pipeline_root,
+                    components=tasks,
+                    enable_cache=True,
+                    metadata_connection_config=metadata_config,
+                    additional_pipeline_args={},
+                )
+            )
+
+    with metadata.Metadata(metadata_config) as m:
+      self.assertTrue(m.store.get_executions())
+      grep_output_artifacts = _get_output_artifacts(m, '')
+
+    grep_output_artifact = grep_output_artifacts[-1]
+    self.assertTrue(
+        tf.io.gfile.exists(grep_output_artifact.uri),
+        'Output artifact not found: "{}".'.format(grep_output_artifact.uri))
 
 
 if __name__ == '__main__':
