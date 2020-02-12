@@ -19,12 +19,10 @@ tfrw = rewriter_factory.create_rewriter(
 ```
 
 Then use the appropriate converter (`RewritingExporter` for Estimators or
-`rewrite_saved_model` for TF2) to rewrite your model. We recommend you invoke
-these converters in the `trainer_fn` definition in the utils file of your
-pipeline. For example, for the chicago taxi pipeline, this would be the
-taxi_utils.py [file](https://github.com/tensorflow/tfx/blob/r0.21/tfx/examples/chicago_taxi_pipeline/taxi_utils.py).
+`rewrite_saved_model` for Keras) to rewrite your model.
 
-If using Estimators, this would look as follows:
+When using Estimators, we recommend you invoke these converters in the `trainer_fn` definition in the utils file of your pipeline. For example, in the
+chicago taxi pipeline, this would be the taxi_utils.py [file] (https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py) and the changes would be as follows:
 
 ```python
 import tensorflow as tf
@@ -40,7 +38,8 @@ eval_spec = tf.estimator.EvalSpec(
     exporters=[rewriting_exporter],
     name='chicago-taxi-eval')
 ```
-For the case of TF2, this would look as follows:
+For Keras, we recommend you invoke these converters in the `run_fn` definition
+in the utils file of your pipeline. For example, for the iris pipeline, this would be the iris_utils.py [file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py) and the changes would be as follows:
 
 ```python
 import tensorflow as tf
@@ -48,7 +47,7 @@ from tfx.components.trainer.rewriting import converters
 
 ...
 
-tf.saved_model.save(model, '/path/to/model')
+model.save('/path/to/model', save_format='tf', signatures=signatures)
 converters.rewrite_saved_model('/path/to/model', '/path/to/rewritten/model',
                                tfrw)
 ```
