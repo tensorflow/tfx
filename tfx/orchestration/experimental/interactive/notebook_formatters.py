@@ -177,7 +177,7 @@ class NotebookFormatter(object):
     values = []
     for property_name in title_format[1]:
       values.append(self._extended_getattr(obj, property_name))
-    return cgi.escape(title_format[0] % tuple(values))  # pylint: disable=deprecated-method
+    return title_format[0] % tuple(values)
 
   def render_value(self,
                    value: object,
@@ -185,19 +185,19 @@ class NotebookFormatter(object):
     """Render the value section of an object."""
     if isinstance(value, _PropertyDictWrapper):
       value = value.get_all()
+    formatted_value = cgi.escape(Text(value))  # pylint: disable=deprecated-method
     if isinstance(value, dict):
-      value = self.render_dict(value, seen_elements)
+      formatted_value = self.render_dict(value, seen_elements)
     if isinstance(value, list):
-      value = self.render_list(value, seen_elements)
-    if value.__class__ == abc.ABCMeta:
+      formatted_value = self.render_list(value, seen_elements)
+    if value.__class__ != abc.ABCMeta:
       # abc.ABCMeta.mro() does not work.
-      return cgi.escape(Text(value))  # pylint: disable=deprecated-method
-    for cls in value.__class__.mro():
-      if cls in FORMATTER_REGISTRY:
-        value = FORMATTER_REGISTRY[cls].render(
-            value, expanded=False, seen_elements=seen_elements)
-        break
-    return cgi.escape(Text(value))  # pylint: disable=deprecated-method
+      for cls in value.__class__.mro():
+        if cls in FORMATTER_REGISTRY:
+          formatted_value = FORMATTER_REGISTRY[cls].render(
+              value, expanded=False, seen_elements=seen_elements)
+          break
+    return formatted_value
 
   def render_attributes(self,
                         obj: object,
