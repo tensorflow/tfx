@@ -22,7 +22,7 @@ def make_required_install_packages():
   return [
       'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.18,<3',
+      'apache-beam[gcp]>=2.17,<2.18',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'click>=7,<8',
       'docker>=4.1,<5',
