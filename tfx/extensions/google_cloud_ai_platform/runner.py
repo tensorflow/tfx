@@ -104,7 +104,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input argment for AI Platform training job.
+    training_inputs: Training input argument for AI Platform training job.
       'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
       the full set of parameters, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput

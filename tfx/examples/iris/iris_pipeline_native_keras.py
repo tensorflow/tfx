@@ -101,6 +101,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       eval_config=tfma.EvalConfig(
+          model_specs=[tfma.ModelSpec(label_key='variety')],
           slicing_specs=[tfma.SlicingSpec(feature_keys=['sepal_length'])]))
 
   # TODO(jyzhao): support model validation in evaluator and pusher component.
