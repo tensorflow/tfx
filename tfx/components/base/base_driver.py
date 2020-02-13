@@ -235,8 +235,8 @@ class BaseDriver(object):
     self.verify_input_artifacts(artifacts_dict=input_artifacts)
     absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
-    contexts = self._metadata_handler.register_contexts_if_not_exists(
-        pipeline_info, component_info)
+    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
+        pipeline_info)
     execution = self._metadata_handler.register_execution(
         input_artifacts=input_artifacts,
         exec_properties=exec_properties,

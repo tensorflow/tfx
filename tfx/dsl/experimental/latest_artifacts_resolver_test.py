@@ -43,8 +43,7 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
 
   def testGetLatestArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
-                                                   self._component_info)
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
       artifact_one = standard_artifacts.Examples()
       artifact_one.uri = 'uri_one'
       m.publish_artifacts([artifact_one])

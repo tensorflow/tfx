@@ -54,8 +54,8 @@ class ResolverDriver(base_driver.BaseDriver):
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
     # Registers contexts and execution
-    contexts = self._metadata_handler.register_contexts_if_not_exists(
-        pipeline_info, component_info)
+    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
+        pipeline_info)
     execution = self._metadata_handler.register_execution(
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,

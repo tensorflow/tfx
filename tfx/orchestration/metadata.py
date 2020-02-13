@@ -537,34 +537,59 @@ class Metadata(object):
       self,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
-      input_artifacts: Optional[Dict[Text, List[Artifact]]] = None,
+      contexts: List[metadata_store_pb2.Context],
       exec_properties: Optional[Dict[Text, Any]] = None,
-      contexts: Optional[List[metadata_store_pb2.Context]] = None
+      input_artifacts: Optional[Dict[Text, List[Artifact]]] = None
   ) -> metadata_store_pb2.Execution:
     """Registers a new execution in metadata.
 
     Args:
       pipeline_info: optional pipeline info of the execution.
       component_info: optional component info of the execution.
-      input_artifacts: input artifacts of the execution.
+      contexts: contexts for current run, all contexts will be linked to the
+        execution. In addition, a component run context will be added to the
+        contexts list.
       exec_properties: the execution properties of the execution.
-      contexts: contexts for current run, link it with execution if provided.
+      input_artifacts: input artifacts of the execution.
 
     Returns:
       execution id of the new execution.
     """
     input_artifacts = input_artifacts or {}
     exec_properties = exec_properties or {}
-
     execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
                                         pipeline_info, component_info)
     artifacts_and_events = self._artifact_and_event_pairs(
         artifact_dict=input_artifacts,
         event_type=metadata_store_pb2.Event.INPUT)
-    execution_id, a_ids, _ = self.store.put_execution(execution,
-                                                      artifacts_and_events,
-                                                      contexts or [])
-    execution.id = execution_id
+    component_run_context = self._prepare_context(
+        context_type_name=_CONTEXT_TYPE_COMPONENT_RUN,
+        context_name=component_info.component_run_context_name,
+        properties={
+            _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name,
+            _CONTEXT_TYPE_KEY_RUN_ID: pipeline_info.run_id,
+            _CONTEXT_TYPE_KEY_COMPONENT_ID: component_info.component_id
+        })
+    # Tries to register the execution along with a component run context. If the
+    # context already exists, reuse the context and update the existing
+    # execution.
+    try:
+      execution_id, a_ids, context_ids = self.store.put_execution(
+          execution=execution,
+          artifact_and_events=artifacts_and_events,
+          contexts=contexts + [component_run_context])
+      execution.id = execution_id
+      component_run_context.id = context_ids[-1]
+    except tf.errors.AlreadyExistsError:
+      component_run_context = self.get_component_run_context(component_info)
+      [previous_execution] = self.store.get_executions_by_context(
+          context_id=component_run_context.id)
+      execution.id = previous_execution.id
+      _, a_ids, _ = self.store.put_execution(
+          execution=execution,
+          artifact_and_events=artifacts_and_events,
+          contexts=contexts + [component_run_context])
+    contexts.append(component_run_context)
     for artifact_and_event, a_id in zip(artifacts_and_events, a_ids):
       artifact_and_event[0].id = a_id
     return execution
@@ -836,23 +861,11 @@ class Metadata(object):
 
     return context_type_id
 
-  def _register_context_if_not_exist(
+  def _prepare_context(
       self, context_type_name: Text, context_name: Text,
       properties: Dict[Text, Union[int, float, Text]]
   ) -> metadata_store_pb2.Context:
-    """Registers a context if not exist, otherwise returns the existing one.
-
-    Args:
-      context_type_name: the name of the context type desired.
-      context_name: the name of the context.
-      properties: properties to set in the context.
-
-    Returns:
-      id of the desired context
-
-    Raises:
-      RuntimeError: when meeting unexpected property type.
-    """
+    """Prepares a context proto."""
     # TODO(ruoyu): Centralize the type definition / mapping along with Artifact
     # property types.
     property_type_mapping = {
@@ -877,6 +890,29 @@ class Metadata(object):
         context.properties[k].double_value = v
       else:
         raise RuntimeError('Unexpected property type: %s' % type(v))
+    return context
+
+  def _register_context_if_not_exist(
+      self, context_type_name: Text, context_name: Text,
+      properties: Dict[Text, Union[int, float, Text]]
+  ) -> metadata_store_pb2.Context:
+    """Registers a context if not exist, otherwise returns the existing one.
+
+    Args:
+      context_type_name: the name of the context type desired.
+      context_name: the name of the context.
+      properties: properties to set in the context.
+
+    Returns:
+      id of the desired context
+
+    Raises:
+      RuntimeError: when meeting unexpected property type.
+    """
+    context = self._prepare_context(
+        context_type_name=context_type_name,
+        context_name=context_name,
+        properties=properties)
     try:
       [context_id] = self.store.put_contexts([context])
       context.id = context_id
@@ -935,24 +971,22 @@ class Metadata(object):
     else:
       return None
 
-  def register_contexts_if_not_exists(
-      self, pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo
+  def register_pipeline_contexts_if_not_exists(
+      self,
+      pipeline_info: data_types.PipelineInfo,
   ) -> List[metadata_store_pb2.Context]:
-    """Creates or fetches the contexts needed for the run.
+    """Creates or fetches the pipeline contexts needed for the run.
 
-    There are three potential contexts:
+    There are two potential contexts:
       - Context for the pipeline.
       - Context for the current pipeline run. This is optional, only available
         when run_id is specified.
-      - Context for the current component run.
 
     Args:
       pipeline_info: pipeline information for current run.
-      component_info: component information for the current component run.
 
     Returns:
-      a list (of size three) of context.
+      a list (of size one or two) of context.
     """
     # Gets the pipeline level context.
     result = []
@@ -978,18 +1012,4 @@ class Metadata(object):
       absl.logging.debug('Pipeline run context [%s : %s]',
                          pipeline_info.pipeline_run_context_name,
                          pipeline_run_context.id)
-    # Gets the component run level context.
-    component_run_context = self._register_context_if_not_exist(
-        context_type_name=_CONTEXT_TYPE_COMPONENT_RUN,
-        context_name=component_info.component_run_context_name,
-        properties={
-            _CONTEXT_TYPE_KEY_PIPELINE_NAME: pipeline_info.pipeline_name,
-            _CONTEXT_TYPE_KEY_RUN_ID: pipeline_info.run_id,
-            _CONTEXT_TYPE_KEY_COMPONENT_ID: component_info.component_id
-        })
-    result.append(component_run_context)
-
-    absl.logging.debug('Component run context [%s : %s]',
-                       component_info.component_run_context_name,
-                       component_run_context.id)
     return result

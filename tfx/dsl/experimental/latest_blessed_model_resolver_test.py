@@ -52,8 +52,7 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
 
   def testGetLatestBlessedModelArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
-                                                   self._component_info)
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
       # Model with id 1, will be blessed.
       model_one = standard_artifacts.Model()
       model_one.uri = 'model_one'
