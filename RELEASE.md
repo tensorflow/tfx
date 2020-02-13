@@ -60,6 +60,7 @@
 *   Users can create a pipeline using a new experimental CLI command,
     `template`.
 *   Added an iris example with native Keras.
+*   Added MNIST native Keras example.
 
 ## Bug fixes and other changes
 *   Switched the default behavior of KubeflowDagRunner to not mounting GCP
