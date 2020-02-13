@@ -36,16 +36,23 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
         pipeline_name='fake_pipeline_name',
         pipeline_root='/fake_pipeline_root',
         run_id='fake_run_id')
+    self._pipeline_info2 = data_types.PipelineInfo(
+        pipeline_name='fake_pipeline_name',
+        pipeline_root='/fake_pipeline_root',
+        run_id='fake_run_id2')
     self._component_info = data_types.ComponentInfo(
         component_type='fake.component.type',
         component_id='fake_component_id',
         pipeline_info=self._pipeline_info)
+    self._component_info2 = data_types.ComponentInfo(
+        component_type='fake.component.type',
+        component_id='fake_component_id',
+        pipeline_info=self._pipeline_info2)
 
   def testPrepareExecution(self):
     with kubeflow_metadata_adapter.KubeflowMetadataAdapter(
         connection_config=self._connection_config) as m:
-      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
-                                                   self._component_info)
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
       exec_properties = {'arg_one': 1}
       os.environ['KFP_POD_NAME'] = 'fake_pod_name'
       m.register_execution(
@@ -57,7 +64,7 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
       self.assertProtoEquals(
           """
         id: 1
-        type_id: 4
+        type_id: 3
         properties {
           key: "state"
           value {
@@ -104,23 +111,25 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
   def testIsEligiblePreviousExecution(self):
     with kubeflow_metadata_adapter.KubeflowMetadataAdapter(
         connection_config=self._connection_config) as m:
-      contexts = m.register_contexts_if_not_exists(self._pipeline_info,
-                                                   self._component_info)
+      contexts_one = m.register_pipeline_contexts_if_not_exists(
+          self._pipeline_info)
+      contexts_two = m.register_pipeline_contexts_if_not_exists(
+          self._pipeline_info2)
       exec_properties = {'arg_one': 1}
       os.environ['KFP_POD_NAME'] = 'fake_pod_name1'
       m.register_execution(
           exec_properties=exec_properties,
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
-          contexts=contexts)
+          contexts=contexts_one)
       os.environ['KFP_POD_NAME'] = 'fake_pod_name2'
       m.register_execution(
           exec_properties=exec_properties,
-          pipeline_info=self._pipeline_info,
-          component_info=self._component_info,
-          contexts=contexts)
+          pipeline_info=self._pipeline_info2,
+          component_info=self._component_info2,
+          contexts=contexts_two)
       [execution1,
-       execution2] = m.store.get_executions_by_context(contexts[0].id)
+       execution2] = m.store.get_executions_by_context(contexts_one[0].id)
       self.assertTrue(m._is_eligible_previous_execution(execution1, execution2))
 
 

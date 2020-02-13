@@ -71,8 +71,7 @@ class ResolverDriverTest(tf.test.TestCase):
     existing_artifact = standard_artifacts.Examples()
     existing_artifact.uri = 'my/uri'
     with metadata.Metadata(connection_config=self.connection_config) as m:
-      contexts = m.register_contexts_if_not_exists(self.pipeline_info,
-                                                   self.component_info)
+      contexts = m.register_pipeline_contexts_if_not_exists(self.pipeline_info)
       m.publish_artifacts([existing_artifact])
       m.register_execution(
           pipeline_info=self.pipeline_info,
