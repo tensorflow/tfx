@@ -2,42 +2,46 @@
 
 The Trainer TFX pipeline component trains a TensorFlow model.
 
-Trainer takes:
-
-*   tf.Examples used for training and eval.
-*   A user provided module file that defines the trainer logic.
-*   A data schema create by a SchemaGen pipeline component and optionally
-    altered by the developer.
-*   Proto definition of train args and eval args.
-*   Optional transform graph produced by upstream Transform component.
-*   Optional base models used for scenarios such as warmstart.
-
-Trainer emits: A SavedModel and an EvalSavedModel
-
 ## Trainer and TensorFlow
 
 Trainer makes extensive use of the Python
 [TensorFlow](https://www.tensorflow.org) API for training models.
 
-Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For details,
-see [Designing TensorFlow Modeling Code For TFX](train.md).
+Note: TFX supports TensorFlow 1.15 and 2.x.
 
-## Configuring a Trainer Component
+## Component
 
-A Trainer pipeline component is typically very easy to develop and requires little
-customization, since all of the work is done by the Trainer TFX component.  Your
-TensorFlow modeling code however may be arbitrarily complex.
+Trainer takes:
 
-Typical code looks like this:
+*   tf.Examples used for training and eval.
+*   A user provided module file that defines the trainer logic.
+*   A data schema created by a SchemaGen pipeline component and optionally
+    altered by the developer.
+*   (https://developers.google.com/protocol-buffers)[Protobuf]
+definition of train args and eval args.
+*   (Optional) transform graph produced by an upstream Transform component.
+*   (Optional) pre-trained models used for scenarios such as warmstart.
+
+Trainer emits: A SavedModel and an optional EvalSavedModel
+
+## Estimator based Trainer
+
+To learn about using an (https://www.tensorflow.org/guide/estimator)[Estimator]
+based model with TFX and Trainer, see
+[Designing TensorFlow modeling code with tf.Estimator for TFX](train.md).
+
+### Configuring a Trainer Component
+
+Typical pipeline Python DSL code looks like this:
 
 ```python
-from tfx import components
+from tfx.components import Trainer
 
 ...
 
 trainer = Trainer(
       module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
+      examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       base_models=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
@@ -124,4 +128,76 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': receiver_fn
   }
+```
+
+## Generic Trainer
+
+To better support native Keras, we proposed a generic trainer which allows any
+TensorFlow training loop in TFX Trainer in addition to tf.estimator. For
+details, please see the
+[RFC for generic trainer](https://github.com/tensorflow/community/pull/201/files).
+
+### Configuring a Trainer Component with a generic executor
+
+Typical pipeline Python DSL code looks like this:
+
+```python
+from tfx.components import Trainer
+from tfx.components.base import executor_spec
+from tfx.components.trainer.executor import GenericExecutor
+
+...
+
+trainer = Trainer(
+    module_file=module_file,
+    custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+    examples=transform.outputs['transformed_examples'],
+    transform_graph=transform.outputs['transform_graph'],
+    schema=infer_schema.outputs['schema'],
+    train_args=trainer_pb2.TrainArgs(num_steps=10000),
+    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+```
+
+Trainer invokes a training module, which is specified in the `module_file`
+parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
+`GenericExecutor` is specified. A typical training module looks like this:
+
+```python
+# TFX Trainer will call this function.
+def run_fn(fn_args: TrainerFnArgs):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
+
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
+
+  # To use distribution strategy, create an appropriate tf.distribute.Strategy
+  # and move the creation and compiling of Keras model inside `strategy.scope`.
+  #
+  # For example, replace `model = _build_keras_model()` with:
+  #   mirrored_strategy = tf.distribute.MirroredStrategy()
+  #   with mirrored_strategy.scope():
+  #     model = _build_keras_model()
+  model = _build_keras_model()
+
+  model.fit(
+      train_dataset,
+      steps_per_epoch=fn_args.train_steps,
+      validation_data=eval_dataset,
+      validation_steps=fn_args.eval_steps)
+
+  signatures = {
+      'serving_default':
+          _get_serve_tf_examples_fn(model,
+                                    tf_transform_output).get_concrete_function(
+                                        tf.TensorSpec(
+                                            shape=[None],
+                                            dtype=tf.string,
+                                            name='examples')),
+  }
+  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
 ```
