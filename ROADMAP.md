@@ -33,6 +33,7 @@ efforts building a model to the final touches of deploying in production.
 [Kubeflow](https://www.kubeflow.org/),
 [Tensorboard](https://www.tensorflow.org/guide/summaries_and_tensorboard), and
 [TensorFlow 2.0](https://www.tensorflow.org/versions/r2.0/api_docs/).
+*   Align ML framework support with Kubeflow pipelines.
 *   Extend portability across additional cluster computing frameworks,
 orchestrators, and data representations.
 
@@ -43,46 +44,58 @@ orchestrators, and data representations.
 TFX pipeline.
 
 ##### Usability
-*   Support of TensorFlow 2.0 in two phases:
-    1.  The first phase will provide the following:
-        Existing TFX pipelines can continue to use TensorFlow 1.X. To switch to
-        TensorFlow 2.X, see the [TensorFlow migration guide](
-        https://www.tensorflow.org/guide/migrate).
-        New TFX pipelines should use Keras (via
-        `tf.keras.estimator.model_to_estimator()`) and TensorFlow 2.X.
-    1.  The second phase will enable the remainder of TensorFlow 2.X
-        functionality, including tf.distribute and Keras without Estimator.
-*   Integration with TensorBoard and TF Hub/AI Hub.
+*   Complete the support for tensorflow 2.x functionaties, including
+    tf.distribute and Keras without Estimator.
 *   Improving the testing capabilities for OSS developers.
-*   Increased interoperability with Kubeflow Pipelines.
-*   Support for training on continuously arriving data.
+*   Increased interoperability with Kubeflow Pipelines, with a focus on
+    providing more flexibility from unified DSL and converging on pipeline
+    presentation and orchestration semantics.
+*   Support for training on continuously arriving data and more advanced
+    orchestration semantics.
 
 ##### Education
+*   New template in TFX OSS to ease creation of TFX pipelines.
 *   More pipeline code examples, including DIY orchestrators and custom
 components.
+*   Work with [ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) to
+    publish standard ontology types and show case them through TFX.
 
 ##### Innovation and collaboration
+*   Support mobile and edge devices by integrating with tf.lite.
 *   Formalize Special Interest Groups (SIGs) for specific aspects of TFX to
 accelerate community innovation and collaboration.
 *   Early access to new features.
 
 #### History
-*   Q3 2019: Support for local orchestrator through Apache Beam.
-*   Q3 2019: Experimental support for interactive development on Jupyter notebook.
-*   Q3 2019: Experimental support for TFX CLI released.
-*   Q3 2019: Multiple public [RFCs](https://github.com/tensorflow/community/tree/master/rfcs) published to the tensorflow/community project.
-*   Q2 2019: Support for Python3.
-*   Q2 2019: Apache Spark and Apache Flink runners (with examples).
-*   Q2 2019L Custom executors (with examples).
-*   Q1 2019: [TFX](https://www.tensorflow.org/tfx/guide) end-to-end pipeline,
+*   Q1 2020
+    *   New ComponentSpec and standard artifact types published.
+    *   Allow pipelines to be parameterized with `RuntimeParameters`.
+    *   Enabled warm-starting for estimator based trainers.
+*   Q4 2019
+    *   Added limited support for TF.Keras through `tf.keras.estimator.model_to_estimator()`.
+*   Q3 2019
+    *   Support for local orchestrator through Apache Beam.
+    *   Experimental support for interactive development on Jupyter notebook.
+    *   Experimental support for TFX CLI released.
+    *   Multiple public [RFCs](https://github.com/tensorflow/community/tree/master/rfcs) published to the tensorflow/community project.
+*   Q2 2019
+    *   Support for Python3.
+    *   Support for Apache Spark and Apache Flink runners (with examples).
+    *   Custom executors (with examples).
+*   Q1 2019
+    *   [TFX](https://www.tensorflow.org/tfx/guide) end-to-end pipeline,
 config, and orchestration initial release.
-*   Q1 2019: [ml.metadata](https://www.tensorflow.org/tfx/guide/mlmd) initial
+    *   [ml.metadata](https://www.tensorflow.org/tfx/guide/mlmd) initial
 release.
-*   Q3 2018: [TensorFlow Data Validation](https://www.tensorflow.org/tfx/guide/tfdv)
+*   Q3 2018
+    *   [TensorFlow Data Validation](https://www.tensorflow.org/tfx/guide/tfdv)
 initial release.
-*   Q1 2018: [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/guide/tfma)
+*   Q1 2018
+    *   [TensorFlow Model Analysis](https://www.tensorflow.org/tfx/guide/tfma)
 initial release.
-*   Q1 2017: [TensorFlow Transform](https://www.tensorflow.org/tfx/guide/tft)
+*   Q1 2017
+    *   [TensorFlow Transform](https://www.tensorflow.org/tfx/guide/tft)
 initial release.
-*   Q1 2016: [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving)
+*   Q1 2016
+    *   [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving)
 initial release.
