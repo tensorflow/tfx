@@ -1,16 +1,8 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-*   Pipelines compiled using KubeflowDagRunner now defaults to using the
-    gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
-    performing operations on pipeline metadata.
-*   Added tfx model rewriting and tflite rewriter.
-*   Added LatestBlessedModelResolver as an experimental feature which gets the
-    latest model that was blessed by model validator.
 
 ## Bug fixes and other changes
-* Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
-* Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.
 
 ### Deprecations
 
@@ -25,7 +17,12 @@
 # Version 0.21.0
 
 ## Major Features and Improvements
-
+*   Pipelines compiled using KubeflowDagRunner now defaults to using the
+    gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
+    performing operations on pipeline metadata.
+*   Added tfx model rewriting and tflite rewriter.
+*   Added LatestBlessedModelResolver as an experimental feature which gets the
+    latest model that was blessed by model validator.
 *   TFX version 0.21.0 will be the last version of TFX supporting Python 2.
 *   Added support for `RuntimeParameter`s to allow users can specify templated
     values at runtime. This is currently only supported in Kubeflow Pipelines.
@@ -60,6 +57,8 @@
 *   Added an iris example with native Keras.
 
 ## Bug fixes and other changes
+*   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
+*   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.
 *   Switched the default behavior of KubeflowDagRunner to not mounting GCP
     secret.
 *   Fixed "invalid spec: spec.arguments.parameters[6].name 'pipeline-root' is
