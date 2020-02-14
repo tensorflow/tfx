@@ -107,7 +107,7 @@ def trainer_fn(trainer_fn_args, schema):
 To better support native Keras we proposed generic trainer, which allows any
 TensorFlow training loop in TFX Trainer in addition to tf.estimator. For
 details, please see the
-[RFC for generic trainer](https://github.com/tensorflow/community/pull/201/files).
+[RFC for generic trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
 To configure native Keras, `GenericExecutor` needs to be set for Trainer
 component to replace the default estimator based executor. Trainer invokes a
