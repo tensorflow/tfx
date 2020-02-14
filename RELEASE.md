@@ -10,9 +10,9 @@
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
-*   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI
-    Platform Prediction.
-*   Provided idempotent execution registration guarantee.
+*   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.
+*   Added 'tfx_runner' label for CAIP, BQML and Dataflow jobs submitted from
+    TFX components.
 
 ### Deprecations
 
@@ -60,7 +60,6 @@
 *   Users can create a pipeline using a new experimental CLI command,
     `template`.
 *   Added an iris example with native Keras.
-*   Added MNIST native Keras example.
 
 ## Bug fixes and other changes
 *   Switched the default behavior of KubeflowDagRunner to not mounting GCP
@@ -73,7 +72,7 @@
 *   Refactored common dependencies in the TFX dockerfile to a base image to
     improve the reliability of image building process.
 *   Fixes missing Tensorboard link in KubeflowDagRunner.
-*   Depends on `apache-beam[gcp]>=2.17,<2.18`
+*   Depends on `apache-beam[gcp]>=2.18,<3`
 *   Depends on `ml-metadata>=0.21,<0.22`.
 *   Depends on `tensorflow-data-validation>=0.21,<0.22`.
 *   Depends on `tensorflow-model-analysis>=0.21,<0.22`.

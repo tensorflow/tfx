@@ -99,9 +99,10 @@ class Executor(tfx_pusher_executor.Executor):
     # utility function.
     executor_class_path = '%s.%s' % (self.__class__.__module__,
                                      self.__class__.__name__)
-    default_query_job_config = bigquery.job.QueryJobConfig(
-        labels=telemetry_utils.get_labels_dict(
-            tfx_executor=executor_class_path))
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
+      default_query_job_config = bigquery.job.QueryJobConfig(
+          labels=telemetry_utils.get_labels_dict())
     client = bigquery.Client(default_query_job_config=default_query_job_config)
 
     try:
