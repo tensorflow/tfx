@@ -193,8 +193,9 @@ class RunnerTest(tf.test.TestCase):
         parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
     (_, versions_create_kwargs) = self._mock_versions_create.call_args
     versions_create_body = versions_create_kwargs['body']
-    labels = telemetry_utils.get_labels_dict(
-        tfx_executor=self._executor_class_path)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.TFX_EXECUTOR: self._executor_class_path}):
+      labels = telemetry_utils.get_labels_dict()
     runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
@@ -240,8 +241,9 @@ class RunnerTest(tf.test.TestCase):
         parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
     (_, versions_create_kwargs) = self._mock_versions_create.call_args
     versions_create_body = versions_create_kwargs['body']
-    labels = telemetry_utils.get_labels_dict(
-        tfx_executor=self._executor_class_path)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.TFX_EXECUTOR: self._executor_class_path}):
+      labels = telemetry_utils.get_labels_dict()
     runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
