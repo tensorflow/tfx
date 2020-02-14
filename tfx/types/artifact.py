@@ -21,8 +21,9 @@ from __future__ import print_function
 import builtins
 import enum
 import importlib
+import inspect
 import json
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Type
 
 import absl
 
@@ -214,7 +215,8 @@ class Artifact(json_utils.Jsonable):
       object.__setattr__(self, name, value)
       return
     if name not in self._artifact_type.properties:
-      if name in Artifact.__dict__ or name in self.__dict__:
+      if (name in self.__dict__ or
+          any(name in c.__dict__ for c in self.__class__.mro())):
         # Use any provided getter / setter if available.
         object.__setattr__(self, name, value)
         return
@@ -288,28 +290,79 @@ class Artifact(json_utils.Jsonable):
     artifact_type = metadata_store_pb2.ArtifactType()
     json_format.Parse(json.dumps(dict_data['artifact']), artifact)
     json_format.Parse(json.dumps(dict_data['artifact_type']), artifact_type)
-
-    # First, try to resolve the specific class used for the artifact; if this
-    # is not possible, use a generic artifact.Artifact object.
-    result = None
+    # Try to resolve the specific class used for the artifact.
     try:
       artifact_cls = getattr(importlib.import_module(module_name), class_name)
-      # If the artifact type is the base Artifact class, do not construct the
-      # object here since that constructor requires the mlmd_artifact_type
-      # argument.
-      if artifact_cls != Artifact:
-        result = artifact_cls()
     except (AttributeError, ImportError, ValueError):
+      artifact_cls = None
+    return cls._rehydrate_from_proto(
+        artifact_type, artifact=artifact, artifact_cls=artifact_cls)
+
+  @staticmethod
+  def _rehydrate_from_proto(
+      artifact_type: metadata_store_pb2.ArtifactType,
+      artifact: Optional[metadata_store_pb2.Artifact] = None,
+      artifact_cls: Optional[Type['Artifact']] = None) -> 'Artifact':
+    """Rehydrate Artifact object from MLMD proto descriptors.
+
+    Internal method, no backwards compatibility guarantees.
+
+    Args:
+      artifact_type: A metadata_store_pb2.ArtifactType proto object describing
+        the type of the artifact.
+      artifact: A metadata_store_pb2.Artifact proto object describing the
+        contents of the artifact.  If not provided, an Artifact of the desired
+        type with empty contents is created.
+      artifact_cls: Optionally, a subclass of Artifact that should be used for
+        constructing the rehydrated Artifact object.
+
+    Returns:
+      Artifact subclass object for the given MLMD proto descriptors.
+    """
+    # Validate inputs.
+    if not isinstance(artifact_type, metadata_store_pb2.ArtifactType):
+      raise ValueError(
+          ('Expected metadata_store_pb2.ArtifactType for artifact_type, got %s '
+           'instead') % (artifact_type,))
+    if artifact and not isinstance(artifact, metadata_store_pb2.Artifact):
+      raise ValueError(
+          ('Expected metadata_store_pb2.Artifact for artifact, got %s '
+           'instead') % (artifact,))
+    if artifact_cls and not (inspect.isclass(artifact_cls) and
+                             issubclass(artifact_cls, Artifact)):
+      raise ValueError(
+          ('Expected metadata_store_pb2.Artifact for artifact_cls, got %s '
+           'instead') % (artifact_cls,))
+
+    # If we are not explicitly given an Artifact subclass to use, attempt to
+    # find the appropriate Artifact subclass for reconstructing this object.
+    if not artifact_cls or artifact_cls == Artifact:
+      # TODO(ccy): consider using an Artifact subclass registry, and do not
+      # special case this import path.
+      try:
+        from tfx.types import standard_artifacts  # pylint: disable=g-import-not-at-top,unused-variable; # pytype: disable=import-error
+      except ImportError:
+        pass
+      artifact_cls = None
+      for cls in Artifact.__subclasses__():
+        if cls.TYPE_NAME == artifact_type.name:
+          artifact_cls = cls
+
+    # Construct the Artifact object, using a concrete Artifact subclass when
+    # possible.
+    if artifact_cls:
+      result = artifact_cls()
+      result.set_mlmd_artifact_type(artifact_type)
+    else:
       absl.logging.warning((
-          'Could not load artifact class %s.%s; using fallback deserialization '
-          'for the relevant artifact. This behavior may not be supported in '
-          'the future; please make sure that any artifact classes can be '
-          'imported within your container or environment.') %
-                           (module_name, class_name))
-    if not result:
+          'Could not load artifact class for type %r; using fallback '
+          'deserialization for the relevant artifact. This behavior may not be '
+          'supported in the future; please make sure that any artifact classes '
+          'can be imported within your container or environment.') %
+                           (artifact_type.name))
       result = Artifact(mlmd_artifact_type=artifact_type)
-    result.set_mlmd_artifact_type(artifact_type)
-    result.set_mlmd_artifact(artifact)
+    if artifact:
+      result.set_mlmd_artifact(artifact)
     return result
 
   # Read-only properties.

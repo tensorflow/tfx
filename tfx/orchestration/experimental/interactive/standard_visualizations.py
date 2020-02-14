@@ -27,7 +27,6 @@ import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.orchestration.experimental.interactive import visualizations
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -50,7 +49,7 @@ class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
   def display(self, artifact: types.Artifact):
     from IPython.core.display import display  # pylint: disable=g-import-not-at-top
     from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
-    for split in artifact_utils.decode_split_names(artifact.split_names):
+    for split in artifact.splits:
       display(HTML('<div><b>%r split:</b></div><br/><br/>' % split))
       stats_path = os.path.join(artifact.uri, split, 'stats_tfrecord')
       stats = tfdv.load_statistics(stats_path)

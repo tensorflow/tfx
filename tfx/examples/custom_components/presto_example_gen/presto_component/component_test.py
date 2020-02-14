@@ -24,7 +24,6 @@ import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -54,9 +53,7 @@ class ComponentTest(tf.test.TestCase):
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval'], artifact_collection[0].splits)
 
   def testConstructWithOutputConfig(self):
     presto_example_gen = component.PrestoExampleGen(
@@ -76,9 +73,8 @@ class ComponentTest(tf.test.TestCase):
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval', 'test'],
+                             artifact_collection[0].splits)
 
   def testConstructWithInputConfig(self):
     presto_example_gen = component.PrestoExampleGen(
@@ -96,9 +92,8 @@ class ComponentTest(tf.test.TestCase):
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval', 'test'],
+                             artifact_collection[0].splits)
 
   def testBadConstruction(self):
     empty_config = presto_config_pb2.PrestoConnConfig()

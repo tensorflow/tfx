@@ -27,7 +27,6 @@ from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -87,9 +86,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval'], artifact_collection[0].splits)
 
   def testConstructSubclassFileBased(self):
     input_base = standard_artifacts.ExternalArtifact()
@@ -102,9 +99,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval'], artifact_collection[0].splits)
 
   def testConstructCustomExecutor(self):
     input_base = standard_artifacts.ExternalArtifact()
@@ -117,9 +112,7 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval'], artifact_collection[0].splits)
 
   def testConstructWithOutputConfig(self):
     input_base = standard_artifacts.ExternalArtifact()
@@ -135,9 +128,8 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval', 'test'],
+                             artifact_collection[0].splits)
 
   def testConstructWithInputConfig(self):
     input_base = standard_artifacts.ExternalArtifact()
@@ -152,9 +144,8 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
+    self.assertSequenceEqual(['train', 'eval', 'test'],
+                             artifact_collection[0].splits)
 
   def testConstructWithCustomConfig(self):
     input_base = standard_artifacts.ExternalArtifact()

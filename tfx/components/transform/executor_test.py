@@ -26,7 +26,6 @@ from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -49,7 +48,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
@@ -64,8 +63,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                                 'transformed_output')
     self._transformed_examples = standard_artifacts.Examples()
     self._transformed_examples.uri = output_data_dir
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+    self._transformed_examples.splits = ['train', 'eval']
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
 

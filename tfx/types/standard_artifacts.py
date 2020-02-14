@@ -17,6 +17,7 @@
 Note: the artifact definitions here are expected to change.
 """
 
+from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
@@ -28,7 +29,7 @@ SPAN_PROPERTY = Property(type=PropertyType.INT)
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 
 
-class Examples(Artifact):
+class Examples(Artifact, artifact_utils.SplitMixin):
   TYPE_NAME = 'Examples'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
@@ -43,7 +44,7 @@ class ExampleAnomalies(Artifact):
   }
 
 
-class ExampleStatistics(Artifact):
+class ExampleStatistics(Artifact, artifact_utils.SplitMixin):
   TYPE_NAME = 'ExampleStatistics'
   PROPERTIES = {
       'span': SPAN_PROPERTY,

@@ -23,7 +23,6 @@ import tensorflow as tf
 
 from tfx.components.model_validator import constants
 from tfx.components.model_validator import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -40,7 +39,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Create input dict.
     eval_examples = standard_artifacts.Examples()
-    eval_examples.split_names = artifact_utils.encode_split_names(['eval'])
+    eval_examples.splits = ['eval']
     eval_examples.uri = os.path.join(self._source_data_dir, 'csv_example_gen')
     model = standard_artifacts.Model()
     model.uri = os.path.join(self._source_data_dir, 'trainer/current')

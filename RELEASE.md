@@ -7,6 +7,10 @@
 *   Added tfx model rewriting and tflite rewriter.
 *   Added LatestBlessedModelResolver as an experimental feature which gets the
     latest model that was blessed by model validator.
+*   The specific `Artifact` subclass that was serialized will be used when
+    deserializing `Artifact`s and when reading `Artifact`s from ML Metadata
+    (previously, objects of the generic `tfx.types.artifact.Artifact` class
+    were created in some cases).
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.

@@ -26,7 +26,6 @@ from typing import Text
 
 from tfx.components.infra_validator import executor
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 LocalDockerModelServerRunner = local_docker_runner.LocalDockerModelServerRunner
@@ -72,7 +71,7 @@ class ExecutorTest(tf.test.TestCase):
                                 'transform',
                                 'transformed_examples',
                                 'eval')
-    examples.split_names = artifact_utils.encode_split_names(['eval'])
+    examples.splits = ['eval']
 
     self.input_dict = {
         'model': [model],

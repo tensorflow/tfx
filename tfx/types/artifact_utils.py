@@ -136,3 +136,18 @@ def decode_split_names(split_names: Text) -> List[Text]:
   if not split_names:
     return []
   return json.loads(split_names)
+
+
+class SplitMixin(object):
+  """Adds an artifact.splits accessor to Artifact classes with split_names.
+
+  Experimental: no backward compatibility guarantees.
+  """
+
+  @property
+  def splits(self):
+    return tuple(decode_split_names(self.split_names))
+
+  @splits.setter
+  def splits(self, value):
+    self.split_names = encode_split_names(value)

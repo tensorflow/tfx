@@ -192,6 +192,7 @@ class ArtifactTest(tf.test.TestCase):
 
     serialized = original.to_json_dict()
     serialized['__artifact_class_name__'] = 'MissingClassName'
+    serialized['artifact_type']['name'] = 'MyMissingArtifactTypeName'
 
     rehydrated = artifact.Artifact.from_json_dict(serialized)
     absl.logging.warning.assert_called_once()

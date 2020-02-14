@@ -29,7 +29,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
 
@@ -102,7 +101,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     output_path = os.path.join(pipeline_root, component_id, 'examples/1')
     examples = standard_artifacts.Examples()
     examples.uri = output_path
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
 
     # Check parquet example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',

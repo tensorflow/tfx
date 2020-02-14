@@ -48,10 +48,9 @@ def _prepare_output_paths(artifact: types.Artifact):
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact.uri)
   tf.io.gfile.makedirs(artifact.uri)
-  # TODO(b/147242148): Avoid special-casing the "split_names" property.
-  if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
-    split_names = artifact_utils.decode_split_names(artifact.split_names)
-    for split in split_names:
+  # TODO(b/147242148): Avoid special-casing the "splits" property.
+  if isinstance(artifact, artifact_utils.SplitMixin):
+    for split in artifact.splits:
       split_dir = os.path.join(artifact.uri, split)
       absl.logging.debug('Creating output split %s as directory', split_dir)
       tf.io.gfile.makedirs(split_dir)

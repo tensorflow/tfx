@@ -22,7 +22,6 @@ import os
 import tensorflow as tf
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tfx.components.example_validator import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 
@@ -35,8 +34,7 @@ class ExecutorTest(tf.test.TestCase):
 
     eval_stats_artifact = standard_artifacts.ExampleStatistics()
     eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
-    eval_stats_artifact.split_names = artifact_utils.encode_split_names(
-        ['eval'])
+    eval_stats_artifact.splits = ['eval']
 
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')

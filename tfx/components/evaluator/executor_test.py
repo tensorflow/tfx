@@ -25,7 +25,6 @@ import tensorflow_model_analysis as tfma
 from google.protobuf import json_format
 from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -77,7 +76,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     model = standard_artifacts.Model()
     baseline_model = standard_artifacts.Model()
     model.uri = os.path.join(source_data_dir, 'trainer/current')
@@ -127,7 +126,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     model = standard_artifacts.Model()
     baseline_model = standard_artifacts.Model()
     model.uri = os.path.join(source_data_dir, 'trainer/current')

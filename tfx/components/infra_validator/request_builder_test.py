@@ -27,7 +27,6 @@ from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import regression_pb2
 from tfx.components.infra_validator import request_builder
 from tfx.proto import infra_validator_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -36,8 +35,7 @@ class RequestBuilderTest(tf.test.TestCase):
   def setUp(self):
     super(RequestBuilderTest, self).setUp()
     self._examples = standard_artifacts.Examples()
-    self._examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+    self._examples.splits = ['train', 'eval']
     self._examples.uri = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
         'testdata',
@@ -57,7 +55,7 @@ class RequestBuilderTest(tf.test.TestCase):
 
   def testReadFromExamplesArtifact_FailsIfNoSplitNames(self):
     examples = standard_artifacts.Examples()
-    examples.split_names = artifact_utils.encode_split_names([])
+    examples.splits = []
     examples.uri = self._examples.uri
     builder = request_builder.RequestBuilder(max_examples=1, model_name='foo')
 

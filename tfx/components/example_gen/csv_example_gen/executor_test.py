@@ -26,7 +26,6 @@ from google.protobuf import json_format
 from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -67,7 +66,7 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     output_dict = {'examples': [examples]}
 
     # Create exec proterties.

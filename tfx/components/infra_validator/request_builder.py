@@ -27,7 +27,6 @@ from tensorflow_serving.apis import regression_pb2
 from tfx import types
 from tfx.components.infra_validator import types as infra_validator_types
 from tfx.proto import infra_validator_pb2
-from tfx.types import artifact_utils
 
 TensorFlowServingRpcKind = infra_validator_pb2.TensorFlowServingRpcKind
 _TENSORFLOW_SERVING = 'tensorflow_serving'
@@ -117,7 +116,7 @@ class RequestBuilder(object):
       examples: `Examples` artifact.
       split_name: Name of the split to read from given `example`.
     """
-    available_splits = artifact_utils.decode_split_names(examples.split_names)
+    available_splits = examples.splits
     if not available_splits:
       raise ValueError('No split_name is available in given Examples artifact.')
     if split_name is None:

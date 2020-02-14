@@ -26,7 +26,6 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
 
@@ -98,8 +97,7 @@ class MetadataTest(tf.test.TestCase):
       # Test publish artifact.
       artifact = standard_artifacts.Examples()
       artifact.uri = 'uri'
-      artifact.split_names = artifact_utils.encode_split_names(
-          ['train', 'eval'])
+      artifact.splits = ['train', 'eval']
       m.publish_artifacts([artifact])
       [artifact] = m.store.get_artifacts()
       self.assertProtoEquals(

@@ -45,8 +45,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
     """Test various retrieval utilities on a list of split Artifact."""
     artifacts = [standard_artifacts.Examples()]
     artifacts[0].uri = '/tmp'
-    artifacts[0].split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+    artifacts[0].splits = ['train', 'eval']
 
     self.assertEqual(artifacts[0].split_names, '["train", "eval"]')
 

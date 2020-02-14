@@ -25,7 +25,6 @@ import tensorflow as tf
 from google.protobuf import json_format
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -78,7 +77,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     self._output_dict = {'examples': [examples]}
 
     self._train_output_file = os.path.join(examples.uri, 'train',

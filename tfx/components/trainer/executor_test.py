@@ -25,7 +25,6 @@ from google.protobuf import json_format
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 
@@ -44,7 +43,7 @@ class ExecutorTest(tf.test.TestCase):
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._source_data_dir,
                                 'transform/transformed_examples')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
                                         'transform/transform_output')

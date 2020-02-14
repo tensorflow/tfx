@@ -26,7 +26,6 @@ import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.examples.custom_components.tuner.example import iris_utils as module
 from tfx.examples.custom_components.tuner.tuner_component import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -48,7 +47,7 @@ class ExecutorTest(tf.test.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(self._testdata_dir, 'data')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._testdata_dir, 'schema')
 

@@ -25,7 +25,6 @@ from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -57,11 +56,11 @@ class ExecutorTest(absltest.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.splits = ['train', 'eval']
 
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    stats.splits = ['train', 'eval']
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }

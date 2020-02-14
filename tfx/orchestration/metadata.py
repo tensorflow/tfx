@@ -776,8 +776,8 @@ class Metadata(object):
                                                    cached_output_artifacts,
                                                    artifact_types):
       key = event.path.steps[0].key
-      tfx_artifact = Artifact(mlmd_artifact_type=artifact_type)
-      tfx_artifact.set_mlmd_artifact(mlmd_artifact)
+      tfx_artifact = Artifact._rehydrate_from_proto(  # pylint: disable=protected-access
+          artifact_type, mlmd_artifact)
       result[key].append(tfx_artifact)
 
     return result

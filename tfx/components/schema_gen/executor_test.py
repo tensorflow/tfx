@@ -21,7 +21,6 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.components.schema_gen import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -33,8 +32,7 @@ class ExecutorTest(tf.test.TestCase):
 
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
-    statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
+    statistics_artifact.splits = ['train']
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
