@@ -19,8 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import time
-from typing import Text
+from typing import NamedTuple, Optional, Text
 
 import tensorflow as tf
 
@@ -83,12 +82,72 @@ def serving_model_path(output_uri: Text) -> Text:
     return serving_model_dir(output_uri)
 
 
-def get_serving_model_version(output_uri: Text) -> Text:
-  """Returns version of the serving model."""
-  # Note: TFX doesn't have a logical model version right now, use timestamp as
-  # version. For estimator serving model, directly use the timestamp name of the
-  # exported folder. For keras serving model, returns the current timestamp.
-  version = os.path.basename(serving_model_path(output_uri))
-  if not version.isdigit():
-    version = str(int(time.time()))
-  return version
+class StandardModelPath(NamedTuple('_StandardModelPath', [
+    ('base_path', Text),
+    ('model_name', Text),
+    ('version', Text),
+])):
+  """Representation of the standard model directory structure of a path.
+
+  Standard model directory structure refers to a `base_path/model_name/version`
+  format which is mainly used from TensorFlow Serving. Below is the example.
+
+  ```
+  gs://your_bucket_name/foo/bar/  # base_path
+    my_model/                     # model_name
+      1582072718/                 # version
+        (Your exported model)
+  ```
+
+  This is how TensorFlow estimator exporters organize models, and also what
+  TensorFlow Serving (TFS) assumes for the model directory. Version does not
+  always need to be an integer, but TFS requires integer version (mostly a unix
+  second timestamp) so that tracking the latest model is easier.
+  """
+
+  @property
+  def full_path(self):
+    """Full path of the standard model path."""
+    return os.path.join(self.base_path, self.model_name, self.version)
+
+  def __str__(self):
+    return self.full_path
+
+  def __repr__(self):
+    return self.full_path
+
+
+# TODO(b/149349322): Raise error instead of returning optional when Keras model
+# path conforms the standard directory structure.
+# TODO(b/149534564): Replace os.path to pathlib after py2 deprecation.
+def get_standard_serving_path(
+    output_uri: Text,
+    force_int_version: bool = True) -> Optional[StandardModelPath]:
+  """Get a StandardModelPath for the serving model if applicable.
+
+  Args:
+    output_uri: A Model artifact URI.
+    force_int_version: Whether to force version to be an integer or not. If
+        False, string type version is allowed.
+
+  Returns:
+    A ModelPaths instance.
+  """
+  serving_root = serving_model_dir(output_uri)
+  model_path = serving_model_path(output_uri)
+  relpath = os.path.relpath(model_path, start=serving_root)
+
+  # If relpath matches the form of base_path/model_name/version, parse them.
+  if relpath:
+    head, version = os.path.split(relpath)
+    is_version_valid = version.isdigit() or not force_int_version
+    if head and is_version_valid:
+      base_path, model_name = os.path.split(head)
+      return StandardModelPath(
+          full_path=model_path,
+          base_path=os.path.join(serving_root, base_path),
+          model_name=model_name,
+          version=version)
+
+  # When directory structure does not match base_path/model_name/version
+  return None

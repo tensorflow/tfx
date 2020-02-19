@@ -39,7 +39,6 @@ from tfx.types import artifact
 from tfx.types import channel
 from tfx.utils import import_utils
 from tfx.utils import json_utils
-from tfx.utils import telemetry_utils
 
 
 def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Text:
@@ -362,13 +361,7 @@ def main():
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
 
-  # Attach necessary labels to distinguish different runner and DSL.
-  # TODO(zhitaoli): Pass this from KFP runner side when the same container
-  # entrypoint can be used by a different runner.
-  with telemetry_utils.scoped_labels({
-      telemetry_utils.TFX_RUNNER: 'kfp',
-  }):
-    execution_info = launcher.launch()
+  execution_info = launcher.launch()
 
   # Dump the UI metadata.
   _dump_ui_metadata(component, execution_info)

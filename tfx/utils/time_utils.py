@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,32 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Common types that are used across infra_validator implementation."""
+"""Utilities for time related functions."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import enum
-from typing import Union
-
-from tensorflow_serving.apis import classification_pb2
-from tensorflow_serving.apis import regression_pb2
-
-TensorFlowServingRequest = Union[
-    classification_pb2.ClassificationRequest,
-    regression_pb2.RegressionRequest
-]
-
-Request = Union[TensorFlowServingRequest]
+import datetime
+import time
 
 
-class ModelServingStatus(enum.Enum):
-  """Serving status of the model in the model server."""
-  # Model is not ready yet but will be ready soon.
-  NOT_READY = 1
-  # Model is ready.
-  READY = 2
-  # Failed to load a model and will not be recovered. Indicates infra validation
-  # failure.
-  UNAVAILABLE = 3
+def utc_timestamp() -> float:
+  """Get timestamp for UTC now.
+
+  Unlike time.time() where you get timezone-aware timestamp of now, this
+  function returns the unix timestamp (i.e. timezone-agnostic) of now in
+  microseconds precision.
+
+  Returns:
+    A microsecond precision UTC timestamp.
+  """
+  # TODO(b/149535021): for python>=3.3 we have datetime.timestamp() method.
+  dt = datetime.datetime.utcnow()
+  return time.mktime(dt.timetuple()) + dt.microsecond * 1e-6

@@ -150,9 +150,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   # It's been a stowaway in aip_args and has finally reached its destination.
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
-  with telemetry_utils.scoped_labels(
-      {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
-    job_labels = telemetry_utils.get_labels_dict()
+  job_labels = telemetry_utils.get_labels_dict(tfx_executor=executor_class_path)
 
   # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
   job_id = job_id or 'tfx_%s' % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
@@ -231,9 +229,8 @@ def deploy_model_for_aip_prediction(
       absl.logging.warn('Model {} already exists'.format(model_name))
     else:
       raise RuntimeError('AI Platform Push failed: {}'.format(e))
-  with telemetry_utils.scoped_labels(
-      {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
-    job_labels = telemetry_utils.get_labels_dict()
+
+  job_labels = telemetry_utils.get_labels_dict(tfx_executor=executor_class_path)
   body = {
       'name': 'v{}'.format(model_version),
       'deployment_uri': serving_path,

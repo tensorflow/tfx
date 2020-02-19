@@ -34,7 +34,6 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.utils import telemetry_utils
 
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
@@ -118,37 +117,36 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    with telemetry_utils.scoped_labels({telemetry_utils.TFX_RUNNER: 'beam'}):
-      with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
-        # Uses for triggering the component DoFns.
-        root = p | 'CreateRoot' >> beam.Create([None])
+    with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
+      # Uses for triggering the component DoFns.
+      root = p | 'CreateRoot' >> beam.Create([None])
 
-        # Stores mapping of component to its signal.
-        signal_map = {}
-        # pipeline.components are in topological order.
-        for component in tfx_pipeline.components:
-          component_id = component.id
+      # Stores mapping of component to its signal.
+      signal_map = {}
+      # pipeline.components are in topological order.
+      for component in tfx_pipeline.components:
+        component_id = component.id
 
-          # Signals from upstream components.
-          signals_to_wait = []
-          if component.upstream_nodes:
-            for upstream_node in component.upstream_nodes:
-              assert upstream_node in signal_map, ('Components is not in '
-                                                   'topological order')
-              signals_to_wait.append(signal_map[upstream_node])
-          absl.logging.info('Component %s depends on %s.', component_id,
-                            [s.producer.full_label for s in signals_to_wait])
+        # Signals from upstream components.
+        signals_to_wait = []
+        if component.upstream_nodes:
+          for upstream_node in component.upstream_nodes:
+            assert upstream_node in signal_map, ('Components is not in '
+                                                 'topological order')
+            signals_to_wait.append(signal_map[upstream_node])
+        absl.logging.info('Component %s depends on %s.', component_id,
+                          [s.producer.full_label for s in signals_to_wait])
 
-          (component_launcher_class,
-           component_config) = config_utils.find_component_launch_info(
-               self._config, component)
+        (component_launcher_class,
+         component_config) = config_utils.find_component_launch_info(
+             self._config, component)
 
-          # Each signal is an empty PCollection. AsIter ensures component will
-          # be triggered after upstream components are finished.
-          signal_map[component] = (
-              root
-              | 'Run[%s]' % component_id >> beam.ParDo(
-                  _ComponentAsDoFn(component, component_launcher_class,
-                                   component_config, tfx_pipeline),
-                  *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
-          absl.logging.info('Component %s is scheduled.', component_id)
+        # Each signal is an empty PCollection. AsIter ensures component will be
+        # triggered after upstream components are finished.
+        signal_map[component] = (
+            root
+            | 'Run[%s]' % component_id >> beam.ParDo(
+                _ComponentAsDoFn(component, component_launcher_class,
+                                 component_config, tfx_pipeline),
+                *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
+        absl.logging.info('Component %s is scheduled.', component_id)

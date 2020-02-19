@@ -7,16 +7,12 @@
 *   Added tfx model rewriting and tflite rewriter.
 *   Added LatestBlessedModelResolver as an experimental feature which gets the
     latest model that was blessed by model validator.
-*   The specific `Artifact` subclass that was serialized (if defined in the
-    deserializing environment) will be used when deserializing `Artifact`s and
-    when reading `Artifact`s from ML Metadata (previously, objects of the
-    generic `tfx.types.artifact.Artifact` class were created in some cases).
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
-*   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.
-*   Added 'tfx_runner' label for CAIP, BQML and Dataflow jobs submitted from
-    TFX components.
+*   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI
+    Platform Prediction.
+*   Provided idempotent execution registration guarantee.
 
 ### Deprecations
 
@@ -64,6 +60,7 @@
 *   Users can create a pipeline using a new experimental CLI command,
     `template`.
 *   Added an iris example with native Keras.
+*   Added MNIST native Keras example.
 
 ## Bug fixes and other changes
 *   Switched the default behavior of KubeflowDagRunner to not mounting GCP

@@ -24,25 +24,40 @@ import time
 
 from absl import logging
 import docker
-from six.moves.urllib import parse
-from typing import Text
+from docker import errors as docker_errors
 
-from tfx.components.infra_validator.model_server_clients import base_client
-from tfx.components.infra_validator.model_server_clients import factory
+from tfx.components.infra_validator import error_types
+from tfx.components.infra_validator import serving_binary_lib
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
-from tfx.types import standard_artifacts
 from tfx.utils import path_utils
+from tfx.utils import time_utils
 
-ModelState = base_client.ModelState
-
-_MODEL_STATE_POLLING_INTERVALS_SECONDS = 1
-# Default tensorflow/serving grpc port
-# https://www.tensorflow.org/tfx/serving/docker#running_a_serving_image
-_TENSORFLOW_SERVING_GRPC_PORT = '8500/tcp'
+_POLLING_INTERVAL_SEC = 1
 
 
-class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
+def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
+  params = {}
+  if config.client_timeout_seconds:
+    params['timeout'] = config.client_timeout_seconds
+  if config.client_base_url:
+    params['base_url'] = config.client_base_url
+  if config.client_api_version:
+    params['version'] = config.client_api_version
+  return docker.DockerClient(**params)
+
+
+def _find_available_port():
+  """Find available port in the host machine."""
+  with contextlib.closing(
+      socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+    sock.bind(('localhost', 0))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    _, port = sock.getsockname()
+    return port
+
+
+class LocalDockerRunner(base_runner.BaseModelServerRunner):
   """A model server runner that runs in a local docker runtime.
 
   You need to pre-install docker in the machine that is running InfraValidator
@@ -50,128 +65,91 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
   testing purpose.
   """
 
-  def __init__(self, model: standard_artifacts.Model,
-               image_uri: Text,
-               config: infra_validator_pb2.LocalDockerConfig,
-               client_factory: factory.ClientFactory):
-    self._model_dir = os.path.dirname(path_utils.serving_model_path(model.uri))
-    self._image_uri = image_uri
-    self._docker = self._MakeDockerClientFromConfig(config)
-    self._client_factory = client_factory
+  def __init__(self, standard_model_path: path_utils.StandardModelPath,
+               serving_binary: serving_binary_lib.ServingBinary,
+               serving_spec: infra_validator_pb2.ServingSpec):
+    """Make a local docker runner.
+
+    Args:
+      standard_model_path: A StandardModelPath.
+      serving_binary: A ServingBinary to run.
+      serving_spec: A ServingSpec instance.
+    """
+    self._standard_model_path = standard_model_path
+    self._serving_binary = serving_binary
+    self._serving_spec = serving_spec
+    self._docker = _make_docker_client(serving_spec.local_docker)
     self._container = None
-    self._client = None
+    self._endpoint = None
 
   def __repr__(self):
-    attrs = dict(image_uri=self._image_uri)
-    return '<{class_name} {attrs}>'.format(
-        class_name=self.__class__.__name__,
-        attrs=' '.join('{}={}'.format(key, value)
-                       for key, value in attrs.items()))
+    return 'LocalDockerRunner(image: {image})'.format(
+        image=self._serving_binary.image)
 
-  def _MakeDockerClientFromConfig(
-      self, config: infra_validator_pb2.LocalDockerConfig):
-    params = {}
-    params['timeout'] = (config.client_timeout_seconds
-                         or docker.constants.DEFAULT_TIMEOUT_SECONDS)
-    if config.client_base_url:
-      params['base_url'] = config.client_base_url
-    if config.client_api_version:
-      params['version'] = config.client_api_version
-    logging.info('Initializing docker client with parameter %s', params)
-    return docker.DockerClient(**params)
+  def GetEndpoint(self):
+    if not self._endpoint:
+      raise error_types.IllegalState(
+          'Endpoint is not yet created. You should call Start() first.')
+    return self._endpoint
 
   def Start(self):
     if self._container:
-      raise RuntimeError('You cannot start model server multiple times.')
+      raise error_types.IllegalState(
+          'You cannot start model server multiple times.')
 
-    model_name = os.path.basename(self._model_dir)
-    grpc_port = self._FindAvailablePort()
-    endpoint = 'localhost:{}'.format(grpc_port)
+    host_port = _find_available_port()
+    self._endpoint = 'localhost:{}'.format(host_port)
 
-    run_args = dict(
-        image=self._image_uri,
-        ports={_TENSORFLOW_SERVING_GRPC_PORT: grpc_port},
-        environment={
-            'MODEL_NAME': model_name
-        },
-        auto_remove=True,
-        detach=True)
-    if self._IsLocalUri(self._model_dir):
-      # If model is in the host machine, we need to bind the local model
-      # directory to the container. Tensorflow serving uses /models/ directory
-      # as a default model base directory.
-      logging.info(os.listdir(self._model_dir))
-      run_args['mounts'] = [
-          docker.types.Mount(
-              type='bind',
-              target='/models/{}'.format(model_name),
-              source=self._model_dir,
-              read_only=True)
-      ]
-    else:
-      # Else the model is in the remote location and will be retrieved using
-      # tensorflow gfile abstraction.
-      model_base_dir = os.path.dirname(self._model_dir)
-      run_args['environment']['MODEL_BASE_DIR'] = model_base_dir
-
-    logging.info('Running container with argument %s', run_args)
-    self._container = self._docker.containers.run(**run_args)
-
-    self._client = self._client_factory(endpoint)
-
-  @staticmethod
-  def _FindAvailablePort():
-    with contextlib.closing(
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-      sock.bind(('localhost', 0))
-      sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-      _, port = sock.getsockname()
-      return port
-
-  @staticmethod
-  def _IsLocalUri(uri):
-    parsed = parse.urlparse(uri)
-    return parsed.scheme == ''  # pylint: disable=g-explicit-bool-comparison
-
-  def WaitUntilModelAvailable(self, timeout_secs):
-    if not self._container:
-      raise RuntimeError('container is not started.')
-
-    deadline = time.time() + timeout_secs
-    while time.time() < deadline:
-      # Reload container attributes from server. This is the only right way to
-      # retrieve the latest container status from docker engine.
-      self._container.reload()
-      # Once container is up and running, use a client to wait until model is
-      # available.
-      if self._container.status == 'running':
-        state = self._client.GetModelState()
-        if state == ModelState.AVAILABLE:
-          return True
-        elif state == ModelState.UNAVAILABLE:
-          return False
-        else:
-          time.sleep(_MODEL_STATE_POLLING_INTERVALS_SECONDS)
-      # Docker status is one of 'created', 'restarting', 'running', 'removing',
-      # 'paused', 'exited', or 'dead'. Status other than 'created' and 'running'
-      # indicates failure.
-      elif self._container.status != 'created':
-        logging.error('Container has reached %s state before available; marking'
-                      ' model as not blessed.', self._container.status)
-        return False
+    if isinstance(self._serving_binary, serving_binary_lib.TensorFlowServing):
+      is_local = os.path.exists(self._standard_model_path.full_path)
+      if is_local:
+        run_params = self._serving_binary.MakeDockerRunParams(
+            host_port=host_port,
+            host_model_base_path=self._standard_model_path.base_path)
       else:
-        time.sleep(_MODEL_STATE_POLLING_INTERVALS_SECONDS)
+        run_params = self._serving_binary.MakeDockerRunParams(
+            host_port=host_port,
+            remote_model_base_path=self._standard_model_path.base_path)
+    else:
+      raise NotImplementedError('Unsupported serving binary {}'.format(
+          type(self._serving_binary).__name__))
 
-    # Deadline exceeded.
-    logging.error('Deadline has exceeded; marking model as not blessed.')
-    return False
+    logging.info('Running container with parameter %s', run_params)
+    self._container = self._docker.containers.run(**run_params)
+
+  def WaitUntilRunning(self, deadline):
+    if not self._container:
+      raise error_types.IllegalState('container is not started.')
+
+    while time_utils.utc_timestamp() < deadline:
+      try:
+        # Reload container attributes from server. This is the only right way to
+        # retrieve the latest container status from docker engine.
+        self._container.reload()
+        status = self._container.status
+      except docker_errors.NotFound:
+        # If the job has been aborted and container has specified auto_removal
+        # to True, we might get a NotFound error during container.reload().
+        raise error_types.JobAborted(
+            'Container not found. Possibly removed after the job has been '
+            'aborted.')
+      # The container is just created and not yet in the running status.
+      if status == 'created':
+        time.sleep(_POLLING_INTERVAL_SEC)
+        continue
+      # The container is running :)
+      if status == 'running':
+        return
+      # Other docker status ('created', 'restarting', 'running', 'removing',
+      # 'paused', 'exited', or 'dead') indicates failure.
+      raise error_types.JobAborted(
+          'Job has been aborted (container status={})'.format(status))
+
+    raise error_types.DeadlineExceeded(
+        'Deadline exceeded while waiting for the container to be running.')
 
   def Stop(self):
     if self._container:
       logging.info('Stopping container.')
       self._container.stop()
     self._docker.close()
-
-  @property
-  def client(self):
-    return self._client

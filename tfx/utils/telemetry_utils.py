@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import contextlib
 import re
 import sys
 from typing import Dict, List, Text
@@ -26,24 +25,9 @@ from typing import Dict, List, Text
 from tfx import version
 
 # Common label names used.
-TFX_RUNNER = 'tfx_runner'
-TFX_EXECUTOR = 'tfx_executor'
+_TFX_EXECUTOR = 'tfx_executor'
 _TFX_VERSION = 'tfx_version'
 _TFX_PY_VERSION = 'tfx_py_version'
-
-# A list of global labels registered so far.
-_labels = {}
-
-
-@contextlib.contextmanager
-def scoped_labels(labels: Dict[Text, Text]):
-  for key, value in labels.items():
-    _labels[key] = _normalize_label(value)
-  try:
-    yield
-  finally:
-    for key in labels:
-      _labels.pop(key)
 
 
 def _normalize_label(value: Text) -> Text:
@@ -52,31 +36,38 @@ def _normalize_label(value: Text) -> Text:
   return re.sub(r'[^a-z0-9\_\-]', '-', value.lower())[-63:]
 
 
-def get_labels_dict() -> Dict[Text, Text]:
+def get_labels_dict(tfx_executor: Text) -> Dict[Text, Text]:
   """Get all registered and system generated labels as a dict.
+
+  Args:
+    tfx_executor: Executor path of TFX.
 
   Returns:
     All registered and system generated labels as a dict.
   """
-  result = dict(
-      {
-          _TFX_VERSION:
-              version.__version__,
-          _TFX_PY_VERSION:
-              '%d.%d' % (sys.version_info.major, sys.version_info.minor),
-      }, **_labels)
+  result = dict({
+      _TFX_VERSION:
+          version.__version__,
+      _TFX_PY_VERSION:
+          '%d.%d' % (sys.version_info.major, sys.version_info.minor),
+      _TFX_EXECUTOR:
+          tfx_executor,
+  })
   for k, v in result.items():
     result[k] = _normalize_label(v)
   return result
 
 
-def make_beam_labels_args() -> List[Text]:
+def make_beam_labels_args(tfx_executor: Text) -> List[Text]:
   """Make Beam arguments for common labels used in TFX pipelines.
+
+  Args:
+    tfx_executor: Executor name of TFX.
 
   Returns:
     New Beam pipeline args with labels.
   """
-  labels = get_labels_dict()
+  labels = get_labels_dict(tfx_executor)
   # See following file for reference to the '--labes ' flag.
   # https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
   result = []

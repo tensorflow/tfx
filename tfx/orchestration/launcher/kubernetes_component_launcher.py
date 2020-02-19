@@ -19,14 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import os
 import re
 import time
-from typing import Any, Callable, Dict, List, Text, cast
+from typing import Any, Callable, Dict, List, Optional, Text, cast
 
-import absl
+from absl import logging
 from kubernetes import client
-from kubernetes import config
 
 from tfx import types
 from tfx.components.base import executor_spec
@@ -34,11 +32,8 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import kubernetes_component_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import container_common
+from tfx.utils import kube_utils
 
-# Pod env names from:
-# https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
-_KFP_POD_NAME_ENV = 'KFP_POD_NAME'
-_KFP_NAMESPACE_ENV = 'KFP_NAMESPACE'
 # Pod phases are defined in
 # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase.
 _POD_PENDING_PHASE = 'Pending'
@@ -116,24 +111,16 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         container_spec, input_dict, output_dict, exec_properties)
     pod_name = self._build_pod_name(execution_id)
     # TODO(hongyes): replace the default value from component config.
-    namespace = os.getenv(_KFP_NAMESPACE_ENV, 'kubeflow')
+    try:
+      namespace = kube_utils.get_kfp_namespace()
+    except RuntimeError:
+      namespace = 'kubeflow'
 
     pod_manifest = self._build_pod_manifest(pod_name, container_spec)
+    core_api = kube_utils.make_core_v1_api()
 
-    try:
-      is_in_cluster = True
-      config.load_incluster_config()
-      absl.logging.info('Loaded in cluster config.')
-    except config.config_exception.ConfigException:
-      is_in_cluster = False
-      config.load_kube_config()
-      absl.logging.info('Loaded kube config.')
-
-    core_api = client.CoreV1Api()
-
-    if is_in_cluster:
-      launcher_pod_name = os.getenv(_KFP_POD_NAME_ENV)
-      launcher_pod = self._get_pod(core_api, launcher_pod_name, namespace)
+    if kube_utils.is_inside_kfp():
+      launcher_pod = kube_utils.get_current_kfp_pod(core_api)
       pod_manifest['spec']['serviceAccount'] = launcher_pod.spec.service_account
       pod_manifest['spec'][
           'serviceAccountName'] = launcher_pod.spec.service_account_name
@@ -141,12 +128,12 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           'ownerReferences'] = container_common.to_swagger_dict(
               launcher_pod.metadata.owner_references)
 
-    absl.logging.info('Looking for pod "%s:%s".' % (namespace, pod_name))
+    logging.info('Looking for pod "%s:%s".', namespace, pod_name)
     resp = self._get_pod(core_api, pod_name, namespace)
     if not resp:
-      absl.logging.info('Pod "%s:%s" does not exist. Creating it...' %
-                        (namespace, pod_name))
-      absl.logging.info('Pod manifest: ' + str(pod_manifest))
+      logging.info('Pod "%s:%s" does not exist. Creating it...',
+                   namespace, pod_name)
+      logging.info('Pod manifest: %s', pod_manifest)
       try:
         resp = core_api.create_namespaced_pod(
             namespace=namespace, body=pod_manifest)
@@ -155,8 +142,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
             'Failed to created container executor pod!\nReason: %s\nBody: %s' %
             (e.reason, e.body))
 
-    absl.logging.info('Waiting for pod "%s:%s" to start.' %
-                      (namespace, pod_name))
+    logging.info('Waiting for pod "%s:%s" to start.', namespace, pod_name)
     self._wait_pod(
         core_api,
         pod_name,
@@ -164,8 +150,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         exit_condition_lambda=_pod_is_not_pending,
         condition_description='non-pending status')
 
-    absl.logging.info('Start log streaming for pod "%s:%s".' %
-                      (namespace, pod_name))
+    logging.info('Start log streaming for pod "%s:%s".', namespace, pod_name)
     try:
       logs = core_api.read_namespaced_pod_log(
           name=pod_name,
@@ -179,7 +164,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           (e.reason, e.body))
 
     for log in logs:
-      absl.logging.info(log.decode().rstrip('\n'))
+      logging.info(log.decode().rstrip('\n'))
 
     resp = self._wait_pod(
         core_api,
@@ -192,7 +177,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
                          (namespace, pod_name, resp.status))
 
-    absl.logging.info('Pod "%s:%s" is done.' % (namespace, pod_name))
+    logging.info('Pod "%s:%s" is done.', namespace, pod_name)
 
   def _build_pod_manifest(
       self, pod_name: Text,
@@ -229,7 +214,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     spec.update({'restartPolicy': 'Never'})
     containers = spec.setdefault('containers',
                                  [])  # type: List[Dict[Text, Any]]
-    container = None  # type: Dict[Text, Any]
+    container = None  # type: Optional[Dict[Text, Any]]
     for c in containers:
       if c['name'] == 'main':
         container = c
@@ -245,7 +230,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     return pod_manifest
 
   def _get_pod(self, core_api: client.CoreV1Api, pod_name: Text,
-               namespace: Text) -> client.V1Pod:
+               namespace: Text) -> Optional[client.V1Pod]:
     """Get a pod from Kubernetes metadata API.
 
     Args:
@@ -295,7 +280,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     start_time = datetime.datetime.utcnow()
     while True:
       resp = self._get_pod(core_api, pod_name, namespace)
-      absl.logging.info(resp.status.phase)
+      logging.info(resp.status.phase)
       if exit_condition_lambda(resp):
         return resp
       elapse_time = datetime.datetime.utcnow() - start_time

@@ -30,28 +30,17 @@ class TelemetryUtilsTest(tf.test.TestCase):
 
   def testMakeBeamLabelsArgs(self):
     """Test for make_beam_labels_args."""
-    beam_pipeline_args = telemetry_utils.make_beam_labels_args()
+    beam_pipeline_args = telemetry_utils.make_beam_labels_args(
+        tfx_executor='a' * 128 + '.E')
     self.assertListEqual([
+        '--labels',
+        'tfx_executor=%s-e' % ('a' * 61),
         '--labels',
         'tfx_py_version=%d-%d' %
         (sys.version_info.major, sys.version_info.minor),
         '--labels',
         'tfx_version=%s' % version.__version__.replace('.', '-'),
     ], beam_pipeline_args)
-
-  def testScopedLabels(self):
-    """Test for scoped_labels."""
-    orig_labels = telemetry_utils.get_labels_dict()
-    with telemetry_utils.scoped_labels({'foo': 'bar'}):
-      self.assertDictEqual(telemetry_utils.get_labels_dict(),
-                           dict({'foo': 'bar'}, **orig_labels))
-      with telemetry_utils.scoped_labels({'inner': 'baz'}):
-        self.assertDictEqual(
-            telemetry_utils.get_labels_dict(),
-            dict({
-                'foo': 'bar',
-                'inner': 'baz'
-            }, **orig_labels))
 
 
 if __name__ == '__main__':

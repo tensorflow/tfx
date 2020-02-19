@@ -31,7 +31,6 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.utils import telemetry_utils
 
 
 def _airflow_component_launcher(
@@ -74,8 +73,7 @@ def _airflow_component_launcher(
       beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
-  with telemetry_utils.scoped_labels({telemetry_utils.TFX_RUNNER: 'airflow'}):
-    launcher.launch()
+  launcher.launch()
 
 
 class AirflowComponent(python_operator.PythonOperator):

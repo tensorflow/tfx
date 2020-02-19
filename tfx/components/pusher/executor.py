@@ -32,6 +32,7 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import time_utils
 
 # Key for model in executor input_dict.
 MODEL_KEY = 'model'
@@ -125,8 +126,13 @@ class Executor(base_executor.BaseExecutor):
     model_export_uri = model_export.uri
     logging.info('Model pushing.')
     # Copy the model to pushing uri.
-    model_path = path_utils.serving_model_path(model_export_uri)
-    model_version = path_utils.get_serving_model_version(model_export_uri)
+    smp = path_utils.get_standard_serving_path(model_export.uri)
+    if smp:
+      model_path = smp.full_path
+      model_version = smp.version
+    else:
+      model_path = path_utils.serving_model_path(model_export_uri)
+      model_version = str(int(time_utils.utc_timestamp()))
     logging.info('Model version is %s', model_version)
     io_utils.copy_dir(model_path, os.path.join(model_push_uri, model_version))
     logging.info('Model written to %s.', model_push_uri)

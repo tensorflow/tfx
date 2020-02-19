@@ -39,7 +39,12 @@ class PathUtilsTest(tf.test.TestCase):
     self.assertEqual(eval_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
                      path_utils.serving_model_path(output_uri))
-    self.assertEqual('123', path_utils.get_serving_model_version(output_uri))
+    smp = path_utils.get_standard_serving_path(output_uri)
+    self.assertEqual(smp.full_path, serving_model_path)
+    self.assertEqual(smp.base_path,
+                     os.path.join(output_uri, 'serving_model_dir', 'export'))
+    self.assertEqual(smp.model_name, 'taxi')
+    self.assertEqual(smp.version, '123')
 
   def testKerasModelPath(self):
     # Create folders based on Keras based Trainer output model directory.
@@ -50,7 +55,8 @@ class PathUtilsTest(tf.test.TestCase):
     self.assertEqual(serving_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
                      path_utils.serving_model_path(output_uri))
-    self.assertTrue(path_utils.get_serving_model_version(output_uri).isdigit())
+    smp = path_utils.get_standard_serving_path(output_uri)
+    self.assertIsNone(smp)
 
 
 if __name__ == '__main__':

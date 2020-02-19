@@ -19,7 +19,6 @@ package tfx.components.infra_validator;
 // ServingSpec defines an environment of the validating infrastructure: what
 // (serving binary) and where (serving platform) to run model server.
 message ServingSpec {
-
   // The kind of binary used to serve your model.This should be the same as the
   // one that is used in the pushing environment.
   //
@@ -42,7 +41,19 @@ message ServingSpec {
   // corresponding configuration.
   oneof serving_platform {
     LocalDockerConfig local_docker = 2;
+    KubernetesConfig kubernetes = 3;
   }
+
+  // Required.
+  // Model name is the second last segment of the exported path of the
+  // tensorflow SavedModel. (Note the last segment should be the version.)
+  // If you're using model exporter, `model_name` is the name of your exporter.
+  // The `model_name` should match the Model artifact's directory structure,
+  // which has the format of
+  // `{export_path}/serving_model_dir/export/{model_name}/{model_version}`. (See
+  // https://github.com/tensorflow/tfx/blob/master/tfx/utils/path_utils.py for
+  // detail.)
+  string model_name = 4;
 }
 
 // TensorFlow Serving docker image (tensorflow/serving) for serving binary.
@@ -70,11 +81,60 @@ message LocalDockerConfig {
   int32 client_timeout_seconds = 3;
 }
 
+// Kubernetes configuration. We currently only support the use case when infra
+// validator is run by KFP engine. Model server will be launched in the same
+// namespace KFP is running on, as well as same service account will be used
+// (unless specified).
+//
+// Model server will have ownerReferences to the infra validator, which
+// delegates the strict cleanup guarantee to the kubernetes cluster.
+message KubernetesConfig {
+  // Optional.
+  // Name of the ServiceAccount to use to run this pod. Default to the same
+  // service account that KFP uses.
+  string service_account_name = 1;
+  // Optional.
+  // Names of Secret that contain docker config json data. This will be used to
+  // authenticate and pull image from your private container registry. See
+  // https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+  repeated string image_pull_secrets = 2;
+  // Optional.
+  // Specify compute resources required by the running container.
+  KubernetesResourceRequirements resources = 3;
+}
+
+// Kubernetes resource requirements.
+// Map can have a resource type (one of `cpu`, `memory`) and its quantity (cpu
+// unit for a cpu, bytes for a memory) in a string format. For example,
+//
+//   requests:
+//     memory: "64Mi"  # 64 * 1024 * 1024 bytes.
+//     cpu: "250m"     # 250 milli-cpu-unit (1/4 cpu)
+//   limits:
+//     memory: "128Mi"
+//     cpu: "500m"
+//
+// See more information at
+// https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
+message KubernetesResourceRequirements {
+  // Optional.
+  // Maximum amount of compute resources allowed.
+  map<string, string> limits = 1;
+  // Optional.
+  // Minimum amount of compute resources allowed.
+  map<string, string> requests = 2;
+}
+
 // Specification for validation criteria and thresholds.
 message ValidationSpec {
   // If the model is not loaded until this time, validation will fail. Should
   // be a positive number.
   int32 max_loading_time_seconds = 1;
+
+  // Optional.
+  // Number of infra validation tries. Infra validation will be retried until
+  // infra validation succeed, or failed `num_tries` times. Default to 3.
+  int32 num_tries = 2;
 }
 
 // InfraValidator can optionally send sample requests to the loaded model to
