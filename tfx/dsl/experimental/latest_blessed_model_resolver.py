@@ -22,7 +22,7 @@ from typing import Dict, Text, Type
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.components.model_validator import constants as model_validator
+from tfx.components.evaluator import constants as evaluator
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -84,11 +84,13 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
     all_model_blessings = artifacts_in_context[
         source_channels[model_blessing_channel_key].type_name]
     # Makes a dict of {model_id : ModelBlessing artifact} for blessed models.
-    all_blessed_model_ids = dict((  # pylint: disable=g-complex-comprehension
-        a.custom_properties[
-            model_validator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value,
-        a) for a in all_model_blessings if a.custom_properties[
-            model_validator.ARTIFACT_PROPERTY_BLESSED_KEY].int_value == 1)
+    all_blessed_model_ids = dict(
+        (  # pylint: disable=g-complex-comprehension
+            a.custom_properties[
+                evaluator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value, a)
+        for a in all_model_blessings
+        if a.custom_properties[
+            evaluator.ARTIFACT_PROPERTY_BLESSED_KEY].int_value == 1)
 
     artifacts_dict = {model_channel_key: [], model_blessing_channel_key: []}
     resolve_state_dict = {

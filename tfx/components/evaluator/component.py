@@ -86,7 +86,8 @@ class Evaluator(base_component.BaseComponent):
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      eval_config: Optional[tfma.EvalConfig] = None):
+      eval_config: Optional[tfma.EvalConfig] = None,
+      blessing: Optional[types.Channel] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -117,6 +118,8 @@ class Evaluator(base_component.BaseComponent):
       eval_config: Instance of tfma.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
+      blessing: Output channel of 'ModelBlessingPath' that contains the
+        blessing result.
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
@@ -137,6 +140,10 @@ class Evaluator(base_component.BaseComponent):
       absl.logging.warning('feature_slicing_spec is deprecated, please use '
                            'eval_config instead.')
 
+    blessing = blessing or types.Channel(
+        type=standard_artifacts.ModelBlessing,
+        artifacts=[standard_artifacts.ModelBlessing()])
+
     evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
         artifacts=[standard_artifacts.ModelEvaluation()])
@@ -147,5 +154,6 @@ class Evaluator(base_component.BaseComponent):
         feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
         evaluation=evaluation,
-        eval_config=eval_config)
+        eval_config=eval_config,
+        blessing=blessing)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
