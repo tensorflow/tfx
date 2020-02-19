@@ -21,12 +21,12 @@ def make_required_install_packages():
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
       'absl-py>=0.1.6,<0.9',
-      # LINT.IfChange
-      'apache-beam[gcp]>=2.17,<2.18',
-      # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       # TODO(b/149399451): This is a workaround for broken avro-python3 1.9.2
       # release. Remove once having a healthy new release.
       'avro-python3>=1.8.1,!=1.9.2,<2.0.0; python_version >= "3.0"',
+      # LINT.IfChange
+      'apache-beam[gcp]>=2.17,<2.18',
+      # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
