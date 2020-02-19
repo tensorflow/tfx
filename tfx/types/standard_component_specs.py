@@ -82,6 +82,7 @@ class EvaluatorSpec(ComponentSpec):
   }
   OUTPUTS = {
       'evaluation': ChannelParameter(type=standard_artifacts.ModelEvaluation),
+      'blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards
