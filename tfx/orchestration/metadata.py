@@ -36,6 +36,7 @@ from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
+from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import ArtifactState
 
@@ -776,8 +777,8 @@ class Metadata(object):
                                                    cached_output_artifacts,
                                                    artifact_types):
       key = event.path.steps[0].key
-      tfx_artifact = Artifact(mlmd_artifact_type=artifact_type)
-      tfx_artifact.set_mlmd_artifact(mlmd_artifact)
+      tfx_artifact = artifact_utils.deserialize_artifact(
+          artifact_type, mlmd_artifact)
       result[key].append(tfx_artifact)
 
     return result

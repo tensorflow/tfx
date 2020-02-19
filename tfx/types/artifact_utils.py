@@ -23,10 +23,11 @@ import json
 import os
 import re
 
-from typing import Dict, List, Text
+from typing import Dict, List, Optional, Text
 
 import absl
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.types.artifact import Artifact
 
 
@@ -136,3 +137,62 @@ def decode_split_names(split_names: Text) -> List[Text]:
   if not split_names:
     return []
   return json.loads(split_names)
+
+
+def deserialize_artifact(
+    artifact_type: metadata_store_pb2.ArtifactType,
+    artifact: Optional[metadata_store_pb2.Artifact] = None
+    ) -> Artifact:
+  """Reconstruct Artifact object from MLMD proto descriptors.
+
+  Internal method, no backwards compatibility guarantees.
+
+  Args:
+    artifact_type: A metadata_store_pb2.ArtifactType proto object describing
+      the type of the artifact.
+    artifact: A metadata_store_pb2.Artifact proto object describing the
+      contents of the artifact.  If not provided, an Artifact of the desired
+      type with empty contents is created.
+
+  Returns:
+    Artifact subclass object for the given MLMD proto descriptors.
+  """
+  # Validate inputs.
+  if not isinstance(artifact_type, metadata_store_pb2.ArtifactType):
+    raise ValueError(
+        ('Expected metadata_store_pb2.ArtifactType for artifact_type, got %s '
+         'instead') % (artifact_type,))
+  if artifact and not isinstance(artifact, metadata_store_pb2.Artifact):
+    raise ValueError(
+        ('Expected metadata_store_pb2.Artifact for artifact, got %s '
+         'instead') % (artifact,))
+
+  # Make sure this module path containing the standard Artifact subclass
+  # definitions is imported. Modules containing custom artifact subclasses that
+  # need to be deserialized should be imported by the entrypoint of the
+  # application or container.
+  from tfx.types import standard_artifacts  # pylint: disable=g-import-not-at-top,unused-variable
+
+  # Attempt to find the appropriate Artifact subclass for reconstructing this
+  # object.
+  artifact_cls = None
+  for cls in Artifact.__subclasses__():
+    if cls.TYPE_NAME == artifact_type.name:
+      artifact_cls = cls
+
+  # Construct the Artifact object, using a concrete Artifact subclass when
+  # possible.
+  if artifact_cls:
+    result = artifact_cls()
+    result.set_mlmd_artifact_type(artifact_type)
+  else:
+    absl.logging.warning((
+        'Could not load artifact class for type %r; using fallback '
+        'deserialization for the relevant artifact. If this is not intended, '
+        'please make sure that the artifact class for this type can be '
+        'imported within your container or environment where a component is '
+        'executed to consume this type.') % (artifact_type.name))
+    result = Artifact(mlmd_artifact_type=artifact_type)
+  if artifact:
+    result.set_mlmd_artifact(artifact)
+  return result

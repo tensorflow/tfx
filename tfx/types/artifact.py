@@ -302,9 +302,8 @@ class Artifact(json_utils.Jsonable):
     except (AttributeError, ImportError, ValueError):
       absl.logging.warning((
           'Could not load artifact class %s.%s; using fallback deserialization '
-          'for the relevant artifact. This behavior may not be supported in '
-          'the future; please make sure that any artifact classes can be '
-          'imported within your container or environment.') %
+          'for the relevant artifact. Please make sure that any artifact '
+          'classes can be imported within your container or environment.') %
                            (module_name, class_name))
     if not result:
       result = Artifact(mlmd_artifact_type=artifact_type)
