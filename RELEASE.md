@@ -72,7 +72,7 @@
 *   Refactored common dependencies in the TFX dockerfile to a base image to
     improve the reliability of image building process.
 *   Fixes missing Tensorboard link in KubeflowDagRunner.
-*   Depends on `apache-beam[gcp]>=2.18,<3`
+*   Depends on `apache-beam[gcp]>=2.17,<2.18`
 *   Depends on `ml-metadata>=0.21,<0.22`.
 *   Depends on `tensorflow-data-validation>=0.21,<0.22`.
 *   Depends on `tensorflow-model-analysis>=0.21,<0.22`.
