@@ -500,6 +500,17 @@ class MetadataTest(tf.test.TestCase):
                   component_id='unique',
                   component_type='a.b.c',
                   pipeline_info=self._pipeline_info)))
+      # Having the same set of input artifact ids, but duplicated.
+      self.assertEqual(
+          None,
+          m.get_cached_outputs(
+              input_artifacts={
+                  'input': input_artifacts['input'],
+                  'another_input': input_artifacts['input']
+              },
+              exec_properties=exec_properties,
+              pipeline_info=self._pipeline_info,
+              component_info=self._component_info))
       cached_output_artifacts = m.get_cached_outputs(
           input_artifacts=input_artifacts,
           exec_properties=exec_properties,

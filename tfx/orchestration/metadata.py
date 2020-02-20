@@ -21,6 +21,7 @@ from __future__ import print_function
 import collections
 import copy
 import hashlib
+import itertools
 import os
 import random
 import time
@@ -682,13 +683,15 @@ class Metadata(object):
     # Step 2: Filters historical executions to find those that used all the
     # given inputs as input artifacts. The result of this step is a set of
     # reversely sorted execution ids.
-    input_ids = set()
-    for input_list in input_artifacts.values():
+    input_ids = collections.defaultdict(set)
+    for key, input_list in input_artifacts.items():
       for single_input in input_list:
-        input_ids.add(single_input.mlmd_artifact.id)
+        input_ids[key].add(single_input.mlmd_artifact.id)
     artifact_to_executions = collections.defaultdict(set)
-    for event in self.store.get_events_by_artifact_ids(list(input_ids)):
-      artifact_to_executions[event.artifact_id].add(event.execution_id)
+    for event in self.store.get_events_by_artifact_ids(
+        list(set(itertools.chain.from_iterable(input_ids.values())))):
+      if event.type == metadata_store_pb2.Event.INPUT:
+        artifact_to_executions[event.artifact_id].add(event.execution_id)
     common_execution_ids = sorted(
         set.intersection(
             set(historical_executions.keys()),
@@ -718,47 +721,38 @@ class Metadata(object):
     # match given input artifacts, return the output artifacts of that execution
     # as result. Note that this is necessary since a candidate execution might
     # use more than the given artifacts.
-    execution_to_events = collections.defaultdict(list)
+    candidate_execution_to_events = collections.defaultdict(list)
     for event in self.store.get_events_by_execution_ids(
         candidate_execution_ids):
-      execution_to_events[event.execution_id].append(event)
-    for execution_id, events in execution_to_events.items():
-      cached_outputs = self._get_outputs_of_execution(
-          desired_input_ids=input_ids, execution_id=execution_id, events=events)
-      if cached_outputs is not None:
-        return cached_outputs
+      candidate_execution_to_events[event.execution_id].append(event)
+    for execution_id, events in candidate_execution_to_events.items():
+      # Creates the {key -> artifact id set} for the candidate execution.
+      current_input_ids = collections.defaultdict(set)
+      for event in events:
+        if event.type == metadata_store_pb2.Event.INPUT:
+          current_input_ids[event.path.steps[0].key].add(event.artifact_id)
+      # If all inputs match, tries to get the outputs of the execution and uses
+      # as the cached outputs of the current execution.
+      if current_input_ids == input_ids:
+        cached_outputs = self._get_outputs_of_execution(
+            execution_id=execution_id, events=events)
+        if cached_outputs is not None:
+          return cached_outputs
 
     return None
 
   def _get_outputs_of_execution(
-      self, desired_input_ids: Set[int], execution_id: int,
-      events: List[metadata_store_pb2.Event]
+      self, execution_id: int, events: List[metadata_store_pb2.Event]
   ) -> Optional[Dict[Text, List[Artifact]]]:
-    """Fetches outputs produced by a historical execution with desired inputs.
-
-    If the desired input ids are not exactly the same as the input artifacts
-    of the given execution id, return nothing. Otherwise, return the output
-    artifacts in the format of key -> List[Artifact].
+    """Fetches outputs produced by a historical execution.
 
     Args:
-      desired_input_ids: artifact ids of desired inputs.
       execution_id: the id of the execution that produced the outputs.
       events: events related to the execution id.
 
     Returns:
       A dict of key -> List[Artifact] as the result
     """
-
-    execution_input_ids = set(event.artifact_id
-                              for event in events
-                              if event.type == metadata_store_pb2.Event.INPUT)
-    # Only needs to compare the length of the input ids set since we only need
-    # to rule out the case that past execution uses more inputs than given
-    # inputs.
-    if len(desired_input_ids) != len(execution_input_ids):
-      absl.logging.debug('Execution %s does not match all inputs' %
-                         execution_id)
-      return None
 
     absl.logging.debug('Execution %s matches all inputs' % execution_id)
     result = collections.defaultdict(list)
