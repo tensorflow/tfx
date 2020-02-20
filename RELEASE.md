@@ -21,8 +21,8 @@
 ### Deprecations
 
 ## Breaking changes
-*   Remove "UN_BLESSED" artifact.
-*   Change constants ARTIFACT_PROPERTY_BLESSED_MODEL_* to ARTIFACT_PROPERTY_BASELINE_MODEL_.
+*   Remove "NOT_BLESSED" artifact.
+*   Change constants ARTIFACT_PROPERTY_BLESSED_MODEL_* to ARTIFACT_PROPERTY_BASELINE_MODEL_*.
 
 ### For pipeline authors
 

@@ -138,27 +138,36 @@ class Executor(base_executor.BaseExecutor):
             metric.HasField('threshold') for metric in metrics_spec.metrics)):
           run_validation = True
           break
-      # Extract model artifacts.
-      # Baseline will be ignored if baseline is not configured in model_spec.
       if len(eval_config.model_specs) > 2:
         raise ValueError(
             """Cannot support more than two models. There are {} models in this
              eval_config.""".format(len(eval_config.model_specs)))
-      models = {}
       if not eval_config.model_specs:
         eval_config.model_specs.add()
+      # Remove baseline model_spec and all change thresholds if there is no
+      # baseline model provided.
+      if not input_dict.get(constants.BASELINE_MODEL_KEY):
+        tmp_model_specs = []
+        for model_spec in eval_config.model_specs:
+          if not model_spec.is_baseline:
+            tmp_model_specs.append(model_spec)
+        del eval_config.model_specs[:]
+        eval_config.model_specs.extend(tmp_model_specs)
+        absl.logging.info("""No baseline model provided, ignoring all
+            baseline model_spec.""")
+        for metrics_spec in eval_config.metrics_specs:
+          for metric in metrics_spec.metrics:
+            metric.threshold.ClearField('change_threshold')
+          for threshold in metrics_spec.thresholds.values():
+            threshold.ClearField('change_threshold')
+        absl.logging.info("""No baseline model provided, ignoring all
+            change thresholds.""")
+      # Extract model artifacts.
+      models = {}
       for model_spec in eval_config.model_specs:
         if model_spec.signature_name != 'eval':
           tags = [tf.saved_model.SERVING]
         if model_spec.is_baseline:
-          if constants.BASELINE_MODEL_KEY not in input_dict:
-            absl.logging.info("""No baseline model provided, ignoring all
-                change thresholds.""")
-            for metrics_spec in eval_config.metrics_specs:
-              for metric in metrics_spec.metrics:
-                metric.threshold.clear_change_threshold()
-              for threshold in metrics_spec.thresholds.values():
-                threshold.clear_change_threshold()
           models[model_spec.name] = _get_eval_saved_model(
               input_dict[constants.BASELINE_MODEL_KEY], tags)
           absl.logging.info('Using {} as baseline model.'.format(
@@ -211,7 +220,7 @@ class Executor(base_executor.BaseExecutor):
     blessing.set_int_custom_property(
         constants.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY,
         input_dict[constants.MODEL_KEY][0].id)
-    if constants.BASELINE_MODEL_KEY in input_dict:
+    if input_dict.get(constants.BASELINE_MODEL_KEY):
       baseline_model = input_dict[constants.BASELINE_MODEL_KEY][0]
       blessing.set_string_custom_property(
           constants.ARTIFACT_PROPERTY_BASELINE_MODEL_URI_KEY,
