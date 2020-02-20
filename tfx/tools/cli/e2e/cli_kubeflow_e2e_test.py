@@ -79,9 +79,11 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         self._testMethodName)
     tf.io.gfile.makedirs(self._testdata_dir_updated)
 
-    self._pipeline_name = 'chicago_taxi_pipeline_kubeflow_%s_%s' % (''.join([
-        random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
-    ]), datetime.datetime.now().strftime('%s'))
+    self._pipeline_name = 'cli-kubeflow-e2e-test-%s-%s' % (
+        datetime.datetime.now().strftime('%s'), ''.join([
+            random.choice(string.ascii_lowercase + string.digits)
+            for _ in range(10)
+        ]))
     absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 
@@ -223,8 +225,9 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       pipeline_name: The name of the pipeline owning the database.
     """
     pod_name = self._get_mysql_pod_name()
+    valid_mysql_name = pipeline_name.replace('-', '_')
     # MySQL database name cannot exceed 64 characters.
-    db_name = 'mlmd_{}'.format(pipeline_name[-59:])
+    db_name = 'mlmd_{}'.format(valid_mysql_name[-59:])
 
     command = [
         'kubectl',
