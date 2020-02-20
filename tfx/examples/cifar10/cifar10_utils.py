@@ -91,7 +91,7 @@ def _keras_model_builder():
       loss='categorical_crossentropy',
       metrics=[tf.keras.metrics.CategoricalAccuracy(name='accuracy')])
 
-  absl.logging.info(model.summary())
+  model.summary(print_fn=absl.logging.info)
   return model
 
 
