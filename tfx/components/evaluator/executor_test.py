@@ -301,8 +301,8 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
       self.assertTrue(
           tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
     else:
-      self.assertFalse(
-          tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
+      self.assertTrue(
+          tf.io.gfile.exists(os.path.join(blessing_output.uri, 'NOT_BLESSED')))
 
 
 if __name__ == '__main__':

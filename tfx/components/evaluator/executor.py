@@ -239,5 +239,10 @@ class Executor(base_executor.BaseExecutor):
           os.path.join(blessing.uri, constants.BLESSED_FILE_NAME), '')
       blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
                                        constants.BLESSED_VALUE)
+    else:
+      io_utils.write_string_file(
+          os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
+      blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
+                                       constants.NOT_BLESSED_VALUE)
     absl.logging.info('Blessing result {} written to {}.'.format(
         validation_result.validation_ok, blessing.uri))
