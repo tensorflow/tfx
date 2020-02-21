@@ -199,12 +199,18 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
                                   tfma.config.MetricConfig(
-                                      class_name='ExampleCount',
-                                      # Count < -1, NOT OK.
+                                      class_name='SparseCategoricalAccuracy',
+                                      # delta_accuracy > 1000, NOT OK.
+                                      # accuracy > -1000, OK
                                       threshold=tfma.config.MetricThreshold(
+                                          change_threshold=tfma
+                                          .GenericChangeThreshold(
+                                              absolute={'value': 1000},
+                                              direction=tfma.MetricDirection
+                                              .HIGHER_IS_BETTER),
                                           value_threshold=tfma
                                           .GenericValueThreshold(
-                                              upper_bound={'value': -1}))),
+                                              lower_bound={'value': -1000}))),
                               ]),
                           ],
                           slicing_specs=[tfma.SlicingSpec()]),
