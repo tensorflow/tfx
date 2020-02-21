@@ -37,7 +37,8 @@ class ChannelUtilsTest(tf.test.TestCase):
     instance_a = _MyArtifact()
     instance_b = _MyArtifact()
     chnl = channel_utils.as_channel([instance_a, instance_b])
-    self.assertEqual(chnl.type, _MyArtifact)
+    self.assertEqual(chnl.mlmd_artifact_type,
+                     _MyArtifact._construct_artifact_type())
     self.assertEqual(chnl.type_name, 'MyTypeName')
     self.assertCountEqual(chnl.get(), [instance_a, instance_b])
 

@@ -77,7 +77,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(component.id, "_BasicComponent")
     self.assertIs(input_channel, component.inputs["input"])
     self.assertIsInstance(component.outputs["output"], types.Channel)
-    self.assertEqual(component.outputs["output"].type, _OutputArtifact)
+    self.assertEqual(component.outputs["output"].mlmd_artifact_type,
+                     _OutputArtifact._construct_artifact_type())
     self.assertEqual(component.outputs["output"].type_name, "OutputArtifact")
 
   def testComponentSpecType(self):
@@ -185,12 +186,14 @@ class ComponentTest(tf.test.TestCase):
     recovered_component = json_utils.loads(json_dict)
     self.assertEqual(recovered_component.__class__, component.__class__)
     self.assertEqual(recovered_component.component_id, "_BasicComponent")
-    self.assertEqual(input_channel.type,
-                     recovered_component.inputs["input"].type)
+    self.assertEqual(input_channel.mlmd_artifact_type,
+                     recovered_component.inputs["input"].mlmd_artifact_type)
+    self.assertEqual(input_channel.type_name,
+                     recovered_component.inputs["input"].type_name)
     self.assertEqual(len(recovered_component.inputs["input"].get()), 1)
     self.assertIsInstance(recovered_component.outputs["output"], types.Channel)
-    self.assertEqual(recovered_component.outputs["output"].type,
-                     _OutputArtifact)
+    self.assertEqual(recovered_component.outputs["output"].mlmd_artifact_type,
+                     _OutputArtifact._construct_artifact_type())
     self.assertEqual(recovered_component.outputs["output"].type_name,
                      "OutputArtifact")
     self.assertEqual(recovered_component.driver_class, component.driver_class)

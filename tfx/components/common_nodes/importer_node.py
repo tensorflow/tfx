@@ -26,6 +26,7 @@ from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import node_common
 
@@ -85,8 +86,8 @@ class ImporterDriver(base_driver.BaseDriver):
     previous_artifacts = []
     for candidate_mlmd_artifact in unfiltered_previous_artifacts:
       is_candidate = True
-      candidate_artifact = destination_channel.type()
-      candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
+      candidate_artifact = artifact_utils.deserialize_artifact(
+          destination_channel.mlmd_artifact_type, candidate_mlmd_artifact)
       for key, value in properties.items():
         if getattr(candidate_artifact, key) != value:
           is_candidate = False
@@ -103,7 +104,8 @@ class ImporterDriver(base_driver.BaseDriver):
       if is_candidate:
         previous_artifacts.append(candidate_mlmd_artifact)
 
-    result = destination_channel.type()
+    result = artifact_utils.deserialize_artifact(
+        destination_channel.mlmd_artifact_type)
     result.uri = uri
     for key, value in properties.items():
       setattr(result, key, value)

@@ -54,13 +54,13 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
     model_blessing_channel_key = None
     assert len(source_channels) == 2, 'Expecting 2 input Channels'
     for k, c in source_channels.items():
-      if issubclass(c.type, standard_artifacts.Model):
+      if c.type_name == standard_artifacts.Model.TYPE_NAME:
         model_channel_key = k
-      elif issubclass(c.type, standard_artifacts.ModelBlessing):
+      elif c.type_name == standard_artifacts.ModelBlessing.TYPE_NAME:
         model_blessing_channel_key = k
       else:
         raise RuntimeError('Only expecting Model or ModelBlessing, got %s' %
-                           c.type)
+                           c.type_name)
     assert model_channel_key is not None, 'Expecting Model as input'
     assert model_blessing_channel_key is not None, ('Expecting ModelBlessing as'
                                                     ' input')

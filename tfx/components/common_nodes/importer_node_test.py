@@ -58,8 +58,8 @@ class ImporterNodeTest(tf.test.TestCase):
             },
         })
     self.assertEmpty(impt.inputs.get_all())
-    self.assertEqual(impt.outputs[importer_node.IMPORT_RESULT_KEY].type,
-                     standard_artifacts.Examples)
+    self.assertEqual(impt.outputs[importer_node.IMPORT_RESULT_KEY].type_name,
+                     standard_artifacts.Examples.TYPE_NAME)
 
   def testImporterNodeDumpsJsonRoundtrip(self):
     instance_name = 'my_importer'

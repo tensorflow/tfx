@@ -45,11 +45,14 @@ def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
 
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
-    INPUTS = dict([(arg, ChannelParameter(type=channel.type))
-                   for arg, channel in inputs.items()])
-    OUTPUTS = dict([(arg, ChannelParameter(type=channel.type))
-                    for arg, channel in outputs.items()] +
-                   [('output', ChannelParameter(type=output_type))])
+    INPUTS = dict([
+        (arg, ChannelParameter(mlmd_artifact_type=channel.mlmd_artifact_type))
+        for arg, channel in inputs.items()
+    ])
+    OUTPUTS = dict(
+        [(arg, ChannelParameter(mlmd_artifact_type=channel.mlmd_artifact_type))
+         for arg, channel in outputs.items()] +
+        [('output', ChannelParameter(type=output_type))])
 
   class _FakeComponent(base_component.BaseComponent):
 
