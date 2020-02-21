@@ -71,6 +71,10 @@ class ResolverDriver(base_driver.BaseDriver):
         pipeline_info=pipeline_info,
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
+    # TODO(b/148828122): This is a temporary walkaround for interactive mode.
+    for k, c in output_dict.items():
+      output_dict[k] = types.Channel(
+          type=c.type, artifacts=resolve_result.per_key_resolve_result[k])
     # Updates execution to reflect artifact resolution results and mark
     # as cached.
     self._metadata_handler.update_execution(

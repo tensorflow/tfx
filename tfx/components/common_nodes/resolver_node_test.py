@@ -80,16 +80,19 @@ class ResolverDriverTest(tf.test.TestCase):
           exec_properties={},
           contexts=contexts)
       driver = resolver_node.ResolverDriver(metadata_handler=m)
+      output_dict = self.source_channels.copy()
       execution_result = driver.pre_execution(
           component_info=self.component_info,
           pipeline_info=self.pipeline_info,
           driver_args=self.driver_args,
           input_dict=self.source_channels,
-          output_dict=self.source_channels.copy(),
+          output_dict=output_dict,
           exec_properties={
               resolver_node.RESOLVER_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {'desired_num_of_artifacts': 1}
+              resolver_node.RESOLVER_CONFIGS: {
+                  'desired_num_of_artifacts': 1
+              }
           })
       self.assertTrue(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)
@@ -97,11 +100,16 @@ class ResolverDriverTest(tf.test.TestCase):
           execution_result.exec_properties, {
               resolver_node.RESOLVER_CLASS:
                   latest_artifacts_resolver.LatestArtifactsResolver,
-              resolver_node.RESOLVER_CONFIGS: {'desired_num_of_artifacts': 1}
+              resolver_node.RESOLVER_CONFIGS: {
+                  'desired_num_of_artifacts': 1
+              }
           })
       self.assertEqual(
           execution_result.output_dict[self.source_channel_key][0].uri,
           existing_artifact.uri)
+      # TODO(b/148828122): Remove this after b/148828122 resolved.
+      self.assertEqual(output_dict[self.source_channel_key].get()[0].uri,
+                       existing_artifact.uri)
 
   def testResolveArtifactFailIncompleteResult(self):
     with metadata.Metadata(connection_config=self.connection_config) as m:
