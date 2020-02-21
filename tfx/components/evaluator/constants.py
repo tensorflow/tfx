@@ -34,9 +34,11 @@ ARTIFACT_PROPERTY_BASELINE_MODEL_ID_KEY = 'baseline_model_id'
 
 # Values for blessing results.
 BLESSED_VALUE = 1
+NOT_BLESSED_VALUE = 0
 
 # File names for blessing results.
 BLESSED_FILE_NAME = 'BLESSED'
+NOT_BLESSED_FILE_NAME = 'NOT_BLESSED'
 
 # Key for evaluation results in executor output_dict.
 EVALUATION_KEY = 'evaluation'
