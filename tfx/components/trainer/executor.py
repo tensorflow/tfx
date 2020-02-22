@@ -234,11 +234,10 @@ class GenericExecutor(base_executor.BaseExecutor):
     fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
     run_fn = self._GetFn(exec_properties, 'run_fn')
 
-    run_fn(fn_args)
-
     # Train the model
     absl.logging.info('Training model.')
     run_fn(fn_args)
+
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
     absl.logging.info('Training complete. Model written to %s',
