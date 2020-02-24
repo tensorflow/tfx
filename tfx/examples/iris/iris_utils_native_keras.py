@@ -113,7 +113,7 @@ def _build_keras_model() -> tf.keras.Model:
   model.compile(
       optimizer=keras.optimizers.Adam(lr=0.001),
       loss='sparse_categorical_crossentropy',
-      metrics=[keras.metrics.SparseCategoricalAccuracy(name='accuracy')])
+      metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
   model.summary(print_fn=absl.logging.info)
   return model
