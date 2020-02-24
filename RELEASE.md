@@ -12,6 +12,9 @@
     when reading `Artifact`s from ML Metadata (previously, objects of the
     generic `tfx.types.artifact.Artifact` class were created in some cases).
 *   Updated Evaluator's executor to support model validation.
+*   Introduced awareness of chief worker to Trainer's executor, in case running
+    in distributed training cluster.
+
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
 *   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.

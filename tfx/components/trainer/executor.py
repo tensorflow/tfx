@@ -52,9 +52,27 @@ TRANSFORM_GRAPH_KEY = 'transform_graph'
 # Key for output model in executor output_dict.
 OUTPUT_MODEL_KEY = 'model'
 
+# The name of environment variable to indicate distributed training cluster.
+_TF_CONFIG_ENV = 'TF_CONFIG'
+
 
 def _all_files_pattern(file_pattern: Text) -> Text:
   return os.path.join(file_pattern, '*')
+
+
+def _is_chief():
+  """Returns true if this is run in the master (chief) of training cluster."""
+  tf_config = json.loads(os.environ.get(_TF_CONFIG_ENV) or '{}')
+
+  # If non distributed mode, current process should always behave as chief.
+  if not tf_config or not tf_config.get('cluster', {}):
+    return True
+
+  task_type = tf_config['task']['type']
+  task_index = tf_config['task']['index']
+
+  # 'master' is a legacy notation of chief node in distributed training flock.
+  return task_type == 'chief' or (task_type == 'master' and task_index == 0)
 
 
 class TrainerFnArgs(object):
@@ -104,8 +122,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     if has_module_file == has_fn:
       raise ValueError(
-          'Neither or both of module file and user function have been supplied in '
-          "'exec_properties'.")
+          'Neither or both of module file and user function have been supplied '
+          "in 'exec_properties'.")
 
     if has_module_file:
       return import_utils.import_func_from_source(
@@ -238,6 +256,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     absl.logging.info('Training model.')
     run_fn(fn_args)
 
+    # Note: If trained with multi-node distribution workers, it is the user
+    # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
     absl.logging.info('Training complete. Model written to %s',
@@ -310,12 +330,9 @@ class Executor(GenericExecutor):
     absl.logging.info('Training complete.  Model written to %s',
                       fn_args.serving_model_dir)
 
-    # Export an eval savedmodel for TFMA
-    # For distributed training, master and worker(s) try to export multiple
-    # eval_savedmodels (b/147378113). To avoid that, only export
-    # eval_savedmodel if eval_model_dir does not exist as an intermediate
-    # solution until b/147378113 is resolved.
-    if not tf.io.gfile.exists(fn_args.eval_model_dir):
+    # Export an eval savedmodel for TFMA. If distributed training, it must only
+    # be written by the chief worker, as would be done for serving savedmodel.
+    if _is_chief():
       absl.logging.info('Exporting eval_savedmodel for TFMA.')
       tfma.export.export_eval_savedmodel(
           estimator=training_spec['estimator'],
@@ -324,3 +341,8 @@ class Executor(GenericExecutor):
 
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
+    else:
+      absl.logging.info(
+          'eval_savedmodel export for TFMA is skipped because '
+          'this is not the chief worker.'
+      )
