@@ -191,7 +191,33 @@ class Executor(base_executor.BaseExecutor):
       absl.logging.info('Using {} for model eval.'.format(models.model_path))
 
     absl.logging.info('Evaluating model.')
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     with self._make_beam_pipeline() as pipeline:
+      print('#####################')
+
+      def print_row(row):
+        print('$$$$$$$')
+        print(row)
+
+      train_pp = io_utils.all_files_pattern(
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                       'train'))
+      eval_pp = io_utils.all_files_pattern(
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                       'eval'))
+      print(train_pp)
+      _ = (
+          pipeline
+          | 'ReadData' >> beam.io.ReadFromTFRecord(file_pattern=train_pp)
+          | beam.combiners.Count.Globally()
+          | beam.Map(print_row))
+      print(eval_pp)
+      _ = (
+          pipeline
+          | 'ReadData' >> beam.io.ReadFromTFRecord(file_pattern=eval_pp)
+          | beam.combiners.Count.Globally()
+          | beam.Map(print_row))
+
       # pylint: disable=expression-not-assigned
       (pipeline
        | 'ReadData' >> beam.io.ReadFromTFRecord(
@@ -206,6 +232,12 @@ class Executor(base_executor.BaseExecutor):
            slice_spec=slice_spec))
     absl.logging.info(
         'Evaluation complete. Results written to {}.'.format(output_uri))
+
+    print('%%%%%%%%%%%%')
+    validation = os.path.join(output_uri, 'validations')
+    if tf.io.gfile.exists(validation):
+      print(tfma.load_validation_result(validation))
+      print(tfma.load_eval_result(output_uri))
 
     if not run_validation:
       # TODO(jinhuang): delete the BLESSING_KEY from output_dict when supported.
