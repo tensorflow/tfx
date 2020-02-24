@@ -403,7 +403,6 @@ class BaseKubeflowTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root(pipeline_name),
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=components,
-        log_root='/var/tmp/tfx/logs',
         additional_pipeline_args={
             # Use a fixed WORKFLOW_ID (which is used as run id) for testing,
             # for the purpose of making debugging easier.

@@ -42,6 +42,7 @@ from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import dsl_utils
+from tfx.utils import path_utils
 
 
 class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
@@ -198,35 +199,69 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""
     pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
-    pipeline = self._create_pipeline(pipeline_name, [
-        self.schema_importer,
-        self.transformed_examples_importer,
-        self.transform_graph_importer,
-        Trainer(
-            custom_executor_spec=executor_spec.ExecutorClassSpec(
-                ai_platform_trainer_executor.Executor),
-            module_file=self._trainer_module,
-            transformed_examples=self.transformed_examples_importer
-            .outputs['result'],
-            schema=self.schema_importer.outputs['result'],
-            transform_graph=self.transform_graph_importer.outputs['result'],
-            train_args=trainer_pb2.TrainArgs(num_steps=10),
-            eval_args=trainer_pb2.EvalArgs(num_steps=5),
-            custom_config={
-                ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
-                    'project':
-                        self._gcp_project_id,
-                    'region':
-                        self._gcp_region,
-                    'jobDir':
-                        os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
-                    'masterConfig': {
-                        'imageUri': self._container_image,
+    pipeline = self._create_pipeline(
+        pipeline_name,
+        [
+            self.schema_importer,
+            self.transformed_examples_importer,
+            self.transform_graph_importer,
+            Trainer(
+                custom_executor_spec=executor_spec.ExecutorClassSpec(
+                    ai_platform_trainer_executor.Executor),
+                module_file=self._trainer_module,
+                transformed_examples=self.transformed_examples_importer
+                .outputs['result'],
+                schema=self.schema_importer.outputs['result'],
+                transform_graph=self.transform_graph_importer.outputs['result'],
+                train_args=trainer_pb2.TrainArgs(num_steps=10),
+                eval_args=trainer_pb2.EvalArgs(num_steps=5),
+                custom_config={
+                    # Test that distributed training is behaves properly.
+                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
+                        'project':
+                            self._gcp_project_id,
+                        'region':
+                            self._gcp_region,
+                        'jobDir':
+                            os.path.join(
+                                self._pipeline_root(pipeline_name), 'tmp'),
+                        'masterConfig': {
+                            'imageUri': self._container_image,
+                        },
+                        'scaleTier':
+                            'CUSTOM',
+                        'masterType':
+                            'large_model',
+                        'parameterServerType':
+                            'standard',
+                        'parameterServerCount':
+                            1,
+                        'workerType':
+                            'standard',
+                        'workerCount':
+                            2,
                     }
-                }
-            }),
-    ])
+                })
+        ])
     self._compile_and_run_pipeline(pipeline)
+
+    # There must be only one execution of Trainer.
+    trainer_output_base_dir = os.path.join(
+        self._pipeline_root(pipeline_name), 'Trainer', 'model')
+    trainer_outputs = tf.io.gfile.listdir(trainer_output_base_dir)
+    self.assertEqual(1, len(trainer_outputs))
+
+    # There must be only one saved models each for serving and eval.
+    model_uri = os.path.join(trainer_output_base_dir, trainer_outputs[0])
+    self.assertEqual(
+        1, len(tf.io.gfile.listdir(path_utils.eval_model_dir(model_uri))))
+    self.assertEqual(
+        1,
+        len(
+            tf.io.gfile.listdir(
+                os.path.join(
+                    path_utils.serving_model_dir(model_uri), 'export',
+                    'chicago-taxi'))))
 
   # TODO(muchida): Identify more model types to ensure models trained in TF 2
   # works with CAIP prediction service.

@@ -283,7 +283,10 @@ def trainer_fn(trainer_fn_args, schema):
       name='chicago-taxi-eval')
 
   run_config = tf.estimator.RunConfig(
-      save_checkpoints_steps=999, keep_checkpoint_max=1)
+      save_checkpoints_steps=999,
+      # keep_checkpoint_max must be more than the number of worker replicas
+      # nodes if training distributed, in order to avoid race condition.
+      keep_checkpoint_max=5)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
   warm_start_from = trainer_fn_args.base_model
@@ -329,6 +332,8 @@ def run_fn(fn_args: executor.TrainerFnArgs):
                     fn_args.serving_model_dir)
 
   # Export an eval savedmodel for TFMA
+  # NOTE: When trained in distributed training cluster, eval_savedmodel must be
+  # exported only by the chief worker.
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
   tfma.export.export_eval_savedmodel(
       estimator=training_spec['estimator'],
