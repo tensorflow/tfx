@@ -6,7 +6,8 @@ Here is short summary of the example codes, status and known restrictions:
 
 *   This example does not use the Estimator API for model training/evaluation.
 
-*   The trainer must be configured with TFX [Generic Trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
+*   The trainer must be configured with TFX [Generic Trainer]
+    (https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
 *   Model validation (will be supported in tfma v2 Evaluator) and Pusher
     component are WIP.
