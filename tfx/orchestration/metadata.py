@@ -584,6 +584,9 @@ class Metadata(object):
       component_run_context.id = context_ids[-1]
     except tf.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
+      absl.logging.info(
+          'Component run context already exists. Reusing the context %s.',
+          component_run_context.name)
       [previous_execution] = self.store.get_executions_by_context(
           context_id=component_run_context.id)
       execution.id = previous_execution.id
