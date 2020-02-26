@@ -104,7 +104,7 @@ eval_result = tfma.load_eval_result(output_path=tfma_eval_result_path)
 ```python
 from tensorflow_model_analysis.addons.fairness.view import widget_view
 
-widget_view.render_fairness_indicator(eval_result)
+widget_view.render_fairness_indicator(eval_result=eval_result)
 ```
 
 ![Fairness Indicators](images/fairnessIndicators.png)
