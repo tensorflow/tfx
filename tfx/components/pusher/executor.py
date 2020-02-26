@@ -66,7 +66,8 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts:
-        - model_blessing: A `ModelBlessing` artifact from model validator.
+        - model_blessing: A `ModelBlessing` artifact from model validator or
+          evaluator.
           Pusher looks for a custom property `blessed` in the artifact to check
           it is safe to push.
         - infra_blessing: An `InfraBlessing` artifact from infra validator.
@@ -81,7 +82,7 @@ class Executor(base_executor.BaseExecutor):
         input_dict[MODEL_BLESSING_KEY])
     # TODO(jyzhao): should this be in driver or executor.
     if not model_utils.is_model_blessed(model_blessing):
-      logging.info('Model on %s was not blessed by model validator',
+      logging.info('Model on %s was not blessed by model validation',
                    model_blessing.uri)
       return False
     if INFRA_BLESSING_KEY in input_dict:

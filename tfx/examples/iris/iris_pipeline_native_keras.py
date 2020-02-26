@@ -27,16 +27,23 @@ import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
+from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'iris_native_keras'
@@ -48,6 +55,9 @@ _data_root = os.path.join(_iris_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_iris_root, 'iris_utils_native_keras.py')
+# Path which can be listened to by the model server.  Pusher will output the
+# trained model here.
+_serving_model_dir = os.path.join(_iris_root, 'serving_model', _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the flowers
 # example code and metadata library is relative to $HOME, but you can store
@@ -60,8 +70,9 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
+                     module_file: Text, serving_model_dir: Text,
+                     metadata_path: Text,
+                     direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the Iris flowers pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -96,15 +107,49 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
-  # Uses TFMA to compute a evaluation statistics over features of a model.
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[
+          tfma.ModelSpec(name='candidate', label_key='variety'),
+          tfma.ModelSpec(
+              name='baseline', label_key='variety', is_baseline=True)
+      ],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='SparseCategoricalAccuracy',
+                  threshold=tfma.config.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.9}),
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-10})))
+          ])
+      ])
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      eval_config=tfma.EvalConfig(
-          model_specs=[tfma.ModelSpec(label_key='variety')],
-          slicing_specs=[tfma.SlicingSpec(feature_keys=['sepal_length'])]))
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
 
-  # TODO(jyzhao): support model validation in evaluator and pusher component.
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=model_analyzer.outputs['blessing'],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
@@ -116,11 +161,15 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           validate_stats,
           transform,
           trainer,
+          model_resolver,
           model_analyzer,
+          pusher,
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
+      # TODO(b/142684737): The multi-processing API might change.
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )
 
 
@@ -134,4 +183,8 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
-          metadata_path=_metadata_path))
+          serving_model_dir=_serving_model_dir,
+          metadata_path=_metadata_path,
+          # 0 means auto-detect based on on the number of CPUs available during
+          # execution time.
+          direct_num_workers=0))
