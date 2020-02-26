@@ -20,6 +20,7 @@
 *   Changed python_version to 3.7 when using TF 1.15 and later for Cloud AI Platform Prediction.
 *   Added 'tfx_runner' label for CAIP, BQML and Dataflow jobs submitted from
     TFX components.
+*   Fixed the Taxi Colab notebook.
 
 ### Deprecations
 
