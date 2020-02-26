@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TFT benchmark."""
+"""TFT benchmark base."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,6 @@ import time
 
 # Standard Imports
 
-from absl import flags
 from absl import logging
 import apache_beam as beam
 from apache_beam.runners.portability import fn_api_runner
@@ -43,8 +42,6 @@ from google.protobuf import text_format
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.benchmarks import benchmark_utils
-
-FLAGS = flags.FLAGS
 
 
 class _CopySavedModel(beam.PTransform):
@@ -190,12 +187,12 @@ def _get_batched_records(dataset):
   return batch_size, benchmark_utils.batched_iterator(records, batch_size)
 
 
-class TFTBenchmark(test.Benchmark):
-  """TFT benchmark."""
+class TFTBenchmarkBase(test.Benchmark):
+  """TFT benchmark base class."""
 
-  def __init__(self):
-    super(TFTBenchmark, self).__init__()
-    self._dataset = benchmark_utils.get_dataset(FLAGS.dataset)
+  def __init__(self, dataset, **kwargs):
+    super(TFTBenchmarkBase, self).__init__()
+    self._dataset = dataset
 
   def benchmarkAnalyzeAndTransformDataset(self):
     """Benchmark AnalyzeAndTransformDataset.
@@ -217,8 +214,6 @@ class TFTBenchmark(test.Benchmark):
     delta = end - start
 
     self.report_benchmark(
-        name=benchmark_utils.with_dataset_prefix(
-            "benchmarkAnalyzeAndTransformDataset", FLAGS.dataset),
         iters=1,
         wall_time=delta,
         extras={"num_examples": self._dataset.num_examples()})
@@ -247,8 +242,6 @@ class TFTBenchmark(test.Benchmark):
     end = time.time()
     delta = end - start
     self.report_benchmark(
-        name=benchmark_utils.with_dataset_prefix(
-            "benchmarkRunMetaGraphDoFnManualActuation", FLAGS.dataset),
         iters=1,
         wall_time=delta,
         extras={
@@ -304,16 +297,9 @@ class TFTBenchmark(test.Benchmark):
     delta = end - start
 
     self.report_benchmark(
-        name=benchmark_utils.with_dataset_prefix(
-            "benchmarkRunMetagraphDoFnAtTFLevel", FLAGS.dataset),
         iters=1,
         wall_time=delta,
         extras={
             "batch_size": batch_size,
             "num_examples": self._dataset.num_examples()
         })
-
-
-if __name__ == "__main__":
-  flags.DEFINE_string("dataset", "chicago_taxi", "Dataset to run on.")
-  test.main()

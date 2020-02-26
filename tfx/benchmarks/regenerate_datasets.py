@@ -20,7 +20,7 @@ from absl import flags
 from absl import logging
 
 from tfx.benchmarks import benchmark_utils
-from tfx.benchmarks import tft_benchmark
+from tfx.benchmarks import tft_benchmark_base
 
 FLAGS = flags.FLAGS
 
@@ -38,7 +38,7 @@ def main(argv):
 
   # Regenerate intermediate outputs for TFT benchmarks.
   logging.info("Generating intermediate outputs for TFT benchmarks")
-  tft_benchmark.regenerate_intermediates_for_dataset(dataset)
+  tft_benchmark_base.regenerate_intermediates_for_dataset(dataset)
 
 
 if __name__ == "__main__":
