@@ -20,11 +20,6 @@ from __future__ import print_function
 import importlib
 
 
-def with_dataset_prefix(name, dataset):
-  """Returns a benchmark name with the dataset name prefixed."""
-  return "dataset[%s].%s" % (dataset, name)
-
-
 def get_dataset(name):
   """Imports the given dataset and returns an instance of it."""
   lib = importlib.import_module("..datasets.%s.dataset" % name, __name__)
