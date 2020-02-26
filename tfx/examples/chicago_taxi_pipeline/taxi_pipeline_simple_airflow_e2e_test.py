@@ -154,6 +154,7 @@ class AirflowEndToEndTest(unittest.TestCase):
         'CsvExampleGen',
         'Evaluator',
         'ExampleValidator',
+        'InfraValidator',
         'Pusher',
         'SchemaGen',
         'StatisticsGen',
@@ -181,9 +182,21 @@ class AirflowEndToEndTest(unittest.TestCase):
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
+    tfx_root = os.path.join(self._airflow_home, 'tfx')
+    self._pipeline_root = os.path.join(tfx_root, 'pipelines', self._dag_id)
+
     # Initialize database.
     _ = subprocess.check_output(['airflow', 'initdb'])
     _ = subprocess.check_output(['airflow', 'unpause', self._dag_id])
+
+  def assertInfraValidatorPassed(self) -> None:
+    blessing_path = os.path.join(self._pipeline_root, 'InfraValidator',
+                                 'blessing')
+    executions = tf.io.gfile.listdir(blessing_path)
+    self.assertGreaterEqual(len(executions), 1)
+    for exec_id in executions:
+      blessed = os.path.join(blessing_path, exec_id, 'INFRA_BLESSED')
+      self.assertTrue(tf.io.gfile.exists(blessed))
 
   def testSimplePipeline(self):
     _ = subprocess.check_output([
@@ -219,6 +232,8 @@ class AirflowEndToEndTest(unittest.TestCase):
         else:
           self.fail('No pending tasks in %s finished within %d secs' %
                     (pending_tasks, _MAX_TASK_STATE_CHANGE_SEC))
+
+      self.assertInfraValidatorPassed()
 
   def tearDown(self):
     super(AirflowEndToEndTest, self).tearDown()

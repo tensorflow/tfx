@@ -55,11 +55,6 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     self._model_name = 'chicago-taxi'
     self._model_path = path_utils.serving_model_path(self._model.uri)
 
-    # Mock _find_available_port
-    patcher = mock.patch.object(local_docker_runner, '_find_available_port')
-    patcher.start().return_value = 1234
-    self.addCleanup(patcher.stop)
-
     # Mock docker.DockerClient
     patcher = mock.patch('docker.DockerClient')
     self._docker_client = patcher.start().return_value
@@ -95,11 +90,11 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     _, run_kwargs = self._docker_client.containers.run.call_args
     self.assertDictContainsSubset(dict(
         image='tensorflow/serving:1.15.0',
-        ports={'8500/tcp': 1234},
         environment={
             'MODEL_NAME': 'chicago-taxi',
             'MODEL_BASE_PATH': '/model'
         },
+        publish_all_ports=True,
         auto_remove=True,
         detach=True
     ), run_kwargs)
@@ -117,12 +112,21 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     self.assertEqual(
         str(err.exception), 'You cannot start model server multiple times.')
 
-  def testGetEndpoint_AfterStart(self):
+  @mock.patch('time.time')
+  def testGetEndpoint_AfterWaitUntilRunning(self, mock_time):
     # Prepare mocks and variables.
     runner = self._CreateLocalDockerRunner()
+    mock_time.side_effect = list(range(10))
+    container = self._docker_client.containers.run.return_value
+    container.status = 'running'
+    container.ports = {
+        '8500/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '1234'}],  # gRPC port.
+        '8501/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '5678'}]   # REST port.
+    }
 
     # Act.
     runner.Start()
+    runner.WaitUntilRunning(deadline=10)
     endpoint = runner.GetEndpoint()
 
     # Check result.

@@ -24,6 +24,7 @@ from __future__ import print_function
 
 import absl
 import tensorflow as tf
+from tensorflow import keras
 import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
 
@@ -118,18 +119,20 @@ def _keras_model_builder():
   Returns:
     A keras Model.
   """
+  # The model below is built with Functional API, please refer to
+  # https://www.tensorflow.org/guide/keras/overview for all API options.
+  inputs = [tf.keras.layers.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
+  d = keras.layers.concatenate(inputs)
+  for _ in range(3):
+    d = keras.layers.Dense(8, activation='relu')(d)
+  outputs = keras.layers.Dense(3, activation='softmax')(d)
 
-  l = tf.keras.layers
-  opt = tf.keras.optimizers
-  inputs = [l.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
-  input_layer = l.concatenate(inputs)
-  d1 = l.Dense(8, activation='relu')(input_layer)
-  output = l.Dense(3, activation='softmax')(d1)
-  model = tf.keras.Model(inputs=inputs, outputs=output)
+  model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
+      optimizer=keras.optimizers.Adam(lr=0.0005),
       loss='sparse_categorical_crossentropy',
-      optimizer=opt.Adam(lr=0.001),
-      metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+      metrics=[keras.metrics.SparseCategoricalAccuracy()])
+
   model.summary(print_fn=absl.logging.info)
   return model
 
@@ -150,8 +153,8 @@ def trainer_fn(trainer_fn_args, schema):
       - eval_input_receiver_fn: Input function for eval.
   """
 
-  train_batch_size = 40
-  eval_batch_size = 40
+  train_batch_size = 20
+  eval_batch_size = 10
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
