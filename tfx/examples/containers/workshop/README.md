@@ -17,7 +17,7 @@ running the workshop.
 
 ```bash
 git clone https://github.com/tensorflow/workshops.git
-cd tfx_airflow
+cd workshops/tfx_airflow
 source host_start.sh
 ```
 
