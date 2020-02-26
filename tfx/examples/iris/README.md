@@ -20,11 +20,10 @@ source ./iris/bin/activate
 Next, install the dependencies required by the Iris example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow==2.1
 pip install tfx==0.21.0
 </pre>
 
-Note that you need to install from head before 0.21 release:
+Note that for native Keras example, you need to install from head before 0.21.1:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
@@ -42,8 +41,3 @@ Execute the pipeline python file and output can be found at `~/tfx`:
 <pre class="devsite-terminal devsite-click-to-copy">
 python ~/iris/iris_pipeline_XXX.py
 </pre>
-
-## Things not work with Native Keras
-
-*  Model validation (will be supported in tfma v2 Evaluator) and Pusher
-   component are WIP.
