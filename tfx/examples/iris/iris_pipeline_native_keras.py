@@ -24,6 +24,7 @@ from typing import Text
 import absl
 import tensorflow_model_analysis as tfma
 
+from tfx.components import BulkInferrer
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -39,6 +40,8 @@ from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.proto import bulk_inferrer_pb2
+from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
@@ -151,6 +154,25 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  # Brings inference data into the pipeline.
+  inference_example_gen = CsvExampleGen(
+      input=examples,
+      output_config=example_gen_pb2.Output(
+          split_config=example_gen_pb2.SplitConfig(splits=[
+              example_gen_pb2.SplitConfig.Split(
+                  name='unlabelled', hash_buckets=100)
+          ])),
+      instance_name='inference_example_gen')
+
+  # Performs offline batch inference over inference examples.
+  bulk_inferrer = BulkInferrer(
+      examples=inference_example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      model_blessing=model_analyzer.outputs['blessing'],
+      # Empty data_spec.example_splits will result in using all splits.
+      data_spec=bulk_inferrer_pb2.DataSpec(),
+      model_spec=bulk_inferrer_pb2.ModelSpec())
+
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
@@ -164,6 +186,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           model_resolver,
           model_analyzer,
           pusher,
+          inference_example_gen,
+          bulk_inferrer,
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(

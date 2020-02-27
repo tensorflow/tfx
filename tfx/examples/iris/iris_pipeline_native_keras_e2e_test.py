@@ -64,6 +64,8 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('StatisticsGen')
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
+    self.assertExecutedOnce('CsvExampleGen.inference_example_gen')
+    self.assertExecutedOnce('BulkInferrer')
 
   def testIrisPipelineNativeKeras(self):
     BeamDagRunner().run(
@@ -78,7 +80,7 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    expected_execution_count = 9  # 8 components + 1 resolver
+    expected_execution_count = 11  # 10 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
@@ -103,7 +105,7 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     # All executions but Evaluator and Pusher are cached.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is increased by 3 caused by Evaluator and Pusher.
-      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      self.assertEqual(artifact_count + 4, len(m.store.get_artifacts()))
       artifact_count = len(m.store.get_artifacts())
       self.assertEqual(expected_execution_count * 2,
                        len(m.store.get_executions()))
