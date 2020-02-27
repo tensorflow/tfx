@@ -49,8 +49,8 @@ _data_root = os.path.join(_mnist_root, 'data-mnist-small')
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_mnist_root, 'mnist_utils_native_keras.py')
 
-# Directory and data locations.  This example assumes all of the flowers
-# example code and metadata library is relative to $HOME, but you can store
+# Directory and data locations.  This example assumes all of the example
+# code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
