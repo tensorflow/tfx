@@ -107,6 +107,8 @@ def _copy_and_replace_placeholder_dir(src: Text, dst: Text,
         continue
       _copy_and_replace_placeholder_dir(src_path, dst_path, replace_dict)
     else:  # a file.
+      if f.endswith('.pyc'):  # Excludes .pyc
+        continue
       _copy_and_replace_placeholder_file(src_path, dst_path, replace_dict)
 
 
