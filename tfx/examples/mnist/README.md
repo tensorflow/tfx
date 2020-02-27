@@ -23,7 +23,7 @@ Here is short summary of the example codes, status and known restrictions:
     independently written tools can be used to generate the tfrecords from
     images. See [Preparing MNIST
     data](https://docs.databricks.com/applications/deep-learning/data-prep/tensorflow-to-tfrecords.html#prepare-mnist-data-for-distributed-dl-notebook)
-    from one such publicly available set of instructions.
+    for one such publicly available set of instructions.
 
 ## Instruction
 
