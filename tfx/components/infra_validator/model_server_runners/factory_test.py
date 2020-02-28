@@ -58,7 +58,8 @@ class FactoryTest(tf.test.TestCase):
         'tensorflow_serving': {
             'tags': ['1.15.0']
         },
-        'local_docker': {}
+        'local_docker': {},
+        'model_name': 'chicago-taxi',
     })
 
     # Run factory.
@@ -74,7 +75,8 @@ class FactoryTest(tf.test.TestCase):
         'tensorflow_serving': {
             'tags': ['1.14.0', '1.15.0']
         },
-        'local_docker': {}
+        'local_docker': {},
+        'model_name': 'chicago-taxi',
     })
 
     # Run factory.
@@ -89,7 +91,8 @@ class FactoryTest(tf.test.TestCase):
     spec = _create_serving_spec({
         'tensorflow_serving': {
             'tags': ['1.15.0']
-        }
+        },
+        'model_name': 'chicago-taxi',
     })
 
     with self.assertRaises(NotImplementedError):

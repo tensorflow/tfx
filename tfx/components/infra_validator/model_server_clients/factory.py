@@ -18,14 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-import os
 from typing import Callable, Text
 
 from tfx.components.infra_validator.model_server_clients import base_client
 from tfx.components.infra_validator.model_server_clients import tensorflow_serving_client
 from tfx.proto import infra_validator_pb2
-from tfx.types import standard_artifacts
-from tfx.utils import path_utils
 
 # ClientFactory gets endpoint as an argument and returns BaseModelServerClient.
 ClientFactory = Callable[[Text], base_client.BaseModelServerClient]
@@ -34,7 +31,6 @@ TENSORFLOW_SERVING = 'tensorflow_serving'
 
 
 def make_client_factory(
-    model: standard_artifacts.Model,
     serving_spec: infra_validator_pb2.ServingSpec) -> ClientFactory:
   """Creates ClientFactory from Model artifact and ServingSpec configuration.
 
@@ -42,7 +38,6 @@ def make_client_factory(
   ModelServerClient class. (1on1 mapping)
 
   Args:
-    model: A `Model` artifact.
     serving_spec: A `ServingSpec` configuration.
 
   Returns:
@@ -54,10 +49,8 @@ def make_client_factory(
     raise ValueError('serving_binary must be set.')
 
   if serving_binary == TENSORFLOW_SERVING:
-    model_name = os.path.basename(
-        os.path.dirname(path_utils.serving_model_path(model.uri)))
     return functools.partial(
         tensorflow_serving_client.TensorFlowServingClient,
-        model_name=model_name)
+        model_name=serving_spec.model_name)
   else:
     raise NotImplementedError('{} is not supported'.format(serving_binary))

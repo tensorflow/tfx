@@ -34,10 +34,10 @@ ModelState = base_client.ModelState
 LocalDockerModelServerRunner = local_docker_runner.LocalDockerModelServerRunner
 
 
-def _create_local_docker_config(payload: Dict[Text, Any]):
-  config = LocalDockerConfig()
-  json_format.ParseDict(payload, config)
-  return config
+def _make_serving_spec(payload: Dict[Text, Any]):
+  result = infra_validator_pb2.ServingSpec()
+  json_format.ParseDict(payload, result)
+  return result
 
 
 class LocalDockerRunnerTest(tf.test.TestCase):
@@ -79,7 +79,12 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     return LocalDockerModelServerRunner(
         model=self.model,
         image_uri=image_uri,
-        config=_create_local_docker_config(config_dict or {}),
+        serving_spec=_make_serving_spec({
+            'tensorflow_serving': {
+                'tags': ['2.0.0']},
+            'local_docker': config_dict or {},
+            'model_name': 'chicago-taxi',
+        }),
         client_factory=self.client_factory
     )
 

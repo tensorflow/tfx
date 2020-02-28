@@ -35,6 +35,8 @@ from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+_DEFAULT_MODEL_NAME = 'infra-validation-model'
+
 # Filename of infra blessing artifact on succeed.
 BLESSED = 'INFRA_BLESSED'
 # Filename of infra blessing artifact on fail.
@@ -72,11 +74,16 @@ class Executor(base_executor.BaseExecutor):
         - `validation_spec`: Serialized `ValidationSpec` configuration.
         - `request_spec`: Serialized `RequestSpec` configuration.
     """
+    self._log_startup(input_dict, output_dict, exec_properties)
+
     model = artifact_utils.get_single_instance(input_dict['model'])
     blessing = artifact_utils.get_single_instance(output_dict['blessing'])
 
     serving_spec = infra_validator_pb2.ServingSpec()
     json_format.Parse(exec_properties['serving_spec'], serving_spec)
+    if not serving_spec.model_name:
+      serving_spec.model_name = _DEFAULT_MODEL_NAME
+
     validation_spec = infra_validator_pb2.ValidationSpec()
     json_format.Parse(exec_properties['validation_spec'], validation_spec)
 
