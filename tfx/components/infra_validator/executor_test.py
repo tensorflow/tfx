@@ -99,7 +99,8 @@ class ExecutorTest(tf.test.TestCase):
             'tensorflow_serving': {
                 'tags': ['1.15.0']
             },
-            'local_docker': {}
+            'local_docker': {},
+            'model_name': 'chicago-taxi',
         }),
         'validation_spec': json.dumps({
             'max_loading_time_seconds': 10

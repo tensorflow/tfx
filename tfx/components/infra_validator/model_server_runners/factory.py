@@ -55,12 +55,12 @@ def _create_local_docker_runners(
     model: standard_artifacts.Model,
     serving_spec: infra_validator_pb2.ServingSpec,
 ) -> Iterable[base_runner.BaseModelServerRunner]:
-  client_factory = factory.make_client_factory(model, serving_spec)
+  client_factory = factory.make_client_factory(serving_spec)
   for image_uri in _build_docker_uris(serving_spec):
     yield local_docker_runner.LocalDockerModelServerRunner(
         model=model,
         image_uri=image_uri,
-        config=serving_spec.local_docker,
+        serving_spec=serving_spec,
         client_factory=client_factory)
 
 

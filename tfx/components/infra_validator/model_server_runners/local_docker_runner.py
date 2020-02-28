@@ -52,11 +52,12 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
 
   def __init__(self, model: standard_artifacts.Model,
                image_uri: Text,
-               config: infra_validator_pb2.LocalDockerConfig,
+               serving_spec: infra_validator_pb2.ServingSpec,
                client_factory: factory.ClientFactory):
     self._model_dir = os.path.dirname(path_utils.serving_model_path(model.uri))
     self._image_uri = image_uri
-    self._docker = self._MakeDockerClientFromConfig(config)
+    self._serving_spec = serving_spec
+    self._docker = self._MakeDockerClientFromConfig(serving_spec.local_docker)
     self._client_factory = client_factory
     self._container = None
     self._client = None
@@ -84,7 +85,11 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
     if self._container:
       raise RuntimeError('You cannot start model server multiple times.')
 
-    model_name = os.path.basename(self._model_dir)
+    # TODO(jjong): Current implementation assumes tensorflow serving image.
+    # Needs refactoring.
+    model_name = self._serving_spec.model_name
+    if model_name != os.path.basename(self._model_dir):
+      raise ValueError('model_name does not match Model artifact directory.')
     grpc_port = self._FindAvailablePort()
     endpoint = 'localhost:{}'.format(grpc_port)
 

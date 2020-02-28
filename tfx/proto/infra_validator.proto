@@ -43,6 +43,22 @@ message ServingSpec {
   oneof serving_platform {
     LocalDockerConfig local_docker = 2;
   }
+
+  // Optional.
+  // `model_name` is the identifier of the model in the serving platform. If
+  // your infra validation depends on the name heavily (e.g. TensorFlow Serving
+  // requires your model to be stored under the directory structure
+  // `model_name/version`), use this field to set it accordingly. If you're
+  // using TensorFlow Estimator API in the trainer, this is the name of your
+  // exporter.
+  // If not specified, infra validator will assign some default value and use it
+  // consistently throughout the validation.
+  //
+  // For TensorFlow Serving: if `model_name` is not specified or your exported
+  // model path does not comply with TensorFlow Serving directory structure
+  // (i.e. stored under `model_name/version`), your model will be copied to
+  // a temporary directory during validation.
+  string model_name = 4;
 }
 
 // TensorFlow Serving docker image (tensorflow/serving) for serving binary.

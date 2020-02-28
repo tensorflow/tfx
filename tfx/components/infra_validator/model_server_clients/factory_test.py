@@ -51,11 +51,14 @@ class FactoryTest(tf.test.TestCase):
   def testGetTensorFlowServingClientFactory(self, mock_client_cls):
     # Prepare serving binary with tensorflow_serving.
     serving_binary = self._CreateServingSpec({
-        'tensorflow_serving': {}
+        'tensorflow_serving': {
+            'tags': ['2.0.0']
+        },
+        'model_name': self.model_name,
     })
 
     # Make client.
-    client_factory = factory.make_client_factory(self.model, serving_binary)
+    client_factory = factory.make_client_factory(serving_binary)
     client_factory('localhost:1234')
 
     # Check client.
@@ -67,7 +70,7 @@ class FactoryTest(tf.test.TestCase):
 
     # Make client.
     with self.assertRaises(ValueError) as err:
-      factory.make_client_factory(self.model, serving_binary)
+      factory.make_client_factory(serving_binary)
 
     # Check exception.
     self.assertEqual(str(err.exception), 'serving_binary must be set.')
