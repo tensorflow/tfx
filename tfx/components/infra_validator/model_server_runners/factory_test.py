@@ -29,7 +29,7 @@ from tfx.components.infra_validator.model_server_runners import local_docker_run
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
 
-LocalDockerModelServerRunner = local_docker_runner.LocalDockerModelServerRunner
+LocalDockerModelServerRunner = local_docker_runner.LocalDockerRunner
 
 
 def _create_serving_spec(serving_spec_dict: Dict[Text, Any]):

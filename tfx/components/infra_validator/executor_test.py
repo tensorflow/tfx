@@ -29,8 +29,6 @@ from tfx.components.infra_validator.model_server_runners import local_docker_run
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
-LocalDockerModelServerRunner = local_docker_runner.LocalDockerModelServerRunner
-
 
 class ExecutorTest(tf.test.TestCase):
 
@@ -39,10 +37,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Setup Mocks
 
-    runner_patcher = mock.patch(
-        'tfx.components.infra_validator'
-        '.model_server_runners.local_docker_runner'
-        '.LocalDockerModelServerRunner')
+    runner_patcher = mock.patch.object(local_docker_runner, 'LocalDockerRunner')
     self.model_server = runner_patcher.start().return_value
     self.addCleanup(runner_patcher.stop)
 

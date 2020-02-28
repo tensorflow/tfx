@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from typing import Iterable
 
-from tfx.components.infra_validator.model_server_clients import factory
+from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
@@ -43,35 +43,16 @@ def create_model_server_runners(
   Returns:
     An iterable of `BaseModelServerRunner`.
   """
+  result = []
   platform_kind = serving_spec.WhichOneof('serving_platform')
   if platform_kind == 'local_docker':
-    return _create_local_docker_runners(model, serving_spec)
+    for binary_kind in binary_kinds.parse_binary_kinds(serving_spec):
+      result.append(local_docker_runner.LocalDockerRunner(
+          model=model,
+          binary_kind=binary_kind,
+          serving_spec=serving_spec
+      ))
   else:
     raise NotImplementedError('{} platform is not yet supported'
                               .format(platform_kind))
-
-
-def _create_local_docker_runners(
-    model: standard_artifacts.Model,
-    serving_spec: infra_validator_pb2.ServingSpec,
-) -> Iterable[base_runner.BaseModelServerRunner]:
-  client_factory = factory.make_client_factory(serving_spec)
-  for image_uri in _build_docker_uris(serving_spec):
-    yield local_docker_runner.LocalDockerModelServerRunner(
-        model=model,
-        image_uri=image_uri,
-        serving_spec=serving_spec,
-        client_factory=client_factory)
-
-
-def _build_docker_uris(serving_spec):
-  binary_kind = serving_spec.WhichOneof('serving_binary')
-  if binary_kind == 'tensorflow_serving':
-    for tag in serving_spec.tensorflow_serving.tags:
-      yield 'tensorflow/serving:{}'.format(tag)
-    for digest in serving_spec.tensorflow_serving.digests:
-      yield 'tensorflow/serving@{}'.format(digest)
-  else:
-    raise NotImplementedError('{} binary is not yet supported'
-                              .format(binary_kind))
-
+  return result
