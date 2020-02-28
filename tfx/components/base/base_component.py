@@ -131,14 +131,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
                 self.__class__.__name__, self.spec, self.executor_spec,
                 self.driver_class, self.id, self.inputs, self.outputs)
 
-  def to_json_dict(self) -> Dict[Text, Any]:
-    return {
-        _DRIVER_CLASS_KEY: self.driver_class,
-        _EXECUTOR_SPEC_KEY: self.executor_spec,
-        _INSTANCE_NAME_KEY: self._instance_name,
-        _SPEC_KEY: self.spec
-    }
-
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return self.spec.inputs
