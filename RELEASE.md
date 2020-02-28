@@ -1,6 +1,22 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+
+## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+# Version 0.21.1
+
+## Major Features and Improvements
 *   Pipelines compiled using KubeflowDagRunner now defaults to using the
     gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
     performing operations on pipeline metadata.
@@ -16,6 +32,7 @@
     in distributed training cluster.
 *   Added a Chicago Taxi example with native Keras.
 *   Updated TFLite converter to work with TF2.
+*   Enabled filtering by artifact producer and output key in ResolverNode.
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
@@ -24,6 +41,9 @@
     TFX components.
 *   Fixed the Taxi Colab notebook.
 *   Adopted the generic trainer executor when using CAIP Training.
+*   Depends on 'tensorflow-data-validation>=0.21.4,<0.22'.
+*   Depends on 'tensorflow-model-analysis>=0.21.4,<0.22'.
+*   Depends on 'tensorflow-transform>=0.21.2,<0.22'.
 
 ### Deprecations
 
