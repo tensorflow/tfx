@@ -18,44 +18,76 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import enum
+import time
+
 import six
 from typing import List
 
+from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import types
-
-
-class ModelState(enum.Enum):
-  # Model is NOT_READY if it is not available at the moment, but can be loaded
-  # in the future.
-  NOT_READY = 1
-  # Model is AVAILABLE if it is successfully loaded and ready to accept query.
-  AVAILABLE = 2
-  # Model is UNAVAILABLE if it is unavailable for good.
-  UNAVAILABLE = 3
 
 
 class BaseModelServerClient(six.with_metaclass(abc.ABCMeta, object)):
   """Common interface for all model server clients."""
 
   @abc.abstractmethod
-  def GetModelState(self) -> ModelState:
+  def _GetServingStatus(self) -> types.ModelServingStatus:
     """Check whether the model is available for query or not.
 
     Returns:
-      A ModelState.
+      A ModelServingStatus.
     """
     pass
 
+  def WaitUntilModelLoaded(self, deadline: float,
+                           polling_interval_sec: int) -> None:
+    """Wait until model is loaded and available.
+
+    Args:
+      deadline: A deadline time in UTC timestamp (in seconds).
+      polling_interval_sec: GetServingStatus() polling interval.
+
+    Raises:
+      DeadlineExceeded: When deadline exceeded before model is ready.
+      ValidationFailed: If validation failed explicitly.
+    """
+    while time.time() < deadline:
+      status = self._GetServingStatus()
+      if status == types.ModelServingStatus.NOT_READY:
+        time.sleep(polling_interval_sec)
+        continue
+      elif status == types.ModelServingStatus.UNAVAILABLE:
+        raise error_types.ValidationFailed(
+            'Model server failed to load the model.')
+      else:
+        return
+
+    raise error_types.DeadlineExceeded(
+        'Deadline exceeded while waiting the model to be loaded.')
+
   @abc.abstractmethod
-  def IssueRequests(self, requests: List[types.Request]) -> None:
-    """Issue requests against model server.
+  def _SendRequest(self, request: types.Request) -> None:
+    """Send a request to the model server.
+
+    Args:
+      request: A request proto.
+    """
+    pass
+
+  def SendRequests(self, requests: List[types.Request]) -> None:
+    """Send requests to the model server.
 
     Args:
       requests: A list of request protos.
 
     Raises:
-      ValueError: If request is not compatible with the client.
-      grpc.RpcError: If RPC Fails.
+      ValidationFailed: If error occurred while sending requests.
     """
-    pass
+    for r in requests:
+      try:
+        self._SendRequest(r)
+      except Exception as original_error:  # pylint: disable=broad-except
+        six.raise_from(
+            error_types.ValidationFailed(
+                'Model server failed to respond to the request {}'.format(r)),
+            original_error)

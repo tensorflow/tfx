@@ -17,17 +17,40 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import os
 
 import mock
 import tensorflow as tf
-from typing import Text
+from typing import Any, Dict, Text
 
+from google.protobuf import json_format
+from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator import executor
-from tfx.components.infra_validator.model_server_runners import local_docker_runner
+from tfx.components.infra_validator import request_builder
+from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+
+
+def _make_serving_spec(
+    payload: Dict[Text, Any]) -> infra_validator_pb2.ServingSpec:
+  result = infra_validator_pb2.ServingSpec()
+  json_format.ParseDict(payload, result)
+  return result
+
+
+def _make_validation_spec(
+    payload: Dict[Text, Any]) -> infra_validator_pb2.ValidationSpec:
+  result = infra_validator_pb2.ValidationSpec()
+  json_format.ParseDict(payload, result)
+  return result
+
+
+def _make_request_spec(
+    payload: Dict[Text, Any]) -> infra_validator_pb2.RequestSpec:
+  result = infra_validator_pb2.RequestSpec()
+  json_format.ParseDict(payload, result)
+  return result
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -37,133 +60,193 @@ class ExecutorTest(tf.test.TestCase):
 
     # Setup Mocks
 
-    runner_patcher = mock.patch.object(local_docker_runner, 'LocalDockerRunner')
-    self.model_server = runner_patcher.start().return_value
-    self.addCleanup(runner_patcher.stop)
-
-    build_request_patcher = mock.patch(
-        'tfx.components.infra_validator.request_builder'
-        '.build_requests')
-    self.build_requests_mock = build_request_patcher.start()
-    self.addCleanup(build_request_patcher.stop)
-
-    self.model_server.client = mock.MagicMock()
+    patcher = mock.patch.object(request_builder, 'build_requests')
+    self.build_requests_mock = patcher.start()
+    self.addCleanup(patcher.stop)
 
     # Setup directories
 
     source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        'testdata')
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
     base_output_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
                                      self.get_temp_dir())
     output_data_dir = os.path.join(base_output_dir, self._testMethodName)
 
     # Setup input_dict.
 
-    model = standard_artifacts.Model()
-    model.uri = os.path.join(source_data_dir, 'trainer', 'current')
+    self._model = standard_artifacts.Model()
+    self._model.uri = os.path.join(source_data_dir, 'trainer', 'current')
     examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(source_data_dir,
-                                'transform',
-                                'transformed_examples',
-                                'eval')
+    examples.uri = os.path.join(source_data_dir, 'transform',
+                                'transformed_examples', 'eval')
     examples.split_names = artifact_utils.encode_split_names(['eval'])
 
-    self.input_dict = {
-        'model': [model],
+    self._input_dict = {
+        'model': [self._model],
         'examples': [examples],
     }
-
-    # Setup output_dict.
-
-    self.blessing = standard_artifacts.InfraBlessing()
-    self.blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self.output_dict = {
-        'blessing': [self.blessing]
-    }
-
-    # Setup Context
-
+    self._blessing = standard_artifacts.InfraBlessing()
+    self._blessing.uri = os.path.join(output_data_dir, 'blessing')
+    self._output_dict = {'blessing': [self._blessing]}
     temp_dir = os.path.join(output_data_dir, '.temp')
-    self.context = executor.Executor.Context(tmp_dir=temp_dir, unique_id='1')
-
-    # Setup exec_properties
-
-    self.exec_properties = {
-        'serving_spec': json.dumps({
-            'tensorflow_serving': {
-                'tags': ['1.15.0']
-            },
-            'local_docker': {},
-            'model_name': 'chicago-taxi',
-        }),
-        'validation_spec': json.dumps({
-            'max_loading_time_seconds': 10
-        }),
-        'request_spec': json.dumps({
-            'tensorflow_serving': {
-                'rpc_kind': 'CLASSIFY'
-            },
-            'max_examples': 10
-        })
+    self._context = executor.Executor.Context(tmp_dir=temp_dir, unique_id='1')
+    self._serving_spec = _make_serving_spec({
+        'tensorflow_serving': {
+            'tags': ['1.15.0']
+        },
+        'local_docker': {},
+        'model_name': 'chicago-taxi',
+    })
+    self._binary_kind = binary_kinds.parse_binary_kinds(self._serving_spec)[0]
+    self._validation_spec = _make_validation_spec({
+        'max_loading_time_seconds': 10,
+        'num_tries': 3
+    })
+    self._request_spec = _make_request_spec({
+        'tensorflow_serving': {
+            'rpc_kind': 'CLASSIFY'
+        },
+        'max_examples': 1
+    })
+    self._exec_properties = {
+        'serving_spec': json_format.MessageToJson(self._serving_spec),
+        'validation_spec': json_format.MessageToJson(self._validation_spec),
+        'request_spec': json_format.MessageToJson(self._request_spec),
     }
 
-  def testDo_LoadOnly(self):
-    # Prepare inputs and mocks.
-    input_dict = self.input_dict.copy()
-    input_dict.pop('examples')
-    exec_properties = self.exec_properties.copy()
-    exec_properties.pop('request_spec')
-    self.model_server.WaitUntilModelAvailable.return_value = True
-
+  def testDo_BlessedIfNoError(self):
     # Run executor.
-    infra_validator = executor.Executor(self.context)
-    infra_validator.Do(input_dict, self.output_dict, exec_properties)
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(infra_validator, '_ValidateOnce'):
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
 
-    # Check output artifact.
-    self.assertFileExists(os.path.join(self.blessing.uri, 'INFRA_BLESSED'))
-    self.assertEqual(1, self.blessing.get_int_custom_property('blessed'))
+    # Check blessed.
+    self.assertBlessed()
 
-    # Check cleanup done.
-    self.model_server.Stop.assert_called()
-
-  def testDo_NotBlessedIfModelUnavailable(self):
-    # Prepare inputs and mocks.
-    input_dict = self.input_dict.copy()
-    input_dict.pop('examples')
-    exec_properties = self.exec_properties.copy()
-    exec_properties.pop('request_spec')
-    self.model_server.WaitUntilModelAvailable.return_value = False
-
+  def testDo_NotBlessedIfError(self):
     # Run executor.
-    infra_validator = executor.Executor(self.context)
-    infra_validator.Do(input_dict, self.output_dict, exec_properties)
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(infra_validator, '_ValidateOnce') as validate_mock:
+      # Validation will raise error.
+      validate_mock.side_effect = ValueError
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
 
-    # Check output artifact.
-    self.assertFileExists(os.path.join(self.blessing.uri, 'INFRA_NOT_BLESSED'))
-    self.assertEqual(0, self.blessing.get_int_custom_property('blessed'))
+    # Check not blessed.
+    self.assertNotBlessed()
 
-    # Check cleanup done.
-    self.model_server.Stop.assert_called()
-
-  def testDo_LoadAndRequest(self):
-    # Prepare inputs and mocks.
-    requests = [mock.Mock()]
-    self.build_requests_mock.return_value = requests
-    self.model_server.WaitUntilModelAvailable.return_value = True
-    self.model_server.client.IssueRequests.return_value = True
-
+  def testDo_BlessedIfEventuallyNoError(self):
     # Run executor.
-    infra_validator = executor.Executor(self.context)
-    infra_validator.Do(self.input_dict, self.output_dict, self.exec_properties)
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(infra_validator, '_ValidateOnce') as validate_mock:
+      # Validation will raise error at first, succeeded at the following.
+      # Infra validation will be tried 3 times, so 2 failures are tolerable.
+      validate_mock.side_effect = [ValueError, ValueError, None]
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
 
-    # Check output artifact.
-    self.model_server.client.IssueRequests.assert_called_with(requests)
-    self.assertFileExists(os.path.join(self.blessing.uri, 'INFRA_BLESSED'))
-    self.assertEqual(1, self.blessing.get_int_custom_property('blessed'))
+    # Check blessed.
+    self.assertBlessed()
 
-    # Check cleanup done.
-    self.model_server.Stop.assert_called()
+  def testDo_NotBlessedIfErrorContinues(self):
+    # Run executor.
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(infra_validator, '_ValidateOnce') as validate_mock:
+      # 3 Errors are not tolerable.
+      validate_mock.side_effect = [ValueError, ValueError, ValueError, None]
+      infra_validator.Do(self._input_dict, self._output_dict,
+                         self._exec_properties)
+
+    # Check not blessed.
+    self.assertNotBlessed()
+
+  def testValidateOnce_LoadOnly_Succeed(self):
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(self._binary_kind, 'MakeClient'):
+      with mock.patch.object(executor, '_create_model_server_runner'):
+        # Should not raise any error.
+        infra_validator._ValidateOnce(
+            model=self._model,
+            binary_kind=self._binary_kind,
+            serving_spec=self._serving_spec,
+            validation_spec=self._validation_spec,
+            requests=[])
+
+  def testValidateOnce_LoadOnly_FailIfRunnerWaitRaises(self):
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(self._binary_kind, 'MakeClient'):
+      with mock.patch.object(
+          executor, '_create_model_server_runner') as mock_runner_factory:
+        mock_runner = mock_runner_factory.return_value
+        mock_runner.WaitUntilRunning.side_effect = ValueError
+        with self.assertRaises(ValueError):
+          infra_validator._ValidateOnce(
+              model=self._model,
+              binary_kind=self._binary_kind,
+              serving_spec=self._serving_spec,
+              validation_spec=self._validation_spec,
+              requests=[])
+
+  def testValidateOnce_LoadOnly_FailIfClientWaitRaises(self):
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(self._binary_kind,
+                           'MakeClient') as mock_client_factory:
+      mock_client = mock_client_factory.return_value
+      with mock.patch.object(
+          executor, '_create_model_server_runner') as mock_runner_factory:
+        mock_client.WaitUntilModelLoaded.side_effect = ValueError
+        with self.assertRaises(ValueError):
+          infra_validator._ValidateOnce(
+              model=self._model,
+              binary_kind=self._binary_kind,
+              serving_spec=self._serving_spec,
+              validation_spec=self._validation_spec,
+              requests=[])
+        mock_runner_factory.return_value.WaitUntilRunning.assert_called()
+
+  def testValidateOnce_LoadAndQuery_Succeed(self):
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(self._binary_kind,
+                           'MakeClient') as mock_client_factory:
+      mock_client = mock_client_factory.return_value
+      with mock.patch.object(
+          executor, '_create_model_server_runner') as mock_runner_factory:
+        infra_validator._ValidateOnce(
+            model=self._model,
+            binary_kind=self._binary_kind,
+            serving_spec=self._serving_spec,
+            validation_spec=self._validation_spec,
+            requests=['my_request'])
+        mock_runner_factory.return_value.WaitUntilRunning.assert_called()
+        mock_client.WaitUntilModelLoaded.assert_called()
+        mock_client.SendRequests.assert_called()
+
+  def testValidateOnce_LoadAndQuery_FailIfSendRequestsRaises(self):
+    infra_validator = executor.Executor(self._context)
+    with mock.patch.object(self._binary_kind,
+                           'MakeClient') as mock_client_factory:
+      mock_client = mock_client_factory.return_value
+      with mock.patch.object(
+          executor, '_create_model_server_runner') as mock_runner_factory:
+        mock_client.SendRequests.side_effect = ValueError
+        with self.assertRaises(ValueError):
+          infra_validator._ValidateOnce(
+              model=self._model,
+              binary_kind=self._binary_kind,
+              serving_spec=self._serving_spec,
+              validation_spec=self._validation_spec,
+              requests=['my_request'])
+        mock_runner_factory.return_value.WaitUntilRunning.assert_called()
+        mock_client.WaitUntilModelLoaded.assert_called()
+
+  def assertBlessed(self):
+    self.assertFileExists(os.path.join(self._blessing.uri, 'INFRA_BLESSED'))
+    self.assertEqual(1, self._blessing.get_int_custom_property('blessed'))
+
+  def assertNotBlessed(self):
+    self.assertFileExists(os.path.join(self._blessing.uri, 'INFRA_NOT_BLESSED'))
+    self.assertEqual(0, self._blessing.get_int_custom_property('blessed'))
 
   def assertFileExists(self, path: Text):
     self.assertTrue(tf.io.gfile.exists(path))

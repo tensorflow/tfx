@@ -24,18 +24,17 @@ import time
 
 from absl import logging
 import docker
+from docker import errors as docker_errors
 from typing import Text
 
+from tfx import types
 from tfx.components.infra_validator import binary_kinds
-from tfx.components.infra_validator.model_server_clients import base_client
+from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
-from tfx.types import standard_artifacts
 from tfx.utils import path_utils
 
-ModelState = base_client.ModelState
-
-_MODEL_STATE_POLLING_INTERVALS_SECONDS = 1
+_POLLING_INTERVAL_SEC = 1
 
 
 def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
@@ -88,7 +87,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
   testing purpose.
   """
 
-  def __init__(self, model: standard_artifacts.Model,
+  def __init__(self, model: types.Artifact,
                binary_kind: binary_kinds.BinaryKind,
                serving_spec: infra_validator_pb2.ServingSpec):
     """Make a local docker runner.
@@ -114,82 +113,80 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     self._serving_spec = serving_spec
     self._docker = _make_docker_client(serving_spec.local_docker)
     self._container = None
-    self._client = None
+    self._endpoint = None
 
   def __repr__(self):
     return 'LocalDockerRunner(image: {image})'.format(
         image=self._binary_kind.image)
 
   @property
-  def client(self):
-    return self._client
-
-  @property
-  def model_path(self):
+  def _model_path(self):
     return os.path.join(self._model_base_path, self._model_name)
 
   @property
-  def model_version_path(self):
+  def _model_version_path(self):
     return os.path.join(self._model_base_path, self._model_name,
                         str(self._model_version))
 
+  def GetEndpoint(self):
+    assert self._endpoint is not None, (
+        'Endpoint is not yet created. You should call Start() first.')
+    return self._endpoint
+
   def Start(self):
-    if self._container:
-      raise RuntimeError('You cannot start model server multiple times.')
+    assert self._container is None, (
+        'You cannot start model server multiple times.')
 
     host_port = _find_available_port()
-    endpoint = 'localhost:{}'.format(host_port)
+    self._endpoint = 'localhost:{}'.format(host_port)
 
     if isinstance(self._binary_kind, binary_kinds.TensorFlowServing):
-      is_local_model = os.path.exists(self.model_version_path)
+      is_local_model = os.path.exists(self._model_version_path)
       if is_local_model:
         run_params = self._binary_kind.MakeDockerRunParams(
             host_port=host_port,
-            host_model_path=self.model_path)
+            host_model_path=self._model_path)
       else:
         run_params = self._binary_kind.MakeDockerRunParams(
             host_port=host_port,
             model_base_path=self._model_base_path)
     else:
-      raise ValueError('Unsupported binary kind {}'.format(
+      raise NotImplementedError('Unsupported binary kind {}'.format(
           type(self._binary_kind).__name__))
 
     logging.info('Running container with parameter %s', run_params)
     self._container = self._docker.containers.run(**run_params)
-    self._client = self._binary_kind.MakeClient(endpoint)
 
-  def WaitUntilModelAvailable(self, timeout_secs):
-    if not self._container:
-      raise RuntimeError('container is not started.')
+  def WaitUntilRunning(self, deadline):
+    assert self._container is not None, 'container has not been started.'
 
-    deadline = time.time() + timeout_secs
     while time.time() < deadline:
-      # Reload container attributes from server. This is the only right way to
-      # retrieve the latest container status from docker engine.
-      self._container.reload()
-      # Once container is up and running, use a client to wait until model is
-      # available.
-      if self._container.status == 'running':
-        state = self._client.GetModelState()
-        if state == ModelState.AVAILABLE:
-          return True
-        elif state == ModelState.UNAVAILABLE:
-          return False
-        else:
-          time.sleep(_MODEL_STATE_POLLING_INTERVALS_SECONDS)
-      # Docker status is one of 'created', 'restarting', 'running', 'removing',
-      # 'paused', 'exited', or 'dead'. Status other than 'created' and 'running'
-      # indicates failure.
-      elif self._container.status != 'created':
-        logging.error('Container has reached %s state before available; marking'
-                      ' model as not blessed.', self._container.status)
-        return False
-      else:
-        time.sleep(_MODEL_STATE_POLLING_INTERVALS_SECONDS)
+      try:
+        # Reload container attributes from server. This is the only right way to
+        # retrieve the latest container status from docker engine.
+        self._container.reload()
+        status = self._container.status
+      except docker_errors.NotFound:
+        # If the job has been aborted and container has specified auto_removal
+        # to True, we might get a NotFound error during container.reload().
+        raise error_types.JobAborted(
+            'Container not found. Possibly removed after the job has been '
+            'aborted.')
+      # The container is just created and not yet in the running status.
+      if status == 'created':
+        time.sleep(_POLLING_INTERVAL_SEC)
+        continue
+      # The container is running :)
+      if status == 'running':
+        return
+      # Docker status is one of {'created', 'restarting', 'running', 'removing',
+      # 'paused', 'exited', or 'dead'}. Status other than 'created' and
+      # 'running' indicates the job has been aborted.
+      raise error_types.JobAborted(
+          'Job has been aborted (container status={})'.format(status))
 
-    # Deadline exceeded.
-    logging.error('Deadline has exceeded; marking model as not blessed.')
-    return False
+    raise error_types.DeadlineExceeded(
+        'Deadline exceeded while waiting for the container to be running.')
 
   def Stop(self):
     if self._container:
