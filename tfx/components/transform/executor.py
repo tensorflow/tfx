@@ -643,7 +643,7 @@ class Executor(base_executor.BaseExecutor):
       PCollection of decoded data.
     """
 
-    def decode_example(kv: Tuple[bytes, bytes]) -> Dict[Text, Any]:  # pylint: disable=invalid-name
+    def decode_example(kv: Tuple[Optional[bytes], bytes]) -> Dict[Text, Any]:  # pylint: disable=invalid-name
       """Decodes a single example."""
       (key, value) = kv
       result = decode_fn(value)
