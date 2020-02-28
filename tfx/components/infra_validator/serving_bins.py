@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Modules for organizing various model server binary kinds."""
+"""Modules for organizing various model server binaries."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -30,12 +30,12 @@ from tfx.components.infra_validator.model_server_clients import tensorflow_servi
 from tfx.proto import infra_validator_pb2
 
 
-def parse_binary_kinds(  # pylint: disable=invalid-name
-    serving_spec: infra_validator_pb2.ServingSpec) -> List['BinaryKind']:
-  """Parse `BinaryKind`s from `ServingSpec`."""
+def parse_serving_binaries(  # pylint: disable=invalid-name
+    serving_spec: infra_validator_pb2.ServingSpec) -> List['ServingBinary']:
+  """Parse `ServingBinary`s from `ServingSpec`."""
   result = []
-  binary_kind = serving_spec.WhichOneof('serving_binary')
-  if binary_kind == 'tensorflow_serving':
+  serving_binary = serving_spec.WhichOneof('serving_binary')
+  if serving_binary == 'tensorflow_serving':
     config = serving_spec.tensorflow_serving
     for tag in config.tags:
       result.append(TensorFlowServing(model_name=serving_spec.model_name,
@@ -45,17 +45,17 @@ def parse_binary_kinds(  # pylint: disable=invalid-name
                                       digest=digest))
     return result
   else:
-    raise ValueError('Invalid serving_binary {}'.format(binary_kind))
+    raise ValueError('Invalid serving_binary {}'.format(serving_binary))
 
 
-class BinaryKind(six.with_metaclass(abc.ABCMeta, object)):
-  """Base class for model server binary kinds."""
+class ServingBinary(six.with_metaclass(abc.ABCMeta, object)):
+  """Base class for serving binaries."""
 
   @abc.abstractproperty
   def container_port(self) -> int:
     """Container port of the model server.
 
-    Only applies to docker compatible binary kinds.
+    Only applies to docker compatible serving binaries.
     """
     raise NotImplementedError('{} is not docker compatible.'.format(
         type(self).__name__))
@@ -64,7 +64,7 @@ class BinaryKind(six.with_metaclass(abc.ABCMeta, object)):
   def image(self) -> Text:
     """Container image of the model server.
 
-    Only applies to docker compatible binary kinds.
+    Only applies to docker compatible serving binaries.
     """
     raise NotImplementedError('{} is not docker compatible.'.format(
         type(self).__name__))
@@ -73,7 +73,7 @@ class BinaryKind(six.with_metaclass(abc.ABCMeta, object)):
   def MakeEnvVars(self, *args: Any) -> Dict[Text, Text]:
     """Construct environment variables to be used in container image.
 
-    Only applies to docker compatible binary kinds.
+    Only applies to docker compatible serving binaries.
 
     Args:
       *args: List of unresolved variables to configure environment variables.
@@ -88,7 +88,7 @@ class BinaryKind(six.with_metaclass(abc.ABCMeta, object)):
   def MakeDockerRunParams(self, *args: Any) -> Dict[Text, Text]:
     """Make parameters for docker `client.containers.run`.
 
-    Only applies to docker compatible binary kinds.
+    Only applies to docker compatible serving binaries.
 
     Args:
       *args: List of unresolved variables to configure docker run parameters.
@@ -101,13 +101,13 @@ class BinaryKind(six.with_metaclass(abc.ABCMeta, object)):
 
   @abc.abstractmethod
   def MakeClient(self, endpoint: Text) -> base_client.BaseModelServerClient:
-    """Create a model server client of this binary kind."""
+    """Create a model server client of this serving binary."""
     raise NotImplementedError('{} does not implement MakeClient.'.format(
         type(self).__name__))
 
 
-class TensorFlowServing(BinaryKind):
-  """TensorFlow Serving binary kind."""
+class TensorFlowServing(ServingBinary):
+  """TensorFlow Serving binary."""
 
   _base_docker_run_args = {
       # Enable auto-removal of the container on docker daemon after container
@@ -186,7 +186,7 @@ class TensorFlowServing(BinaryKind):
         environment=self.MakeEnvVars(model_base_path=model_base_path))
 
     if host_model_path is not None:
-      # TODO(jjong): Replace os.path to pathlib.PurePosixPath after py3.
+      # TODO(b/149534564): Replace os.path to pathlib.PurePosixPath after py3.
       result.update(mounts=[
           docker_types.Mount(
               type='bind',

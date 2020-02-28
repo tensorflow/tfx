@@ -25,8 +25,8 @@ import tensorflow as tf
 from typing import Any, Dict, Text
 
 from google.protobuf import json_format
-from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator import error_types
+from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
@@ -69,15 +69,16 @@ class LocalDockerRunnerTest(tf.test.TestCase):
         'local_docker': {},
         'model_name': self._model_name,
     })
-    self._binary_kind = binary_kinds.parse_binary_kinds(self._serving_spec)[0]
-    patcher = mock.patch.object(self._binary_kind, 'MakeClient')
+    self._serving_binary = serving_bins.parse_serving_binaries(
+        self._serving_spec)[0]
+    patcher = mock.patch.object(self._serving_binary, 'MakeClient')
     self._model_server_client = patcher.start().return_value
     self.addCleanup(patcher.stop)
 
   def _CreateLocalDockerRunner(self):
     return local_docker_runner.LocalDockerRunner(
         model=self._model,
-        binary_kind=self._binary_kind,
+        serving_binary=self._serving_binary,
         serving_spec=self._serving_spec)
 
   def testStart(self):
