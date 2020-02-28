@@ -24,30 +24,24 @@ import datetime
 import os
 from typing import Text
 from tfx.components import CsvExampleGen
-
-# from tfx.components import StatisticsGen # Step 3
-# from tfx.components import SchemaGen # Step 3
-# from tfx.components import ExampleValidator # Step 3
-
-# from tfx.components import Transform # Step 4
-
-# from tfx.proto import trainer_pb2 # Step 5
-# from tfx.components import Trainer # Step 5
-
-# from tfx.proto import evaluator_pb2 # Step 6
-# from tfx.components import Evaluator # Step 6
-
-# from tfx.components import ModelValidator # Step 7
-# from tfx.proto import pusher_pb2 # Step 7
-# from tfx.components import Pusher # Step 7
-
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import ModelValidator
+from tfx.components import Pusher
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
+from tfx.proto import evaluator_pb2
+from tfx.proto import pusher_pb2
+from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import external_input
 
-_pipeline_name = 'taxi'
+_pipeline_name = 'taxi_solution'
 
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
@@ -56,7 +50,7 @@ _taxi_root = os.path.join(os.environ['HOME'], 'airflow')
 _data_root = os.path.join(_taxi_root, 'data', 'taxi_data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils.py')
+_module_file = os.path.join(_taxi_root, 'dags', 'taxi_utils_solution.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
@@ -88,65 +82,61 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   example_gen = CsvExampleGen(input=examples)
 
   # Computes statistics over data for visualization and example validation.
-  # statistics_gen = StatisticsGen(examples=example_gen.outputs['examples']) # Step 3
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  # infer_schema = SchemaGen( # Step 3
-  #     statistics=statistics_gen.outputs['statistics'], # Step 3
-  #     infer_feature_shape=False) # Step 3
+  infer_schema = SchemaGen(
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
-  # validate_stats = ExampleValidator( # Step 3
-  #     statistics=statistics_gen.outputs['statistics'], # Step 3
-  #     schema=infer_schema.outputs['schema']) # Step 3
+  validate_stats = ExampleValidator(
+      statistics=statistics_gen.outputs['statistics'],
+      schema=infer_schema.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
-  # transform = Transform( # Step 4
-  #     examples=example_gen.outputs['examples'], # Step 4
-  #     schema=infer_schema.outputs['schema'], # Step 4
-  #     module_file=module_file) # Step 4
+  transform = Transform(
+      examples=example_gen.outputs['examples'],
+      schema=infer_schema.outputs['schema'],
+      module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
-  # trainer = Trainer( # Step 5
-  #     module_file=module_file, # Step 5
-  #     transformed_examples=transform.outputs['transformed_examples'], # Step 5
-  #     schema=infer_schema.outputs['schema'], # Step 5
-  #     transform_graph=transform.outputs['transform_graph'], # Step 5
-  #     train_args=trainer_pb2.TrainArgs(num_steps=10000), # Step 5
-  #     eval_args=trainer_pb2.EvalArgs(num_steps=5000)) # Step 5
+  trainer = Trainer(
+      module_file=module_file,
+      transformed_examples=transform.outputs['transformed_examples'],
+      schema=infer_schema.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
+      train_args=trainer_pb2.TrainArgs(num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
-  # model_analyzer = Evaluator( # Step 6
-  #     examples=example_gen.outputs['examples'], # Step 6
-  #     model=trainer.outputs['model'], # Step 6
-  #     feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[ # Step 6
-  #         evaluator_pb2.SingleSlicingSpec( # Step 6
-  #             column_for_slicing=['trip_start_hour']) # Step 6
-  #     ])) # Step 6
+  model_analyzer = Evaluator(
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
+          evaluator_pb2.SingleSlicingSpec(
+              column_for_slicing=['trip_start_hour'])
+      ]))
 
   # Performs quality validation of a candidate model (compared to a baseline).
-  # model_validator = ModelValidator( # Step 7
-  #     examples=example_gen.outputs['examples'], model=trainer.outputs['model']) # Step 7
+  model_validator = ModelValidator(
+      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
-  # pusher = Pusher( # Step 7
-  #     model=trainer.outputs['model'], # Step 7
-  #     model_blessing=model_validator.outputs['blessing'], # Step 7
-  #     push_destination=pusher_pb2.PushDestination( # Step 7
-  #         filesystem=pusher_pb2.PushDestination.Filesystem( # Step 7
-  #             base_directory=serving_model_dir))) # Step 7
+  pusher = Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=model_validator.outputs['blessing'],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir)))
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen,
-          # statistics_gen, infer_schema, validate_stats, # Step 3
-          # transform, # Step 4
-          # trainer, # Step 5
-          # model_analyzer, # Step 6
-          # model_validator, pusher # Step 7
+          example_gen, statistics_gen, infer_schema, validate_stats, transform,
+          trainer, model_analyzer, model_validator, pusher
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
