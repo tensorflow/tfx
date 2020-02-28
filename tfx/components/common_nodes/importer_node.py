@@ -233,19 +233,6 @@ class ImporterNode(base_node.BaseNode):
 
     super(ImporterNode, self).__init__(instance_name=instance_name)
 
-  def to_json_dict(self) -> Dict[Text, Any]:
-    # TODO(b/145622586): Consider changing the keys to be named constants.
-    return {
-        '_instance_name': self._instance_name,
-        '_output_dict': self._output_dict,
-        '_reimport': self._reimport,
-        '_source_uri': self._source_uri,
-        '_properties': self._properties,
-        '_custom_properties': self._custom_properties,
-        'driver_class': self.driver_class,
-        'executor_spec': self.executor_spec,
-    }
-
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access

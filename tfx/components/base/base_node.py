@@ -59,6 +59,12 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
 
+  def to_json_dict(self) -> Dict[Text, Any]:
+    """Convert from an object to a JSON serializable dictionary."""
+    return dict((k, v)
+                for k, v in self.__dict__.items()
+                if k not in ['_upstream_nodes', '_downstream_nodes'])
+
   @property
   def type(self) -> Text:
     return '.'.join([self.__class__.__module__, self.__class__.__name__])
