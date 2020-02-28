@@ -19,7 +19,6 @@ package tfx.components.infra_validator;
 // ServingSpec defines an environment of the validating infrastructure: what
 // (serving binary) and where (serving platform) to run model server.
 message ServingSpec {
-
   // The kind of binary used to serve your model.This should be the same as the
   // one that is used in the pushing environment.
   //
@@ -91,6 +90,11 @@ message ValidationSpec {
   // If the model is not loaded until this time, validation will fail. Should
   // be a positive number.
   int32 max_loading_time_seconds = 1;
+
+  // Optional.
+  // Number of infra validation tries. Infra validation will be retried until
+  // infra validation succeed, or failed `num_tries` times. Default to 3.
+  int32 num_tries = 2;
 }
 
 // InfraValidator can optionally send sample requests to the loaded model to
