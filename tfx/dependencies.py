@@ -30,7 +30,8 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      'grpcio>=1.25,<2',
+      # TODO(b/150406246): Bypass a problematic grpcio version
+      'grpcio>=1.25,<1.28',
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.21,<0.22',
       'protobuf>=3.7,<4',
