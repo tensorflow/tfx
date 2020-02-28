@@ -26,8 +26,8 @@ from typing import Any, Dict, List, Text
 from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator import request_builder
+from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator import types as iv_types
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
@@ -52,13 +52,14 @@ def _is_query_mode(input_dict: Dict[Text, List[types.Artifact]],
 
 def _create_model_server_runner(
     model: types.Artifact,
-    binary_kind: binary_kinds.BinaryKind,
+    serving_binary: serving_bins.ServingBinary,
     serving_spec: infra_validator_pb2.ServingSpec):
-  """Create a ModelServerRunner from a model, a BinaryKind and a ServingSpec.
+  """Create a ModelServerRunner from a model, a ServingBinary and a ServingSpec.
 
   Args:
     model: Model artifact that will be infra validated.
-    binary_kind: One of BinaryKind instances parsed from the `serving_spec`.
+    serving_binary: One of ServingBinary instances parsed from the
+        `serving_spec`.
     serving_spec: A ServingSpec instance of this infra validation.
 
   Returns:
@@ -68,7 +69,7 @@ def _create_model_server_runner(
   if platform == 'local_docker':
     return local_docker_runner.LocalDockerRunner(
         model=model,
-        binary_kind=binary_kind,
+        serving_binary=serving_binary,
         serving_spec=serving_spec
     )
   else:
@@ -137,10 +138,10 @@ class Executor(base_executor.BaseExecutor):
 
     # TODO(jjong): Make logic parallel.
     all_passed = True
-    for binary_kind in binary_kinds.parse_binary_kinds(serving_spec):
+    for serving_binary in serving_bins.parse_serving_binaries(serving_spec):
       all_passed &= self._ValidateWithRetry(
           model=model,
-          binary_kind=binary_kind,
+          serving_binary=serving_binary,
           serving_spec=serving_spec,
           validation_spec=validation_spec,
           requests=requests)
@@ -152,7 +153,7 @@ class Executor(base_executor.BaseExecutor):
 
   def _ValidateWithRetry(
       self, model: types.Artifact,
-      binary_kind: binary_kinds.BinaryKind,
+      serving_binary: serving_bins.ServingBinary,
       serving_spec: infra_validator_pb2.ServingSpec,
       validation_spec: infra_validator_pb2.ValidationSpec,
       requests: List[iv_types.Request]):
@@ -162,7 +163,7 @@ class Executor(base_executor.BaseExecutor):
       try:
         self._ValidateOnce(
             model=model,
-            binary_kind=binary_kind,
+            serving_binary=serving_binary,
             serving_spec=serving_spec,
             validation_spec=validation_spec,
             requests=requests)
@@ -178,7 +179,7 @@ class Executor(base_executor.BaseExecutor):
 
   def _ValidateOnce(
       self, model: types.Artifact,
-      binary_kind: binary_kinds.BinaryKind,
+      serving_binary: serving_bins.ServingBinary,
       serving_spec: infra_validator_pb2.ServingSpec,
       validation_spec: infra_validator_pb2.ValidationSpec,
       requests: List[iv_types.Request]):
@@ -186,7 +187,7 @@ class Executor(base_executor.BaseExecutor):
     deadline = time.time() + validation_spec.max_loading_time_seconds
     runner = _create_model_server_runner(
         model=model,
-        binary_kind=binary_kind,
+        serving_binary=serving_binary,
         serving_spec=serving_spec)
 
     try:
@@ -195,7 +196,7 @@ class Executor(base_executor.BaseExecutor):
 
       # Check model is successfully loaded.
       runner.WaitUntilRunning(deadline)
-      client = binary_kind.MakeClient(runner.GetEndpoint())
+      client = serving_binary.MakeClient(runner.GetEndpoint())
       client.WaitUntilModelLoaded(
           deadline, polling_interval_sec=_DEFAULT_POLLING_INTERVAL_SEC)
 

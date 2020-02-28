@@ -24,9 +24,9 @@ import tensorflow as tf
 from typing import Any, Dict, Text
 
 from google.protobuf import json_format
-from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator import executor
 from tfx.components.infra_validator import request_builder
+from tfx.components.infra_validator import serving_bins
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -97,7 +97,8 @@ class ExecutorTest(tf.test.TestCase):
         'local_docker': {},
         'model_name': 'chicago-taxi',
     })
-    self._binary_kind = binary_kinds.parse_binary_kinds(self._serving_spec)[0]
+    self._serving_binary = serving_bins.parse_serving_binaries(
+        self._serving_spec)[0]
     self._validation_spec = _make_validation_spec({
         'max_loading_time_seconds': 10,
         'num_tries': 3
@@ -163,19 +164,19 @@ class ExecutorTest(tf.test.TestCase):
 
   def testValidateOnce_LoadOnly_Succeed(self):
     infra_validator = executor.Executor(self._context)
-    with mock.patch.object(self._binary_kind, 'MakeClient'):
+    with mock.patch.object(self._serving_binary, 'MakeClient'):
       with mock.patch.object(executor, '_create_model_server_runner'):
         # Should not raise any error.
         infra_validator._ValidateOnce(
             model=self._model,
-            binary_kind=self._binary_kind,
+            serving_binary=self._serving_binary,
             serving_spec=self._serving_spec,
             validation_spec=self._validation_spec,
             requests=[])
 
   def testValidateOnce_LoadOnly_FailIfRunnerWaitRaises(self):
     infra_validator = executor.Executor(self._context)
-    with mock.patch.object(self._binary_kind, 'MakeClient'):
+    with mock.patch.object(self._serving_binary, 'MakeClient'):
       with mock.patch.object(
           executor, '_create_model_server_runner') as mock_runner_factory:
         mock_runner = mock_runner_factory.return_value
@@ -183,14 +184,14 @@ class ExecutorTest(tf.test.TestCase):
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
               model=self._model,
-              binary_kind=self._binary_kind,
+              serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,
               requests=[])
 
   def testValidateOnce_LoadOnly_FailIfClientWaitRaises(self):
     infra_validator = executor.Executor(self._context)
-    with mock.patch.object(self._binary_kind,
+    with mock.patch.object(self._serving_binary,
                            'MakeClient') as mock_client_factory:
       mock_client = mock_client_factory.return_value
       with mock.patch.object(
@@ -199,7 +200,7 @@ class ExecutorTest(tf.test.TestCase):
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
               model=self._model,
-              binary_kind=self._binary_kind,
+              serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,
               requests=[])
@@ -207,14 +208,14 @@ class ExecutorTest(tf.test.TestCase):
 
   def testValidateOnce_LoadAndQuery_Succeed(self):
     infra_validator = executor.Executor(self._context)
-    with mock.patch.object(self._binary_kind,
+    with mock.patch.object(self._serving_binary,
                            'MakeClient') as mock_client_factory:
       mock_client = mock_client_factory.return_value
       with mock.patch.object(
           executor, '_create_model_server_runner') as mock_runner_factory:
         infra_validator._ValidateOnce(
             model=self._model,
-            binary_kind=self._binary_kind,
+            serving_binary=self._serving_binary,
             serving_spec=self._serving_spec,
             validation_spec=self._validation_spec,
             requests=['my_request'])
@@ -224,7 +225,7 @@ class ExecutorTest(tf.test.TestCase):
 
   def testValidateOnce_LoadAndQuery_FailIfSendRequestsRaises(self):
     infra_validator = executor.Executor(self._context)
-    with mock.patch.object(self._binary_kind,
+    with mock.patch.object(self._serving_binary,
                            'MakeClient') as mock_client_factory:
       mock_client = mock_client_factory.return_value
       with mock.patch.object(
@@ -233,7 +234,7 @@ class ExecutorTest(tf.test.TestCase):
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
               model=self._model,
-              binary_kind=self._binary_kind,
+              serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,
               requests=['my_request'])

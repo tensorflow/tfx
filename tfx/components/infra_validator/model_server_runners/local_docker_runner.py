@@ -28,8 +28,8 @@ from docker import errors as docker_errors
 from typing import Text
 
 from tfx import types
-from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator import error_types
+from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
 from tfx.utils import path_utils
@@ -88,13 +88,13 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
   """
 
   def __init__(self, model: types.Artifact,
-               binary_kind: binary_kinds.BinaryKind,
+               serving_binary: serving_bins.ServingBinary,
                serving_spec: infra_validator_pb2.ServingSpec):
     """Make a local docker runner.
 
     Args:
       model: A model artifact to infra validate.
-      binary_kind: A BinaryKind to run.
+      serving_binary: A ServingBinary to run.
       serving_spec: A ServingSpec instance.
     """
     base_path, model_name, version = _parse_model_path(
@@ -109,7 +109,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     self._model_base_path = base_path
     self._model_name = model_name
     self._model_version = version
-    self._binary_kind = binary_kind
+    self._serving_binary = serving_binary
     self._serving_spec = serving_spec
     self._docker = _make_docker_client(serving_spec.local_docker)
     self._container = None
@@ -117,7 +117,7 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
 
   def __repr__(self):
     return 'LocalDockerRunner(image: {image})'.format(
-        image=self._binary_kind.image)
+        image=self._serving_binary.image)
 
   @property
   def _model_path(self):
@@ -140,19 +140,19 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     host_port = _find_available_port()
     self._endpoint = 'localhost:{}'.format(host_port)
 
-    if isinstance(self._binary_kind, binary_kinds.TensorFlowServing):
+    if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       is_local_model = os.path.exists(self._model_version_path)
       if is_local_model:
-        run_params = self._binary_kind.MakeDockerRunParams(
+        run_params = self._serving_binary.MakeDockerRunParams(
             host_port=host_port,
             host_model_path=self._model_path)
       else:
-        run_params = self._binary_kind.MakeDockerRunParams(
+        run_params = self._serving_binary.MakeDockerRunParams(
             host_port=host_port,
             model_base_path=self._model_base_path)
     else:
-      raise NotImplementedError('Unsupported binary kind {}'.format(
-          type(self._binary_kind).__name__))
+      raise NotImplementedError('Unsupported serving binary {}'.format(
+          type(self._serving_binary).__name__))
 
     logging.info('Running container with parameter %s', run_params)
     self._container = self._docker.containers.run(**run_params)
