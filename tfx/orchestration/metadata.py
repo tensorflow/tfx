@@ -344,8 +344,8 @@ class Metadata(object):
       try:
         execution_type_id = self.store.put_execution_type(
             execution_type=execution_type, can_add_fields=True)
-        absl.logging.info('Registering a new execution type with id %s.' %
-                          execution_type_id)
+        absl.logging.debug('Registering a new execution type with id %s.' %
+                           execution_type_id)
         return execution_type_id
       except tf.errors.AlreadyExistsError:
         warning_str = (
@@ -584,7 +584,7 @@ class Metadata(object):
       component_run_context.id = context_ids[-1]
     except tf.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
-      absl.logging.info(
+      absl.logging.debug(
           'Component run context already exists. Reusing the context %s.',
           component_run_context.name)
       [previous_execution] = self.store.get_executions_by_context(
