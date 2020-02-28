@@ -24,17 +24,16 @@ import tensorflow as tf
 from typing import Any, Dict, Text
 
 from google.protobuf import json_format
+from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator.model_server_clients import base_client
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
 
-LocalDockerConfig = infra_validator_pb2.LocalDockerConfig
 ModelState = base_client.ModelState
-LocalDockerModelServerRunner = local_docker_runner.LocalDockerModelServerRunner
 
 
-def _make_serving_spec(payload: Dict[Text, Any]):
+def _create_serving_spec(payload: Dict[Text, Any]):
   result = infra_validator_pb2.ServingSpec()
   json_format.ParseDict(payload, result)
   return result
@@ -53,45 +52,46 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     )
     self.model = standard_artifacts.Model()
     self.model.uri = os.path.join(base_dir, 'trainer', 'current')
+    self.model_name = 'chicago-taxi'
 
-    # Mock LocalDockerModelServerRunner._FindAvailablePort
-    self.find_available_port_patcher = mock.patch.object(
-        LocalDockerModelServerRunner, '_FindAvailablePort')
-    self.find_available_port = self.find_available_port_patcher.start()
+    # Mock _find_available_port
+    patcher = mock.patch.object(local_docker_runner, '_find_available_port')
+    self.find_available_port = patcher.start()
     self.find_available_port.return_value = 1234
+    self.addCleanup(patcher.stop)
 
     # Mock docker.DockerClient
-    self.docker_client_patcher = mock.patch('docker.DockerClient')
-    self.docker_client_cls = self.docker_client_patcher.start()
+    patcher = mock.patch('docker.DockerClient')
+    self.docker_client_cls = patcher.start()
     self.docker_client = self.docker_client_cls.return_value
+    self.addCleanup(patcher.stop)
 
-    # Mock client factory
-    self.client_factory = mock.Mock()
-    self.client = self.client_factory.return_value
+    self.serving_spec = _create_serving_spec({
+        'tensorflow_serving': {
+            'tags': ['1.15.0']},
+        'local_docker': {},
+        'model_name': 'chicago-taxi',
+    })
+    self.model_server_client = None
 
-  def tearDown(self):
-    super(LocalDockerRunnerTest, self).tearDown()
-    self.find_available_port_patcher.stop()
-    self.docker_client_patcher.stop()
+  def _ParseBinaryKind(self, serving_spec: infra_validator_pb2.ServingSpec):
+    binary_kind = binary_kinds.parse_binary_kinds(serving_spec)[0]
+    patcher = mock.patch.object(binary_kind, 'MakeClient')
+    self.make_client_mock = patcher.start()
+    self.model_server_client = self.make_client_mock.return_value
+    self.addCleanup(patcher.stop)
+    return binary_kind
 
-  def _CreateLocalDockerRunner(self, image_uri='docker_image_uri',
-                               config_dict=None):
-    return LocalDockerModelServerRunner(
+  def _CreateLocalDockerRunner(self):
+    binary_kind = self._ParseBinaryKind(self.serving_spec)
+    return local_docker_runner.LocalDockerRunner(
         model=self.model,
-        image_uri=image_uri,
-        serving_spec=_make_serving_spec({
-            'tensorflow_serving': {
-                'tags': ['2.0.0']},
-            'local_docker': config_dict or {},
-            'model_name': 'chicago-taxi',
-        }),
-        client_factory=self.client_factory
-    )
+        binary_kind=binary_kind,
+        serving_spec=self.serving_spec)
 
   def testStart(self):
     # Prepare mocks and variables.
-    runner = self._CreateLocalDockerRunner(
-        image_uri='tensorflow/serving:1.15.0')
+    runner = self._CreateLocalDockerRunner()
 
     # Act.
     runner.Start()
@@ -104,11 +104,12 @@ class LocalDockerRunnerTest(tf.test.TestCase):
         ports={'8500/tcp': 1234},
         environment={
             'MODEL_NAME': 'chicago-taxi',
+            'MODEL_BASE_PATH': '/model'
         },
         auto_remove=True,
         detach=True
     ), run_kwargs)
-    self.client_factory.assert_called_with('localhost:1234')
+    self.make_client_mock.assert_called_with('localhost:1234')
 
   def testStartMultipleTimesFail(self):
     # Prepare mocks and variables.
@@ -131,7 +132,7 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Setup state.
     runner.Start()
     container.status = 'running'
-    self.client.GetModelState.return_value = ModelState.AVAILABLE
+    self.model_server_client.GetModelState.return_value = ModelState.AVAILABLE
 
     # Act.
     succeeded = runner.WaitUntilModelAvailable(timeout_secs=10)
@@ -139,7 +140,7 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Check states.
     self.assertTrue(succeeded)
     container.reload.assert_called()
-    self.client.GetModelState.assert_called()
+    self.model_server_client.GetModelState.assert_called()
 
   def testWaitUntilModelAvailable_FailWithoutStartingFirst(self):
     # Prepare runner.
@@ -159,7 +160,7 @@ class LocalDockerRunnerTest(tf.test.TestCase):
 
     # Setup state.
     runner.Start()
-    container.status = 'dead'  # Bad status
+    container.status = 'dead'  # Bad status.
 
     # Act.
     succeeded = runner.WaitUntilModelAvailable(timeout_secs=10)
@@ -175,18 +176,21 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Setup state.
     runner.Start()
     container.status = 'running'
-    self.client.return_value = ModelState.UNAVAILABLE
+    self.model_server_client.GetModelState.return_value = ModelState.UNAVAILABLE
 
     # Act.
     succeeded = runner.WaitUntilModelAvailable(timeout_secs=10)
 
     # Check result.
+    self.model_server_client.GetModelState.assert_called()
     self.assertFalse(succeeded)
 
   @mock.patch('time.time')
   @mock.patch('time.sleep')
   def testWaitUntilModelAvailable_FailIfStatusNotReadyUntilDeadline(
       self, mock_sleep, mock_time):
+    del mock_sleep
+
     # Prepare mocks and variables.
     container = self.docker_client.containers.run.return_value
     runner = self._CreateLocalDockerRunner()
@@ -194,27 +198,29 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     # Setup state.
     runner.Start()
     container.status = 'running'
-    self.client.return_value = ModelState.NOT_READY
+    self.model_server_client.GetModelState.return_value = ModelState.NOT_READY
     mock_time.side_effect = list(range(20))
 
     # Act.
     succeeded = runner.WaitUntilModelAvailable(timeout_secs=10)
 
     # Check result.
+    self.model_server_client.GetModelState.assert_called()
     self.assertFalse(succeeded)
 
   @mock.patch('time.time')
   @mock.patch('time.sleep')
   def testWaitUntilModelAvailable_FailIfContainerNotRunningUntilDeadline(
       self, mock_sleep, mock_time):
+    del mock_sleep
+
     # Prepare mocks and variables.
     container = self.docker_client.containers.run.return_value
     runner = self._CreateLocalDockerRunner()
 
     # Setup state.
     runner.Start()
-    container.status = 'running'
-    self.client.return_value = ModelState.NOT_READY
+    container.status = 'created'  # container not running.
     mock_time.side_effect = list(range(20))
 
     # Act.

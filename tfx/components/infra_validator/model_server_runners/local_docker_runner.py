@@ -24,11 +24,10 @@ import time
 
 from absl import logging
 import docker
-from six.moves.urllib import parse
 from typing import Text
 
+from tfx.components.infra_validator import binary_kinds
 from tfx.components.infra_validator.model_server_clients import base_client
-from tfx.components.infra_validator.model_server_clients import factory
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
@@ -37,12 +36,51 @@ from tfx.utils import path_utils
 ModelState = base_client.ModelState
 
 _MODEL_STATE_POLLING_INTERVALS_SECONDS = 1
-# Default tensorflow/serving grpc port
-# https://www.tensorflow.org/tfx/serving/docker#running_a_serving_image
-_TENSORFLOW_SERVING_GRPC_PORT = '8500/tcp'
 
 
-class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
+def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
+  params = {}
+  if config.client_timeout_seconds:
+    params['timeout'] = config.client_timeout_seconds
+  if config.client_base_url:
+    params['base_url'] = config.client_base_url
+  if config.client_api_version:
+    params['version'] = config.client_api_version
+  return docker.DockerClient(**params)
+
+
+def _find_available_port():
+  """Find available port in the host machine."""
+  with contextlib.closing(
+      socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+    sock.bind(('localhost', 0))
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    _, port = sock.getsockname()
+    return port
+
+
+def _parse_model_path(model_path: Text):
+  """Parse model path into a base path, model name, and a version.
+
+  Args:
+    model_path: Path to the SavedModel (or other format) in the structure of
+        `{model_base_path}/{model_name}/{version}`, where version is an integer.
+  Raises:
+    ValueError: if the model_path does not conform to the expected directory
+        structure.
+  Returns:
+    `model_base_path`, `model_name`, and integer `version`.
+  """
+  model_path, version = os.path.split(model_path)
+  if not version.isdigit():
+    raise ValueError(
+        '{} does not conform to tensorflow serving directory structure: '
+        'BASE_PATH/model_name/int_version.'.format(model_path))
+  base_path, model_name = os.path.split(model_path)
+  return base_path, model_name, int(version)
+
+
+class LocalDockerRunner(base_runner.BaseModelServerRunner):
   """A model server runner that runs in a local docker runtime.
 
   You need to pre-install docker in the machine that is running InfraValidator
@@ -51,92 +89,74 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
   """
 
   def __init__(self, model: standard_artifacts.Model,
-               image_uri: Text,
-               serving_spec: infra_validator_pb2.ServingSpec,
-               client_factory: factory.ClientFactory):
-    self._model_dir = os.path.dirname(path_utils.serving_model_path(model.uri))
-    self._image_uri = image_uri
+               binary_kind: binary_kinds.BinaryKind,
+               serving_spec: infra_validator_pb2.ServingSpec):
+    """Make a local docker runner.
+
+    Args:
+      model: A model artifact to infra validate.
+      binary_kind: A BinaryKind to run.
+      serving_spec: A ServingSpec instance.
+    """
+    base_path, model_name, version = _parse_model_path(
+        path_utils.serving_model_path(model.uri))
+
+    if model_name != serving_spec.model_name:
+      raise ValueError(
+          'ServingSpec.model_name ({}) does not match the model name ({}) from'
+          'the Model artifact.'.format(
+              serving_spec.model_name, model_name))
+
+    self._model_base_path = base_path
+    self._model_name = model_name
+    self._model_version = version
+    self._binary_kind = binary_kind
     self._serving_spec = serving_spec
-    self._docker = self._MakeDockerClientFromConfig(serving_spec.local_docker)
-    self._client_factory = client_factory
+    self._docker = _make_docker_client(serving_spec.local_docker)
     self._container = None
     self._client = None
 
   def __repr__(self):
-    attrs = dict(image_uri=self._image_uri)
-    return '<{class_name} {attrs}>'.format(
-        class_name=self.__class__.__name__,
-        attrs=' '.join('{}={}'.format(key, value)
-                       for key, value in attrs.items()))
+    return 'LocalDockerRunner(image: {image})'.format(
+        image=self._binary_kind.image)
 
-  def _MakeDockerClientFromConfig(
-      self, config: infra_validator_pb2.LocalDockerConfig):
-    params = {}
-    params['timeout'] = (config.client_timeout_seconds
-                         or docker.constants.DEFAULT_TIMEOUT_SECONDS)
-    if config.client_base_url:
-      params['base_url'] = config.client_base_url
-    if config.client_api_version:
-      params['version'] = config.client_api_version
-    logging.info('Initializing docker client with parameter %s', params)
-    return docker.DockerClient(**params)
+  @property
+  def client(self):
+    return self._client
+
+  @property
+  def model_path(self):
+    return os.path.join(self._model_base_path, self._model_name)
+
+  @property
+  def model_version_path(self):
+    return os.path.join(self._model_base_path, self._model_name,
+                        str(self._model_version))
 
   def Start(self):
     if self._container:
       raise RuntimeError('You cannot start model server multiple times.')
 
-    # TODO(jjong): Current implementation assumes tensorflow serving image.
-    # Needs refactoring.
-    model_name = self._serving_spec.model_name
-    if model_name != os.path.basename(self._model_dir):
-      raise ValueError('model_name does not match Model artifact directory.')
-    grpc_port = self._FindAvailablePort()
-    endpoint = 'localhost:{}'.format(grpc_port)
+    host_port = _find_available_port()
+    endpoint = 'localhost:{}'.format(host_port)
 
-    run_args = dict(
-        image=self._image_uri,
-        ports={_TENSORFLOW_SERVING_GRPC_PORT: grpc_port},
-        environment={
-            'MODEL_NAME': model_name
-        },
-        auto_remove=True,
-        detach=True)
-    if self._IsLocalUri(self._model_dir):
-      # If model is in the host machine, we need to bind the local model
-      # directory to the container. Tensorflow serving uses /models/ directory
-      # as a default model base directory.
-      logging.info(os.listdir(self._model_dir))
-      run_args['mounts'] = [
-          docker.types.Mount(
-              type='bind',
-              target='/models/{}'.format(model_name),
-              source=self._model_dir,
-              read_only=True)
-      ]
+    if isinstance(self._binary_kind, binary_kinds.TensorFlowServing):
+      is_local_model = os.path.exists(self.model_version_path)
+      if is_local_model:
+        run_params = self._binary_kind.MakeDockerRunParams(
+            host_port=host_port,
+            host_model_path=self.model_path)
+      else:
+        run_params = self._binary_kind.MakeDockerRunParams(
+            host_port=host_port,
+            model_base_path=self._model_base_path)
     else:
-      # Else the model is in the remote location and will be retrieved using
-      # tensorflow gfile abstraction.
-      model_base_dir = os.path.dirname(self._model_dir)
-      run_args['environment']['MODEL_BASE_DIR'] = model_base_dir
+      raise ValueError('Unsupported binary kind {}'.format(
+          type(self._binary_kind).__name__))
 
-    logging.info('Running container with argument %s', run_args)
-    self._container = self._docker.containers.run(**run_args)
-
-    self._client = self._client_factory(endpoint)
-
-  @staticmethod
-  def _FindAvailablePort():
-    with contextlib.closing(
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-      sock.bind(('localhost', 0))
-      sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-      _, port = sock.getsockname()
-      return port
-
-  @staticmethod
-  def _IsLocalUri(uri):
-    parsed = parse.urlparse(uri)
-    return parsed.scheme == ''  # pylint: disable=g-explicit-bool-comparison
+    logging.info('Running container with parameter %s', run_params)
+    self._container = self._docker.containers.run(**run_params)
+    self._client = self._binary_kind.MakeClient(endpoint)
 
   def WaitUntilModelAvailable(self, timeout_secs):
     if not self._container:
@@ -176,7 +196,3 @@ class LocalDockerModelServerRunner(base_runner.BaseModelServerRunner):
       logging.info('Stopping container.')
       self._container.stop()
     self._docker.close()
-
-  @property
-  def client(self):
-    return self._client
