@@ -29,6 +29,9 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
 
+ARTIFACT_SUFFIX = 'data'
+
+
 def _generate_output_uri(base_output_dir: Text,
                          name: Text,
                          execution_id: int,
@@ -37,9 +40,11 @@ def _generate_output_uri(base_output_dir: Text,
   """Generate uri for output artifact."""
   if is_single_artifact:
     # TODO(b/145680633): Consider differentiating different types of uris.
-    return os.path.join(base_output_dir, name, str(execution_id))
+    return os.path.join(base_output_dir, name, str(execution_id),
+                        ARTIFACT_SUFFIX)
 
-  return os.path.join(base_output_dir, name, str(execution_id), str(index))
+  return os.path.join(base_output_dir, name, str(execution_id), str(index),
+                      ARTIFACT_SUFFIX)
 
 
 def _prepare_output_paths(artifact: types.Artifact):
@@ -59,6 +64,7 @@ def _prepare_output_paths(artifact: types.Artifact):
 
   # TODO(zhitaoli): Consider refactoring this out into something
   # which can handle permission bits.
+  artifact_dir = os.path.dirname(artifact.uri)
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact_dir)
   tf.io.gfile.makedirs(artifact_dir)

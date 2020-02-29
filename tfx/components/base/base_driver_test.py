@@ -138,14 +138,15 @@ class BaseDriverTest(tf.test.TestCase):
         execution_decision.output_dict['output_data'][0].uri,
         os.path.join(self._pipeline_info.pipeline_root,
                      self._component_info.component_id, 'output_data',
-                     str(self._execution_id)))
+                     str(self._execution_id), base_driver.ARTIFACT_SUFFIX))
     self.assertLen(execution_decision.output_dict['output_multi_data'], 2)
     for i in range(2):
       self.assertEqual(
           execution_decision.output_dict['output_multi_data'][i].uri,
           os.path.join(self._pipeline_info.pipeline_root,
                        self._component_info.component_id, 'output_multi_data',
-                       str(self._execution_id), str(i)))
+                       str(self._execution_id), str(i),
+                       base_driver.ARTIFACT_SUFFIX))
     self.assertEqual(execution_decision.input_dict['input_string'][0].value,
                      _STRING_VALUE)
 
