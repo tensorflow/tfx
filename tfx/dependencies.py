@@ -35,7 +35,7 @@ def make_required_install_packages():
       'ml-metadata>=0.21.2,<0.22',
       'protobuf>=3.7,<4',
       'pyarrow>=0.15,<0.16',
-      'pyyaml>=3.12,<4',
+      'pyyaml>=5,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15,<3',
       'tensorflow-data-validation>=0.21.4,<0.22',

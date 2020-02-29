@@ -71,7 +71,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
       self.assertIsNotNone(pipeline_file)
-      pipeline = yaml.load(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
 
       containers = [
           c for c in pipeline['spec']['templates'] if 'container' in c
@@ -150,7 +150,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
       self.assertIsNotNone(pipeline_file)
-      pipeline = yaml.load(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
 
       containers = [
           c for c in pipeline['spec']['templates'] if 'container' in c
@@ -192,7 +192,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
     with tarfile.TarFile.open(file_path).extractfile(
         'pipeline.yaml') as pipeline_file:
       self.assertIsNotNone(pipeline_file)
-      pipeline = yaml.load(pipeline_file)
+      pipeline = yaml.safe_load(pipeline_file)
 
       container_templates = [
           c for c in pipeline['spec']['templates'] if 'container' in c
