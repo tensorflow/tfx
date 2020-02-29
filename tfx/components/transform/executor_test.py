@@ -20,12 +20,14 @@ from __future__ import print_function
 
 import os
 import tempfile
+
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
+from tfx.components.transform import labels
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
@@ -34,8 +36,27 @@ class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
 
+class ExecutorForTesting(executor.Executor):
+
+  def __init__(self, use_tfxio):
+    super(ExecutorForTesting, self).__init__()
+    self._use_tfxio = use_tfxio
+
+  def Transform(self, inputs, outputs, status_file):
+    inputs[labels.USE_TFXIO_LABEL] = self._use_tfxio
+    super(ExecutorForTesting, self).Transform(inputs, outputs, status_file)
+
+
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
+
+  # executor_with_tfxio_test.py overrides this to True.
+  def _use_tfxio(self):
+    return False
+
+  def _get_source_data_dir(self):
+    return os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
@@ -81,8 +102,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
 
-    self._source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    self._source_data_dir = self._get_source_data_dir()
     self._output_data_dir = self._get_output_data_dir()
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
@@ -95,7 +115,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transform_module.preprocessing_fn.__name__)
 
     # Executor for test.
-    self._transform_executor = executor.Executor()
+    self._transform_executor = ExecutorForTesting(self._use_tfxio())
 
   def _verify_transform_outputs(self):
     self.assertNotEqual(
@@ -152,11 +172,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
       return result
 
     with tft_unit.mock.patch.object(
-        executor.Executor,
+        ExecutorForTesting,
         '_CreatePipeline',
         autospec=True,
         side_effect=_create_pipeline_wrapper):
-      transform_executor = executor.Executor()
+      transform_executor = ExecutorForTesting(self._use_tfxio())
       transform_executor.Do(self._input_dict, self._output_dict,
                             self._exec_properties)
     assert len(pipelines) == 1
