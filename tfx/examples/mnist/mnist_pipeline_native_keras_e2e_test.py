@@ -38,8 +38,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
         self._testMethodName)
 
     self._pipeline_name = 'keras_test'
-    self._data_root = os.path.join(
-        os.path.dirname(__file__), 'data-mnist-small')
+    self._data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._module_file = os.path.join(
         os.path.dirname(__file__), 'mnist_utils_native_keras.py')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',

@@ -41,10 +41,10 @@ from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'mnist_native_keras'
 
-# This example assumes that MNIST data is stored in ~/mnist/data-mnist-small
-# and the utility function is in ~/mnist. Feel free to customize as needed.
+# This example assumes that MNIST data is stored in ~/mnist/data and the utility
+# function is in ~/mnist. Feel free to customize as needed.
 _mnist_root = os.path.join(os.environ['HOME'], 'mnist')
-_data_root = os.path.join(_mnist_root, 'data-mnist-small')
+_data_root = os.path.join(_mnist_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_mnist_root, 'mnist_utils_native_keras.py')
