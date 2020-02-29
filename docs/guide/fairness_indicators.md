@@ -21,7 +21,7 @@ labelled for the features you would like to slice by. If you don't have the
 exact slice features for your fairness concerns, you may explore trying to find
 an evaluation set that does, or considering proxy features within your feature
 set that may highlight outcome disparities. For additional guidance, see
-[here](/tfx/fairness_indicators/guidance).
+[here](bit.ly/fairness-indicators-guidance).
 
 ### Model
 
@@ -31,7 +31,7 @@ model, please see the “Model-Agnostic TFMA” section below.
 
 After your Estimator is trained, you will need to export a saved model for
 evaluation purposes. To learn more, see the
-[TFMA guide](/tfx/model_analysis/get_started).
+[TFMA guide](https://www.tensorflow.org/tfx/model_analysis/get_started).
 
 ### Configuring Slices
 

@@ -18,7 +18,7 @@ progress:
 </ul>
 
 To keep up to date on TFX releases, see the
-<a href="https://github.com/tensorflow/tfx/blob/master/ROADMAP.md">TFX OSS
+<a href"https://github.com/tensorflow/tfx/blob/master/ROADMAP.md">TFX OSS
 Roadmap</a>, read
 <a href="https://blog.tensorflow.org/search?label=TFX&max-results=20">the TFX
 blog</a> and subscribe to the

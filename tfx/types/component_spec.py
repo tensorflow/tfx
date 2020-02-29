@@ -31,6 +31,7 @@ from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
+from tfx.types.standard_artifacts import AnyArtifact
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
 
@@ -391,6 +392,9 @@ class ChannelParameter(_ComponentParameter):
             other.type == self.type and other.optional == self.optional)
 
   def type_check(self, arg_name: Text, value: Channel):
-    if not isinstance(value, Channel) or value.type != self.type:
+    if not isinstance(value, Channel) or (value.type and self.type and
+                                          value.type != AnyArtifact and
+                                          self.type != AnyArtifact and
+                                          value.type != self.type):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
                       (arg_name, self.type, value))

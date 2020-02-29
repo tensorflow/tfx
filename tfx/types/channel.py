@@ -27,6 +27,7 @@ from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
+from tfx.types.standard_artifacts import AnyArtifact
 from tfx.utils import json_utils
 
 
@@ -81,7 +82,11 @@ class Channel(json_utils.Jsonable):
 
   def _validate_type(self) -> None:
     for artifact in self._artifacts:
-      if artifact.type_name != self.type_name:
+      if (artifact.type_name != self.type_name and
+          artifact.type_name and
+          self.type_name and
+          artifact.type_name != AnyArtifact.TYPE_NAME and
+          self.type_name != AnyArtifact.TYPE_NAME):
         raise ValueError(
             "Artifacts provided do not match Channel's artifact type {}".format(
                 self.type_name))

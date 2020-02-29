@@ -38,6 +38,10 @@ SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
+class AnyArtifact(Artifact):
+  TYPE_NAME = 'Any'
+
+
 class Examples(Artifact):
   TYPE_NAME = 'Examples'
   PROPERTIES = {

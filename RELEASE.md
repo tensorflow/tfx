@@ -18,6 +18,8 @@
     the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
+*   Added the AnyArtifact type. This type is considered compatible with any
+    inputs.
 
 ## Bug fixes and other changes
 

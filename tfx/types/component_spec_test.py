@@ -30,6 +30,7 @@ from tfx.types.channel import Channel
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
+from tfx.types.standard_artifacts import AnyArtifact
 from tfx.types.standard_artifacts import Examples
 
 
@@ -282,6 +283,13 @@ class ComponentSpecTest(tf.test.TestCase):
     with self.assertRaisesRegexp(TypeError, "Expecting value type "
                                  "<(class|type) 'int'>"):
       dict_parameter.type_check('dict_parameter', {'key1': '1'})
+
+  def testAnyArtifact(self):
+    _BasicComponentSpec(
+        folds=10,
+        input=Channel(type=AnyArtifact),
+        output=Channel(type=AnyArtifact),
+    )
 
 
 if __name__ == '__main__':
