@@ -214,8 +214,8 @@ source ~/tfx-env/bin/activate
 
 git clone https://github.com/tensorflow/tfx.git
 cd ~/tfx
-# Release 0.14 is the latest stable release
-git checkout -f origin/r0.14
+# These instructions are specific to the 0.21 release
+git checkout -f origin/r0.21
 cd ~/tfx/tfx/examples/airflow_workshop/setup
 ./setup_demo.sh
 ```
@@ -267,10 +267,10 @@ airflow webserver -p 7070
 
 ![DAG buttons](images/airflow_workshop/airflow_dag_buttons.png)
 
-* Use the button on the left to _enable_ the taxi DAG
-* Use the button on the right to _refresh_ the taxi DAG when you make changes
-* Use the button on the right to _trigger_ the taxi DAG
-* Click on taxi to go to the graph view of the taxt DAG
+* Use the button on the left to _enable_ the DAG
+* Use the button on the right to _refresh_ the DAG when you make changes
+* Use the button on the right to _trigger_ the DAG
+* Click on taxi to go to the graph view of the DAG
 
 ![Graph refresh button](images/airflow_workshop/graph_refresh_button.png)
 
@@ -281,11 +281,11 @@ enable and trigger your DAGs:
 
 ```bash
 # enable/disable
-airflow unpause <your DAG>
-airflow pause <your DAG>
+airflow pause <your DAG name>
+airflow unpause <your DAG name>
 
 # trigger
-airflow trigger_dag <your DAG>
+airflow trigger_dag <your DAG name>
 ```
 
 #### Waiting for the pipeline to complete
