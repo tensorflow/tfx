@@ -262,7 +262,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       # Need to look for materialized artifacts in the execution decision.
       rendered_artifacts = ''.join([
           _render_artifact_as_mdstr(single_artifact)
-          for single_artifact in name_to_artifacts[name]
+          for single_artifact in name_to_artifacts.get(name, [])
       ])
       rendered_list.append(
           '## {name}\n\n**Type**: {channel_type}\n\n{artifacts}'.format(
