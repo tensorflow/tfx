@@ -28,13 +28,13 @@ from ml_metadata.proto import metadata_store_pb2
 
 class TFXArtifactTypes(object):
   """Constants for different TFX artifact type names."""
-  EXAMPLES = 'ExamplesPath'
-  SCHEMA = 'SchemaPath'
-  EXAMPLE_STATS = 'ExampleStatisticsPath'
-  EXAMPLE_VALIDATION = 'ExampleValidationPath'
-  TRANSFORMED_EXAMPLES = 'TransformPath'
-  MODEL = 'ModelExportPath'
-  MODEL_EVAL = 'ModelEvalPath'
+  EXAMPLES = 'Examples'
+  SCHEMA = 'Schema'
+  EXAMPLE_STATS = 'ExampleStatistics'
+  EXAMPLE_VALIDATION = 'ExampleAnomalies'
+  TRANSFORMED_EXAMPLES = 'TransformGraph'
+  MODEL = 'Model'
+  MODEL_EVAL = 'ModelEvaluation'
 
 
 class TFXExecutionTypes(object):
