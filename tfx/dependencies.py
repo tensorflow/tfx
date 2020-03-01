@@ -24,14 +24,11 @@ def make_required_install_packages():
       # LINT.IfChange
       'apache-beam[gcp]>=2.17,<2.18',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
-      # TODO(b/149399451): This is a workaround for broken avro-python3 1.9.2
-      # release. Remove once having a healthy new release.
       'avro-python3>=1.8.1,!=1.9.2,<2.0.0; python_version >= "3.0"',
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      # TODO(b/150406246): Bypass a problematic grpcio version
-      'grpcio>=1.25,<1.28',
+      'grpcio>=1.25,!=1.27.2,<2',
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.21,<0.22',
       'protobuf>=3.7,<4',
