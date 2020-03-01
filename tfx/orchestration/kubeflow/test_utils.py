@@ -36,22 +36,26 @@ import tensorflow as tf
 
 from google.cloud import storage
 from ml_metadata.proto import metadata_store_pb2
+from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import ModelValidator
+from tfx.components import Pusher
+from tfx.components import ResolverNode
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.components.base.base_component import BaseComponent
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
+from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
 from tfx.utils import dsl_utils
 
 
@@ -112,9 +116,14 @@ def create_e2e_components(
       examples=example_gen.outputs['examples'],
       schema=infer_schema.outputs['schema'],
       module_file=transform_module)
+  latest_model_resolver = ResolverNode(
+      instance_name='latest_model_resolver',
+      resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      latest_model=Channel(type=Model))
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
+      base_model=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10),
       eval_args=trainer_pb2.EvalArgs(num_steps=5),
@@ -138,7 +147,7 @@ def create_e2e_components(
 
   return [
       example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      trainer, model_analyzer, model_validator, pusher
+      latest_model_resolver, trainer, model_analyzer, model_validator, pusher
   ]
 
 
