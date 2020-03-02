@@ -41,6 +41,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._module_file = os.path.join(
         os.path.dirname(__file__), 'mnist_utils_native_keras.py')
+    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
@@ -59,6 +60,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('ImportExampleGen')
     self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
+    self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
     self.assertExecutedOnce('Trainer')
@@ -70,17 +72,21 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
+            serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
+            metadata_path=self._metadata_path,
+            direct_num_workers=1))
 
+    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
+    expected_execution_count = 9  # 8 components + 1 resolver
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(7, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
 
