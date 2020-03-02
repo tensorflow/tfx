@@ -9,9 +9,6 @@ Here is short summary of the example codes, status and known restrictions:
 *   The trainer must be configured with TFX [Generic Trainer]
     (https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
-*   Model validation (will be supported in tfma v2 Evaluator) and Pusher
-    component are WIP.
-
 *   The dataset included in this example consists of a selection of 500 records
     from the MNIST dataset, converted to tfrecord format. Each record is
     a tf.Example with 2 columns of data: 'image/floats' representing

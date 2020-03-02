@@ -72,6 +72,7 @@
     native Keras.
 *   Updated to support passing `tfma.EvalConfig` in evaluator when calling TFMA.
 *   Added an iris example with native Keras.
+*   Added an MNIST example with native Keras.
 
 ## Bug fixes and other changes
 *   Switched the default behavior of KubeflowDagRunner to not mounting GCP
