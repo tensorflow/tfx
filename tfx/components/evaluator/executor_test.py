@@ -159,12 +159,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
                   json_format.MessageToJson(
                       tfma.EvalConfig(
                           model_specs=[
-                              tfma.ModelSpec(
-                                  name='baseline',
-                                  label_key='tips',
-                                  is_baseline=True),
-                              tfma.ModelSpec(
-                                  name='candidate', label_key='tips'),
+                              tfma.ModelSpec(label_key='tips'),
                           ],
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
@@ -190,11 +185,11 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
                       tfma.EvalConfig(
                           model_specs=[
                               tfma.ModelSpec(
-                                  name='baseline',
+                                  name='baseline1',
                                   label_key='tips',
                                   is_baseline=True),
                               tfma.ModelSpec(
-                                  name='candidate', label_key='tips'),
+                                  name='candidate1', label_key='tips'),
                           ],
                           metrics_specs=[
                               tfma.MetricsSpec(metrics=[
