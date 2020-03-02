@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
-import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
 from google.protobuf import json_format
@@ -111,72 +110,48 @@ class Executor(base_executor.BaseExecutor):
               thresholds=fairness_indicator_thresholds),
       ]
 
-    def _get_eval_saved_model(artifact: List[types.Artifact],
-                              tags=None) -> tfma.EvalSharedModel:
-      model_uri = artifact_utils.get_single_uri(artifact)
-      if tags and tf.saved_model.SERVING in tags:
-        model_path = path_utils.serving_model_path(model_uri)
-      else:
-        model_path = path_utils.eval_model_path(model_uri)
-      return tfma.default_eval_shared_model(
-          eval_saved_model_path=model_path,
-          tags=tags,
-          add_metrics_callbacks=add_metrics_callbacks)
-
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
 
     run_validation = False
+    models = []
     if 'eval_config' in exec_properties and exec_properties['eval_config']:
       slice_spec = None
+      has_baseline = bool(input_dict.get(constants.BASELINE_MODEL_KEY))
       eval_config = tfma.EvalConfig()
       json_format.Parse(exec_properties['eval_config'], eval_config)
+      eval_config = tfma.update_eval_config_with_defaults(
+          eval_config,
+          maybe_add_baseline=has_baseline,
+          maybe_remove_baseline=not has_baseline)
+      tfma.verify_eval_config(eval_config)
       # Do not validate model when there is no thresholds configured. This is to
       # avoid accidentally blessing models when users forget to set thresholds.
-      for metrics_spec in eval_config.metrics_specs:
-        if (metrics_spec.thresholds or any(
-            metric.HasField('threshold') for metric in metrics_spec.metrics)):
-          run_validation = True
-          break
+      run_validation = bool(tfma.metrics.metric_thresholds_from_metrics_specs(
+          eval_config.metrics_specs))
       if len(eval_config.model_specs) > 2:
         raise ValueError(
             """Cannot support more than two models. There are {} models in this
              eval_config.""".format(len(eval_config.model_specs)))
-      if not eval_config.model_specs:
-        eval_config.model_specs.add()
-      # Remove baseline model_spec and all change thresholds if there is no
-      # baseline model provided.
-      if not input_dict.get(constants.BASELINE_MODEL_KEY):
-        tmp_model_specs = []
-        for model_spec in eval_config.model_specs:
-          if not model_spec.is_baseline:
-            tmp_model_specs.append(model_spec)
-        del eval_config.model_specs[:]
-        eval_config.model_specs.extend(tmp_model_specs)
-        absl.logging.info("""No baseline model provided, ignoring all
-            baseline model_spec.""")
-        for metrics_spec in eval_config.metrics_specs:
-          for metric in metrics_spec.metrics:
-            metric.threshold.ClearField('change_threshold')
-          for threshold in metrics_spec.thresholds.values():
-            threshold.ClearField('change_threshold')
-        absl.logging.info("""No baseline model provided, ignoring all
-            change thresholds.""")
       # Extract model artifacts.
-      models = {}
       for model_spec in eval_config.model_specs:
-        if model_spec.signature_name != 'eval':
-          tags = [tf.saved_model.SERVING]
         if model_spec.is_baseline:
-          models[model_spec.name] = _get_eval_saved_model(
-              input_dict[constants.BASELINE_MODEL_KEY], tags)
-          absl.logging.info('Using {} as baseline model.'.format(
-              models[model_spec.name].model_path))
+          model_uri = artifact_utils.get_single_uri(
+              input_dict[constants.BASELINE_MODEL_KEY])
         else:
-          models[model_spec.name] = _get_eval_saved_model(
-              input_dict[constants.MODEL_KEY], tags)
-          absl.logging.info('Using {} for model eval.'.format(
-              models[model_spec.name].model_path))
+          model_uri = artifact_utils.get_single_uri(
+              input_dict[constants.MODEL_KEY])
+        if tfma.get_model_type(model_spec) == tfma.TF_ESTIMATOR:
+          model_path = path_utils.eval_model_path(model_uri)
+        else:
+          model_path = path_utils.serving_model_path(model_uri)
+        absl.logging.info('Using {} as {} model.'.format(
+            model_path, model_spec.name))
+        models.append(tfma.default_eval_shared_model(
+            model_name=model_spec.name,
+            eval_saved_model_path=model_path,
+            add_metrics_callbacks=add_metrics_callbacks,
+            eval_config=eval_config))
     else:
       eval_config = None
       assert ('feature_slicing_spec' in exec_properties and
@@ -187,8 +162,12 @@ class Executor(base_executor.BaseExecutor):
                         feature_slicing_spec)
       slice_spec = self._get_slice_spec_from_feature_slicing_spec(
           feature_slicing_spec)
-      models = _get_eval_saved_model(input_dict[constants.MODEL_KEY])
-      absl.logging.info('Using {} for model eval.'.format(models.model_path))
+      model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])
+      model_path = path_utils.eval_model_path(model_uri)
+      absl.logging.info('Using {} for model eval.'.format(model_path))
+      models.append(tfma.default_eval_shared_model(
+          eval_saved_model_path=model_path,
+          add_metrics_callbacks=add_metrics_callbacks))
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
@@ -231,9 +210,8 @@ class Executor(base_executor.BaseExecutor):
       blessing.set_string_custom_property(
           'component_id', exec_properties['current_component_id'])
     # Check validation result and write BLESSED file accordingly.
-    validation_file = os.path.join(output_uri, tfma.constants.VALIDATIONS_KEY)
     absl.logging.info('Checking validation results.')
-    validation_result = tfma.load_validation_result(validation_file)
+    validation_result = tfma.load_validation_result(output_uri)
     if validation_result.validation_ok:
       io_utils.write_string_file(
           os.path.join(blessing.uri, constants.BLESSED_FILE_NAME), '')
