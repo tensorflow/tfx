@@ -165,6 +165,7 @@ python-snappy,https://raw.githubusercontent.com/andrix/python-snappy/master/LICE
 pytz,https://raw.githubusercontent.com/newvem/pytz/master/LICENSE.txt,MIT
 pyzmq,https://raw.githubusercontent.com/zeromq/pyzmq/master/COPYING.BSD,LGPL+BSD
 qtconsole,https://raw.githubusercontent.com/jupyter/qtconsole/master/LICENSE,3-Clause BSD
+qtpy,https://raw.githubusercontent.com/spyder-ide/qtpy/master/LICENSE.txt,MIT
 requests,https://raw.githubusercontent.com/requests/requests/master/LICENSE,Apache 2.0
 requests-oauthlib,https://raw.githubusercontent.com/requests/requests-oauthlib/master/LICENSE,BSD
 retrying,https://raw.githubusercontent.com/rholder/retrying/master/LICENSE,Apache 2.0
