@@ -15,6 +15,7 @@
 *   Introduced awareness of chief worker to Trainer's executor, in case running
     in distributed training cluster.
 *   Added a Chicago Taxi example with native Keras.
+*   Added a MNIST TFLITE example with native Keras.
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
