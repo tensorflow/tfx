@@ -24,6 +24,9 @@ import tempfile
 from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
+from google.protobuf import json_format
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import problem_statement_pb2
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -71,8 +74,61 @@ class ExecutorTest(absltest.TestCase):
     }
 
     # Run executor.
-    evaluator = executor.Executor()
-    evaluator.Do(input_dict, output_dict, exec_properties={})
+    stats_gen_executor = executor.Executor()
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties={})
+
+    # Check statistics_gen outputs.
+    self._validate_stats_output(
+        os.path.join(stats.uri, 'train', 'stats_tfrecord'))
+    self._validate_stats_output(
+        os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
+
+  def testDoWithProblemStatementAndSchema(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    tf.io.gfile.makedirs(output_data_dir)
+
+    # Create input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
+    schema = standard_artifacts.Schema()
+    schema.uri = os.path.join(source_data_dir, 'schema_gen')
+
+    input_dict = {
+        executor.EXAMPLES_KEY: [examples],
+    }
+
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
+    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    output_dict = {
+        executor.STATISTICS_KEY: [stats],
+    }
+
+    # Create exec properties.
+    problem_statement = json_format.MessageToJson(
+        text_format.Parse(
+            """
+            tasks {
+              type {
+                binary_classification {
+                  label: "company"
+                  example_weight: "fare"
+                }
+              }
+            }""", problem_statement_pb2.ProblemStatement()),
+        preserving_proto_field_name=True)
+    exec_properties = {executor.PROBLEM_STATEMENT_KEY: problem_statement}
+
+    # Run executor.
+    stats_gen_executor = executor.Executor()
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(

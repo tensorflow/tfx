@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tensorflow_metadata.proto.v0 import problem_statement_pb2
 from tfx.components.statistics_gen import component
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
@@ -32,6 +33,18 @@ class ComponentTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     statistics_gen = component.StatisticsGen(
         examples=channel_utils.as_channel([examples]))
+    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
+                     statistics_gen.outputs['statistics'].type_name)
+
+  def testConstructWithProblemStatementAndSchema(self):
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    problem_statement = problem_statement_pb2.ProblemStatement()
+    schema = standard_artifacts.Schema()
+    statistics_gen = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]),
+        problem_statement=problem_statement,
+        schema=channel_utils.as_channel([schema]))
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
 

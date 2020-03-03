@@ -21,6 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text
 
 import tensorflow_model_analysis as tfma
+from tensorflow_metadata.proto.v0 import problem_statement_pb2
 from tfx.proto import bulk_inferrer_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
@@ -253,9 +254,14 @@ class SchemaGenSpec(ComponentSpec):
 class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {
+      'problem_statement':
+          ExecutionParameter(
+              type=problem_statement_pb2.ProblemStatement, optional=True)
+  }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
+      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),

@@ -27,6 +27,9 @@ from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.coders import tf_example_decoder
 from tensorflow_data_validation.statistics import stats_options as options
 
+from google.protobuf import json_format
+from tensorflow_metadata.proto.v0 import problem_statement_pb2
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
 from tfx.components.base import base_executor
@@ -34,10 +37,14 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 
-# Key for examples in executor input_dict.
+# Keys for input_dict.
 EXAMPLES_KEY = 'examples'
+SCHEMA_KEY = 'schema'
 
-# Key for output statistics in executor output_dict.
+# Keys for exec_properties dict.
+PROBLEM_STATEMENT_KEY = 'problem_statement'
+
+# Key for output_dict.
 STATISTICS_KEY = 'statistics'
 
 # Default file name for stats generated.
@@ -79,9 +86,20 @@ class Executor(base_executor.BaseExecutor):
       for split in artifact_utils.decode_split_names(artifact.split_names):
         uri = os.path.join(artifact.uri, split)
         split_uris.append((split, uri))
+
+    problem_statement, schema = None, None
+    if PROBLEM_STATEMENT_KEY in exec_properties:
+      problem_statement = problem_statement_pb2.ProblemStatement()
+      json_format.Parse(exec_properties[PROBLEM_STATEMENT_KEY],
+                        problem_statement)
+    if SCHEMA_KEY in input_dict:
+      schema_file = io_utils.get_only_uri_in_dir(
+          artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
+      schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
+    # TODO(b/126263006): Support more stats_options through config.
+    stats_options = options.StatsOptions.from_config_protos(
+        problem_statement, schema)
     with self._make_beam_pipeline() as p:
-      # TODO(b/126263006): Support more stats_options through config.
-      stats_options = options.StatsOptions()
       for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(uri)
