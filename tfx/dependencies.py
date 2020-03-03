@@ -41,6 +41,14 @@ def make_required_install_packages():
       'tensorflow-serving-api>=1.15,<3',
       'tensorflow-transform>=0.21,<0.22',
       'tfx-bsl>=0.21.2,<0.22',
+      # TODO(avolkov): Extract the component library into a separate package
+      # LINT.IfChange
+      'kfp>=0.2.2; python_version >= "3.0"',
+      # LINT.ThenChange(
+      #     testing/github/common.sh,
+      #     testing/github/ubuntu/image/image.sh,
+      #     testing/kubeflow/common.sh
+      # )
   ]
 
 

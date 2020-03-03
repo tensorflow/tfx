@@ -28,6 +28,7 @@ from six import with_metaclass
 
 from google.protobuf import json_format
 from google.protobuf import message
+from ml_metadata.proto import metadata_store_pb2
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
@@ -375,22 +376,50 @@ class ChannelParameter(_ComponentParameter):
   def __init__(
       self,
       type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
+      mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None,
       optional: Optional[bool] = False):
-    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+    """Construct a ChannelParameter.
+
+    Args:
+      type: Subclass of Artifact that represents the type of this Channel.
+        Recommended way to construct a channel when an Artifact subclass for the
+        channel's type is available.
+      mlmd_artifact_type: Proto message defining the underlying ArtifactType.
+        Used in place of `type` for constructing the Channel when an Artifact
+        subclass for the MLMD artifact type is not available. Optional and
+        intended for internal use.
+      optional: Whether this parameter is optional.
+    """
+    if type:
+      if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
+        raise ValueError(
+            'Argument "type" of ChannelParameter constructor must be a '
+            'subclass of tfx.types.Artifact.')
+      mlmd_artifact_type = type._construct_artifact_type()  # pylint: disable=protected-access
+    elif mlmd_artifact_type:
+      if not isinstance(mlmd_artifact_type, metadata_store_pb2.ArtifactType):
+        raise ValueError(
+            ('Argument "mlmd_artifact_type" of ChannelParameter constructor '
+             'must be a protobuf message of type '
+             'metadata_store_pb2.ArtifactType (got %r)') %
+            (mlmd_artifact_type,))
+    else:
       raise ValueError(
-          'Argument "type" of Channel constructor must be a subclass of'
-          'tfx.types.Artifact.')
-    self.type = type
+          'Channel constructor must be passed one of the "type" or '
+          '"mlmd_artifact_type" arguments.')
+    self.mlmd_artifact_type = mlmd_artifact_type
     self.optional = optional
 
   def __repr__(self):
-    return 'ChannelParameter(type: %s)' % (self.type,)
+    return 'ChannelParameter(type: %s)' % (self.mlmd_artifact_type.name,)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type == self.type and other.optional == self.optional)
+            other.mlmd_artifact_type == self.mlmd_artifact_type and
+            other.optional == self.optional)
 
   def type_check(self, arg_name: Text, value: Channel):
-    if not isinstance(value, Channel) or value.type != self.type:
+    if (not isinstance(value, Channel) or
+        value.type_name != self.mlmd_artifact_type.name):
       raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
-                      (arg_name, self.type, value))
+                      (arg_name, self.mlmd_artifact_type.name, value))

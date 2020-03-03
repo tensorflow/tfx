@@ -18,20 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Optional, Text, Type
+from typing import Dict, Optional, Text
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-
-
-def _generate_tfx_artifact(mlmd_artifact: metadata_store_pb2.Artifact,
-                           artifact_type: Type[types.Artifact]):
-  result = artifact_type()
-  result.set_mlmd_artifact(mlmd_artifact)
-  return result
+from tfx.types import artifact_utils
 
 
 class LatestArtifactsResolver(base_resolver.BaseResolver):
@@ -62,13 +55,14 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
           artifacts_in_context[c.type_name], key=lambda m: m.id, reverse=True)
       if len(previous_artifacts) >= self._desired_num_of_artifact:
         artifacts_dict[k] = [
-            _generate_tfx_artifact(a, c.type)
+            artifact_utils.deserialize_artifact(c.mlmd_artifact_type, a)
             for a in previous_artifacts[:self._desired_num_of_artifact]
         ]
         resolve_state_dict[k] = True
       else:
         artifacts_dict[k] = [
-            _generate_tfx_artifact(a, c.type) for a in previous_artifacts
+            artifact_utils.deserialize_artifact(c.mlmd_artifact_type, a)
+            for a in previous_artifacts
         ]
         resolve_state_dict[k] = False
 

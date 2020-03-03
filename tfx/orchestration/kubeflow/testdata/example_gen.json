@@ -20,25 +20,20 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifact_type": {
+          "name": "ExternalArtifact"
+        },
+        "artifacts": [
           {
             "__artifact_class_module__": "tfx.types.standard_artifacts",
             "__artifact_class_name__": "ExternalArtifact",
-            "__class__": "ExternalArtifact",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
             "artifact": {},
             "artifact_type": {
               "name": "ExternalArtifact"
             }
           }
         ],
-        "producer_info": null,
-        "type": {
-          "__class__": "ExternalArtifact",
-          "__module__": "tfx.types.standard_artifacts",
-          "__tfx_object_type__": "class"
-        }
+        "producer_info": null
       }
     }
   },
@@ -52,13 +47,17 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifact_type": {
+          "name": "Examples",
+          "properties": {
+            "span": "INT",
+            "split_names": "STRING"
+          }
+        },
+        "artifacts": [
           {
             "__artifact_class_module__": "tfx.types.standard_artifacts",
             "__artifact_class_name__": "Examples",
-            "__class__": "Examples",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
             "artifact": {
               "custom_properties": {
                 "name": {
@@ -87,16 +86,8 @@
           }
         ],
         "producer_info": {
-          "__class__": "ChannelProducerInfo",
-          "__module__": "tfx.types.channel",
-          "__tfx_object_type__": "jsonable",
           "component_id": "CsvExampleGen",
           "key": "examples"
-        },
-        "type": {
-          "__class__": "Examples",
-          "__module__": "tfx.types.standard_artifacts",
-          "__tfx_object_type__": "class"
         }
       }
     }

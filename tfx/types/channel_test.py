@@ -23,11 +23,16 @@ from __future__ import unicode_literals
 
 import tensorflow as tf
 from tfx.types.artifact import Artifact
+from tfx.types.artifact import Property
+from tfx.types.artifact import PropertyType
 from tfx.types.channel import Channel
 
 
 class _MyType(Artifact):
   TYPE_NAME = 'MyTypeName'
+  PROPERTIES = {
+      'string_value': Property(PropertyType.STRING),
+  }
 
 
 class _AnotherType(Artifact):
@@ -52,6 +57,24 @@ class ChannelTest(tf.test.TestCase):
   def testStringTypeNameNotAllowed(self):
     with self.assertRaises(ValueError):
       Channel('StringTypeName')
+
+  def testJsonRoundTrip(self):
+    channel = Channel(type=_MyType, artifacts=[_MyType()])
+    serialized = channel.to_json_dict()
+    rehydrated = Channel.from_json_dict(serialized)
+    self.assertEqual(channel.mlmd_artifact_type, rehydrated.mlmd_artifact_type)
+    self.assertEqual(channel.type_name, rehydrated.type_name)
+
+  def testJsonRoundTripUnknownArtifactClass(self):
+    channel = Channel(type=_MyType)
+
+    serialized = channel.to_json_dict()
+    serialized['artifact_type']['name'] = 'UnknownTypeName'
+
+    rehydrated = Channel.from_json_dict(serialized)
+    self.assertEqual(channel.mlmd_artifact_type.properties,
+                     rehydrated.mlmd_artifact_type.properties)
+    self.assertEqual('UnknownTypeName', rehydrated.type_name)
 
 
 if __name__ == '__main__':
