@@ -179,7 +179,7 @@ class Executor(base_executor.BaseExecutor):
                                             'eval')))
        |
        'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
-           eval_shared_model=models,
+           eval_shared_model=models[0] if len(models) == 1 else models,
            eval_config=eval_config,
            output_path=output_uri,
            slice_spec=slice_spec))
