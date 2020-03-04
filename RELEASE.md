@@ -22,6 +22,7 @@
 *   Added 'tfx_runner' label for CAIP, BQML and Dataflow jobs submitted from
     TFX components.
 *   Fixed the Taxi Colab notebook.
+*   Fixed TypeError in Taxi pipeline portable Beam example.
 
 ### Deprecations
 

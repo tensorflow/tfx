@@ -151,9 +151,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           # continual reuse of Beam SDK workers, improving performance.
           '--environment_cache_millis=1000000',
 
-          # TODO(BEAM-7199): Obviate the need for setting pre_optimize=all.  # pylint: disable=g-bad-todo
-          '--experiments=pre_optimize=all',
-
           # Note; We use 100 worker threads to mitigate the issue with
           # scheduling work between the Beam runner and SDK harness. Flink
           # and Spark can process unlimited work items concurrently while
