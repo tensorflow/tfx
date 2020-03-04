@@ -22,6 +22,7 @@
 *   Added 'tfx_runner' label for CAIP, BQML and Dataflow jobs submitted from
     TFX components.
 *   Fixed the Taxi Colab notebook.
+*   Tested using KFP 0.2.5
 
 ### Deprecations
 
