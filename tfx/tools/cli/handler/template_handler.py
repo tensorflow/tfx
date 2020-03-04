@@ -23,7 +23,8 @@ from __future__ import print_function
 
 import collections
 import os
-from typing import Text, Dict, Any, List
+import re
+from typing import Text, Dict, Any, List, Pattern
 import click
 
 import tensorflow as tf
@@ -31,13 +32,15 @@ import tensorflow as tf
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
-_PLACEHOLDER_PIPELINE_NAME = '{{PIPELINE_NAME}}'
+_PLACEHOLDER_PIPELINE_NAME = re.compile('{{PIPELINE_NAME}}')
 _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
-_IMPORT_FROM_PACKAGE = 'from tfx.experimental.templates.taxi import '
+_IMPORT_FROM_PACKAGE = re.compile(
+    r'from tfx\.experimental\.templates\.taxi import ')
 # TODO(b/148567180): This replacement for import results in relative
 #                    import in generated files. This should be changed
 #                    to use absolute import.
 _IMPORT_FROM_LOCAL_DIR = 'import '
+_INTERNAL_TODO_PREFIX = re.compile(r'\s+# TODO\((?:b/\d+|[a-z]+)\):.*')
 
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
@@ -90,8 +93,8 @@ def list_template() -> List[Text]:
   return names
 
 
-def _copy_and_replace_placeholder_dir(src: Text, dst: Text,
-                                      replace_dict: Dict[Text, Text]) -> None:
+def _copy_and_replace_placeholder_dir(
+    src: Text, dst: Text, replace_dict: Dict[Pattern[Text], Text]) -> None:
   """Copy a directory to destination path and replace the placeholders."""
   if not os.path.isdir(dst):
     if os.path.exists(dst):
@@ -112,14 +115,14 @@ def _copy_and_replace_placeholder_dir(src: Text, dst: Text,
       _copy_and_replace_placeholder_file(src_path, dst_path, replace_dict)
 
 
-def _copy_and_replace_placeholder_file(src: Text, dst: Text,
-                                       replace_dict: Dict[Text, Text]) -> None:
+def _copy_and_replace_placeholder_file(
+    src: Text, dst: Text, replace_dict: Dict[Pattern[Text], Text]) -> None:
   """Copy a file to destination path and replace the placeholders."""
   click.echo('{} -> {}'.format(os.path.basename(src), dst))
   with open(src) as fp:
     contents = fp.read()
-  for orig, new in replace_dict.items():
-    contents = contents.replace(orig, new)
+  for orig_regex, new in replace_dict.items():
+    contents = orig_regex.sub(new, contents)
   with open(dst, 'w') as fp:
     fp.write(contents)
 
@@ -150,6 +153,7 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
   replace_dict = {
       _IMPORT_FROM_PACKAGE: _IMPORT_FROM_LOCAL_DIR,
       _PLACEHOLDER_PIPELINE_NAME: pipeline_name,
+      _INTERNAL_TODO_PREFIX: '',
   }
   _copy_and_replace_placeholder_dir(template_dir,
                                     destination_dir,
