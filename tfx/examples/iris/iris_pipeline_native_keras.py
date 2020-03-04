@@ -117,23 +117,19 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses TFMA to compute an evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[
-          tfma.ModelSpec(name='candidate', label_key='variety'),
-          tfma.ModelSpec(
-              name='baseline', label_key='variety', is_baseline=True)
-      ],
+      model_specs=[tfma.ModelSpec(label_key='variety')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
-          tfma.MetricsSpec(metrics=[
-              tfma.MetricConfig(
-                  class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.config.MetricThreshold(
-                      value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.9}),
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
-          ])
+          tfma.MetricsSpec(
+              thresholds={
+                  'sparse_categorical_accuracy':
+                      tfma.config.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': 0.9}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
       ])
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
