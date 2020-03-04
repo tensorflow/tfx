@@ -27,6 +27,19 @@ from tfx.tools.cli.handler import template_handler
 
 class TemplateHandlerTest(tf.test.TestCase):
 
+  _PLACEHOLDER_TEST_DATA_BEFORE = """
+  from tfx.experimental.templates.taxi import mmm 
+  # TODO(b/1): This will disappear.
+  # TODO(step 4): User instruction.
+  # TODO(zzzzzzz): This will disappear, too.
+  pipeline_name = '{{PIPELINE_NAME}}'
+  """
+  _PLACEHOLDER_TEST_DATA_AFTER = """
+  import mmm
+  # TODO(step 4): User instruction.
+  pipeline_name = 'dummy'
+  """
+
   def testList(self):
     templates = template_handler.list_template()
     self.assertNotEqual(templates, [])
@@ -50,6 +63,7 @@ class TemplateHandlerTest(tf.test.TestCase):
     with open(os.path.join(test_dir, 'configs.py')) as fp:
       configs_py_content = fp.read()
     self.assertIn(pipeline_name, configs_py_content)
+    self.assertNotIn('# TODO(b/', configs_py_content)
     with open(os.path.join(test_dir, 'model.py')) as fp:
       model_py_content = fp.read()
     self.assertNotIn('from tfx.experimental.templates.taxi import',
@@ -62,6 +76,27 @@ class TemplateHandlerTest(tf.test.TestCase):
                      template_handler._sanitize_pipeline_name('\\x\'"'))
     self.assertEqual('a\\/b', template_handler._sanitize_pipeline_name('a/b'))
     # pylint: enable=protected-access
+
+  def testReplacePlaceHolder(self):
+    pipeline_name = 'dummy'
+    src = self.create_tempfile()
+    dst = self.create_tempfile()
+    # pylint: disable=protected-access
+    replace_dict = {
+        template_handler._IMPORT_FROM_PACKAGE:
+            template_handler._IMPORT_FROM_LOCAL_DIR,
+        template_handler._PLACEHOLDER_PIPELINE_NAME:
+            pipeline_name,
+        template_handler._INTERNAL_TODO_PREFIX:
+            '',
+    }
+    src.write_text(self._PLACEHOLDER_TEST_DATA_BEFORE)
+    template_handler._copy_and_replace_placeholder_file(src.full_path,
+                                                        dst.full_path,
+                                                        replace_dict)
+    # pylint: enable=protected-access
+    self.assertEqual(dst.read_text(), self._PLACEHOLDER_TEST_DATA_AFTER)
+
 
 if __name__ == '__main__':
   tf.test.main()

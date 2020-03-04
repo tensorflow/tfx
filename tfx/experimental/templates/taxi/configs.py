@@ -21,6 +21,7 @@ import os  # pylint: disable=unused-import
 
 from tfx.proto import trainer_pb2
 
+# TODO(b/149347293): Move more TFX CLI flags into python configuration.
 
 # Pipeline name will be used to identify this pipeline.
 PIPELINE_NAME = '{{PIPELINE_NAME}}'
