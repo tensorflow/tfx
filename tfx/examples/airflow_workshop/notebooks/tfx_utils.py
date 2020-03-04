@@ -108,18 +108,19 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
       return tfma.view.render_time_series(
           eval_results, tfma.slicer.slicer.SingleSliceSpec())
 
-  def display_stats_for_examples(self, examples_id):
+  def display_stats_for_examples(self, examples_id, split='train'):
     """Displays stats for `examples_id`.
 
     Args:
       examples_id: A `int` indicating the id of a `TFXArtifactTypes.EXAMPLES`
           artifact.
+      split: A `string` specifying the split name, by default 'train' is used.
     """
     stats_artifact = self.get_dest_artifact_of_type(
         examples_id, TFXArtifactTypes.EXAMPLE_STATS)
     if stats_artifact:
       tfdv.visualize_statistics(
-          tfdv.load_statistics(os.path.join(stats_artifact.uri,
+          tfdv.load_statistics(os.path.join(stats_artifact.uri, split,
                                             'stats_tfrecord')))
 
   def compare_stats_for_examples(self, examples_id, other_examples_id,
