@@ -24,7 +24,7 @@ import time
 from typing import Text
 
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx.components.trainer.rewriting import rewriter
 from tfx.utils import io_utils
