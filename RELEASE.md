@@ -152,6 +152,9 @@
 *   The ImporterNode now allows specification of general artifact properties.
 *   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
     BQML and Dataflow jobs submitted from TFX components.
+*   Use '_' instead of '/' in feature names of several examples to avoid
+    potential clash with namescope separator.
+
 
 ### Deprecations
 
