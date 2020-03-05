@@ -33,8 +33,8 @@ from tfx.components.trainer.executor import TrainerFnArgs
 
 # MNIST dataset consists of an image of the handwritten digits,
 # and it's label which is the class indicating digits 0 through 9.
-_IMAGE_KEY = 'image_floats'
-_LABEL_KEY = 'image_class'
+_IMAGE_KEY = 'image/floats'
+_LABEL_KEY = 'image/class'
 
 
 def _transformed_name(key):

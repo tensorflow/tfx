@@ -95,7 +95,7 @@ setup(
     namespace_packages=[],
     install_requires=[
         'presto-python-client>=0.7,<0.8',
-        'tfx>=0.21.0,<=0.22.0dev',
+        'tfx>=0.21,<=0.22.0dev',
     ],
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),

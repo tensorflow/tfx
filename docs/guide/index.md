@@ -95,6 +95,21 @@ modifying predefined type-properties, in which case such extension would be
 contributed back to the master repository of the pipeline system (the TFX
 repository).
 
+### Channels
+
+**Channel** is the concept to describe what artifacts flow into and out of a TFX
+pipeline node instance. There are two ways to use a **Channel**:
+
+1.  Use an output **Channel** of a pipeline node instance as one of the input
+    **Channel**s of another pipeline node instance. By connecting two pipeline
+    node instances via a **Channel**, data dependency between the two pipeline
+    node instances is established. This is the most typical way to use a
+    **Channel**. During the pipeline compilation time, the **Channel** instance
+    will be enhanced with more info such as artifact type and producer info.
+2.  Manually construct a **Channel** instance and use it as one of the input
+    **Channel**s of a pipeline node. When being created in this way, information
+    such as artifact type should be provided.
+
 ## TFX Pipeline Components
 
 A TFX pipeline is a sequence of components that implement an [ML

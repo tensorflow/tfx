@@ -1,22 +1,6 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-
-## Bug fixes and other changes
-
-### Deprecations
-
-## Breaking changes
-
-### For pipeline authors
-
-### For component authors
-
-## Documentation updates
-
-# Version 0.21.1
-
-## Major Features and Improvements
 *   Pipelines compiled using KubeflowDagRunner now defaults to using the
     gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
     performing operations on pipeline metadata.
@@ -41,9 +25,6 @@
     TFX components.
 *   Fixed the Taxi Colab notebook.
 *   Adopted the generic trainer executor when using CAIP Training.
-*   Depends on 'tensorflow-data-validation>=0.21.4,<0.22'.
-*   Depends on 'tensorflow-model-analysis>=0.21.4,<0.22'.
-*   Depends on 'tensorflow-transform>=0.21.2,<0.22'.
 
 ### Deprecations
 
@@ -152,9 +133,6 @@
 *   The ImporterNode now allows specification of general artifact properties.
 *   Added 'tfx_executor', 'tfx_version' and 'tfx_py_version' labels for CAIP,
     BQML and Dataflow jobs submitted from TFX components.
-*   Use '_' instead of '/' in feature names of several examples to avoid
-    potential clash with namescope separator.
-
 
 ### Deprecations
 

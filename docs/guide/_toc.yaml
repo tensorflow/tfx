@@ -25,6 +25,13 @@ toc:
 - title: "Advanced: Custom Components"
   path: /tfx/guide/custom_component
 
+- heading: "Common Nodes"
+  style: divider
+- title: "ImporterNode"
+  path: /tfx/guide/importernode
+- title: "ResolverNode"
+  path: /tfx/guide/resolvernode
+
 - heading: "Orchestrators"
   style: divider
 - title: "Apache Airflow"

@@ -11,8 +11,8 @@ Here is short summary of the example codes, status and known restrictions:
 
 *   The dataset included in this example consists of a selection of 1000 records
     from the MNIST dataset, converted to tfrecord format. Each record is
-    a tf.Example with 2 columns of data: 'image_floats' representing
-    the 28x28 image as 784 float values, and 'image_class' representing
+    a tf.Example with 2 columns of data: 'image/floats' representing
+    the 28x28 image as 784 float values, and 'image/class' representing
     the label with values [0-9] corresponding to decimal digit in the image.
 
     For a detailed description of tf.Example and TFRecord see

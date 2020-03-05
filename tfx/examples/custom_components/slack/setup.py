@@ -25,7 +25,7 @@ def _make_required_install_packages():
   # six, and protobuf) with TF.
   return [
       'slackclient>=2.0.0,<2.0.1',
-      'tfx>=0.21.0,<=0.22.0dev',
+      'tfx>=0.21,<=0.22.0dev',
       'websocket-client>=0.56,<0.60',
   ]
 

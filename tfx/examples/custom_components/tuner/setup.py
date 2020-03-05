@@ -24,7 +24,7 @@ def _make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # six, and protobuf) with TF.
   return [
-      'tfx>=0.21.0,<=0.22.0dev',
+      'tfx>=0.21,<=0.22.0dev',
       'keras-tuner>=1.0,<2.0',
   ]
 
