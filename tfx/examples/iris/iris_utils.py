@@ -27,10 +27,6 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
 
-from tensorflow_metadata.proto.v0 import schema_pb2
-from tfx.components.trainer import executor
-from tfx.utils import io_utils
-
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
 
@@ -192,34 +188,3 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': eval_receiver_fn
   }
-
-
-# TFX generic trainer will call this function instead of train_fn.
-def run_fn(fn_args: executor.TrainerFnArgs):
-  """Train the model based on given args.
-
-  Args:
-    fn_args: Holds args used to train the model as name/value pairs.
-  """
-  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
-
-  training_spec = trainer_fn(fn_args, schema)
-
-  # Train the model
-  absl.logging.info('Training model.')
-  tf.estimator.train_and_evaluate(training_spec['estimator'],
-                                  training_spec['train_spec'],
-                                  training_spec['eval_spec'])
-  absl.logging.info('Training complete.  Model written to %s',
-                    fn_args.serving_model_dir)
-
-  # Export an eval savedmodel for TFMA
-  # NOTE: When trained in distributed training cluster, eval_savedmodel must be
-  # exported only by the chief worker (check TF_CONFIG).
-  absl.logging.info('Exporting eval_savedmodel for TFMA.')
-  tfma.export.export_eval_savedmodel(
-      estimator=training_spec['estimator'],
-      export_dir_base=fn_args.eval_model_dir,
-      eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
-
-  absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)

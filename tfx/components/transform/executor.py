@@ -81,6 +81,13 @@ _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 # TODO(b/125451545): Provide a safe temp path from base executor instead.
 _TEMP_DIR_IN_TRANSFORM_OUTPUT = '.temp_path'
 
+# TODO(b/150159972): Remove this branch after 0.21.1.
+if tft.__version__ < '0.21.1':
+  _create_batched_placeholders = (
+      impl_helper.feature_spec_as_batched_placeholders)
+else:
+  _create_batched_placeholders = impl_helper.batched_placeholders_from_specs
+
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
 class _Status(object):
@@ -1358,7 +1365,7 @@ class Executor(base_executor.BaseExecutor):
     with tf.compat.v1.Graph().as_default() as graph:
       with tf.compat.v1.Session(graph=graph) as sess:
 
-        input_signature = impl_helper.batched_placeholders_from_specs(
+        input_signature = _create_batched_placeholders(
             schema_utils.schema_as_feature_spec(
                 _GetSchemaProto(metadata)).feature_spec)
 

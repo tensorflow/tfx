@@ -31,8 +31,6 @@ from tfx.components import Pusher
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
-from tfx.components.base import executor_spec
-from tfx.components.trainer.executor import GenericExecutor
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -88,9 +86,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
-      # GenericExecutor uses `run_fn`, while default estimator based executor
-      # uses `trainer_fn` instead.
-      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=example_gen.outputs['examples'],
       schema=infer_schema.outputs['schema'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
