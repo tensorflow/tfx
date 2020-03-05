@@ -18,22 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Text, Type
+from typing import Dict, Text
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.evaluator import constants as evaluator
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-
-def _generate_tfx_artifact(mlmd_artifact: metadata_store_pb2.Artifact,
-                           artifact_type: Type[types.Artifact]):
-  result = artifact_type()
-  result.set_mlmd_artifact(mlmd_artifact)
-  return result
 
 
 class LatestBlessedModelResolver(base_resolver.BaseResolver):
@@ -65,31 +58,33 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
     assert model_blessing_channel_key is not None, ('Expecting ModelBlessing as'
                                                     ' input')
 
+    model_channel = source_channels[model_channel_key]
+    model_blessing_channel = source_channels[model_blessing_channel_key]
     # Gets the pipeline context as the artifact search space.
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
-    # Gets all artifacts of interests within context with one call.
-    artifacts_in_context = metadata_handler.get_published_artifacts_by_type_within_context(
-        [
-            source_channels[model_channel_key].type_name,
-            source_channels[model_blessing_channel_key].type_name
-        ], pipeline_context.id)
+
     # Gets all models in the search space and sort in reverse order by id.
-    all_models = sorted(
-        artifacts_in_context[source_channels[model_channel_key].type_name],
-        key=lambda m: m.id,
-        reverse=True)
+    all_models = metadata_handler.get_qualified_artifacts(
+        context=pipeline_context,
+        type_name=model_channel.type_name,
+        producer_component_id=model_channel.producer_component_id,
+        output_key=model_channel.output_key)
+    all_models.sort(key=lambda a: a.artifact.id, reverse=True)
     # Gets all ModelBlessing artifacts in the search space.
-    all_model_blessings = artifacts_in_context[
-        source_channels[model_blessing_channel_key].type_name]
+    all_model_blessings = metadata_handler.get_qualified_artifacts(
+        context=pipeline_context,
+        type_name=model_blessing_channel.type_name,
+        producer_component_id=model_blessing_channel.producer_component_id,
+        output_key=model_blessing_channel.output_key)
     # Makes a dict of {model_id : ModelBlessing artifact} for blessed models.
     all_blessed_model_ids = dict(
         (  # pylint: disable=g-complex-comprehension
-            a.custom_properties[
+            a.artifact.custom_properties[
                 evaluator.ARTIFACT_PROPERTY_CURRENT_MODEL_ID_KEY].int_value, a)
         for a in all_model_blessings
-        if a.custom_properties[
+        if a.artifact.custom_properties[
             evaluator.ARTIFACT_PROPERTY_BLESSED_KEY].int_value == 1)
 
     artifacts_dict = {model_channel_key: [], model_blessing_channel_key: []}
@@ -100,13 +95,14 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
     # Iterates all models, if blessed, set as result. As the model list was
     # sorted, it is guaranteed to get the latest blessed model.
     for model in all_models:
-      if model.id in all_blessed_model_ids:
+      if model.artifact.id in all_blessed_model_ids:
         artifacts_dict[model_channel_key] = [
-            _generate_tfx_artifact(model, standard_artifacts.Model)
+            artifact_utils.deserialize_artifact(model.type, model.artifact)
         ]
+        model_blessing = all_blessed_model_ids[model.artifact.id]
         artifacts_dict[model_blessing_channel_key] = [
-            _generate_tfx_artifact(all_blessed_model_ids[model.id],
-                                   standard_artifacts.ModelBlessing)
+            artifact_utils.deserialize_artifact(model_blessing.type,
+                                                model_blessing.artifact)
         ]
         resolve_state_dict[model_channel_key] = True
         resolve_state_dict[model_blessing_channel_key] = True

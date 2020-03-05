@@ -113,8 +113,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   model_resolver = ResolverNode(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      model=Channel(type=Model, producer_component_id=Trainer.get_id()),
+      model_blessing=Channel(
+          type=ModelBlessing, producer_component_id=Evaluator.get_id()))
 
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).

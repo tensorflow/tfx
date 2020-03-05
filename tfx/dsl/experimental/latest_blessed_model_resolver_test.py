@@ -73,14 +73,16 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
       m.publish_artifacts([model_blessing_one, model_blessing_two])
 
       m.register_execution(
-          input_artifacts={
-              'a': [model_one, model_two, model_three],
-              'b': [model_blessing_one, model_blessing_two]
-          },
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts={
+              'a': [model_one, model_two, model_three],
+              'b': [model_blessing_one, model_blessing_two]
+          })
 
       resolver = latest_blessed_model_resolver.LatestBlessedModelResolver()
       resolve_result = resolver.resolve(
@@ -88,14 +90,20 @@ class LatestBlessedModelResolverTest(tf.test.TestCase):
           metadata_handler=m,
           source_channels={
               'model':
-                  types.Channel(type=standard_artifacts.Model),
+                  types.Channel(
+                      type=standard_artifacts.Model,
+                      producer_component_id=self._component_info.component_id,
+                      output_key='a'),
               'model_blessing':
-                  types.Channel(type=standard_artifacts.ModelBlessing)
+                  types.Channel(
+                      type=standard_artifacts.ModelBlessing,
+                      producer_component_id=self._component_info.component_id,
+                      output_key='b')
           })
       self.assertTrue(resolve_result.has_complete_result)
       self.assertEqual([
-          artifact.uri
-          for artifact in resolve_result.per_key_resolve_result['model']
+          a.uri
+          for a in resolve_result.per_key_resolve_result['model']
       ], ['model_two'])
       self.assertTrue(resolve_result.per_key_resolve_state['model'])
 

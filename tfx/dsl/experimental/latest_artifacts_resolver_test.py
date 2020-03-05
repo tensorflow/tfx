@@ -49,28 +49,33 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
       m.publish_artifacts([artifact_one])
       artifact_two = standard_artifacts.Examples()
       artifact_two.uri = 'uri_two'
-      m.publish_artifacts([artifact_two])
-      m.publish_artifacts([artifact_one, artifact_two])
       m.register_execution(
-          input_artifacts={
-              'a': [artifact_one, artifact_two],
-          },
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts)
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts={'key': [artifact_one, artifact_two]})
+      expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
 
       resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       resolve_result = resolver.resolve(
           pipeline_info=self._pipeline_info,
           metadata_handler=m,
-          source_channels={'input': types.Channel(type=artifact_one.type)})
+          source_channels={
+              'input':
+                  types.Channel(
+                      type=artifact_one.type,
+                      producer_component_id=self._component_info.component_id,
+                      output_key='key')
+          })
 
       self.assertTrue(resolve_result.has_complete_result)
       self.assertEqual([
           artifact.uri
           for artifact in resolve_result.per_key_resolve_result['input']
-      ], ['uri_two'])
+      ], [expected_artifact.uri])
       self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
 
