@@ -74,11 +74,13 @@ class ResolverDriverTest(tf.test.TestCase):
       contexts = m.register_pipeline_contexts_if_not_exists(self.pipeline_info)
       m.publish_artifacts([existing_artifact])
       m.register_execution(
+          exec_properties={},
           pipeline_info=self.pipeline_info,
           component_info=self.component_info,
-          input_artifacts={'a': [existing_artifact]},
-          exec_properties={},
           contexts=contexts)
+      m.publish_execution(
+          component_info=self.component_info,
+          output_artifacts={'key': [existing_artifact]})
       driver = resolver_node.ResolverDriver(metadata_handler=m)
       output_dict = self.source_channels.copy()
       execution_result = driver.pre_execution(

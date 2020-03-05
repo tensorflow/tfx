@@ -50,13 +50,8 @@
             }
           }
         ],
-        "producer_info": {
-          "__class__": "ChannelProducerInfo",
-          "__module__": "tfx.types.channel",
-          "__tfx_object_type__": "jsonable",
-          "component_id": "CsvExampleGen",
-          "key": "examples"
-        },
+        "output_key": "examples",
+        "producer_component_id": "CsvExampleGen",
         "type": {
           "__class__": "Examples",
           "__module__": "tfx.types.standard_artifacts",
@@ -111,13 +106,8 @@
             }
           }
         ],
-        "producer_info": {
-          "__class__": "ChannelProducerInfo",
-          "__module__": "tfx.types.channel",
-          "__tfx_object_type__": "jsonable",
-          "component_id": "StatisticsGen.foo",
-          "key": "statistics"
-        },
+        "output_key": "statistics",
+        "producer_component_id": "StatisticsGen.foo",
         "type": {
           "__class__": "ExampleStatistics",
           "__module__": "tfx.types.standard_artifacts",

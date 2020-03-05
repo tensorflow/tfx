@@ -25,7 +25,6 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
-from tfx.types import channel
 from tfx.types import channel_utils
 
 
@@ -47,8 +46,8 @@ class BaseDriverTest(tf.test.TestCase):
             types.Channel(
                 type=_InputArtifact,
                 artifacts=[_InputArtifact()],
-                producer_info=channel.ChannelProducerInfo(
-                    component_id='c', key='k'))
+                producer_component_id='c',
+                output_key='k')
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),

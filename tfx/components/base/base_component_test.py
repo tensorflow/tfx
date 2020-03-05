@@ -198,6 +198,12 @@ class ComponentTest(tf.test.TestCase):
     new_json_dict = json_utils.dumps(recovered_component)
     self.assertEqual(new_json_dict, json_dict)
 
+  def testGetId(self):
+    self.assertEqual(_BasicComponent.get_id(), "_BasicComponent")
+    self.assertEqual(
+        _BasicComponent.get_id(instance_name="my_instance"),
+        "_BasicComponent.my_instance")
+
 
 if __name__ == "__main__":
   tf.test.main()

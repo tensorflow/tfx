@@ -145,9 +145,9 @@ class BaseDriver(object):
         result[name] = artifacts
       else:
         result[name] = self._metadata_handler.search_artifacts(
-            artifact_name=input_channel.producer_info.key,
+            artifact_name=input_channel.output_key,
             pipeline_info=pipeline_info,
-            producer_component_id=input_channel.producer_info.component_id)
+            producer_component_id=input_channel.producer_component_id)
     return result
 
   def resolve_exec_properties(

@@ -662,36 +662,57 @@ class MetadataTest(tf.test.TestCase):
       self.assertEqual(artifact_b.id, 2)
       self._check_artifact_state(m, artifact_b, ArtifactState.PUBLISHED)
 
-  def testGetArtifactsByContextAndType(self):
+  def testGetQualifiedArtifacts(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts_one = m.register_pipeline_contexts_if_not_exists(
           self._pipeline_info)
       contexts_two = m.register_pipeline_contexts_if_not_exists(
           self._pipeline_info3)
-      artifact_one = standard_artifacts.Model()
-      artifact_two = standard_artifacts.Examples()
-      artifact_three = standard_artifacts.Examples()
-      m.publish_artifacts([artifact_one, artifact_two, artifact_three])
+      # The first execution, with matched:
+      #   - pipeline context
+      #   - producer component id
       m.register_execution(
-          input_artifacts={
-              'a': [artifact_one],
-              'b': [artifact_two]
-          },
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
           contexts=contexts_one)
+      # artifact_one will be output with matched artifact type and output key
+      artifact_one = standard_artifacts.Model()
+      # artifact_one will be output with matched artifact type only
+      artifact_two = standard_artifacts.Model()
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts={'k1': [artifact_one], 'k2': [artifact_two]})
+      # The second execution, with matched pipeline context only
       m.register_execution(
-          input_artifacts={'a': [artifact_three]},
+          exec_properties={},
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info2,
+          contexts=contexts_one)
+      # artifact_three will be output with matched artifact type and output key
+      artifact_three = standard_artifacts.Model()
+      m.publish_execution(
+          component_info=self._component_info2,
+          output_artifacts={'k1': [artifact_three]})
+      # The third execution, with matched producer component id only
+      m.register_execution(
           exec_properties={},
           pipeline_info=self._pipeline_info3,
-          component_info=self._component_info,
+          component_info=self._component_info3,
           contexts=contexts_two)
+      # artifact_three will be output with matched artifact type and output key
+      artifact_four = standard_artifacts.Model()
+      m.publish_execution(
+          component_info=self._component_info3,
+          output_artifacts={'k1': [artifact_four]})
 
-      result = m.get_published_artifacts_by_type_within_context(
-          [artifact_two.type_name], contexts_one[0].id)
+      result = m.get_qualified_artifacts(
+          context=contexts_one[0],
+          type_name=standard_artifacts.Model().type_name,
+          producer_component_id=self._component_info.component_id,
+          output_key='k1')
       self.assertEqual(len(result), 1)
-      self.assertEqual(result[artifact_two.type_name][0].id, artifact_two.id)
+      self.assertEqual(result[0].artifact.id, artifact_one.id)
 
   def testContext(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

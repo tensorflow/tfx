@@ -52,6 +52,29 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   # property as well.
   DRIVER_CLASS = base_driver.BaseDriver
 
+  @classmethod
+  def get_id(cls, instance_name: Optional[Text] = None):
+    """Gets the id of a node.
+
+    This can be used during pipeline authoring time. For example:
+    from tfx.components import Trainer
+
+    resolver = ResolverNode(..., model=Channel(
+        type=Model, producer_component_id=Trainer.get_id('my_trainer')))
+
+    Args:
+      instance_name: (Optional) instance name of a node. If given, the instance
+        name will be taken into consideration when generating the id.
+
+    Returns:
+      an id for the node.
+    """
+    node_class_name = cls.__name__
+    if instance_name:
+      return '{}.{}'.format(node_class_name, instance_name)
+    else:
+      return node_class_name
+
   def __init__(self, instance_name: Optional[Text] = None):
     self._instance_name = instance_name
     self.executor_spec = self.__class__.EXECUTOR_SPEC
