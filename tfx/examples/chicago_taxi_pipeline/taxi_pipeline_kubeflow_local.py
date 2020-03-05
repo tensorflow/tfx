@@ -169,6 +169,6 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          # 0 means auto-detect based on on the number of CPUs available during
+          # 0 means auto-detect based on the number of CPUs available during
           # execution time.
           direct_num_workers=0))
