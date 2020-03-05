@@ -196,55 +196,32 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def testAIPlatformTrainerPipeline(self):
-    """Trainer-only test pipeline on AI Platform Training."""
-    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
-    pipeline = self._create_pipeline(
-        pipeline_name,
-        [
-            self.schema_importer,
-            self.transformed_examples_importer,
-            self.transform_graph_importer,
-            Trainer(
-                custom_executor_spec=executor_spec.ExecutorClassSpec(
-                    ai_platform_trainer_executor.Executor),
-                module_file=self._trainer_module,
-                transformed_examples=self.transformed_examples_importer
-                .outputs['result'],
-                schema=self.schema_importer.outputs['result'],
-                transform_graph=self.transform_graph_importer.outputs['result'],
-                train_args=trainer_pb2.TrainArgs(num_steps=10),
-                eval_args=trainer_pb2.EvalArgs(num_steps=5),
-                custom_config={
-                    # Test that distributed training is behaves properly.
-                    ai_platform_trainer_executor.TRAINING_ARGS_KEY: {
-                        'project':
-                            self._gcp_project_id,
-                        'region':
-                            self._gcp_region,
-                        'jobDir':
-                            os.path.join(
-                                self._pipeline_root(pipeline_name), 'tmp'),
-                        'masterConfig': {
-                            'imageUri': self._container_image,
-                        },
-                        'scaleTier':
-                            'CUSTOM',
-                        'masterType':
-                            'large_model',
-                        'parameterServerType':
-                            'standard',
-                        'parameterServerCount':
-                            1,
-                        'workerType':
-                            'standard',
-                        'workerCount':
-                            2,
-                    }
-                })
-        ])
-    self._compile_and_run_pipeline(pipeline)
+  def getCaipTrainingArgs(self, pipeline_name):
+    """Training args for Google CAIP Training."""
+    return {
+        'project': self._gcp_project_id,
+        'region': self._gcp_region,
+        'jobDir': os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
+        'masterConfig': {
+            'imageUri': self._container_image,
+        },
+    }
 
+  def getCaipTrainingArgsForDistributed(self, pipeline_name):
+    """Training args to test that distributed training is behaves properly."""
+    args = self.getCaipTrainingArgs(pipeline_name)
+    args.update({
+        'scaleTier': 'CUSTOM',
+        'masterType': 'large_model',
+        'parameterServerType': 'standard',
+        'parameterServerCount': 1,
+        'workerType': 'standard',
+        'workerCount': 2,
+    })
+    return args
+
+  def assertNumberOfTrainerOutputIsOne(self, pipeline_name):
+    """Make sure the number of trainer executions and output models."""
     # There must be only one execution of Trainer.
     trainer_output_base_dir = os.path.join(
         self._pipeline_root(pipeline_name), 'Trainer', 'model')
@@ -262,6 +239,59 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
                 os.path.join(
                     path_utils.serving_model_dir(model_uri), 'export',
                     'chicago-taxi'))))
+
+  def testAIPlatformTrainerPipeline(self):
+    """Trainer-only test pipeline on AI Platform Training."""
+    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
+    pipeline = self._create_pipeline(pipeline_name, [
+        self.schema_importer, self.transformed_examples_importer,
+        self.transform_graph_importer,
+        Trainer(
+            custom_executor_spec=executor_spec.ExecutorClassSpec(
+                ai_platform_trainer_executor.Executor),
+            module_file=self._trainer_module,
+            transformed_examples=self.transformed_examples_importer
+            .outputs['result'],
+            schema=self.schema_importer.outputs['result'],
+            transform_graph=self.transform_graph_importer.outputs['result'],
+            train_args=trainer_pb2.TrainArgs(num_steps=10),
+            eval_args=trainer_pb2.EvalArgs(num_steps=5),
+            custom_config={
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    self.getCaipTrainingArgsForDistributed(pipeline_name)
+            })
+    ])
+    self._compile_and_run_pipeline(pipeline)
+    self.assertNumberOfTrainerOutputIsOne(pipeline_name)
+
+  def testAIPlatformGenericTrainerPipeline(self):
+    """Trainer-only pipeline on AI Platform Training with GenericTrainer."""
+    pipeline_name = 'kubeflow-aip-generic-trainer-test-{}'.format(
+        self._random_id())
+    pipeline = self._create_pipeline(pipeline_name, [
+        self.schema_importer,
+        self.transformed_examples_importer,
+        self.transform_graph_importer,
+        Trainer(
+            custom_executor_spec=executor_spec.ExecutorClassSpec(
+                ai_platform_trainer_executor.GenericExecutor),
+            module_file=self._trainer_module,
+            transformed_examples=self.transformed_examples_importer
+            .outputs['result'],
+            schema=self.schema_importer.outputs['result'],
+            transform_graph=self.transform_graph_importer.outputs['result'],
+            train_args=trainer_pb2.TrainArgs(num_steps=10),
+            eval_args=trainer_pb2.EvalArgs(num_steps=5),
+            custom_config={
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    self.getCaipTrainingArgs(pipeline_name)
+            })
+    ])
+    self._compile_and_run_pipeline(pipeline)
+    self.assertNumberOfTrainerOutputIsOne(pipeline_name)
+  # TODO(b/150661783): Add tests using distributed training with a generic
+  #  trainer.
+  # TODO(b/150576271): Add Trainer tests using Keras models.
 
   # TODO(muchida): Identify more model types to ensure models trained in TF 2
   # works with CAIP prediction service.
