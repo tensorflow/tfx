@@ -32,8 +32,11 @@ TRAINING_ARGS_KEY = 'ai_platform_training_args'
 JOB_ID_KEY = 'ai_platform_training_job_id'
 
 
-class Executor(base_executor.BaseExecutor):
-  """Start a trainer job on Google Cloud AI Platform (GAIP)."""
+class GenericExecutor(base_executor.BaseExecutor):
+  """Start a trainer job on Google Cloud AI Platform using a generic Trainer."""
+
+  def _GetExecutorClass(self):
+    return tfx_trainer_executor.GenericExecutor
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -67,8 +70,18 @@ class Executor(base_executor.BaseExecutor):
       raise ValueError(err_msg)
 
     job_id = custom_config.get(JOB_ID_KEY)
-    executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
-                                     tfx_trainer_executor.Executor.__name__)
+
+    executor_class = self._GetExecutorClass()
+    executor_class_path = '%s.%s' % (executor_class.__module__,
+                                     executor_class.__name__)
+
     return runner.start_aip_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
                                      job_id)
+
+
+class Executor(GenericExecutor):
+  """Start a trainer job on Google Cloud AI Platform using a default Trainer."""
+
+  def _GetExecutorClass(self):
+    return tfx_trainer_executor.Executor
