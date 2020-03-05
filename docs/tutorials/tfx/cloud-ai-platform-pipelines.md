@@ -311,7 +311,7 @@ Here is brief description of the Python files.
     using `tf::Transform`
 -   `model.py` / `model_test.py` — defines DNN model using TF estimator
 
-## Run your first TFX pipeline on Kubeflow
+## 7. Run your first TFX pipeline on Kubeflow
 
 The notebook will run the pipeline using the `tfx run` CLI command.
 
@@ -370,7 +370,7 @@ be configured
 or see
 [Troubleshooting document in GCP](https://cloud.google.com/ai-platform/pipelines/docs/troubleshooting).
 
-## 7. Validate your data
+## 8. Validate your data
 
 The first task in any data science or ML project is to understand and clean the
 data.
@@ -433,7 +433,7 @@ advanced example see the
 For more information on using TFDV to explore and validate a dataset,
 [see the examples on tensorflow.org](https://www.tensorflow.org/tfx/data_validation).
 
-## 8. Feature engineering
+## 9. Feature engineering
 
 You can increase the predictive quality of your data and/or reduce
 dimensionality with feature engineering.
@@ -488,7 +488,7 @@ The example presented here is really only meant to get you started. For a more
 advanced example see the
 [TensorFlow Transform Colab](https://www.tensorflow.org/tfx/tutorials/transform/census).
 
-## 9. Training
+## 10. Training
 
 Train a TensorFlow model with your nice, clean, transformed data.
 
@@ -535,7 +535,7 @@ The example presented here is really only meant to get you started. For a more
 advanced example see the
 [TensorBoard Tutorial](https://www.tensorflow.org/tensorboard/r1/summaries).
 
-## 10. Analyzing model performance
+## 11. Analyzing model performance
 
 Understanding more than just the top level metrics.
 
@@ -584,7 +584,7 @@ The example presented here is really only meant to get you started. For a more
 advanced example see the
 [TFMA Chicago Taxi Tutorial](https://www.tensorflow.org/tfx/tutorials/model_analysis/chicago_taxi).
 
-## 11. Serving the model
+## 12. Serving the model
 
 If the new model is ready, make it so.
 
@@ -640,7 +640,7 @@ targets, including:
 *   [TensorFlow.js](https://www.tensorflow.org/js), for running your model in a
     web browser or Node.JS application.
 
-## 12. More scalable pipelines on Google Cloud (optional)
+## 13. More scalable pipelines on Google Cloud (optional)
 
 ### Try `BigQueryExampleGen`
 
@@ -719,7 +719,7 @@ Cloud AI Platform services.
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-## 13. Use your own data
+## 14. Use your own data
 
 In this tutorial, you made a pipeline for a model using the Chicago Taxi
 dataset. Now try putting your own data into the pipeline. Your data can be
