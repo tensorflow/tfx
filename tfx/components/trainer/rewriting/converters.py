@@ -23,7 +23,7 @@ import time
 
 from typing import Text
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tfx.components.trainer.rewriting import rewriter
 
 
