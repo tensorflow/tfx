@@ -163,6 +163,26 @@ parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
 `GenericExecutor` is specified. A typical training module looks like this:
 
 ```python
+def _get_serve_tf_examples_fn(model, tf_transform_output):
+  """Returns a function that parses a serialized tf.Example."""
+
+  model.tft_layer = tf_transform_output.transform_features_layer()
+
+  @tf.function
+  def serve_tf_examples_fn(serialized_tf_examples):
+    """Returns the output to be used in the serving signature."""
+    feature_spec = tf_transform_output.raw_feature_spec()
+    feature_spec.pop(_LABEL_KEY)
+    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
+
+    transformed_features = model.tft_layer(parsed_features)
+    transformed_features.pop(_transformed_name(_LABEL_KEY))
+
+    return model(transformed_features)
+
+  return serve_tf_examples_fn
+
+
 # TFX Trainer will call this function.
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
@@ -175,13 +195,6 @@ def run_fn(fn_args: TrainerFnArgs):
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
 
-  # To use distribution strategy, create an appropriate tf.distribute.Strategy
-  # and move the creation and compiling of Keras model inside `strategy.scope`.
-  #
-  # For example, replace `model = _build_keras_model()` with:
-  #   mirrored_strategy = tf.distribute.MirroredStrategy()
-  #   with mirrored_strategy.scope():
-  #     model = _build_keras_model()
   model = _build_keras_model()
 
   model.fit(
@@ -201,3 +214,40 @@ def run_fn(fn_args: TrainerFnArgs):
   }
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
 ```
+
+### [tf.distribute.Strategy](https://www.tensorflow.org/api_docs/python/tf/distribute/Strategy)
+
+Single worker distribution strategy is supported in TFX currently. For
+multi-worker strategy, it requires the implementation of TFX Trainer in certain
+execution environment has the ability to bring up the cluster of worker
+machines, currently the default TFX Trainer doesn't have ability to spawn
+multi-worker cluster, Cloud AI Platform support is WIP.
+
+To use distribution strategy, create an appropriate tf.distribute.Strategy and
+move the creation and compiling of Keras model inside strategy scope.
+
+For example, replace `model = _build_keras_model()` with:
+
+```python
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    model = _build_keras_model()
+
+  # Rest of the code can be unchanged.
+  model.fit(...)
+```
+
+[MirroredStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/MirroredStrategy)
+will use CPU if no GPUs are found. To verify it actually uses GPU, enable info
+level tensorflow logging:
+
+```python
+import logging
+logging.getLogger("tensorflow").setLevel(logging.INFO)
+```
+
+and you should be able to see `Using MirroredStrategy with devices (...GPUs...)`
+in the log.
+
+Note: environment variable `TF_FORCE_GPU_ALLOW_GROWTH=true` might be needed for
+GPU out of memory issue.
