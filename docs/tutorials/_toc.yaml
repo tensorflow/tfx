@@ -7,7 +7,7 @@ toc:
   path: /tfx/tutorials/tfx/components
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
-- title: "Cloud AI Pipelines tutorial"
+- title: "Cloud AI Platform Pipelines tutorial"
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
 - heading: "Data Validation"
