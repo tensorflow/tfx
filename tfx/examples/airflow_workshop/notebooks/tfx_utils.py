@@ -39,13 +39,13 @@ class TFXArtifactTypes(object):
 
 class TFXExecutionTypes(object):
   """Constants for different TFX execution type names."""
-  EXAMPLE_GEN = 'examples_gen'
-  STATISTICS_GEN = 'statistics_gen'
-  SCHEMA_GEN = 'schema_gen'
-  EXAMPLE_VALIDATION = 'example_validation'
-  TRANSFORM = 'transform'
-  TRAINER = 'trainer'
-  EVALUATOR = 'evaluator'
+  EXAMPLE_GEN = 'tfx.components.example_gen.csv_example_gen.component.CsvExampleGen'
+  STATISTICS_GEN = 'tfx.components.statistics_gen.component.StatisticsGen'
+  SCHEMA_GEN = 'tfx.components.schema_gen.component.SchemaGen'
+  EXAMPLE_VALIDATION = 'tfx.components.example_validator.component.ExampleValidator'
+  TRANSFORM = 'tfx.components.transform.component.Transform'
+  TRAINER = 'tfx.components.trainer.component.Trainer'
+  EVALUATOR = 'tfx.components.evaluator.component.Evaluator'
 
 
 class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
@@ -70,14 +70,14 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
 
     Args:
       model_id: A `int` indicating the id of a `TFXArtifactTypes.MODEL` artifact
-      slicing_column: (Optional) A `str` indicating the slicing column for
-          the TFMA metrics.
+      slicing_column: (Optional) A `str` indicating the slicing column for the
+        TFMA metrics.
 
     Returns:
       A SlicingMetricsViewer object if in Jupyter notebook; None if in Colab.
     """
-    tfma_artifact = self.get_dest_artifact_of_type(
-        model_id, TFXArtifactTypes.MODEL_EVAL)
+    tfma_artifact = self.get_dest_artifact_of_type(model_id,
+                                                   TFXArtifactTypes.MODEL_EVAL)
     if tfma_artifact:
       return tfma.view.render_slicing_metrics(
           tfma.load_eval_result(tfma_artifact.uri),
@@ -89,65 +89,67 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
     Args:
       model_id: A `int` indicating the id of a `TFXArtifactTypes.MODEL` artifact
       other_model_id: A `int` indicating the id of another
-          `TFXArtifactTypes.MODEL` artifact.
+        `TFXArtifactTypes.MODEL` artifact.
 
     Returns:
       A TimeSeriesViewer object if in Jupyter notebook; None if in Colab.
     """
-    tfma_artifact, other_tfma_artifact = (
-        self.get_dest_artifact_of_type(model_id, TFXArtifactTypes.MODEL_EVAL),
-        self.get_dest_artifact_of_type(other_model_id,
-                                       TFXArtifactTypes.MODEL_EVAL)
-    )
+    tfma_artifact, other_tfma_artifact = (self.get_dest_artifact_of_type(
+        model_id, TFXArtifactTypes.MODEL_EVAL),
+                                          self.get_dest_artifact_of_type(
+                                              other_model_id,
+                                              TFXArtifactTypes.MODEL_EVAL))
     if tfma_artifact and other_tfma_artifact:
-      eval_results = tfma.make_eval_results(
-          [
-              tfma.load_eval_result(tfma_artifact.uri),
-              tfma.load_eval_result(other_tfma_artifact.uri)
-          ], tfma.constants.MODEL_CENTRIC_MODE)
-      return tfma.view.render_time_series(
-          eval_results, tfma.slicer.slicer.SingleSliceSpec())
+      eval_results = tfma.make_eval_results([
+          tfma.load_eval_result(tfma_artifact.uri),
+          tfma.load_eval_result(other_tfma_artifact.uri)
+      ], tfma.constants.MODEL_CENTRIC_MODE)
+      return tfma.view.render_time_series(eval_results,
+                                          tfma.slicer.slicer.SingleSliceSpec())
 
   def display_stats_for_examples(self, examples_id, split='train'):
     """Displays stats for `examples_id`.
 
     Args:
       examples_id: A `int` indicating the id of a `TFXArtifactTypes.EXAMPLES`
-          artifact.
+        artifact.
       split: A `string` specifying the split name, by default 'train' is used.
     """
     stats_artifact = self.get_dest_artifact_of_type(
         examples_id, TFXArtifactTypes.EXAMPLE_STATS)
     if stats_artifact:
       tfdv.visualize_statistics(
-          tfdv.load_statistics(os.path.join(stats_artifact.uri, split,
-                                            'stats_tfrecord')))
+          tfdv.load_statistics(
+              os.path.join(stats_artifact.uri, split, 'stats_tfrecord')))
 
-  def compare_stats_for_examples(self, examples_id, other_examples_id,
-                                 name='', other_name=''):
+  def compare_stats_for_examples(self,
+                                 examples_id,
+                                 other_examples_id,
+                                 name='',
+                                 other_name=''):
     """Compares stats for `examples_id` and `other_examples_id`.
 
     Args:
       examples_id: A `int` indicating the id of one `TFXArtifactTypes.EXAMPLES`
-          artifact.
+        artifact.
       other_examples_id: A `int` indicating the id of another
-          `TFXArtifactTypes.EXAMPLES` artifact.
+        `TFXArtifactTypes.EXAMPLES` artifact.
       name: (Optional) A `str` indicating the label to use for stats of
-          `examples_id`.
+        `examples_id`.
       other_name: (Optional) A `str` indicating the label to use for stats of
-          `other_examples_id`.
+        `other_examples_id`.
     """
-    stats_artifact, other_stats_artifact = (
-        self.get_dest_artifact_of_type(
-            examples_id, TFXArtifactTypes.EXAMPLE_STATS),
-        self.get_dest_artifact_of_type(
-            other_examples_id, TFXArtifactTypes.EXAMPLE_STATS)
-    )
+    stats_artifact, other_stats_artifact = (self.get_dest_artifact_of_type(
+        examples_id, TFXArtifactTypes.EXAMPLE_STATS),
+                                            self.get_dest_artifact_of_type(
+                                                other_examples_id,
+                                                TFXArtifactTypes.EXAMPLE_STATS))
     if stats_artifact and other_stats_artifact:
       tfdv.visualize_statistics(
           tfdv.load_statistics(stats_artifact.uri),
           rhs_statistics=tfdv.load_statistics(other_stats_artifact.uri),
-          lhs_name=name, rhs_name=other_name)
+          lhs_name=name,
+          rhs_name=other_name)
 
   def display_examples_stats_for_model(self, model_id):
     """Displays stats for examples used to train `model_id`."""
@@ -160,23 +162,24 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
     """Compares stats for examples to train `model_id` & `other_model_id`."""
     examples_artifact, other_examples_artifact = (
         self.get_source_artifact_of_type(model_id, TFXArtifactTypes.EXAMPLES),
-        self.get_source_artifact_of_type(
-            other_model_id, TFXArtifactTypes.EXAMPLES)
-    )
+        self.get_source_artifact_of_type(other_model_id,
+                                         TFXArtifactTypes.EXAMPLES))
     if examples_artifact and other_examples_artifact:
       self.compare_stats_for_examples(
-          examples_artifact.id, other_examples_artifact.id,
-          name='model_'+str(model_id), other_name='model_'+str(other_model_id))
+          examples_artifact.id,
+          other_examples_artifact.id,
+          name='model_' + str(model_id),
+          other_name='model_' + str(other_model_id))
 
   def display_tensorboard(self, model_id, *other_model_ids):
     """Returns a Tensorboard link for `model_id` and `other_model_ids`.
 
     Args:
       model_id: A `int` indicating the id of a `TFXArtifactTypes.MODEL`
-          artifact.
+        artifact.
       *other_model_ids: (Optional) A list of `int` indicating the ids of other
-          `TFXArtifactTypes.MODEL` artifacts to also include in the Tensorboard
-          invocation for comparison.
+        `TFXArtifactTypes.MODEL` artifacts to also include in the Tensorboard
+        invocation for comparison.
     """
     model_ids = [model_id] + list(other_model_ids)
     model_artifacts = self.metadata_store.get_artifacts_by_id(model_ids)
@@ -189,9 +192,8 @@ class TFXReadonlyMetadataStore(utils.ReadonlyMetadataStore):
         os.environ['HOME'],
         'spawn_tensorboard_{}_output.ipynb'.format(model_ids_str),
     )
-    tensorboard_logdir = ','.join([
-        'model_{}:{}'.format(m.id, m.uri) for m in model_artifacts
-    ])
+    tensorboard_logdir = ','.join(
+        ['model_{}:{}'.format(m.id, m.uri) for m in model_artifacts])
     pm.execute_notebook(
         'spawn_tensorboard.ipynb',
         output_notebook_path,
