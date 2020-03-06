@@ -3,7 +3,7 @@
 The Pusher component is used to push a validated model to a
 [deployment target](index.md#deployment_targets) during model training or
 re-training.
-It relies on a [ModelValidator](modelval.md) component to ensure that the new
+It relies on a [Evaluator](evaluator.md) component to ensure that the new
 model is "good enough" to be pushed to production.
 
 * Consumes: A Trained model in [SavedModel](

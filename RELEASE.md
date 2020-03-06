@@ -5,6 +5,7 @@
 ## Bug fixes and other changes
 
 ### Deprecations
+*   Model Validator (its functionality is now provided by the Evaluator).
 
 ## Breaking changes
 
