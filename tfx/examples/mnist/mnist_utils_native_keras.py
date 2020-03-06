@@ -28,8 +28,11 @@ import absl
 import tensorflow as tf
 from tensorflow.keras import layers
 import tensorflow_transform as tft
+from tensorflow_transform.tf_metadata import schema_utils
 
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.utils import io_utils
 
 # MNIST dataset consists of an image of the handwritten digits,
 # and it's label which is the class indicating digits 0 through 9.
@@ -41,18 +44,23 @@ def _transformed_name(key):
   return key + '_xf'
 
 
+# Tf.Transform considers these features as "raw"
+def _get_raw_feature_spec(schema):
+  return schema_utils.schema_as_feature_spec(schema).feature_spec
+
+
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def _get_serve_tf_examples_fn(model, tf_transform_output):
+def _get_serve_tf_examples_fn(model, tf_transform_output, schema):
   """Returns a function that parses a serialized tf.Example."""
 
   @tf.function
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
+    feature_spec = _get_raw_feature_spec(schema)
     feature_spec.pop(_LABEL_KEY)
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
 
@@ -151,7 +159,9 @@ def run_fn(fn_args: TrainerFnArgs):
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
 
-  model = _build_keras_model()
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    model = _build_keras_model()
 
   model.fit(
       train_dataset,
@@ -159,10 +169,11 @@ def run_fn(fn_args: TrainerFnArgs):
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)
 
+  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(model,
-                                    tf_transform_output).get_concrete_function(
+          _get_serve_tf_examples_fn(model, tf_transform_output,
+                                    schema).get_concrete_function(
                                         tf.TensorSpec(
                                             shape=[None],
                                             dtype=tf.string,
