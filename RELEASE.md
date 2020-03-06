@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+*   Fix the behavior of Trainer Tensorboard visualization when caching is used.
 
 ### Deprecations
 *   Model Validator (its functionality is now provided by the Evaluator).
