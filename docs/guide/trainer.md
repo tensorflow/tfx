@@ -17,8 +17,8 @@ Trainer takes:
 *   A user provided module file that defines the trainer logic.
 *   A data schema created by a SchemaGen pipeline component and optionally
     altered by the developer.
-*   (https://developers.google.com/protocol-buffers)[Protobuf]
-definition of train args and eval args.
+*   [Protobuf](https://developers.google.com/protocol-buffers) definition of
+    train args and eval args.
 *   (Optional) transform graph produced by an upstream Transform component.
 *   (Optional) pre-trained models used for scenarios such as warmstart.
 
@@ -26,7 +26,7 @@ Trainer emits: A SavedModel and an optional EvalSavedModel
 
 ## Estimator based Trainer
 
-To learn about using an (https://www.tensorflow.org/guide/estimator)[Estimator]
+To learn about using an [Estimator](https://www.tensorflow.org/guide/estimator)
 based model with TFX and Trainer, see
 [Designing TensorFlow modeling code with tf.Estimator for TFX](train.md).
 
