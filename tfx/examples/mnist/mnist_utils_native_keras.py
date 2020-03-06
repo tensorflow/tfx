@@ -151,7 +151,9 @@ def run_fn(fn_args: TrainerFnArgs):
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
 
-  model = _build_keras_model()
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    model = _build_keras_model()
 
   model.fit(
       train_dataset,
