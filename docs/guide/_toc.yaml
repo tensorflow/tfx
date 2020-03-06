@@ -18,8 +18,6 @@ toc:
   path: /tfx/guide/trainer
 - title: "Evaluator"
   path: /tfx/guide/evaluator
-- title: "ModelValidator"
-  path: /tfx/guide/modelval
 - title: "Pusher"
   path: /tfx/guide/pusher
 - title: "Advanced: Custom Components"

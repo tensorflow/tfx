@@ -120,10 +120,9 @@ in the dataset.
 
 * [**Trainer**](trainer.md) trains the model.
 
-* [**Evaluator**](evaluator.md) performs deep analysis of the training results.
-
-* [**ModelValidator**](modelval.md) helps you validate your exported models, ensuring that
-they are "good enough" to be pushed to production.
+* [**Evaluator**](evaluator.md) performs deep analysis of the training results
+and helps you validate your exported models, ensuring that they are
+"good enough" to be pushed to production.
 
 * [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
 
