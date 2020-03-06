@@ -1,6 +1,6 @@
-# TF 2.0 native Keras training example
+# Native Keras training example for MNIST
 
-This example illustrates the use of Native Keras APIs in TF2.
+This example illustrates the use of Native Keras APIs in TF2. It also demonstrates how TFLite is supported in TFX.
 
 Here is short summary of the example codes, status and known restrictions:
 
