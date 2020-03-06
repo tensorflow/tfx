@@ -36,6 +36,8 @@
 *   Updated TFLite converter to work with TF2.
 *   Enabled filtering by artifact producer and output key in ResolverNode.
 *   Changed Iris model_to_estimator e2e example to use generic Trainer.
+*   Demonstrated how TFLite is supported in TFX by extending MNIST example
+    pipeline to also train a TFLite model.
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.

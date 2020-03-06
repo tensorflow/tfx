@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,25 +22,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 import tensorflow as tf
 import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.rewriting import converters
+from tfx.components.trainer.rewriting import rewriter
+from tfx.components.trainer.rewriting import rewriter_factory
 from tfx.examples.mnist import mnist_utils_native_keras_base as base
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example."""
+  """Returns a function that feeds the input tensor into the model."""
 
   @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  def serve_tf_examples_fn(image_tensor):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(base.LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
     transformed_features = tf_transform_output.transform_raw_features(
-        parsed_features)
+        {base.IMAGE_KEY: image_tensor})
     transformed_features.pop(base.transformed_name(base.LABEL_KEY))
 
     return model(transformed_features)
@@ -61,7 +62,7 @@ def preprocessing_fn(inputs):
   return base.preprocessing_fn(inputs)
 
 
-# TFX Trainer will call this function.
+  # TFX Trainer will call this function.
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
@@ -87,6 +88,20 @@ def run_fn(fn_args: TrainerFnArgs):
       'serving_default':
           _get_serve_tf_examples_fn(
               model, tf_transform_output).get_concrete_function(
-                  tf.TensorSpec(shape=[None], dtype=tf.string, name='examples'))
+                  tf.TensorSpec(
+                      shape=[None, 784],
+                      dtype=tf.float32,
+                      name='image_floats'))
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+  temp_saving_model_dir = os.path.join(fn_args.serving_model_dir, 'temp')
+  model.save(temp_saving_model_dir, save_format='tf', signatures=signatures)
+
+  tfrw = rewriter_factory.create_rewriter(
+      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter',
+      enable_experimental_new_converter=True)
+  converters.rewrite_saved_model(temp_saving_model_dir,
+                                 fn_args.serving_model_dir,
+                                 tfrw,
+                                 rewriter.ModelType.TFLITE_MODEL)
+
+  tf.io.gfile.rmtree(temp_saving_model_dir)
