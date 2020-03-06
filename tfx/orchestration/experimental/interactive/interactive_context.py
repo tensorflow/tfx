@@ -131,7 +131,7 @@ class InteractiveContext(object):
   def run(
       self,
       component: base_component.BaseComponent,
-      enable_cache: bool = True,
+      enable_cache: bool = False,
       beam_pipeline_args: Optional[List[Text]] = None
   ) -> execution_result.ExecutionResult:
     """Run a given TFX component in the interactive context.

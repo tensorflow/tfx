@@ -25,6 +25,7 @@ from tfx.components.base import base_node
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import node_common
 from tfx.utils import json_utils
 
@@ -145,7 +146,9 @@ class ResolverNode(base_node.BaseNode):
     self._input_dict = kwargs
     self._output_dict = {}
     for k, c in self._input_dict.items():
-      self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
+      self._output_dict[k] = types.Channel(
+          mlmd_artifact_type=c.mlmd_artifact_type,
+          artifacts=[artifact_utils.deserialize_artifact(c.mlmd_artifact_type)])
     super(ResolverNode, self).__init__(instance_name=instance_name)
 
   @property

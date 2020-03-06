@@ -150,13 +150,7 @@ class Artifact(json_utils.Jsonable):
         raise ValueError(
             'The "mlmd_artifact_type" argument must not be passed for '
             'Artifact subclass %s.' % self.__class__)
-      type_name = self.__class__.TYPE_NAME
-      if not (type_name and isinstance(type_name, (str, Text))):
-        raise ValueError(
-            ('The Artifact subclass %s must override the TYPE_NAME attribute '
-             'with a string type name identifier (got %r instead).') %
-            (self.__class__, type_name))
-      mlmd_artifact_type = self._construct_artifact_type(type_name)
+      mlmd_artifact_type = self._construct_artifact_type()
 
     # MLMD artifact type proto object.
     self._artifact_type = mlmd_artifact_type
@@ -165,24 +159,29 @@ class Artifact(json_utils.Jsonable):
     # Initialization flag to prevent recursive getattr / setattr errors.
     self._initialized = True
 
-  def _construct_artifact_type(self, type_name):
+  @classmethod
+  def _construct_artifact_type(cls):
+    type_name = cls.TYPE_NAME
+    if not (type_name and isinstance(type_name, (str, Text))):
+      raise ValueError(
+          ('The Artifact subclass %s must override the TYPE_NAME attribute '
+           'with a string type name identifier (got %r instead).') %
+          (cls, type_name))
     artifact_type = metadata_store_pb2.ArtifactType()
     artifact_type.name = type_name
-    if self.__class__.PROPERTIES:
+    if cls.PROPERTIES:
       # Perform validation on PROPERTIES dictionary.
-      if not isinstance(self.__class__.PROPERTIES, dict):
+      if not isinstance(cls.PROPERTIES, dict):
         raise ValueError(
-            'Artifact subclass %s.PROPERTIES is not a dictionary.' %
-            self.__class__)
-      for key, value in self.__class__.PROPERTIES.items():
+            'Artifact subclass %s.PROPERTIES is not a dictionary.' % cls)
+      for key, value in cls.PROPERTIES.items():
         if not (isinstance(key, (Text, bytes)) and isinstance(value, Property)):
           raise ValueError(
               ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
-               'type string and values of type artifact.Property.') %
-              self.__class__)
+               'type string and values of type artifact.Property.') % cls)
 
       # Populate ML Metadata artifact properties dictionary.
-      for key, value in self.__class__.PROPERTIES.items():
+      for key, value in cls.PROPERTIES.items():
         artifact_type.properties[key] = value.mlmd_type()
     return artifact_type
 
@@ -214,7 +213,8 @@ class Artifact(json_utils.Jsonable):
       object.__setattr__(self, name, value)
       return
     if name not in self._artifact_type.properties:
-      if name in Artifact.__dict__ or name in self.__dict__:
+      if (name in self.__dict__ or
+          any(name in c.__dict__ for c in self.__class__.mro())):
         # Use any provided getter / setter if available.
         object.__setattr__(self, name, value)
         return
@@ -260,8 +260,8 @@ class Artifact(json_utils.Jsonable):
     self._artifact.type_id = artifact_type.id
 
   def __repr__(self):
-    return 'Artifact(type_name: {}, uri: {}, id: {})'.format(
-        self._artifact_type.name, self.uri, str(self.id))
+    return '{}(type_name: {}, uri: {}, id: {})'.format(
+        self.__class__.__name__, self._artifact_type.name, self.uri, str(self.id))
 
   def to_json_dict(self) -> Dict[Text, Any]:
     return {

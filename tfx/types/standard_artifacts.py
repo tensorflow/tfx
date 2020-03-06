@@ -17,6 +17,8 @@
 Note: the artifact definitions here are expected to change.
 """
 
+import tensorflow as tf
+
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
@@ -90,3 +92,31 @@ class TransformGraph(Artifact):
 # Still WIP and subject to change.
 class HyperParameters(Artifact):
   TYPE_NAME = 'HyperParameters'
+
+class ValueArtifact(Artifact):
+  pass
+
+class Integer(Artifact):
+  TYPE_NAME = 'Integer'
+
+  @property
+  def value(self):
+    return int(tf.io.gfile.GFile(self.uri + '/value', 'rb').read())
+
+  @value.setter
+  def value(self, value):
+    tf.io.gfile.GFile(self.uri + '/value', 'wb').write(b'%d' % (value,))
+
+class String(Artifact):
+  TYPE_NAME = 'String'
+
+  @property
+  def value(self):
+    return tf.io.gfile.GFile(self.uri + '/value', 'rb').read().decode('utf-8')
+
+  @value.setter
+  def value(self, value):
+    tf.io.gfile.GFile(self.uri + '/value', 'wb').write(value.encode('utf-8'))
+
+class Float(Artifact):
+  pass

@@ -20,15 +20,21 @@ from __future__ import print_function
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text
+import itertools
+import typing
+from typing import Any, Dict, List, Optional, Text, Type
 
 from six import with_metaclass
 
 from tfx import types
 from tfx.components.base import base_driver
+from tfx.components.base import base_executor
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
+from tfx.types import channel_utils
+from tfx.types import component_spec
 from tfx.types import node_common
+from tfx.types import standard_artifacts
 from tfx.utils import abc_utils
 
 # Constants that used for serializing and de-serializing components.
@@ -142,3 +148,247 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   @property
   def exec_properties(self) -> Dict[Text, Any]:
     return self.spec.exec_properties
+
+class _SimpleComponentMeta(abc.ABCMeta):
+  """Metaclass for SimpleComponent."""
+
+  def __init__(cls, *args):
+    super(_SimpleComponentMeta, cls).__init__(*args)
+
+    # Convert SimpleComponent parameter to ComponentSpec ones.
+    new_inputs = {}
+    for key, artifact_type in cls.INPUTS.items():
+      assert issubclass(artifact_type, types.Artifact)
+      new_inputs[key] = component_spec.ChannelParameter(type=artifact_type)
+    new_outputs = {}
+    for key, artifact_type in cls.OUTPUTS.items():
+      assert issubclass(artifact_type, types.Artifact)
+      new_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
+
+
+    # TODO
+    new_parameters = {}
+
+    cls.SPEC_CLASS = type(
+        '%s_ComponentSpec' % cls.__name__,
+        (types.ComponentSpec,),
+        {
+            'INPUTS': new_inputs,
+            'OUTPUTS': new_outputs,
+            'PARAMETERS': new_parameters,
+        })
+
+    class _MetaExecutor(base_executor.BaseExecutor):
+
+      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+             output_dict: Dict[Text, List[types.Artifact]],
+             exec_properties: Dict[Text, Any]) -> None:
+        cls._run(input_dict, output_dict, exec_properties)  # pylint: disable=protected-access
+
+    cls.EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
+        executor_class=_MetaExecutor)
+
+
+class ExecutionContext(object):
+  def __init__(self, inputs, outputs):
+    self.inputs = inputs
+    self.outputs = outputs
+
+
+class SimpleComponent(with_metaclass(_SimpleComponentMeta, BaseComponent)):
+
+  # TODO: introduce frozendict.
+  INPUTS = {}
+  OUTPUTS = {}
+  PARAMETERS = {}
+
+  def __init__(self, **kwargs):
+    spec_kwargs = {}
+    unseen_args = set(kwargs.keys())
+    for key, value in self.INPUTS.items():
+      if key not in kwargs:
+        raise ValueError(
+          '%s expects input %r to be a Channel of type %s (got %s).' % (
+            self.__class__.__name__, key, value, kwargs))
+      spec_kwargs[key] = kwargs[key]
+      unseen_args.remove(key)
+    if unseen_args:
+      raise ValueError(
+        'Unknown arguments to %r: %s.' % (self.__class__.__name__, ', '.join(sorted(unseen_args))))
+    for key, value in self.OUTPUTS.items():
+      spec_kwargs[key] = channel_utils.as_channel([value()])
+    spec = self.SPEC_CLASS(**spec_kwargs)
+    super(SimpleComponent, self).__init__(spec)
+
+  @classmethod
+  def _run(
+      cls: Type['SimpleComponent'],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Any]):
+    input_mapping = cls._get_input_mapping()
+    args = []
+    for arg_type, arg_name in input_mapping:
+      if arg_type == 'input_value':
+        args.append(input_dict[arg_name][0].value)
+    inputs = {}
+    outputs = {}
+    # print('input_dict', input_dict)
+    # print('output_dict', output_dict)
+    for key in cls.INPUTS:
+      inputs[key] = input_dict[key][0]
+    for key in cls.OUTPUTS:
+      outputs[key] = output_dict[key][0]
+    context = ExecutionContext(inputs, outputs)
+
+    if getattr(cls, '_FUNCTION', None):
+      return_value = cls._FUNCTION(*args)
+    else:
+      return_value = cls.execute(None, context, *args)
+
+    if return_value:
+      error = False
+      if not isinstance(return_value, dict):
+        error = True
+      if not error:
+        for key, value in return_value.items():
+          if key in cls.OUTPUTS:
+            context.outputs[key].value = value
+          else:
+            error = True
+            break
+      if error:
+        raise Exception((
+          'Return value from %s.execute() (if any) must be a dictionary '
+          'with keys that are in the defined ValueArtifact OUTPUTS (got %s instead).') % (cls.__name__, return_value))
+
+  @classmethod
+  def _get_input_mapping(cls):
+    function_mode = False
+    if getattr(cls, '_FUNCTION', None):
+      function_mode = True
+
+    if function_mode:
+      remaining_args = cls._FUNCTION_ARGS
+    else:
+      args, varargs, keywords, unused_defaults = inspect.getargspec(cls.execute)
+      if varargs or keywords:
+        raise ValueError(
+            '*args or **kwargs arguments are not supported as '
+            'SimpleComponent.execute() parameters.')
+
+      # Validate
+      total_count = len(cls.INPUTS) + len(cls.OUTPUTS) + len(cls.PARAMETERS)
+      keys = set(itertools.chain(
+          cls.INPUTS.keys(), cls.OUTPUTS.keys(), cls.PARAMETERS.keys()))
+      if len(keys) != total_count:
+        raise ValueError('keys must be distinct')
+
+      # Ignore "self" arg.
+      remaining_args = args[1:]
+      if remaining_args[0] != 'context':
+        raise ValueError(
+            'First argument to SimpleComponent.execute() must be a "context" '
+            'argument.')
+      remaining_args = remaining_args[1:]
+
+    input_mapping = []
+    for arg in remaining_args:
+      if isinstance(arg, list):
+        raise ValueError(
+            'Nested input parameters are not supported as '
+            'SimpleComponent.execute() parameters.')
+      if arg in cls.INPUTS:
+        value = cls.INPUTS[arg]
+        if not inspect.isclass(value) and issubclass(value, standard_artifacts.ValueArtifact):
+          raise ValueError(
+              'Parameters must be value artifacts (got %s instead).' % (value,))
+        input_mapping.append(('input_value', arg))
+      elif arg in cls.OUTPUTS:
+        raise ValueError()
+        # input_mapping.append(('output',))
+      elif arg in cls.PARAMETERS:
+        input_mapping.append(('parameter', arg))
+      else:
+        raise ValueError(
+            'Unknown argument to SimpleComponent.execute(): %r.' % arg)
+
+    return input_mapping
+
+
+class ComponentOutput(object):
+  def __init__(self, **kwargs):
+    self.kwargs = kwargs
+
+_PRIMITIVE_TO_ARTIFACT = {
+  int: standard_artifacts.Integer,
+  Text: standard_artifacts.String,
+}
+
+
+
+def component_from_typehints(func):
+  typehints = typing.get_type_hints(func)
+  if not isinstance(typehints['return'], ComponentOutput):
+    raise ValueError(
+      'Function decorated with @component_from_typehints must have '
+      'return typehint as a ComponentOutput instance.')
+
+  # print('TYPE_HINTS', typehints)
+  argspec = inspect.getfullargspec(func)
+  args, varargs, keywords, defaults = argspec.args, argspec.varargs, argspec.varkw, argspec.defaults
+  if varargs or keywords:
+    raise ValueError(
+        '*args or **kwargs arguments are not supported as '
+        'SimpleComponent.execute() parameters.')
+  if defaults:
+    raise ValueError(
+        'Currently, optional arguments are not supported as '
+        'SimpleComponent.execute() parameters.')
+  argtypes = {}
+  inputs = {}
+  for arg in args:
+    if isinstance(arg, list):
+      raise ValueError(
+          'Nested input parameters are not supported as '
+          'SimpleComponent.execute() parameters.')
+    if arg not in typehints:
+      raise ValueError(
+          'All input arguments to a function decorated with '
+          '@component_from_typehints must have typehints.')
+    arg_typehint = typehints[arg] 
+    if isinstance(arg_typehint, types.Artifact):
+      # TODO
+      raise ValueError()
+    elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
+      argtype = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
+    else:
+      # print('arg_typehint', arg_typehint)
+      raise ValueError()
+    argtypes[arg] = argtype
+    inputs[arg] = argtype
+
+  outputs = {}
+  for arg, arg_typehint in typehints['return'].kwargs.items():
+    if isinstance(arg_typehint, types.Artifact):
+      # TODO
+      raise ValueError()
+    elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
+      argtype = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
+    else:
+      # print('arg_typehint', arg_typehint)
+      raise ValueError()
+    outputs[arg] = argtype
+
+  return type(
+    '%s_Component' % func.__name__,
+    (SimpleComponent,),
+    {
+      'INPUTS': inputs,
+      'OUTPUTS': outputs,
+      '_FUNCTION_ARGS': args,
+      '_FUNCTION_ARGTYPES': argtypes,
+      '_FUNCTION': func,
+    })
+
+
