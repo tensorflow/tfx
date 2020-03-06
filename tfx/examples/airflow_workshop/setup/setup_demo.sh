@@ -34,7 +34,7 @@ pip install pendulum==1.4.4
 printf "${GREEN}Installing TFX${NORMAL}\n"
 pip install pyarrow==0.15.0
 pip install apache_beam==2.17.0
-pip install tfx==0.21.0
+pip install tfx==0.21.1
 
 printf "${GREEN}Installing Google API Client${NORMAL}\n"
 pip install google-api-python-client
