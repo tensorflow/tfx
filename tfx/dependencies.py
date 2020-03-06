@@ -28,7 +28,7 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      'grpcio>=1.25,!=1.27.2,<2',
+      'grpcio>=1.25,<2',
       'jinja2>=2.7.3,<3',
       'ml-metadata>=0.21.2,<0.22',
       'protobuf>=3.7,<4',

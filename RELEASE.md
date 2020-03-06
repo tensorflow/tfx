@@ -4,6 +4,8 @@
 
 ## Bug fixes and other changes
 
+*   Depended on grpcio>=1.25,<2'.
+
 ### Deprecations
 
 ## Breaking changes
