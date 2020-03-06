@@ -298,7 +298,7 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
   # arbitrary and fragile. We need a better way to improve this. See also
   # b/146594754
   if component.type == 'tfx.components.trainer.component.Trainer':
-    output_model = component.outputs['model'].get()[0]
+    output_model = execution_info.output_dict['model'][0]
 
     # Add Tensorboard view.
     tensorboard_output = {'type': 'tensorboard', 'source': output_model.uri}
