@@ -3,6 +3,22 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+# Version 0.21.2
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.
 
 ### Deprecations
