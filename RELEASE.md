@@ -1,6 +1,9 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+*   Updated `StatisticsGen` to optionally consume a schema `Artifact`.
+*   Added support for configuring the `StatisticsGen` component via serializable
+    parts of `StatsOptions`.
 
 ## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.

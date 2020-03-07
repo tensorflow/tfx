@@ -34,10 +34,14 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 
-# Key for examples in executor input_dict.
+# Keys for input_dict.
 EXAMPLES_KEY = 'examples'
+SCHEMA_KEY = 'schema'
 
-# Key for output statistics in executor output_dict.
+# Keys for exec_properties dict.
+STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+
+# Keys for output_dict
 STATISTICS_KEY = 'statistics'
 
 # Default file name for stats generated.
@@ -64,15 +68,43 @@ class Executor(base_executor.BaseExecutor):
       input_dict: Input dict from input key to a list of Artifacts.
         - input_data: A list of type `standard_artifacts.Examples`. This should
           contain both 'train' and 'eval' split.
+        - schema: Optionally, a list of type `standard_artifacts.Schema`. When
+          the stats_options exec_property also contains a schema, this input
+          should not be provided.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: A list of type `standard_artifacts.ExampleStatistics`. This
           should contain both the 'train' and 'eval' splits.
-      exec_properties: A dict of execution properties. Not used yet.
+      exec_properties: A dict of execution properties.
+        - stats_options_json: Optionally, a JSON representation of StatsOptions.
+          When a schema is provided as an input, the StatsOptions value should
+          not also contain a schema.
+
+    Raises:
+      ValueError when a schema is provided both as an input and as part of the
+      StatsOptions exec_property.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
+
+    stats_options = options.StatsOptions()
+    if STATS_OPTIONS_JSON_KEY in exec_properties:
+      stats_options_json = exec_properties[STATS_OPTIONS_JSON_KEY]
+      if stats_options_json:
+        # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
+        # json_utils
+        stats_options = options.StatsOptions.from_json(stats_options_json)
+    if input_dict.get(SCHEMA_KEY):
+      if stats_options.schema:
+        raise ValueError('A schema was provided as an input and the '
+                         'stats_options exec_property also contains a schema '
+                         'value. At most one of these may be set.')
+      else:
+        schema = io_utils.SchemaReader().read(
+            io_utils.get_only_uri_in_dir(
+                artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
+        stats_options.schema = schema
 
     split_uris = []
     for artifact in input_dict[EXAMPLES_KEY]:
@@ -80,8 +112,6 @@ class Executor(base_executor.BaseExecutor):
         uri = os.path.join(artifact.uri, split)
         split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
-      # TODO(b/126263006): Support more stats_options through config.
-      stats_options = options.StatsOptions()
       for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(uri)

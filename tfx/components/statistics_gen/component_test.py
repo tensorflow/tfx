@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import component
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
@@ -32,6 +33,25 @@ class ComponentTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     statistics_gen = component.StatisticsGen(
         examples=channel_utils.as_channel([examples]))
+    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
+                     statistics_gen.outputs['statistics'].type_name)
+
+  def testConstructWithSchemaAndStatsOptions(self):
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    schema = standard_artifacts.Schema()
+    stats_options = tfdv.StatsOptions(
+        weight_feature='weight',
+        generators=[  # generators should be dropped
+            tfdv.LiftStatsGenerator(
+                schema=None,
+                y_path=tfdv.FeaturePath(['label']),
+                x_paths=[tfdv.FeaturePath(['feature'])])
+        ])
+    statistics_gen = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]),
+        schema=channel_utils.as_channel([schema]),
+        stats_options=stats_options)
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
 
