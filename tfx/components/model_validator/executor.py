@@ -35,7 +35,7 @@ from tfx.utils import path_utils
 
 
 class Executor(base_executor.BaseExecutor):
-  """TFX model validator executor.
+  """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator helps prevent bad models from being pushed to production.
   It does this by validating exported models against known good models (e.g. the

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -30,7 +31,7 @@ from tfx.types.standard_component_specs import ModelValidatorSpec
 
 
 class ModelValidator(base_component.BaseComponent):
-  """A TFX component to validate a newly trained model against a prior model.
+  """DEPRECATED: Please use `Evaluator` instead.
 
   The model validator component can be used to check model metrics threshold
   and validate current model against a previously validated model. If there
@@ -67,6 +68,8 @@ class ModelValidator(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
   DRIVER_CLASS = driver.Driver
 
+  @deprecation.deprecated(
+      None, 'ModelValidator is deprecated, use Evaluator instead.')
   def __init__(self,
                examples: types.Channel,
                model: types.Channel,
