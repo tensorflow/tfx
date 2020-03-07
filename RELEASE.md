@@ -7,7 +7,7 @@
 
 ## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.
-*   Added documentation on using TFLite in TFX.
+*   Added component documentation and guide on using TFLite in TFX.
 
 ### Deprecations
 *   Model Validator (its functionality is now provided by the Evaluator).
