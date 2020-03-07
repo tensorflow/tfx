@@ -22,7 +22,13 @@ Trainer takes:
 *   (Optional) transform graph produced by an upstream Transform component.
 *   (Optional) pre-trained models used for scenarios such as warmstart.
 
-Trainer emits: A SavedModel and an optional EvalSavedModel
+Trainer emits: At least one model for inference/serving (typically in SavedModelFormat) and optionally another model for eval (typically an EvalSavedModel).
+
+We provide support for alternate model formats such as
+[TFLite](https://www.tensorflow.org/lite) through the [Model Rewriting Library](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/rewriting/README.md).
+See the link to the Model Rewriting Library for examples of how to convert both Estimator and Keras
+models.
+
 
 ## Estimator based Trainer
 
