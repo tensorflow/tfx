@@ -39,6 +39,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx_bsl.beam import shared
 
 from google.protobuf import text_format
+import tfx
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.benchmarks import benchmark_utils
@@ -193,6 +194,17 @@ class TFTBenchmarkBase(test.Benchmark):
   def __init__(self, dataset, **kwargs):
     super(TFTBenchmarkBase, self).__init__()
     self._dataset = dataset
+
+  def report_benchmark(self, **kwargs):
+    if "extras" not in kwargs:
+      kwargs["extras"] = {}
+    # Note that the GIT_COMMIT_ID is not included in the packages themselves:
+    # it must be injected by an external script.
+    kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
+                                             tfx.__version__)
+    kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID",
+                                             tft.__version__)
+    super(TFTBenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkAnalyzeAndTransformDataset(self):
     """Benchmark AnalyzeAndTransformDataset.
