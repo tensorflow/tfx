@@ -14,8 +14,6 @@ view the lineage of the created artifacts.
 Key Term: A TFX pipeline is a Directed Acyclic Graph, or "DAG". We will often
 refer to pipelines as DAGs.
 
-<!-- More explanation on what TFX is? Why an ML pipeline is needed? -->
-
 You'll follow a typical ML development process, starting by examining the
 dataset, and ending up with a complete working pipeline. Along the way you'll
 explore ways to debug and update your pipeline, and measure performance.
@@ -111,7 +109,7 @@ Note: This will take up to 10 minutes, as it requires waiting at several points
 for resources to be provisioned.
 
 1.  Go to the
-    [Cloud AI Pipelines Clusters](https://console.cloud.google.com/ai-platform/pipelines)
+    [AI Platform Pipelines Clusters](https://console.cloud.google.com/ai-platform/pipelines)
     page.
 
     Under the Main Navigation Menu: ≡ > AI Platform > Pipelines
@@ -135,7 +133,7 @@ for resources to be provisioned.
         APIs*. (This is required for this cluster to access the other pieces of
         your project. If you miss this step, fixing it later is a bit tricky.)
 
-        <img style="width: 65%;" src="images/cloud-ai-platform-pipelines/check-the-box.png">
+        <img style="width: 50%;" src="images/cloud-ai-platform-pipelines/check-the-box.png">
 
     1.  Click **Create**, and wait several minutes until the cluster has been
         created.
@@ -183,7 +181,7 @@ information about the [Google Cloud Free Tier](https://cloud.google.com/free).
 ## 4. Launch the Getting Started Notebook
 
 1.  Go to the
-    [**Cloud AI Pipelines Clusters**](https://console.cloud.google.com/ai-platform/pipelines)
+    [**AI Platform Pipelines Clusters**](https://console.cloud.google.com/ai-platform/pipelines)
     page.
 
     Under the Main Navigation Menu: ≡ -> AI Platform -> Pipelines
@@ -193,7 +191,7 @@ information about the [Google Cloud Free Tier](https://cloud.google.com/free).
 
     ![open-dashboard](images/cloud-ai-platform-pipelines/open-dashboard.png)
 
-1.  On the **Getting Started** page, click **Start Here**.
+1.  On the **Getting Started** page, click **Open TF 2.1 Notebook**.
 
 1.  Select the Notebook instance you are using for this tutorial and
     **Continue**.
@@ -417,7 +415,7 @@ pipeline:
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check data validation pipeline outputs
+### Check the pipeline
 
 For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
 page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
@@ -475,7 +473,7 @@ In `pipeline.py`, find and uncomment the line which appends
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check data validation pipeline outputs
+### Check pipeline outputs
 
 For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
 page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
@@ -500,7 +498,7 @@ Train a TensorFlow model with your nice, clean, transformed data.
 
 ### Components
 
-*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains a [TensorFlow
+*   [Trainer](https://www.tensorflow.org/tfx/guide/trainer) trains a TensorFlow
     model.
 
 ### In Jupyter lab file editor:
@@ -522,7 +520,7 @@ In `pipeline.py`, find and uncomment the which appends Trainer to the pipeline:
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check data validation pipeline outputs
+### Check pipeline outputs
 
 For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
 page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
@@ -571,7 +569,7 @@ components.append(model_analyzer)
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check data validation pipeline outputs
+### Check pipeline outputs
 
 For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
 page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
@@ -590,7 +588,6 @@ If the new model is ready, make it so.
 
 *   If you’re replacing a model that is currently in production, first make sure
     that the new one is better
-*   ModelValidator tells the Pusher component if the model is OK
 *   Pusher deploys SavedModels to well-known locations
 
 Deployment targets receive new models from well-known locations
@@ -602,22 +599,19 @@ Deployment targets receive new models from well-known locations
 
 ### Components
 
-*   [ModelValidator](https://www.tensorflow.org/tfx/guide/modelval) ensures that
-    the model is "good enough" to be pushed to production.
 *   [Pusher](https://www.tensorflow.org/tfx/guide/pusher) deploys the model to a
     serving infrastructure.
 
 ### In Jupyter lab file editor:
 
-In `pipeline.py`, find and uncomment the lines which append ModelValidator and
-Pusher to the pipeline:
+In `pipeline.py`, find and uncomment the line that appends Pusher to the
+pipeline:
 
 ```
-# components.append(model_validator)
 # components.append(pusher)
 ```
 
-### Check data validation pipeline outputs
+### Check pipeline outputs
 
 For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
 page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
