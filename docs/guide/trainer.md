@@ -138,14 +138,15 @@ def trainer_fn(trainer_fn_args, schema):
 
 ## Generic Trainer
 
-To better support native Keras, we proposed a generic trainer which allows any
-TensorFlow training loop in TFX Trainer in addition to tf.estimator. For
-details, please see the
+Generic trainer enables developers to use any TensorFlow model API with the
+Trainer component. In addition to TensorFlow Estimators, developers can use
+Keras models or custom training loops.
+For details, please see the
 [RFC for generic trainer](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md).
 
-### Configuring a Trainer Component with a generic executor
+### Configuring the Trainer Component to use the GenericExecutor
 
-Typical pipeline Python DSL code looks like this:
+Typical pipeline DSL code for the generic Trainer would look like this:
 
 ```python
 from tfx.components import Trainer
@@ -166,94 +167,21 @@ trainer = Trainer(
 
 Trainer invokes a training module, which is specified in the `module_file`
 parameter. Instead of `trainer_fn`, a `run_fn` is required in the module file if
-`GenericExecutor` is specified. A typical training module looks like this:
+the `GenericExecutor` is specified in the `custom_executor_spec`.
+
+If the Transform component is not used in the pipeline, then the Trainer would
+take the examples from ExampleGen directly:
 
 ```python
-def _get_serve_tf_examples_fn(model, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example."""
-
-  model.tft_layer = tf_transform_output.transform_features_layer()
-
-  @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
-    """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
-    transformed_features = model.tft_layer(parsed_features)
-    transformed_features.pop(_transformed_name(_LABEL_KEY))
-
-    return model(transformed_features)
-
-  return serve_tf_examples_fn
-
-
-# TFX Trainer will call this function.
-def run_fn(fn_args: TrainerFnArgs):
-  """Train the model based on given args.
-
-  Args:
-    fn_args: Holds args used to train the model as name/value pairs.
-  """
-  tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
-
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
-
-  model = _build_keras_model()
-
-  model.fit(
-      train_dataset,
-      steps_per_epoch=fn_args.train_steps,
-      validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
-
-  signatures = {
-      'serving_default':
-          _get_serve_tf_examples_fn(model,
-                                    tf_transform_output).get_concrete_function(
-                                        tf.TensorSpec(
-                                            shape=[None],
-                                            dtype=tf.string,
-                                            name='examples')),
-  }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+trainer = Trainer(
+    module_file=module_file,
+    custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+    examples=example_gen.outputs['examples'],
+    schema=infer_schema.outputs['schema'],
+    train_args=trainer_pb2.TrainArgs(num_steps=10000),
+    eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 ```
 
-### [tf.distribute.Strategy](https://www.tensorflow.org/api_docs/python/tf/distribute/Strategy)
-
-Single worker distribution strategy is supported in TFX currently. For
-multi-worker strategy, it requires the implementation of TFX Trainer in certain
-execution environment has the ability to bring up the cluster of worker
-machines, currently the default TFX Trainer doesn't have ability to spawn
-multi-worker cluster, Cloud AI Platform support is WIP.
-
-To use distribution strategy, create an appropriate tf.distribute.Strategy and
-move the creation and compiling of Keras model inside strategy scope.
-
-For example, replace `model = _build_keras_model()` with:
-
-```python
-  mirrored_strategy = tf.distribute.MirroredStrategy()
-  with mirrored_strategy.scope():
-    model = _build_keras_model()
-
-  # Rest of the code can be unchanged.
-  model.fit(...)
-```
-
-[MirroredStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/MirroredStrategy)
-will use CPU if no GPUs are found. To verify it actually uses GPU, enable info
-level tensorflow logging:
-
-```python
-import logging
-logging.getLogger("tensorflow").setLevel(logging.INFO)
-```
-
-and you should be able to see `Using MirroredStrategy with devices (...GPUs...)`
-in the log.
-
-Note: environment variable `TF_FORCE_GPU_ALLOW_GROWTH=true` might be needed for
-GPU out of memory issue.
+Here is an
+[example module file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py)
+with `run_fn`.
