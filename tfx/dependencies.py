@@ -24,7 +24,9 @@ def make_required_install_packages():
       # LINT.IfChange
       'apache-beam[gcp]>=2.17,<2.18',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
-      'avro-python3>=1.8.1,!=1.9.2,<2.0.0; python_version >= "3.0"',
+      # TODO(b/149399451): remove once avro has a healthy release.
+      ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
+       'python_version=="3.5" and platform_system=="Darwin"'),
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
