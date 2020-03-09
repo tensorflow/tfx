@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include MNIST pipeline functions and necessary utils.
+"""Python source file includes MNIST utils for TFLite model.
 
-The utilities in this file are used to build a model with native Keras.
+The utilities in this file are used to build a TFLite model.
 This module file will be used in Transform and generic Trainer.
 """
 
@@ -62,7 +62,7 @@ def preprocessing_fn(inputs):
   return base.preprocessing_fn(inputs)
 
 
-  # TFX Trainer will call this function.
+# TFX Trainer will call this function.
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 
