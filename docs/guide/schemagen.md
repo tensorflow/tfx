@@ -9,8 +9,8 @@ whether a feature has to be present in all examples, allowed value ranges, and
 other properties.  A SchemaGen pipeline component will automatically generate a
 schema by inferring types, categories, and ranges from the training data.
 
-* Consumes: statistics from an StatisticsGen component
-* Emits: Data schema proto
+*   Consumes: statistics from a StatisticsGen component
+*   Emits: Data schema proto
 
 Here's an excerpt from a schema proto:
 
