@@ -2,6 +2,11 @@ toc:
 - title: "Guide"
   path: /tfx/guide/
 
+- heading: "Modeling"
+  style: divider
+- title: "Keras"
+  path: /tfx/guide/keras
+
 - heading: "Components"
   style: divider
 - title: "ExampleGen"
@@ -70,7 +75,7 @@ toc:
 - heading: "Related projects"
   style: divider
 - title: "Apache Beam"
-  path: https://beam.apache.org/
+  path: "https://beam.apache.org/"
   status: external
 - title: "ML Metadata"
   path: /tfx/guide/mlmd
