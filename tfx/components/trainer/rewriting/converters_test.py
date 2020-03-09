@@ -23,7 +23,7 @@ import tempfile
 
 from absl.testing.absltest import mock
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter

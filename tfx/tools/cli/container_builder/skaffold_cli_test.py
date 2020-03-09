@@ -22,7 +22,7 @@ import os
 import subprocess
 
 import mock
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tfx.tools.cli.container_builder import skaffold_cli
 
