@@ -5,6 +5,8 @@
 *   Added support for configuring the `StatisticsGen` component via serializable
     parts of `StatsOptions`.
 
+*   Added Keras guide doc.
+
 ## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.
 *   Added component documentation and guide on using TFLite in TFX.
