@@ -2,12 +2,15 @@
 
 The TFX model rewriting library makes it simple to make post-training
 modifications (i.e. rewrites) to models within TFX. These modifications can vary
-from small-scale edits (e.g. signature changes) to wholesale model conversions from
-one type to another (e.g. from SavedModel to [TFLite](https://www.tensorflow.org/lite)).
+from small-scale edits (e.g. signature changes) to wholesale model conversions
+from one type to another (e.g. from SavedModel to
+[TFLite](https://www.tensorflow.org/lite)).
 
 The library is invoked from user code in the Trainer. We both make it simple to
 create custom rewrites and provide a set of commonly-used ones. For example,
-the [TFLiteRewriter](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/rewriting/tflite_rewriter.py) converts SavedModels to TFLite.
+the
+[TFLiteRewriter](https://github.com/tensorflow/tfx/blob/master/tfx/components/trainer/rewriting/tflite_rewriter.py)
+converts SavedModels to TFLite.
 
 ## Using rewriters
 To instantiate a rewriter, use the rewriter factory.
@@ -24,8 +27,11 @@ tfrw = rewriter_factory.create_rewriter(
 Then use the appropriate converter (`RewritingExporter` for Estimators or
 `rewrite_saved_model` for Keras) to rewrite your model.
 
-When using Estimators, we recommend you invoke these converters in the `trainer_fn` definition in the utils file of your pipeline. For example, in the
-chicago taxi pipeline, this would be the taxi_utils.py [file] (https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py) and the changes would be as follows:
+When using Estimators, we recommend you invoke these converters in the
+`trainer_fn` definition in the utils file of your pipeline. For example, in the
+chicago taxi pipeline, this would be the taxi_utils.py
+[file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py)
+and the changes would be as follows:
 
 ```python
 import tensorflow as tf
@@ -42,7 +48,10 @@ eval_spec = tf.estimator.EvalSpec(
     name='chicago-taxi-eval')
 ```
 For Keras, we recommend you invoke these converters in the `run_fn` definition
-in the utils file of your pipeline. For example, for the MNIST pipeline, this would be the mnist_utils_native_keras_lite.py [file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras_lite.py) and the changes would be as follows:
+in the utils file of your pipeline. For example, for the MNIST pipeline, this
+would be the mnist_utils_native_keras_lite.py
+[file](https://github.com/tensorflow/tfx/blob/master/tfx/examples/mnist/mnist_utils_native_keras_lite.py)
+and the changes would be as follows:
 
 ```python
 import tensorflow as tf

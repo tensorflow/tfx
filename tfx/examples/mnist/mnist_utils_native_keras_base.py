@@ -12,10 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include MNIST pipeline functions and necessary utils.
+"""Base Python source file for MNIST utils.
 
-The utilities in this file are used to build a model with native Keras.
-This module file will be used in Transform and generic Trainer.
+This file is used by both mnist_utils_native_keras and
+mnist_util_native_keras_lite to build Keras and TFLite models, respectively.
 """
 
 from __future__ import absolute_import

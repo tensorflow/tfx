@@ -59,8 +59,8 @@ _serving_model_dir = os.path.join(_mnist_root, 'serving_model', _pipeline_name)
 _serving_model_dir_lite = os.path.join(
     _mnist_root, 'serving_model_lite', _pipeline_name)
 
-# Directory and data locations.  This example assumes all of the flowers
-# example code and metadata library is relative to $HOME, but you can store
+# Directory and data locations.  This example assumes all of the images,
+# example code, and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
@@ -123,13 +123,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_specs=[tfma.ModelSpec(label_key='image_class')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
-          tfma.MetricsSpec(
-              thresholds={
-                  'sparse_categorical_accuracy':
-                      tfma.config.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
-                              lower_bound={'value': 0.8}))
-              })
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='SparseCategoricalAccuracy',
+                  threshold=tfma.config.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.8})))
+          ])
       ])
 
   eval_config_lite = tfma.EvalConfig()
@@ -162,11 +162,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
               base_directory=serving_model_dir)),
       instance_name='mnist')
 
-  # Checks whether the tflite model passed the validation steps and pushes the
+  # Checks whether the TFLite model passed the validation steps and pushes the
   # model to a file destination if check passed.
   pusher_lite = Pusher(
       model=trainer_lite.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=model_analyzer_lite.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir_lite)),
