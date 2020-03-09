@@ -127,6 +127,28 @@ Tips for using Fairness Indicators:
     [What-If Tool](https://pair-code.github.io/what-if-tool/). See
     [here](https://github.com/tensorflow/fairness-indicators/) for an example.
 
+#### Rendering Fairness Indicators for Multiple Models
+
+Fairness Indicators can also be used to compare models. Instead of passing in a
+single eval_result, pass in a multi_eval_results object, which is a dictionary
+mapping two model names to eval_result objects.
+
+```python
+from tensorflow_model_analysis.addons.fairness.view import widget_view
+
+eval_result1 = tfma.load_eval_result(...)
+eval_result2 = tfma.load_eval_result(...)
+multi_eval_results = {"MyFirstModel": eval_result1, "MySecondModel": eval_result2}
+
+widget_view.render_fairness_indicator(multi_eval_results=multi_eval_results)
+```
+
+![Fairness Indicators - Model Comparison](images/fairnessIndicatorsCompare.png)
+
+Model comparison can be used alongside threshold comparison. For example, you
+can compare two models at two sets of thresholds to find the optimal combination
+for your fairness metrics.
+
 ## Model Agnostic Evaluation
 
 To better support clients that have different models and workflows, we have
