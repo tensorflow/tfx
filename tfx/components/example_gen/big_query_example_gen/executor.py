@@ -47,7 +47,7 @@ class _BigQueryConverter(object):
       data_type = self._type_map[key]
       if value is None:
         feature[key] = tf.train.Feature()
-      elif data_type == 'INTEGER':
+      elif data_type in ('INTEGER', 'BOOLEAN'):
         feature[key] = tf.train.Feature(
             int64_list=tf.train.Int64List(value=[value]))
       elif data_type == 'FLOAT':
