@@ -87,13 +87,14 @@ message LocalDockerConfig {
 
 // Specification for validation criteria and thresholds.
 message ValidationSpec {
+  // Optional.
   // If the model is not loaded until this time, validation will fail. Should
-  // be a positive number.
+  // be a positive number. Default to 300 seconds (5 minutes)
   int32 max_loading_time_seconds = 1;
 
   // Optional.
   // Number of infra validation tries. Infra validation will be retried until
-  // infra validation succeed, or failed `num_tries` times. Default to 3.
+  // it fails `num_tries` times to mark model as not blessed. Default to 5.
   int32 num_tries = 2;
 }
 

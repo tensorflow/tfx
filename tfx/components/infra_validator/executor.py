@@ -26,6 +26,8 @@ from typing import Any, Dict, List, Text
 from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.infra_validator import error_types
+
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator import types as iv_types
@@ -36,8 +38,9 @@ from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils.model_paths import tf_serving_flavor
 
-_DEFAULT_NUM_TRIES = 3
+_DEFAULT_NUM_TRIES = 5
 _DEFAULT_POLLING_INTERVAL_SEC = 1
+_DEFAULT_MAX_LOADING_TIME_SEC = 300
 _DEFAULT_MODEL_NAME = 'infra-validation-model'
 
 # Filename of infra blessing artifact on succeed.
@@ -121,7 +124,12 @@ class Executor(base_executor.BaseExecutor):
       serving_spec.model_name = _DEFAULT_MODEL_NAME
 
     validation_spec = infra_validator_pb2.ValidationSpec()
-    json_format.Parse(exec_properties['validation_spec'], validation_spec)
+    if 'validation_spec' in exec_properties:
+      json_format.Parse(exec_properties['validation_spec'], validation_spec)
+    if not validation_spec.num_tries:
+      validation_spec.num_tries = _DEFAULT_NUM_TRIES
+    if not validation_spec.max_loading_time_seconds:
+      validation_spec.max_loading_time_seconds = _DEFAULT_MAX_LOADING_TIME_SEC
 
     if _is_query_mode(input_dict, exec_properties):
       logging.info('InfraValidator will be run in LOAD_AND_QUERY mode.')
@@ -190,8 +198,7 @@ class Executor(base_executor.BaseExecutor):
       validation_spec: infra_validator_pb2.ValidationSpec,
       requests: List[iv_types.Request]):
 
-    num_tries = validation_spec.num_tries or _DEFAULT_NUM_TRIES
-    for _ in range(num_tries):
+    for _ in range(validation_spec.num_tries):
       try:
         self._ValidateOnce(
             model_path=model_path,
@@ -204,6 +211,9 @@ class Executor(base_executor.BaseExecutor):
       except Exception as e:  # pylint: disable=broad-except
         # Exception indicates validation failure. Log the error and retry.
         logging.error(e)
+        if isinstance(e, error_types.DeadlineExceeded):
+          logging.info('Consider increasing the value of '
+                       'ValidationSpec.max_loading_time_seconds.')
         continue
 
     # Every trial has failed. Marking model as not blessed.
