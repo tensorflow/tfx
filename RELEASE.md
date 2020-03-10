@@ -1,3 +1,19 @@
+# Current version (not yet released; still in development)
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
 # Version 0.21.2
 
 ## Major Features and Improvements
