@@ -1,17 +1,33 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
+
+## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+# Version 0.21.2
+
+## Major Features and Improvements
 *   Updated `StatisticsGen` to optionally consume a schema `Artifact`.
 *   Added support for configuring the `StatisticsGen` component via serializable
     parts of `StatsOptions`.
 *   Added Keras guide doc.
+*   Changed Iris model_to_estimator e2e example to use generic Trainer.
+*   Demonstrated how TFLite is supported in TFX by extending MNIST example
+    pipeline to also train a TFLite model.
 
 ## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.
 *   Added component documentation and guide on using TFLite in TFX.
-*   Changed Iris model_to_estimator e2e example to use generic Trainer.
-*   Demonstrated how TFLite is supported in TFX by extending MNIST example
-    pipeline to also train a TFLite model.
 *   Relaxed the PyYaml dependency.
 
 ### Deprecations
@@ -55,7 +71,7 @@
 *   Depends on 'tensorflow-data-validation>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-model-analysis>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-transform>=0.21.2,<0.22'.
-*   Relaxed the PyYaml dependency.
+
 ### Deprecations
 
 ## Breaking changes
