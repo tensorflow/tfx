@@ -141,17 +141,18 @@ def decode_split_names(split_names: Text) -> List[Text]:
 
 def deserialize_artifact(
     artifact_type: metadata_store_pb2.ArtifactType,
-    artifact: Optional[metadata_store_pb2.Artifact] = None) -> Artifact:
+    artifact: Optional[metadata_store_pb2.Artifact] = None
+    ) -> Artifact:
   """Reconstruct Artifact object from MLMD proto descriptors.
 
   Internal method, no backwards compatibility guarantees.
 
   Args:
-    artifact_type: A metadata_store_pb2.ArtifactType proto object describing the
-      type of the artifact.
-    artifact: A metadata_store_pb2.Artifact proto object describing the contents
-      of the artifact.  If not provided, an Artifact of the desired type with
-      empty contents is created.
+    artifact_type: A metadata_store_pb2.ArtifactType proto object describing
+      the type of the artifact.
+    artifact: A metadata_store_pb2.Artifact proto object describing the
+      contents of the artifact.  If not provided, an Artifact of the desired
+      type with empty contents is created.
 
   Returns:
     Artifact subclass object for the given MLMD proto descriptors.
@@ -175,17 +176,7 @@ def deserialize_artifact(
   # Attempt to find the appropriate Artifact subclass for reconstructing this
   # object.
   artifact_cls = None
-
-  # Search the whole Artifact type ontology for a matching class.
-  def find_subclasses(cls):
-    all_subclasses = []
-    for subclass in cls.__subclasses__():
-      all_subclasses.append(subclass)
-      all_subclasses.extend(find_subclasses(subclass))
-
-    return all_subclasses
-
-  for cls in find_subclasses(Artifact):
+  for cls in Artifact.__subclasses__():
     if cls.TYPE_NAME == artifact_type.name:
       artifact_cls = cls
 
@@ -195,12 +186,12 @@ def deserialize_artifact(
     result = artifact_cls()
     result.set_mlmd_artifact_type(artifact_type)
   else:
-    absl.logging.warning(
-        ('Could not load artifact class for type %r; using fallback '
-         'deserialization for the relevant artifact. If this is not intended, '
-         'please make sure that the artifact class for this type can be '
-         'imported within your container or environment where a component is '
-         'executed to consume this type.') % (artifact_type.name))
+    absl.logging.warning((
+        'Could not load artifact class for type %r; using fallback '
+        'deserialization for the relevant artifact. If this is not intended, '
+        'please make sure that the artifact class for this type can be '
+        'imported within your container or environment where a component is '
+        'executed to consume this type.') % (artifact_type.name))
     result = Artifact(mlmd_artifact_type=artifact_type)
   if artifact:
     result.set_mlmd_artifact(artifact)

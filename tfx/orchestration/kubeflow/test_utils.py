@@ -46,7 +46,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.components.base import executor_spec
 from tfx.components.base.base_component import BaseComponent
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -56,11 +55,9 @@ from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
-from tfx.types import channel_utils
-from tfx.types import component_spec
-from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
 from tfx.utils import dsl_utils
+
 
 _POLLING_INTERVAL_IN_SECONDS = 10
 
@@ -86,79 +83,6 @@ _TEST_DATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
 # The location of test user module
 # It is retrieved from inside the container subject to testing.
 _MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
-
-
-# Custom component definitions for testing purpose.
-class _HelloWorldSpec(component_spec.ComponentSpec):
-  INPUTS = {}
-  OUTPUTS = {
-      'greeting':
-          component_spec.ChannelParameter(type=standard_artifacts.StringType)
-  }
-  PARAMETERS = {
-      'word': component_spec.ExecutionParameter(type=str),
-  }
-
-
-class _ByeWorldSpec(component_spec.ComponentSpec):
-  INPUTS = {
-      'hearing':
-          component_spec.ChannelParameter(type=standard_artifacts.StringType)
-  }
-  OUTPUTS = {}
-  PARAMETERS = {}
-
-
-class HelloWorldComponent(BaseComponent):
-  """Producer component."""
-
-  SPEC_CLASS = _HelloWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
-      # TODO(b/143965964): move the image to private repo if the test is flaky
-      # due to docker hub.
-      image='google/cloud-sdk:latest',
-      command=['sh', '-c'],
-      # TODO(b/147242148): Remove /value after decision is made regarding uri
-      # structure.
-      args=[
-          'echo "hello {{exec_properties.word}}" | gsutil cp - {{output_dict["greeting"][0].uri}}/value'
-      ])
-
-  def __init__(self, word, greeting=None):
-    if not greeting:
-      artifact = standard_artifacts.StringType()
-      greeting = channel_utils.as_channel([artifact])
-    super(HelloWorldComponent,
-          self).__init__(_HelloWorldSpec(word=word, greeting=greeting))
-
-
-class ByeWorldComponent(BaseComponent):
-  """Consumer component."""
-
-  SPEC_CLASS = _ByeWorldSpec
-  EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
-      image='bash:latest',
-      command=['echo'],
-      args=['received {{input_dict["hearing"][0].value}}'])
-
-  def __init__(self, hearing):
-    super(ByeWorldComponent, self).__init__(_ByeWorldSpec(hearing=hearing))
-
-
-def create_primitive_type_components(
-    pipeline_name: Text) -> List[BaseComponent]:
-  """Creates components for testing primitive type artifact passing.
-
-  Args:
-    pipeline_name: Name of this pipeline.
-
-  Returns:
-    A list of TFX custom container components.
-  """
-  hello_world = HelloWorldComponent(word=pipeline_name)
-  bye_world = ByeWorldComponent(hearing=hello_world.outputs['greeting'])
-
-  return [hello_world, bye_world]
 
 
 def create_e2e_components(
@@ -434,7 +358,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     """
     client = storage.Client(project=self._gcp_project_id)
     bucket = client.get_bucket(self._bucket_name)
-    absl.logging.info('Deleting files under GCS bucket path: {}'.format(path))
+    absl.logging.info(
+        'Deleting files under GCS bucket path: {}'.format(path))
 
     with _Timer('ListingAndDeletingFilesFromGCS'):
       blobs = bucket.list_blobs(prefix=path)

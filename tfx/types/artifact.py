@@ -18,16 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import builtins
 import enum
 import importlib
 import json
-import os
 from typing import Any, Dict, Optional, Text
 
 import absl
-import tensorflow as tf
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
@@ -153,7 +150,13 @@ class Artifact(json_utils.Jsonable):
         raise ValueError(
             'The "mlmd_artifact_type" argument must not be passed for '
             'Artifact subclass %s.' % self.__class__)
-      mlmd_artifact_type = self._construct_artifact_type()
+      type_name = self.__class__.TYPE_NAME
+      if not (type_name and isinstance(type_name, (str, Text))):
+        raise ValueError(
+            ('The Artifact subclass %s must override the TYPE_NAME attribute '
+             'with a string type name identifier (got %r instead).') %
+            (self.__class__, type_name))
+      mlmd_artifact_type = self._construct_artifact_type(type_name)
 
     # MLMD artifact type proto object.
     self._artifact_type = mlmd_artifact_type
@@ -162,29 +165,24 @@ class Artifact(json_utils.Jsonable):
     # Initialization flag to prevent recursive getattr / setattr errors.
     self._initialized = True
 
-  @classmethod
-  def _construct_artifact_type(cls):
-    type_name = cls.TYPE_NAME
-    if not (type_name and isinstance(type_name, (str, Text))):
-      raise ValueError(
-          ('The Artifact subclass %s must override the TYPE_NAME attribute '
-           'with a string type name identifier (got %r instead).') %
-          (cls, type_name))
+  def _construct_artifact_type(self, type_name):
     artifact_type = metadata_store_pb2.ArtifactType()
     artifact_type.name = type_name
-    if cls.PROPERTIES:
+    if self.__class__.PROPERTIES:
       # Perform validation on PROPERTIES dictionary.
-      if not isinstance(cls.PROPERTIES, dict):
+      if not isinstance(self.__class__.PROPERTIES, dict):
         raise ValueError(
-            'Artifact subclass %s.PROPERTIES is not a dictionary.' % cls)
-      for key, value in cls.PROPERTIES.items():
+            'Artifact subclass %s.PROPERTIES is not a dictionary.' %
+            self.__class__)
+      for key, value in self.__class__.PROPERTIES.items():
         if not (isinstance(key, (Text, bytes)) and isinstance(value, Property)):
           raise ValueError(
               ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
-               'type string and values of type artifact.Property.') % cls)
+               'type string and values of type artifact.Property.') %
+              self.__class__)
 
       # Populate ML Metadata artifact properties dictionary.
-      for key, value in cls.PROPERTIES.items():
+      for key, value in self.__class__.PROPERTIES.items():
         artifact_type.properties[key] = value.mlmd_type()
     return artifact_type
 
@@ -216,8 +214,7 @@ class Artifact(json_utils.Jsonable):
       object.__setattr__(self, name, value)
       return
     if name not in self._artifact_type.properties:
-      if (name in self.__dict__ or
-          any(name in c.__dict__ for c in self.__class__.mro())):
+      if name in Artifact.__dict__ or name in self.__dict__:
         # Use any provided getter / setter if available.
         object.__setattr__(self, name, value)
         return
@@ -451,55 +448,3 @@ class Artifact(json_utils.Jsonable):
   def get_int_custom_property(self, key: Text) -> int:
     """Get a custom property of int type."""
     return self._artifact.custom_properties[key].int_value
-
-
-class ValueArtifact(Artifact):
-  """Artifacts of small scalar-values that can be easily loaded into memory."""
-
-  VALUE_FILE = 'value'  # File name storing the actual value under uri.
-
-  def __init__(self, *args, **kwargs):
-    self._has_value = False
-    self._modified = False
-    self._value = None
-    super(ValueArtifact, self).__init__(*args, **kwargs)
-
-  def read(self):
-    if not self._has_value:
-      file_path = os.path.join(self.uri, self.__class__.VALUE_FILE)
-      # Assert there is a file exists.
-      if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
-        raise RuntimeError(
-            'Given path does not exist or is not a valid file: %s' % file_path)
-
-      serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-      self._has_value = True
-      self._value = self.decode(serialized_value)
-    return self._value
-
-  def write(self, value):
-    serialized_value = self.encode(value)
-    tf.io.gfile.GFile(os.path.join(self.uri, self.__class__.VALUE_FILE),
-                      'wb').write(serialized_value)
-
-  @property
-  def value(self):
-    if not self._has_value:
-      raise ValueError('The artifact value has not yet been read from storage.')
-    return self._value
-
-  @value.setter
-  def value(self, value):
-    self._modified = True
-    self._value = value
-    self.write(value)
-
-  @abc.abstractmethod
-  def decode(self, value) -> bytes:
-    """Method decoding the file content. Implemented by subclasses."""
-    pass
-
-  @abc.abstractmethod
-  def encode(self, serialized_value) -> Any:
-    """Method encoding the file content. Implemented by subclasses."""
-    pass

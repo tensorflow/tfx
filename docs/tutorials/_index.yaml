@@ -36,15 +36,15 @@ landing_page:
       buttons:
       - label: Watch the video
         path: https://www.youtube.com/watch?v=drYM04t57tU
-    - heading: "TFX: Production ML pipelines with TensorFlow"
-      description: "TF World 2019"
-      youtube_id: TA5kbFgeUlk
+    - heading: "TFX Overview and Pre-training Workflow"
+      description: "TF Dev Summit 2019"
+      youtube_id: A5wiwT1qFjc
       buttons:
       - label: Watch the video
-        path: https://youtu.be/TA5kbFgeUlk
-    - heading: "Taking Machine Learning from Research to Production"
-      description: "GOTO Copenhagen 2019"
-      youtube_id: rly7DqCbtKw
+        path: https://www.youtube.com/watch?v=A5wiwT1qFjc
+    - heading: "TFX and Apache Beam"
+      description: "Beam Summit Europe 2019"
+      youtube_id: 6p8UXjNg1oc
       buttons:
       - label: Watch the video
-        path: https://youtu.be/rly7DqCbtKw
+        path: https://www.youtube.com/watch?v=6p8UXjNg1oc

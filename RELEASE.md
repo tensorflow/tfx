@@ -44,10 +44,6 @@
 # Version 0.21.1
 
 ## Major Features and Improvements
-*   Added support for ValueArtifact, whose attribute `value` allows users to
-    access the content of the underlying file directly in the executor. The
-    first ValueArtifact type implemented was StringType. Note: interactive
-    resolution does not support this for now.
 *   Pipelines compiled using KubeflowDagRunner now defaults to using the
     gRPC-based MLMD server deployed in Kubeflow Pipelines clusters when
     performing operations on pipeline metadata.

@@ -358,7 +358,17 @@ Kubeflow Pipelines Dashboard.
 !tfx run create --pipeline_name={PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
 
-You can view your pipeline from the Kubeflow Pipelines Dashboard.
+### View the pipeline and run details
+
+You can view your pipeline from the Kubeflow Pipelines Dashboard. In the
+**Experiments** tab, you'll see a list of runs.
+
+![List of runs.](images/cloud-ai-platform-pipelines/list-of-runs.png)
+
+Select the most recent run you have completed (this first time, it should be the
+only one). This will show the pipeline graph, with details about the components.
+
+![First pipeline](images/cloud-ai-platform-pipelines/first-pipeline.png)
 
 Note: If your pipeline run fails, you can see detailed logs in the KFP
 Dashboard. One of the major sources of failure is permission related problems.
@@ -415,12 +425,27 @@ pipeline:
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check the pipeline
+### View the pipeline and run details
 
-For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
-page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
-in the Experiments page. You should be able to find the run with the name of
-your pipeline.
+Now that you have more components, the graph view is more interesting. On the
+**Experiments** tab, select the most recent run and view the pipeline. If the
+run is still in progress, you'll see details about which components are running,
+which are completed, and which are still waiting.
+
+Once the run has completed, click on a component and you can see the details of
+the component and the artifacts it generated. For example, selecting the
+StatisticsGen component gives you immediate access to the dataset's statistics.
+
+![Pipeline with stats gen](images/cloud-ai-platform-pipelines/pipeline-with-statsgen.png)
+
+Selecting the SchemaGen component lets you view and verify the data schema which
+the component inferred from analysing your data.
+
+![Pipeline with schema gen](images/cloud-ai-platform-pipelines/pipeline-with-schemagen.png)
+
+Artifacts are also viewable in the **Artifacts** tab.
+
+![Artifacts](images/cloud-ai-platform-pipelines/artifacts.png)
 
 ### More advanced example
 
@@ -473,12 +498,10 @@ In `pipeline.py`, find and uncomment the line which appends
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check pipeline outputs
+### View the pipeline and run details
 
-For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
-page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
-in the Experiments page. You should be able to find the run with the name of
-your pipeline.
+Once again you can view your pipeline graph, run details, and artifacts from the
+Pipeline Dashboard.
 
 ### More advanced example
 
@@ -520,12 +543,10 @@ In `pipeline.py`, find and uncomment the which appends Trainer to the pipeline:
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check pipeline outputs
+### View the pipeline and run details
 
-For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
-page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
-in the Experiments page. You should be able to find the run with the name of
-your pipeline.
+Once again you can view your pipeline graph, run details, and artifacts from the
+Pipeline Dashboard.
 
 ### More advanced example
 
@@ -569,12 +590,10 @@ components.append(model_analyzer)
 ! tfx run create --pipeline_name "{PIPELINE_NAME}"
 ```
 
-### Check pipeline outputs
+### View the pipeline and run details
 
-For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
-page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
-in the Experiments page. You should be able to find the run with the name of
-your pipeline.
+Once again you can view your pipeline graph, run details, and artifacts from the
+Pipeline Dashboard.
 
 ### More advanced example
 
@@ -611,12 +630,13 @@ pipeline:
 # components.append(pusher)
 ```
 
-### Check pipeline outputs
+### View the pipeline and run details
 
-For Kubeflow Orchestrator, visit KFP dashboard and find pipeline outputs in the
-page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
-in the Experiments page. You should be able to find the run with the name of
-your pipeline.
+Once again you can view your pipeline graph, run details, and artifacts from the
+Pipeline Dashboard. At this point you can see the entire pipeline and examine
+the inputs and outputs of every component.
+
+![Final Pipeline](images/cloud-ai-platform-pipelines/final-pipeline.png)
 
 ### Available deployment targets
 

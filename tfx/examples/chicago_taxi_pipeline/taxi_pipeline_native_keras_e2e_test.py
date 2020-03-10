@@ -100,12 +100,12 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path,
             direct_num_workers=1))
 
-    # All executions but Evaluator and Pusher are cached.
-    # Note that Resolver will always execute.
+    # All executions but ModelValidator and Pusher are cached.
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      # Artifact count is increased by 3 caused by ModelValidator and Pusher.
       self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
       artifact_count = len(m.store.get_artifacts())
+      # 9 more cached executions.
       self.assertEqual(expected_execution_count * 2,
                        len(m.store.get_executions()))
 
@@ -124,6 +124,7 @@ class TaxiPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      # 9 more cached executions.
       self.assertEqual(expected_execution_count * 3,
                        len(m.store.get_executions()))
 
