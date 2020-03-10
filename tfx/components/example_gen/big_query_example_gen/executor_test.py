@@ -49,6 +49,7 @@ def _MockReadFromBigQuery(pipeline, query):  # pylint: disable=invalid-name, unu
 def _MockReadFromBigQuery2(pipeline, query):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
+      'b': True,
       'f': 2.0,
       's': 'abc',
   }]
@@ -61,6 +62,7 @@ class ExecutorTest(tf.test.TestCase):
     # Mock BigQuery result schema.
     self._schema = [
         bigquery.SchemaField('i', 'INTEGER', mode='REQUIRED'),
+        bigquery.SchemaField('b', 'BOOLEAN', mode='REQUIRED'),
         bigquery.SchemaField('f', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
     ]
@@ -80,10 +82,11 @@ class ExecutorTest(tf.test.TestCase):
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
               input_dict={},
               exec_properties={},
-              split_pattern='SELECT i, f, s FROM `fake`'))
+              split_pattern='SELECT i, b, f, s FROM `fake`'))
 
       feature = {}
       feature['i'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
+      feature['b'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
       feature['f'] = tf.train.Feature(
           float_list=tf.train.FloatList(value=[2.0]))
       feature['s'] = tf.train.Feature(
@@ -117,7 +120,7 @@ class ExecutorTest(tf.test.TestCase):
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='bq', pattern='SELECT i, f, s FROM `fake`'),
+                        name='bq', pattern='SELECT i, b, f, s FROM `fake`'),
                 ]),
                 preserving_proto_field_name=True),
         'output_config':
