@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.infra_validator.model_paths.tensorflow_serving_flavor."""
+"""Tests for tfx.utils.model_paths.tf_serving_flavor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,10 +19,10 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tfx.components.infra_validator.model_paths import tensorflow_serving_flavor as tfs_flavor
+from tfx.utils.model_paths import tf_serving_flavor as tfs_flavor
 
 
-class TensorFlowServingFlavorTest(tf.test.TestCase):
+class TFServingFlavorTest(tf.test.TestCase):
 
   def testRoundTrip(self):
     self.assertEqual(
@@ -38,37 +38,26 @@ class TensorFlowServingFlavorTest(tf.test.TestCase):
   def testMakeModelPath(self):
     self.assertEqual(
         tfs_flavor.make_model_path(
-            base_path='/foo/bar',
+            model_base_path='/foo/bar',
             model_name='my-model',
             version=123),
         '/foo/bar/my-model/123')
 
     self.assertEqual(
         tfs_flavor.make_model_path(
-            base_path='s3://bucket-name/foo/bar',
+            model_base_path='s3://bucket-name/foo/bar',
             model_name='my-model',
             version=123),
         's3://bucket-name/foo/bar/my-model/123')
 
     self.assertEqual(
         tfs_flavor.make_model_path(
-            base_path='gs://bucket-name/foo/bar',
+            model_base_path='gs://bucket-name/foo/bar',
             model_name='my-model',
             version=123),
         'gs://bucket-name/foo/bar/my-model/123')
 
-  def testMakeModelPath_Fail(self):
-    with self.assertRaises(ValueError):
-      tfs_flavor.make_model_path(
-          base_path='/foo/bar',
-          model_name='my-model',
-          version='not-an-integer')
-
   def testParseModelPath(self):
-    self.assertEqual(
-        tfs_flavor.parse_model_path('my-model/123'),
-        ('', 'my-model', 123))
-
     self.assertEqual(
         tfs_flavor.parse_model_path('/foo/bar/my-model/123',),
         ('/foo/bar', 'my-model', 123))

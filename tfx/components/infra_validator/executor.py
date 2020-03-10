@@ -29,12 +29,12 @@ from tfx.components.base import base_executor
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator import types as iv_types
-from tfx.components.infra_validator.model_paths import tensorflow_serving_flavor
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils.model_paths import tf_serving_flavor
 
 _DEFAULT_NUM_TRIES = 3
 _DEFAULT_POLLING_INTERVAL_SEC = 1
@@ -166,16 +166,16 @@ class Executor(base_executor.BaseExecutor):
       # structure flavor. If current model_path does not conform to the flavor,
       # we need to make a copy to the temporary path.
       try:
-        # Check whether current model_path confirms to the tensorflow serving
-        # flavor. (Parsed without exception)
-        tensorflow_serving_flavor.parse_model_path(
+        # Check whether current model_path conforms to the tensorflow serving
+        # model path flavor. (Parsed without exception)
+        tf_serving_flavor.parse_model_path(
             model_path,
             expected_model_name=serving_spec.model_name)
       except ValueError:
-        # Copy the model to comply with the tensorflow serving directory
-        # structure flavor.
-        temp_model_path = tensorflow_serving_flavor.make_model_path(
-            base_path=self._get_tmp_dir(),
+        # Copy the model to comply with the tensorflow serving model path
+        # flavor.
+        temp_model_path = tf_serving_flavor.make_model_path(
+            model_base_path=self._get_tmp_dir(),
             model_name=serving_spec.model_name,
             version=int(time.time()))
         io_utils.copy_dir(src=model_path, dst=temp_model_path)
