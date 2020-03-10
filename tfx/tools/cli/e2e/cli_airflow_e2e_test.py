@@ -70,16 +70,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # https://airflow.apache.org/howto/set-config.html for details.
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
-    # Following environment variables make scheduler process dags faster.
-    os.environ['AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC'] = '1'
-    os.environ['AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC'] = '1'
-    os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
-    os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '0'
-    os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
-    os.environ['AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL'] = '0'
-    # Using more than one thread results in a warning for sqlite backend.
-    # See https://github.com/tensorflow/tfx/issues/141
-    os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
 
     # Copy data.
     chicago_taxi_pipeline_dir = os.path.join(
@@ -101,11 +91,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
 
     # Initialize database.
     _ = subprocess.check_output(['airflow', 'initdb'])
-
-    # Start airflow scheduler.
-    self._out = open(os.path.join(self._airflow_home, 'out.txt'), 'w+')
-    self._err = open(os.path.join(self._airflow_home, 'err.txt'), 'w+')
-    self._scheduler = subprocess.Popen(['airflow', 'scheduler'])
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
