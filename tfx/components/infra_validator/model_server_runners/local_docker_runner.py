@@ -27,12 +27,11 @@ import docker
 from docker import errors as docker_errors
 from typing import Text
 
-from tfx import types
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
+from tfx.components.infra_validator.model_paths import tensorflow_serving_flavor
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
-from tfx.utils import path_utils
 
 _POLLING_INTERVAL_SEC = 1
 
@@ -58,27 +57,6 @@ def _find_available_port():
     return port
 
 
-def _parse_model_path(model_path: Text):
-  """Parse model path into a base path, model name, and a version.
-
-  Args:
-    model_path: Path to the SavedModel (or other format) in the structure of
-        `{model_base_path}/{model_name}/{version}`, where version is an integer.
-  Raises:
-    ValueError: if the model_path does not conform to the expected directory
-        structure.
-  Returns:
-    `model_base_path`, `model_name`, and integer `version`.
-  """
-  model_path, version = os.path.split(model_path)
-  if not version.isdigit():
-    raise ValueError(
-        '{} does not conform to tensorflow serving directory structure: '
-        'BASE_PATH/model_name/int_version.'.format(model_path))
-  base_path, model_name = os.path.split(model_path)
-  return base_path, model_name, int(version)
-
-
 class LocalDockerRunner(base_runner.BaseModelServerRunner):
   """A model server runner that runs in a local docker runtime.
 
@@ -87,28 +65,18 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
   testing purpose.
   """
 
-  def __init__(self, model: types.Artifact,
+  def __init__(self,
+               model_path: Text,
                serving_binary: serving_bins.ServingBinary,
                serving_spec: infra_validator_pb2.ServingSpec):
     """Make a local docker runner.
 
     Args:
-      model: A model artifact to infra validate.
+      model_path: An IV-flavored model path. (See model_path_utils.py)
       serving_binary: A ServingBinary to run.
       serving_spec: A ServingSpec instance.
     """
-    base_path, model_name, version = _parse_model_path(
-        path_utils.serving_model_path(model.uri))
-
-    if model_name != serving_spec.model_name:
-      raise ValueError(
-          'ServingSpec.model_name ({}) does not match the model name ({}) from'
-          'the Model artifact.'.format(
-              serving_spec.model_name, model_name))
-
-    self._model_base_path = base_path
-    self._model_name = model_name
-    self._model_version = version
+    self._model_path = model_path
     self._serving_binary = serving_binary
     self._serving_spec = serving_spec
     self._docker = _make_docker_client(serving_spec.local_docker)
@@ -118,15 +86,6 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
   def __repr__(self):
     return 'LocalDockerRunner(image: {image})'.format(
         image=self._serving_binary.image)
-
-  @property
-  def _model_path(self):
-    return os.path.join(self._model_base_path, self._model_name)
-
-  @property
-  def _model_version_path(self):
-    return os.path.join(self._model_base_path, self._model_name,
-                        str(self._model_version))
 
   def GetEndpoint(self):
     assert self._endpoint is not None, (
@@ -141,15 +100,17 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     self._endpoint = 'localhost:{}'.format(host_port)
 
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
-      is_local_model = os.path.exists(self._model_version_path)
-      if is_local_model:
+      is_local = os.path.exists(self._model_path)
+      model_base_path = tensorflow_serving_flavor.parse_base_path(
+          self._model_path)
+      if is_local:
         run_params = self._serving_binary.MakeDockerRunParams(
             host_port=host_port,
-            host_model_path=self._model_path)
+            host_model_base_path=model_base_path)
       else:
         run_params = self._serving_binary.MakeDockerRunParams(
             host_port=host_port,
-            model_base_path=self._model_base_path)
+            remote_model_base_path=model_base_path)
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
           type(self._serving_binary).__name__))

@@ -30,6 +30,7 @@ from tfx.components.infra_validator import serving_bins
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import path_utils
 
 
 def _make_serving_spec(
@@ -76,6 +77,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self._model = standard_artifacts.Model()
     self._model.uri = os.path.join(source_data_dir, 'trainer', 'current')
+    self._model_path = path_utils.serving_model_path(self._model.uri)
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'transform',
                                 'transformed_examples', 'eval')
@@ -168,7 +170,7 @@ class ExecutorTest(tf.test.TestCase):
       with mock.patch.object(executor, '_create_model_server_runner'):
         # Should not raise any error.
         infra_validator._ValidateOnce(
-            model=self._model,
+            model_path=self._model_path,
             serving_binary=self._serving_binary,
             serving_spec=self._serving_spec,
             validation_spec=self._validation_spec,
@@ -183,7 +185,7 @@ class ExecutorTest(tf.test.TestCase):
         mock_runner.WaitUntilRunning.side_effect = ValueError
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
-              model=self._model,
+              model_path=self._model_path,
               serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,
@@ -199,7 +201,7 @@ class ExecutorTest(tf.test.TestCase):
         mock_client.WaitUntilModelLoaded.side_effect = ValueError
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
-              model=self._model,
+              model_path=self._model_path,
               serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,
@@ -214,7 +216,7 @@ class ExecutorTest(tf.test.TestCase):
       with mock.patch.object(
           executor, '_create_model_server_runner') as mock_runner_factory:
         infra_validator._ValidateOnce(
-            model=self._model,
+            model_path=self._model_path,
             serving_binary=self._serving_binary,
             serving_spec=self._serving_spec,
             validation_spec=self._validation_spec,
@@ -233,7 +235,7 @@ class ExecutorTest(tf.test.TestCase):
         mock_client.SendRequests.side_effect = ValueError
         with self.assertRaises(ValueError):
           infra_validator._ValidateOnce(
-              model=self._model,
+              model_path=self._model_path,
               serving_binary=self._serving_binary,
               serving_spec=self._serving_spec,
               validation_spec=self._validation_spec,

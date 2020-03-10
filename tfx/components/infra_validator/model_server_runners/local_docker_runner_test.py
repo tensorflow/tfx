@@ -30,6 +30,7 @@ from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import path_utils
 
 
 def _create_serving_spec(payload: Dict[Text, Any]):
@@ -52,6 +53,7 @@ class LocalDockerRunnerTest(tf.test.TestCase):
     self._model = standard_artifacts.Model()
     self._model.uri = os.path.join(base_dir, 'trainer', 'current')
     self._model_name = 'chicago-taxi'
+    self._model_path = path_utils.serving_model_path(self._model.uri)
 
     # Mock _find_available_port
     patcher = mock.patch.object(local_docker_runner, '_find_available_port')
@@ -77,7 +79,7 @@ class LocalDockerRunnerTest(tf.test.TestCase):
 
   def _CreateLocalDockerRunner(self):
     return local_docker_runner.LocalDockerRunner(
-        model=self._model,
+        model_path=self._model_path,
         serving_binary=self._serving_binary,
         serving_spec=self._serving_spec)
 
