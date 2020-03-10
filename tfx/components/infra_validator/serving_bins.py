@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import os
 from typing import Any, Dict, List, Optional, Text
 
 from docker import types as docker_types
@@ -155,24 +154,20 @@ class TensorFlowServing(ServingBinary):
   def MakeDockerRunParams(
       self,
       host_port: int,
-      model_base_path: Optional[Text] = None,
-      host_model_path: Optional[Text] = None
+      remote_model_base_path: Optional[Text] = None,
+      host_model_base_path: Optional[Text] = None
   ):
     """Make parameters for docker `client.containers.run`.
 
     Args:
       host_port: Available port in the host to bind with container port.
-      model_base_path: (Optional) Model base path for the tensorflow serving.
-          If the model is exported to the remote destination, you should specify
-          its location (e.g. `gs://your_bucket/model_base_path`) and gfile will
-          recognize it. If your model is in the local host machine, do not alter
-          `model_base_path` (i.e. use default value `/model`) and use
-          `host_model_path` argument to configure a volume mount from a host
-          machine to the container.
-      host_model_path: (Optional) host path for exported model. Use this only if
-          you have an exported SavedModel in the local host machine. Using this
-          option will create a volume mount from `host_model_path` to the
-          `{model_base_path}/{model_name}`.
+      remote_model_base_path: (Optional) Model base path in the remote
+          destination. (e.g. `gs://your_bucket/model_base_path`.) Use this
+          argument if you have model in the remote place.
+      host_model_base_path: (Optional) Model base path in the host machine.
+          (i.e. local path during the execution.) This would create a volume
+          mount from `host_model_base_path` to the container model base path
+          (i.e. `/model`).
 
     Returns:
       A dictionary of docker run parameters.
@@ -183,17 +178,15 @@ class TensorFlowServing(ServingBinary):
         ports={
             '{}/tcp'.format(self.container_port): host_port
         },
-        environment=self.MakeEnvVars(model_base_path=model_base_path))
+        environment=self.MakeEnvVars(model_base_path=remote_model_base_path))
 
-    if host_model_path is not None:
+    if host_model_base_path is not None:
       # TODO(b/149534564): Replace os.path to pathlib.PurePosixPath after py3.
       result.update(mounts=[
           docker_types.Mount(
               type='bind',
-              target=os.path.join(
-                  model_base_path or self._DEFAULT_MODEL_BASE_PATH,
-                  self._model_name),
-              source=host_model_path,
+              target=self._DEFAULT_MODEL_BASE_PATH,
+              source=host_model_base_path,
               read_only=True)
       ])
 
