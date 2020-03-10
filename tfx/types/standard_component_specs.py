@@ -149,11 +149,11 @@ class InfraValidatorSpec(ComponentSpec):
       'serving_spec':
           ExecutionParameter(type=infra_validator_pb2.ServingSpec),
       'validation_spec':
-          ExecutionParameter(type=infra_validator_pb2.ValidationSpec),
+          ExecutionParameter(type=infra_validator_pb2.ValidationSpec,
+                             optional=True),
       'request_spec':
-          ExecutionParameter(
-              type=infra_validator_pb2.RequestSpec,
-              optional=True)
+          ExecutionParameter(type=infra_validator_pb2.RequestSpec,
+                             optional=True)
   }
 
   INPUTS = {

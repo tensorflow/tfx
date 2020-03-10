@@ -37,18 +37,25 @@ class InfraValidator(base_component.BaseComponent):
   the model server. Such requests can be specified from Examples artifact.
 
   ## Example
+
   ```
   infra_validator = InfraValidator(
       model=trainer.outputs['model'],
       examples=test_example_gen.outputs['examples'],
       serving_spec=ServingSpec(
-          tensorflow_serving=TensorFlowServing(tags=['1.15.0']),
-          local_docker=LocalDockerConfig()),
+          tensorflow_serving=TensorFlowServing(
+              tags=['latest']
+          ),
+          local_docker=LocalDockerConfig(),
+      ),
       validation_spec=ValidationSpec(
-          max_loading_time_seconds=60),
+          max_loading_time_seconds=60,
+          num_tries=5,
+      ),
       request_spec=RequestSpec(
           tensorflow_serving=TensorFlowServingRequestSpec(rpc_kind=CLASSIFY),
-          max_examples=100)
+          max_examples=10,
+      )
   )
   ```
   """
@@ -57,14 +64,15 @@ class InfraValidator(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(executor.Executor)
   DRIVER_CLASS = base_driver.BaseDriver
 
-  def __init__(self,
-               model: types.Channel,
-               serving_spec: infra_validator_pb2.ServingSpec,
-               validation_spec: infra_validator_pb2.ValidationSpec,
-               examples: Optional[types.Channel] = None,
-               blessing: Optional[types.Channel] = None,
-               request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
-               instance_name: Optional[Text] = None):
+  def __init__(
+      self,
+      model: types.Channel,
+      serving_spec: infra_validator_pb2.ServingSpec,
+      examples: Optional[types.Channel] = None,
+      blessing: Optional[types.Channel] = None,
+      request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
+      validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None,
+      instance_name: Optional[Text] = None):
     """Construct a InfraValidator component.
 
     Args:
@@ -73,7 +81,6 @@ class InfraValidator(base_component.BaseComponent):
         _required_
       serving_spec: A `ServingSpec` configuration about serving binary and
         test platform config to launch model server for validation. _required_
-      validation_spec: A `ValidationSpec` configuration. _required_
       examples: A `Channel` of `ExamplesPath` type, usually produced by
         [ExampleGen](https://www.tensorflow.org/tfx/guide/examplegen) component.
         If not specified, InfraValidator does not issue requests for validation.
@@ -82,6 +89,7 @@ class InfraValidator(base_component.BaseComponent):
       request_spec: Optional `RequestSpec` configuration about making requests
         from `examples` input. If not specified, InfraValidator does not issue
         requests for validation.
+      validation_spec: Optional `ValidationSpec` configuration.
       instance_name: Optional name assigned to this specific instance of
         InfraValidator.  Required only if multiple InfraValidator components are
         declared in the same pipeline.
