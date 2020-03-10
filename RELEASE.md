@@ -4,12 +4,15 @@
 *   Updated `StatisticsGen` to optionally consume a schema `Artifact`.
 *   Added support for configuring the `StatisticsGen` component via serializable
     parts of `StatsOptions`.
-
 *   Added Keras guide doc.
 
 ## Bug fixes and other changes
 *   Fix the behavior of Trainer Tensorboard visualization when caching is used.
 *   Added component documentation and guide on using TFLite in TFX.
+*   Changed Iris model_to_estimator e2e example to use generic Trainer.
+*   Demonstrated how TFLite is supported in TFX by extending MNIST example
+    pipeline to also train a TFLite model.
+*   Relaxed the PyYaml dependency.
 
 ### Deprecations
 *   Model Validator (its functionality is now provided by the Evaluator).
@@ -41,9 +44,6 @@
 *   Added a Chicago Taxi example with native Keras.
 *   Updated TFLite converter to work with TF2.
 *   Enabled filtering by artifact producer and output key in ResolverNode.
-*   Changed Iris model_to_estimator e2e example to use generic Trainer.
-*   Demonstrated how TFLite is supported in TFX by extending MNIST example
-    pipeline to also train a TFLite model.
 
 ## Bug fixes and other changes
 *   Added --skaffold_cmd flag when updating a pipeline for kubeflow in CLI.
@@ -55,7 +55,7 @@
 *   Depends on 'tensorflow-data-validation>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-model-analysis>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-transform>=0.21.2,<0.22'.
-
+*   Relaxed the PyYaml dependency.
 ### Deprecations
 
 ## Breaking changes
