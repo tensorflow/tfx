@@ -58,7 +58,6 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('CsvExampleGen')
     self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('ModelValidator')
     self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
@@ -83,7 +82,7 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(8, execution_count)
+      self.assertEqual(8, execution_count)  # 7 components + 1 resolver
 
     self.assertPipelineExecution()
 
