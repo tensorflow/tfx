@@ -140,7 +140,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
   def testPipelineCreateAutoDetect(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_create_auto_detect'
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
     result = self.runner.invoke(cli_group, [
@@ -165,7 +165,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Create a pipeline.
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_create'
     self._valid_create_and_check(pipeline_path, pipeline_name)
 
     # Test pipeline create when pipeline already exists.
@@ -179,7 +179,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                     result.output)
 
   def testPipelineUpdate(self):
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_update'
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
 
@@ -214,7 +214,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
             os.path.join(handler_pipeline_path, 'pipeline_args.json')))
 
   def testPipelineCompile(self):
-
     # Invalid DSL path
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
     result = self.runner.invoke(cli_group, [
@@ -251,7 +250,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
   def testPipelineDelete(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_delete'
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
 
@@ -281,7 +280,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                   result.output)
 
   def testPipelineList(self):
-
     # Try listing pipelines when there are none.
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'list', '--engine', 'airflow'])
@@ -289,12 +287,12 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self.assertIn('Listing all pipelines', result.output)
 
     # Create pipelines.
-    pipeline_name_1 = 'chicago_taxi_simple'
+    pipeline_name_1 = 'chicago_taxi_simple_list_1'
     pipeline_path_1 = os.path.join(self._testdata_dir,
                                    'test_pipeline_airflow_1.py')
     self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
 
-    pipeline_name_2 = 'chicago_taxi_simple_v2'
+    pipeline_name_2 = 'chicago_taxi_simple_list_2'
     pipeline_path_2 = os.path.join(self._testdata_dir,
                                    'test_pipeline_airflow_3.py')
     self._valid_create_and_check(pipeline_path_2, pipeline_name_2)
@@ -310,7 +308,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
   def testPipelineSchemaError(self):
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_2.py')
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_schema_error'
 
     # Try getting schema without creating pipeline.
     result = self.runner.invoke(cli_group, [
@@ -371,7 +369,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                   result.output)
 
   def testRunCreate(self):
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_run_create'
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
 
@@ -392,7 +390,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self._valid_run_and_check(pipeline_name)
 
   def testRunList(self):
-    pipeline_name = 'chicago_taxi_simple'
+    pipeline_name = 'chicago_taxi_simple_run_list'
     pipeline_path = os.path.join(self._testdata_dir,
                                  'test_pipeline_airflow_1.py')
 
