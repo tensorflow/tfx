@@ -41,6 +41,14 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
     self._compile_and_run_pipeline(pipeline)
 
+  def testPrimitiveEnd2EndPipeline(self):
+    """End-to-End test for primitive artifacts passing."""
+    pipeline_name = 'kubeflow-primitive-e2e-test-{}'.format(self._random_id())
+    components = test_utils.create_primitive_type_components(pipeline_name)
+    pipeline = self._create_pipeline(pipeline_name, components)
+    # TODO(b/142660336): assert the actual value being passed.
+    self._compile_and_run_pipeline(pipeline)
+
 
 if __name__ == '__main__':
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)

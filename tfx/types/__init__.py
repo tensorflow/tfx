@@ -15,5 +15,6 @@
 """Subpackage for TFX pipeline types."""
 
 from tfx.types.artifact import Artifact
+from tfx.types.artifact import ValueArtifact
 from tfx.types.channel import Channel
 from tfx.types.component_spec import ComponentSpec

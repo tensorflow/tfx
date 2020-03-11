@@ -18,12 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-
+import os
+from typing import Text
 # Standard Imports
-
 import absl
 import mock
-
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
@@ -38,6 +37,40 @@ class _MyArtifact(artifact.Artifact):
       'string1': artifact.Property(type=artifact.PropertyType.STRING),
       'string2': artifact.Property(type=artifact.PropertyType.STRING),
   }
+
+
+class _MyValueArtifact(artifact.ValueArtifact):
+  TYPE_NAME = 'MyValueTypeName'
+
+  def encode(self, value: Text):
+    assert isinstance(value, Text), value
+    return value.encode('utf-8')
+
+  def decode(self, value: bytes):
+    return value.decode('utf-8')
+
+
+# Mock values for string artifact.
+_STRING_VALUE = u'This is a string'
+_BYTE_VALUE = b'This is a string'
+
+# Mock paths for string artifact.
+_VALID_URI = '/tmp/uri'
+_VALID_FILE_URI = os.path.join(_VALID_URI, artifact.ValueArtifact.VALUE_FILE)
+
+# Mock invalid paths. _BAD_URI points to a valid dir but there's no file within.
+_BAD_URI = '/tmp/to/a/bad/dir'
+_BAD_FILE_URI = os.path.join(_BAD_URI, artifact.ValueArtifact.VALUE_FILE)
+
+
+def fake_exist(path: Text) -> bool:
+  """Mock behavior of tf.io.gfile.exists."""
+  return path in [_VALID_URI, _VALID_FILE_URI, _BAD_URI]
+
+
+def fake_isdir(path: Text) -> bool:
+  """Mock behavior of tf.io.gfile.isdir."""
+  return path in [_VALID_URI, _BAD_URI]
 
 
 class ArtifactTest(tf.test.TestCase):
@@ -208,6 +241,46 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.int2, 222)
     self.assertEqual(rehydrated.string1, '111')
     self.assertEqual(rehydrated.string2, '222')
+
+
+class ValueArtifactTest(tf.test.TestCase):
+  """Tests for ValueArtifact."""
+
+  def setUp(self):
+    super(ValueArtifactTest, self).setUp()
+    self.addCleanup(mock.patch.stopall)
+
+    self._mock_gfile_readfn = mock.patch.object(
+        tf.io.gfile.GFile,
+        'read',
+        autospec=True,
+        return_value=_BYTE_VALUE,
+    ).start()
+
+  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
+  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
+  def testValueArtifact(self):
+    instance = _MyValueArtifact()
+    # Test property setters.
+    instance.uri = _VALID_URI
+    self.assertEqual(_VALID_URI, instance.uri)
+
+    with self.assertRaisesRegexp(
+        ValueError, 'The artifact value has not yet been read from storage.'):
+      instance.value  # pylint: disable=pointless-statement
+
+    instance.read()
+    self.assertEqual(_STRING_VALUE, instance.value)
+
+  @mock.patch.object(tf.io.gfile, 'exists', fake_exist)
+  @mock.patch.object(tf.io.gfile, 'isdir', fake_isdir)
+  def testValueArtifactWithBadUri(self):
+    instance = _MyValueArtifact()
+    instance.uri = _BAD_URI
+
+    with self.assertRaisesRegexp(
+        RuntimeError, 'Given path does not exist or is not a valid file'):
+      instance.read()
 
 
 if __name__ == '__main__':
