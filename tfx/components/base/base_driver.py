@@ -123,7 +123,7 @@ class BaseDriver(object):
         related properties including component_type and component_id.
 
     Returns:
-      Final execution properties that will be used in execution.
+      Final artifacts that will be used in execution.
 
     Raises:
       ValueError: if in interactive mode, the given input channels have not been
@@ -148,6 +148,12 @@ class BaseDriver(object):
             artifact_name=input_channel.output_key,
             pipeline_info=pipeline_info,
             producer_component_id=input_channel.producer_component_id)
+        # TODO(ccy): add this code path to interactive resolution.
+        for artifact in result[name]:
+          if isinstance(artifact, types.ValueArtifact):
+            # Resolve the content of file into value field for string-typed
+            # artifacts.
+            artifact.read()
     return result
 
   def resolve_exec_properties(
