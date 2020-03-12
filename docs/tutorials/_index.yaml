@@ -24,18 +24,19 @@ landing_page:
   - heading: "Videos and updates"
     description: >
       <p>
-        Subscribe to the TensorFlow
-        <a href="https://www.youtube.com/tensorflow" class="external">YouTube channel</a>
-        and <a href="https://blog.tensorflow.org" class="external">blog</a> for
-        the latest videos and updates.
+        Subscribe to the
+        <a href="https://www.youtube.com/playlist?list=PLQY2H8rRoyvxR15n04JiW0ezF5HQRs_8F"
+        class="external">TFX YouTube Playlist</a>
+        and <a href="https://blog.tensorflow.org/search?label=TFX&max-results=20"
+        class="external">blog</a> for the latest videos and updates.
       </p>
     items:
-    - heading: "TFX: ML Pipelines and Understanding"
-      description: "Google I/O 2019"
-      youtube_id: drYM04t57tU
+    - heading: "TFX: Production ML with TensorFlow in 2020"
+      description: "TF Dev Summit 2020"
+      youtube_id: I3MjuFGmJrg
       buttons:
       - label: Watch the video
-        path: https://www.youtube.com/watch?v=drYM04t57tU
+        path: https://youtu.be/I3MjuFGmJrg
     - heading: "TFX: Production ML pipelines with TensorFlow"
       description: "TF World 2019"
       youtube_id: TA5kbFgeUlk
