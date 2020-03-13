@@ -26,10 +26,14 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
 # once we switch default tensorflow version in released image to TF 2.x.
 # TODO(jxzheng): investigate why setuptools need to be re-installed
+# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
+#                    when patching is not needed any more.
 RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install \
   "kubernetes>=10.0.1,<11" \
   "tensorflow>=1.15,<3" \
   "tensorflow-serving-api>=1.15,<3" \
+  "google-api-python-client==1.7.12" \
+  "google-apitools==0.5.30" \
   "setuptools==41.4.0"
 
 # docker build command should be run under root directory of github checkout.
@@ -42,6 +46,7 @@ RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
+# TODO(b/151392812): Remove this when other telemetries become available.
 RUN patch /opt/venv/lib/python3.6/site-packages/googleapiclient/http.py \
   /tfx-src/tfx/tools/docker/patches/http.patch && \
   patch /opt/venv/lib/python3.6/site-packages/apitools/base/py/base_api.py \
