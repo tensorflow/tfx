@@ -44,6 +44,9 @@ TRAINER_FN = 'models.estimator.model.trainer_fn'
 TRAIN_NUM_STEPS = 100
 EVAL_NUM_STEPS = 100
 
+# Change this value according to your use cases.
+EVAL_ACCURACY_THRESHOLD = 0.6
+
 # Beam args to use BigQueryExampleGen.
 # TODO(step 7): (Optional) Uncomment here to provide GCP related configs for
 #               BigQuery.
