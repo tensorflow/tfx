@@ -89,13 +89,19 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    query_sample_rate=_query_sample_rate)
 
 # Beam args to run data processing on DataflowRunner.
+# TODO(b/151114974) Remove `disk_size_gb` flag after default is increased.
+# TODO(b/151116587) Remove `shuffle_mode` flag after default is changed.
 # TODO(step 8): (Optional) Uncomment below to use Dataflow.
 # BEAM_PIPELINE_ARGS = [
 #    '--project=' + GCP_PROJECT_ID,
 #    '--runner=DataflowRunner',
-#    '--experiments=shuffle_mode=auto',
 #    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
 #    '--region=' + GCP_REGION,
+#    # TODO(tensorflow/tfx#1461) Remove `shuffle_mode` after default is changed.  # pylint: disable=g-bad-todo
+#    '--experiments=shuffle_mode=auto',
+#    # TODO(tensorflow/tfx#1459) Remove `disk_size_gb` after default is
+#    #                           increased.  # pylint: disable=g-bad-todo
+#    '--disk_size_gb=50',
 #    ]
 
 # A dict which contains the training job parameters to be passed to Google
