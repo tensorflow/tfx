@@ -71,6 +71,7 @@ def run():
           trainer_fn=configs.TRAINER_FN,
           train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
           eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
+          eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
           serving_model_dir=SERVING_MODEL_DIR,
           # TODO(step 7): (Optional) Uncomment here to use provide GCP related
           #               config for BigQuery.

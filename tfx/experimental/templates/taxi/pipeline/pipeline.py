@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Optional, Text, List, Dict, Any
+import tensorflow_model_analysis as tfma
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components import CsvExampleGen
@@ -29,19 +30,22 @@ from tfx.components import CsvExampleGen
 # from tfx.components import BigQueryExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
 from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.base import executor_spec
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import pipeline
-from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 
@@ -55,6 +59,7 @@ def create_pipeline(
     trainer_fn: Text,
     train_args: trainer_pb2.TrainArgs,
     eval_args: trainer_pb2.EvalArgs,
+    eval_accuracy_threshold: float,
     serving_model_dir: Text,
     metadata_connection_config: Optional[
         metadata_store_pb2.ConnectionConfig] = None,
@@ -122,22 +127,40 @@ def create_pipeline(
   # TODO(step 6): Uncomment here to add Trainer to the pipeline.
   # components.append(trainer)
 
-  # Uses TFMA to compute a evaluation statistics over features of a model.
-  model_analyzer = Evaluator(  # pylint: disable=unused-variable
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+  # TODO(step 6): Uncomment here to add ResolverNode to the pipeline.
+  # components.append(model_resolver)
+
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(label_key='tips')],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  'binary_accuracy':
+                      tfma.config.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': eval_accuracy_threshold}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
+      ])
+  model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])
-      ]))
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
   # TODO(step 6): Uncomment here to add Evaluator to the pipeline.
   # components.append(model_analyzer)
-
-  # Performs quality validation of a candidate model (compared to a baseline).
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
-  # TODO(step 6): Uncomment here to add ModelValidator to the pipeline.
-  # components.append(model_validator)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -145,7 +168,7 @@ def create_pipeline(
       'model':
           trainer.outputs['model'],
       'model_blessing':
-          model_validator.outputs['blessing'],
+          model_analyzer.outputs['blessing'],
       'push_destination':
           pusher_pb2.PushDestination(
               filesystem=pusher_pb2.PushDestination.Filesystem(
