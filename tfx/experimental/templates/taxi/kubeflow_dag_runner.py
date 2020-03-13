@@ -19,10 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import absl
-from tfx.experimental.templates.taxi import configs
-from tfx.experimental.templates.taxi import pipeline
+from absl import logging
+from tfx.experimental.templates.taxi.pipeline import configs
+from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto import trainer_pb2
 
 
 # TFX pipeline produces many output files and metadata. All output data will be
@@ -77,8 +78,8 @@ def run():
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
           trainer_fn=configs.TRAINER_FN,
-          train_args=configs.TRAIN_ARGS,
-          eval_args=configs.EVAL_ARGS,
+          train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
+          eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           serving_model_dir=SERVING_MODEL_DIR,
           # TODO(step 7): (Optional) Uncomment below to use provide GCP related
           #               config for BigQuery.
@@ -93,5 +94,5 @@ def run():
 
 
 if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   run()

@@ -23,7 +23,7 @@ from __future__ import print_function
 import tensorflow as tf
 import tensorflow_transform as tft
 
-from tfx.experimental.templates.taxi import features
+from tfx.experimental.templates.taxi.models import features
 
 
 def _fill_in_missing(x):

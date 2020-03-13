@@ -76,7 +76,8 @@ class TaxiTemplateBeamEndToEndTest(tf.test.TestCase):
 
   def _addAllComponents(self):
     """Change 'pipeline.py' file to put all components into the pipeline."""
-    pipeline_definition_file = os.path.join(self._project_dir, 'pipeline.py')
+    pipeline_definition_file = os.path.join(self._project_dir, 'pipeline',
+                                            'pipeline.py')
     with open(pipeline_definition_file) as fp:
       content = fp.read()
     # At the initial state, these are commented out. Uncomment them.

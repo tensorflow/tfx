@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor as trainer_executor
-from tfx.experimental.templates.taxi import model
+from tfx.experimental.templates.taxi.models.estimator import model
 
 
 class ModelTest(tf.test.TestCase):

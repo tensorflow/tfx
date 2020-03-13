@@ -19,14 +19,23 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tfx.experimental.templates.taxi import preprocessing
+from tfx.experimental.templates.taxi.models import features
 
 
-class PreprocessingTest(tf.test.TestCase):
+class FeaturesTest(tf.test.TestCase):
 
-  def testPreprocessingFn(self):
-    self.assertTrue(callable(preprocessing.preprocessing_fn))
+  def testNumberOfBucketFeatureBucketCount(self):
+    self.assertEqual(
+        len(features.BUCKET_FEATURE_KEYS),
+        len(features.BUCKET_FEATURE_BUCKET_COUNT))
+    self.assertEqual(
+        len(features.CATEGORICAL_FEATURE_KEYS),
+        len(features.CATEGORICAL_FEATURE_MAX_VALUES))
+
+  def testTransformedNames(self):
+    names = ["f1", "cf"]
+    self.assertEqual(["f1_xf", "cf_xf"], features.transformed_names(names))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.test.main()

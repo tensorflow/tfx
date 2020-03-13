@@ -28,14 +28,14 @@ from tfx.tools.cli.handler import template_handler
 class TemplateHandlerTest(tf.test.TestCase):
 
   _PLACEHOLDER_TEST_DATA_BEFORE = """
-  from tfx.experimental.templates.taxi import mmm 
+  from tfx.experimental.templates.taxi.parent import mmm 
   # TODO(b/1): This will disappear.
   # TODO(step 4): User instruction.
   # TODO(zzzzzzz): This will disappear, too.
   pipeline_name = '{{PIPELINE_NAME}}'
   """
   _PLACEHOLDER_TEST_DATA_AFTER = """
-  import mmm
+  from parent import mmm
   # TODO(step 4): User instruction.
   pipeline_name = 'dummy'
   """
@@ -56,15 +56,16 @@ class TemplateHandlerTest(tf.test.TestCase):
     template_handler.copy_template(flags)
     copied_files = os.listdir(test_dir)
     self.assertNotEqual(copied_files, [])
-    self.assertContainsSubset(['__init__.py', 'pipeline.py'], copied_files)
+    self.assertContainsSubset(['__init__.py', 'beam_dag_runner.py'],
+                              copied_files)
     self.assertTrue(
         os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
 
-    with open(os.path.join(test_dir, 'configs.py')) as fp:
+    with open(os.path.join(test_dir, 'pipeline', 'configs.py')) as fp:
       configs_py_content = fp.read()
     self.assertIn(pipeline_name, configs_py_content)
     self.assertNotIn('# TODO(b/', configs_py_content)
-    with open(os.path.join(test_dir, 'model.py')) as fp:
+    with open(os.path.join(test_dir, 'models', 'estimator', 'model.py')) as fp:
       model_py_content = fp.read()
     self.assertNotIn('from tfx.experimental.templates.taxi import',
                      model_py_content)
