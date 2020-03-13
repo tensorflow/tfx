@@ -20,20 +20,24 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
 from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
-from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 
@@ -95,23 +99,41 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
                   trainer.inputs['transform_output'])
     self.assertIs(trainer.outputs['model'],
                   trainer.outputs['output'])
+    model_resolver = ResolverNode(
+        instance_name='latest_blessed_model_resolver',
+        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+        model=Channel(type=Model),
+        model_blessing=Channel(type=ModelBlessing))
+    eval_config = tfma.EvalConfig(
+        model_specs=[tfma.ModelSpec(signature_name='eval')],
+        slicing_specs=[
+            tfma.SlicingSpec(),
+            tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+        ],
+        metrics_specs=[
+            tfma.MetricsSpec(
+                thresholds={
+                    'binary_accuracy':
+                        tfma.config.MetricThreshold(
+                            value_threshold=tfma.GenericValueThreshold(
+                                lower_bound={'value': 0.6}),
+                            change_threshold=tfma.GenericChangeThreshold(
+                                direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                                absolute={'value': -1e-10}))
+                })
+        ])
     evaluator = Evaluator(
         examples=example_gen.outputs['examples'],
         model=trainer.outputs['model'],
-        feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-            evaluator_pb2.SingleSlicingSpec(
-                column_for_slicing=['trip_start_hour'])
-        ]))
+        baseline_model=model_resolver.outputs['model'],
+        eval_config=eval_config)
     self.assertIs(evaluator.inputs['model'],
                   evaluator.inputs['model_exports'])
     self.assertIs(evaluator.outputs['evaluation'],
                   evaluator.outputs['output'])
-    model_validator = ModelValidator(
-        examples=example_gen.outputs['examples'],
-        model=trainer.outputs['model'])
     pusher = Pusher(
         model=trainer.outputs['output'],
-        model_blessing=model_validator.outputs['blessing'],
+        model_blessing=evaluator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='/fake/serving/dir')))

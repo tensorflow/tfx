@@ -20,8 +20,6 @@ performance, and serve it. This example uses the following
   or [Keras](https://www.tensorflow.org/guide/keras).
 * [Evaluator](https://github.com/tensorflow/tfx/blob/master/docs/guide/evaluator.md)
   performs deep analysis of the training results.
-* [ModelValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/modelval.md)
-  ensures that the model is "good enough" to be pushed to production.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
 * [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulk_inferrer.md)

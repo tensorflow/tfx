@@ -22,23 +22,27 @@ import os
 from typing import Text
 
 import absl
+import tensorflow_model_analysis as tfma
 
 from tfx.components import BulkInferrer
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import bulk_inferrer_pb2
-from tfx.proto import evaluator_pb2
 from tfx.proto import example_gen_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_with_inference'
@@ -104,19 +108,39 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
-  # Uses TFMA to compute a evaluation statistics over features of a model.
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name='eval')],
+      slicing_specs=[
+          tfma.SlicingSpec(),
+          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      ],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  'binary_accuracy':
+                      tfma.config.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': 0.6}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
+      ])
   model_analyzer = Evaluator(
       examples=training_example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])
-      ]))
-
-  # Performs quality validation of a candidate model (compared to a baseline).
-  model_validator = ModelValidator(
-      examples=training_example_gen.outputs['examples'],
-      model=trainer.outputs['model'])
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
 
   inference_examples = external_input(inference_data_root)
 
@@ -133,7 +157,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   bulk_inferrer = BulkInferrer(
       examples=inference_example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
+      model_blessing=model_analyzer.outputs['blessing'],
       # Empty data_spec.example_splits will result in using all splits.
       data_spec=bulk_inferrer_pb2.DataSpec(),
       model_spec=bulk_inferrer_pb2.ModelSpec())
@@ -143,8 +167,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       pipeline_root=pipeline_root,
       components=[
           training_example_gen, inference_example_gen, statistics_gen,
-          infer_schema, validate_stats, transform, trainer, model_analyzer,
-          model_validator, bulk_inferrer
+          infer_schema, validate_stats, transform, trainer, model_resolver,
+          model_analyzer, bulk_inferrer
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(

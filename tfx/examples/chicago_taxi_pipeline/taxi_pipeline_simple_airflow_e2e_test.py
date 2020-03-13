@@ -154,7 +154,6 @@ class AirflowEndToEndTest(unittest.TestCase):
         'CsvExampleGen',
         'Evaluator',
         'ExampleValidator',
-        'ModelValidator',
         'Pusher',
         'SchemaGen',
         'StatisticsGen',
