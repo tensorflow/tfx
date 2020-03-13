@@ -22,6 +22,8 @@ import os
 from typing import Dict, List, Text
 from absl import flags
 import tensorflow_model_analysis as tfma
+
+from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import executor_spec
 from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
@@ -248,7 +250,7 @@ def _create_pipeline(
   )
 
 
-if __name__ == '__main__':
+def main(unused_argv):
   # Metadata config. The defaults works work with the installation of
   # KF Pipelines using Kubeflow. If installing KF Pipelines using the
   # lightweight deployment option, you may need to override the defaults.
@@ -287,3 +289,7 @@ if __name__ == '__main__':
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,
       ))
+
+
+if __name__ == '__main__':
+  app.run(main)
