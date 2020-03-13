@@ -26,8 +26,8 @@ import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
-from tfx.experimental.templates.taxi import features
-from tfx.experimental.templates.taxi import hparams
+from tfx.experimental.templates.taxi.models import features
+from tfx.experimental.templates.taxi.models.estimator import hparams
 
 
 def _gzip_reader_fn(filenames):

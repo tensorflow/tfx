@@ -35,12 +35,12 @@ from tfx.utils import io_utils
 _PLACEHOLDER_PIPELINE_NAME = re.compile('{{PIPELINE_NAME}}')
 _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
 _IMPORT_FROM_PACKAGE = re.compile(
-    r'from tfx\.experimental\.templates\.taxi import ')
+    r'from tfx\.experimental\.templates\.taxi\.')
 # TODO(b/148567180): This replacement for import results in relative
 #                    import in generated files. This should be changed
 #                    to use absolute import.
-_IMPORT_FROM_LOCAL_DIR = 'import '
-_INTERNAL_TODO_PREFIX = re.compile(r'\s+# TODO\((?:b/\d+|[a-z]+)\):.*')
+_IMPORT_FROM_LOCAL_DIR = 'from '
+_INTERNAL_TODO_PREFIX = re.compile(r'\s*# TODO\((?:b/\d+|[a-z]+)\):.*')
 
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
