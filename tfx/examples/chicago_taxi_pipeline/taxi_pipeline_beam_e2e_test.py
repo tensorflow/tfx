@@ -58,7 +58,6 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('CsvExampleGen')
     self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('ModelValidator')
     self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
@@ -99,12 +98,12 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path,
             direct_num_workers=1))
 
-    # All executions but ModelValidator and Pusher are cached.
+    # All executions but Evaluator and Pusher are cached.
+    # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 2 caused by ModelValidator and Pusher.
-      self.assertEqual(artifact_count + 2, len(m.store.get_artifacts()))
+      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
       artifact_count = len(m.store.get_artifacts())
-      # 9 more cached executions.
       self.assertEqual(18, len(m.store.get_executions()))
 
     # Runs pipeline the third time.
@@ -122,7 +121,6 @@ class TaxiPipelineBeamEndToEndTest(tf.test.TestCase):
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
       self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      # 9 more cached executions.
       self.assertEqual(27, len(m.store.get_executions()))
 
 

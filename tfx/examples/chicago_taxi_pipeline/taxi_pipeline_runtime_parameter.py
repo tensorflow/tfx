@@ -22,20 +22,25 @@ import os
 from typing import Optional, Text
 
 import kfp
+import tensorflow_model_analysis as tfma
 
+from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
 from tfx.components.pusher.component import Pusher
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import pusher_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'taxi_pipeline_with_parameters'
@@ -98,13 +103,6 @@ def _create_parameterized_pipeline(
       ptype=int,
   )
 
-  # Column name for slicing.
-  slicing_column = data_types.RuntimeParameter(
-      name='slicing-column',
-      default='trip_start_hour',
-      ptype=Text,
-  )
-
   # The input data location is parameterized by data_root
   examples = external_input(data_root)
   example_gen = CsvExampleGen(input=examples)
@@ -134,19 +132,43 @@ def _create_parameterized_pipeline(
       train_args={'num_steps': train_steps},
       eval_args={'num_steps': eval_steps})
 
-  # The name of slicing column is specified as a RuntimeParameter.
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name='eval')],
+      slicing_specs=[
+          tfma.SlicingSpec(),
+          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      ],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  'binary_accuracy':
+                      tfma.config.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': 0.6}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
+      ])
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=dict(specs=[{
-          'column_for_slicing': [slicing_column]
-      }]))
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
 
   pusher = Pusher(
       model_export=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
+      model_blessing=model_analyzer.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=os.path.join(
@@ -157,7 +179,7 @@ def _create_parameterized_pipeline(
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          trainer, model_resolver, model_analyzer, pusher
       ],
       enable_cache=enable_cache,
       # TODO(b/142684737): The multi-processing API might change.

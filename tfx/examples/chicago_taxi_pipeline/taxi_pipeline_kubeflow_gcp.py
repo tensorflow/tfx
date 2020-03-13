@@ -21,22 +21,26 @@ from __future__ import print_function
 import os
 from typing import Dict, List, Text
 from absl import flags
+import tensorflow_model_analysis as tfma
 from tfx.components.base import executor_spec
+from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
 from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
 from tfx.components.pusher.component import Pusher
 from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 
 FLAGS = flags.FLAGS
 flags.DEFINE_bool('distributed_training', False,
@@ -188,18 +192,39 @@ def _create_pipeline(
               ai_platform_training_args
       })
 
-  # Uses TFMA to compute a evaluation statistics over features of a model.
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute a evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name='eval')],
+      slicing_specs=[
+          tfma.SlicingSpec(),
+          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      ],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              thresholds={
+                  'binary_accuracy':
+                      tfma.config.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': 0.6}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
+      ])
   model_analyzer = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])
-      ]))
-
-  # Performs quality validation of a candidate model (compared to a baseline).
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to  Google Cloud AI Platform if check passed.
@@ -207,7 +232,7 @@ def _create_pipeline(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
+      model_blessing=model_analyzer.outputs['blessing'],
       custom_config={
           ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
       })
@@ -217,7 +242,7 @@ def _create_pipeline(
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, pusher
+          trainer, model_resolver, model_analyzer, pusher
       ],
       beam_pipeline_args=beam_pipeline_args,
   )
