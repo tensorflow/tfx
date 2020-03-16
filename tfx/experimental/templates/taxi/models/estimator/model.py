@@ -15,7 +15,7 @@
 """TFX template taxi model.
 
 A tf.estimator.DNNLinearCombinedClassifier which uses features
-defined in features.py and network parameters defined in hparams.py.
+defined in features.py and network parameters defined in constants.py.
 """
 
 from __future__ import division
@@ -27,7 +27,7 @@ import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
 from tfx.experimental.templates.taxi.models import features
-from tfx.experimental.templates.taxi.models.estimator import hparams
+from tfx.experimental.templates.taxi.models.estimator import constants
 
 
 def _gzip_reader_fn(filenames):
@@ -206,12 +206,12 @@ def trainer_fn(trainer_fn_args, schema):
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
       tf_transform_output,
-      batch_size=hparams.TRAIN_BATCH_SIZE)
+      batch_size=constants.TRAIN_BATCH_SIZE)
 
   eval_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.eval_files,
       tf_transform_output,
-      batch_size=hparams.EVAL_BATCH_SIZE)
+      batch_size=constants.EVAL_BATCH_SIZE)
 
   train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
       train_input_fn,
@@ -233,7 +233,7 @@ def trainer_fn(trainer_fn_args, schema):
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
 
   estimator = _build_estimator(
-      hidden_units=hparams.HIDDEN_UNITS, config=run_config)
+      hidden_units=constants.HIDDEN_UNITS, config=run_config)
 
   # Create an input receiver for TFMA processing
   receiver_fn = lambda: _eval_input_receiver_fn(  # pylint: disable=g-long-lambda

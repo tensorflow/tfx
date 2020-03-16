@@ -4,6 +4,7 @@
 
 ## Bug fixes and other changes
 *   Replaced relative import with absolute import in generated templates.
+*   Added a native keras model in the taxi template.
 
 ### Deprecations
 
