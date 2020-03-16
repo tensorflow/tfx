@@ -39,10 +39,10 @@ BUCKET_FEATURE_BUCKET_COUNT = []
 
 # Name of features which have categorical values which are mapped to integers.
 # These features will be used as categorical features.
-CATEGORICAL_FEATURE_KEYS = []
+CATEGORICAL_FEATURE_KEYS = ['trip_start_hour']
 # Number of buckets to use integer numbers as categorical features. The length
 # of this list should be the same with CATEGORICAL_FEATURE_KEYS.
-CATEGORICAL_FEATURE_MAX_VALUES = []
+CATEGORICAL_FEATURE_MAX_VALUES = [24]
 
 # Name of features which have string values and are mapped to integers.
 VOCAB_FEATURE_KEYS = []

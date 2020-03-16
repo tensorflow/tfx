@@ -25,9 +25,8 @@ from typing import Optional, Text, List, Dict, Any
 import tensorflow_model_analysis as tfma
 
 from ml_metadata.proto import metadata_store_pb2
+from tfx.components import BigQueryExampleGen  # pylint: disable=unused-import
 from tfx.components import CsvExampleGen
-# TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
-# from tfx.components import BigQueryExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -37,6 +36,7 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.base import executor_spec
+from tfx.components.trainer import executor as trainer_executor
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
@@ -106,21 +106,30 @@ def create_pipeline(
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer_args = {
-      'trainer_fn': trainer_fn,
+      'run_fn': trainer_fn,
+      # TODO(b/150834203): Use GenericExecutor for an estimator model.
+      # NOTE: Uncomment `trainer_fn` to use old Trainer with an estimator model.
+      # 'trainer_fn': trainer_fn,
       'transformed_examples': transform.outputs['transformed_examples'],
       'schema': infer_schema.outputs['schema'],
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
       'eval_args': eval_args,
+      # NOTE: Comment out 'custom_executor_spec' to use old Trainer executor.
+      'custom_executor_spec':
+          executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
   if ai_platform_training_args is not None:
     trainer_args.update({
         'custom_executor_spec':
             executor_spec.ExecutorClassSpec(
-                ai_platform_trainer_executor.Executor),
+                # NOTE: Use `Executor` to use old Trainer executor with CAIP.
+                ai_platform_trainer_executor.GenericExecutor
+                # ai_platform_trainer_executor.Executor
+            ),
         'custom_config': {
             ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                ai_platform_training_args
+                ai_platform_training_args,
         }
     })
   trainer = Trainer(**trainer_args)
