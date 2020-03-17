@@ -20,6 +20,7 @@ from __future__ import print_function
 import abc
 import time
 
+from absl import logging
 import six
 from typing import List
 
@@ -54,12 +55,17 @@ class BaseModelServerClient(six.with_metaclass(abc.ABCMeta, object)):
     while time.time() < deadline:
       status = self._GetServingStatus()
       if status == types.ModelServingStatus.NOT_READY:
+        logging.log_every_n_seconds(
+            level=logging.INFO,
+            n_seconds=10,
+            msg='Waiting for model to be loaded...')
         time.sleep(polling_interval_sec)
         continue
       elif status == types.ModelServingStatus.UNAVAILABLE:
         raise error_types.ValidationFailed(
             'Model server failed to load the model.')
       else:
+        logging.info('Model is successfully loaded.')
         return
 
     raise error_types.DeadlineExceeded(

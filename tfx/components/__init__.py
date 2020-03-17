@@ -26,6 +26,7 @@ from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
 from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.infra_validator.component import InfraValidator
 from tfx.components.model_validator.component import ModelValidator
 from tfx.components.pusher.component import Pusher
 from tfx.components.schema_gen.component import SchemaGen
