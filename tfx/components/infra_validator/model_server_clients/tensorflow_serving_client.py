@@ -73,7 +73,7 @@ class TensorFlowServingClient(base_client.BaseModelServerClient):
     try:
       resp = self._GetModelStatus()
     except grpc.RpcError as e:
-      logging.error(e)
+      logging.info('Error while obtaining model status:\n%s', e)
       return types.ModelServingStatus.NOT_READY
 
     # When no versions available. (empty list)
