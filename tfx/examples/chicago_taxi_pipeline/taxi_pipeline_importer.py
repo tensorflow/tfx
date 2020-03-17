@@ -93,12 +93,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Generates schema based on statistics files. Even we use user-provided schema
   # in downstream components, we still want to generate the schema of the newest
   # data so that user can compare and optionally update the schema to use.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=user_schema_importer.outputs['result'])
 
@@ -144,7 +144,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -155,7 +155,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # to a file destination if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
@@ -164,8 +164,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, user_schema_importer, infer_schema,
-          validate_stats, transform, trainer, model_resolver, model_analyzer,
+          example_gen, statistics_gen, user_schema_importer, schema_gen,
+          example_validator, transform, trainer, model_resolver, evaluator,
           pusher
       ],
       enable_cache=True,

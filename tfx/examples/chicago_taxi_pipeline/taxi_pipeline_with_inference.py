@@ -84,26 +84,26 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       input_data=training_example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=training_example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -135,7 +135,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=training_example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -157,7 +157,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
   bulk_inferrer = BulkInferrer(
       examples=inference_example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       # Empty data_spec.example_splits will result in using all splits.
       data_spec=bulk_inferrer_pb2.DataSpec(),
       model_spec=bulk_inferrer_pb2.ModelSpec())
@@ -167,8 +167,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       pipeline_root=pipeline_root,
       components=[
           training_example_gen, inference_example_gen, statistics_gen,
-          infer_schema, validate_stats, transform, trainer, model_resolver,
-          model_analyzer, bulk_inferrer
+          schema_gen, example_validator, transform, trainer, model_resolver,
+          evaluator, bulk_inferrer
       ],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(

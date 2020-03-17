@@ -108,18 +108,18 @@ def _create_parameterized_pipeline(
   example_gen = CsvExampleGen(input=examples)
 
   statistics_gen = StatisticsGen(input_data=example_gen.outputs['examples'])
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # The module file used in Transform and Trainer component is paramterized by
   # transform_module_file.
   transform = Transform(
       input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=transform_module_file)
 
   # The numbers of steps in train_args are specified as RuntimeParameter with
@@ -127,7 +127,7 @@ def _create_parameterized_pipeline(
   trainer = Trainer(
       module_file=trainer_module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       transform_output=transform.outputs['transform_graph'],
       train_args={'num_steps': train_steps},
       eval_args={'num_steps': eval_steps})
@@ -159,7 +159,7 @@ def _create_parameterized_pipeline(
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -168,7 +168,7 @@ def _create_parameterized_pipeline(
 
   pusher = Pusher(
       model_export=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=os.path.join(
@@ -178,8 +178,8 @@ def _create_parameterized_pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_resolver, model_analyzer, pusher
+          example_gen, statistics_gen, schema_gen, example_validator, transform,
+          trainer, model_resolver, evaluator, pusher
       ],
       enable_cache=enable_cache,
       # TODO(b/142684737): The multi-processing API might change.

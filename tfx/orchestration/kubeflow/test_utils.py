@@ -182,15 +182,15 @@ def create_e2e_components(
 
   example_gen = CsvExampleGen(input=examples)
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=transform_module)
   latest_model_resolver = ResolverNode(
       instance_name='latest_model_resolver',
@@ -198,14 +198,14 @@ def create_e2e_components(
       latest_model=Channel(type=Model))
   trainer = Trainer(
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       base_model=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10),
       eval_args=trainer_pb2.EvalArgs(num_steps=5),
       module_file=trainer_module,
   )
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
@@ -222,8 +222,8 @@ def create_e2e_components(
               base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
   return [
-      example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      latest_model_resolver, trainer, model_analyzer, model_validator, pusher
+      example_gen, statistics_gen, schema_gen, example_validator, transform,
+      latest_model_resolver, trainer, evaluator, model_validator, pusher
   ]
 
 

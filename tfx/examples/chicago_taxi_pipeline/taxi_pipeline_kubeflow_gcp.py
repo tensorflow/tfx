@@ -165,19 +165,19 @@ def _create_pipeline(
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn
@@ -187,7 +187,7 @@ def _create_pipeline(
           ai_platform_trainer_executor.Executor),
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000),
@@ -223,7 +223,7 @@ def _create_pipeline(
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -236,7 +236,7 @@ def _create_pipeline(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       custom_config={
           ai_platform_pusher_executor.SERVING_ARGS_KEY: ai_platform_serving_args
       })
@@ -245,8 +245,8 @@ def _create_pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_resolver, model_analyzer, pusher
+          example_gen, statistics_gen, schema_gen, example_validator, transform,
+          trainer, model_resolver, evaluator, pusher
       ],
       beam_pipeline_args=beam_pipeline_args,
   )
