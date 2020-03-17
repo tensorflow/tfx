@@ -31,7 +31,6 @@ from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import base_runner
 from tfx.proto import infra_validator_pb2
-from tfx.utils.model_paths import tf_serving_flavor
 
 _POLLING_INTERVAL_SEC = 1
 
@@ -100,17 +99,11 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     self._endpoint = 'localhost:{}'.format(host_port)
 
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
-      is_local = os.path.exists(self._model_path)
-      model_base_path = tf_serving_flavor.parse_model_base_path(
-          self._model_path)
-      if is_local:
-        run_params = self._serving_binary.MakeDockerRunParams(
-            host_port=host_port,
-            host_model_base_path=model_base_path)
-      else:
-        run_params = self._serving_binary.MakeDockerRunParams(
-            host_port=host_port,
-            remote_model_base_path=model_base_path)
+      is_local = os.path.isdir(self._model_path)
+      run_params = self._serving_binary.MakeDockerRunParams(
+          host_port=host_port,
+          model_path=self._model_path,
+          needs_mount=is_local)
     else:
       raise NotImplementedError('Unsupported serving binary {}'.format(
           type(self._serving_binary).__name__))
