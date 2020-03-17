@@ -83,23 +83,23 @@ def create_pipeline(
   # components.append(statistics_gen)
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
   # TODO(step 5): Uncomment here to add SchemaGen to the pipeline.
-  # components.append(infer_schema)
+  # components.append(schema_gen)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(  # pylint: disable=unused-variable
+  example_validator = ExampleValidator(  # pylint: disable=unused-variable
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
   # TODO(step 5): Uncomment here to add ExampleValidator to the pipeline.
-  # components.append(validate_stats)
+  # components.append(example_validator)
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       preprocessing_fn=preprocessing_fn)
   # TODO(step 6): Uncomment here to add Transform to the pipeline.
   # components.append(transform)
@@ -111,7 +111,7 @@ def create_pipeline(
       # NOTE: Uncomment `trainer_fn` to use old Trainer with an estimator model.
       # 'trainer_fn': trainer_fn,
       'transformed_examples': transform.outputs['transformed_examples'],
-      'schema': infer_schema.outputs['schema'],
+      'schema': schema_gen.outputs['schema'],
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
       'eval_args': eval_args,
@@ -162,14 +162,14 @@ def create_pipeline(
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
   # TODO(step 6): Uncomment here to add Evaluator to the pipeline.
-  # components.append(model_analyzer)
+  # components.append(evaluator)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -177,7 +177,7 @@ def create_pipeline(
       'model':
           trainer.outputs['model'],
       'model_blessing':
-          model_analyzer.outputs['blessing'],
+          evaluator.outputs['blessing'],
       'push_destination':
           pusher_pb2.PushDestination(
               filesystem=pusher_pb2.PushDestination.Filesystem(

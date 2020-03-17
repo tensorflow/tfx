@@ -74,18 +74,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Hyperparameter tuning based on the tuner_fn in module_file.
   tuner = Tuner(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
@@ -95,13 +95,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   trainer = Trainer(
       module_file=module_file,
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       hyperparameters=tuner.outputs['best_hyperparameters'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
 
   # Performs quality validation of a candidate model (compared to a baseline).
@@ -123,11 +123,11 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       components=[
           example_gen,
           statistics_gen,
-          infer_schema,
-          validate_stats,
+          schema_gen,
+          example_validator,
           tuner,
           trainer,
-          model_analyzer,
+          evaluator,
           model_validator,
           pusher,
       ],

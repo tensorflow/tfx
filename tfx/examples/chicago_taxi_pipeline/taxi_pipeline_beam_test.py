@@ -68,21 +68,21 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
     self.assertIs(statistics_gen.inputs['examples'],
                   statistics_gen.inputs['input_data'])
-    infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-    self.assertIs(infer_schema.inputs['statistics'],
-                  infer_schema.inputs['stats'])
-    self.assertIs(infer_schema.outputs['schema'],
-                  infer_schema.outputs['output'])
-    validate_examples = ExampleValidator(
+    schema_gen = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+    self.assertIs(schema_gen.inputs['statistics'],
+                  schema_gen.inputs['stats'])
+    self.assertIs(schema_gen.outputs['schema'],
+                  schema_gen.outputs['output'])
+    example_validator = ExampleValidator(
         statistics=statistics_gen.outputs['statistics'],
-        schema=infer_schema.outputs['schema'])
-    self.assertIs(validate_examples.inputs['statistics'],
-                  validate_examples.inputs['stats'])
-    self.assertIs(validate_examples.outputs['anomalies'],
-                  validate_examples.outputs['output'])
+        schema=schema_gen.outputs['schema'])
+    self.assertIs(example_validator.inputs['statistics'],
+                  example_validator.inputs['stats'])
+    self.assertIs(example_validator.outputs['anomalies'],
+                  example_validator.outputs['output'])
     transform = Transform(
         examples=example_gen.outputs['examples'],
-        schema=infer_schema.outputs['schema'],
+        schema=schema_gen.outputs['schema'],
         module_file='/tmp/fake/module/file')
     self.assertIs(transform.inputs['examples'],
                   transform.inputs['input_data'])
@@ -91,7 +91,7 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
     trainer = Trainer(
         module_file='/tmp/fake/module/file',
         transformed_examples=transform.outputs['transformed_examples'],
-        schema=infer_schema.outputs['schema'],
+        schema=schema_gen.outputs['schema'],
         transform_graph=transform.outputs['transform_graph'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=5000))

@@ -84,18 +84,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   def _create_trainer(module_file, instance_name):
@@ -104,7 +104,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
         custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
         examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
-        schema=infer_schema.outputs['schema'],
+        schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=5000),
         eval_args=trainer_pb2.EvalArgs(num_steps=100),
         instance_name=instance_name)
@@ -138,7 +138,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   eval_config_lite.model_specs[0].model_type = 'tf_lite'
 
   # Uses TFMA to compute the evaluation statistics over features of a model.
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       eval_config=eval_config,
@@ -146,7 +146,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Uses TFMA to compute the evaluation statistics over features of a TFLite
   # model.
-  model_analyzer_lite = Evaluator(
+  evaluator_lite = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer_lite.outputs['model'],
       eval_config=eval_config_lite,
@@ -156,7 +156,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # to a file destination if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)),
@@ -166,7 +166,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # model to a file destination if check passed.
   pusher_lite = Pusher(
       model=trainer_lite.outputs['model'],
-      model_blessing=model_analyzer_lite.outputs['blessing'],
+      model_blessing=evaluator_lite.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir_lite)),
@@ -178,13 +178,13 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       components=[
           example_gen,
           statistics_gen,
-          infer_schema,
-          validate_stats,
+          schema_gen,
+          example_validator,
           transform,
           trainer,
           trainer_lite,
-          model_analyzer,
-          model_analyzer_lite,
+          evaluator,
+          evaluator_lite,
           pusher,
           pusher_lite,
       ],

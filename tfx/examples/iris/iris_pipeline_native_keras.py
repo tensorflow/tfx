@@ -83,18 +83,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
   # Uses user-provided Python function that trains a model using TF-Learn.
@@ -103,7 +103,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
@@ -131,7 +131,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                               absolute={'value': -1e-10}))
               })
       ])
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
@@ -142,7 +142,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # to a file destination if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
-      model_blessing=model_analyzer.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
@@ -153,12 +153,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       components=[
           example_gen,
           statistics_gen,
-          infer_schema,
-          validate_stats,
+          schema_gen,
+          example_validator,
           transform,
           trainer,
           model_resolver,
-          model_analyzer,
+          evaluator,
           pusher,
       ],
       enable_cache=True,
