@@ -39,6 +39,15 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 # and gcr.io/tfx-oss-public/ registries.
 _TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
 
+_TF_COMPATIBILITY_OVERRIDE = {
+    # Generally, runtimeVersion should be same as <major>.<minor> of currently
+    # installed tensorflow version, with certain compatibility hacks since
+    # some TensorFlow runtime versions are not explicitly supported by
+    # CAIP pusher. See:
+    # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
+    '2.0': '1.15'
+}
+
 
 def _get_tf_runtime_version(tf_version: Text) -> Text:
   """Returns the tensorflow runtime version used in Cloud AI Platform.
@@ -51,20 +60,8 @@ def _get_tf_runtime_version(tf_version: Text) -> Text:
   Returns: same major.minor version of installed tensorflow, except when
     overriden by _TF_COMPATIBILITY_OVERRIDE.
   """
-  # runtimeVersion should be same as <major>.<minor> of currently
-  # installed tensorflow version, with certain compatibility hacks since
-  # some versions of TensorFlow are not yet supported by CAIP pusher.
-  # TODO(b/142654646): Support TF 2 in CAIP prediction service and update this.
-  (major, minor) = tf_version.split('.')[0:2]
-  # 1.15 is the last released cloud runtime supported right now.
-  if (int(major), int(minor)) > (1, 15):
-    absl.logging.warn(
-        'tensorflow version %s may not be supported on CAIP predction service yet, '
-        'please check https://cloud.google.com/ml-engine/docs/runtime-version-list to ensure.',
-        tf_version,
-    )
-    return '1.15'
-  return '.'.join([major, minor])
+  tf_version = '.'.join(tf_version.split('.')[0:2])
+  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version) or tf_version
 
 
 def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
