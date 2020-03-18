@@ -107,6 +107,9 @@ class _MockClientClass(object):
   def get_run(self, run_id):
     return self._run_api.get_run(run_id)
 
+  def _get_url_prefix(self):
+    return 'http://' + self.config['host']
+
 
 class _MockPipelineApi(object):
 
