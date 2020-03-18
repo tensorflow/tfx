@@ -52,7 +52,7 @@ class ExecutorTest(tf.test.TestCase):
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
-                                        'transform/transform_output')
+                                        'transform/transform_graph')
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen')
     previous_model = standard_artifacts.Model()

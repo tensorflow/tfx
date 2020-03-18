@@ -125,7 +125,7 @@ class RequestBuilderTest(tf.test.TestCase):
     self.assertFloatFeature(features['pickup_longitude'])
     self.assertIntFeature(features['trip_start_month'])
     self.assertIntFeature(features['trip_start_hour'])
-    self.assertFloatFeature(features['trip_seconds'])
+    self.assertIntFeature(features['trip_seconds'])
 
   def assertFloatFeature(self, feature: tf.train.Feature):
     self.assertEqual(len(feature.float_list.value), 1)
