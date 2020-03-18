@@ -297,8 +297,17 @@ class KubeflowHandler(base_handler.BaseHandler):
 
   def _print_runs(self, runs):
     """Prints runs in a tabular format with headers mentioned below."""
-    headers = ['pipeline_name', 'run_id', 'status', 'created_at']
+    headers = ['pipeline_name', 'run_id', 'status', 'created_at', 'link']
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-    data = [[pipeline_name, run.id, run.status,
-             run.created_at.isoformat()] for run in runs]
+
+    def _get_run_details(run_id):
+      """Return the link to the run detail page."""
+      return '{prefix}/#/runs/details/{run_id}'.format(
+          prefix=self._client._get_url_prefix(), run_id=run_id)  # pylint: disable=protected-access
+
+    data = [[  # pylint: disable=g-complex-comprehension
+        pipeline_name, run.id, run.status,
+        run.created_at.isoformat(),
+        _get_run_details(run.id)
+    ] for run in runs]
     click.echo(tabulate(data, headers=headers, tablefmt='grid'))
