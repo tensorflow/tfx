@@ -82,7 +82,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Create output dict.
     self._transformed_output = standard_artifacts.TransformGraph()
     self._transformed_output.uri = os.path.join(output_data_dir,
-                                                'transformed_output')
+                                                'transformed_graph')
     self._transformed_examples = standard_artifacts.Examples()
     self._transformed_examples.uri = output_data_dir
     self._transformed_examples.split_names = artifact_utils.encode_split_names(
@@ -219,7 +219,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Since the analysis dataset (train) is read twice (once for analysis and
     # once for transform), the expected value of the num_instances counter is:
     # 10036 * 2 + 4964 = 25036.
-    self._assertMetricsCounterEqual(metrics, 'num_instances', 25036)
+    self._assertMetricsCounterEqual(metrics, 'num_instances', 24909)
 
     # We expect 2 saved_models to be created because this is a 1 phase analysis
     # preprocessing_fn.

@@ -53,7 +53,7 @@ class TaxiUtilsTest(tf.test.TestCase):
     schema = io_utils.parse_pbtxt_file(schema_file, schema_pb2.Schema())
     feature_spec = taxi_utils._get_raw_feature_spec(schema)
     working_dir = self.get_temp_dir()
-    transform_output_path = os.path.join(working_dir, 'transform_output')
+    transform_graph_path = os.path.join(working_dir, 'transform_graph')
     transformed_examples_path = os.path.join(
         working_dir, 'transformed_examples')
 
@@ -84,8 +84,8 @@ class TaxiUtilsTest(tf.test.TestCase):
         # tensorflow_transform.TRANSFORMED_METADATA_DIR respectively.
         # pylint: disable=expression-not-assigned
         (transform_fn
-         | 'WriteTransformFn' >> tft_beam.WriteTransformFn(
-             transform_output_path))
+         |
+         'WriteTransformFn' >> tft_beam.WriteTransformFn(transform_graph_path))
 
         encoder = tft.coders.ExampleProtoCoder(transformed_metadata.schema)
         (transformed_examples
@@ -101,11 +101,10 @@ class TaxiUtilsTest(tf.test.TestCase):
     expected_transformed_schema = io_utils.parse_pbtxt_file(
         os.path.join(
             self._testdata_path,
-            'transform/transform_output/transformed_metadata/schema.pbtxt'),
+            'transform/transform_graph/transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     transformed_schema = io_utils.parse_pbtxt_file(
-        os.path.join(transform_output_path,
-                     'transformed_metadata/schema.pbtxt'),
+        os.path.join(transform_graph_path, 'transformed_metadata/schema.pbtxt'),
         schema_pb2.Schema())
     # Clear annotations so we only have to test main schema.
     transformed_schema.ClearField('annotation')
@@ -124,7 +123,7 @@ class TaxiUtilsTest(tf.test.TestCase):
         train_files=os.path.join(self._testdata_path,
                                  'transform/transformed_examples/train/*.gz'),
         transform_output=os.path.join(self._testdata_path,
-                                      'transform/transform_output'),
+                                      'transform/transform_graph'),
         output_dir=output_dir,
         serving_model_dir=os.path.join(temp_dir, 'serving_model_dir'),
         eval_files=os.path.join(self._testdata_path,
