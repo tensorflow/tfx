@@ -2,10 +2,14 @@ toc:
 - title: "Guide"
   path: /tfx/guide/
 
-- heading: "Modeling"
+- heading: "What's New"
   style: divider
-- title: "Keras"
+- title: "Using Keras with TFX"
   path: /tfx/guide/keras
+- title: "Using TFX in Cloud AI Platform Pipelines"
+  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
+- title: "Mobile & IoT: TFX for TensorFlow Lite"
+  path: /tfx/tutorials/tfx/tfx_for_mobile
 
 - heading: "Components"
   style: divider
@@ -54,7 +58,7 @@ toc:
     path: /tfx/guide/tft
   - include: /tfx/transform/_toc.yaml
 
-- title: "Modeling for TFX"
+- title: "Modeling"
   style: accordion
   section:
   - title: "Design modeling code"
