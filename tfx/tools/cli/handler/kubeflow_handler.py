@@ -235,7 +235,13 @@ class KubeflowHandler(base_handler.BaseHandler):
     upload_response = self._client.upload_pipeline(
         pipeline_package_path=pipeline_package_path,
         pipeline_name=pipeline_name)
+
+    # Display the link to the pipeline detail page in KFP UI.
     click.echo(upload_response)
+    click.echo('Please access the pipeline detail page at '
+               '{prefix}/#/pipelines/details/{pipeline_id}'.format(
+                   prefix=self._client._get_url_prefix(),  # pylint: disable=protected-access
+                   pipeline_id=upload_response.id))
 
     # Create experiment with pipeline name as experiment name.
     experiment_name = pipeline_name
@@ -305,9 +311,11 @@ class KubeflowHandler(base_handler.BaseHandler):
       return '{prefix}/#/runs/details/{run_id}'.format(
           prefix=self._client._get_url_prefix(), run_id=run_id)  # pylint: disable=protected-access
 
-    data = [[  # pylint: disable=g-complex-comprehension
-        pipeline_name, run.id, run.status,
-        run.created_at.isoformat(),
-        _get_run_details(run.id)
-    ] for run in runs]
+    data = [
+        [  # pylint: disable=g-complex-comprehension
+            pipeline_name, run.id, run.status,
+            run.created_at.isoformat(),
+            _get_run_details(run.id)
+        ] for run in runs
+    ]
     click.echo(tabulate(data, headers=headers, tablefmt='grid'))
