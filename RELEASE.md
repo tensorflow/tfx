@@ -1,7 +1,7 @@
 # Current version (not yet released; still in development)
 
 ## Major Features and Improvements
-*   Add run link when creating runs on KFP through TFX CLI.
+*   Add run/pipeline link when creating runs/pipelines on KFP through TFX CLI.
 
 ## Bug fixes and other changes
 *   Replaced relative import with absolute import in generated templates.
