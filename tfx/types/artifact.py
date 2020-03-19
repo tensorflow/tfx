@@ -494,12 +494,16 @@ class ValueArtifact(Artifact):
     self._value = value
     self.write(value)
 
+  # Note: behavior of decode() method should not be changed to provide
+  # backward/forward compatibility.
   @abc.abstractmethod
-  def decode(self, value) -> bytes:
+  def decode(self, serialized_value) -> bytes:
     """Method decoding the file content. Implemented by subclasses."""
     pass
 
+  # Note: behavior of encode() method should not be changed to provide
+  # backward/forward compatibility.
   @abc.abstractmethod
-  def encode(self, serialized_value) -> Any:
+  def encode(self, value) -> Any:
     """Method encoding the file content. Implemented by subclasses."""
     pass

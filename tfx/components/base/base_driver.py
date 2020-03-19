@@ -151,9 +151,8 @@ class BaseDriver(object):
         # TODO(ccy): add this code path to interactive resolution.
         for artifact in result[name]:
           if isinstance(artifact, types.ValueArtifact):
-            # Resolve the content of file into value field for string-typed
-            # artifacts.
-            artifact.read()
+            # Resolve the content of file into value field for value artifacts.
+            _ = artifact.read()
     return result
 
   def resolve_exec_properties(

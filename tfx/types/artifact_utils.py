@@ -178,12 +178,12 @@ def deserialize_artifact(
 
   # Search the whole Artifact type ontology for a matching class.
   def find_subclasses(cls):
-    all_subclasses = []
+    result = []
     for subclass in cls.__subclasses__():
-      all_subclasses.append(subclass)
-      all_subclasses.extend(find_subclasses(subclass))
+      result.append(subclass)
+      result.extend(find_subclasses(subclass))
 
-    return all_subclasses
+    return result
 
   for cls in find_subclasses(Artifact):
     if cls.TYPE_NAME == artifact_type.name:
