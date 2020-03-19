@@ -80,6 +80,7 @@
 *   Depends on 'tensorflow-data-validation>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-model-analysis>=0.21.4,<0.22'.
 *   Depends on 'tensorflow-transform>=0.21.2,<0.22'.
+*   Fixed misleading logs in Taxi pipeline portable Beam example.
 
 ### Deprecations
 
