@@ -273,7 +273,7 @@ class Metadata(object):
 
   def get_qualified_artifacts(
       self,
-      context: metadata_store_pb2.Context,
+      contexts: List[metadata_store_pb2.Context],
       type_name: Text,
       producer_component_id: Optional[Text] = None,
       output_key: Optional[Text] = None,
@@ -281,7 +281,7 @@ class Metadata(object):
     """Gets qualified artifacts that have the right producer info.
 
     Args:
-      context: context constraint to filter artifacts
+      contexts: context constraints to filter artifacts
       type_name: type constraint to filter artifacts
       producer_component_id: producer constraint to filter artifacts
       output_key: output key constraint to filter artifacts
@@ -292,7 +292,8 @@ class Metadata(object):
 
     def _match_producer_component_id(execution, component_id):
       if component_id:
-        return execution.properties['component_id'].string_value == component_id
+        return execution.properties[
+            _EXECUTION_TYPE_KEY_COMPONENT_ID].string_value == component_id
       else:
         return True
 
@@ -312,19 +313,31 @@ class Metadata(object):
     except tf.errors.NotFoundError:
       return []
 
-    executions_within_context = self.store.get_executions_by_context(context.id)
+    # Gets the executions that are associated with all contexts.
+    assert contexts, 'Must have at least one context.'
+    executions_dict = {}
+    for context in contexts:
+      executions = self.store.get_executions_by_context(context.id)
+      executions_dict.update(dict((e.id, e) for e in executions))
+
+    executions_within_context = executions_dict.values()
+
+    # Filters the executions to match producer component id.
     qualified_producer_executions = [
         e.id
         for e in executions_within_context
         if _match_producer_component_id(e, producer_component_id)
     ]
+    # Gets the output events that have the matched output key.
     qualified_output_events = [
         ev for ev in self.store.get_events_by_execution_ids(
             qualified_producer_executions) if _match_output_key(ev, output_key)
     ]
 
+    # Gets the candidate artifacts from output events.
     candidate_artifacts = self.store.get_artifacts_by_id(
         list(set(ev.artifact_id for ev in qualified_output_events)))
+    # Filters the artifacts that have the right artifact type and state.
     qualified_artifacts = [
         a for a in candidate_artifacts if a.type_id == artifact_type.id and
         self._get_artifact_state(a) == ArtifactState.PUBLISHED
@@ -422,8 +435,8 @@ class Metadata(object):
   def _update_execution_proto(
       self,
       execution: metadata_store_pb2.Execution,
-      pipeline_info: data_types.PipelineInfo,
-      component_info: data_types.ComponentInfo,
+      pipeline_info: Optional[data_types.PipelineInfo] = None,
+      component_info: Optional[data_types.ComponentInfo] = None,
       state: Optional[Text] = None,
       exec_properties: Optional[Dict[Text, Any]] = None,
   ) -> metadata_store_pb2.Execution:

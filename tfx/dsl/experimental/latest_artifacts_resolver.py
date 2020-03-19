@@ -50,7 +50,7 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
     for k, c in source_channels.items():
       candidate_artifacts = metadata_handler.get_qualified_artifacts(
-          context=pipeline_context,
+          contexts=[pipeline_context],
           type_name=c.type_name,
           producer_component_id=c.producer_component_id,
           output_key=c.output_key)

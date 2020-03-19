@@ -521,6 +521,35 @@ class MetadataTest(tf.test.TestCase):
       self.assertProtoEquals(cached_output_artifacts['output'][0].mlmd_artifact,
                              output_artifact.mlmd_artifact)
 
+  def testGetCachedOutputNoInput(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+
+      # Create an 'previous' execution.
+      exec_properties = {'log_root': 'path'}
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
+      output_artifact = standard_artifacts.Examples()
+      output_artifact.uri = 'my_uri'
+      output_artifacts = {'output': [output_artifact]}
+      m.register_execution(
+          input_artifacts={},
+          exec_properties=exec_properties,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts)
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts=output_artifacts)
+
+      cached_output_artifacts = m.get_cached_outputs(
+          input_artifacts={},
+          exec_properties=exec_properties,
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info)
+      self.assertEqual(len(cached_output_artifacts), 1)
+      self.assertEqual(len(cached_output_artifacts['output']), 1)
+      self.assertProtoEquals(cached_output_artifacts['output'][0].mlmd_artifact,
+                             output_artifact.mlmd_artifact)
+
   def testSearchArtifacts(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       exec_properties = {'log_root': 'path'}
@@ -675,7 +704,7 @@ class MetadataTest(tf.test.TestCase):
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info,
-          contexts=contexts_one)
+          contexts=list(contexts_one))
       # artifact_one will be output with matched artifact type and output key
       artifact_one = standard_artifacts.Model()
       # artifact_one will be output with matched artifact type only
@@ -688,7 +717,7 @@ class MetadataTest(tf.test.TestCase):
           exec_properties={},
           pipeline_info=self._pipeline_info,
           component_info=self._component_info2,
-          contexts=contexts_one)
+          contexts=list(contexts_one))
       # artifact_three will be output with matched artifact type and output key
       artifact_three = standard_artifacts.Model()
       m.publish_execution(
@@ -699,7 +728,7 @@ class MetadataTest(tf.test.TestCase):
           exec_properties={},
           pipeline_info=self._pipeline_info3,
           component_info=self._component_info3,
-          contexts=contexts_two)
+          contexts=list(contexts_two))
       # artifact_three will be output with matched artifact type and output key
       artifact_four = standard_artifacts.Model()
       m.publish_execution(
@@ -707,7 +736,7 @@ class MetadataTest(tf.test.TestCase):
           output_artifacts={'k1': [artifact_four]})
 
       result = m.get_qualified_artifacts(
-          context=contexts_one[0],
+          contexts=contexts_one,
           type_name=standard_artifacts.Model().type_name,
           producer_component_id=self._component_info.component_id,
           output_key='k1')
