@@ -67,14 +67,14 @@ class LatestBlessedModelResolver(base_resolver.BaseResolver):
 
     # Gets all models in the search space and sort in reverse order by id.
     all_models = metadata_handler.get_qualified_artifacts(
-        context=pipeline_context,
+        contexts=[pipeline_context],
         type_name=model_channel.type_name,
         producer_component_id=model_channel.producer_component_id,
         output_key=model_channel.output_key)
     all_models.sort(key=lambda a: a.artifact.id, reverse=True)
     # Gets all ModelBlessing artifacts in the search space.
     all_model_blessings = metadata_handler.get_qualified_artifacts(
-        context=pipeline_context,
+        contexts=[pipeline_context],
         type_name=model_blessing_channel.type_name,
         producer_component_id=model_blessing_channel.producer_component_id,
         output_key=model_blessing_channel.output_key)
