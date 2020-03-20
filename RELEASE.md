@@ -9,7 +9,8 @@
 
 ## Bug fixes and other changes
 *   Replaced relative import with absolute import in generated templates.
-*   Added a native keras model in the taxi template.
+*   Added a native keras model in the taxi template and the template now uses
+    generic Trainer.
 *   Added support of TF 2.1 runtime configuration for AI Platform Prediction
     Pusher.
 

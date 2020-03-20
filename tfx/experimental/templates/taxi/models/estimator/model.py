@@ -21,13 +21,16 @@ defined in features.py and network parameters defined in constants.py.
 from __future__ import division
 from __future__ import print_function
 
+from absl import logging
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.estimator import constants
+from tfx.utils import io_utils
 
 
 def _gzip_reader_fn(filenames):
@@ -185,8 +188,7 @@ def _input_fn(filenames, tf_transform_output, batch_size=200):
       features.transformed_name(features.LABEL_KEY))
 
 
-# TFX will call this function
-def trainer_fn(trainer_fn_args, schema):
+def _create_train_and_eval_spec(trainer_fn_args, schema):
   """Build the estimator using the high level API.
 
   Args:
@@ -245,3 +247,34 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': receiver_fn
   }
+
+
+# TFX will call this function
+def run_fn(fn_args):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
+  train_and_eval_spec = _create_train_and_eval_spec(fn_args, schema)
+
+  # Train the model
+  logging.info('Training model.')
+  tf.estimator.train_and_evaluate(train_and_eval_spec['estimator'],
+                                  train_and_eval_spec['train_spec'],
+                                  train_and_eval_spec['eval_spec'])
+  logging.info('Training complete.  Model written to %s',
+               fn_args.serving_model_dir)
+
+  # Export an eval savedmodel for TFMA
+  # NOTE: When trained in distributed training cluster, eval_savedmodel must be
+  # exported only by the chief worker.
+  logging.info('Exporting eval_savedmodel for TFMA.')
+  tfma.export.export_eval_savedmodel(
+      estimator=train_and_eval_spec['estimator'],
+      export_dir_base=fn_args.eval_model_dir,
+      eval_input_receiver_fn=train_and_eval_spec['eval_input_receiver_fn'])
+
+  logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
