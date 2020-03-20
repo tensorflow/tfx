@@ -39,9 +39,9 @@ GCS_BUCKET_NAME = 'YOUR_GCS_BUCKET_NAME'
 # GCP_REGION = 'YOUR_GCP_REGION'  # ex) 'us-central1'
 
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
-TRAINER_FN = 'models.keras.model.run_fn'
+RUN_FN = 'models.keras.model.run_fn'
 # NOTE: Uncomment below to use an estimator based model.
-# TRAINER_FN = 'models.estimator.model.trainer_fn'
+# TRAINER_RUN_FN = 'models.estimator.model.run_fn'
 
 TRAIN_NUM_STEPS = 100
 EVAL_NUM_STEPS = 100

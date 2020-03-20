@@ -36,7 +36,7 @@ class ModelTest(tf.test.TestCase):
         eval_steps=100,
     )
     schema = schema_pb2.Schema()
-    result = model.trainer_fn(trainer_fn_args, schema)
+    result = model._create_train_and_eval_spec(trainer_fn_args, schema)   # pylint: disable=protected-access
     self.assertIsInstance(result['estimator'], tf.estimator.Estimator)
     self.assertIsInstance(result['train_spec'], tf.estimator.TrainSpec)
     self.assertIsInstance(result['eval_spec'], tf.estimator.EvalSpec)

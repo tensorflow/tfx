@@ -56,7 +56,7 @@ def create_pipeline(
     # TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
     # query: Text,
     preprocessing_fn: Text,
-    trainer_fn: Text,
+    run_fn: Text,
     train_args: trainer_pb2.TrainArgs,
     eval_args: trainer_pb2.EvalArgs,
     eval_accuracy_threshold: float,
@@ -106,16 +106,12 @@ def create_pipeline(
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer_args = {
-      'run_fn': trainer_fn,
-      # TODO(b/150834203): Use GenericExecutor for an estimator model.
-      # NOTE: Uncomment `trainer_fn` to use old Trainer with an estimator model.
-      # 'trainer_fn': trainer_fn,
+      'run_fn': run_fn,
       'transformed_examples': transform.outputs['transformed_examples'],
       'schema': schema_gen.outputs['schema'],
       'transform_graph': transform.outputs['transform_graph'],
       'train_args': train_args,
       'eval_args': eval_args,
-      # NOTE: Comment out 'custom_executor_spec' to use old Trainer executor.
       'custom_executor_spec':
           executor_spec.ExecutorClassSpec(trainer_executor.GenericExecutor),
   }
@@ -123,9 +119,7 @@ def create_pipeline(
     trainer_args.update({
         'custom_executor_spec':
             executor_spec.ExecutorClassSpec(
-                # NOTE: Use `Executor` to use old Trainer executor with CAIP.
                 ai_platform_trainer_executor.GenericExecutor
-                # ai_platform_trainer_executor.Executor
             ),
         'custom_config': {
             ai_platform_trainer_executor.TRAINING_ARGS_KEY:

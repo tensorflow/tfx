@@ -77,7 +77,7 @@ def run():
           # TODO(step 7): (Optional) Uncomment below to use BigQueryExampleGen.
           # query=configs.BIG_QUERY_QUERY,
           preprocessing_fn=configs.PREPROCESSING_FN,
-          trainer_fn=configs.TRAINER_FN,
+          run_fn=configs.RUN_FN,
           train_args=trainer_pb2.TrainArgs(num_steps=configs.TRAIN_NUM_STEPS),
           eval_args=trainer_pb2.EvalArgs(num_steps=configs.EVAL_NUM_STEPS),
           eval_accuracy_threshold=configs.EVAL_ACCURACY_THRESHOLD,
