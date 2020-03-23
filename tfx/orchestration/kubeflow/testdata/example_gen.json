@@ -20,13 +20,10 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifacts": [
           {
             "__artifact_class_module__": "tfx.types.standard_artifacts",
             "__artifact_class_name__": "ExternalArtifact",
-            "__class__": "ExternalArtifact",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
             "artifact": {},
             "artifact_type": {
               "name": "ExternalArtifact"
@@ -36,9 +33,7 @@
         "output_key": null,
         "producer_component_id": null,
         "type": {
-          "__class__": "ExternalArtifact",
-          "__module__": "tfx.types.standard_artifacts",
-          "__tfx_object_type__": "class"
+          "name": "ExternalArtifact"
         }
       }
     }
@@ -53,13 +48,10 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifacts": [
           {
             "__artifact_class_module__": "tfx.types.standard_artifacts",
             "__artifact_class_name__": "Examples",
-            "__class__": "Examples",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
             "artifact": {
               "custom_properties": {
                 "name": {
@@ -90,9 +82,11 @@
         "output_key": "examples",
         "producer_component_id": "CsvExampleGen",
         "type": {
-          "__class__": "Examples",
-          "__module__": "tfx.types.standard_artifacts",
-          "__tfx_object_type__": "class"
+          "name": "Examples",
+          "properties": {
+            "span": "INT",
+            "split_names": "STRING"
+          }
         }
       }
     }
