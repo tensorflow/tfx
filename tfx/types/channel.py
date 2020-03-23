@@ -19,9 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import inspect
+import json
 
-from typing import Iterable, Optional, Text, Type
+from typing import Any, Dict, Iterable, Optional, Text, Type
 
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
+from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import json_utils
 
@@ -91,3 +95,32 @@ class Channel(json_utils.Jsonable):
     # TODO(b/125037186): We should support dynamic query against a Channel
     # instead of a static Artifact collection.
     return self._artifacts
+
+  def to_json_dict(self) -> Dict[Text, Any]:
+    return {
+        'type':
+            json.loads(
+                json_format.MessageToJson(
+                    message=self.type._get_artifact_type(),  # pylint: disable=protected-access
+                    preserving_proto_field_name=True)),
+        'artifacts':
+            list(a.to_json_dict() for a in self._artifacts),
+        'producer_component_id':
+            (self.producer_component_id if self.producer_component_id else None
+            ),
+        'output_key': (self.output_key if self.output_key else None),
+    }
+
+  @classmethod
+  def from_json_dict(cls, dict_data: Dict[Text, Any]) -> Any:
+    artifact_type = metadata_store_pb2.ArtifactType()
+    json_format.Parse(json.dumps(dict_data['type']), artifact_type)
+    type_cls = artifact_utils.get_artifact_type_class(artifact_type)
+    artifacts = list(Artifact.from_json_dict(a) for a in dict_data['artifacts'])
+    producer_component_id = dict_data.get('producer_component_id', None)
+    output_key = dict_data.get('output_key', None)
+    return Channel(
+        type=type_cls,
+        artifacts=artifacts,
+        producer_component_id=producer_component_id,
+        output_key=output_key)

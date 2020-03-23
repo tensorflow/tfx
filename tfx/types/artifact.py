@@ -20,11 +20,12 @@ from __future__ import print_function
 
 import abc
 import builtins
+import copy
 import enum
 import importlib
 import json
 import os
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Type
 
 import absl
 import tensorflow as tf
@@ -153,7 +154,7 @@ class Artifact(json_utils.Jsonable):
         raise ValueError(
             'The "mlmd_artifact_type" argument must not be passed for '
             'Artifact subclass %s.' % self.__class__)
-      mlmd_artifact_type = self._construct_artifact_type()
+      mlmd_artifact_type = self._get_artifact_type()
 
     # MLMD artifact type proto object.
     self._artifact_type = mlmd_artifact_type
@@ -163,30 +164,33 @@ class Artifact(json_utils.Jsonable):
     self._initialized = True
 
   @classmethod
-  def _construct_artifact_type(cls):
-    type_name = cls.TYPE_NAME
-    if not (type_name and isinstance(type_name, (str, Text))):
-      raise ValueError(
-          ('The Artifact subclass %s must override the TYPE_NAME attribute '
-           'with a string type name identifier (got %r instead).') %
-          (cls, type_name))
-    artifact_type = metadata_store_pb2.ArtifactType()
-    artifact_type.name = type_name
-    if cls.PROPERTIES:
-      # Perform validation on PROPERTIES dictionary.
-      if not isinstance(cls.PROPERTIES, dict):
+  def _get_artifact_type(cls):
+    if not getattr(cls, '_MLMD_ARTIFACT_TYPE', None):
+      type_name = cls.TYPE_NAME
+      if not (type_name and isinstance(type_name, (str, Text))):
         raise ValueError(
-            'Artifact subclass %s.PROPERTIES is not a dictionary.' % cls)
-      for key, value in cls.PROPERTIES.items():
-        if not (isinstance(key, (Text, bytes)) and isinstance(value, Property)):
+            ('The Artifact subclass %s must override the TYPE_NAME attribute '
+             'with a string type name identifier (got %r instead).') %
+            (cls, type_name))
+      artifact_type = metadata_store_pb2.ArtifactType()
+      artifact_type.name = type_name
+      if cls.PROPERTIES:
+        # Perform validation on PROPERTIES dictionary.
+        if not isinstance(cls.PROPERTIES, dict):
           raise ValueError(
-              ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
-               'type string and values of type artifact.Property.') % cls)
+              'Artifact subclass %s.PROPERTIES is not a dictionary.' % cls)
+        for key, value in cls.PROPERTIES.items():
+          if not (isinstance(key,
+                             (Text, bytes)) and isinstance(value, Property)):
+            raise ValueError(
+                ('Artifact subclass %s.PROPERTIES dictionary must have keys of '
+                 'type string and values of type artifact.Property.') % cls)
 
-      # Populate ML Metadata artifact properties dictionary.
-      for key, value in cls.PROPERTIES.items():
-        artifact_type.properties[key] = value.mlmd_type()
-    return artifact_type
+        # Populate ML Metadata artifact properties dictionary.
+        for key, value in cls.PROPERTIES.items():
+          artifact_type.properties[key] = value.mlmd_type()
+      cls._MLMD_ARTIFACT_TYPE = artifact_type
+    return copy.deepcopy(cls._MLMD_ARTIFACT_TYPE)
 
   def __getattr__(self, name: Text) -> Any:
     """Custom __getattr__ to allow access to artifact properties."""
@@ -507,3 +511,61 @@ class ValueArtifact(Artifact):
   def encode(self, value) -> Any:
     """Method encoding the file content. Implemented by subclasses."""
     pass
+
+
+def _ArtifactType(  # pylint: disable=invalid-name
+    name: Optional[str] = None,  # pylint: disable=g-ambiguous-str-annotation
+    properties: Optional[Dict[Text, Property]] = None,
+    mlmd_artifact_type: Optional[metadata_store_pb2.ArtifactType] = None
+) -> Type[Artifact]:
+  """Experimental interface: internal use only.
+
+  Construct an artifact type.
+
+  Equivalent to subclassing Artifact and providing relevant properties. The user
+  must either provide (1) a type "name" and "properties" or (2) a MLMD
+  metadata_store_pb2.ArtifactType protobuf message as the "mlmd_artifact_type"
+  parameter.
+
+  Args:
+    name: Name of the artifact type in MLMD. Must be provided unless a protobuf
+      message is provided in the "mlmd_artifact_type" parameter.
+    properties: Dictionary of properties mapping property name keys to
+      `Parameter` object instances. Must be provided unless a protobuf message
+      is provided in the "mlmd_artifact_type" parameter.
+    mlmd_artifact_type: A ML Metadata metadata_store_pb2.ArtifactType protobuf
+      message corresponding to the type being created.
+
+  Returns:
+    An Artifact class corresponding to the specified type.
+  """
+  if mlmd_artifact_type:
+    if name or properties:
+      raise ValueError(
+          'The "name" and "properties" fields should not be passed when the '
+          '"mlmd_artifact_type" parameter is set, in _ArtifactType call.')
+    if not mlmd_artifact_type.name:
+      raise ValueError('Artifact type proto must have "name" field set.')
+    properties = {}
+    for name, property_type in mlmd_artifact_type.properties.items():
+      if property_type == metadata_store_pb2.PropertyType.INT:
+        properties[name] = Property(PropertyType.INT)
+      elif property_type == metadata_store_pb2.PropertyType.STRING:
+        properties[name] = Property(PropertyType.STRING)
+      else:
+        raise ValueError('Unsupported MLMD property type: %s.' % property_type)
+    return type(
+        str(mlmd_artifact_type.name), (Artifact,), {
+            'TYPE_NAME': mlmd_artifact_type.name,
+            'PROPERTIES': properties,
+        })
+  else:
+    if not name:
+      raise ValueError(
+          '"name" parameter must be passed to _ArtifactType when a '
+          'metadata_store_pb2.ArtifactType object is not passed for the '
+          '"mlmd_artifact_type" parameter.')
+    return type(name, (Artifact,), {
+        'TYPE_NAME': name,
+        'PROPERTIES': properties
+    })

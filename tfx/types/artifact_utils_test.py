@@ -19,11 +19,24 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import copy
+
 # Standard Imports
 
+import absl
+import mock
 import tensorflow as tf
+from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+
+
+class _MyArtifact(artifact.Artifact):
+  TYPE_NAME = 'ArtifactUtilsTypeName'
+  PROPERTIES = {
+      'dummy_int': artifact.Property(artifact.PropertyType.INT),
+      'dummy_string': artifact.Property(artifact.PropertyType.STRING),
+  }
 
 
 class ArtifactUtilsTest(tf.test.TestCase):
@@ -56,6 +69,32 @@ class ArtifactUtilsTest(tf.test.TestCase):
                      artifact_utils.get_split_uri(artifacts, 'train'))
     self.assertEqual('/tmp/eval',
                      artifact_utils.get_split_uri(artifacts, 'eval'))
+
+  def testArtifactTypeRoundTrip(self):
+    mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()
+    self.assertIs(standard_artifacts.Examples,
+                  artifact_utils.get_artifact_type_class(mlmd_artifact_type))
+    mlmd_artifact_type = _MyArtifact._get_artifact_type()
+    self.assertIs(_MyArtifact,
+                  artifact_utils.get_artifact_type_class(mlmd_artifact_type))
+
+  @mock.patch('absl.logging.warning')
+  def testArtifactTypeRoundTripUnknownArtifactClass(self, *unused_mocks):
+    mlmd_artifact_type = copy.deepcopy(
+        standard_artifacts.Examples._get_artifact_type())
+    self.assertIs(standard_artifacts.Examples,
+                  artifact_utils.get_artifact_type_class(mlmd_artifact_type))
+    mlmd_artifact_type.name = 'UnknownTypeName'
+
+    reconstructed_class = artifact_utils.get_artifact_type_class(
+        mlmd_artifact_type)
+    absl.logging.warning.assert_called_once()
+
+    self.assertIsNot(standard_artifacts.Examples, reconstructed_class)
+    self.assertTrue(issubclass(reconstructed_class, artifact.Artifact))
+    self.assertEqual('UnknownTypeName', reconstructed_class.TYPE_NAME)
+    self.assertEqual(mlmd_artifact_type,
+                     reconstructed_class._get_artifact_type())
 
 
 if __name__ == '__main__':

@@ -17,13 +17,17 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
+
+import json
 import os
 from typing import Text
+
 # Standard Imports
+
 import absl
 import mock
 import tensorflow as tf
+from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
 from tfx.utils import json_utils
@@ -37,6 +41,28 @@ class _MyArtifact(artifact.Artifact):
       'string1': artifact.Property(type=artifact.PropertyType.STRING),
       'string2': artifact.Property(type=artifact.PropertyType.STRING),
   }
+
+_MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
+    name='MyTypeName2',
+    properties={
+        'int1': artifact.Property(type=artifact.PropertyType.INT),
+        'int2': artifact.Property(type=artifact.PropertyType.INT),
+        'string1': artifact.Property(type=artifact.PropertyType.STRING),
+        'string2': artifact.Property(type=artifact.PropertyType.STRING),
+    })
+
+_mlmd_artifact_type = metadata_store_pb2.ArtifactType()
+json_format.Parse(
+    json.dumps({
+        'name': 'MyTypeName3',
+        'properties': {
+            'int1': 'INT',
+            'int2': 'INT',
+            'string1': 'STRING',
+            'string2': 'STRING'
+        }
+    }), _mlmd_artifact_type)
+_MyArtifact3 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  # pylint: disable=invalid-name
 
 
 class _MyValueArtifact(artifact.ValueArtifact):
@@ -131,8 +157,28 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(instance.mlmd_artifact, other_instance.mlmd_artifact)
     self.assertEqual(instance.artifact_type, other_instance.artifact_type)
 
-  def testArtifactSpecificProperties(self):
-    pass
+  def testArtifactTypeFunctionAndProto(self):
+    # Test usage of _MyArtifact2 and _MyArtifact3, which were defined using the
+    # _ArtifactType function.
+    types_and_names = [
+        (_MyArtifact2, 'MyTypeName2'),
+        (_MyArtifact3, 'MyTypeName3'),
+    ]
+    for type_cls, name in types_and_names:
+      self.assertEqual(type_cls.TYPE_NAME, name)
+      my_artifact = type_cls()
+      self.assertEqual(0, my_artifact.int1)
+      self.assertEqual(0, my_artifact.int2)
+      my_artifact.int1 = 111
+      my_artifact.int2 = 222
+      self.assertEqual('', my_artifact.string1)
+      self.assertEqual('', my_artifact.string2)
+      my_artifact.string1 = '111'
+      my_artifact.string2 = '222'
+      self.assertEqual(my_artifact.int1, 111)
+      self.assertEqual(my_artifact.int2, 222)
+      self.assertEqual(my_artifact.string1, '111')
+      self.assertEqual(my_artifact.string2, '222')
 
   def testInvalidArtifact(self):
     with self.assertRaisesRegexp(
