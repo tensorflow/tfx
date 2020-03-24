@@ -21,11 +21,13 @@ import enum
 from typing import Union
 
 from tensorflow_serving.apis import classification_pb2
+from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import regression_pb2
 
 TensorFlowServingRequest = Union[
     classification_pb2.ClassificationRequest,
-    regression_pb2.RegressionRequest
+    regression_pb2.RegressionRequest,
+    predict_pb2.PredictRequest,
 ]
 
 Request = Union[TensorFlowServingRequest]
