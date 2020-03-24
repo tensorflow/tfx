@@ -107,9 +107,9 @@ class ExecutorTest(tf.test.TestCase):
     })
     self._request_spec = _make_request_spec({
         'tensorflow_serving': {
-            'rpc_kind': 'CLASSIFY'
+            'signature_names': ['serving_default'],
         },
-        'max_examples': 1
+        'num_examples': 1
     })
     self._exec_properties = {
         'serving_spec': json_format.MessageToJson(self._serving_spec),

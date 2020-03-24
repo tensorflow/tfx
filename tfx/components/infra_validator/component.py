@@ -53,8 +53,8 @@ class InfraValidator(base_component.BaseComponent):
           num_tries=5,
       ),
       request_spec=RequestSpec(
-          tensorflow_serving=TensorFlowServingRequestSpec(rpc_kind=CLASSIFY),
-          max_examples=10,
+          tensorflow_serving=TensorFlowServingRequestSpec(),
+          num_examples=1,
       )
   )
   ```

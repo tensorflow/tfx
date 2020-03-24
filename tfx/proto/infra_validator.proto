@@ -102,9 +102,12 @@ message ValidationSpec {
 // check model is truly servable. Model should return successful responses to be
 // infra validated.
 message RequestSpec {
-  // Serving binary specific request configuration. Should match the
-  // serving_binary specified from the serving spec.
-  oneof serving_binary {
+  // Required.
+  // Request kind should be compatible with the serving_binary specified in the
+  // ServingSpec.
+  oneof kind {
+    // Generates TF Serving RPC requests. This is compatible with
+    // TensorFlowServing.
     TensorFlowServingRequestSpec tensorflow_serving = 1;
   }
 
@@ -115,33 +118,36 @@ message RequestSpec {
   string split_name = 2;
 
   // Optional.
-  // Maximum number of requests to issue against a model for infra validation.
+  // Number of examples to use for building model server requests. Actual number
+  // of requests will be multiplied by the number of request type to make. For
+  // example the following request_spec:
+  //
+  // request_spec: {
+  //   tensorflow_serving: {
+  //     signature_names: ['serving_default', 'classification']
+  //   }
+  //   num_examples: 3
+  // }
+  //
+  // will send total 6 requests (3 for each signature) to a model server.
   // Default to 1.
-  int32 max_examples = 3;
+  int32 num_examples = 3;
 }
 
-// TensorFlow Serving specific request configuration.
+// Request spec for building TF Serving requests.
 message TensorFlowServingRequestSpec {
-  // Based on the rpc_kind, one of Classify(), Regress(), or Predict() request
-  // will be sent.
-  TensorFlowServingRpcKind rpc_kind = 1;
   // Optional.
-  // If you serve a model with multiple signatures, or your model is exported
-  // with a non-default method name, you can directly specify a signature name
-  // to be set in a
-  // [`ModelSpec`](https://github.com/tensorflow/serving/blob/master/tensorflow_serving/apis/model.proto#L9).
-  // Signature name is defined in
-  // [`SignatureDef`](https://www.tensorflow.org/tfx/serving/signature_defs)
-  // of a saved model.
-  // Default value is empty, where server will choose an appropriate default
-  // signature name depending on `rpc_kind`, e.g. "tensorflow/serving/classify".
-  string signature_name = 2;
-}
+  // Exact set of tags that MetaGraphDef should have. If SavedModel contains
+  // multiple MetaGraphDef with different tag set, use this field to find the
+  // right one.
+  // Note that you must specify the exact set of tags, not a subset or a
+  // superset of tags.
+  // Default to [tf.saved_model.SERVING] (i.e. ['serve']).
+  repeated string tag_set = 1;
 
-// List of RPCs of TensorFlow Serving Prediction service.
-// https://github.com/tensorflow/serving/blob/master/tensorflow_serving/apis/prediction_service.proto
-enum TensorFlowServingRpcKind {
-  TF_SERVING_RPC_KIND_UNSPECIFIED = 0;
-  CLASSIFY = 1;
-  REGRESS = 2;
+  // Optional.
+  // List of signatures to make request of.
+  // Default to [tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY] (i.e.
+  // ['serving_default']).
+  repeated string signature_names = 2;
 }
