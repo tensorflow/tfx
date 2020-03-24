@@ -25,6 +25,7 @@ from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import get_model_status_pb2
 from tensorflow_serving.apis import model_pb2
 from tensorflow_serving.apis import model_service_pb2_grpc
+from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow_serving.apis import regression_pb2
 from tfx.components.infra_validator import types
@@ -101,6 +102,8 @@ class TensorFlowServingClient(base_client.BaseModelServerClient):
       self._prediction_service.Classify(request)
     elif isinstance(request, regression_pb2.RegressionRequest):
       self._prediction_service.Regress(request)
+    elif isinstance(request, predict_pb2.PredictRequest):
+      self._prediction_service.Predict(request)
     else:
       raise NotImplementedError('Unsupported request type {}'.format(
           type(request).__name__))
