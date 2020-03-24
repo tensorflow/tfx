@@ -43,7 +43,8 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
         os.path.dirname(__file__), 'mnist_utils_native_keras.py')
     self._module_file_lite = os.path.join(
         os.path.dirname(__file__), 'mnist_utils_native_keras_lite.py')
-    self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
+    self._serving_model_dir = os.path.join(self._test_dir, 'mnist',
+                                           'serving_model')
     self._serving_model_dir_lite = os.path.join(
         self._test_dir, 'serving_model_lite')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
