@@ -48,7 +48,7 @@ be logging Airflow messages.  Hit return to get to a bash prompt, or start
 another shell in a different terminal. To run another shell, move to where you
 cloned the workshops repo and run:
 
-`source run_bash.sh`
+`source utils/run_bash.sh`
 
 Since the workshop runs in a Python virtual environment you may also need to
 activate that environment in the bash shell that you're running inside the
