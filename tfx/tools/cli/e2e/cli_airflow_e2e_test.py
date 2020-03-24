@@ -66,20 +66,8 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    # Set a couple of important environment variables. See
-    # https://airflow.apache.org/howto/set-config.html for details.
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
-    # Following environment variables make scheduler process dags faster.
-    os.environ['AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC'] = '1'
-    os.environ['AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC'] = '1'
-    os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
-    os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '0'
-    os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
-    os.environ['AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL'] = '0'
-    # Using more than one thread results in a warning for sqlite backend.
-    # See https://github.com/tensorflow/tfx/issues/141
-    os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
 
     # Copy data.
     chicago_taxi_pipeline_dir = os.path.join(
@@ -99,13 +87,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
-    # Initialize database.
-    _ = subprocess.check_output(['airflow', 'initdb'])
-
-    # Start airflow scheduler.
-    self._out = open(os.path.join(self._airflow_home, 'out.txt'), 'w+')
-    self._err = open(os.path.join(self._airflow_home, 'err.txt'), 'w+')
-    self._scheduler = subprocess.Popen(['airflow', 'scheduler'])
+    self._airflow_initdb()
 
     # Initialize CLI runner.
     self.runner = click_testing.CliRunner()
@@ -116,8 +98,16 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
       os.environ['AIRFLOW_HOME'] = self._old_airflow_home
     if self._old_home:
       os.environ['HOME'] = self._old_home
-    if self._scheduler:
-      self._scheduler.terminate()
+
+  def _airflow_initdb(self):
+    _ = subprocess.check_output(['airflow', 'initdb'])
+
+  def _reload_airflow_dags(self):
+    # Created pipelines can be registered to the DB by airflow scheduler
+    # asynchronously. But we will rely on `initdb` which does same job
+    # synchronously for deterministic and fast test execution.
+    # (And it doesn't initialize db.)
+    self._airflow_initdb()
 
   def _valid_create_and_check(self, pipeline_path, pipeline_name):
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
@@ -351,12 +341,13 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         result.output)
 
   def _valid_run_and_check(self, pipeline_name):
-
     # Wait to fill up the DagBag.
     response = ''
     while pipeline_name not in response:
       response = str(
           subprocess.check_output(['airflow', 'list_dags', '--report']))
+
+    self._reload_airflow_dags()
 
     result = self.runner.invoke(cli_group, [
         'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
@@ -369,6 +360,9 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
                      result.output)
     self.assertIn('Run created for pipeline: {}'.format(pipeline_name),
                   result.output)
+
+    # NOTE: Because airflow scheduler was not launched, this run will not "run",
+    #       actually. This e2e test covers CLI side of the execution only.
 
   def testRunCreate(self):
     pipeline_name = 'chicago_taxi_simple'
