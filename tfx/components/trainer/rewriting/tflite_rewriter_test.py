@@ -36,7 +36,11 @@ class TFLiteRewriterTest(tf.test.TestCase):
 
   class ConverterMock(object):
 
+    def __init__(self):
+      self._convert_called = False
+
     def convert(self):
+      self._convert_called = True
       return 'model'
 
   @mock.patch('tfx.components.trainer.rewriting.'
@@ -58,16 +62,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
     dst_model = rewriter.ModelDescription(rewriter.ModelType.TFLITE_MODEL,
                                           dst_model_path)
 
-    tfrw = tflite_rewriter.TFLiteRewriter(
-        name='myrw',
-        filename='fname',
-        enable_experimental_new_converter=True)
+    tfrw = tflite_rewriter.TFLiteRewriter('myrw', 'fname', True)
     tfrw.perform_rewrite(src_model, dst_model)
-
-    converter.assert_called_once_with(
-        saved_model_path=mock.ANY,
-        enable_experimental_new_converter=True,
-        enable_quantization=False)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(tf.io.gfile.exists(expected_model))
     with tf.io.gfile.GFile(expected_model, 'rb') as f:
@@ -104,17 +100,8 @@ class TFLiteRewriterTest(tf.test.TestCase):
     dst_model = rewriter.ModelDescription(rewriter.ModelType.TFLITE_MODEL,
                                           dst_model_path)
 
-    tfrw = tflite_rewriter.TFLiteRewriter(
-        name='myrw',
-        filename='fname',
-        enable_experimental_new_converter=True,
-        enable_quantization=True)
+    tfrw = tflite_rewriter.TFLiteRewriter('myrw', 'fname', True)
     tfrw.perform_rewrite(src_model, dst_model)
-
-    converter.assert_called_once_with(
-        saved_model_path=mock.ANY,
-        enable_experimental_new_converter=True,
-        enable_quantization=True)
     expected_model = os.path.join(dst_model_path, 'fname')
     self.assertTrue(tf.io.gfile.exists(expected_model))
     with tf.io.gfile.GFile(expected_model, 'rb') as f:

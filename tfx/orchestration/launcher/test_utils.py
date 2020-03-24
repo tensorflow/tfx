@@ -56,17 +56,10 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-
-    # Generating missing output artifact URIs
-    for name, artifacts in output_artifacts.items():
-      for idx, artifact in enumerate(artifacts):
-        if not artifact.uri:
-          suffix = str(idx + 1) if idx > 0 else ''
-          artifact.uri = os.path.join(
-              pipeline_info.pipeline_root, 'artifacts', name + suffix, 'data',
-          )
-          tf.io.gfile.makedirs(os.path.dirname(artifact.uri))
-
+    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
+    artifact_utils.get_single_instance(
+        output_artifacts['output']).uri = os.path.join(
+            pipeline_info.pipeline_root, 'output')
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, 123, False)
 

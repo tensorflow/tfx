@@ -26,7 +26,7 @@ from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli.e2e import test_utils
 
 # Name of the pipeline
-_PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow'
+_PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow_v2'
 
 
 def _create_pipeline():
@@ -42,7 +42,7 @@ def _create_pipeline():
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
-      components=components,
+      components=components[:4],
       log_root='/var/tmp/tfx/logs',
       additional_pipeline_args={
           'WORKFLOW_ID': pipeline_name,

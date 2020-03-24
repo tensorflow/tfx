@@ -33,12 +33,10 @@ EXTRA_ASSETS_DIRECTORY = 'assets.extra'
 
 
 def _create_tflite_converter(
-    saved_model_path: Text, enable_experimental_new_converter: bool,
-    enable_quantization: bool) -> tf.lite.TFLiteConverter:
+    saved_model_path: Text,
+    enable_experimental_new_converter: bool) -> tf.lite.TFLiteConverter:
   converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
   converter.experimental_new_converter = enable_experimental_new_converter
-  if enable_quantization:
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
   return converter
 
 
@@ -60,8 +58,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
                filename: Text = 'tflite',
                enable_experimental_new_converter: bool = False,
                copy_assets: bool = True,
-               copy_assets_extra: bool = True,
-               enable_quantization: bool = False):
+               copy_assets_extra: bool = True):
     """Create an instance of the TFLiteRewriter.
 
     Args:
@@ -72,16 +69,13 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         model directory.
       copy_assets_extra: Boolean whether to copy the assets.extra directory to
         the rewritten model directory.
-      enable_quantization: Boolean whether to enable default TFLite
-        quantization.
     """
-    # TODO(b/152636072): Add support for representative_dataset.
+    # TODO(dzats): Add additional options for the TFLiteRewriter.
     self._name = name
     self._filename = six.ensure_text(filename)
     self._enable_experimental_new_converter = enable_experimental_new_converter
     self._copy_assets = copy_assets
     self._copy_assets_extra = copy_assets_extra
-    self._enable_quantization = enable_quantization
 
   @property
   def name(self) -> Text:
@@ -134,10 +128,7 @@ class TFLiteRewriter(rewriter.BaseRewriter):
         six.ensure_text(original_model.path), tmp_model_dir)
 
     converter = _create_tflite_converter(
-        saved_model_path=tmp_model_dir,
-        enable_experimental_new_converter=self
-        ._enable_experimental_new_converter,
-        enable_quantization=self._enable_quantization)
+        tmp_model_dir, self._enable_experimental_new_converter)
     tflite_model = converter.convert()
 
     output_path = os.path.join(

@@ -15,10 +15,6 @@
     Pusher.
 *   Added support for using ML Metadata ArtifactType messages as Artifact
     classes.
-*   Changed CLI behavior to create new versions of pipelines instead of
-    delete and create new ones when pipelines are updated for KFP. (Requires
-    kfp >= 0.3.0)
-*   Added ability to enable quantization in tflite rewriter.
 
 ### Deprecations
 
