@@ -28,6 +28,7 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
+from tfx.types import channel_utils
 from tfx.types import node_common
 from tfx.utils import abc_utils
 
@@ -142,3 +143,25 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   @property
   def exec_properties(self) -> Dict[Text, Any]:
     return self.spec.exec_properties
+
+
+class _SimpleComponent(BaseComponent):
+  """Component whose constructor generates spec instance from arguments."""
+
+  def __init__(self, **kwargs):
+    spec_kwargs = {}
+    unseen_args = set(kwargs.keys())
+    for key, channel_parameter in self.SPEC_CLASS.INPUTS.items():
+      if key not in kwargs:
+        raise ValueError('%s expects input %r to be a Channel of type %s.' %
+                         (self.__class__.__name__, key, channel_parameter.type))
+      spec_kwargs[key] = kwargs[key]
+      unseen_args.remove(key)
+    if unseen_args:
+      raise ValueError(
+          'Unknown arguments to %r: %s.' %
+          (self.__class__.__name__, ', '.join(sorted(unseen_args))))
+    for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
+      spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
+    spec = self.SPEC_CLASS(**spec_kwargs)
+    super(_SimpleComponent, self).__init__(spec)
