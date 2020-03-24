@@ -91,7 +91,7 @@
               },
               "properties": {
                 "split_names": {
-                  "string_value": "[\"train\", \"eval\"]"
+                  "string_value": "[\"examples\"]"
                 }
               }
             },
