@@ -186,18 +186,20 @@ class AirflowEndToEndTest(unittest.TestCase):
     _ = subprocess.check_output(['airflow', 'unpause', self._dag_id])
 
   def testSimplePipeline(self):
+    _ = subprocess.check_output([
+        'airflow',
+        'trigger_dag',
+        self._dag_id,
+        '-r',
+        self._run_id,
+        '-e',
+        self._execution_date,
+    ])
     # We will use subprocess to start the DAG instead of webserver, so only
     # need to start a scheduler on the background.
+    # Airflow scheduler should be launched after triggering the dag to mitigate
+    # a possible race condition between trigger_dag and scheduler.
     with AirflowSubprocess(['scheduler']):
-      _ = subprocess.check_output([
-          'airflow',
-          'trigger_dag',
-          self._dag_id,
-          '-r',
-          self._run_id,
-          '-e',
-          self._execution_date,
-      ])
       pending_tasks = set(self._all_tasks)
       attempts = int(
           _MAX_TASK_STATE_CHANGE_SEC / _TASK_POLLING_INTERVAL_SEC) + 1
