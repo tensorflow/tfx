@@ -110,7 +110,7 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
     self.transform_graph_importer = ImporterNode(
         instance_name='transform_graph',
         source_uri=os.path.join(self._testdata_root, 'transform',
-                                'transform_output'),
+                                'transform_graph'),
         artifact_type=standard_artifacts.TransformGraph,
         reimport=True)
 
