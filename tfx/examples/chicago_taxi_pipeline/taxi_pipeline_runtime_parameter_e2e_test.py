@@ -44,7 +44,7 @@ class TaxiPipelineRuntimeParameterEndToEndTest(test_utils.BaseKubeflowTest):
         'slicing-column': 'trip_start_hour',
     }
 
-    self._compile_and_run_pipeline(pipeline, parameters)
+    self._compile_and_run_pipeline(pipeline=pipeline, parameters=parameters)
 
 
 if __name__ == '__main__':
