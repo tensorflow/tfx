@@ -32,10 +32,13 @@ from typing import Any, Dict, List, Text
 
 import absl
 import docker
+from grpc import insecure_channel
 import tensorflow as tf
 
 from google.cloud import storage
 from ml_metadata.proto import metadata_store_pb2
+from ml_metadata.proto import metadata_store_service_pb2
+from ml_metadata.proto import metadata_store_service_pb2_grpc
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -49,6 +52,7 @@ from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.base.base_component import BaseComponent
 from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -263,6 +267,8 @@ class BaseKubeflowTest(tf.test.TestCase):
                                           cls._random_id())
     cls._build_and_push_docker_image(cls._container_image)
 
+    cls._grpc_forward_process = cls._setup_mlmd_port_forward()
+
   @classmethod
   def tearDownClass(cls):
     super(BaseKubeflowTest, cls).tearDownClass()
@@ -272,6 +278,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     subprocess.run(
         ['gcloud', 'container', 'images', 'delete', cls._container_image],
         check=True)
+    cls._grpc_forward_process.kill()
 
   @classmethod
   def _build_and_push_docker_image(cls, container_image: Text):
@@ -311,6 +318,84 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]).decode('utf-8').strip('\n')
     absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
+
+  @classmethod
+  def _get_grpc_port(cls) -> Text:
+    """Get the port number used by MLMD gRPC server."""
+    grpc_port = subprocess.check_output([
+        'kubectl', '-n', 'kubeflow', 'get', 'configmap',
+        'metadata-grpc-configmap', '-o',
+        'jsonpath={.data.METADATA_GRPC_SERVICE_PORT}'
+    ])
+    return grpc_port.decode('utf-8')
+
+  @classmethod
+  def _setup_mlmd_port_forward(cls) -> subprocess.Popen:
+    """Uses port forward to talk to MLMD gRPC server."""
+    grpc_port = cls._get_grpc_port()
+    grpc_forward_command = [
+        'kubectl', 'port-forward', 'deployment/metadata-deployment', '-n',
+        'kubeflow', ('%s:%s' % (int(grpc_port) + 1, grpc_port))
+    ]
+    # Begin port forwarding.
+    proc = subprocess.Popen(grpc_forward_command)
+    # Wait while port forward to pod is being established
+    poll_grpc_port_command = ['lsof', '-i', ':%s' % (int(grpc_port) + 1)]
+    result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
+    timeout = 10
+    for _ in range(timeout):
+      if result.returncode == 0:
+        break
+      absl.logging.info(
+          'Waiting while gRPC port-forward is being established...')
+      time.sleep(1)
+      result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
+
+    if result.returncode != 0:
+      raise RuntimeError('Failed to establish gRPC port-forward to cluster.')
+
+    # Establish MLMD gRPC channel.
+    forwarding_channel = insecure_channel('localhost:%s' % (int(grpc_port) + 1))
+    cls._stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(
+        forwarding_channel)
+
+    return proc
+
+  def _get_artifacts_with_type(
+      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
+    """Helper function returns artifacts with given type."""
+    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
+        type_name=type_name)
+    return self._stub.GetArtifactsByType(request).artifacts
+
+  def _get_executions_by_pipeline_name(
+      self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
+    """Helper function returns executions under a given pipeline name."""
+    # step 1: get context id by context name
+    request = metadata_store_service_pb2.GetContextByTypeAndNameRequest(
+        type_name='pipeline', context_name=pipeline_name)
+    context_id = self._stub.GetContextByTypeAndName(request).context.id
+    # step 2: get executions by context id
+    request = metadata_store_service_pb2.GetExecutionsByContextRequest(
+        context_id=context_id)
+    return self._stub.GetExecutionsByContext(request).executions
+
+  def _get_executions_by_pipeline_name_and_state(
+      self, pipeline_name: Text,
+      state: Text) -> List[metadata_store_pb2.Execution]:
+    """Helper function returns executions for a given state."""
+    if state not in metadata.FINAL_EXECUTION_STATES:
+      raise ValueError(
+          'Only following execution states are accepted: %s, got %s' %
+          (str(metadata.FINAL_EXECUTION_STATES), state))
+
+    executions = self._get_executions_by_pipeline_name(pipeline_name)
+    result = []
+    for e in executions:
+      if e.properties['state'].string_value == state:
+        result.append(e)
+
+    return result
 
   @classmethod
   def _get_mlmd_db_name(cls, pipeline_name: Text):
@@ -485,13 +570,8 @@ class BaseKubeflowTest(tf.test.TestCase):
     return tfx_pipeline.Pipeline(
         pipeline_name=pipeline_name,
         pipeline_root=self._pipeline_root(pipeline_name),
-        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=components,
-        additional_pipeline_args={
-            # Use a fixed WORKFLOW_ID (which is used as run id) for testing,
-            # for the purpose of making debugging easier.
-            'WORKFLOW_ID': pipeline_name,
-        },
+        enable_cache=True,
     )
 
   def _create_dataflow_pipeline(self, pipeline_name: Text,
@@ -513,17 +593,17 @@ class BaseKubeflowTest(tf.test.TestCase):
     config = kubeflow_dag_runner.get_default_kubeflow_metadata_config()
     return config
 
-  def _get_argo_pipeline_status(self, pipeline_name: Text) -> Text:
+  def _get_argo_pipeline_status(self, workflow_name: Text) -> Text:
     """Get Pipeline status.
 
     Args:
-      pipeline_name: The name of the pipeline.
+      workflow_name: The name of the workflow.
 
     Returns:
       Simple status string which is returned from `argo get` command.
     """
     get_workflow_command = [
-        'argo', '--namespace', 'kubeflow', 'get', pipeline_name
+        'argo', '--namespace', 'kubeflow', 'get', workflow_name
     ]
     output = subprocess.check_output(get_workflow_command).decode('utf-8')
     absl.logging.info('Argo output ----\n%s', output)
@@ -533,11 +613,13 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def _compile_and_run_pipeline(self,
                                 pipeline: tfx_pipeline.Pipeline,
+                                workflow_name: Text = None,
                                 parameters: Dict[Text, Any] = None):
     """Compiles and runs a KFP pipeline.
 
     Args:
       pipeline: The logical pipeline to run.
+      workflow_name: The argo workflow name, default to pipeline name.
       parameters: Value of runtime paramters of the pipeline.
     """
     pipeline_name = pipeline.pipeline_info.pipeline_name
@@ -552,22 +634,23 @@ class BaseKubeflowTest(tf.test.TestCase):
     pipeline_file = os.path.join(self._test_dir, 'pipeline.yaml')
     self.assertIsNotNone(pipeline_file)
 
+    workflow_name = workflow_name or pipeline_name
     # Ensure cleanup regardless of whether pipeline succeeds or fails.
-    self.addCleanup(self._delete_workflow, pipeline_name)
+    self.addCleanup(self._delete_workflow, workflow_name)
     self.addCleanup(self._delete_pipeline_output, pipeline_name)
     self.addCleanup(self._delete_pipeline_metadata, pipeline_name)
 
     # Run the pipeline to completion.
-    self._run_workflow(pipeline_file, pipeline_name, parameters)
+    self._run_workflow(pipeline_file, workflow_name, parameters)
 
     # Obtain workflow logs.
     get_logs_command = [
-        'argo', '--namespace', 'kubeflow', 'logs', '-w', pipeline_name
+        'argo', '--namespace', 'kubeflow', 'logs', '-w', workflow_name
     ]
     logs_output = subprocess.check_output(get_logs_command).decode('utf-8')
 
     # Check if pipeline completed successfully.
-    status = self._get_argo_pipeline_status(pipeline_name)
+    status = self._get_argo_pipeline_status(workflow_name)
     self.assertEqual(
         'Succeeded', status, 'Pipeline {} failed to complete successfully: {}'
         '\nFailed workflow logs:\n{}'.format(pipeline_name, status,
