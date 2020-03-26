@@ -24,7 +24,6 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
-import tensorflow_transform as tft
 
 from tfx.components.transform import executor_test
 
@@ -40,6 +39,4 @@ class ExecutorWithTFXIOTest(executor_test.ExecutorTest):
 
 
 if __name__ == '__main__':
-  # TODO(b/150159972): remove once TFT post-0.21.0 released and depended on.
-  if tft.__version__ > '0.21.0':
-    tf.test.main()
+  tf.test.main()
