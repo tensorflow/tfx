@@ -87,7 +87,8 @@ class Evaluator(base_component.BaseComponent):
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
-      blessing: Optional[types.Channel] = None):
+      blessing: Optional[types.Channel] = None,
+      schema: Optional[types.Channel] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -120,6 +121,7 @@ class Evaluator(base_component.BaseComponent):
         and Keras.
       blessing: Output channel of 'ModelBlessingPath' that contains the
         blessing result.
+      schema: A `Schema` channel to use for TFXIO.
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
@@ -155,5 +157,6 @@ class Evaluator(base_component.BaseComponent):
         fairness_indicator_thresholds=fairness_indicator_thresholds,
         evaluation=evaluation,
         eval_config=eval_config,
-        blessing=blessing)
+        blessing=blessing,
+        schema=schema)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

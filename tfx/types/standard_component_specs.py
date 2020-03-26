@@ -79,6 +79,7 @@ class EvaluatorSpec(ComponentSpec):
           ChannelParameter(type=standard_artifacts.Model),
       'baseline_model':
           ChannelParameter(type=standard_artifacts.Model, optional=True),
+      'schema': ChannelParameter(type=standard_artifacts.Schema, optional=True),
   }
   OUTPUTS = {
       'evaluation': ChannelParameter(type=standard_artifacts.ModelEvaluation),

@@ -57,9 +57,12 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     baseline_model = standard_artifacts.Model()
     model.uri = os.path.join(source_data_dir, 'trainer/current')
     baseline_model.uri = os.path.join(source_data_dir, 'trainer/previous/')
+    schema = standard_artifacts.Schema()
+    schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
         constants.EXAMPLES_KEY: [examples],
         constants.MODEL_KEY: [model],
+        constants.SCHEMA_KEY: [schema],
     }
 
     # Create output dict.
@@ -263,9 +266,12 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     baseline_model.uri = os.path.join(source_data_dir, 'trainer/previous/')
     blessing_output = standard_artifacts.ModelBlessing()
     blessing_output.uri = os.path.join(output_data_dir, 'blessing_output')
+    schema = standard_artifacts.Schema()
+    schema.uri = os.path.join(source_data_dir, 'schema_gen')
     input_dict = {
         constants.EXAMPLES_KEY: [examples],
         constants.MODEL_KEY: [model],
+        constants.SCHEMA_KEY: [schema],
     }
     if has_baseline:
       input_dict[constants.BASELINE_MODEL_KEY] = [baseline_model]
