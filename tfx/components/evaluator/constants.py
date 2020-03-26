@@ -21,6 +21,8 @@ EXAMPLES_KEY = 'examples'
 MODEL_KEY = 'model'
 # Key for baseline model in executor input_dict.
 BASELINE_MODEL_KEY = 'baseline_model'
+# Key for schema in executor input_dict.
+SCHEMA_KEY = 'schema'
 
 # Key for model blessing in executor output_dict.
 BLESSING_KEY = 'blessing'
