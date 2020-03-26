@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$id": "http://kubeflow.org/pipelines/components.json_schema.json",
+
+  "$ref": "#/definitions/ComponentSpec",
+
+  "definitions": {
+    "TypeSpecType": {
+      "oneOf": [
+        {"type": "string"},
+        {"type": "object", "additionalProperties": {"$ref": "#/definitions/TypeSpecType"}}
+      ]
+    },
+
+    "InputSpec": {
+      "description": "Describes the component input specification",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"$ref": "#/definitions/TypeSpecType"},
+        "description": {"type": "string"},
+        "default": {"type": "string"},
+        "optional": {"type": "boolean", "default": false}
+      },
+      "additionalProperties": false
+    },
+
+    "OutputSpec": {
+      "description": "Describes the component output specification",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"$ref": "#/definitions/TypeSpecType"},
+        "description": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+
+    "InputValuePlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by the input argument value.",
+      "type": "object",
+      "required": ["inputValue"],
+      "properties": {
+        "inputValue" : {
+          "description": "Name of the input.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "InputPathPlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by a local file path pointing to a file containing the input argument value.",
+      "type": "object",
+      "required": ["inputPath"],
+      "properties": {
+        "inputPath" : {
+          "description": "Name of the input.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "OutputPathPlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by a local file path pointing to a file where the program should write its output data.",
+      "type": "object",
+      "required": ["outputPath"],
+      "properties": {
+        "outputPath" : {
+          "description": "Name of the output.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "StringOrPlaceholder": {
+      "oneOf": [
+        {"type": "string"},
+        {"$ref": "#/definitions/InputValuePlaceholder"},
+        {"$ref": "#/definitions/InputPathPlaceholder"},
+        {"$ref": "#/definitions/OutputPathPlaceholder"},
+        {"$ref": "#/definitions/ConcatPlaceholder"},
+        {"$ref": "#/definitions/IfPlaceholder"}
+      ]
+    },
+
+    "ConcatPlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by the concatenated values of its items.",
+      "type": "object",
+      "required": ["concat"],
+      "properties": {
+        "concat" : {
+          "description": "Items to concatenate",
+          "type": "array",
+          "items": {"$ref": "#/definitions/StringOrPlaceholder"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IsPresentPlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by a boolean value specifying whether the caller has passed an argument for the specified optional input.",
+      "type": "object",
+      "properties": {
+        "isPresent": {
+          "description": "Name of the input.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "IfConditionArgumentType": {
+      "oneOf": [
+        {"$ref": "#/definitions/IsPresentPlaceholder"},
+        {"type": "boolean"},
+        {"type": "string"},
+        {"$ref": "#/definitions/InputValuePlaceholder"}
+      ]
+    },
+
+    "IfPlaceholder": {
+      "description": "Represents the command-line argument placeholder that will be replaced at run-time by a boolean value specifying whether the caller has passed an argument for the specified optional input.",
+      "type": "object",
+      "required": ["if"],
+      "properties": {
+        "if" : {
+          "type": "object",
+          "required": ["cond", "then"],
+          "properties": {
+            "cond": {"$ref": "#/definitions/IfConditionArgumentType"},
+            "then": {"$ref": "#/definitions/CommandlineArgumentOrArrayType"},
+            "else": {"$ref": "#/definitions/CommandlineArgumentOrArrayType"}
+          }
+        }
+      }
+    },
+
+    "ContainerSpec": {
+      "type": "object",
+      "required": ["image"],
+      "properties": {
+        "image": {
+          "description": "Docker image name.",
+          "$ref": "#/definitions/StringOrPlaceholder"
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided.",
+          "type": "array",
+          "items": {"$ref": "#/definitions/StringOrPlaceholder"}
+        },
+        "args": {
+          "description": "Arguments to the entrypoint. The docker image's CMD is used if this is not provided.",
+          "type": "array",
+          "items": {"$ref": "#/definitions/StringOrPlaceholder"}
+        },
+        "env": {
+          "description": "List of environment variables to set in the container.",
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/StringOrPlaceholder"}
+        },
+        "unconfigurableOutputPaths": {
+          "description": "Legacy. Deprecated. Can be used to specify local output file paths for containers that do not allow setting the path of some output using command-line.",
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ContainerImplementation": {
+      "description": "Represents the container component implementation.",
+      "type": "object",
+      "required": ["container"],
+      "properties": {
+        "container": {"$ref": "#/definitions/ContainerSpec"}
+      }
+    },
+
+    "ImplementationType": {
+      "oneOf": [
+        {"$ref": "#/definitions/ContainerImplementation"}
+      ]
+    },
+
+    "ComponentSpec": {
+      "description": "Component specification. Describes the metadata (name, description, source), the interface (inputs and outputs) and the implementation of the component.",
+      "type": "object",
+      "required": ["implementation"],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "inputs": {"type": "array", "items": {"$ref": "#/definitions/InputSpec"}},
+        "outputs": {"type": "array", "items": {"$ref": "#/definitions/OutputSpec"}},
+        "implementation": {"$ref": "#/definitions/ImplementationType"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -23,7 +23,6 @@ import sys
 
 import tensorflow as tf
 
-from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import test_utils
 
 
@@ -46,24 +45,9 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
     """End-to-End test for primitive artifacts passing."""
     pipeline_name = 'kubeflow-primitive-e2e-test-{}'.format(self._random_id())
     components = test_utils.create_primitive_type_components(pipeline_name)
-    # Test that the pipeline can be executed successfully.
     pipeline = self._create_pipeline(pipeline_name, components)
-    self._compile_and_run_pipeline(
-        pipeline=pipeline, workflow_name=pipeline_name + '-run-1')
-    # Test if the correct value has been passed.
-    str_artifacts = self._get_artifacts_with_type_and_pipeline(
-        type_name='StringType', pipeline_name=pipeline_name)
-    # There should be exactly one string artifact.
-    self.assertEqual(1, len(str_artifacts))
-    self.assertEqual(
-        self._get_value_of_string_artifact(str_artifacts[0]),
-        'hello %s\n' % pipeline_name)
-    # Test caching.
-    self._compile_and_run_pipeline(
-        pipeline=pipeline, workflow_name=pipeline_name + '-run-2')
-    cached_execution = self._get_executions_by_pipeline_name_and_state(
-        pipeline_name=pipeline_name, state=metadata.EXECUTION_STATE_CACHED)
-    self.assertEqual(2, len(cached_execution))
+    # TODO(b/142660336): assert the actual value being passed.
+    self._compile_and_run_pipeline(pipeline)
 
 
 if __name__ == '__main__':

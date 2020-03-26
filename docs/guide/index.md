@@ -128,7 +128,7 @@ and helps you validate your exported models, ensuring that they are
 
 This diagram illustrates the flow of data between these components:
 
-![Component Flow](images/diag_all.png)
+![Component Flow](diag_all.svg)
 
 ### Anatomy of a Component
 
@@ -138,7 +138,7 @@ TFX components consist of three main pieces:
 * Executor
 * Publisher
 
-![Component Anatomy](images/component.png)
+<img src="images/component.svg" alt="Component Anatomy" style="width:40%" />
 
 #### Driver and Publisher
 
@@ -161,7 +161,7 @@ will need to develop a `preprocessing_fn`.
 TFX includes both libraries and pipeline components.  This diagram illustrates
 the relationships between TFX libraries and pipeline components:
 
-![Libraries and Components](images/libraries_components.png)
+![Libraries and Components](libraries_components.svg)
 
 TFX provides several Python packages that are the libraries which are used to
 create pipeline components.  You'll use these libraries to create the components
@@ -386,7 +386,7 @@ code once.
 
 ### Data Exploration, Visualization, and Cleaning
 
-![Data Exploration, Visualization, and Cleaning](images/wrangling.png)
+![Data Exploration, Visualization, and Cleaning](wrangling.svg)
 
 TFX pipelines typically begin with an [ExampleGen](examplegen.md) component, which
 accepts input data and formats it as tf.Examples.  Often this is done after the
@@ -437,7 +437,7 @@ dataset, and if necessary modify as required.
 
 ### Developing and Training Models
 
-![Feature Engineering](images/feature_eng.png)
+![Feature Engineering](feature_eng.svg)
 
 A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
@@ -450,7 +450,7 @@ the Transform component if there is ever a possibility that these will also be
 present in data sent for inference requests.  [There are some important
 considerations](train.md) when designing TensorFlow code for training in TFX.
 
-![Modeling and Training](images/train.png)
+![Modeling and Training](train.svg)
 
 The result of a Transform component is a SavedModel which will be imported and
 used in your modeling code in TensorFlow, during a [Trainer](trainer.md)
@@ -479,7 +479,7 @@ tfma.export.export_eval_savedmodel(
 
 ### Analyzing and Understanding Model Performance
 
-![Model Analysis](images/analysis.png)
+![Model Analysis](analysis.svg)
 
 Following initial model development and training it's important to analyze and
 really understand you model's performance.  A typical TFX pipeline will include
@@ -527,7 +527,7 @@ inference requests.  TFX supports deployment to three classes of deployment
 targets.  Trained models which have been exported as SavedModels can be deployed
 to any or all of these deployment targets.
 
-![Component Flow](images/diag_all.png)
+![Component Flow](diag_all.svg)
 
 ### Inference: TensorFlow Serving
 

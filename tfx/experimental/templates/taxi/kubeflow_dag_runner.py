@@ -69,9 +69,6 @@ def run():
       tfx_image=tfx_image
   )
 
-  # Set the SDK type label environment.
-  os.environ[kubeflow_dag_runner.SDK_ENV_LABEL] = 'tfx-template'
-
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       pipeline.create_pipeline(
           pipeline_name=configs.PIPELINE_NAME,

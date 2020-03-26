@@ -20,7 +20,6 @@ from __future__ import print_function
 import os
 import re
 from typing import Callable, List, Optional, Text, Type
-import uuid
 
 from kfp import compiler
 from kfp import dsl
@@ -55,14 +54,6 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
 _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
-
-# The pod label indicating the SDK environment.
-# LINT.IfChange
-SDK_ENV_LABEL = 'pipelines.kubeflow.org/pipeline-sdk-type'
-# LINT.ThenChange(../../tools/cli/handler/base_handler.py)
-
-# The pod label of pipeline unique ID.
-PIPELINE_UUID_LABEL = 'pipelines.kubeflow.org/pipeline-uuid'
 
 
 def _mount_config_map_op(config_map_name: Text) -> OpFunc:
@@ -244,9 +235,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._deduped_parameter_names = set()  # Set of unique param names used.
-    # Set the SDK environment label. This is hold off from user interface
-    # intentionally. Default to TFX.
-    self._sdk_env = os.getenv(SDK_ENV_LABEL) or 'tfx'
 
   def _parse_parameter_from_component(
       self, component: base_component.BaseComponent) -> None:
@@ -320,11 +308,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
 
-      kfp_component.container_op.add_pod_label(SDK_ENV_LABEL, self._sdk_env)
-      assert self._pipeline_id, 'Failed to generate pipeline ID.'
-      kfp_component.container_op.add_pod_label(PIPELINE_UUID_LABEL,
-                                               self._pipeline_id)
-
       component_to_kfp_op[component] = kfp_component.container_op
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
@@ -339,8 +322,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     dsl_pipeline_root = dsl.PipelineParam(
         name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)
     self._params.append(dsl_pipeline_root)
-    # Randomly generates pipeline id.
-    self._pipeline_id = str(uuid.uuid4())
 
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.

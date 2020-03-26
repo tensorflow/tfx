@@ -22,8 +22,7 @@ import json
 import os
 import subprocess
 import sys
-import time
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Text
 
 import click
 import kfp
@@ -58,11 +57,11 @@ class KubeflowHandler(base_handler.BaseHandler):
     else:
       self._client = None
 
-  def create_pipeline(self, update: bool = False) -> None:
-    """Creates or updates a pipeline in Kubeflow.
+  def create_pipeline(self, overwrite: bool = False) -> None:
+    """Creates pipeline in Kubeflow.
 
     Args:
-      update: set as true to update pipeline.
+      overwrite: set as true to update pipeline.
     """
     # Build pipeline container image.
     try:
@@ -86,18 +85,19 @@ class KubeflowHandler(base_handler.BaseHandler):
 
     pipeline_name = pipeline_args[labels.PIPELINE_NAME]
 
-    self._check_pipeline_existence(pipeline_name, required=update)
+    self._check_pipeline_existence(pipeline_name, required=overwrite)
 
-    self._save_pipeline(pipeline_args, update=update)
+    self._save_pipeline(pipeline_args)
 
-    if update:
+    if overwrite:
       click.echo('Pipeline "{}" updated successfully.'.format(pipeline_name))
     else:
       click.echo('Pipeline "{}" created successfully.'.format(pipeline_name))
 
   def update_pipeline(self) -> None:
     """Updates pipeline in Kubeflow."""
-    self.create_pipeline(update=True)
+    # Set overwrite as True to update the pipeline.
+    self.create_pipeline(overwrite=True)
 
   def list_pipelines(self) -> None:
     """List all the pipelines in the environment."""
@@ -114,14 +114,15 @@ class KubeflowHandler(base_handler.BaseHandler):
 
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
     # Check if pipeline exists on server.
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
+    pipeline_id = self._get_pipeline_id(pipeline_name)
     self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
     # Delete pipeline for kfp server.
     self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
 
     # Delete experiment from server.
+    experiment_id = self._client.get_experiment(
+        experiment_name=pipeline_name).id
     self._client._experiment_api.delete_experiment(experiment_id)  # pylint: disable=protected-access
 
     # Path to pipeline folder.
@@ -153,10 +154,14 @@ class KubeflowHandler(base_handler.BaseHandler):
   def create_run(self) -> None:
     """Runs a pipeline in Kubeflow."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-    experiment_name = pipeline_name
 
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
+    # Get pipeline id.
+    pipeline_id = self._get_pipeline_id(pipeline_name)
+
+    # Get experiment id.
+    experiment_name = pipeline_name
+    experiment_id = self._client.get_experiment(
+        experiment_name=experiment_name).id
 
     # Run pipeline.
     run = self._client.run_pipeline(
@@ -181,11 +186,14 @@ class KubeflowHandler(base_handler.BaseHandler):
   def list_runs(self) -> None:
     """Lists all runs of a pipeline."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
-
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
     # Check if pipeline exists.
+    pipeline_id = self._get_pipeline_id(pipeline_name)
     self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
+
+    # Get experiment id.
+    experiment_name = pipeline_name
+    experiment_id = self._client.get_experiment(
+        experiment_name=experiment_name).id
 
     # List runs.
     # TODO(jyzhao): use metadata context to get the run info.
@@ -202,47 +210,46 @@ class KubeflowHandler(base_handler.BaseHandler):
     run = self._client.get_run(self.flags_dict[labels.RUN_ID]).run
     self._print_runs([run])
 
-  def _save_pipeline(self,
-                     pipeline_args: Dict[Text, Any],
-                     update: bool = False) -> None:
+  def _save_pipeline(self, pipeline_args: Dict[Text, Any]) -> None:
     """Creates/updates pipeline folder in the handler directory."""
     pipeline_name = pipeline_args[labels.PIPELINE_NAME]
 
     # Path to pipeline folder.
-    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name)
+    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
+                                         '')
+
+    # When updating pipeline delete pipeline from server and home dir.
+    if tf.io.gfile.exists(handler_pipeline_path):
+
+      # Delete pipeline for kfp server.
+      pipeline_id = self._get_pipeline_id(pipeline_name)
+
+      self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
+
+      # Delete pipeline for home directory.
+      io_utils.delete_dir(handler_pipeline_path)
 
     pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
 
-    if update:
-      pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-          pipeline_name)
-      # A timestamp will be appended for the uniqueness of `version_name`.
-      version_name = '{}_{}'.format(pipeline_name,
-                                    time.strftime('%Y%m%d%H%M%S'))
-      upload_response = self._client.pipeline_uploads.upload_pipeline_version(
-          uploadfile=pipeline_package_path,
-          name=version_name,
-          pipelineid=pipeline_id)
-    else:  # creating a new pipeline.
-      upload_response = self._client.upload_pipeline(
-          pipeline_package_path=pipeline_package_path,
-          pipeline_name=pipeline_name)
-      pipeline_id = upload_response.id
-
-      # Create experiment with pipeline name as experiment name.
-      experiment_name = pipeline_name
-      experiment_id = self._client.create_experiment(experiment_name).id
+    # Now upload pipeline to server.
+    upload_response = self._client.upload_pipeline(
+        pipeline_package_path=pipeline_package_path,
+        pipeline_name=pipeline_name)
 
     # Display the link to the pipeline detail page in KFP UI.
     click.echo(upload_response)
     click.echo('Please access the pipeline detail page at '
                '{prefix}/#/pipelines/details/{pipeline_id}'.format(
                    prefix=self._client._get_url_prefix(),  # pylint: disable=protected-access
-                   pipeline_id=pipeline_id))
+                   pipeline_id=upload_response.id))
+
+    # Create experiment with pipeline name as experiment name.
+    experiment_name = pipeline_name
+    experiment_id = self._client.create_experiment(experiment_name).id
 
     # Add pipeline details to pipeline_args.
-    pipeline_args[labels.PIPELINE_NAME] = pipeline_name
-    pipeline_args[labels.PIPELINE_ID] = pipeline_id
+    pipeline_args[labels.PIPELINE_NAME] = upload_response.name
+    pipeline_args[labels.PIPELINE_ID] = upload_response.id
     pipeline_args[labels.PIPELINE_PACKAGE_PATH] = pipeline_package_path
     pipeline_args[labels.EXPERIMENT_ID] = experiment_id
 
@@ -277,10 +284,10 @@ class KubeflowHandler(base_handler.BaseHandler):
         base_image=base_image,
         skaffold_cmd=skaffold_cmd).build()
 
-  def _get_pipeline_id_and_experiment_id(
-      self, pipeline_name: Text) -> Tuple[Text, Text]:
+  def _get_pipeline_id(self, pipeline_name: Text) -> Text:
     # Path to pipeline folder.
-    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name)
+    handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name,
+                                         '')
 
     # Check if pipeline exists.
     self._check_pipeline_existence(pipeline_name)
@@ -288,11 +295,11 @@ class KubeflowHandler(base_handler.BaseHandler):
     # Path to pipeline_args.json .
     pipeline_args_path = os.path.join(handler_pipeline_path,
                                       'pipeline_args.json')
-    # Get pipeline_id/experiment_id from pipeline_args.json
+    # Get pipeline_id from pipeline_args.json
     with open(pipeline_args_path, 'r') as f:
       pipeline_args = json.load(f)
-    return (pipeline_args[labels.PIPELINE_ID],
-            pipeline_args[labels.EXPERIMENT_ID])
+    pipeline_id = pipeline_args[labels.PIPELINE_ID]
+    return pipeline_id
 
   def _print_runs(self, runs):
     """Prints runs in a tabular format with headers mentioned below."""

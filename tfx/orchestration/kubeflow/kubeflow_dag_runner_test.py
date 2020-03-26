@@ -92,15 +92,6 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
       ]
       self.assertEqual(1, len(statistics_gen_container))
 
-      # Ensure the pod labels are correctly appended.
-      metadata = [
-          c['metadata'] for c in pipeline['spec']['templates'] if 'dag' not in c
-      ]
-      for m in metadata:
-        self.assertEqual('tfx', m['labels'][kubeflow_dag_runner.SDK_ENV_LABEL])
-        self.assertIsNotNone(
-            m['labels'][kubeflow_dag_runner.PIPELINE_UUID_LABEL])
-
       # Ensure dependencies between components are captured.
       dag = [c for c in pipeline['spec']['templates'] if 'dag' in c]
       self.assertEqual(1, len(dag))
