@@ -23,13 +23,11 @@ import json
 import os
 import sys
 import tarfile
-import tempfile
 import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
-from tfx.utils import io_utils
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -77,16 +75,12 @@ class _MockClientClass(object):
         'id': 'fake_pipeline_id',
         'name': 'fake_pipeline_name'
     }  # pylint: disable=invalid-name, unused-variable
-    self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
     self._pipelines_api = _MockPipelineApi()
     self._experiment_api = _MockExperimentApi()
     self._run_api = _MockRunApi()
+    self.pipeline_uploads = _MockPipielineUploadApi()
 
   def upload_pipeline(self, pipeline_package_path, pipeline_name):  # pylint: disable=invalid-name, unused-argument
-    io_utils.copy_file(
-        pipeline_package_path,
-        os.path.join(self._output_dir, os.path.basename(pipeline_package_path)),
-        overwrite=True)
     return _MockUploadResponse(self.config)
 
   def create_experiment(self, name):
@@ -124,6 +118,12 @@ class _MockPipelineApi(object):
 
   def run_pipeline(self):
     return _MockRunResponse('run_id', 'Running', datetime.datetime.now())
+
+
+class _MockPipielineUploadApi(object):
+
+  def upload_pipeline_version(self, uploadfile, name, pipelineid):
+    pass
 
 
 class _MockExperimentResponse(object):
@@ -212,7 +212,6 @@ class KubeflowHandlerTest(tf.test.TestCase):
     os.environ['HOME'] = self._original_home_value
     os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
 
-  # TODO(b/140954873): Change the following test after Kubeflow e2e test.
   @mock.patch('kfp.Client', _MockClientClass)
   def testCheckPipelinePackagePathDefaultPath(self):
     flags_dict = {
