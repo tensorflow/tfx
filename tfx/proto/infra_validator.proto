@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC
+// Copyright 2020 Google LLC
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ message ServingSpec {
   // corresponding configuration.
   oneof serving_platform {
     LocalDockerConfig local_docker = 2;
+    KubernetesConfig kubernetes = 3;
   }
 
   // Optional.
@@ -83,6 +84,33 @@ message LocalDockerConfig {
   // Optional docker client timeout seconds. Default to the constant defined in
   // docker-py library.
   int32 client_timeout_seconds = 3;
+}
+
+// Kubernetes configuration. We currently only support the use case when infra
+// validator is run by KubeflowDagRunner. Model server will be launched in the
+// same namespace KFP is running on, as well as same service account will be
+// used (unless specified).
+//
+// Model server will have ownerReferences to the infra validator, which
+// delegates the strict cleanup guarantee to the kubernetes cluster.
+message KubernetesConfig {
+  // Optional.
+  // Name of the ServiceAccount to use to run this pod. Default to the same
+  // service account that KFP uses.
+  string service_account_name = 1;
+
+  // Optional.
+  // [activeDeadlineSeconds](https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1PodSpec.md#properties)
+  // for the model server Pod. This is a hard deadline for the model server
+  // container. If infra validation finishes earlier, the container would be
+  // gracefully shut down before this deadline.
+  //
+  // Unlike `max_loading_time_seconds` in `ValidationSpec`, this deadline is to
+  // prevent resource leak due to unexpected termination (e.g. SIGKILL) of an
+  // infra validator. The value must be greater than `max_loading_time_seconds`.
+  //
+  // Should be a positive integer. Default to 24 hours (86400).
+  int32 active_deadline_seconds = 2;
 }
 
 // Specification for validation criteria and thresholds.

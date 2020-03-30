@@ -30,6 +30,7 @@ from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator import types as iv_types
+from tfx.components.infra_validator.model_server_runners import kubernetes_runner
 from tfx.components.infra_validator.model_server_runners import local_docker_runner
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
@@ -73,6 +74,12 @@ def _create_model_server_runner(
   platform = serving_spec.WhichOneof('serving_platform')
   if platform == 'local_docker':
     return local_docker_runner.LocalDockerRunner(
+        model_path=model_path,
+        serving_binary=serving_binary,
+        serving_spec=serving_spec
+    )
+  elif platform == 'kubernetes':
+    return kubernetes_runner.KubernetesRunner(
         model_path=model_path,
         serving_binary=serving_binary,
         serving_spec=serving_spec
