@@ -34,6 +34,7 @@ import absl
 import docker
 from grpc import insecure_channel
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from google.cloud import storage
 from ml_metadata.proto import metadata_store_pb2
@@ -42,7 +43,6 @@ from ml_metadata.proto import metadata_store_service_pb2_grpc
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
 from tfx.components import Pusher
 from tfx.components import ResolverNode
 from tfx.components import SchemaGen
@@ -56,7 +56,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
@@ -209,25 +208,41 @@ def create_e2e_components(
       eval_args=trainer_pb2.EvalArgs(num_steps=5),
       module_file=trainer_module,
   )
+  # Set the TFMA config for Model Evaluation and Validation.
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(signature_name='eval')],
+      metrics_specs=[
+          tfma.MetricsSpec(
+              metrics=[tfma.MetricConfig(class_name='ExampleCount')],
+              thresholds={
+                  'binary_accuracy':
+                      tfma.MetricThreshold(
+                          value_threshold=tfma.GenericValueThreshold(
+                              lower_bound={'value': 0.5}),
+                          change_threshold=tfma.GenericChangeThreshold(
+                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                              absolute={'value': -1e-10}))
+              })
+      ],
+      slicing_specs=[
+          tfma.SlicingSpec(),
+          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+      ])
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])
-      ]))
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
+      eval_config=eval_config)
+
   pusher = Pusher(
       model=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
+      model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
   return [
       example_gen, statistics_gen, schema_gen, example_validator, transform,
-      latest_model_resolver, trainer, evaluator, model_validator, pusher
+      latest_model_resolver, trainer, evaluator, pusher
   ]
 
 
@@ -367,6 +382,31 @@ class BaseKubeflowTest(tf.test.TestCase):
     request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
         type_name=type_name)
     return self._stub.GetArtifactsByType(request).artifacts
+
+  def _get_artifacts_with_type_and_pipeline(
+      self, type_name: Text,
+      pipeline_name: Text) -> List[metadata_store_pb2.Artifact]:
+    """Helper function returns artifacts of specified pipeline and type."""
+    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
+        type_name=type_name)
+    all_artifacts = self._stub.GetArtifactsByType(request).artifacts
+    return [
+        artifact for artifact in all_artifacts
+        if artifact.custom_properties['pipeline_name'].string_value ==
+        pipeline_name
+    ]
+
+  def _get_value_of_string_artifact(
+      self, string_artifact: metadata_store_pb2.Artifact) -> Text:
+    """Helper function returns the actual value of a ValueArtifact."""
+    file_path = os.path.join(string_artifact.uri,
+                             standard_artifacts.StringType.VALUE_FILE)
+    # Assert there is a file exists.
+    if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
+      raise RuntimeError(
+          'Given path does not exist or is not a valid file: %s' % file_path)
+    serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
+    return standard_artifacts.StringType().decode(serialized_value)
 
   def _get_executions_by_pipeline_name(
       self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
