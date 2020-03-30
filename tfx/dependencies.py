@@ -32,6 +32,7 @@ def make_required_install_packages():
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.25,!=1.27.2,<2',
       'jinja2>=2.7.3,<3',
+      'kubernetes>=10.0.1,<11',
       'ml-metadata>=0.21.2,<0.22',
       'protobuf>=3.7,<4',
       'pyarrow>=0.15,<0.16',

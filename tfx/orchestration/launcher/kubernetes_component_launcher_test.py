@@ -34,6 +34,7 @@ from tfx.orchestration.config import kubernetes_component_config
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
+from tfx.utils import kube_utils
 
 
 class KubernetesComponentLauncherTest(tf.test.TestCase):
@@ -47,8 +48,8 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
             executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)))
 
   @mock.patch.dict(os.environ, {
-      'KFP_NAMESPACE': 'ns-1',
-      'KFP_POD_NAME': 'pod-1'
+      kube_utils.KFP_NAMESPACE: 'ns-1',
+      kube_utils.KFP_POD_NAME: 'pod-1'
   })
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(config, 'load_incluster_config', autospec=True)

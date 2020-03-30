@@ -200,7 +200,7 @@ class Executor(base_executor.BaseExecutor):
       requests: List[iv_types.Request]):
 
     for i in range(validation_spec.num_tries):
-      logging.info('Infra validation trial %d/%d start.', i + 1,
+      logging.info('Starting infra validation (attempt %d/%d).', i + 1,
                    validation_spec.num_tries)
       try:
         self._ValidateOnce(
