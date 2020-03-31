@@ -42,7 +42,7 @@ def _create_pipeline():
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
-      components=components,
+      components=components[:2],  # Run two components only to reduce overhead.
       log_root='/var/tmp/tfx/logs',
       additional_pipeline_args={
           'WORKFLOW_ID': pipeline_name,
@@ -51,8 +51,8 @@ def _create_pipeline():
 
 
 runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-    kubeflow_metadata_config=test_utils.get_kubeflow_metadata_config(
-        _PIPELINE_NAME),
+    kubeflow_metadata_config=kubeflow_dag_runner
+    .get_default_kubeflow_metadata_config(),
     tfx_image=test_utils.BASE_CONTAINER_IMAGE)
 _ = kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
     _create_pipeline())
