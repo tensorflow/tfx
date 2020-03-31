@@ -315,34 +315,23 @@ class KubeflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_kubeflow_1.py')
-    flags_dict_1 = {
+    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                 'test_pipeline_kubeflow_1.py')
+    flags_dict = {
         labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: pipeline_path_1,
+        labels.PIPELINE_DSL_PATH: pipeline_path,
         labels.ENDPOINT: self.endpoint,
         labels.IAP_CLIENT_ID: self.iap_client_id,
         labels.NAMESPACE: self.namespace,
         labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
     }
-    handler = kubeflow_handler.KubeflowHandler(flags_dict_1)
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler.create_pipeline()
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME])
+    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
 
     # Update test_pipeline and run update_pipeline
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_kubeflow_2.py')
-    flags_dict_2 = {
-        labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: pipeline_path_2,
-        labels.ENDPOINT: self.endpoint,
-        labels.IAP_CLIENT_ID: self.iap_client_id,
-        labels.NAMESPACE: self.namespace,
-        labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
-    }
-    handler = kubeflow_handler.KubeflowHandler(flags_dict_2)
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
-    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
     handler.update_pipeline()
     self.assertTrue(
         tf.io.gfile.exists(

@@ -30,7 +30,7 @@ import string
 import subprocess
 import sys
 import tempfile
-from typing import Text
+from typing import Text, Tuple
 
 import absl
 from click import testing as click_testing
@@ -87,27 +87,20 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 
-    self._change_pipeline_name('test_pipeline_kubeflow_1.py',
-                               self._testdata_dir, self._testdata_dir_updated,
-                               'chicago_taxi_pipeline_kubeflow',
-                               self._pipeline_name)
-    self._change_pipeline_name('test_pipeline_kubeflow_2.py',
-                               self._testdata_dir, self._testdata_dir_updated,
-                               'chicago_taxi_pipeline_kubeflow',
-                               self._pipeline_name)
-    self._change_pipeline_name('test_pipeline_kubeflow_3.py',
-                               self._testdata_dir, self._testdata_dir_updated,
-                               'chicago_taxi_pipeline_kubeflow_v2',
-                               self._pipeline_name_v2)
-
+    orig_pipeline_path = os.path.join(self._testdata_dir,
+                                      'test_pipeline_kubeflow_1.py')
     self._pipeline_path = os.path.join(self._testdata_dir_updated,
                                        'test_pipeline_kubeflow_1.py')
-    self.assertTrue(tf.io.gfile.exists(self._pipeline_path))
-    self._pipeline_path_updated = os.path.join(self._testdata_dir_updated,
-                                               'test_pipeline_kubeflow_2.py')
-    self.assertTrue(tf.io.gfile.exists(self._pipeline_path_updated))
     self._pipeline_path_v2 = os.path.join(self._testdata_dir_updated,
-                                          'test_pipeline_kubeflow_3.py')
+                                          'test_pipeline_kubeflow_2.py')
+
+    self._change_pipeline_name(orig_pipeline_path, self._pipeline_path,
+                               'chicago_taxi_pipeline_kubeflow',
+                               self._pipeline_name)
+    self.assertTrue(tf.io.gfile.exists(self._pipeline_path))
+    self._change_pipeline_name(orig_pipeline_path, self._pipeline_path_v2,
+                               'chicago_taxi_pipeline_kubeflow',
+                               self._pipeline_name_v2)
     self.assertTrue(tf.io.gfile.exists(self._pipeline_path_v2))
 
     # Endpoint URL
@@ -126,6 +119,12 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     tf.io.gfile.makedirs(self._kubeflow_home)
     os.chdir(self._kubeflow_home)
 
+    self._handler_pipeline_path = os.path.join(self._kubeflow_home,
+                                               self._pipeline_name)
+    self._handler_pipeline_args_path = os.path.join(self._handler_pipeline_path,
+                                                    'pipeline_args.json')
+    self._pipeline_package_path = '{}.tar.gz'.format(self._pipeline_name)
+
     try:
       # Create a kfp client for cleanup after running commands.
       self._client = kfp.Client(host=self._endpoint)
@@ -141,16 +140,15 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     shutil.rmtree(self._kubeflow_home)
     absl.logging.info('Deleted all runs.')
 
-  def _change_pipeline_name(self, filename: Text, origin_dsl_dir: Text,
-                            new_dsl_dir: Text, origin_pipeline_name: Text,
+  def _change_pipeline_name(self, orig_path: Text, new_path: Text,
+                            origin_pipeline_name: Text,
                             new_pipeline_name: Text) -> None:
-    """Copy pipeline file to new dir with pipeline name changed."""
-    contents = file_io.read_file_to_string(
-        os.path.join(origin_dsl_dir, filename))
+    """Copy pipeline file to new path with pipeline name changed."""
+    contents = file_io.read_file_to_string(orig_path)
     assert contents.count(origin_pipeline_name
                          ) == 1, 'DSL file can only contain one pipeline name'
     contents = contents.replace(origin_pipeline_name, new_pipeline_name)
-    file_io.write_string_to_file(os.path.join(new_dsl_dir, filename), contents)
+    file_io.write_string_to_file(new_path, contents)
 
   def _cleanup_kfp_server(self):
     pipelines = tf.io.gfile.listdir(self._kubeflow_home)
@@ -162,7 +160,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         self._delete_pipeline_metadata(pipeline_name)
 
   def _delete_pipeline(self, pipeline_name: Text):
-    pipeline_id = self._get_pipeline_id(pipeline_name)
+    pipeline_id, _ = self._get_pipeline_id_and_experiment_id(pipeline_name)
     if self._client._pipelines_api.get_pipeline(pipeline_id):
       self._client._pipelines_api.delete_pipeline(id=pipeline_id)
       absl.logging.info('Deleted pipeline : {}'.format(pipeline_name))
@@ -175,15 +173,17 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
       self._client._experiment_api.delete_experiment(experiment_id)
       absl.logging.info('Deleted experiment : {}'.format(pipeline_name))
 
-  def _get_pipeline_id(self, pipeline_name: Text) -> Text:
+  def _get_pipeline_id_and_experiment_id(
+      self, pipeline_name: Text) -> Tuple[Text, Text]:
     # Path to pipeline_args.json .
     pipeline_args_path = os.path.join(self._kubeflow_home, pipeline_name,
                                       'pipeline_args.json')
-    # Get pipeline_id from pipeline_args.json
+    # Get pipeline_id and experiment_id from pipeline_args.json
     with open(pipeline_args_path, 'r') as f:
       pipeline_args = json.load(f)
     pipeline_id = pipeline_args[labels.PIPELINE_ID]
-    return pipeline_id
+    experiment_id = pipeline_args[labels.EXPERIMENT_ID]
+    return pipeline_id, experiment_id
 
   def _delete_pipeline_output(self, pipeline_name: Text) -> None:
     """Deletes output produced by the named pipeline.
@@ -258,28 +258,20 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
 
   def _valid_create_and_check(self, pipeline_path: Text,
                               pipeline_name: Text) -> None:
-    handler_pipeline_path = os.path.join(self._kubeflow_home, pipeline_name)
-    pipeline_package_path = os.path.join(self._kubeflow_home,
-                                         '{}.tar.gz'.format(pipeline_name))
     result = self.runner.invoke(cli_group, [
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue(tf.io.gfile.exists(pipeline_package_path))
-    self.assertTrue(
-        tf.io.gfile.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+    self.assertTrue(tf.io.gfile.exists(self._pipeline_package_path))
+    self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def _run_pipeline_using_kfp_client(self, pipeline_name: Text):
-
     try:
-      experiment_id = self._client.get_experiment(
-          experiment_name=pipeline_name).id
-      pipeline_id = self._get_pipeline_id(pipeline_name)
+      pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
+          pipeline_name)
       run = self._client.run_pipeline(
           experiment_id=experiment_id,
           job_name=pipeline_name,
@@ -299,51 +291,41 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'create', '--engine', 'kubeflow', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     self.assertTrue('Pipeline "{}" already exists.'.format(self._pipeline_name),
                     result.output)
 
   def testPipelineUpdate(self):
-    handler_pipeline_path = os.path.join(self._kubeflow_home,
-                                         self._pipeline_name)
-
     # Try pipeline update when pipeline does not exist.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'update', '--engine', 'kubeflow', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
 
     # Now update an existing pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     result = self.runner.invoke(cli_group, [
         'pipeline', 'update', '--engine', 'kubeflow', '--pipeline_path',
-        self._pipeline_path_updated, '--endpoint', self._endpoint
+        self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
     self.assertIn(
         'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
         result.output)
-    self.assertTrue(
-        tf.io.gfile.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+    self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
 
   def testPipelineCompile(self):
-
     # Invalid DSL path
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
                   result.output)
@@ -355,7 +337,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
         pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('kubeflow runner not found in dsl.', result.output)
 
@@ -364,24 +345,19 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'compile', '--engine', 'kubeflow', '--pipeline_path',
         self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Pipeline compiled successfully', result.output)
 
   def testPipelineDelete(self):
-    handler_pipeline_path = os.path.join(self._kubeflow_home,
-                                         self._pipeline_name)
-
     # Try deleting a non existent pipeline.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
 
     # Create a pipeline.
     self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
@@ -391,9 +367,8 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(tf.io.gfile.exists(self._handler_pipeline_path))
     self.assertIn(
         'Pipeline {} deleted successfully.'.format(self._pipeline_name),
         result.output)
@@ -407,77 +382,26 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     result = self.runner.invoke(cli_group, [
         'pipeline', 'list', '--engine', 'kubeflow', '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
     self.assertIn(self._pipeline_name, result.output)
     self.assertIn(self._pipeline_name_v2, result.output)
 
   def testPipelineCreateAutoDetect(self):
-    handler_pipeline_path = os.path.join(self._kubeflow_home,
-                                         self._pipeline_name)
-    pipeline_package_path = os.path.join(
-        self._kubeflow_home, '{}.tar.gz'.format(self._pipeline_name))
     result = self.runner.invoke(cli_group, [
         'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
         self._pipeline_path, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     if labels.AIRFLOW_PACKAGE_NAME in self._pip_list and labels.KUBEFLOW_PACKAGE_NAME in self._pip_list:
       self.assertIn(
           'Multiple orchestrators found. Choose one using --engine flag.',
           result.output)
     else:
-      self.assertTrue(tf.io.gfile.exists(pipeline_package_path))
-      self.assertTrue(
-          tf.io.gfile.exists(
-              os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+      self.assertTrue(tf.io.gfile.exists(self._pipeline_package_path))
+      self.assertTrue(tf.io.gfile.exists(self._handler_pipeline_args_path))
       self.assertIn(
           'Pipeline "{}" created successfully.'.format(self._pipeline_name),
           result.output)
-
-  def testPipelineSchemaError(self):
-    # Try getting schema without creating pipeline.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name_v2
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn(
-        'Pipeline "{}" does not exist.'.format(self._pipeline_name_v2),
-        result.output)
-
-    # Create a pipeline.
-    self._valid_create_and_check(self._pipeline_path_v2, self._pipeline_name_v2)
-
-    # Try getting schema without creating a pipeline run.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name_v2
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn(
-        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
-        result.output)
-
-    # Run pipeline.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name_v2
-    ])
-
-    # Try inferring schema without SchemaGen output.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name_v2
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn(
-        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
-        result.output)
 
   def testRunCreate(self):
     # Try running a non-existent pipeline.
@@ -485,7 +409,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'run', 'create', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
                   result.output)
     self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
@@ -500,7 +423,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         self._pipeline_name, '--endpoint', self._endpoint
     ])
 
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
                   result.output)
     self.assertNotIn(
@@ -521,7 +443,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'run', 'delete', '--engine', 'kubeflow', '--endpoint', self._endpoint,
         '--run_id', run.id
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Deleting run.', result.output)
     self.assertIn('Run deleted.', result.output)
 
@@ -537,7 +458,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'run', 'terminate', '--engine', 'kubeflow', '--endpoint',
         self._endpoint, '--run_id', run.id
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Terminating run.', result.output)
     self.assertIn('Run terminated.', result.output)
 
@@ -553,7 +473,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'run', 'status', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint, '--run_id', run.id
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Retrieving run status.', result.output)
     self.assertIn(str(run.id), result.output)
     self.assertIn(self._pipeline_name, result.output)
@@ -571,7 +490,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         'run', 'list', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn(
         'Listing all runs of pipeline: {}'.format(self._pipeline_name),
         result.output)

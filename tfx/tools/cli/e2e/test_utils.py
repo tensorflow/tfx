@@ -31,7 +31,6 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -129,15 +128,3 @@ def create_e2e_components(
       example_gen, statistics_gen, infer_schema, validate_stats, transform,
       trainer, model_analyzer, model_validator, pusher
   ]
-
-
-def get_kubeflow_metadata_config(
-    pipeline_name: Text) -> kubeflow_pb2.KubeflowMetadataConfig:
-  config = kubeflow_pb2.KubeflowMetadataConfig()
-  config.mysql_db_service_host.environment_variable = 'MYSQL_SERVICE_HOST'
-  config.mysql_db_service_port.environment_variable = 'MYSQL_SERVICE_PORT'
-  # MySQL database name cannot exceed 64 characters.
-  config.mysql_db_name.value = 'mlmd_{}'.format(pipeline_name[-59:])
-  config.mysql_db_user.value = 'root'
-  config.mysql_db_password.value = ''
-  return config
