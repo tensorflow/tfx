@@ -19,6 +19,8 @@
     delete and create new ones when pipelines are updated for KFP. (Requires
     kfp >= 0.3.0)
 *   Added ability to enable quantization in tflite rewriter.
+*   Added k8s pod labels when the pipeline is executed via KubeflowDagRunner for
+    better usage telemetry.
 
 ### Deprecations
 
