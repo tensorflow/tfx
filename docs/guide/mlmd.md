@@ -48,15 +48,6 @@ following list provides a non-exhaustive overview of some of the major benefits.
     changelist used for a workflow run; group the lineage by experiments; manage
     artifacts by projects.
 
-## Imports
-
-Before setting up the datastore, you will need to set up imports.
-
-```python
-from ml_metadata import metadata_store
-from ml_metadata.proto import metadata_store_pb2
-```
-
 ## Metadata Storage Backends and Store Connection Configuration
 
 The MetadataStore object receives a connection configuration that corresponds to
