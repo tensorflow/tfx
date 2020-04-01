@@ -244,7 +244,8 @@ class TFTBenchmarkBase(test.Benchmark):
         tf_config=None,
         shared_graph_state_handle=shared.Shared(),
         passthrough_keys=set(),
-        exclude_outputs=None)
+        exclude_outputs=None,
+        use_tfxio=False)
 
     start = time.time()
     for batch in batched_records:
