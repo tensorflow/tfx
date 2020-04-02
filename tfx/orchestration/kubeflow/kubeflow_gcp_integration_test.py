@@ -30,7 +30,6 @@ from tfx.components.base import executor_spec
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.model_validator.component import ModelValidator
 from tfx.components.pusher.component import Pusher
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
@@ -181,18 +180,6 @@ class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
                 evaluator_pb2.SingleSlicingSpec(
                     column_for_slicing=['trip_start_hour'])
             ]))
-    ])
-    self._compile_and_run_pipeline(pipeline)
-
-  def testModelValidatorOnDataflowRunner(self):
-    """ModelValidator-only test pipeline on DataflowRunner."""
-    pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
-        self._random_id())
-    pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        self.raw_examples_importer, self.model_1_importer,
-        ModelValidator(
-            examples=self.raw_examples_importer.outputs['result'],
-            model=self.model_1_importer.outputs['result'])
     ])
     self._compile_and_run_pipeline(pipeline)
 
