@@ -25,19 +25,33 @@ from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli.e2e import test_utils
 
+# The base container image name to use when building the image used in tests.
+_BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
+
+# The GCP bucket to use to write output artifacts.
+_BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
+
+# The location of test data. The input files are copied to a test-local
+# location for each invocation, and cleaned up at the end of test.
+_TESTDATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
+
+
+def _get_test_output_dir():
+  return 'gs://{}/test_output'.format(_BUCKET_NAME)
+
+
+def _get_csv_input_location():
+  return os.path.join(_TESTDATA_ROOT, 'external', 'csv')
+
+
 # Name of the pipeline
 _PIPELINE_NAME = 'chicago_taxi_pipeline_kubeflow'
 
 
 def _create_pipeline():
   pipeline_name = _PIPELINE_NAME
-  pipeline_root = os.path.join(test_utils.get_test_output_dir(), pipeline_name)
-  components = test_utils.create_e2e_components(
-      pipeline_root,
-      test_utils.get_csv_input_location(),
-      test_utils.get_transform_module(),
-      test_utils.get_trainer_module(),
-  )
+  pipeline_root = os.path.join(_get_test_output_dir(), pipeline_name)
+  components = test_utils.create_e2e_components(_get_csv_input_location())
   return tfx_pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
@@ -53,6 +67,6 @@ def _create_pipeline():
 runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
     kubeflow_metadata_config=kubeflow_dag_runner
     .get_default_kubeflow_metadata_config(),
-    tfx_image=test_utils.BASE_CONTAINER_IMAGE)
+    tfx_image=_BASE_CONTAINER_IMAGE)
 _ = kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
     _create_pipeline())

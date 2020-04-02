@@ -23,7 +23,6 @@ import locale
 import os
 import subprocess
 import sys
-import tempfile
 import time
 
 import absl
@@ -31,6 +30,7 @@ from click import testing as click_testing
 import tensorflow as tf
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
+from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
 
 
@@ -53,7 +53,7 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
 
     # Setup airflow_home in a temp directory
     self._airflow_home = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', tempfile.mkdtemp()),
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName, 'airflow')
     self._old_airflow_home = os.environ.get('AIRFLOW_HOME')
     os.environ['AIRFLOW_HOME'] = self._airflow_home
@@ -69,12 +69,16 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
 
+    self._pipeline_name = 'chicago_taxi_simple'
+    self._pipeline_path = os.path.join(self._testdata_dir,
+                                       'test_pipeline_airflow_1.py')
+
     # Copy data.
     chicago_taxi_pipeline_dir = os.path.join(
         os.path.dirname(
             os.path.dirname(
                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-        'examples', 'chicago_taxi_pipeline', '')
+        'examples', 'chicago_taxi_pipeline')
     data_dir = os.path.join(chicago_taxi_pipeline_dir, 'data', 'simple')
     content = tf.io.gfile.listdir(data_dir)
     assert content, 'content in {} is empty'.format(data_dir)
@@ -109,35 +113,29 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     # (And it doesn't initialize db.)
     self._airflow_initdb()
 
-  def _valid_create_and_check(self, pipeline_path, pipeline_name):
+  def _does_pipeline_args_file_exist(self, pipeline_name):
     handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
                                          pipeline_name)
+    return tf.io.gfile.exists(
+        os.path.join(handler_pipeline_path, 'pipeline_args.json'))
 
+  def _valid_create_and_check(self, pipeline_path, pipeline_name):
     # Create a pipeline.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'create', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
     ])
 
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue(
-        tf.io.gfile.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+    self.assertTrue(self._does_pipeline_args_file_exist(pipeline_name))
     self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
                   result.output)
 
   def testPipelineCreateAutoDetect(self):
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
-    handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
-                                         pipeline_name)
     result = self.runner.invoke(cli_group, [
         'pipeline', 'create', '--engine', 'auto', '--pipeline_path',
-        pipeline_path
+        self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
     if labels.AIRFLOW_PACKAGE_NAME in self._pip_list and labels.KUBEFLOW_PACKAGE_NAME in self._pip_list:
       self.assertIn(
@@ -146,72 +144,55 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     else:
       self.assertIn('Detected Airflow', result.output)
       self.assertTrue(
-          tf.io.gfile.exists(
-              os.path.join(handler_pipeline_path, 'pipeline_args.json')))
-      self.assertIn('Pipeline "{}" created successfully.'.format(pipeline_name),
-                    result.output)
+          self._does_pipeline_args_file_exist(self._pipeline_name))
+      self.assertIn(
+          'Pipeline "{}" created successfully.'.format(self._pipeline_name),
+          result.output)
 
   def testPipelineCreate(self):
     # Create a pipeline.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
-    self._valid_create_and_check(pipeline_path, pipeline_name)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Test pipeline create when pipeline already exists.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'create', '--engine', 'airflow', '--pipeline_path',
-        pipeline_path
+        self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating pipeline', result.output)
-    self.assertTrue('Pipeline "{}" already exists.'.format(pipeline_name),
+    self.assertTrue('Pipeline "{}" already exists.'.format(self._pipeline_name),
                     result.output)
 
   def testPipelineUpdate(self):
-    pipeline_name = 'chicago_taxi_simple'
-    handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
-                                         pipeline_name)
-
     # Try pipeline update when pipeline does not exist.
-    pipeline_path_1 = os.path.join(self._testdata_dir,
-                                   'test_pipeline_airflow_1.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'update', '--engine', 'airflow', '--pipeline_path',
-        pipeline_path_1
+        self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(self._does_pipeline_args_file_exist(self._pipeline_name))
 
     # Now update an existing pipeline.
-    self._valid_create_and_check(pipeline_path_1, pipeline_name)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
-    pipeline_path_2 = os.path.join(self._testdata_dir,
-                                   'test_pipeline_airflow_2.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'update', '--engine', 'airflow', '--pipeline_path',
-        pipeline_path_2
+        self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Updating pipeline', result.output)
-    self.assertIn('Pipeline "{}" updated successfully.'.format(pipeline_name),
-                  result.output)
-    self.assertTrue(
-        tf.io.gfile.exists(
-            os.path.join(handler_pipeline_path, 'pipeline_args.json')))
+    self.assertIn(
+        'Pipeline "{}" updated successfully.'.format(self._pipeline_name),
+        result.output)
+    self.assertTrue(self._does_pipeline_args_file_exist(self._pipeline_name))
 
   def testPipelineCompile(self):
-
     # Invalid DSL path
     pipeline_path = os.path.join(self._testdata_dir, 'test_pipeline_flink.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Invalid pipeline path: {}'.format(pipeline_path),
                   result.output)
@@ -223,122 +204,67 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
         pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('airflow runner not found in dsl.', result.output)
 
     # Successful compilation.
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_2.py')
     result = self.runner.invoke(cli_group, [
         'pipeline', 'compile', '--engine', 'airflow', '--pipeline_path',
-        pipeline_path
+        self._pipeline_path
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Compiling pipeline', result.output)
     self.assertIn('Pipeline compiled successfully', result.output)
 
   def testPipelineDelete(self):
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_1.py')
-    pipeline_name = 'chicago_taxi_simple'
-    handler_pipeline_path = os.path.join(self._airflow_home, 'dags',
-                                         pipeline_name)
-
     # Try deleting a non existent pipeline.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'delete', '--engine', 'airflow', '--pipeline_name',
-        pipeline_name
+        self._pipeline_name
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
+    self.assertFalse(self._does_pipeline_args_file_exist(self._pipeline_name))
 
     # Create a pipeline.
-    self._valid_create_and_check(pipeline_path, pipeline_name)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Now delete the pipeline.
     result = self.runner.invoke(cli_group, [
         'pipeline', 'delete', '--engine', 'airflow', '--pipeline_name',
-        pipeline_name
+        self._pipeline_name
     ])
-    self.assertIn('CLI', result.output)
     self.assertIn('Deleting pipeline', result.output)
-    self.assertFalse(tf.io.gfile.exists(handler_pipeline_path))
-    self.assertIn('Pipeline "{}" deleted successfully.'.format(pipeline_name),
-                  result.output)
+    self.assertFalse(self._does_pipeline_args_file_exist(self._pipeline_name))
+    self.assertIn(
+        'Pipeline "{}" deleted successfully.'.format(self._pipeline_name),
+        result.output)
 
   def testPipelineList(self):
+    # Prepare another pipeline file.
+    pipeline_name_v2 = 'chicago_taxi_simple_v2'
+    pipeline_path_v2 = os.path.join(self.get_temp_dir(),
+                                    'test_pipeline_airflow_v2.py')
+    test_utils.copy_and_change_pipeline_name(self._pipeline_path,
+                                             pipeline_path_v2,
+                                             self._pipeline_name,
+                                             pipeline_name_v2)
 
     # Try listing pipelines when there are none.
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'list', '--engine', 'airflow'])
-    self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
 
     # Create pipelines.
-    pipeline_name_1 = 'chicago_taxi_simple'
-    pipeline_path_1 = os.path.join(self._testdata_dir,
-                                   'test_pipeline_airflow_1.py')
-    self._valid_create_and_check(pipeline_path_1, pipeline_name_1)
-
-    pipeline_name_2 = 'chicago_taxi_simple_v2'
-    pipeline_path_2 = os.path.join(self._testdata_dir,
-                                   'test_pipeline_airflow_3.py')
-    self._valid_create_and_check(pipeline_path_2, pipeline_name_2)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
+    self._valid_create_and_check(pipeline_path_v2, pipeline_name_v2)
 
     # List pipelines.
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'list', '--engine', 'airflow'])
-    self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
-    self.assertIn(pipeline_name_1, result.output)
-    self.assertIn(pipeline_name_2, result.output)
-
-  def testPipelineSchemaError(self):
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_2.py')
-    pipeline_name = 'chicago_taxi_simple'
-
-    # Try getting schema without creating pipeline.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
-        pipeline_name
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
-                  result.output)
-
-    # Create a pipeline.
-    self._valid_create_and_check(pipeline_path, pipeline_name)
-
-    # Try getting schema without creating a pipeline run.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
-        pipeline_name
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn(
-        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
-        result.output)
-
-    # Run pipeline.
-    self._valid_run_and_check(pipeline_name)
-
-    # Try inferring schema without SchemaGen output.
-    result = self.runner.invoke(cli_group, [
-        'pipeline', 'schema', '--engine', 'airflow', '--pipeline_name',
-        pipeline_name
-    ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Getting latest schema.', result.output)
-    self.assertIn(
-        'Create a run before inferring schema. If pipeline is already running, then wait for it to successfully finish.',
-        result.output)
+    self.assertIn(self._pipeline_name, result.output)
+    self.assertIn(pipeline_name_v2, result.output)
 
   def _valid_run_and_check(self, pipeline_name):
     # Wait to fill up the DagBag.
@@ -353,7 +279,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
         'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
     ])
 
-    self.assertIn('CLI', result.output)
     self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
                   result.output)
     self.assertNotIn('Pipeline "{}" does not exist.'.format(pipeline_name),
@@ -365,63 +290,56 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     #       actually. This e2e test covers CLI side of the execution only.
 
   def testRunCreate(self):
-    pipeline_name = 'chicago_taxi_simple'
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_1.py')
-
     # Try running a non-existent pipeline.
     result = self.runner.invoke(cli_group, [
-        'run', 'create', '--engine', 'airflow', '--pipeline_name', pipeline_name
+        'run', 'create', '--engine', 'airflow', '--pipeline_name',
+        self._pipeline_name
     ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Creating a run for pipeline: {}'.format(pipeline_name),
+    self.assertIn('Creating a run for pipeline: {}'.format(self._pipeline_name),
                   result.output)
-    self.assertIn('Pipeline "{}" does not exist.'.format(pipeline_name),
+    self.assertIn('Pipeline "{}" does not exist.'.format(self._pipeline_name),
                   result.output)
 
     # Now create a pipeline.
-    self._valid_create_and_check(pipeline_path, pipeline_name)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Run pipeline.
-    self._valid_run_and_check(pipeline_name)
+    self._valid_run_and_check(self._pipeline_name)
 
   def testRunList(self):
-    pipeline_name = 'chicago_taxi_simple'
-    pipeline_path = os.path.join(self._testdata_dir,
-                                 'test_pipeline_airflow_1.py')
-
     # Now create a pipeline.
-    self._valid_create_and_check(pipeline_path, pipeline_name)
+    self._valid_create_and_check(self._pipeline_path, self._pipeline_name)
 
     # Check if pipeline runs exist.
     result = self.runner.invoke(cli_group, [
-        'run', 'list', '--engine', 'airflow', '--pipeline_name', pipeline_name
+        'run', 'list', '--engine', 'airflow', '--pipeline_name',
+        self._pipeline_name
     ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Listing all runs of pipeline: {}'.format(pipeline_name),
-                  result.output)
-    self.assertIn('No pipeline runs for {}'.format(pipeline_name),
+    self.assertIn(
+        'Listing all runs of pipeline: {}'.format(self._pipeline_name),
+        result.output)
+    self.assertIn('No pipeline runs for {}'.format(self._pipeline_name),
                   result.output)
 
     # Run pipeline.
-    self._valid_run_and_check(pipeline_name)
+    self._valid_run_and_check(self._pipeline_name)
 
-    time.sleep(1)   # Sleep to ensure two pipelines have different timestamps.
+    time.sleep(1)  # Sleep to ensure two pipelines have different timestamps.
     # Run pipeline again.
-    self._valid_run_and_check(pipeline_name)
+    self._valid_run_and_check(self._pipeline_name)
 
     # List pipeline runs.
     result = self.runner.invoke(cli_group, [
-        'run', 'list', '--engine', 'airflow', '--pipeline_name', pipeline_name
+        'run', 'list', '--engine', 'airflow', '--pipeline_name',
+        self._pipeline_name
     ])
-    self.assertIn('CLI', result.output)
-    self.assertIn('Listing all runs of pipeline: {}'.format(pipeline_name),
-                  result.output)
+    self.assertIn(
+        'Listing all runs of pipeline: {}'.format(self._pipeline_name),
+        result.output)
 
   def testUninstalledOrchestratorKubeflow(self):
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'list', '--engine', 'kubeflow'])
-    self.assertIn('CLI', result.output)
     self.assertIn('Listing all pipelines', result.output)
     # When only Airflow is installed.
     if labels.KUBEFLOW_PACKAGE_NAME not in self._pip_list:
