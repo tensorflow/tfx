@@ -451,6 +451,43 @@ Kubeflow:
     --namespace=<kubernetes_namespace> \
     --endpoint=<endpoint_url>
 
+### [Experimental] Template group
+
+The command structure for template group of commands is as follows:
+
+      tfx template <subcommand> <required_flags> [optional_flags]
+
+Template is an experimental feature and subject to change at any time.
+
+#### list
+
+List available templates.
+
+Usage:
+
+    tfx template list
+
+#### copy
+
+Copy a template to the destination directory.
+
+Usage:
+
+    tfx template copy <required_flags>
+
+Required flags:
+
+*   --model
+*   --pipeline_name
+*   --destination_path
+
+Examples:
+
+    tfx template copy \
+    --model=<model> \
+    --pipeline_name=<name_of_the_pipeline> \
+    --destination_path=<path_to_be_created>
+
 ## Flags
 
 ### Common flags
