@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
+from tfx.utils import io_utils
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -147,8 +148,8 @@ class AirflowHandlerTest(tf.test.TestCase):
     handler.create_pipeline()
 
     # Update test_pipeline and run update_pipeline
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_airflow_2.py')
+    pipeline_path_2 = os.path.join(self._tmp_dir, 'test_pipeline_airflow_2.py')
+    io_utils.copy_file(pipeline_path_1, pipeline_path_2)
     flags_dict_2 = {labels.ENGINE_FLAG: self.engine,
                     labels.PIPELINE_DSL_PATH: pipeline_path_2}
     handler = airflow_handler.AirflowHandler(flags_dict_2)

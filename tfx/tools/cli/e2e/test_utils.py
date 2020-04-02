@@ -18,71 +18,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 from typing import List, Text
 
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx.components import CsvExampleGen
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
 from tfx.components.base.base_component import BaseComponent
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.model_validator.component import ModelValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
-from tfx.proto import evaluator_pb2
-from tfx.proto import pusher_pb2
-from tfx.proto import trainer_pb2
 from tfx.utils import dsl_utils
-
-# The base container image name to use when building the image used in tests.
-BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
-
-# The project id to use to run tests.
-GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
-
-# The GCP bucket to use to write output artifacts.
-BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
-
-# The location of test data. The input files are copied to a test-local
-# location for each invocation, and cleaned up at the end of test.
-TESTDATA_ROOT = os.environ['KFP_E2E_TEST_DATA_ROOT']
-
-# The location of test user module
-# It is retrieved from inside the container subject to testing.
-MODULE_ROOT = '/tfx-src/tfx/components/testdata/module_file'
-
-
-def get_test_output_dir():
-  return 'gs://{}/test_output'.format(BUCKET_NAME)
-
-
-def get_csv_input_location():
-  return os.path.join(TESTDATA_ROOT, 'external', 'csv')
-
-
-def get_transform_module():
-  return os.path.join(MODULE_ROOT, 'transform_module.py')
-
-
-def get_trainer_module():
-  return os.path.join(MODULE_ROOT, 'trainer_module.py')
 
 
 def create_e2e_components(
-    pipeline_root: Text,
     csv_input_location: Text,
-    transform_module: Text,
-    trainer_module: Text,
 ) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
+     Because we don't need to run whole pipeline, we will make a very short
+     toy pipeline.
+
   Args:
-    pipeline_root: The root of the pipeline output.
     csv_input_location: The location of the input data directory.
-    transform_module: The location of the transform module file.
-    trainer_module: The location of the trainer module file.
 
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
@@ -91,40 +46,19 @@ def create_e2e_components(
 
   example_gen = CsvExampleGen(input=examples)
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-  infer_schema = SchemaGen(
+  schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
       infer_feature_shape=False)
-  validate_stats = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
-  transform = Transform(
-      input_data=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
-      module_file=transform_module)
-  trainer = Trainer(
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
-      transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5),
-      module_file=trainer_module)
-  model_analyzer = Evaluator(
-      examples=example_gen.outputs['examples'],
-      model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])
-      ]))
-  model_validator = ModelValidator(
-      examples=example_gen.outputs['examples'], model=trainer.outputs['model'])
-  pusher = Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=model_validator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=os.path.join(pipeline_root, 'model_serving'))))
 
-  return [
-      example_gen, statistics_gen, infer_schema, validate_stats, transform,
-      trainer, model_analyzer, model_validator, pusher
-  ]
+  return [example_gen, statistics_gen, schema_gen]
+
+
+def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,
+                                  origin_pipeline_name: Text,
+                                  new_pipeline_name: Text) -> None:
+  """Copy pipeline file to new path with pipeline name changed."""
+  contents = file_io.read_file_to_string(orig_path)
+  assert contents.count(
+      origin_pipeline_name) == 1, 'DSL file can only contain one pipeline name'
+  contents = contents.replace(origin_pipeline_name, new_pipeline_name)
+  file_io.write_string_to_file(new_path, contents)

@@ -39,9 +39,9 @@ import kfp_server_api
 import tensorflow as tf
 
 from google.cloud import storage
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
+from tfx.tools.cli.e2e import test_utils
 
 
 class CliKubeflowEndToEndTest(tf.test.TestCase):
@@ -94,13 +94,15 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     self._pipeline_path_v2 = os.path.join(self._testdata_dir_updated,
                                           'test_pipeline_kubeflow_2.py')
 
-    self._change_pipeline_name(orig_pipeline_path, self._pipeline_path,
-                               'chicago_taxi_pipeline_kubeflow',
-                               self._pipeline_name)
+    test_utils.copy_and_change_pipeline_name(orig_pipeline_path,
+                                             self._pipeline_path,
+                                             'chicago_taxi_pipeline_kubeflow',
+                                             self._pipeline_name)
     self.assertTrue(tf.io.gfile.exists(self._pipeline_path))
-    self._change_pipeline_name(orig_pipeline_path, self._pipeline_path_v2,
-                               'chicago_taxi_pipeline_kubeflow',
-                               self._pipeline_name_v2)
+    test_utils.copy_and_change_pipeline_name(orig_pipeline_path,
+                                             self._pipeline_path_v2,
+                                             'chicago_taxi_pipeline_kubeflow',
+                                             self._pipeline_name_v2)
     self.assertTrue(tf.io.gfile.exists(self._pipeline_path_v2))
 
     # Endpoint URL
@@ -139,16 +141,6 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     os.chdir(self._olddir)
     shutil.rmtree(self._kubeflow_home)
     absl.logging.info('Deleted all runs.')
-
-  def _change_pipeline_name(self, orig_path: Text, new_path: Text,
-                            origin_pipeline_name: Text,
-                            new_pipeline_name: Text) -> None:
-    """Copy pipeline file to new path with pipeline name changed."""
-    contents = file_io.read_file_to_string(orig_path)
-    assert contents.count(origin_pipeline_name
-                         ) == 1, 'DSL file can only contain one pipeline name'
-    contents = contents.replace(origin_pipeline_name, new_pipeline_name)
-    file_io.write_string_to_file(new_path, contents)
 
   def _cleanup_kfp_server(self):
     pipelines = tf.io.gfile.listdir(self._kubeflow_home)
