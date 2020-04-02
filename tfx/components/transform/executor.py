@@ -738,9 +738,8 @@ class Executor(base_executor.BaseExecutor):
 
     def expand(
         self, pipeline
-    ) -> Tuple[Dict[Text, Optional[_Dataset]],
-               Optional[Dict[Text, Dict[Text, beam.pvalue.PCollection]]],
-               bool]:
+    ) -> Tuple[Dict[Text, Optional[_Dataset]], Optional[Dict[Text, Dict[
+        Text, beam.pvalue.PCollection]]]]:
       dataset_keys_list = [
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
@@ -762,12 +761,15 @@ class Executor(base_executor.BaseExecutor):
         # Cache is disabled so we won't be filtering out any datasets, and will
         # always perform a flatten over all of them.
         filtered_analysis_dataset_keys = dataset_keys_list
-        flat_data_required = True
       else:
-        filtered_analysis_dataset_keys, flat_data_required = (
+        filtered_analysis_dataset_keys = (
             tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
                 self._preprocessing_fn, self._feature_spec_or_typespec,
                 dataset_keys_list, input_cache))
+        # TODO(b/148082271, b/148212028, b/37788560): Remove this when we stop
+        # supporting TFT 0.21.2.
+        if isinstance(filtered_analysis_dataset_keys, tuple):
+          filtered_analysis_dataset_keys = filtered_analysis_dataset_keys[0]
 
       new_analyze_data_dict = {}
       for dataset in self._analyze_data_list:
@@ -776,7 +778,7 @@ class Executor(base_executor.BaseExecutor):
         else:
           new_analyze_data_dict[dataset.dataset_key] = None
 
-      return (new_analyze_data_dict, input_cache, flat_data_required)
+      return (new_analyze_data_dict, input_cache)
 
   def _GetPreprocessingFn(self, inputs: Mapping[Text, Any],
                           unused_outputs: Mapping[Text, Any]) -> Any:
@@ -1093,7 +1095,7 @@ class Executor(base_executor.BaseExecutor):
                 len(feature_spec_or_typespec), len(analyze_input_columns),
                 len(transform_input_columns)))
 
-        (new_analyze_data_dict, input_cache, flat_data_required) = (
+        (new_analyze_data_dict, input_cache) = (
             pipeline
             | 'OptimizeRun' >> self._OptimizeRun(
                 input_cache_dir, output_cache_dir, analyze_data_list,
@@ -1154,8 +1156,12 @@ class Executor(base_executor.BaseExecutor):
                   self._DecodeInputs(analyze_decode_fn))
               input_analysis_data[key] = dataset.decoded
 
-        flat_input_analysis_data = None
-        if flat_data_required:
+        analyze_input_metadata = (
+            analyze_data_tensor_adapter_config
+            if use_tfxio else input_dataset_metadata)
+        if not hasattr(tft_beam.analyzer_cache, 'FLATTENED_DATASET_KEY'):
+          # TODO(b/148082271, b/148212028, b/37788560): Remove this when we stop
+          # supporting TFT 0.21.2.
           flat_input_analysis_data = (
               [
                   dataset for dataset in input_analysis_data.values()
@@ -1163,13 +1169,13 @@ class Executor(base_executor.BaseExecutor):
               ]
               | 'FlattenAnalysisDatasetsBecauseItIsRequired' >>
               beam.Flatten(pipeline=pipeline))
-
-        analyze_input_metadata = (
-            analyze_data_tensor_adapter_config
-            if use_tfxio else input_dataset_metadata)
+          analysis_inputs = (flat_input_analysis_data, input_analysis_data,
+                             input_cache, analyze_input_metadata)
+        else:
+          analysis_inputs = (input_analysis_data, input_cache,
+                             analyze_input_metadata)
         transform_fn, cache_output = (
-            (flat_input_analysis_data, input_analysis_data, input_cache,
-             analyze_input_metadata)
+            analysis_inputs
             | 'Analyze' >> tft_beam.AnalyzeDatasetWithCache(
                 preprocessing_fn, pipeline=pipeline))
 
@@ -1238,8 +1244,7 @@ class Executor(base_executor.BaseExecutor):
                 for dataset in analyze_data_list
             ]
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
-             | 'GenerateStats[FlattenedAnalysisDatasets]' >>
-             self._GenerateStats(
+             | 'GenerateStats[FlattenedAnalysisDataset]' >> self._GenerateStats(
                  pre_transform_feature_stats_path,
                  schema_proto,
                  stats_options=pre_transform_stats_options,
