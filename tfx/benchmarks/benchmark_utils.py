@@ -18,6 +18,16 @@ from __future__ import division
 from __future__ import print_function
 
 import importlib
+from google.protobuf import text_format
+from tensorflow_metadata.proto.v0 import schema_pb2
+
+
+def read_schema(proto_path):
+  """Reads a TF Metadata schema from the given text proto file."""
+  result = schema_pb2.Schema()
+  with open(proto_path) as fp:
+    text_format.Parse(fp.read(), result)
+  return result
 
 
 def get_dataset(name):

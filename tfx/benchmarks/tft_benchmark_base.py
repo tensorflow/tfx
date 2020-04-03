@@ -38,10 +38,8 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx_bsl.beam import shared
 
-from google.protobuf import text_format
 import tfx
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.benchmarks import benchmark_utils
 
 
@@ -118,14 +116,6 @@ class _AnalyzeAndTransformDataset(beam.PTransform):
       return transformed_dataset, transformed_metadata
 
 
-def _read_schema(proto_path):
-  """Reads a TF Metadata schema from the given text proto file."""
-  result = schema_pb2.Schema()
-  with open(proto_path) as fp:
-    text_format.Parse(fp.read(), result)
-  return result
-
-
 # Tuple for variables common to all benchmarks.
 CommonVariablesTuple = collections.namedtuple("CommonVariablesTuple", [
     "tf_metadata_schema", "preprocessing_fn", "transform_input_dataset_metadata"
@@ -135,7 +125,8 @@ CommonVariablesTuple = collections.namedtuple("CommonVariablesTuple", [
 def _get_common_variables(dataset):
   """Returns metadata schema, preprocessing fn, input dataset metadata."""
 
-  tf_metadata_schema = _read_schema(dataset.tf_metadata_schema_path())
+  tf_metadata_schema = benchmark_utils.read_schema(
+      dataset.tf_metadata_schema_path())
 
   preprocessing_fn = dataset.tft_preprocessing_fn()
 
