@@ -21,6 +21,8 @@
 *   Added ability to enable quantization in tflite rewriter.
 *   Added k8s pod labels when the pipeline is executed via KubeflowDagRunner for
     better usage telemetry.
+*   Parameterize the GCP taxi pipeline sample for easily ramping up to full taxi
+    dataset.
 
 ### Deprecations
 

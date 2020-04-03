@@ -41,9 +41,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     logical_pipeline = taxi_pipeline_kubeflow_gcp._create_pipeline(
         pipeline_name=taxi_pipeline_kubeflow_gcp._pipeline_name,
         pipeline_root=taxi_pipeline_kubeflow_gcp._pipeline_root,
-        query=taxi_pipeline_kubeflow_gcp._query,
         module_file=taxi_pipeline_kubeflow_gcp._module_file,
-        beam_pipeline_args=taxi_pipeline_kubeflow_gcp._beam_pipeline_args,
         ai_platform_training_args=taxi_pipeline_kubeflow_gcp
         ._ai_platform_training_args,
         ai_platform_serving_args=taxi_pipeline_kubeflow_gcp
