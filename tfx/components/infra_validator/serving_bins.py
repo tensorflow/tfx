@@ -116,6 +116,8 @@ class TensorFlowServing(ServingBinary):
       'auto_remove': True,
       # Run container in the background instead of streaming its output.
       'detach': True,
+      # Publish all ports to the host.
+      'publish_all_ports': True,
   }
   _DEFAULT_IMAGE_NAME = 'tensorflow/serving'
   _DEFAULT_GRPC_PORT = 8500
@@ -157,13 +159,11 @@ class TensorFlowServing(ServingBinary):
 
   def MakeDockerRunParams(
       self,
-      host_port: int,
       model_path: Text,
       needs_mount: bool) -> Dict[Text, Any]:
     """Make parameters for docker `client.containers.run`.
 
     Args:
-      host_port: Available port in the host to bind with container port.
       model_path: A path to the model.
       needs_mount: If True, model_path will be mounted to the container.
 
@@ -172,10 +172,7 @@ class TensorFlowServing(ServingBinary):
     """
     result = dict(
         self._BASE_DOCKER_RUN_PARAMS,
-        image=self._image,
-        ports={
-            '{}/tcp'.format(self.container_port): host_port
-        })
+        image=self._image)
 
     if needs_mount:
       # model_path should be a local directory. In order to make TF Serving see

@@ -17,15 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import contextlib
 import os
-import socket
 import time
 
 from absl import logging
 import docker
 from docker import errors as docker_errors
-from typing import Text
+from typing import Any, Dict, Text
 
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
@@ -46,14 +44,31 @@ def _make_docker_client(config: infra_validator_pb2.LocalDockerConfig):
   return docker.DockerClient(**params)
 
 
-def _find_available_port():
-  """Find available port in the host machine."""
-  with contextlib.closing(
-      socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-    sock.bind(('localhost', 0))
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _, port = sock.getsockname()
-    return port
+def _find_host_port(ports: Dict[Text, Any], container_port: int) -> Text:
+  """Find host port from container port mappings.
+
+  `ports` is a nested dictionary of the following structure:
+
+  {'8500/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32769'}],
+   '8501/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '32768'}]}
+
+  Args:
+    ports: Dictionary of docker container port mapping.
+    container_port: Corresponding container port you're looking for.
+
+  Returns:
+    A found host port.
+
+  Raises:
+    ValueError: No corresponding host port was found.
+  """
+  mappings = ports.get('{}/tcp'.format(container_port))
+  if mappings:
+    return mappings[0].get('HostPort')
+  else:
+    raise ValueError(
+        'No HostPort found for ContainerPort={} (all port mappings: {})'
+        .format(container_port, ports))
 
 
 class LocalDockerRunner(base_runner.BaseModelServerRunner):
@@ -95,13 +110,9 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
     assert self._container is None, (
         'You cannot start model server multiple times.')
 
-    host_port = _find_available_port()
-    self._endpoint = 'localhost:{}'.format(host_port)
-
     if isinstance(self._serving_binary, serving_bins.TensorFlowServing):
       is_local = os.path.isdir(self._model_path)
       run_params = self._serving_binary.MakeDockerRunParams(
-          host_port=host_port,
           model_path=self._model_path,
           needs_mount=is_local)
     else:
@@ -132,6 +143,9 @@ class LocalDockerRunner(base_runner.BaseModelServerRunner):
         continue
       # The container is running :)
       if status == 'running':
+        host_port = _find_host_port(self._container.ports,
+                                    self._serving_binary.container_port)
+        self._endpoint = 'localhost:{}'.format(host_port)
         return
       # Docker status is one of {'created', 'restarting', 'running', 'removing',
       # 'paused', 'exited', or 'dead'}. Status other than 'created' and
