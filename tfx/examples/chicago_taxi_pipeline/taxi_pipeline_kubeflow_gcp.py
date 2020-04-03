@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Dict, List, Text
+from typing import Dict, Text
 from absl import flags
 import tensorflow_model_analysis as tfma
 
@@ -37,9 +37,9 @@ from tfx.components.transform.component import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
@@ -49,7 +49,6 @@ flags.DEFINE_bool('distributed_training', False,
                   'If True, enable distributed training.')
 
 _pipeline_name = 'chicago_taxi_pipeline_kubeflow_gcp'
-
 
 # Directory and data locations (uses Google Cloud Storage).
 _input_bucket = 'gs://my-bucket'
@@ -101,62 +100,78 @@ _ai_platform_serving_args = {
     'regions': [_gcp_region],
 }
 
-# Beam args to run data processing on DataflowRunner.
-# TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
-# TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
-_beam_pipeline_args = [
-    '--runner=DataflowRunner',
-    '--experiments=shuffle_mode=auto',
-    '--project=' + _project_id,
-    '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
-    '--region=' + _gcp_region,
-    '--disk_size_gb=50',
-]
-
-# The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.
-# The full taxi dataset is > 120M record.  In the interest of resource
-# savings and time, we've set the default for this example to be much smaller.
-# Feel free to crank it up and process the full dataset!
-_query_sample_rate = 0.001  # Generate a 0.1% random sample.
-
-# This is the upper bound of FARM_FINGERPRINT in Bigquery (ie the max value of
-# signed int64).
-_max_int64 = '0x7FFFFFFFFFFFFFFF'
-
-# The query that extracts the examples from BigQuery.  The Chicago Taxi dataset
-# used for this example is a public dataset available on Google AI Platform.
-# https://console.cloud.google.com/marketplace/details/city-of-chicago-public-data/chicago-taxi-trips
-_query = """
-         SELECT
-           pickup_community_area,
-           fare,
-           EXTRACT(MONTH FROM trip_start_timestamp) AS trip_start_month,
-           EXTRACT(HOUR FROM trip_start_timestamp) AS trip_start_hour,
-           EXTRACT(DAYOFWEEK FROM trip_start_timestamp) AS trip_start_day,
-           UNIX_SECONDS(trip_start_timestamp) AS trip_start_timestamp,
-           pickup_latitude,
-           pickup_longitude,
-           dropoff_latitude,
-           dropoff_longitude,
-           trip_miles,
-           pickup_census_tract,
-           dropoff_census_tract,
-           payment_type,
-           company,
-           trip_seconds,
-           dropoff_community_area,
-           tips
-         FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
-         WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
-           < {query_sample_rate}""".format(
-               max_int64=_max_int64, query_sample_rate=_query_sample_rate)
-
 
 def _create_pipeline(
-    pipeline_name: Text, pipeline_root: Text, query: Text, module_file: Text,
-    beam_pipeline_args: List[Text], ai_platform_training_args: Dict[Text, Text],
+    pipeline_name: Text, pipeline_root: Text, module_file: Text,
+    ai_platform_training_args: Dict[Text, Text],
     ai_platform_serving_args: Dict[Text, Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
+
+  # The rate at which to sample rows from the Taxi dataset using BigQuery.
+  # The full taxi dataset is > 200M record.  In the interest of resource
+  # savings and time, we've set the default for this example to be much smaller.
+  # Feel free to crank it up and process the full dataset!
+  # By default it generates a 0.1% random sample.
+  query_sample_rate = data_types.RuntimeParameter(
+      name='query-sample-rate', ptype=float, default=0.001)
+
+  # This is the upper bound of FARM_FINGERPRINT in Bigquery (ie the max value of
+  # signed int64).
+  max_int64 = '0x7FFFFFFFFFFFFFFF'
+
+  # The query that extracts the examples from BigQuery. The Chicago Taxi dataset
+  # used for this example is a public dataset available on Google AI Platform.
+  # https://console.cloud.google.com/marketplace/details/city-of-chicago-public-data/chicago-taxi-trips
+  query = """
+          SELECT
+            pickup_community_area,
+            fare,
+            EXTRACT(MONTH FROM trip_start_timestamp) AS trip_start_month,
+            EXTRACT(HOUR FROM trip_start_timestamp) AS trip_start_hour,
+            EXTRACT(DAYOFWEEK FROM trip_start_timestamp) AS trip_start_day,
+            UNIX_SECONDS(trip_start_timestamp) AS trip_start_timestamp,
+            pickup_latitude,
+            pickup_longitude,
+            dropoff_latitude,
+            dropoff_longitude,
+            trip_miles,
+            pickup_census_tract,
+            dropoff_census_tract,
+            payment_type,
+            company,
+            trip_seconds,
+            dropoff_community_area,
+            tips
+          FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+          WHERE (ABS(FARM_FINGERPRINT(unique_key)) / {max_int64})
+            < {query_sample_rate}""".format(
+                max_int64=max_int64, query_sample_rate=str(query_sample_rate))
+
+  # Beam args to run data processing on DataflowRunner.
+  # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
+  # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
+  beam_pipeline_args = [
+      '--runner=DataflowRunner',
+      '--experiments=shuffle_mode=auto',
+      '--project=' + _project_id,
+      '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+      '--region=' + _gcp_region,
+      '--disk_size_gb=50',
+  ]
+
+  # Number of epochs in training.
+  train_steps = data_types.RuntimeParameter(
+      name='train-steps',
+      default=10000,
+      ptype=int,
+  )
+
+  # Number of epochs in evaluation.
+  eval_steps = data_types.RuntimeParameter(
+      name='eval-steps',
+      default=5000,
+      ptype=int,
+  )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = BigQueryExampleGen(query=query)
@@ -180,6 +195,34 @@ def _create_pipeline(
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
+  # Update ai_platform_training_args if distributed training was enabled.
+  # Number of worker machines used in distributed training.
+  worker_count = data_types.RuntimeParameter(
+      name='worker-count',
+      default=2,
+      ptype=int,
+  )
+
+  # Type of worker machines used in distributed training.
+  worker_type = data_types.RuntimeParameter(
+      name='worker-type',
+      default='standard',
+      ptype=str,
+  )
+
+  if FLAGS.distributed_training:
+    ai_platform_training_args.update({
+        # You can specify the machine types, the number of replicas for workers
+        # and parameter servers.
+        # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
+        'scaleTier': 'CUSTOM',
+        'masterType': 'large_model',
+        'workerType': worker_type,
+        'parameterServerType': 'standard',
+        'workerCount': worker_count,
+        'parameterServerCount': 1
+    })
+
   # Uses user-provided Python function that implements a model using TF-Learn
   # to train a model on Google Cloud AI Platform.
   trainer = Trainer(
@@ -189,8 +232,8 @@ def _create_pipeline(
       transformed_examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000),
+      train_args={'num_steps': train_steps},
+      eval_args={'num_steps': eval_steps},
       custom_config={
           ai_platform_trainer_executor.TRAINING_ARGS_KEY:
               ai_platform_training_args
@@ -268,26 +311,11 @@ def main(unused_argv):
       # Specify custom docker image to use.
       tfx_image=tfx_image)
 
-  if FLAGS.distributed_training:
-    _ai_platform_training_args.update({
-        # You can specify the machine types, the number of replicas for workers
-        # and parameter servers.
-        # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
-        'scaleTier': 'CUSTOM',
-        'masterType': 'large_model',
-        'workerType': 'standard',
-        'parameterServerType': 'standard',
-        'workerCount': 2,
-        'parameterServerCount': 1
-    })
-
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
       _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
-          query=_query,
           module_file=_module_file,
-          beam_pipeline_args=_beam_pipeline_args,
           ai_platform_training_args=_ai_platform_training_args,
           ai_platform_serving_args=_ai_platform_serving_args,
       ))
