@@ -98,8 +98,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(

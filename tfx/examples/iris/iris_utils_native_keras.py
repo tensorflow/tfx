@@ -34,6 +34,13 @@ from tfx.components.trainer.executor import TrainerFnArgs
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
 
+# Iris dataset has 150 records, and is divided to train and eval splits in 2:1
+# ratio.
+_TRAIN_DATA_SIZE = 100
+_EVAL_DATA_SIZE = 50
+_TRAIN_BATCH_SIZE = 20
+_EVAL_BATCH_SIZE = 10
+
 
 def _transformed_name(key):
   return key + '_xf'
@@ -107,11 +114,11 @@ def _build_keras_model() -> tf.keras.Model:
   d = keras.layers.concatenate(inputs)
   for _ in range(3):
     d = keras.layers.Dense(8, activation='relu')(d)
-  output = keras.layers.Dense(3, activation='softmax')(d)
+  outputs = keras.layers.Dense(3, activation='softmax')(d)
 
-  model = keras.Model(inputs=inputs, outputs=output)
+  model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=0.001),
+      optimizer=keras.optimizers.Adam(lr=0.0005),
       loss='sparse_categorical_crossentropy',
       metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
@@ -147,16 +154,21 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
+                            batch_size=_TRAIN_BATCH_SIZE)
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
+                           batch_size=_EVAL_BATCH_SIZE)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
     model = _build_keras_model()
 
+  steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
+
   model.fit(
       train_dataset,
-      steps_per_epoch=fn_args.train_steps,
+      epochs=int(fn_args.train_steps / steps_per_epoch),
+      steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)
 
