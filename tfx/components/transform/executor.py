@@ -160,7 +160,7 @@ class _Dataset(object):
     self._decoded = None
     self._standardized = None
     self._transformed = None
-    self._transformed_and_encoded = None
+    self._transformed_and_serialized = None
     self._transformed_and_standardized = None
     self._tfxio = None
 
@@ -220,9 +220,9 @@ class _Dataset(object):
     return self._transformed
 
   @property
-  def transformed_and_encoded(self):
-    assert self._transformed_and_encoded is not None
-    return self._transformed_and_encoded
+  def transformed_and_serialized(self):
+    assert self._transformed_and_serialized is not None
+    return self._transformed_and_serialized
 
   @property
   def transformed_and_standardized(self):
@@ -254,9 +254,9 @@ class _Dataset(object):
   def transformed(self, val):
     self._transformed = val
 
-  @transformed_and_encoded.setter
-  def transformed_and_encoded(self, val):
-    self._transformed_and_encoded = val
+  @transformed_and_serialized.setter
+  def transformed_and_serialized(self, val):
+    self._transformed_and_serialized = val
 
   @transformed_and_standardized.setter
   def transformed_and_standardized(self, val):
@@ -359,8 +359,6 @@ class Executor(base_executor.BaseExecutor):
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [
             labels.FORMAT_TFRECORD, labels.FORMAT_TFRECORD
         ],
-        labels.TFT_STATISTICS_USE_TFDV_LABEL:
-            True,
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
@@ -454,14 +452,14 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[bytes, tf.train.Example])
+  @beam.typehints.with_input_types(Tuple[bytes, bytes])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: Text,
                      transformed_example_path: Text) -> beam.pvalue.PDone:
     """Writes transformed examples compressed in gzip format.
 
     Args:
-      pcoll: PCollection of transformed examples.
+      pcoll: PCollection of serialized transformed examples.
       file_format: The output file format.
       transformed_example_path: path to write to.
 
@@ -475,9 +473,7 @@ class Executor(base_executor.BaseExecutor):
         pcoll
         | 'Values' >> beam.Values()
         | 'Write' >> beam.io.WriteToTFRecord(
-            transformed_example_path,
-            file_name_suffix='.gz',
-            coder=beam.coders.ProtoCoder(tf.train.Example)))
+            transformed_example_path, file_name_suffix='.gz'))
 
   def _GetSchema(self, schema_path: Text) -> schema_pb2.Schema:
     """Gets a tf.metadata schema.
@@ -515,21 +511,13 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(
-      Union[Tuple[bytes, Union[bytes, tf.train.Example]],  # Legacy format.
-            Union[pa.Table, pa.RecordBatch]])  # TFDV format.
+  @beam.typehints.with_input_types(pa.RecordBatch)
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _GenerateStats(
       pcoll: beam.pvalue.PCollection,
       stats_output_path: Text,
       schema: schema_pb2.Schema,
       stats_options: tfdv.StatsOptions,
-      # TODO(b/115684207): Remove this and all related code.
-      use_tfdv=True,
-      # TODO(b/115684207): Remove this and all related code.
-      examples_are_serialized=False,
-      # TODO(b/149308973): Remove this and all related code.
-      input_from_tfxio=False,
   ) -> beam.pvalue.PDone:
     """Generates statistics.
 
@@ -539,23 +527,15 @@ class Executor(base_executor.BaseExecutor):
       schema: schema.
       stats_options: An instance of `tfdv.StatsOptions()` used when computing
         statistics.
-      use_tfdv: whether use TFDV for computing statistics.
-      examples_are_serialized: Unused.
-      input_from_tfxio: whether the input data is produced from TFXIO.
 
     Returns:
       beam.pvalue.PDone.
     """
-    assert use_tfdv
-    del examples_are_serialized  # Unused
-
     stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
     # TODO(b/149308973): Remove once TFDV starts accepting RecordBatches.
-    if input_from_tfxio:
-      pcoll |= 'RecordBatchToTable' >> beam.Map(
-          lambda rb: pa.Table.from_batches([rb])).with_input_types(
-              pa.RecordBatch)
+    pcoll |= 'RecordBatchToTable' >> beam.Map(
+        lambda rb: pa.Table.from_batches([rb]))
     return (
         pcoll
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
@@ -564,9 +544,9 @@ class Executor(base_executor.BaseExecutor):
   # TODO(b/150456345): Obviate this once TFXIO-in-Transform rollout is
   # completed.
   @beam.typehints.with_input_types(List[bytes])
-  @beam.typehints.with_output_types(pa.Table)
-  class _ToArrowTablesFn(beam.DoFn):
-    """Converts a batch of serialized examples to an Arrow Table."""
+  @beam.typehints.with_output_types(pa.RecordBatch)
+  class _ToArrowRecordBatchesFn(beam.DoFn):
+    """Converts a batch of serialized examples to an Arrow RecordBatch."""
 
     __slots__ = ['_serialized_schema', '_decoder']
 
@@ -578,18 +558,18 @@ class Executor(base_executor.BaseExecutor):
           tfx_bsl.coders.example_coder.ExamplesToRecordBatchDecoder(
               self._serialized_schema))
 
-    def process(self, element: List[bytes]) -> Iterable[pa.Table]:
-      yield pa.Table.from_batches([self._decoder.DecodeBatch(element)])
+    def process(self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
+      yield self._decoder.DecodeBatch(element)
 
   # TODO(zhuo): Obviate this once TFXIO is used.
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[bytes, bytes])
-  @beam.typehints.with_output_types(pa.Table)
-  def _FromSerializedToArrowTables(
+  @beam.typehints.with_output_types(pa.RecordBatch)
+  def _ToArrowRecordBatches(
       pcoll: beam.pvalue.PCollection,
       schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
-    """Converts serialized examples to Arrow Tables.
+    """Converts serialized examples to Arrow RecordBatches.
 
     Args:
       pcoll: PCollection of Transformed data.
@@ -604,26 +584,8 @@ class Executor(base_executor.BaseExecutor):
         pcoll
         | 'Values' >> beam.Values()
         | 'BatchElements' >> beam.BatchElements(**kwargs)
-        | 'ToArrowTables' >> beam.ParDo(Executor._ToArrowTablesFn(schema)))
-
-  @staticmethod
-  @beam.ptransform_fn
-  @beam.typehints.with_input_types(Dict[Text, Any])
-  @beam.typehints.with_output_types(pa.Table)
-  def _FromDictsToArrowTables(
-      pcoll: beam.pvalue.PCollection,
-      schema: schema_pb2.Schema) -> beam.pvalue.PCollection:
-    """Converts Dicts to Arrow Tables."""
-
-    # TODO(pachristopher): Remove encoding and batching steps once TFT
-    # supports Arrow tables for its output.
-    return (
-        pcoll
-        | 'ToSerializedTFExamples'
-        >> beam.ParDo(Executor._EncodeAsExamples(serialized=True), schema
-                     ).with_output_types(Tuple[Optional[bytes], bytes])
-        | 'FromSerializedToArrowTables'
-        >> Executor._FromSerializedToArrowTables(schema=schema))  # pylint: disable=no-value-for-parameter
+        | 'ToArrowRecordBatches' >> beam.ParDo(
+            Executor._ToArrowRecordBatchesFn(schema)))
 
   @staticmethod
   @beam.ptransform_fn
@@ -680,25 +642,18 @@ class Executor(base_executor.BaseExecutor):
 
     return pcoll | 'ApplyDecodeFn' >> beam.Map(decode_example)
 
-  # TODO(katsiapis): Understand why 'Optional' is needed for the key of the
-  # output type.
   @beam.typehints.with_input_types(Dict[Text, Any], schema=schema_pb2.Schema)
-  @beam.typehints.with_output_types(Tuple[Optional[bytes],
-                                          Union[bytes, tf.train.Example]])
-  class _EncodeAsExamples(beam.DoFn):
-    """Encodes data as tf.Examples based on the given metadata."""
+  @beam.typehints.with_output_types(Tuple[Optional[bytes], bytes])
+  class _EncodeAsSerializedExamples(beam.DoFn):
+    """Encodes data as serialized tf.Examples based on the given metadata."""
 
-    __slots__ = ['_serialized', '_coder']
-
-    def __init__(self, serialized):
-      self._serialized = serialized  # pylint: disable=assigning-non-slot
-      self._coder = None  # pylint: disable=assigning-non-slot
+    def __init__(self):
+      self._coder = None
 
     def process(self, element: Dict[Text, Any], schema: schema_pb2.Schema
                ) -> Generator[Tuple[Any, Any], None, None]:
       if self._coder is None:
-        self._coder = tft.coders.ExampleProtoCoder(  # pylint: disable=assigning-non-slot
-            schema, serialized=self._serialized)
+        self._coder = tft.coders.ExampleProtoCoder(schema, serialized=True)
 
       # Make sure that the synthetic key feature doesn't get encoded.
       key = element.get(_TRANSFORM_INTERNAL_FEATURE_FOR_KEY, None)
@@ -838,8 +793,6 @@ class Executor(base_executor.BaseExecutor):
           data.
         - labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: File formats of paths to
           transform data.
-        - labels.TFT_STATISTICS_USE_TFDV_LABEL: Whether use tfdv to compute
-          statistics.
         - labels.MODULE_FILE: Path to a Python module that contains the
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
@@ -969,15 +922,13 @@ class Executor(base_executor.BaseExecutor):
         # TODO(b/122478841): Writes status to status file.
         return
 
-    stats_use_tfdv = value_utils.GetSoleValue(
-        inputs, labels.TFT_STATISTICS_USE_TFDV_LABEL)
     materialization_format = (
         transform_paths_file_formats[-1] if materialize_output_paths else None)
     self._RunBeamImpl(use_tfxio, analyze_data_list, transform_data_list,
                       preprocessing_fn, input_dataset_metadata,
                       transform_output_path, raw_examples_data_format,
                       temp_path, input_cache_dir, output_cache_dir,
-                      compute_statistics, stats_use_tfdv,
+                      compute_statistics,
                       per_set_stats_output_paths,
                       materialization_format)
   # TODO(b/122478841): Writes status to status file.
@@ -994,7 +945,6 @@ class Executor(base_executor.BaseExecutor):
                    input_cache_dir: Optional[Text],
                    output_cache_dir: Optional[Text],
                    compute_statistics: bool,
-                   stats_use_tfdv: bool,
                    per_set_stats_output_paths: Sequence[Text],
                    materialization_format: Optional[Text]) -> _Status:
     """Perform data preprocessing with TFT.
@@ -1011,7 +961,6 @@ class Executor(base_executor.BaseExecutor):
       input_cache_dir: A dir containing the input analysis cache. May be None.
       output_cache_dir: A dir to write the analysis cache to. May be None.
       compute_statistics: A bool indicating whether or not compute statistics.
-      stats_use_tfdv: Always True.
       per_set_stats_output_paths: Paths to per-set statistics output. If empty,
         per-set statistics is not produced.
       materialization_format: A string describing the format of the materialized
@@ -1021,7 +970,6 @@ class Executor(base_executor.BaseExecutor):
       Status of the execution.
     """
     if use_tfxio:
-      assert stats_use_tfdv
       # TODO(zhuo): add support for sequence example on par with the non-TFXIO
       # path. Currently what's missing is to compute pre-transform stats as if
       # they are tf.Examples
@@ -1228,29 +1176,24 @@ class Executor(base_executor.BaseExecutor):
                 input_dataset_metadata
                 if use_tfxio else analyze_input_dataset_metadata)
 
-            if stats_use_tfdv:
-              if not use_tfxio:
-                for dataset in analyze_data_list:
-                  infix = 'AnalysisIndex{}'.format(dataset.index)
-                  dataset.standardized = (
-                      dataset.serialized
-                      | 'FromSerializedToArrowTables[{}]'.format(infix)
-                      >> self._FromSerializedToArrowTables(schema_proto))
+            if not use_tfxio:
+              for dataset in analyze_data_list:
+                infix = 'AnalysisIndex{}'.format(dataset.index)
+                dataset.standardized = (
+                    dataset.serialized
+                    | 'ToArrowRecordBatches[{}]'.format(infix)
+                    >> self._ToArrowRecordBatches(schema_proto))
 
             pre_transform_stats_options = (
                 transform_stats_options.get_pre_transform_stats_options())
             ([
-                dataset.standardized if stats_use_tfdv else dataset.serialized
-                for dataset in analyze_data_list
+                dataset.standardized for dataset in analyze_data_list
             ]
              | 'FlattenAnalysisDatasets' >> beam.Flatten(pipeline=pipeline)
              | 'GenerateStats[FlattenedAnalysisDataset]' >> self._GenerateStats(
                  pre_transform_feature_stats_path,
                  schema_proto,
-                 stats_options=pre_transform_stats_options,
-                 use_tfdv=stats_use_tfdv,
-                 examples_are_serialized=True,
-                 input_from_tfxio=use_tfxio))
+                 stats_options=pre_transform_stats_options))
 
           # transform_data_list is a superset of analyze_data_list, we pay the
           # cost to read the same dataset (analyze_data_list) again here to
@@ -1282,12 +1225,11 @@ class Executor(base_executor.BaseExecutor):
                 ((data, tft_transform_input_metadata), transform_fn)
                 | 'Transform[{}]'.format(infix) >> tft_beam.TransformDataset())
 
-            if materialization_format is not None or not stats_use_tfdv:
-              dataset.transformed_and_encoded = (
-                  dataset.transformed
-                  | 'Encode[{}]'.format(infix)
-                  >> beam.ParDo(self._EncodeAsExamples(serialized=False),
-                                _GetSchemaProto(metadata)))
+            dataset.transformed_and_serialized = (
+                dataset.transformed
+                | 'EncodeAndSerialize[{}]'.format(infix)
+                >> beam.ParDo(self._EncodeAsSerializedExamples(),
+                              _GetSchemaProto(metadata)))
 
           if compute_statistics:
             # Aggregated feature stats after transformation.
@@ -1298,13 +1240,14 @@ class Executor(base_executor.BaseExecutor):
             # and other metadata is dropped due to roundtrip to tensors.
             transformed_schema_proto = _GetSchemaProto(metadata)
 
-            if stats_use_tfdv:
-              for dataset in transform_data_list:
-                infix = 'TransformIndex{}'.format(dataset.index)
-                dataset.transformed_and_standardized = (
-                    dataset.transformed
-                    | 'FromDictsToArrowTables[{}]'.format(infix)
-                    >> self._FromDictsToArrowTables(transformed_schema_proto))
+            for dataset in transform_data_list:
+              infix = 'TransformIndex{}'.format(dataset.index)
+              dataset.transformed_and_standardized = (
+                  dataset.transformed_and_serialized
+                  | 'FromTransformedToArrowRecordBatches[{}]'
+                  .format(infix)
+                  >> self._ToArrowRecordBatches(
+                      schema=transformed_schema_proto))
 
             post_transform_feature_stats_path = os.path.join(
                 transform_output_path,
@@ -1312,16 +1255,14 @@ class Executor(base_executor.BaseExecutor):
 
             post_transform_stats_options = (
                 transform_stats_options.get_post_transform_stats_options())
-            ([(dataset.transformed_and_standardized
-               if stats_use_tfdv else dataset.transformed_and_encoded)
+            ([dataset.transformed_and_standardized
               for dataset in transform_data_list]
              | 'FlattenTransformedDatasets' >> beam.Flatten()
              | 'GenerateStats[FlattenedTransformedDatasets]' >>
              self._GenerateStats(
                  post_transform_feature_stats_path,
                  transformed_schema_proto,
-                 stats_options=post_transform_stats_options,
-                 use_tfdv=stats_use_tfdv))
+                 stats_options=post_transform_stats_options))
 
             if per_set_stats_output_paths:
               # TODO(b/130885503): Remove duplicate stats gen compute that is
@@ -1329,20 +1270,16 @@ class Executor(base_executor.BaseExecutor):
               # below.
               for dataset in transform_data_list:
                 infix = 'TransformIndex{}'.format(dataset.index)
-                if stats_use_tfdv:
-                  data = dataset.transformed_and_standardized
-                else:
-                  data = dataset.transformed_and_encoded
-                data | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
-                    dataset.stats_output_path,
-                    transformed_schema_proto,
-                    stats_options=post_transform_stats_options,
-                    use_tfdv=stats_use_tfdv)
+                (dataset.transformed_and_standardized
+                 | 'GenerateStats[{}]'.format(infix) >> self._GenerateStats(
+                     dataset.stats_output_path,
+                     transformed_schema_proto,
+                     stats_options=post_transform_stats_options))
 
           if materialization_format is not None:
             for dataset in transform_data_list:
               infix = 'TransformIndex{}'.format(dataset.index)
-              (dataset.transformed_and_encoded
+              (dataset.transformed_and_serialized
                | 'Materialize[{}]'.format(infix) >> self._WriteExamples(
                    materialization_format,
                    dataset.materialize_output_path))
