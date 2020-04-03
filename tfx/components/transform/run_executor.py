@@ -48,8 +48,6 @@ def _run_transform(args, beam_pipeline_args):
           args.preprocessing_fn_path,
       labels.EXAMPLES_DATA_FORMAT_LABEL:
           args.example_data_format,
-      labels.TFT_STATISTICS_USE_TFDV_LABEL:
-          args.use_tfdv,
       labels.COMPUTE_STATISTICS_LABEL:
           args.compute_statistics,
       labels.BEAM_PIPELINE_ARGS:
@@ -84,7 +82,7 @@ def main(argv):
       '--use_tfdv',
       type=bool,
       default=True,
-      help='Whether use TFDV for statistics computation')
+      help='Deprecated and ignored. DO NOT SET.')
   parser.add_argument(
       '--compute_statistics',
       type=bool,
