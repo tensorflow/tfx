@@ -23,7 +23,7 @@
     better usage telemetry.
 *   Parameterize the GCP taxi pipeline sample for easily ramping up to full taxi
     dataset.
-*   Added support for hyphens(dash) instead of underscores in CLI flags.
+*   Added support for hyphens(dash) in addition to underscores in CLI flags.
     Underscores will be supported as well.
 
 ### Deprecations
