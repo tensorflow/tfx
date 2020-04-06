@@ -77,6 +77,12 @@ class TemplateTest(tf.test.TestCase):
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Copying', result.output)
+    result = self.runner.invoke(template_group, [
+        'copy', '--pipeline-name', 'p', '--destination-path', '/path',
+        '--model', 'm'
+    ])
+    self.assertEqual(0, result.exit_code)
+    self.assertIn('Copying', result.output)
 
 
 if __name__ == '__main__':

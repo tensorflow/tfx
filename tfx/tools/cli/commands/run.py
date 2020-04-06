@@ -38,7 +38,11 @@ def run_group() -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 @click.option(
     '--endpoint',
     default='',
@@ -46,6 +50,7 @@ def run_group() -> None:
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default='',
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -72,7 +77,11 @@ def create_run(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--run_id', required=True, type=str, help='Unique ID for the run.)')
+    '--run_id',
+    '--run-id',
+    required=True,
+    type=str,
+    help='Unique ID for the run.)')
 @click.option(
     '--endpoint',
     default='',
@@ -80,6 +89,7 @@ def create_run(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default='',
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -106,7 +116,11 @@ def terminate_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 @click.option(
     '--endpoint',
     default='',
@@ -114,6 +128,7 @@ def terminate_run(ctx: Context, engine: Text, run_id: Text, endpoint: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default='',
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -140,9 +155,17 @@ def list_runs(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 @click.option(
-    '--run_id', required=True, type=str, help='Unique ID for the run.')
+    '--run_id',
+    '--run-id',
+    required=True,
+    type=str,
+    help='Unique ID for the run.')
 @click.option(
     '--endpoint',
     default='',
@@ -150,6 +173,7 @@ def list_runs(ctx: Context, engine: Text, pipeline_name: Text, endpoint: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default='',
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -177,7 +201,11 @@ def get_run(ctx: Context, engine: Text, pipeline_name: Text, run_id: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--run_id', required=True, type=str, help='Unique ID for the run.')
+    '--run_id',
+    '--run-id',
+    required=True,
+    type=str,
+    help='Unique ID for the run.')
 @click.option(
     '--endpoint',
     default='',
@@ -185,6 +213,7 @@ def get_run(ctx: Context, engine: Text, pipeline_name: Text, run_id: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default='',
     type=str,
     help='Client ID for IAP protected endpoint.')

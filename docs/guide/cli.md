@@ -16,6 +16,11 @@ below:
 
         tfx <group_name> <sub-command> flags
 
+There are several [flags](#flags) in tfx CLI. `-`(hyphen) or `_`(underscore) can
+be used to specify long flags. For example, you can specify a pipeline name
+using either `--pipeline_name <name>` or `--pipeline-name <name>`. Note that
+flags were expressed only using underscores for brevity in this document.
+
 ## Commands
 
 The following command groups are currently supported.
@@ -507,15 +512,15 @@ Examples:
     auto-detection is based on user environment. If Apache Airflow or Kubeflow
     is not installed then Apache Beam is used by default.
 
-*   --pipeline_name
+*   --pipeline_name or --pipeline-name
 
     The name of the pipeline.
 
-*   --pipeline_path
+*   --pipeline_path or --pipeline-path
 
     The path to the pipeline configuration file.
 
-*   --run_id
+*   --run_id or --run-id
 
     Unique identifier for a run instance of the pipeline.
 
@@ -531,7 +536,7 @@ Examples:
     "127.0.0.1:8080/pipeline". To use an IAP enabled cluster, set it to
     "https://<deployment_name>.endpoints.<project_id>.cloud.goog/pipeline"
 
-*   --iap_client_id
+*   --iap_client_id or --iap-client-id
 
     Client ID for IAP protected endpoint.
 
@@ -540,7 +545,7 @@ Examples:
     Kubernetes namespace to connect to the KFP API. Default value is set to
     'kubeflow'.
 
-*   --package_path:
+*   --package_path or --package-path
 
     Path to the pipeline output workflow file. The package_file should end with
     '.tar.gz', '.tgz', '.zip', '.yaml' or '.yml'. When unset, the workflow file
