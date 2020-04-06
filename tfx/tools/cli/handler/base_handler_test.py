@@ -92,7 +92,13 @@ class BaseHandlerTest(tf.test.TestCase):
     self.assertEqual(str(err.exception), 'Invalid pipeline path: {}'
                      .format(flags_dict[labels.PIPELINE_DSL_PATH]))
 
-  def testCheckDslRunnerWrongEngine(self):
+  def testCheckDslRunner(self):
+    flags_dict = {labels.ENGINE_FLAG: self.engine,
+                  labels.PIPELINE_DSL_PATH: self.pipeline_path}
+    handler = FakeHandler(flags_dict)
+    handler._check_dsl_runner()
+
+  def testCheckDslRunner_WrongEngine(self):
     flags_dict = {labels.ENGINE_FLAG: 'kubeflow',
                   labels.PIPELINE_DSL_PATH: self.pipeline_path}
     handler = FakeHandler(flags_dict)
