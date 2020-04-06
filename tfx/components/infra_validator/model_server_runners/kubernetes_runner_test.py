@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, Text
 
+from kubernetes import client as k8s_client
 from kubernetes.client import rest
 import mock
 import tensorflow as tf
@@ -47,14 +48,14 @@ class KubernetesRunnerTest(tf.test.TestCase):
     super(KubernetesRunnerTest, self).setUp()
     self.addCleanup(mock.patch.stopall)
 
-    base_dir = os.path.join(
+    self._base_dir = os.path.join(
         os.path.dirname(  # components/
             os.path.dirname(  # infra_validator/
                 os.path.dirname(__file__))),  # model_server_runners/
         'testdata'
     )
     self._model = standard_artifacts.Model()
-    self._model.uri = os.path.join(base_dir, 'trainer', 'current')
+    self._model.uri = os.path.join(self._base_dir, 'trainer', 'current')
     self._model_name = 'chicago-taxi'
 
     # Prepare mocks
@@ -82,12 +83,34 @@ class KubernetesRunnerTest(tf.test.TestCase):
       namespace='my-namespace',
       pod_name='my-pod-name',
       pod_uid='my-pod-uid',
-      pod_service_account_name='my-service-account-name'):
-    pod = mock.Mock()
-    pod.api_version = 'v1'
-    pod.kind = 'Pod'
-    pod.metadata.name = pod_name
-    pod.metadata.uid = pod_uid
+      pod_service_account_name='my-service-account-name',
+      with_pvc=False):
+    pod = k8s_client.V1Pod(
+        api_version='v1',
+        kind='Pod',
+        metadata=k8s_client.V1ObjectMeta(
+            name=pod_name,
+            uid=pod_uid,
+        ),
+        spec=k8s_client.V1PodSpec(
+            containers=[
+                k8s_client.V1Container(
+                    name='main',
+                    volume_mounts=[]),
+            ],
+            volumes=[]))
+
+    if with_pvc:
+      pod.spec.volumes.append(
+          k8s_client.V1Volume(
+              name='my-volume',
+              persistent_volume_claim=k8s_client
+              .V1PersistentVolumeClaimVolumeSource(
+                  claim_name='my-pvc')))
+      pod.spec.containers[0].volume_mounts.append(
+          k8s_client.V1VolumeMount(
+              name='my-volume',
+              mount_path=self._base_dir))
 
     mock.patch.object(kube_utils, 'is_inside_kfp', return_value=True).start()
     pod.spec.service_account_name = pod_service_account_name
@@ -95,6 +118,13 @@ class KubernetesRunnerTest(tf.test.TestCase):
                       return_value=pod).start()
     mock.patch.object(kube_utils, 'get_kfp_namespace',
                       return_value=namespace).start()
+    if with_pvc:
+      (self._mock_core_v1_api.read_namespaced_persistent_volume_claim
+       .return_value) = k8s_client.V1PersistentVolumeClaim(
+           metadata=k8s_client.V1ObjectMeta(
+               name='my-pvc'),
+           spec=k8s_client.V1PersistentVolumeClaimSpec(
+               access_modes=['ReadWriteMany']))
 
   def _AssumeOutsideKfp(self):
     mock.patch.object(kube_utils, 'is_inside_kfp', return_value=False).start()
@@ -142,6 +172,25 @@ class KubernetesRunnerTest(tf.test.TestCase):
     container_envs = {env.name for env in container.env}
     self.assertIn('MODEL_NAME', container_envs)
     self.assertIn('MODEL_BASE_PATH', container_envs)
+
+  def testBuildPodManifest_InsideKfp_WithPvc(self):
+    # Prepare mocks and variables.
+    self._AssumeInsideKfp(with_pvc=True)
+    runner = self._CreateKubernetesRunner()
+
+    # Act.
+    pod_manifest = runner._BuildPodManifest()
+
+    # Check Volume.
+    volume = pod_manifest.spec.volumes[0]
+    self.assertEqual(volume.name, 'model-volume')
+    self.assertEqual(volume.persistent_volume_claim.claim_name, 'my-pvc')
+
+    # Check VolumeMount.
+    container = pod_manifest.spec.containers[0]
+    volume_mount = container.volume_mounts[0]
+    self.assertEqual(volume_mount.name, 'model-volume')
+    self.assertEqual(volume_mount.mount_path, self._base_dir)
 
   def testBuildPodManifest_InsideKfp_OverrideConfig(self):
     # Prepare mocks and variables.

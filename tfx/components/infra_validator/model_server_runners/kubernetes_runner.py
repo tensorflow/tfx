@@ -19,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+import os
 import sys
 import time
-from typing import Text
+from typing import Optional, Text
 
 from absl import logging
 from apache_beam.utils import retry
@@ -32,6 +33,7 @@ import six
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import base_runner
+from tfx.orchestration.launcher import kubernetes_component_launcher as k8s_launcher
 from tfx.proto import infra_validator_pb2
 from tfx.utils import kube_utils
 
@@ -48,6 +50,7 @@ _APP_KEY = 'app'
 _MODEL_SERVER_POD_NAME_PREFIX = 'tfx-infraval-modelserver-'
 _MODEL_SERVER_APP_LABEL = 'tfx-infraval-modelserver'
 _MODEL_SERVER_CONTAINER_NAME = 'model-server'
+_MODEL_SERVER_MODEL_VOLUME_NAME = 'model-volume'
 
 # Phases of the pod as described in
 # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase.
@@ -58,6 +61,27 @@ _POD_PHASE_FAILED = 'Failed'
 # PodSpec container restart policy as described in
 # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
 _POD_CONTAINER_RESTART_POLICY_NEVER = 'Never'
+
+# Access mode of a PersistentVolumeClaim.
+# https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+_PVC_ACCESS_MODE_READ_WRITE_MANY = 'ReadWriteMany'
+
+
+# TODO(b/149534564): Use pathlib.
+def _is_subdirectory(maybe_parent: Text, maybe_child: Text) -> bool:
+  paren = os.path.realpath(maybe_parent).split(os.path.sep)
+  child = os.path.realpath(maybe_child).split(os.path.sep)
+  return len(paren) <= len(child) and all(a == b for a, b in zip(paren, child))
+
+
+def _get_container_or_error(
+    pod: k8s_client.V1Pod, container_name: Text) -> k8s_client.V1Container:
+  for container in pod.spec.containers:
+    if container.name == container_name:
+      return container
+  raise ValueError(
+      'Unable to find {} container from the pod (found {}).'.format(
+          container_name, [c.name for c in pod.spec.containers]))
 
 
 def _api_exception_retry_filter(exception: Exception):
@@ -91,6 +115,9 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       raise NotImplementedError(
           'KubernetesRunner should be running inside KFP.')
     self._executor_pod = kube_utils.get_current_kfp_pod(self._k8s_core_api)
+    self._executor_container = _get_container_or_error(
+        self._executor_pod,
+        container_name=k8s_launcher.MAIN_CONTAINER_NAME)
     self._namespace = kube_utils.get_kfp_namespace()
     self._label_dict = {
         _APP_KEY: _MODEL_SERVER_APP_LABEL,
@@ -201,7 +228,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       raise ValueError('active_deadline_seconds should be > 0. Got {}'
                        .format(active_deadline_seconds))
 
-    return k8s_client.V1Pod(
+    result = k8s_client.V1Pod(
         metadata=k8s_client.V1ObjectMeta(
             generate_name=_MODEL_SERVER_POD_NAME_PREFIX,
             labels=self._label_dict,
@@ -222,6 +249,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
                     name=_MODEL_SERVER_CONTAINER_NAME,
                     image=self._serving_binary.image,
                     env=env_vars,
+                    volume_mounts=[],
                 ),
             ],
             service_account_name=service_account_name,
@@ -234,7 +262,61 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
             # removed but Pod resource won't. This makes the Pod log visible
             # after the termination.
             active_deadline_seconds=active_deadline_seconds,
+            volumes=[],
             # TODO(b/152002076): Add TTL controller once it graduates Beta.
             # ttl_seconds_after_finished=,
+        )
+    )
+
+    self._SetupModelVolumeIfNeeded(result)
+
+    return result
+
+  def _FindVolumeMountForPath(self, path) -> Optional[k8s_client.V1VolumeMount]:
+    if not os.path.exists(path):
+      return None
+    for mount in self._executor_container.volume_mounts:
+      if _is_subdirectory(mount.mount_path, self._model_path):
+        return mount
+    return None
+
+  def _SetupModelVolumeIfNeeded(self, pod_manifest: k8s_client.V1Pod):
+    mount = self._FindVolumeMountForPath(self._model_path)
+    if not mount:
+      return
+    [volume] = [v for v in self._executor_pod.spec.volumes
+                if v.name == mount.name]
+    if volume.persistent_volume_claim is None:
+      raise NotImplementedError('Only PersistentVolumeClaim is allowed.')
+    claim_name = volume.persistent_volume_claim.claim_name
+    pvc = self._k8s_core_api.read_namespaced_persistent_volume_claim(
+        name=claim_name,
+        namespace=self._namespace)
+
+    # PersistentVolumeClaim for pipeline root SHOULD have ReadWriteMany access
+    # mode. Although it is allowed to mount ReadWriteOnce volume if Pods share
+    # the Node, there's no guarantee the model server Pod will be launched in
+    # the same Node.
+    if all(access_mode != _PVC_ACCESS_MODE_READ_WRITE_MANY
+           for access_mode in pvc.spec.access_modes):
+      raise RuntimeError('Access mode should be ReadWriteMany.')
+
+    logging.info('PersistentVolumeClaim %s will be mounted to %s.',
+                 pvc, mount.mount_path)
+
+    pod_manifest.spec.volumes.append(
+        k8s_client.V1Volume(
+            name=_MODEL_SERVER_MODEL_VOLUME_NAME,
+            persistent_volume_claim=k8s_client
+            .V1PersistentVolumeClaimVolumeSource(
+                claim_name=claim_name,
+                read_only=True)))
+    container_manifest = _get_container_or_error(
+        pod_manifest, container_name=_MODEL_SERVER_CONTAINER_NAME)
+    container_manifest.volume_mounts.append(
+        k8s_client.V1VolumeMount(
+            name=_MODEL_SERVER_MODEL_VOLUME_NAME,
+            mount_path=mount.mount_path,
+            read_only=True,
         )
     )

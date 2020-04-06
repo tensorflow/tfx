@@ -24,18 +24,20 @@ from typing import Text
 from kfp import onprem
 import tensorflow_model_analysis as tfma
 
-from tfx.components.common_nodes.resolver_node import ResolverNode
-from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.pusher.component import Pusher
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
-from tfx.components.trainer.component import Trainer
-from tfx.components.transform.component import Transform
+from tfx.components import CsvExampleGen
+from tfx.components import Evaluator
+from tfx.components import ExampleValidator
+from tfx.components import InfraValidator
+from tfx.components import Pusher
+from tfx.components import ResolverNode
+from tfx.components import SchemaGen
+from tfx.components import StatisticsGen
+from tfx.components import Trainer
+from tfx.components import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
@@ -45,7 +47,8 @@ from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_pipeline_kubeflow_local'
 
-# This sample assumes a persistent volume (PV) is mounted as follows.
+# This sample assumes a persistent volume (PV) is mounted as follows. To use
+# InfraValidator with PVC, its access mode should be ReadWriteMany.
 _persistent_volume_claim = 'my-pvc'
 _persistent_volume = 'my-pv'
 _persistent_volume_mount = '/mnt'
@@ -142,11 +145,27 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
+  # Performs infra validation of a candidate model to prevent unservable model
+  # from being pushed. In order to use InfraValidator component, persistent
+  # volume and its claim that the pipeline is using should be a ReadWriteMany
+  # access mode.
+  infra_validator = InfraValidator(
+      model=trainer.outputs['model'],
+      examples=example_gen.outputs['examples'],
+      serving_spec=infra_validator_pb2.ServingSpec(
+          tensorflow_serving=infra_validator_pb2.TensorFlowServing(
+              tags=['latest']),
+          kubernetes=infra_validator_pb2.KubernetesConfig()),
+      request_spec=infra_validator_pb2.RequestSpec(
+          tensorflow_serving=infra_validator_pb2.TensorFlowServingRequestSpec())
+  )
+
   # Checks whether the model passed the validation steps and pushes the model
   # to  Google Cloud AI Platform if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
+      infra_blessing=infra_validator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
@@ -155,8 +174,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
-          example_gen, statistics_gen, schema_gen, example_validator, transform,
-          trainer, model_resolver, evaluator, pusher
+          example_gen,
+          statistics_gen,
+          schema_gen,
+          example_validator,
+          transform,
+          trainer,
+          model_resolver,
+          evaluator,
+          infra_validator,
+          pusher,
       ],
       # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],

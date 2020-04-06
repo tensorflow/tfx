@@ -45,7 +45,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
         module_file=taxi_pipeline_kubeflow_local._module_file,
         serving_model_dir=taxi_pipeline_kubeflow_local._serving_model_dir,
         direct_num_workers=1)
-    self.assertEqual(9, len(logical_pipeline.components))
+    self.assertEqual(10, len(logical_pipeline.components))
 
     KubeflowDagRunner().run(logical_pipeline)
     file_path = os.path.join(self._tmp_dir,
