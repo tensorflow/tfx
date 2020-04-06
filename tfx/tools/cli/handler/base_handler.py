@@ -21,7 +21,6 @@ from __future__ import print_function
 import abc
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -107,13 +106,12 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     engine_flag = self.flags_dict[labels.ENGINE_FLAG]
     with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
       dsl_contents = f.read()
-      regexes = {
-          labels.AIRFLOW_ENGINE: r'AirflowDagRunner\(.*\)',
-          labels.KUBEFLOW_ENGINE: r'KubeflowDagRunner\(.*\)',
-          labels.BEAM_ENGINE: r'BeamDagRunner\(.*\)'
+      runner_names = {
+          labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
+          labels.KUBEFLOW_ENGINE: 'KubeflowDagRunner',
+          labels.BEAM_ENGINE: 'BeamDagRunner',
       }
-      match = re.search(regexes[engine_flag], dsl_contents)
-      if not match:
+      if runner_names[engine_flag] not in dsl_contents:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))
 
   def _extract_pipeline_args(self) -> Dict[Text, Any]:
