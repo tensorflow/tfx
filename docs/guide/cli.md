@@ -19,7 +19,7 @@ below:
 There are several [flags](#flags) in tfx CLI. `-`(hyphen) or `_`(underscore) can
 be used to specify long flags. For example, you can specify a pipeline name
 using either `--pipeline_name <name>` or `--pipeline-name <name>`. Note that
-flags were expressed only using underscores for brevity in this document.
+flags were expressed only using underscores in most cases for brevity.
 
 ## Commands
 
