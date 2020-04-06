@@ -17,11 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
+import functools
 import os
+import signal
 import time
 
 from absl import logging
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Optional, Text
 
 from google.protobuf import json_format
 from tfx import types
@@ -43,17 +46,25 @@ _DEFAULT_POLLING_INTERVAL_SEC = 1
 _DEFAULT_MAX_LOADING_TIME_SEC = 300
 _DEFAULT_MODEL_NAME = 'infra-validation-model'
 
+# Proto message keys for oneof block.
 _TENSORFLOW_SERVING = 'tensorflow_serving'
+_LOCAL_DOCKER = 'local_docker'
+_KUBERNETES = 'kubernetes'
 
+# Artifact and exec_properties keys
+_MODEL_KEY = 'model'
+_EXAMPLES_KEY = 'examples'
+_BLESSING_KEY = 'blessing'
+_SERVING_SPEC_KEY = 'serving_spec'
+_VALIDATION_SPEC_KEY = 'validation_spec'
+_REQUEST_SPEC_KEY = 'request_spec'
+
+# Artifact property keys
+_BLESSED_KEY = 'blessed'
 # Filename of infra blessing artifact on succeed.
-BLESSED = 'INFRA_BLESSED'
+_BLESSED_FILENAME = 'INFRA_BLESSED'
 # Filename of infra blessing artifact on fail.
-NOT_BLESSED = 'INFRA_NOT_BLESSED'
-
-
-def _is_query_mode(input_dict: Dict[Text, List[types.Artifact]],
-                   exec_properties: Dict[Text, Any]) -> bool:
-  return 'examples' in input_dict and 'request_spec' in exec_properties
+_NOT_BLESSED_FILENAME = 'INFRA_NOT_BLESSED'
 
 
 def _create_model_server_runner(
@@ -90,18 +101,35 @@ def _create_model_server_runner(
 
 def _mark_blessed(blessing: types.Artifact) -> None:
   logging.info('Model passed infra validation.')
-  io_utils.write_string_file(os.path.join(blessing.uri, BLESSED), '')
-  blessing.set_int_custom_property('blessed', 1)
+  io_utils.write_string_file(
+      os.path.join(blessing.uri, _BLESSED_FILENAME), '')
+  blessing.set_int_custom_property(_BLESSED_KEY, 1)
 
 
 def _mark_not_blessed(blessing: types.Artifact) -> None:
   logging.info('Model failed infra validation.')
-  io_utils.write_string_file(os.path.join(blessing.uri, NOT_BLESSED), '')
-  blessing.set_int_custom_property('blessed', 0)
+  io_utils.write_string_file(
+      os.path.join(blessing.uri, _NOT_BLESSED_FILENAME), '')
+  blessing.set_int_custom_property(_BLESSED_KEY, 0)
 
 
 class Executor(base_executor.BaseExecutor):
   """TFX infra validator executor."""
+
+  def __init__(self,
+               context: Optional[base_executor.BaseExecutor.Context] = None):
+    super(Executor, self).__init__(context)
+    self._cleanups = []
+
+  def _AddCleanup(self, function, *args, **kwargs):
+    self._cleanups.append(functools.partial(function, *args, **kwargs))
+
+  def _Cleanup(self):
+    for cleanup in self._cleanups:
+      try:
+        cleanup()
+      except:  # pylint: disable=broad-except, bare-except
+        logging.warning('Error occurred during cleanup.', exc_info=True)
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -123,27 +151,75 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    model = artifact_utils.get_single_instance(input_dict['model'])
-    blessing = artifact_utils.get_single_instance(output_dict['blessing'])
+    model = artifact_utils.get_single_instance(input_dict[_MODEL_KEY])
+    blessing = artifact_utils.get_single_instance(output_dict[_BLESSING_KEY])
+
+    if input_dict.get(_EXAMPLES_KEY):
+      examples = artifact_utils.get_single_instance(input_dict[_EXAMPLES_KEY])
+    else:
+      examples = None
 
     serving_spec = infra_validator_pb2.ServingSpec()
-    json_format.Parse(exec_properties['serving_spec'], serving_spec)
+    json_format.Parse(exec_properties[_SERVING_SPEC_KEY], serving_spec)
     if not serving_spec.model_name:
       serving_spec.model_name = _DEFAULT_MODEL_NAME
 
     validation_spec = infra_validator_pb2.ValidationSpec()
-    if exec_properties.get('validation_spec'):
-      json_format.Parse(exec_properties['validation_spec'], validation_spec)
+    if exec_properties.get(_VALIDATION_SPEC_KEY):
+      json_format.Parse(exec_properties[_VALIDATION_SPEC_KEY], validation_spec)
     if not validation_spec.num_tries:
       validation_spec.num_tries = _DEFAULT_NUM_TRIES
     if not validation_spec.max_loading_time_seconds:
       validation_spec.max_loading_time_seconds = _DEFAULT_MAX_LOADING_TIME_SEC
 
-    if _is_query_mode(input_dict, exec_properties):
-      logging.info('InfraValidator will be run in LOAD_AND_QUERY mode.')
+    if exec_properties.get(_REQUEST_SPEC_KEY):
       request_spec = infra_validator_pb2.RequestSpec()
-      json_format.Parse(exec_properties['request_spec'], request_spec)
-      examples = artifact_utils.get_single_instance(input_dict['examples'])
+      json_format.Parse(exec_properties[_REQUEST_SPEC_KEY], request_spec)
+    else:
+      request_spec = None
+
+    with self._ShutdownGracefullyWhen(signal.SIGTERM, signal.SIGINT):
+      self._Do(
+          model=model,
+          examples=examples,
+          blessing=blessing,
+          serving_spec=serving_spec,
+          validation_spec=validation_spec,
+          request_spec=request_spec,
+      )
+
+  @contextlib.contextmanager
+  def _ShutdownGracefullyWhen(self, *signals: int):
+
+    # Python default behavior for receiving signals (e.g. SIGTERM) is to
+    # terminate the process without raising any exception. This bypasses both
+    # except and finally blocks. If we register the handler that raises python
+    # exception, we can bring the signal handling flow back to the code and
+    # let the except or finally block do the cleanup properly.
+    def _handler(signum, frame):
+      del frame  # Unused.
+      raise error_types.GracefulShutdown('Got signal {}.'.format(signum))
+
+    old_handlers = [signal.signal(sig, _handler) for sig in signals]
+    try:
+      yield
+    finally:
+      self._Cleanup()
+      for sig, old_handler in zip(signals, old_handlers):
+        signal.signal(sig, old_handler)
+
+  def _Do(
+      self,
+      model: types.Artifact,
+      examples: Optional[types.Artifact],
+      blessing: types.Artifact,
+      serving_spec: infra_validator_pb2.ServingSpec,
+      validation_spec: infra_validator_pb2.ValidationSpec,
+      request_spec: Optional[infra_validator_pb2.RequestSpec],
+  ):
+
+    if examples and request_spec:
+      logging.info('InfraValidator will be run in LOAD_AND_QUERY mode.')
       requests = request_builder.build_requests(
           model_name=serving_spec.model_name,
           model=model,
@@ -154,18 +230,15 @@ class Executor(base_executor.BaseExecutor):
       requests = []
 
     model_path = self._PrepareModelPath(model.uri, serving_spec)
-    try:
-      # TODO(jjong): Make logic parallel.
-      all_passed = True
-      for serving_binary in serving_bins.parse_serving_binaries(serving_spec):
-        all_passed &= self._ValidateWithRetry(
-            model_path=model_path,
-            serving_binary=serving_binary,
-            serving_spec=serving_spec,
-            validation_spec=validation_spec,
-            requests=requests)
-    finally:
-      io_utils.delete_dir(self._get_tmp_dir())
+    # TODO(jjong): Make logic parallel.
+    all_passed = True
+    for serving_binary in serving_bins.parse_serving_binaries(serving_spec):
+      all_passed &= self._ValidateWithRetry(
+          model_path=model_path,
+          serving_binary=serving_binary,
+          serving_spec=serving_spec,
+          validation_spec=validation_spec,
+          requests=requests)
 
     if all_passed:
       _mark_blessed(blessing)
@@ -195,6 +268,7 @@ class Executor(base_executor.BaseExecutor):
             model_name=serving_spec.model_name,
             version=int(time.time()))
         io_utils.copy_dir(src=model_path, dst=temp_model_path)
+        self._AddCleanup(io_utils.delete_dir, self._context.get_tmp_path())
         return temp_model_path
 
     return model_path
@@ -216,15 +290,21 @@ class Executor(base_executor.BaseExecutor):
             serving_spec=serving_spec,
             validation_spec=validation_spec,
             requests=requests)
-        # If validation has passed without any exception, succeeded.
-        return True
+      except error_types.GracefulShutdown:
+        # GracefulShutdown means infra validation aborted. No more retry and
+        # escalate the error.
+        raise
       except Exception as e:  # pylint: disable=broad-except
-        # Exception indicates validation failure. Log the error and retry.
-        logging.exception(e)
+        # Other exceptions indicates validation failure. Log the error and
+        # retry.
+        logging.exception('Infra validation (attempt %d/%d) failed.', i + 1,
+                          validation_spec.num_tries)
         if isinstance(e, error_types.DeadlineExceeded):
           logging.info('Consider increasing the value of '
                        'ValidationSpec.max_loading_time_seconds.')
-        continue
+      else:
+        # If validation has passed without any exception, succeeded.
+        return True
 
     # Every trial has failed. Marking model as not blessed.
     return False

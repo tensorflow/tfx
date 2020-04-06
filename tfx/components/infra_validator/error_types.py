@@ -37,3 +37,8 @@ class JobAborted(InfraValidationError):  # pylint: disable=g-bad-exception-name
 class ValidationFailed(InfraValidationError):  # pylint: disable=g-bad-exception-name
   """Infra validation has failed."""
   pass
+
+
+class GracefulShutdown(InfraValidationError):  # pylint: disable=g-bad-exception-name
+  """Graceful shutdown was requested and validation would be aborted."""
+  pass

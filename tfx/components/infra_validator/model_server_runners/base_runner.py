@@ -33,8 +33,8 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
   is done. Note that model server runner does *not* interact with model server
   app.
 
-  Model server job have 5 states: Initial, Scheduled, Running, Aborted, or
-  Succeeded. Each state transition is depicted in the diagram below.
+  Model server job have 5 states: Initial, Scheduled, Running, Aborted, and End.
+  Each state transition is depicted in the diagram below.
 
   ```
              +-----------+
@@ -46,12 +46,16 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
           |  +-----+-----+
           |        | WaitUntilRunning()
           |  +-----v-----+
-          +--+  Running  +--+
-          |  +-----------+  | Stop()
-          |                 |
-    +-----v-----+     +-----v-----+
-    |  Aborted  |     | Succeeded |
-    +-----------+     +-----------+
+          +--+  Running  |
+          |  +-----+-----+
+          |        |
+    +-----v-----+  |
+    |  Aborted  +--+ Stop()
+    +-----------+  |
+                   |
+             +-----v-----+
+             |    End    |
+             +-----------+
   ```
 
   At any step, the job can be aborted in the serving platform. Model server
@@ -82,7 +86,6 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
     Raises:
       AssertionError: if runner hasn't reached the Running state.
     """
-    pass
 
   @abc.abstractmethod
   def Start(self) -> None:
@@ -100,7 +103,6 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
     It is not allowed to run `Start()` twice. If you need to restart the job,
     you should create another model server runner instance.
     """
-    pass
 
   @abc.abstractmethod
   def WaitUntilRunning(self, deadline: float) -> None:
@@ -119,7 +121,6 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
     Returns:
       Whether the model is available or not.
     """
-    pass
 
   @abc.abstractmethod
   def Stop(self) -> None:
@@ -130,9 +131,13 @@ class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
     in the `Start()`. It is recommended not to raise error during the `Stop()`
     as it will usually be called in the `finally` block.
 
-    `Stop()` is always called if `Start()` is ever called, even if error has
-    been raised during the `Start()` without completing it. `Stop()`
-    implementation should take into account the case where `Start()` has not
-    been called.
+    `Stop()` is guaranteed to be called if `Start()` is ever called, unless the
+    process dies unexpectedly due to external factors (e.g. SIGKILL). `Stop()`
+    can be called even when `Start()` was not completed. `Stop()` should not
+    assume the completion of `Start()`.
+
+    `Stop()` is also called when graceful shutdown for the *executor* (not
+    model server) is requested. `Stop()` method should be finished within the
+    graceful shutdown period, and it is perfectly fine to add a retry logic
+    inside `Stop()` until the deadline is met.
     """
-    pass
