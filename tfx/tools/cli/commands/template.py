@@ -46,9 +46,14 @@ def list_templates() -> None:
     'copy', help='[Experimental] Copy a template to destination directory')
 @pass_context
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 @click.option(
     '--destination_path',
+    '--destination-path',
     required=True,
     type=str,
     help='Destination directory path to copy the pipeline template')

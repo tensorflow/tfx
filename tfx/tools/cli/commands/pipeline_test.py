@@ -41,10 +41,12 @@ class PipelineTest(tf.test.TestCase):
     self.runner = click_testing.CliRunner()
     sys.modules['handler_factory'] = mock.Mock()
 
-  # TODO(b/132286477):Change tests after writing default_handler()
   def testPipelineCreateAuto(self):
     result = self.runner.invoke(pipeline_group,
                                 ['create', '--pipeline_path', 'chicago.py'])
+    self.assertIn('Creating pipeline', result.output)
+    result = self.runner.invoke(pipeline_group,
+                                ['create', '--pipeline-path', 'chicago.py'])
     self.assertIn('Creating pipeline', result.output)
 
   def testPipelineUpdate(self):
@@ -54,11 +56,21 @@ class PipelineTest(tf.test.TestCase):
         '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
     ])
     self.assertIn('Updating pipeline', result.output)
+    result = self.runner.invoke(pipeline_group, [
+        'update', '--pipeline-path', 'chicago.py', '--engine', 'kubeflow',
+        '--package-path', 'chicago.tar.gz', '--iap-client-id', 'fake_id',
+        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+    ])
+    self.assertIn('Updating pipeline', result.output)
 
   def testPipelineDelete(self):
     result = self.runner.invoke(
         pipeline_group,
         ['delete', '--pipeline_name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Deleting pipeline', result.output)
+    result = self.runner.invoke(
+        pipeline_group,
+        ['delete', '--pipeline-name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Deleting pipeline', result.output)
 
   def testPipelineList(self):
@@ -69,6 +81,11 @@ class PipelineTest(tf.test.TestCase):
     result = self.runner.invoke(pipeline_group, [
         'compile', '--pipeline_path', 'chicago.py', '--engine', 'kubeflow',
         '--package_path', 'chicago.tar.gz'
+    ])
+    self.assertIn('Compiling pipeline', result.output)
+    result = self.runner.invoke(pipeline_group, [
+        'compile', '--pipeline-path', 'chicago.py', '--engine', 'kubeflow',
+        '--package-path', 'chicago.tar.gz'
     ])
     self.assertIn('Compiling pipeline', result.output)
 

@@ -46,11 +46,21 @@ class RunTest(tf.test.TestCase):
         run_group,
         ['create', '--pipeline_name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Creating a run for pipeline', result.output)
+    result = self.runner.invoke(
+        run_group,
+        ['create', '--pipeline-name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Creating a run for pipeline', result.output)
 
   def testRunCreateKubeflow(self):
     result = self.runner.invoke(run_group, [
         'create', '--pipeline_name', 'chicago', '--engine', 'kubeflow',
         '--iap_client_id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
+        'endpoint_url'
+    ])
+    self.assertIn('Creating a run for pipeline', result.output)
+    result = self.runner.invoke(run_group, [
+        'create', '--pipeline-name', 'chicago', '--engine', 'kubeflow',
+        '--iap-client-id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
         'endpoint_url'
     ])
     self.assertIn('Creating a run for pipeline', result.output)
@@ -60,10 +70,19 @@ class RunTest(tf.test.TestCase):
         run_group,
         ['list', '--pipeline_name', 'chicago', '--engine', 'airflow'])
     self.assertIn('Listing all runs of pipeline', result.output)
+    result = self.runner.invoke(
+        run_group,
+        ['list', '--pipeline-name', 'chicago', '--engine', 'airflow'])
+    self.assertIn('Listing all runs of pipeline', result.output)
 
   def testRunStatusAirflow(self):
     result = self.runner.invoke(run_group, [
         'status', '--pipeline_name', 'chicago_taxi_pipeline', '--run_id',
+        'airflow_run_id', '--engine', 'airflow'
+    ])
+    self.assertIn('Retrieving run status', result.output)
+    result = self.runner.invoke(run_group, [
+        'status', '--pipeline-name', 'chicago_taxi_pipeline', '--run-id',
         'airflow_run_id', '--engine', 'airflow'
     ])
     self.assertIn('Retrieving run status', result.output)
@@ -75,17 +94,33 @@ class RunTest(tf.test.TestCase):
         '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
     ])
     self.assertIn('Retrieving run status', result.output)
+    result = self.runner.invoke(run_group, [
+        'status', '--pipeline-name', 'chicago_taxi_pipeline', '--run-id',
+        'kubeflow_run_id', '--engine', 'kubeflow', '--iap-client-id', 'fake_id',
+        '--namespace', 'kubeflow', '--endpoint', 'endpoint_url'
+    ])
+    self.assertIn('Retrieving run status', result.output)
 
   def testRunTerminate(self):
     result = self.runner.invoke(
         run_group,
         ['terminate', '--run_id', 'airflow_run_id', '--engine', 'airflow'])
     self.assertIn('Terminating run.', result.output)
+    result = self.runner.invoke(
+        run_group,
+        ['terminate', '--run-id', 'airflow_run_id', '--engine', 'airflow'])
+    self.assertIn('Terminating run.', result.output)
 
   def testRunDelete(self):
     result = self.runner.invoke(run_group, [
         'delete', '--run_id', 'kubeflow_run_id', '--engine', 'kubeflow',
         '--iap_client_id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
+        'endpoint_url'
+    ])
+    self.assertIn('Deleting run', result.output)
+    result = self.runner.invoke(run_group, [
+        'delete', '--run-id', 'kubeflow_run_id', '--engine', 'kubeflow',
+        '--iap-client-id', 'fake_id', '--namespace', 'kubeflow', '--endpoint',
         'endpoint_url'
     ])
     self.assertIn('Deleting run', result.output)
