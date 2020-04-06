@@ -34,6 +34,10 @@ from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import container_common
 from tfx.utils import kube_utils
 
+# Name of the main container that Argo workflow launches.
+# https://github.com/argoproj/argo/blob/master/workflow/common/common.go#L14
+MAIN_CONTAINER_NAME = 'main'
+
 # Pod phases are defined in
 # https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase.
 _POD_PENDING_PHASE = 'Pending'
@@ -155,7 +159,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       logs = core_api.read_namespaced_pod_log(
           name=pod_name,
           namespace=namespace,
-          container='main',
+          container=MAIN_CONTAINER_NAME,
           follow=True,
           _preload_content=False).stream()
     except client.rest.ApiException as e:
@@ -216,11 +220,11 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
                                  [])  # type: List[Dict[Text, Any]]
     container = None  # type: Optional[Dict[Text, Any]]
     for c in containers:
-      if c['name'] == 'main':
+      if c['name'] == MAIN_CONTAINER_NAME:
         container = c
         break
     if not container:
-      container = {'name': 'main'}
+      container = {'name': MAIN_CONTAINER_NAME}
       containers.append(container)
     container.update({
         'image': container_spec.image,
