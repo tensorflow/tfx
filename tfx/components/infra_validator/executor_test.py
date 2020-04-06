@@ -18,12 +18,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import signal
+import threading
 
 import mock
 import tensorflow as tf
 from typing import Any, Dict, Text
 
 from google.protobuf import json_format
+from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import executor
 from tfx.components.infra_validator import request_builder
 from tfx.components.infra_validator import serving_bins
@@ -242,6 +245,32 @@ class ExecutorTest(tf.test.TestCase):
               requests=['my_request'])
         mock_runner_factory.return_value.WaitUntilRunning.assert_called()
         mock_client.WaitUntilModelLoaded.assert_called()
+
+  def testSignalHandling(self):
+    infra_validator = executor.Executor(self._context)
+    ready_to_kill_event = threading.Event()
+
+    def send_sigterm(pid):
+      ready_to_kill_event.wait()
+      os.kill(pid, signal.SIGTERM)
+
+    def validate_side_effect(*args, **kwargs):
+      del args, kwargs  # Unused.
+      ready_to_kill_event.set()
+      while True:  # Wait until killed.
+        pass
+
+    with mock.patch.object(infra_validator, '_ValidateOnce') as mock_validate:
+      mock_validate.side_effect = validate_side_effect
+      killer = threading.Thread(target=send_sigterm, args=(os.getpid(),))
+      killer.start()
+
+      # SIGTERM should raise GracefulShutdown error.
+      with self.assertRaises(error_types.GracefulShutdown):
+        infra_validator.Do(
+            self._input_dict,
+            self._output_dict,
+            self._exec_properties)
 
   def assertBlessed(self):
     self.assertFileExists(os.path.join(self._blessing.uri, 'INFRA_BLESSED'))
