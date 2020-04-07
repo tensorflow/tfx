@@ -533,9 +533,10 @@ class Executor(base_executor.BaseExecutor):
     """
     stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
-    # TODO(b/149308973): Remove once TFDV starts accepting RecordBatches.
-    pcoll |= 'RecordBatchToTable' >> beam.Map(
-        lambda rb: pa.Table.from_batches([rb]))
+    # TODO(b/153368237): Clean this up after a release post tfx 0.21.
+    if not getattr(tfdv, 'TFDV_ACCEPT_RECORD_BATCH', False):
+      pcoll |= 'RecordBatchToTable' >> beam.Map(
+          lambda rb: pa.Table.from_batches([rb]))
     return (
         pcoll
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
