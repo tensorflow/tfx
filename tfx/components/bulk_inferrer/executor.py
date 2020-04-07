@@ -129,7 +129,10 @@ class Executor(base_executor.BaseExecutor):
         model_path=model_path,
         tag=model_spec.tag,
         signature_name=model_spec.model_signature_name)
-    inference_endpoint = model_spec_pb2.InferenceEndpoint()
+    if getattr(model_spec_pb2, 'InferenceEndpoint', False):
+      inference_endpoint = getattr(model_spec_pb2, 'InferenceEndpoint')()
+    else:
+      inference_endpoint = model_spec_pb2.InferenceSpecType()
     inference_endpoint.saved_model_spec.CopyFrom(saved_model_spec)
     with self._make_beam_pipeline() as pipeline:
       data_list = []
