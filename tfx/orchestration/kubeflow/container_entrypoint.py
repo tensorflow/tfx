@@ -139,7 +139,10 @@ def _make_beam_pipeline_args(json_beam_pipeline_args: Text) -> List[Text]:
 
 def _sanitize_underscore(name: Text) -> Text:
   """Sanitize the underscore in pythonic name for markdown visualization."""
-  return name.replace('_', '\\_')
+  if name:
+    return str(name).replace('_', '\\_')
+  else:
+    return None
 
 
 def _render_channel_as_mdstr(input_channel: channel.Channel) -> Text:
@@ -215,12 +218,12 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
 
       """.format(
           name=_sanitize_underscore(single_artifact.name) or 'None',
-          uri=single_artifact.uri or 'None',
+          uri=_sanitize_underscore(single_artifact.uri) or 'None',
           id=str(single_artifact.id),
-          span=span_str,
+          span=_sanitize_underscore(span_str),
           type_id=str(single_artifact.type_id),
           type_name=_sanitize_underscore(single_artifact.type_name),
-          state=single_artifact.state or 'None',
+          state=_sanitize_underscore(single_artifact.state) or 'None',
           split_names=_sanitize_underscore(split_names_str),
           producer_component=_sanitize_underscore(
               single_artifact.producer_component) or 'None'))
@@ -239,7 +242,8 @@ def _dump_ui_metadata(component: base_component.BaseComponent,
       materialized inputs/outputs/execution properties and id.
   """
   exec_properties_list = [
-      '**{}**: {}'.format(_sanitize_underscore(name), exec_property)
+      '**{}**: {}'.format(
+          _sanitize_underscore(name), _sanitize_underscore(exec_property))
       for name, exec_property in execution_info.exec_properties.items()
   ]
   src_str_exec_properties = '# Execution properties:\n{}'.format(
