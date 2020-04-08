@@ -195,6 +195,7 @@ def create_pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=components,
+      # TODO(step 8): Change this value to control caching of execution results.
       enable_cache=True,
       metadata_connection_config=metadata_connection_config,
       beam_pipeline_args=beam_pipeline_args,
