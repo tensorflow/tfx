@@ -148,9 +148,12 @@ class _Dataset(object):
     self._file_pattern = file_pattern
     file_pattern_suffix = os.path.join(
         *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
-    self._dataset_key = analyzer_cache.make_dataset_key(
-        # TODO(b/143087691): Remove this replace once TFT 0.16 is released.
-        file_pattern_suffix).replace('\\', '-')
+    # TODO(b/148082271, b/148212028, b/37788560): Just use
+    # analyzer_cache.DatasetKey when we stop supporting TFT 0.21.2.
+    if hasattr(analyzer_cache, 'DatasetKey'):
+      self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
+    else:
+      self._dataset_key = analyzer_cache.make_dataset_key(file_pattern_suffix)
     self._file_format = file_format
     self._data_format = data_format
     self._stats_output_path = stats_output_path
@@ -1108,7 +1111,7 @@ class Executor(base_executor.BaseExecutor):
         analyze_input_metadata = (
             analyze_data_tensor_adapter_config
             if use_tfxio else input_dataset_metadata)
-        if not hasattr(tft_beam.analyzer_cache, 'FLATTENED_DATASET_KEY'):
+        if not hasattr(tft_beam.analyzer_cache, 'DatasetKey'):
           # TODO(b/148082271, b/148212028, b/37788560): Remove this when we stop
           # supporting TFT 0.21.2.
           flat_input_analysis_data = (
@@ -1149,6 +1152,10 @@ class Executor(base_executor.BaseExecutor):
             # assuming that this pipeline operates on rolling ranges, so those
             # cache entries may also be relevant for future iterations.
             for span_cache_dir in input_analysis_data:
+              # TODO(b/148082271, b/148212028, b/37788560): Remove this
+              # condition when we stop supporting TFT 0.21.2.
+              if isinstance(span_cache_dir, tuple):
+                span_cache_dir = span_cache_dir.key
               full_span_cache_dir = os.path.join(input_cache_dir,
                                                  span_cache_dir)
               if tf.io.gfile.isdir(full_span_cache_dir):
