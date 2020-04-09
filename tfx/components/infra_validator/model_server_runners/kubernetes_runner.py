@@ -33,7 +33,6 @@ import six
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import base_runner
-from tfx.orchestration.launcher import kubernetes_component_launcher as k8s_launcher
 from tfx.proto import infra_validator_pb2
 from tfx.utils import kube_utils
 
@@ -45,26 +44,17 @@ _NUM_RETRIES = 4  # Total 5 attempts
 # kubernetes graceful shutdown period.
 _INITIAL_BACKOFF_DELAY_SEC = 2.0
 
+# Alias enums.
+_PodPhase = kube_utils.PodPhase
+_RestartPolicy = kube_utils.RestartPolicy
+_AccessMode = kube_utils.PersistentVolumeAccessMode
+
 # Kubernetes resource metadata values
 _APP_KEY = 'app'
 _MODEL_SERVER_POD_NAME_PREFIX = 'tfx-infraval-modelserver-'
 _MODEL_SERVER_APP_LABEL = 'tfx-infraval-modelserver'
 _MODEL_SERVER_CONTAINER_NAME = 'model-server'
 _MODEL_SERVER_MODEL_VOLUME_NAME = 'model-volume'
-
-# Phases of the pod as described in
-# https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase.
-_POD_PHASE_RUNNING = 'Running'
-_POD_PHASE_SUCCEEDED = 'Succeeded'
-_POD_PHASE_FAILED = 'Failed'
-
-# PodSpec container restart policy as described in
-# https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
-_POD_CONTAINER_RESTART_POLICY_NEVER = 'Never'
-
-# Access mode of a PersistentVolumeClaim.
-# https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
-_PVC_ACCESS_MODE_READ_WRITE_MANY = 'ReadWriteMany'
 
 
 # TODO(b/149534564): Use pathlib.
@@ -117,7 +107,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     self._executor_pod = kube_utils.get_current_kfp_pod(self._k8s_core_api)
     self._executor_container = _get_container_or_error(
         self._executor_pod,
-        container_name=k8s_launcher.MAIN_CONTAINER_NAME)
+        container_name=kube_utils.ARGO_MAIN_CONTAINER_NAME)
     self._namespace = kube_utils.get_kfp_namespace()
     self._label_dict = {
         _APP_KEY: _MODEL_SERVER_APP_LABEL,
@@ -169,12 +159,12 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
       # while we expect the job to be running and hanging. Phase is Unknown if
       # the state of the pod could not be obtained, thus we can wait until we
       # confirm the phase.
-      pod_phase = pod.status.phase
-      if pod_phase == _POD_PHASE_RUNNING and pod.status.pod_ip:
+      pod_phase = _PodPhase(pod.status.phase)
+      if pod_phase == _PodPhase.RUNNING and pod.status.pod_ip:
         self._endpoint = '{}:{}'.format(pod.status.pod_ip,
                                         self._serving_binary.container_port)
         return
-      if pod_phase in (_POD_PHASE_SUCCEEDED, _POD_PHASE_FAILED):
+      if pod_phase.is_done:
         raise error_types.JobAborted(
             'Job has been aborted. (phase={})'.format(pod_phase))
       logging.info('Waiting for the pod to be running. (phase=%s)', pod_phase)
@@ -255,7 +245,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
             service_account_name=service_account_name,
             # No retry in case model server container failed. Retry will happen
             # at the outermost loop (executor.py).
-            restart_policy=_POD_CONTAINER_RESTART_POLICY_NEVER,
+            restart_policy=_RestartPolicy.NEVER.value,
             # This is a hard deadline for the model server container to ensure
             # the Pod is properly cleaned up even with an unexpected termination
             # of an infra validator. After the deadline, container will be
@@ -297,7 +287,7 @@ class KubernetesRunner(base_runner.BaseModelServerRunner):
     # mode. Although it is allowed to mount ReadWriteOnce volume if Pods share
     # the Node, there's no guarantee the model server Pod will be launched in
     # the same Node.
-    if all(access_mode != _PVC_ACCESS_MODE_READ_WRITE_MANY
+    if all(access_mode != _AccessMode.READ_WRITE_MANY.value
            for access_mode in pvc.spec.access_modes):
       raise RuntimeError('Access mode should be ReadWriteMany.')
 

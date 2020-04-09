@@ -18,15 +18,63 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import enum
 import os
 from typing import Text
 
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
 
+# Name of the main container that Argo workflow launches. As KFP internally uses
+# Argo, container name for the KFP Pod is also the same.
+# https://github.com/argoproj/argo/blob/master/workflow/common/common.go#L14
+ARGO_MAIN_CONTAINER_NAME = 'main'
+
 # Set of environment variables that are set in the KubeFlow Pipelines pods.
 KFP_POD_NAME = 'KFP_POD_NAME'
 KFP_NAMESPACE = 'KFP_NAMESPACE'
+
+
+class PodPhase(enum.Enum):
+  """Phase of the Kubernetes Pod.
+
+  Pod phases are defined in
+  https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-phase.
+  """
+
+  PENDING = 'Pending'
+  RUNNING = 'Running'
+  SUCCEEDED = 'Succeeded'
+  FAILED = 'Failed'
+  UNKNOWN = 'Unknown'
+
+  @property
+  def is_done(self):
+    return self == self.SUCCEEDED or self == self.FAILED
+
+
+class RestartPolicy(enum.Enum):
+  """Restart policy of the Kubernetes Pod container.
+
+  Restart policies are defined in
+  https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+  """
+
+  ALWAYS = 'Always'
+  ON_FAILURE = 'OnFailure'
+  NEVER = 'Never'
+
+
+class PersistentVolumeAccessMode(enum.Enum):
+  """Access mode of the Kubernetes Persistent Volume.
+
+  Access modes are defined in
+  https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+  """
+
+  READ_WRITE_ONCE = 'ReadWriteOnce'
+  READ_ONLY_MANY = 'ReadOnlyMany'
+  READ_WRITE_MANY = 'ReadWriteMany'
 
 
 class _KubernetesClientFactory(object):
