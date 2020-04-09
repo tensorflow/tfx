@@ -53,7 +53,9 @@ MAX_NUM_EXAMPLES = 100000
 class TFMAV2BenchmarkBase(test.Benchmark):
   """TFMA benchmark."""
 
-  def __init__(self, dataset):
+  def __init__(self, dataset, **kwargs):
+    # Benchmark runners may pass extraneous arguments we don't care about.
+    del kwargs
     super(TFMAV2BenchmarkBase, self).__init__()
     self._dataset = dataset
 
