@@ -40,6 +40,8 @@ class TFMABenchmarkBase(test.Benchmark):
   """TFMA benchmark base class."""
 
   def __init__(self, dataset, **kwargs):
+    # Benchmark runners may pass extraneous arguments we don't care about.
+    del kwargs
     super(TFMABenchmarkBase, self).__init__()
     self._dataset = dataset
 
