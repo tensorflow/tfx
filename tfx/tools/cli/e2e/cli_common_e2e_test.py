@@ -103,19 +103,22 @@ class CliCommonEndToEndTest(tf.test.TestCase):
     result = self.runner.invoke(cli_group,
                                 ['pipeline', 'create', '--engine', 'beam'])
     self.assertIn('CLI', result.output)
-    self.assertIn('Missing option "--pipeline_path"', result.output)
+    self.assertIn('Missing option', result.output)
+    self.assertIn('--pipeline_path', result.output)
 
     # Missing flag for run create.
     result = self.runner.invoke(cli_group,
                                 ['run', 'create', '--engine', 'airflow'])
     self.assertIn('CLI', result.output)
-    self.assertIn('Missing option "--pipeline_name"', result.output)
+    self.assertIn('Missing option', result.output)
+    self.assertIn('--pipeline_name', result.output)
 
     # Missing flag for run status.
     result = self.runner.invoke(
         cli_group, ['run', 'status', '--pipeline_name', pipeline_name_1])
     self.assertIn('CLI', result.output)
-    self.assertIn('Missing option "--run_id"', result.output)
+    self.assertIn('Missing option', result.output)
+    self.assertIn('--run_id', result.output)
 
 
 if __name__ == '__main__':

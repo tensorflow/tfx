@@ -53,6 +53,12 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   return 0
 
 
+class _MockDefaultVersion(object):
+
+  def __init__(self, _id):
+    self.id = _id
+
+
 class _MockUploadResponse(object):
   """Mock upload response object."""
 
@@ -62,6 +68,7 @@ class _MockUploadResponse(object):
     self.namespace = config['namespace']
     self.id = config['id']
     self.name = config['name']
+    self.default_version = _MockDefaultVersion(config['pipeline_version_id'])
 
 
 class _MockClientClass(object):
@@ -73,12 +80,14 @@ class _MockClientClass(object):
         'client_id': client_id,
         'namespace': namespace,
         'id': 'fake_pipeline_id',
+        'pipeline_version_id': 'fake_pipeline_version_id',
         'name': 'fake_pipeline_name'
     }  # pylint: disable=invalid-name, unused-variable
     self._pipelines_api = _MockPipelineApi()
     self._experiment_api = _MockExperimentApi()
     self._run_api = _MockRunApi()
-    self.pipeline_uploads = _MockPipielineUploadApi()
+    self.pipeline_uploads = _MockPipielineUploadApi(
+        self.config['pipeline_version_id'])
 
   def upload_pipeline(self, pipeline_package_path, pipeline_name):  # pylint: disable=invalid-name, unused-argument
     return _MockUploadResponse(self.config)
@@ -89,7 +98,12 @@ class _MockClientClass(object):
   def get_experiment(self, experiment_id=None, experiment_name=None):  # pylint: disable=unused-argument
     return self._experiment_api.get_experiment(experiment_id)
 
-  def run_pipeline(self, experiment_id, job_name, pipeline_id=None):  # pylint: disable=unused-argument
+  def run_pipeline(self,
+                   experiment_id,
+                   job_name,
+                   pipeline_id=None,
+                   version_id=None):
+    del experiment_id, job_name, pipeline_id, version_id
     return self._pipelines_api.run_pipeline()
 
   def list_pipelines(self):
@@ -122,8 +136,12 @@ class _MockPipelineApi(object):
 
 class _MockPipielineUploadApi(object):
 
+  def __init__(self, _id):
+    self.id = _id
+
   def upload_pipeline_version(self, uploadfile, name, pipelineid):
-    pass
+    del uploadfile, name, pipelineid
+    return _MockDefaultVersion(self.id)
 
 
 class _MockExperimentResponse(object):
