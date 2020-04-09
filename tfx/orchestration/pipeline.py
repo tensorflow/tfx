@@ -27,7 +27,7 @@ from typing import List, Optional, Text
 import absl
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -78,7 +78,7 @@ class Pipeline(object):
                pipeline_root: Text,
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
-               components: Optional[List[base_component.BaseComponent]] = None,
+               components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
@@ -138,7 +138,7 @@ class Pipeline(object):
     return self._components
 
   @components.setter
-  def components(self, components: List[base_component.BaseComponent]):
+  def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
     producer_map = {}
     instances_per_component_type = collections.defaultdict(set)
@@ -150,24 +150,43 @@ class Pipeline(object):
         raise RuntimeError('Duplicated component_id %s for component type %s' %
                            (component.id, component.type))
       instances_per_component_type[component.type].add(component.id)
-      for key, output_channel in component.outputs.get_all().items():
-        assert not producer_map.get(
-            output_channel), '{} produced more than once'.format(output_channel)
-        producer_map[output_channel] = component
-        output_channel.producer_component_id = component.id
-        output_channel.output_key = key
-        # TODO(ruoyu): Remove after switching to context-based resolution.
-        for artifact in output_channel.get():
-          artifact.name = key
-          artifact.pipeline_name = self.pipeline_info.pipeline_name
-          artifact.producer_component = component.id
+
+      # NOTE(brandonthorpe) The logic remains identical for nodes that do not
+      # include the run_after property. For nodes with run_after specified,
+      # the topological sort is performed using the explicitly supplied
+      # dependencies.
+      if not hasattr(component, 'run_after'):
+        for key, output_channel in component.outputs.get_all().items():
+          assert not producer_map.get(
+              output_channel), '{} produced more than once'.format(
+                  output_channel)
+          producer_map[output_channel] = component
+          output_channel.producer_component_id = component.id
+          output_channel.output_key = key
+          # TODO(ruoyu): Remove after switching to context-based resolution.
+          for artifact in output_channel.get():
+            artifact.name = key
+            artifact.pipeline_name = self.pipeline_info.pipeline_name
+            artifact.producer_component = component.id
+      else:
+        for key, output_channel in component.outputs.get_all().items():
+          output_channel.producer_component_id = component.id
+          output_channel.output_key = key
+          for artifact in output_channel.get():
+            artifact.name = key
+            artifact.pipeline_name = self.pipeline_info.pipeline_name
+            artifact.producer_component = component.id
+
+        for producer in component.run_after:
+          producer.add_downstream_node(component)
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.get_all().values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
+      if not hasattr(component, 'run_after'):
+        for i in component.inputs.get_all().values():
+          if producer_map.get(i):
+            component.add_upstream_node(producer_map[i])
+            producer_map[i].add_downstream_node(component)
 
     self._components = []
     visited = set()
