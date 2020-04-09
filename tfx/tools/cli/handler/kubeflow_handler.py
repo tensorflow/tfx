@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Dict, Optional, Text
 
 import click
 import kfp
@@ -114,14 +114,14 @@ class KubeflowHandler(base_handler.BaseHandler):
 
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
     # Check if pipeline exists on server.
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
+    pipeline_id = self._get_pipeline_id(pipeline_name)
     self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
     # Delete pipeline for kfp server.
     self._client._pipelines_api.delete_pipeline(id=pipeline_id)  # pylint: disable=protected-access
 
     # Delete experiment from server.
+    experiment_id = self._get_experiment_id(pipeline_name)
     self._client._experiment_api.delete_experiment(experiment_id)  # pylint: disable=protected-access
 
     # Path to pipeline folder.
@@ -155,14 +155,23 @@ class KubeflowHandler(base_handler.BaseHandler):
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
     experiment_name = pipeline_name
 
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
+    pipeline_version_id = self._get_pipeline_version_id(pipeline_name)
+    experiment_id = self._get_experiment_id(pipeline_name)
 
     # Run pipeline.
-    run = self._client.run_pipeline(
-        experiment_id=experiment_id,
-        job_name=experiment_name,
-        pipeline_id=pipeline_id)
+    if pipeline_version_id is not None:
+      run = self._client.run_pipeline(
+          experiment_id=experiment_id,
+          job_name=experiment_name,
+          version_id=pipeline_version_id)
+    else:
+      # TODO(b/153599914): Delete support for version-less pipelines which were
+      #                    created with tfx <= 0.21.x
+      pipeline_id = self._get_pipeline_id(pipeline_name)
+      run = self._client.run_pipeline(
+          experiment_id=experiment_id,
+          job_name=experiment_name,
+          pipeline_id=pipeline_id)
 
     click.echo('Run created for pipeline: ' + pipeline_name)
     self._print_runs([run])
@@ -182,13 +191,13 @@ class KubeflowHandler(base_handler.BaseHandler):
     """Lists all runs of a pipeline."""
     pipeline_name = self.flags_dict[labels.PIPELINE_NAME]
 
-    pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-        pipeline_name)
     # Check if pipeline exists.
+    pipeline_id = self._get_pipeline_id(pipeline_name)
     self._client._pipelines_api.get_pipeline(pipeline_id)  # pylint: disable=protected-access
 
     # List runs.
     # TODO(jyzhao): use metadata context to get the run info.
+    experiment_id = self._get_experiment_id(pipeline_name)
     response = self._client.list_runs(experiment_id=experiment_id)
 
     if response and response.runs:
@@ -214,8 +223,7 @@ class KubeflowHandler(base_handler.BaseHandler):
     pipeline_package_path = self.flags_dict[labels.PIPELINE_PACKAGE_PATH]
 
     if update:
-      pipeline_id, experiment_id = self._get_pipeline_id_and_experiment_id(
-          pipeline_name)
+      pipeline_id = self._get_pipeline_id(pipeline_name)
       # A timestamp will be appended for the uniqueness of `version_name`.
       version_name = '{}_{}'.format(pipeline_name,
                                     time.strftime('%Y%m%d%H%M%S'))
@@ -223,11 +231,15 @@ class KubeflowHandler(base_handler.BaseHandler):
           uploadfile=pipeline_package_path,
           name=version_name,
           pipelineid=pipeline_id)
+      pipeline_version_id = upload_response.id
+
+      experiment_id = self._get_experiment_id(pipeline_name)
     else:  # creating a new pipeline.
       upload_response = self._client.upload_pipeline(
           pipeline_package_path=pipeline_package_path,
           pipeline_name=pipeline_name)
       pipeline_id = upload_response.id
+      pipeline_version_id = upload_response.default_version.id
 
       # Create experiment with pipeline name as experiment name.
       experiment_name = pipeline_name
@@ -243,6 +255,7 @@ class KubeflowHandler(base_handler.BaseHandler):
     # Add pipeline details to pipeline_args.
     pipeline_args[labels.PIPELINE_NAME] = pipeline_name
     pipeline_args[labels.PIPELINE_ID] = pipeline_id
+    pipeline_args[labels.PIPELINE_VERSION_ID] = pipeline_version_id
     pipeline_args[labels.PIPELINE_PACKAGE_PATH] = pipeline_package_path
     pipeline_args[labels.EXPERIMENT_ID] = experiment_id
 
@@ -277,8 +290,8 @@ class KubeflowHandler(base_handler.BaseHandler):
         base_image=base_image,
         skaffold_cmd=skaffold_cmd).build()
 
-  def _get_pipeline_id_and_experiment_id(
-      self, pipeline_name: Text) -> Tuple[Text, Text]:
+  def _get_pipeline_args(self, pipeline_name: Text,
+                         arg_name: Text) -> Optional[Text]:
     # Path to pipeline folder.
     handler_pipeline_path = os.path.join(self._handler_home_dir, pipeline_name)
 
@@ -291,8 +304,25 @@ class KubeflowHandler(base_handler.BaseHandler):
     # Get pipeline_id/experiment_id from pipeline_args.json
     with open(pipeline_args_path, 'r') as f:
       pipeline_args = json.load(f)
-    return (pipeline_args[labels.PIPELINE_ID],
-            pipeline_args[labels.EXPERIMENT_ID])
+    return pipeline_args.get(arg_name)
+
+  def _get_pipeline_id(self, pipeline_name: Text) -> Text:
+    pipeline_id = self._get_pipeline_args(pipeline_name, labels.PIPELINE_ID)
+    if pipeline_id is None:
+      raise ValueError(
+          'Cannot find pipeline id for pipeline {}.'.format(pipeline_name))
+    return pipeline_id
+
+  # NOTE: _get_pipeline_version_id is Optional for backward-compatibility.
+  def _get_pipeline_version_id(self, pipeline_name: Text) -> Optional[Text]:
+    return self._get_pipeline_args(pipeline_name, labels.PIPELINE_VERSION_ID)
+
+  def _get_experiment_id(self, pipeline_name: Text) -> Text:
+    experiment_id = self._get_pipeline_args(pipeline_name, labels.EXPERIMENT_ID)
+    if experiment_id is None:
+      raise ValueError(
+          'Cannot find experiment id for pipeline {}.'.format(pipeline_name))
+    return experiment_id
 
   def _print_runs(self, runs):
     """Prints runs in a tabular format with headers mentioned below."""
