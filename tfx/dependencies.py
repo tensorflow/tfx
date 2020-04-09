@@ -33,7 +33,9 @@ def make_required_install_packages():
       'grpcio>=1.25,!=1.27.2,<2',
       'jinja2>=2.7.3,<3',
       'kubernetes>=10.0.1,<11',
+      # LINT.IfChange
       'ml-metadata>=0.21.2,<0.22',
+      # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
       'pyarrow>=0.15,<0.16',
       'pyyaml>=5,<6',
