@@ -1,13 +1,32 @@
-# Current version (not yet released; still in development)
+# Current Version(Still in Development)
 
 ## Major Features and Improvements
-*   Add run/pipeline link when creating runs/pipelines on KFP through TFX CLI.
-*   Added support for ValueArtifact, whose attribute `value` allows users to
-    access the content of the underlying file directly in the executor. Support
-    Bytes/Integer/String/Float type. Note: interactive resolution does not 
-    support this for now.
 
 ## Bug fixes and other changes
+
+### Deprecations
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+# Version 0.21.3
+
+## Major Features and Improvements
+*   Added run/pipeline link when creating runs/pipelines on KFP through TFX CLI.
+*   Added support for `ValueArtifact`, whose attribute `value` allows users to
+    access the content of the underlying file directly in the executor. Support
+    Bytes/Integer/String/Float type. Note: interactive resolution does not
+    support this for now.
+*   Added InfraValidator component that is used as an early warning layer
+    before pushing a model into production.
+
+## Bug fixes and other changes
+*   Starting this version, TFX will only release python3 packages.
 *   Replaced relative import with absolute import in generated templates.
 *   Added a native keras model in the taxi template and the template now uses
     generic Trainer.
@@ -21,11 +40,11 @@
 *   Added ability to enable quantization in tflite rewriter.
 *   Added k8s pod labels when the pipeline is executed via KubeflowDagRunner for
     better usage telemetry.
-*   Parameterize the GCP taxi pipeline sample for easily ramping up to full taxi
-    dataset.
+*   Parameterized the GCP taxi pipeline sample for easily ramping up to full
+    taxi dataset.
 *   Added support for hyphens(dash) in addition to underscores in CLI flags.
     Underscores will be supported as well.
-*   Fixed ill-formed underscore in the markdown visualization when running on 
+*   Fixed ill-formed underscore in the markdown visualization when running on
     KFP.
 
 ### Deprecations
