@@ -141,19 +141,23 @@ class Metadata(object):
     # TODO(ruoyu): Establishing a connection pool instead of newing
     # a connection every time. Until then, check self._store before usage
     # in every method.
+    connection_error = None
     for _ in range(_MAX_INIT_RETRY):
       try:
         self._store = metadata_store.MetadataStore(self._connection_config)
-      except RuntimeError:
+      except RuntimeError as err:
         # MetadataStore could raise Aborted error if multiple concurrent
         # connections try to execute initialization DDL in database.
         # This is safe to retry.
+        connection_error = err
         time.sleep(random.random())
         continue
       else:
         return self
 
-    raise RuntimeError('Failed to establish connection to Metadata storage.')
+    raise RuntimeError(
+        'Failed to establish connection to Metadata storage with error: %s' %
+        connection_error)
 
   def __exit__(self, exc_type: Optional[Type[Exception]],
                exc_value: Optional[Exception],
