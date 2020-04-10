@@ -783,6 +783,16 @@ class MetadataTest(tf.test.TestCase):
               metadata._CONTEXT_TYPE_PIPELINE_RUN,
               self._pipeline_info.pipeline_run_context_name))
 
+  def testInvalidConnection(self):
+    # read only connection to a unknown file
+    invalid_config = metadata_store_pb2.ConnectionConfig()
+    invalid_config.sqlite.filename_uri = 'unknown_file'
+    invalid_config.sqlite.connection_mode = 1
+    # test the runtime error contains detailed information
+    with self.assertRaisesRegex(RuntimeError, 'unable to open database file'):
+      with metadata.Metadata(connection_config=invalid_config) as m:
+        m.store()
+
 
 if __name__ == '__main__':
   tf.test.main()
