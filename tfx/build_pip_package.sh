@@ -40,7 +40,8 @@ cp -f tfx/proto/*.py \
   ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto/
 cp -f tfx/proto/orchestration/*.py \
   ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto/orchestration/
-
+cp -f tfx/orchestration/kubeflow/proto/*.py \
+  ${BUILD_WORKSPACE_DIRECTORY}/tfx/orchestration/kubeflow/proto/
 
 # Create the wheel
 cd ${BUILD_WORKSPACE_DIRECTORY}
