@@ -75,7 +75,8 @@ class Pusher(base_component.BaseComponent):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
       model_export: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      enable_cache: Optional[bool] = None):
     """Construct a Pusher component.
 
     Args:
@@ -101,6 +102,9 @@ class Pusher(base_component.BaseComponent):
       model_export: Backwards compatibility alias for the 'model' argument.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
         components are declared in the same pipeline.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        Pusher component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     if model_export:
       absl.logging.warning(
@@ -125,4 +129,5 @@ class Pusher(base_component.BaseComponent):
     super(Pusher, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        instance_name=instance_name,
+        enable_cache=enable_cache)

@@ -64,7 +64,8 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
                custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                              Dict[Text, Any]]] = None,
                example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               instance_name: Optional[Text] = None,
+               enable_cache: Optional[bool] = None):
     """Construct an QueryBasedExampleGen component.
 
     Args:
@@ -88,6 +89,9 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
         train and eval examples.
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        QueryBasedExampleGen component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
@@ -103,7 +107,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
         custom_config=custom_config,
         examples=example_artifacts)
     super(_QueryBasedExampleGen, self).__init__(
-        spec=spec, instance_name=instance_name)
+        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
 
 
 class FileBasedExampleGen(base_component.BaseComponent):
@@ -144,7 +148,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       input_base: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      enable_cache: Optional[bool] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
@@ -168,6 +173,9 @@ class FileBasedExampleGen(base_component.BaseComponent):
       instance_name: Optional unique instance name. Required only if multiple
         ExampleGen components are declared in the same pipeline.  Either
         `input_base` or `input` must be present in the input arguments.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        FileBasedExampleGen component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     if input_base:
       absl.logging.warning(
@@ -193,4 +201,5 @@ class FileBasedExampleGen(base_component.BaseComponent):
     super(FileBasedExampleGen, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name)
+        instance_name=instance_name,
+        enable_cache=enable_cache)

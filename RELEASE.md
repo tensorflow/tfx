@@ -46,6 +46,8 @@
     Underscores will be supported as well.
 *   Fixed ill-formed underscore in the markdown visualization when running on
     KFP.
+*   Enabled per-component control for caching with enable_cache argument in
+    each component.
 
 ### Deprecations
 

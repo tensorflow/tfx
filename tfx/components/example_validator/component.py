@@ -70,7 +70,8 @@ class ExampleValidator(base_component.BaseComponent):
                schema: types.Channel = None,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               instance_name: Optional[Text] = None,
+               enable_cache: Optional[bool] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -84,6 +85,9 @@ class ExampleValidator(base_component.BaseComponent):
         ExampleValidator. Required only if multiple ExampleValidator components
         are declared in the same pipeline.  Either `stats` or `statistics` must
         be present in the arguments.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        ExampleValidator component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     if stats:
       absl.logging.warning(
@@ -97,4 +101,4 @@ class ExampleValidator(base_component.BaseComponent):
     spec = ExampleValidatorSpec(
         statistics=statistics, schema=schema, anomalies=anomalies)
     super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name)
+        spec=spec, instance_name=instance_name, enable_cache=enable_cache)

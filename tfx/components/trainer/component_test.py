@@ -172,6 +172,27 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.HyperParameters.TYPE_NAME,
                      trainer.inputs['hyperparameters'].type_name)
 
+  def testEnableCache(self):
+    module_file = '/path/to/module/file'
+    trainer_1 = component.Trainer(
+        module_file=module_file,
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        train_args=self.train_args,
+        eval_args=self.eval_args)
+    self.assertEqual(None, trainer_1.enable_cache)
+
+    trainer_2 = component.Trainer(
+        module_file=module_file,
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        train_args=self.train_args,
+        eval_args=self.eval_args,
+        enable_cache=True)
+    self.assertEqual(True, trainer_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

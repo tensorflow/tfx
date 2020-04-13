@@ -38,6 +38,22 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('InferenceResult',
                      bulk_inferrer.outputs['inference_result'].type_name)
 
+  def testEnableCache(self):
+    examples = standard_artifacts.Examples()
+    model = standard_artifacts.Model()
+    model_blessing = standard_artifacts.ModelBlessing()
+    bulk_inferrer_1 = component.BulkInferrer(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model]),
+        model_blessing=channel_utils.as_channel([model_blessing]))
+    self.assertEqual(None, bulk_inferrer_1.enable_cache)
+    bulk_inferrer_2 = component.BulkInferrer(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model]),
+        model_blessing=channel_utils.as_channel([model_blessing]),
+        enable_cache=True)
+    self.assertEqual(True, bulk_inferrer_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -55,6 +55,16 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
 
+  def testEnableCache(self):
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    statistics_gen_1 = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]))
+    self.assertEqual(None, statistics_gen_1.enable_cache)
+    statistics_gen_2 = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]), enable_cache=True)
+    self.assertEqual(True, statistics_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

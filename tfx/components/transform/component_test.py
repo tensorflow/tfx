@@ -92,6 +92,23 @@ class ComponentTest(tf.test.TestCase):
           preprocessing_fn='path.to.my_preprocessing_fn',
       )
 
+  def testEnableCache(self):
+    module_file = '/path/to/preprocessing.py'
+    transform_1 = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        module_file=module_file,
+    )
+    self.assertEqual(None, transform_1.enable_cache)
+
+    transform_2 = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        module_file=module_file,
+        enable_cache=True,
+    )
+    self.assertEqual(True, transform_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

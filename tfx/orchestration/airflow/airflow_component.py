@@ -110,6 +110,9 @@ class AirflowComponent(python_operator.PythonOperator):
       component_config: component config to launch the component.
     """
     # Prepare parameters to create TFX worker.
+    enable_cache = (
+        component.enable_cache
+        if component.enable_cache is not None else enable_cache)
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)
 
     super(AirflowComponent, self).__init__(

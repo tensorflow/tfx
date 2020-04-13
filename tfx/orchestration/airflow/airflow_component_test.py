@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import datetime
 import os
+from typing import Optional
 from airflow import models
 import mock
 
@@ -55,8 +56,10 @@ class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = types.ComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self, spec: types.ComponentSpec):
-    super(_FakeComponent, self).__init__(spec=spec)
+  def __init__(self,
+               spec: types.ComponentSpec,
+               enable_cache: Optional[bool] = None):
+    super(_FakeComponent, self).__init__(spec=spec, enable_cache=enable_cache)
 
 
 class AirflowComponentTest(tf.test.TestCase):
@@ -66,7 +69,8 @@ class AirflowComponentTest(tf.test.TestCase):
     self._component = _FakeComponent(
         _FakeComponentSpec(
             input=types.Channel(type=_ArtifactTypeA),
-            output=types.Channel(type=_ArtifactTypeB)))
+            output=types.Channel(type=_ArtifactTypeB)),
+        enable_cache=True)
     self._pipeline_info = data_types.PipelineInfo('name', 'root')
     self._driver_args = data_types.DriverArgs(True)
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
@@ -107,7 +111,7 @@ class AirflowComponentTest(tf.test.TestCase):
         component=self._component,
         component_launcher_class=mock_component_launcher_class,
         pipeline_info=self._pipeline_info,
-        enable_cache=True,
+        enable_cache=False,
         metadata_connection_config=self._metadata_connection_config,
         beam_pipeline_args=[],
         additional_pipeline_args={},

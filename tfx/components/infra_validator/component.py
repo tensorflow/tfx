@@ -88,7 +88,8 @@ class InfraValidator(base_component.BaseComponent):
       blessing: Optional[types.Channel] = None,
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
       validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      enable_cache: Optional[bool] = None):
     """Construct a InfraValidator component.
 
     Args:
@@ -109,6 +110,9 @@ class InfraValidator(base_component.BaseComponent):
       instance_name: Optional name assigned to this specific instance of
         InfraValidator.  Required only if multiple InfraValidator components are
         declared in the same pipeline.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        InfraValidator component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     blessing = blessing or types.Channel(
         type=standard_artifacts.InfraBlessing,
@@ -121,4 +125,5 @@ class InfraValidator(base_component.BaseComponent):
         validation_spec=validation_spec,
         request_spec=request_spec
     )
-    super(InfraValidator, self).__init__(spec=spec, instance_name=instance_name)
+    super(InfraValidator, self).__init__(
+        spec=spec, instance_name=instance_name, enable_cache=enable_cache)

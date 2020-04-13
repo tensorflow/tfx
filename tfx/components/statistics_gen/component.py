@@ -57,7 +57,8 @@ class StatisticsGen(base_component.BaseComponent):
                stats_options: Optional[tfdv.StatsOptions] = None,
                output: Optional[types.Channel] = None,
                input_data: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               instance_name: Optional[Text] = None,
+               enable_cache: Optional[bool] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -77,6 +78,9 @@ class StatisticsGen(base_component.BaseComponent):
       instance_name: Optional name assigned to this specific instance of
         StatisticsGen.  Required only if multiple StatisticsGen components are
         declared in the same pipeline.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        StatisticsGen component. If not specified, defaults to the value
+        specified for pipeline's enable_cache parameter.
     """
     if input_data:
       absl.logging.warning(
@@ -98,4 +102,5 @@ class StatisticsGen(base_component.BaseComponent):
         schema=schema,
         stats_options_json=stats_options_json,
         statistics=output)
-    super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
+    super(StatisticsGen, self).__init__(
+        spec=spec, instance_name=instance_name, enable_cache=enable_cache)

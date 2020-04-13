@@ -69,6 +69,13 @@ class ComponentTest(tf.test.TestCase):
                      artifact_utils.decode_split_names(
                          artifact_collection[0].split_names))
 
+  def testEnableCache(self):
+    big_query_example_gen_1 = component.BigQueryExampleGen(query='query')
+    self.assertEqual(None, big_query_example_gen_1.enable_cache)
+    big_query_example_gen_2 = component.BigQueryExampleGen(
+        query='query', enable_cache=True)
+    self.assertEqual(True, big_query_example_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()
