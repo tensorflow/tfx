@@ -11,19 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+package(default_visibility = ["//visibility:public"])
+
 licenses(["notice"])  # Apache 2.0
 
-sh_binary(
-    name = "build_pip_package",
-    srcs = ["build_pip_package.sh"],
-    data = [
-        "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",
-        "//tfx/proto:bulk_inferrer_pb2.py",
-        "//tfx/proto:evaluator_pb2.py",
-        "//tfx/proto:example_gen_pb2.py",
-        "//tfx/proto:infra_validator_pb2.py",
-        "//tfx/proto:pusher_pb2.py",
-        "//tfx/proto:trainer_pb2.py",
-        "//tfx/proto/orchestration:execution_result_pb2.py",
-    ],
+exports_files(["LICENSE"])
+
+load("//tfx:tfx.bzl", "tfx_py_proto_library")
+
+tfx_py_proto_library(
+    name = "caip_pipeline_proto_py_pb2",
+    srcs = ["caip_pipeline.proto"],
 )
