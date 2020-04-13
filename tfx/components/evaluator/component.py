@@ -88,7 +88,8 @@ class Evaluator(base_component.BaseComponent):
       instance_name: Optional[Text] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
-      schema: Optional[types.Channel] = None):
+      schema: Optional[types.Channel] = None,
+      enable_cache: Optional[bool] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -122,6 +123,9 @@ class Evaluator(base_component.BaseComponent):
       blessing: Output channel of 'ModelBlessingPath' that contains the
         blessing result.
       schema: A `Schema` channel to use for TFXIO.
+      enable_cache: Optional boolean to indicate if cache is enabled for the
+        Evaluator component. If not specified, defaults to the value specified
+        for pipeline's enable_cache parameter.
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
@@ -159,4 +163,5 @@ class Evaluator(base_component.BaseComponent):
         eval_config=eval_config,
         blessing=blessing,
         schema=schema)
-    super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)
+    super(Evaluator, self).__init__(
+        spec=spec, instance_name=instance_name, enable_cache=enable_cache)

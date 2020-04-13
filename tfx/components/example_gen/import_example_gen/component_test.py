@@ -39,6 +39,15 @@ class ComponentTest(tf.test.TestCase):
                      artifact_utils.decode_split_names(
                          artifact_collection[0].split_names))
 
+  def testEnableCache(self):
+    input_base = standard_artifacts.ExternalArtifact()
+    import_example_gen_1 = component.ImportExampleGen(
+        input=channel_utils.as_channel([input_base]))
+    self.assertEqual(None, import_example_gen_1.enable_cache)
+    import_example_gen_2 = component.ImportExampleGen(
+        input=channel_utils.as_channel([input_base]), enable_cache=True)
+    self.assertEqual(True, import_example_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

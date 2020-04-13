@@ -57,7 +57,10 @@ class _ComponentAsDoFn(beam.DoFn):
       component_config: component config to launch the component.
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
-    driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
+    enable_cache = (
+        component.enable_cache
+        if component.enable_cache is not None else tfx_pipeline.enable_cache)
+    driver_args = data_types.DriverArgs(enable_cache=enable_cache)
     metadata_connection = metadata.Metadata(
         tfx_pipeline.metadata_connection_config)
     self._component_launcher = component_launcher_class.create(

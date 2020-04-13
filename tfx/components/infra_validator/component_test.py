@@ -45,6 +45,22 @@ class ComponentTest(tf.test.TestCase):
     self.assertIn('serving_spec', infra_validator.exec_properties)
     self.assertIn('validation_spec', infra_validator.exec_properties)
 
+  def testEnableCache(self):
+    model = standard_artifacts.Model()
+    serving_spec = infra_validator_pb2.ServingSpec()
+    validation_spec = infra_validator_pb2.ValidationSpec()
+    infra_validator_1 = component.InfraValidator(
+        model=channel_utils.as_channel([model]),
+        serving_spec=serving_spec,
+        validation_spec=validation_spec)
+    self.assertEqual(None, infra_validator_1.enable_cache)
+    infra_validator_2 = component.InfraValidator(
+        model=channel_utils.as_channel([model]),
+        serving_spec=serving_spec,
+        validation_spec=validation_spec,
+        enable_cache=True)
+    self.assertEqual(True, infra_validator_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

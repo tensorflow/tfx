@@ -52,6 +52,18 @@ class SchemaGenTest(tf.test.TestCase):
         str(schema_gen.spec.exec_properties['infer_feature_shape']),
         str(infer_shape))
 
+  def testEnableCache(self):
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['train'])
+    schema_gen_1 = component.SchemaGen(
+        statistics=channel_utils.as_channel([statistics_artifact]))
+    schema_gen_2 = component.SchemaGen(
+        statistics=channel_utils.as_channel([statistics_artifact]),
+        enable_cache=True)
+    self.assertEqual(None, schema_gen_1.enable_cache)
+    self.assertEqual(True, schema_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

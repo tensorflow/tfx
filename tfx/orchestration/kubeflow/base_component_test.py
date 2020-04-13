@@ -47,7 +47,9 @@ class BaseComponentTest(tf.test.TestCase):
     example_gen = csv_example_gen_component.CsvExampleGen(
         input=channel_utils.as_channel([examples]))
     statistics_gen = statistics_gen_component.StatisticsGen(
-        examples=example_gen.outputs['examples'], instance_name='foo')
+        examples=example_gen.outputs['examples'],
+        instance_name='foo',
+        enable_cache=True)
 
     pipeline = tfx_pipeline.Pipeline(
         pipeline_name=self._test_pipeline_name,
@@ -105,6 +107,7 @@ class BaseComponentTest(tf.test.TestCase):
         formatted_component_json,
         '--component_config',
         'null',
+        '--enable_cache',
     ]
     try:
       self.assertEqual(

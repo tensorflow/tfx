@@ -79,6 +79,23 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.PushedModel.TYPE_NAME,
                      pusher.outputs['pushed_model'].type_name)
 
+  def testEnableCache(self):
+    pusher_1 = component.Pusher(
+        model=self.model,
+        model_blessing=self.model_blessing,
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory='push_destination')))
+    self.assertEqual(None, pusher_1.enable_cache)
+    pusher_2 = component.Pusher(
+        model=self.model,
+        model_blessing=self.model_blessing,
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory='push_destination')),
+        enable_cache=True)
+    self.assertEqual(True, pusher_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

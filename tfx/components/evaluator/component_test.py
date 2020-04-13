@@ -108,6 +108,19 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['output'].type_name)
 
+  def testEnableCache(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator_1 = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]))
+    self.assertEqual(None, evaluator_1.enable_cache)
+    evaluator_2 = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        enable_cache=True)
+    self.assertEqual(True, evaluator_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

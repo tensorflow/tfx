@@ -39,6 +39,15 @@ class ComponentTest(tf.test.TestCase):
                      artifact_utils.decode_split_names(
                          artifact_collection[0].split_names))
 
+  def testEnableCache(self):
+    input_base = standard_artifacts.ExternalArtifact()
+    csv_example_gen_1 = component.CsvExampleGen(
+        input=channel_utils.as_channel([input_base]))
+    self.assertEqual(None, csv_example_gen_1.enable_cache)
+    csv_example_gen_2 = component.CsvExampleGen(
+        input=channel_utils.as_channel([input_base]), enable_cache=True)
+    self.assertEqual(True, csv_example_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

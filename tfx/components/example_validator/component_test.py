@@ -38,6 +38,22 @@ class ExampleValidatorTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.ExampleAnomalies.TYPE_NAME,
                      example_validator.outputs['anomalies'].type_name)
 
+  def testEnableCache(self):
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['eval'])
+    example_validator_1 = component.ExampleValidator(
+        statistics=channel_utils.as_channel([statistics_artifact]),
+        schema=channel_utils.as_channel([standard_artifacts.Schema()]),
+    )
+    self.assertEqual(None, example_validator_1.enable_cache)
+    example_validator_2 = component.ExampleValidator(
+        statistics=channel_utils.as_channel([statistics_artifact]),
+        schema=channel_utils.as_channel([standard_artifacts.Schema()]),
+        enable_cache=True
+    )
+    self.assertEqual(True, example_validator_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -170,6 +170,23 @@ class ComponentTest(tf.test.TestCase):
                       stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
+  def testEnableCache(self):
+    input_base = standard_artifacts.ExternalArtifact()
+    custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
+    example_gen_1 = component.FileBasedExampleGen(
+        input=channel_utils.as_channel([input_base]),
+        custom_config=custom_config,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            TestExampleGenExecutor))
+    self.assertEqual(None, example_gen_1.enable_cache)
+    example_gen_2 = component.FileBasedExampleGen(
+        input=channel_utils.as_channel([input_base]),
+        custom_config=custom_config,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            TestExampleGenExecutor),
+        enable_cache=True)
+    self.assertEqual(True, example_gen_2.enable_cache)
+
 
 if __name__ == '__main__':
   tf.test.main()
