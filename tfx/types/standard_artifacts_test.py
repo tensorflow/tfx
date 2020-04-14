@@ -39,22 +39,22 @@ _TEST_FLOAT_DECODED = 3.1415926535
 class StandardArtifactsTest(tf.test.TestCase):
 
   def testBytesType(self):
-    instance = standard_artifacts.BytesType()
+    instance = standard_artifacts.Bytes()
     self.assertEqual(_TEST_BYTE_RAW, instance.encode(_TEST_BYTE_DECODED))
     self.assertEqual(_TEST_BYTE_DECODED, instance.decode(_TEST_BYTE_RAW))
 
   def testStringType(self):
-    instance = standard_artifacts.StringType()
+    instance = standard_artifacts.String()
     self.assertEqual(_TEST_STRING_RAW, instance.encode(_TEST_STRING_DECODED))
     self.assertEqual(_TEST_STRING_DECODED, instance.decode(_TEST_STRING_RAW))
 
   def testIntegerType(self):
-    instance = standard_artifacts.IntegerType()
+    instance = standard_artifacts.Integer()
     self.assertEqual(_TEST_INT_RAW, instance.encode(_TEST_INT_DECODED))
     self.assertEqual(_TEST_INT_DECODED, instance.decode(_TEST_INT_RAW))
 
   def testFloatType(self):
-    instance = standard_artifacts.FloatType()
+    instance = standard_artifacts.Float()
     self.assertEqual(_TEST_FLOAT_RAW, instance.encode(_TEST_FLOAT_DECODED))
     self.assertAlmostEqual(_TEST_FLOAT_DECODED,
                            instance.decode(_TEST_FLOAT_RAW))

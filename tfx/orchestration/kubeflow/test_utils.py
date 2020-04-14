@@ -98,7 +98,7 @@ class _HelloWorldSpec(component_spec.ComponentSpec):
   INPUTS = {}
   OUTPUTS = {
       'greeting':
-          component_spec.ChannelParameter(type=standard_artifacts.StringType)
+          component_spec.ChannelParameter(type=standard_artifacts.String)
   }
   PARAMETERS = {
       'word': component_spec.ExecutionParameter(type=str),
@@ -108,7 +108,7 @@ class _HelloWorldSpec(component_spec.ComponentSpec):
 class _ByeWorldSpec(component_spec.ComponentSpec):
   INPUTS = {
       'hearing':
-          component_spec.ChannelParameter(type=standard_artifacts.StringType)
+          component_spec.ChannelParameter(type=standard_artifacts.String)
   }
   OUTPUTS = {}
   PARAMETERS = {}
@@ -131,7 +131,7 @@ class HelloWorldComponent(BaseComponent):
 
   def __init__(self, word, greeting=None):
     if not greeting:
-      artifact = standard_artifacts.StringType()
+      artifact = standard_artifacts.String()
       greeting = channel_utils.as_channel([artifact])
     super(HelloWorldComponent,
           self).__init__(_HelloWorldSpec(word=word, greeting=greeting))
@@ -421,13 +421,13 @@ class BaseKubeflowTest(tf.test.TestCase):
       self, string_artifact: metadata_store_pb2.Artifact) -> Text:
     """Helper function returns the actual value of a ValueArtifact."""
     file_path = os.path.join(string_artifact.uri,
-                             standard_artifacts.StringType.VALUE_FILE)
+                             standard_artifacts.String.VALUE_FILE)
     # Assert there is a file exists.
     if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
       raise RuntimeError(
           'Given path does not exist or is not a valid file: %s' % file_path)
     serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-    return standard_artifacts.StringType().decode(serialized_value)
+    return standard_artifacts.String().decode(serialized_value)
 
   def _get_executions_by_pipeline_name(
       self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
