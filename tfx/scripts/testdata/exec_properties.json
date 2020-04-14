@@ -1,8 +1,0 @@
-{
-  "input_config": {
-    "string_value": "input config string"
-  },
-  "output_config": {
-    "string_value": "{ \"split_config\": { \"splits\": [ { \"hash_buckets\": 2, \"name\": \"train\" }, { \"hash_buckets\": 1, \"name\": \"eval\" } ] } }"
-  }
-}
