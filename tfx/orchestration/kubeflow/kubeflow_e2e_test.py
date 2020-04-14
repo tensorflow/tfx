@@ -53,7 +53,7 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
         pipeline=pipeline, workflow_name=pipeline_name + '-run-1')
     # Test if the correct value has been passed.
     str_artifacts = self._get_artifacts_with_type_and_pipeline(
-        type_name='StringType', pipeline_name=pipeline_name)
+        type_name='String', pipeline_name=pipeline_name)
     # There should be exactly one string artifact.
     self.assertEqual(1, len(str_artifacts))
     self.assertEqual(

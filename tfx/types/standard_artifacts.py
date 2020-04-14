@@ -93,9 +93,9 @@ class Schema(Artifact):
   TYPE_NAME = 'Schema'
 
 
-class BytesType(ValueArtifact):
+class Bytes(ValueArtifact):
   """Artifacts representing raw bytes."""
-  TYPE_NAME = 'BytesType'
+  TYPE_NAME = 'Bytes'
 
   def encode(self, value: bytes):
     if not isinstance(value, bytes):
@@ -107,9 +107,9 @@ class BytesType(ValueArtifact):
     return serialized_value
 
 
-class StringType(ValueArtifact):
+class String(ValueArtifact):
   """String-typed artifact."""
-  TYPE_NAME = 'StringType'
+  TYPE_NAME = 'String'
 
   # Note, currently we enforce unicode-encoded string.
   def encode(self, value: Text) -> bytes:
@@ -122,9 +122,9 @@ class StringType(ValueArtifact):
     return serialized_value.decode('utf-8')
 
 
-class IntegerType(ValueArtifact):
+class Integer(ValueArtifact):
   """Integer-typed artifact."""
-  TYPE_NAME = 'IntegerType'
+  TYPE_NAME = 'Integer'
 
   def encode(self, value: int) -> bytes:
     if not isinstance(value, int):
@@ -136,9 +136,9 @@ class IntegerType(ValueArtifact):
     return struct.unpack('>i', serialized_value)[0]
 
 
-class FloatType(ValueArtifact):
+class Float(ValueArtifact):
   """Float-typed artifact."""
-  TYPE_NAME = 'FloatType'
+  TYPE_NAME = 'Float'
 
   def encode(self, value: float) -> bytes:
     if not isinstance(value, float):

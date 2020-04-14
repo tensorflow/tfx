@@ -56,7 +56,7 @@ class BaseDriverTest(tf.test.TestCase):
   def setUp(self):
     super(BaseDriverTest, self).setUp()
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
-    self._string_artifact = standard_artifacts.StringType()
+    self._string_artifact = standard_artifacts.String()
     self._input_dict = {
         'input_data':
             types.Channel(
@@ -66,7 +66,7 @@ class BaseDriverTest(tf.test.TestCase):
                 output_key='k'),
         'input_string':
             types.Channel(
-                type=standard_artifacts.StringType,
+                type=standard_artifacts.String,
                 artifacts=[self._string_artifact],
                 producer_component_id='c2',
                 output_key='k2')

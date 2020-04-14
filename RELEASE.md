@@ -14,6 +14,14 @@
 
 ## Documentation updates
 
+# Version 0.21.4
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+*   Dropped "Type" suffix from primitive type artifact names (Integer, Float,
+    String, Bytes).
+
 # Version 0.21.3
 
 ## Major Features and Improvements
