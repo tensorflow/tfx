@@ -40,3 +40,16 @@ message ExecutionResult {
 message ExecutorOutput {
   map<string, ml_metadata.Artifact> output_dict = 1;
 }
+
+// Message that represents a list of artifacts.
+message ArtifactList {
+  repeated ml_metadata.Artifact artifacts = 1;
+}
+
+// All the information needed for a container execution.
+message ExecutorInvocation {
+  map<string, ArtifactList> inputs = 1;
+  map<string, ArtifactList> outputs = 2;
+  map<string, ml_metadata.Value> execution_properties = 3;
+  string output_metadata_uri = 4;
+}
