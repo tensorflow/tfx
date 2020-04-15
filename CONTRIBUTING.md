@@ -21,16 +21,32 @@ All submissions, including submissions by project members, require review.
 We use GitHub pull requests for this purpose. Consult GitHub Help for more
 information on using pull requests.
 
+Proper code review should include proper unit tests with them. Please see
+[Testing Conventions](##Testing Conventions) for our conventions on how to write proper unit tests.
+
+TODO(zhitaoli): Configure a CI/CD on Github so that each PR submission is tested
+before merged.
+
 ## Community Guidelines
 This project follows[Google's Open Source Community Guidelines](
 https://opensource.google.com/conduct/).
 
 # Contributing Guidelines
+At this point, TFX only supports Python 3 on Linux and MacOS. Please use one of
+these operation system for development and testing.
+
+If Python 3.5 is used, our usage of type hints requires at least 3.5.3.
+
+## Testing Conventions
+All python unit tests in this repo is based on Tensorflow's [tf.test.TestCase](
+https://www.tensorflow.org/api_docs/python/tf/test/TestCase), which is a subclass
+of [py-absl TestCase](https://github.com/abseil/abseil-py/blob/06edd9c20592cec39178b94240b5e86f32e19768/absl/testing/absltest.py#L523).
+
+TODO(zhitaoli): Document conventions for marking tests used in different environments.
 
 ## Running Unit Tests
 
-We recommend using virtualenv and Python 3.6 and above for development. You can
-invoke all Python unit tests:
+You can invoke all Python unit tests:
 
 ```
 python setup.py test
@@ -43,10 +59,17 @@ skipped.
 To test local change, you will need to install code into virtualenv in editable
 mode:
 
-```
+```shell
 pushd <your_source_dir>
 pip install -e .
 ```
+
+## Test wheels
+The major TFX 
+
+## Test container images
+TFX also release an official [tensorflow/tfx docker image](
+https://hub.docker.com/r/tensorflow/tfx). To build this image, please run
 
 
 # Check Pending Changes
@@ -67,23 +90,9 @@ from GitHub in that we pull and submit the change into an internal version
 control system. This system automatically pushes a git commit to the GitHub
 repository (with credit to the original author) and closes the pull request.
 
-A TFX engineer will monitor all public PRs and look at the issue within 5
-business days to perform initial triage.
+It is recommended to reach out to TFX engineers to establish consensus on the
+tentative design before submitting PRs to us, as well as finding a potential reviewer.
 
-## Python 2 and type hints
-
-Starting from TFX 0.14, all Python source code on GitHub includes
-[Python 3 type hints](https://docs.python.org/3.6/library/typing.html). Python
-3.6 (or above) is the recommended version to develop this project.
-
-The Python 2 version of [tfx](https://pypi.org/project/tfx/) PyPI package has
-all type hints stripped and is the easiest way for Python 2 users.
-
-Python 2 support will be deprecated in 2020, due to
-[Python 2 not supported beyond 2020](https://www.python.org/dev/peps/pep-0373/).
-
-If you must use Python 2 with source code:
-
-* run `python tfx/scripts/strip_type_hints.py` to strip all hints in the repo:
-this requires you to install the
-[strip-hints](https://pypi.org/project/strip-hints/) PyPI package.
+For public PRs which do not have a preassigned reviewer, a TFX engineer will monitor
+them and perform initial triage within 5 business days. But such contributions should
+be trivial (i.e, documentation fixes).
