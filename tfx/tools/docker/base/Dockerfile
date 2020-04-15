@@ -15,7 +15,8 @@
 # Base image used to facilitate docker building.
 # This gets updated nightly.
 
-FROM ubuntu:16.04
+# Use a pre-built GCR image including Bazel.
+FROM gcr.io/cloud-marketplace-containers/google/bazel:3.0.0
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
 # Need additional ppa since python 3.6 and protobuf 3
