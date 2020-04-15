@@ -21,6 +21,7 @@ import contextlib
 import functools
 import os
 import signal
+import threading
 import time
 
 from absl import logging
@@ -178,7 +179,7 @@ class Executor(base_executor.BaseExecutor):
     else:
       request_spec = None
 
-    with self._ShutdownGracefullyWhen(signal.SIGTERM, signal.SIGINT):
+    with self._InstallGracefulShutdownHandler():
       self._Do(
           model=model,
           examples=examples,
@@ -189,24 +190,52 @@ class Executor(base_executor.BaseExecutor):
       )
 
   @contextlib.contextmanager
-  def _ShutdownGracefullyWhen(self, *signals: int):
+  def _InstallGracefulShutdownHandler(self):
+    # pylint: disable=g-doc-return-or-yield
+    """Install graceful shutdown behavior.
 
-    # Python default behavior for receiving signals (e.g. SIGTERM) is to
-    # terminate the process without raising any exception. This bypasses both
-    # except and finally blocks. If we register the handler that raises python
-    # exception, we can bring the signal handling flow back to the code and
-    # let the except or finally block do the cleanup properly.
+    Caveat: InfraValidator currently only recognizes SIGTERM signal as a
+    graceful shutdown. Furthermore, SIGTERM can be handled only if the executor
+    is running on the MainThread (the thread that runs the python interpreter)
+    due to the limitation of Python API.
+
+    When the executor is running on Kubernetes, SIGTERM is a standard way to
+    signal the graceful shutdown. Python default behavior for receiving SIGTERM
+    is to terminate the process without raising any exception. By registering a
+    handler that raises on signal, we can effectively transform the signal to an
+    exception, and we can reuse our cleanup code inside "except" or "finally"
+    block during the grace period.
+
+    When the executor is run by the local Beam DirectRunner, the executor thread
+    is one of the worker threads (not a MainThread) therefore SIGTERM cannot
+    be recognized. If either of MainThread or worker thread receives SIGTERM,
+    executor will die immediately without grace period.
+
+    Even if the executor fails to shutdown gracefully, external resources that
+    are created by model server runner can be cleaned up if the platform
+    supports such mechanism (e.g. activeDeadlineSeconds in Kubernetes).
+    """
+
     def _handler(signum, frame):
       del frame  # Unused.
       raise error_types.GracefulShutdown('Got signal {}.'.format(signum))
 
-    old_handlers = [signal.signal(sig, _handler) for sig in signals]
+    try:
+      old_handler = signal.signal(signal.SIGTERM, _handler)
+    except ValueError:
+      # If current thread is not a MainThread, it is not allowed to register
+      # the signal handler (ValueError raised).
+      logging.info('Unable to register signal handler for non-MainThread '
+                   '(name=%s). SIGTERM will not be handled.',
+                   threading.current_thread().name)
+      old_handler = None
+
     try:
       yield
     finally:
       self._Cleanup()
-      for sig, old_handler in zip(signals, old_handlers):
-        signal.signal(sig, old_handler)
+      if old_handler:
+        signal.signal(signal.SIGTERM, old_handler)
 
   def _Do(
       self,

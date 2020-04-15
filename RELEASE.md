@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+*   Fixed InfraValidator signal handling bug on BeamDagRunner.
 
 ### Deprecations
 
