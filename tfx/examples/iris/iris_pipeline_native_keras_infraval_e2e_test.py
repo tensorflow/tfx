@@ -23,7 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
-from tfx.examples.iris import iris_pipeline_native_keras
+from tfx.examples.iris import iris_pipeline_native_keras_infraval
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -77,7 +77,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
 
   def testIrisPipelineNativeKeras(self):
     BeamDagRunner().run(
-        iris_pipeline_native_keras._create_pipeline(
+        iris_pipeline_native_keras_infraval._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -102,7 +102,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
 
     # Runs pipeline the second time.
     BeamDagRunner().run(
-        iris_pipeline_native_keras._create_pipeline(
+        iris_pipeline_native_keras_infraval._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
@@ -121,7 +121,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
 
     # Runs pipeline the third time.
     BeamDagRunner().run(
-        iris_pipeline_native_keras._create_pipeline(
+        iris_pipeline_native_keras_infraval._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
