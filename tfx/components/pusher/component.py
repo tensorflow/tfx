@@ -93,9 +93,9 @@ class Pusher(base_component.BaseComponent):
         RuntimeParameter, push_destination should be constructed as a dict with
         the same field names as PushDestination proto message.
       custom_config: A dict which contains the deployment job parameters to be
-        passed to cloud-based training platforms.  The [Kubeflow
-          example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow.py#L211)
-            contains an example how this can be used by custom executors.
+        passed to cloud-based training platforms. The [Kubeflow example](
+          https://github.com/tensorflow/tfx/blob/6ff57e36a7b65818d4598d41e584a42584d361e6/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_kubeflow_gcp.py#L278-L285)
+          contains an example how this can be used by custom executors.
       custom_executor_spec: Optional custom executor spec.
       output: Optional output `standard_artifacts.PushedModel` channel with
         result of push.
