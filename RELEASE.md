@@ -3,6 +3,7 @@
 ## Major Features and Improvements
 
 ## Bug fixes and other changes
+*   Depends on `kubernetes>=10.0.1,<12`.
 
 ### Deprecations
 
