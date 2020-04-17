@@ -24,6 +24,7 @@ import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.evaluator import executor
 from tfx.orchestration import data_types
@@ -89,7 +90,8 @@ class Evaluator(base_component.BaseComponent):
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
       schema: Optional[types.Channel] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -126,6 +128,7 @@ class Evaluator(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         Evaluator component. If not specified, defaults to the value specified
         for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
@@ -164,4 +167,7 @@ class Evaluator(base_component.BaseComponent):
         blessing=blessing,
         schema=schema)
     super(Evaluator, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

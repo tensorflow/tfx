@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional, Text
 
 import absl
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
 from tfx.types import standard_artifacts
@@ -71,7 +72,8 @@ class ExampleValidator(base_component.BaseComponent):
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -88,6 +90,7 @@ class ExampleValidator(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         ExampleValidator component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     if stats:
       absl.logging.warning(
@@ -101,4 +104,7 @@ class ExampleValidator(base_component.BaseComponent):
     spec = ExampleValidatorSpec(
         statistics=statistics, schema=schema, anomalies=anomalies)
     super(ExampleValidator, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

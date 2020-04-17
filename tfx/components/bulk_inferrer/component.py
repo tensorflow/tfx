@@ -18,10 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Text, Union
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
@@ -59,7 +60,8 @@ class BulkInferrer(base_component.BaseComponent):
                                           Dict[Text, Any]]] = None,
                inference_result: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -85,6 +87,7 @@ class BulkInferrer(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         BulkInferrer component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     inference_result = inference_result or types.Channel(
         type=standard_artifacts.InferenceResult,
@@ -97,4 +100,7 @@ class BulkInferrer(base_component.BaseComponent):
         model_spec=model_spec or bulk_inferrer_pb2.ModelSpec(),
         inference_result=inference_result)
     super(BulkInferrer, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

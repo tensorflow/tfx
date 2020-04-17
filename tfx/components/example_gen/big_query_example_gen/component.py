@@ -18,9 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional, Text
 
 from tfx import types
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
@@ -43,7 +44,8 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -66,6 +68,7 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
       enable_cache: Optional boolean to indicate if cache is enabled for the
         BigQueryExampleGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -78,4 +81,5 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
         output_config=output_config,
         example_artifacts=example_artifacts,
         instance_name=instance_name,
-        enable_cache=enable_cache)
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

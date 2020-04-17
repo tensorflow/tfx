@@ -17,13 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional, Text
 
 import absl
 import tensorflow_data_validation as tfdv
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
@@ -58,7 +59,8 @@ class StatisticsGen(base_component.BaseComponent):
                output: Optional[types.Channel] = None,
                input_data: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct a StatisticsGen component.
 
     Args:
@@ -81,6 +83,7 @@ class StatisticsGen(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         StatisticsGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     if input_data:
       absl.logging.warning(
@@ -103,4 +106,7 @@ class StatisticsGen(base_component.BaseComponent):
         stats_options_json=stats_options_json,
         statistics=output)
     super(StatisticsGen, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

@@ -266,6 +266,32 @@ class PipelineTest(tf.test.TestCase):
                      component_a.id)
     self.assertEqual(component_b.inputs['a'].output_key, 'one')
 
+  def testTaskDependency(self):
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={},
+        outputs={'one': types.Channel(type=_ArtifactTypeOne)})
+    component_b.task_dependency = [component_a]
+    component_c = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            'b': component_b.outputs['one'],
+        },
+        outputs={})
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='pipeline',
+        pipeline_root='root',
+        components=[component_c, component_b, component_a],
+        metadata_connection_config=self._metadata_connection_config)
+
+    # Should be topologically sorted
+    self.assertEqual([component_a, component_b, component_c],
+                     my_pipeline.components)
+
   def testPipelineSavePipelineArgs(self):
     os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
     pipeline.Pipeline(

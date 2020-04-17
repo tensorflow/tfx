@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Union
+from typing import List, Optional, Text, Union
 
 import absl
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.orchestration import data_types
@@ -76,7 +77,8 @@ class Transform(base_component.BaseComponent):
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct a Transform component.
 
     Args:
@@ -110,6 +112,7 @@ class Transform(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         Transform component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
@@ -142,4 +145,7 @@ class Transform(base_component.BaseComponent):
         transform_graph=transform_graph,
         transformed_examples=transformed_examples)
     super(Transform, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

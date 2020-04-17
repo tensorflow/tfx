@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, List, Optional, Text
 
 from six import with_metaclass
 
@@ -77,7 +77,8 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   def __init__(self,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List['BaseNode']] = None):
     """Initialize a node.
 
     Args:
@@ -87,6 +88,7 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       enable_cache: Optional boolean to indicate if cache is enabled for this
         node. If not specified, defaults to the value specified for pipeline's
         enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     self._instance_name = instance_name
     self.executor_spec = self.__class__.EXECUTOR_SPEC
@@ -94,12 +96,12 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._enable_cache = enable_cache
+    self._set_task_dependency(task_dependency)
 
   def to_json_dict(self) -> Dict[Text, Any]:
     """Convert from an object to a JSON serializable dictionary."""
-    return dict((k, v)
-                for k, v in self.__dict__.items()
-                if k not in ['_upstream_nodes', '_downstream_nodes'])
+    return dict((k, v) for k, v in self.__dict__.items() if k not in
+                ['_upstream_nodes', '_downstream_nodes', '_task_dependency'])
 
   @property
   def type(self) -> Text:
@@ -170,3 +172,17 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
   @enable_cache.setter
   def enable_cache(self, enable_cache):
     self._enable_cache = enable_cache
+
+  @property
+  def task_dependency(self) -> List['BaseNode']:
+    return self._task_dependency
+
+  @task_dependency.setter
+  def task_dependency(self, task_dependency):
+    self._set_task_dependency(task_dependency)
+
+  def _set_task_dependency(self, task_dependency):
+    self._task_dependency = [] if task_dependency is None else task_dependency
+    for node in self._task_dependency:
+      self.add_upstream_node(node)
+      node.add_downstream_node(self)

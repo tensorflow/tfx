@@ -17,11 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import List, Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_driver
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.infra_validator import executor
 from tfx.proto import infra_validator_pb2
@@ -90,7 +91,8 @@ class InfraValidator(base_component.BaseComponent):
       request_spec: Optional[infra_validator_pb2.RequestSpec] = None,
       validation_spec: Optional[infra_validator_pb2.ValidationSpec] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct a InfraValidator component.
 
     Args:
@@ -114,6 +116,7 @@ class InfraValidator(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         InfraValidator component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     blessing = blessing or types.Channel(
         type=standard_artifacts.InfraBlessing,
@@ -127,4 +130,7 @@ class InfraValidator(base_component.BaseComponent):
         request_spec=request_spec
     )
     super(InfraValidator, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

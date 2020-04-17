@@ -17,12 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Union
+from typing import List, Optional, Text, Union
 
 import absl
 
 from tfx import types
 from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.schema_gen import executor
 from tfx.orchestration import data_types
@@ -65,7 +66,8 @@ class SchemaGen(base_component.BaseComponent):
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -85,6 +87,7 @@ class SchemaGen(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         SchemaGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     if stats:
       absl.logging.warning(
@@ -100,4 +103,7 @@ class SchemaGen(base_component.BaseComponent):
         infer_feature_shape=infer_feature_shape,
         schema=schema)
     super(SchemaGen, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

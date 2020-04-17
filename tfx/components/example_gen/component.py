@@ -18,13 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Text, Union
 
 import absl
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
@@ -65,7 +66,8 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
                                              Dict[Text, Any]]] = None,
                example_artifacts: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               enable_cache: Optional[bool] = None,
+               task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct an QueryBasedExampleGen component.
 
     Args:
@@ -92,6 +94,7 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         QueryBasedExampleGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     # Configure outputs.
     output_config = output_config or utils.make_default_output_config(
@@ -107,7 +110,10 @@ class _QueryBasedExampleGen(base_component.BaseComponent):
         custom_config=custom_config,
         examples=example_artifacts)
     super(_QueryBasedExampleGen, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+        spec=spec,
+        instance_name=instance_name,
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)
 
 
 class FileBasedExampleGen(base_component.BaseComponent):
@@ -149,7 +155,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
@@ -176,6 +183,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
       enable_cache: Optional boolean to indicate if cache is enabled for the
         FileBasedExampleGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     if input_base:
       absl.logging.warning(
@@ -202,4 +210,5 @@ class FileBasedExampleGen(base_component.BaseComponent):
         spec=spec,
         custom_executor_spec=custom_executor_spec,
         instance_name=instance_name,
-        enable_cache=enable_cache)
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)

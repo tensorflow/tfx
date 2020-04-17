@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import abc
 import inspect
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, List, Optional, Text
 
 from six import with_metaclass
 
@@ -71,7 +71,8 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       spec: types.ComponentSpec,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Initialize a component.
 
     Args:
@@ -84,8 +85,10 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       enable_cache: Optional boolean to indicate if cache is enabled for this
         component. If not specified, defaults to the value specified for
         pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
-    super(BaseComponent, self).__init__(instance_name, enable_cache)
+    super(BaseComponent, self).__init__(instance_name, enable_cache,
+                                        task_dependency)
     self.spec = spec
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):

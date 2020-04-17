@@ -23,6 +23,7 @@
 *   Fixed InfraValidator signal handling bug on BeamDagRunner.
 *   Dropped "Type" suffix from primitive type artifact names (Integer, Float,
     String, Bytes).
+*   Add task dependency to components.
 
 ### Deprecations
 

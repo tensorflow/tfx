@@ -18,11 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import List, Optional
+
 import tensorflow as tf
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
@@ -59,14 +62,18 @@ class _BasicComponent(base_component.BaseComponent):
   SPEC_CLASS = _BasicComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self,
-               spec: types.ComponentSpec = None,
-               folds: int = None,
-               input: types.Channel = None):  # pylint: disable=redefined-builtin
+  def __init__(
+      self,
+      spec: types.ComponentSpec = None,
+      folds: int = None,
+      input: types.Channel = None,  # pylint: disable=redefined-builtin
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     if not spec:
       output = types.Channel(type=_OutputArtifact)
       spec = _BasicComponentSpec(folds=folds, input=input, output=output)
-    super(_BasicComponent, self).__init__(spec=spec)
+    super(_BasicComponent, self).__init__(
+        spec=spec, enable_cache=enable_cache, task_dependency=task_dependency)
 
 
 class ComponentTest(tf.test.TestCase):
@@ -208,8 +215,29 @@ class ComponentTest(tf.test.TestCase):
     input_channel = types.Channel(type=_InputArtifact)
     component = _BasicComponent(folds=10, input=input_channel)
     self.assertEqual(None, component.enable_cache)
-    component.enable_cache = True
-    self.assertEqual(True, component.enable_cache)
+    component2 = _BasicComponent(
+        folds=10, input=input_channel, enable_cache=True)
+    self.assertEqual(True, component2.enable_cache)
+
+  def testTaskDependency(self):
+    component_1 = _BasicComponent(
+        folds=10, input=types.Channel(type=_InputArtifact))
+    component_2 = _BasicComponent(
+        folds=10,
+        input=types.Channel(type=_InputArtifact),
+        task_dependency=[component_1])
+    self.assertEqual([component_1], component_2.task_dependency)
+    self.assertEqual({component_1}, component_2.upstream_nodes)
+    self.assertEqual({component_2}, component_1.downstream_nodes)
+    component_3 = _BasicComponent(
+        folds=10,
+        input=types.Channel(type=_InputArtifact),
+        task_dependency=[component_1, component_2])
+    self.assertEqual([component_1, component_2], component_3.task_dependency)
+    self.assertEqual({component_1, component_2}, component_3.upstream_nodes)
+    self.assertEqual({component_2, component_3}, component_1.downstream_nodes)
+    self.assertEqual({component_3}, component_2.downstream_nodes)
+
 
 if __name__ == "__main__":
   tf.test.main()

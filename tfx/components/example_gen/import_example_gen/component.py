@@ -18,9 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text, Union
+from typing import Any, Dict, List, Optional, Text, Union
 
 from tfx import types
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.import_example_gen import executor
@@ -48,7 +49,8 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
       example_artifacts: Optional[types.Channel] = None,
       input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      enable_cache: Optional[bool] = None,
+      task_dependency: Optional[List[base_node.BaseNode]] = None):
     """Construct an ImportExampleGen component.
 
     Args:
@@ -73,6 +75,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
       enable_cache: Optional boolean to indicate if cache is enabled for the
         ImportExampleGen component. If not specified, defaults to the value
         specified for pipeline's enable_cache parameter.
+      task_dependency: Optional list of tasks that this node depends on.
     """
     super(ImportExampleGen, self).__init__(
         input=input,
@@ -81,4 +84,5 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         example_artifacts=example_artifacts,
         input_base=input_base,
         instance_name=instance_name,
-        enable_cache=enable_cache)
+        enable_cache=enable_cache,
+        task_dependency=task_dependency)
