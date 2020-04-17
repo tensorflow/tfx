@@ -37,6 +37,7 @@ from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 import tfx_bsl
+from tfx_bsl.coders import batch_util
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tf_example_record
 from tfx_bsl.tfxio import tfxio
@@ -591,7 +592,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
-    kwargs = tfdv.utils.batch_util.GetBeamBatchKwargs(
+    kwargs = batch_util.GetBatchElementsKwargs(
         tft_beam.Context.get_desired_batch_size())
     return (
         pcoll
