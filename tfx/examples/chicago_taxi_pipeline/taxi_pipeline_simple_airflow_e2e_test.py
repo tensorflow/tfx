@@ -24,10 +24,8 @@ import time
 from typing import Sequence, Set, Text
 
 import absl
-import pytest
 import tensorflow as tf
 
-import unittest
 from tfx.utils import io_utils
 
 
@@ -57,8 +55,7 @@ _SUCCESS_TASK_STATES = set(['success'])
 _PENDING_TASK_STATES = set(['queued', 'scheduled', 'running', 'none'])
 
 
-@pytest.mark.end_to_end
-class AirflowEndToEndTest(unittest.TestCase):
+class AirflowEndToEndTest(tf.test.TestCase):
   """An end to end test using fully orchestrated Airflow."""
 
   def _GetState(self, task_name: Text) -> Text:
@@ -229,4 +226,4 @@ class AirflowEndToEndTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+  tf.test.main()
