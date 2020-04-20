@@ -20,16 +20,16 @@ from __future__ import print_function
 
 import os
 from typing import Dict, List, Text
-from tfx.components import BigQueryExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
-from tfx.components import Pusher
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
 from tfx.components.base import executor_spec
+from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.model_validator.component import ModelValidator
+from tfx.components.pusher.component import Pusher
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
+from tfx.components.trainer.component import Trainer
+from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_big_query_ml.pusher import executor as bigquery_ml_pusher_executor
 from tfx.orchestration import pipeline

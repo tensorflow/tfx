@@ -20,20 +20,20 @@ from __future__ import print_function
 
 import os
 from typing import Dict, Text
-from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
 
-from tfx.components import BigQueryExampleGen
-from tfx.components import Evaluator
-from tfx.components import ExampleValidator
-from tfx.components import Pusher
-from tfx.components import ResolverNode
-from tfx.components import SchemaGen
-from tfx.components import StatisticsGen
-from tfx.components import Trainer
-from tfx.components import Transform
+from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import executor_spec
+from tfx.components.common_nodes.resolver_node import ResolverNode
+from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
+from tfx.components.example_validator.component import ExampleValidator
+from tfx.components.pusher.component import Pusher
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
+from tfx.components.trainer.component import Trainer
+from tfx.components.transform.component import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor

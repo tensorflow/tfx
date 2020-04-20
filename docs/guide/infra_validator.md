@@ -3,32 +3,35 @@
 InfraValidator is a TFX component that is used as an early warning layer before
 pushing a model into production. The name "infra" validator came from the fact
 that it is validating the model in the actual model serving "infrastructure". If
-[Evaluator](evaluator.md) is to guarantee the performance of the model,
-InfraValidator is to guarantee the model is mechanically fine and prevents bad
-models from being pushed.
+[evaluator](https://www.tensorflow.org/tfx/guide/evaluator) is to guarantee the
+performance of the model, InfraValidator is to guarantee the model is
+mechanically fine and prevents bad models from being pushed.
 
 ## How does it work?
 
 InfraValidator takes the model, launches a sand-boxed model server with the
 model, and sees if it can be successfully loaded and optionally queried. The
 infra validation result will be generated in the `blessing` output in the same
-way as [Evaluator](evaluator.md) does.
+way as [evaluator](https://www.tensorflow.org/tfx/guide/evaluator) does.
 
 InfraValidator focuses on the compatibility between the model server binary
-(e.g. [TensorFlow Serving](serving.md)) and the model to deploy. Despite the
-name "infra" validator, it is the **user's responsibility** to configure the
-environment correctly, and infra validator only interacts with the model server
-in the user-configured environment to see if it works fine. Configuring this
-environment correctly will ensure that infra validation passing or failing will
-be indicative of whether the model would be servable in the production serving
-environment. This implies some of, but is not limited to, the following:
+(e.g. [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving)) and
+the model to deploy. Despite the name "infra" validator, it is the **user's
+responsibility** to configure the environment correctly, and infra validator
+only interacts with the model server in the user-configured environment to see
+if it works fine. Configuring this environment correctly will ensure that infra
+validation passing or failing will be indicative of whether the model would be
+servable in the production serving environment. This implies some of, not
+limited to, the following:
 
-1.  InfraValidator is using the same model server binary as will be used in
+1.  InfraValidator is using the same model configurations including the assets
+    (e.g. vocabulary dictionary) for model as will be used in production.
+2.  InfraValidator is using the same model server binary as will be used in
     production. This is the minimal level to which the infra validation
     environment must converge.
-2.  InfraValidator is using the same resources (e.g. allocation quantity and
+3.  InfraValidator is using the same resources (e.g. allocation quantity and
     type of CPU, memory, and accelerators) as will be used in production.
-3.  InfraValidator is using the same model server configuration as will be used
+4.  InfraValidator is using the same model server configuration as will be used
     in production.
 
 Depending on the situation, users can choose to what degree InfraValidator
@@ -89,7 +92,7 @@ defines:
 
 For model server types (called serving binary) we support
 
--   [TensorFlow Serving](serving.md)
+-   [TensorFlow Serving](https://www.tensorflow.org/tfx/guide/serving)
 
 Note: InfraValidator allows specifying multiple versions of the same model
 server type in order to upgrade the model server version without affecting model
@@ -163,9 +166,7 @@ infra_validator = InfraValidator(
         local_docker=LocalDockerConfig(),
     ),
     request_spec=RequestSpec(
-        # InfraValidator will look at how "classification" signature is defined
-        # in the model, and automatically convert some samples from `examples`
-        # artifact to prediction RPC requests.
+        # This is the recipe to build a request from `examples` input artifact.
         tensorflow_serving=TensorFlowServingRequestSpec(
             signature_names=['classification']
         ),
@@ -176,23 +177,18 @@ infra_validator = InfraValidator(
 
 ## Limitations
 
-Current InfraValidator is not complete yet, and has some limitations.
+Current InfraValidator has some limitations on a few features it provides.
 
--   Only TensorFlow [SavedModel](/guide/saved_model) model format can be
-    validated.
--   When running TFX on Kubernetes, the pipeline should be executed by
+-   For Kubernetes serving platform, the pipeline should be executed by
     `KubeflowDagRunner` inside Kubeflow Pipelines. The model server will be
     launched in the same Kubernetes cluster and the namespace that Kubeflow is
     using.
--   InfraValidator is primarily focused on deployments to
-    [TensorFlow Serving](serving.md), and while still useful it is less accurate
-    for deployments to [TensorFlow Lite](/lite) and [TensorFlow.js](/js), or
-    other inference frameworks.
 -   There's a limited support on `LOAD_AND_QUERY` mode for the
-    [Predict](/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
+    [Predict](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model/predict_signature_def)
     method signature (which is the only exportable method in TensorFlow 2).
     InfraValidator requires the Predict signature to consume a serialized
-    [`tf.Example`](/tutorials/load_data/tfrecord#tfexample) as the only input.
+    [`tf.Example`](https://www.tensorflow.org/tutorials/load_data/tfrecord#tfexample)
+    as the only input.
 
     ```python
     @tf.function
@@ -207,7 +203,7 @@ Current InfraValidator is not complete yet, and has some limitations.
     })
     ```
 
-    -   Check out an
-        [Iris example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py)
-        sample code to see how this signature interacts with other components in
-        TFX.
+    Check out an
+    [Iris example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/iris/iris_utils_native_keras.py)
+    sample code to see how this signature interacts with other components in
+    TFX.

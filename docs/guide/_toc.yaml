@@ -10,8 +10,6 @@ toc:
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 - title: "Mobile & IoT: TFX for TensorFlow Lite"
   path: /tfx/tutorials/tfx/tfx_for_mobile
-- title: "Using InfraValidator to safely deploy models in production"
-  path: /tfx/guide/infra_validator
 
 - heading: "Components"
   style: divider
@@ -29,8 +27,6 @@ toc:
   path: /tfx/guide/trainer
 - title: "Evaluator"
   path: /tfx/guide/evaluator
-- title: "InfraValidator"
-  path: /tfx/guide/infra_validator
 - title: "Pusher"
   path: /tfx/guide/pusher
 - title: "Advanced: Custom Components"
