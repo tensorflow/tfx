@@ -29,7 +29,8 @@ def make_required_install_packages():
        'python_version=="3.5" and platform_system=="Darwin"'),
       'click>=7,<8',
       'docker>=4.1,<5',
-      'google-api-python-client>=1.7.8,<2',
+      # TODO(b/154549476): remove !=1.8.1 after a new release.
+      'google-api-python-client>=1.7.8,!=1.8.1,<2',
       'grpcio>=1.25,!=1.27.2,<2',
       'jinja2>=2.7.3,<3',
       'kubernetes>=10.0.1,<12',
