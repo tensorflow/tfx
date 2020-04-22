@@ -49,8 +49,8 @@ from tfx.types import standard_artifacts
 
 user_schema_importer = components.ImporterNode(
     instance_name='import_user_schema',
-    source_uri=user_schema_path,
-    artifact_type=standard_artifcats.Schema)
+    source_uri=user_schema_dir, # directory containing only schema text proto
+    artifact_type=standard_artifacts.Schema)
 
 compute_eval_stats = components.StatisticsGen(
       examples=example_gen.outputs['examples'],
@@ -58,3 +58,22 @@ compute_eval_stats = components.StatisticsGen(
       name='compute-eval-stats'
       )
 ```
+
+### Creating a Curated Schema
+
+`Schema` in TFX is an instance of the TensorFlow Metadata
+[`Schema` proto](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto).
+This can be composed in
+[text format](https://googleapis.dev/python/protobuf/latest/google/protobuf/text_format.html)
+from scratch. However, it is easier to use the inferred schema produced by
+`SchemaGen` as a starting point. Once the `SchemaGen` component has executed,
+the schema will be located under the pipeline root in the following path:
+
+    <pipeline_root>/SchemaGen/schema/<artifact_id>/schema.pbtxt
+
+Where `<artifact_id>` represents a unique ID for this version of the schema in
+MLMD. This schema proto can then be modified to communicate information about
+the dataset which cannot be reliably inferred, which will make the output of
+`StatisticsGen` more useful and the validation performed in the
+[`ExampleValidator`](https://www.tensorflow.org/tfx/guide/exampleval) component
+more stringent.
