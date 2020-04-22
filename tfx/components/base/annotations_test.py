@@ -51,9 +51,7 @@ class AnnotationsTest(tf.test.TestCase):
 
   def testUsage(self):
     _ = annotations.InputArtifact[standard_artifacts.Examples]
-    _ = annotations.InputUri[standard_artifacts.Examples]
     _ = annotations.OutputArtifact[standard_artifacts.Examples]
-    _ = annotations.OutputUri[standard_artifacts.Examples]
 
 
 if __name__ == '__main__':

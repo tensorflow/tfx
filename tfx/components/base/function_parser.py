@@ -28,7 +28,7 @@ import enum
 import inspect
 import types
 import typing
-from typing import Any, Dict, List, Set, Text, Tuple, Type
+from typing import Any, Dict, Set, Text, Tuple, Type
 
 from tfx.components.base import annotations
 from tfx.types import artifact
@@ -37,10 +37,8 @@ from tfx.types import standard_artifacts
 
 class ArgFormats(enum.Enum):
   INPUT_ARTIFACT = 1
-  INPUT_URI = 2
-  OUTPUT_ARTIFACT = 3
-  OUTPUT_URI = 4
-  ARTIFACT_VALUE = 5
+  OUTPUT_ARTIFACT = 2
+  ARTIFACT_VALUE = 3
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -83,14 +81,12 @@ def _validate_signature(
   if isinstance(typehints.get('return', None), annotations.OutputDict):
     for arg, arg_typehint in typehints['return'].kwargs.items():
       if (isinstance(arg_typehint, annotations.OutputArtifact) or
-          isinstance(arg_typehint, annotations.OutputUri) or
           (inspect.isclass(arg_typehint) and
            issubclass(arg_typehint, artifact.Artifact))):
         raise ValueError(
             ('Output artifacts for the component executor function %r should '
              'be declared as function parameters annotated with type hint '
-             '`tfx.types.annotations.OutputArtifact[T]` '
-             'or `tfx.types.annotations.OutputUri[T]` where T is a '
+             '`tfx.types.annotations.OutputArtifact[T]` where T is a '
              'subclass of `tfx.types.Artifact`. They should not be declared '
              'as part of the return value `OutputDict` type hint.') % func)
   elif 'return' not in typehints or typehints['return'] == type(None):
@@ -106,7 +102,7 @@ def _parse_signature(
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
     typehints: Dict[Text, Any]
 ) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
-    Text, Type[artifact.Artifact]], List[Tuple[Text, ArgFormats]], Set[Text]]:
+    Text, Type[artifact.Artifact]], Dict[Text, ArgFormats], Set[Text]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -121,35 +117,28 @@ def _parse_signature(
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
-    arg_formats: A list of 2-tuples corresponding (in order) to the input
-      arguments of the given component executor function. Each tuple's first
-      element is the format of the argument to be passed into the function
-      (given by a value of the `ArgFormats` enum); the second element is the
-      argument's string name.
+    arg_formats: Dictionary representing the input arguments of the given
+      component executor function. Each entry's key is the argument's string
+      name; each entry's value is the format of the argument to be passed into
+      the function (given by a value of the `ArgFormats` enum).
     returned_outputs: A set of output names that are declared as ValueArtifact
       returned outputs.
   """
   # Parse function arguments.
   inputs = {}
   outputs = {}
-  arg_formats = []
+  arg_formats = {}
   returned_outputs = set()
   for arg in argspec.args:
     arg_typehint = typehints[arg]
     if isinstance(arg_typehint, annotations.InputArtifact):
-      arg_formats.append((arg, ArgFormats.INPUT_ARTIFACT))
-      inputs[arg] = arg_typehint.type
-    elif isinstance(arg_typehint, annotations.InputUri):
-      arg_formats.append((arg, ArgFormats.INPUT_URI))
+      arg_formats[arg] = ArgFormats.INPUT_ARTIFACT
       inputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.OutputArtifact):
-      arg_formats.append((arg, ArgFormats.OUTPUT_ARTIFACT))
-      outputs[arg] = arg_typehint.type
-    elif isinstance(arg_typehint, annotations.OutputUri):
-      arg_formats.append((arg, ArgFormats.OUTPUT_URI))
+      arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
-      arg_formats.append((arg, ArgFormats.ARTIFACT_VALUE))
+      arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
     elif (inspect.isclass(arg_typehint) and
           issubclass(arg_typehint, artifact.Artifact)):
@@ -180,7 +169,7 @@ def _parse_signature(
 def parse_typehint_component_function(
     func: types.FunctionType
 ) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
-    Text, Type[artifact.Artifact]], List[Tuple[Text, ArgFormats]], Set[Text]]:
+    Text, Type[artifact.Artifact]], Dict[Text, ArgFormats], Set[Text]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -197,11 +186,10 @@ def parse_typehint_component_function(
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
-    arg_formats: A list of 2-tuples corresponding (in order) to the input
-      arguments of the given component executor function. Each tuple's first
-      element is the argument's string name; the second element is the format of
-      the argument to be passed into the function (given by a value of the
-      `ArgFormats` enum).
+    arg_formats: Dictionary representing the input arguments of the given
+      component executor function. Each entry's key is the argument's string
+      name; each entry's value is the format of the argument to be passed into
+      the function (given by a value of the `ArgFormats` enum).
     returned_outputs: A set of output names that are declared as ValueArtifact
       returned outputs.
   """

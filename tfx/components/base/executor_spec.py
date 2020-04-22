@@ -24,6 +24,7 @@ from typing import List, Text, Type
 from six import with_metaclass
 
 from tfx.components.base import base_executor
+from tfx.utils import import_utils
 from tfx.utils import json_utils
 
 
@@ -47,6 +48,24 @@ class ExecutorClassSpec(ExecutorSpec):
       raise ValueError('executor_class is required')
     self.executor_class = executor_class
     super(ExecutorClassSpec, self).__init__()
+
+  def __reduce__(self):
+    # When executing on the Beam DAG runner, the ExecutorClassSpec instance
+    # is pickled using the "dill" library. To make sure that the executor code
+    # itself is not pickled, we save the class path which will be reimported
+    # by the worker in this custom __reduce__ function.
+    #
+    # See https://docs.python.org/3/library/pickle.html#object.__reduce__ for
+    # more details.
+    executor_class_path = '%s.%s' % (self.executor_class.__module__,
+                                     self.executor_class.__name__)
+    return (ExecutorClassSpec._reconstruct_from_executor_class_path,
+            (executor_class_path,))
+
+  @staticmethod
+  def _reconstruct_from_executor_class_path(executor_class_path):
+    executor_class = import_utils.import_class_by_path(executor_class_path)
+    return ExecutorClassSpec(executor_class)
 
 
 class ExecutorContainerSpec(ExecutorSpec):

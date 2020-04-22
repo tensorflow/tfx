@@ -75,6 +75,9 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertIs(standard_artifacts.Examples,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
     mlmd_artifact_type = _MyArtifact._get_artifact_type()
+    # Test that the ID is ignored for type comparison purposes during
+    # deserialization.
+    mlmd_artifact_type.id = 123
     self.assertIs(_MyArtifact,
                   artifact_utils.get_artifact_type_class(mlmd_artifact_type))
 
