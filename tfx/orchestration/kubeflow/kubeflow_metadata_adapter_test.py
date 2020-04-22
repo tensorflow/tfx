@@ -61,6 +61,9 @@ class KubeflowMetadataAdapterTest(tf.test.TestCase):
           component_info=self._component_info,
           contexts=contexts)
       [execution] = m.store.get_executions_by_context(contexts[0].id)
+      # Skip verifying time sensitive fields.
+      execution.ClearField('create_time_since_epoch')
+      execution.ClearField('last_update_time_since_epoch')
       self.assertProtoEquals(
           """
         id: 1
