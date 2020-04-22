@@ -28,12 +28,13 @@ from tfx.tools.cli.handler import template_handler
 class TemplateHandlerTest(tf.test.TestCase):
 
   _PLACEHOLDER_TEST_DATA_BEFORE = """
-  from tfx.experimental.templates.taxi.parent import mmm 
+  from %s import mmm
   # TODO(b/1): This will disappear.
   # TODO(step 4): User instruction.
   # TODO(zzzzzzz): This will disappear, too.
   pipeline_name = '{{PIPELINE_NAME}}'
-  """
+  """ % ('tfx.experimental.templates.taxi.parent',)
+
   _PLACEHOLDER_TEST_DATA_AFTER = """
   from parent import mmm
   # TODO(step 4): User instruction.
@@ -65,10 +66,6 @@ class TemplateHandlerTest(tf.test.TestCase):
       configs_py_content = fp.read()
     self.assertIn(pipeline_name, configs_py_content)
     self.assertNotIn('# TODO(b/', configs_py_content)
-    with open(os.path.join(test_dir, 'models', 'estimator', 'model.py')) as fp:
-      model_py_content = fp.read()
-    self.assertNotIn('from tfx.experimental.templates.taxi import',
-                     model_py_content)
 
   def testEscapePipelineName(self):
     # pylint: disable=protected-access
