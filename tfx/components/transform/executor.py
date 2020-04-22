@@ -702,12 +702,18 @@ class Executor(base_executor.BaseExecutor):
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
       if self._input_cache_dir is not None:
+        # TODO(b/148082271, b/148212028, b/37788560): pass all kwargs directly
+        # when we stop supporting TFT 0.21.2.
+        read_cache_kwargs = dict(source=self._cache_source)
+        if hasattr(analyzer_cache, 'DatasetKey'):
+          read_cache_kwargs['cache_entry_keys'] = (
+              tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
+                  self._preprocessing_fn, self._feature_spec_or_typespec,
+                  dataset_keys_list))
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
-                self._input_cache_dir,
-                dataset_keys_list,
-                source=self._cache_source))
+                self._input_cache_dir, dataset_keys_list, **read_cache_kwargs))
       elif self._output_cache_dir is not None:
         input_cache = {}
       else:
