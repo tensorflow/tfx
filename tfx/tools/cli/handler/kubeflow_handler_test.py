@@ -25,6 +25,7 @@ import sys
 import tarfile
 import mock
 import tensorflow as tf
+import unittest
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
@@ -193,7 +194,21 @@ class _MockRunApi(object):
     run_2 = _MockRunResponse('2', 'Failed', datetime.datetime.now())
     return _Runs([run_1, run_2])
 
+def _check_kfp_environment() -> bool:
+  required_environments = [
+      'KFP_E2E_BASE_CONTAINER_IMAGE',
+      'KFP_E2E_SRC',
+      'KFP_E2E_GCP_PROJECT_ID',
+      'KFP_E2E_GCP_REGION',
+      'KFP_E2E_BUCKET_NAME',
+      'KFP_E2E_TEST_DATA_ROOT']
+  for name in required_environments:
+    if os.environ.get(name) is None:
+      return False
+  return True
 
+@unittest.skipUnless(_check_kfp_environment(),
+                     'Required environment variables not set')
 class KubeflowHandlerTest(tf.test.TestCase):
 
   def setUp(self):
