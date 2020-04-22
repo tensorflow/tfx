@@ -54,6 +54,11 @@ class ArtifactState(object):
 # Default split of examples data.
 DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 
+# Prefix for custom properties to prevent name collision.
+# TODO(b/152444458): Revisit this part after we have a better aligned type
+# system.
+CUSTOM_PROPERTIES_PREFIX = 'custom:'
+
 
 class PropertyType(enum.Enum):
   INT = 1
