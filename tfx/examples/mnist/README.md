@@ -36,19 +36,13 @@ Next, install the dependencies required by the MNIST example (appropriate
 version of TF2 will be installed automatically).
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tfx==0.21.0
+pip install tfx
 </pre>
 
-[OPTIONAL] Note that you need to install from head before 0.21.1 release:
+Then, clone the tfx repo and copy mnist/ folder to home directory:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-pip install -e.
-</pre>
-
-Then, copy mnist/ folder to home directory:
-
-<pre class="devsite-terminal devsite-click-to-copy">
 cp -r ~/tfx-source/tfx/examples/mnist ~/
 </pre>
 

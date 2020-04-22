@@ -20,19 +20,13 @@ source ./iris/bin/activate
 Next, install the dependencies required by the Iris example:
 
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install tfx==0.21.0
+pip install tfx
 </pre>
 
-Note that for native Keras example, you need to install from head before 0.21.1:
+Then, clone the tfx repo and copy iris/ folder to home directory:
 
 <pre class="devsite-terminal devsite-click-to-copy">
 git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
-pip install -e.
-</pre>
-
-Then, copy iris/ folder to home directory:
-
-<pre class="devsite-terminal devsite-click-to-copy">
 cp -r ~/tfx-source/tfx/examples/iris ~/
 </pre>
 
