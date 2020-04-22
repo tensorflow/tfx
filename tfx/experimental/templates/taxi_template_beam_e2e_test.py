@@ -115,7 +115,7 @@ class TaxiTemplateBeamEndToEndTest(tf.test.TestCase):
     self._copyTemplate()
     for m in self._getAllUnitTests():
       logging.info('Running unit test "%s"', m)
-      # A failed unittest will raise a CalledProcessError.
+      # A failed googletest will raise a CalledProcessError.
       _ = subprocess.check_output([sys.executable, '-m', m])
 
   def testBeamPipeline(self):

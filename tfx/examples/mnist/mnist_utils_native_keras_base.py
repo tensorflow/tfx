@@ -26,7 +26,6 @@ from typing import Text
 
 import absl
 import tensorflow as tf
-from tensorflow.keras import layers
 import tensorflow_transform as tft
 
 # MNIST dataset consists of an image of the handwritten digits,
@@ -81,18 +80,18 @@ def build_keras_model() -> tf.keras.Model:
   # The model below is built with Sequential API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   model = tf.keras.Sequential()
-  model.add(layers.InputLayer(input_shape=(784,),
-                              name=transformed_name(IMAGE_KEY)))
-  model.add(layers.Dense(64, activation='relu'))
-  model.add(layers.Dropout(0.2))
-  model.add(layers.Dense(64, activation='relu'))
-  model.add(layers.Dropout(0.2))
-  model.add(layers.Dense(10, activation='softmax'))
+  model.add(
+      tf.keras.layers.InputLayer(
+          input_shape=(784,), name=transformed_name(IMAGE_KEY)))
+  model.add(tf.keras.layers.Dense(64, activation='relu'))
+  model.add(tf.keras.layers.Dropout(0.2))
+  model.add(tf.keras.layers.Dense(64, activation='relu'))
+  model.add(tf.keras.layers.Dropout(0.2))
+  model.add(tf.keras.layers.Dense(10, activation='softmax'))
   model.compile(
       loss='sparse_categorical_crossentropy',
       optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
-      metrics=['sparse_categorical_accuracy']
-  )
+      metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
   return model
 
