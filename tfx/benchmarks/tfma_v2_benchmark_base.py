@@ -59,6 +59,12 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     super(TFMAV2BenchmarkBase, self).__init__()
     self._dataset = dataset
 
+  def _init_model(self):
+    # The benchmark runner will instantiate this class twice - once to determine
+    # the benchmarks to run, and once to actually to run them. However, Keras
+    # freezes if we try to load the same model twice. As such, we have to pull
+    # the model loading out of the constructor into a separate method which we
+    # call before each benchmark.
     self._eval_config = tfma.EvalConfig(
         model_specs=[tfma.ModelSpec(label_key="tips")],
         metrics_specs=metric_specs.example_count_specs())
@@ -83,6 +89,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
     """
+    self._init_model()
     pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
     raw_data = (
         pipeline
@@ -123,6 +130,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
     """
+    self._init_model()
     pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
@@ -175,6 +183,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
   # "Manual" micro-benchmarks
   def benchmarkInputExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
+    self._init_model()
     records = self._readDatasetIntoExtracts()
     extracts = []
 
@@ -188,6 +197,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
 
   def benchmarkPredictExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
+    self._init_model()
     records = self._readDatasetIntoExtracts()
     extracts = []
     for elem in records:
@@ -212,6 +222,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
   def _runMetricsAndPlotsEvaluatorManualActuation(self,
                                                   with_confidence_intervals):
     """Benchmark MetricsAndPlotsEvaluatorV2 "manually"."""
+    self._init_model()
     records = self._readDatasetIntoExtracts()
     extracts = []
     for elem in records:
