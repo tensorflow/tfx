@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, Iterable, List, Text
+from typing import Any, Dict, Iterable, List, Text, Tuple
 
 import absl
 import apache_beam as beam
@@ -148,6 +148,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
 class Executor(BaseExampleGenExecutor):
   """Generic TFX CSV example gen executor."""
 
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
+  def GetInputSourceToExamplePTransform(self) -> Tuple[beam.PTransform,
+                                                       Dict[Text, Any]]:
     """Returns PTransform for CSV to TF examples."""
-    return _CsvToExample
+    return _CsvToExample, {}

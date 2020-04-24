@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Optional, Tuple, Text
 
 import apache_beam as beam
 import tensorflow as tf
@@ -67,11 +67,29 @@ class _BigQueryConverter(object):
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(beam.typehints.Dict[Text, Any])
-def _ReadFromBigQuery(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, query: Text) -> beam.pvalue.PCollection:
+def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
+                          pipeline: beam.Pipeline,
+                          project: Optional[Text],
+                          query: Text,
+                          use_bigquery_source: bool=False) -> beam.pvalue.PCollection:
+  # TODO(zhitaoli): Consolidate to ReadFromBigQuery once its performance
+  # on dataflow runner is on par with BigQuerySource.
+  if use_bigquery_source:
+    return (pipeline
+            | 'QueryTable' >> beam.io.Read(
+                beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+  # TODO(zhitaoli): Change this to top level import after Beam version is
+  # upgraded to 2.21.
+  try:
+    from apache_beam.io.gcp.bigquery import ReadFromBigQuery
+  except ImportError:
+    from apache_beam.io.gcp.bigquery import _ReadFromBigQuery as ReadFromBigQuery
   return (pipeline
-          | 'QueryTable' >> beam.io.Read(
-              beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+          | 'QueryTable' >> ReadFromBigQuery(
+              query=query,
+              use_standard_sql=True,
+              project=project))
+
 
 
 @beam.ptransform_fn
@@ -81,7 +99,9 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
     input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
-    split_pattern: Text) -> beam.pvalue.PCollection:
+    split_pattern: Text,
+    project: Optional[Text],
+    use_bigquery_source: bool) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to TF examples.
 
   Args:
@@ -89,6 +109,9 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
     input_dict: Input dict from input key to a list of Artifacts.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, a BigQuery sql string.
+    project: The ID of the project running this job.
+    use_bigquery_source: Whether to use BigQuerySource instead of experimental
+    `ReadFromBigQuery` PTransform.
 
   Returns:
     PCollection of TF examples.
@@ -96,13 +119,22 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
   converter = _BigQueryConverter(split_pattern)
 
   return (pipeline
-          | 'QueryTable' >> _ReadFromBigQuery(split_pattern)  # pylint: disable=no-value-for-parameter
+          | 'QueryTable' >> _ReadFromBigQueryImpl(query=split_pattern,
+                                                  project=project,
+                                                  use_bigquery_source=use_bigquery_source)  # pylint: disable=no-value-for-parameter
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 
 
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX BigQueryExampleGen executor."""
 
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
-    """Returns PTransform for BigQuery to TF examples."""
-    return _BigQueryToExample
+  def GetInputSourceToExamplePTransform(self) -> Tuple[beam.PTransform,
+                                                       Dict[Text, Any]]:
+    """Returns PTransform and kwargs for BigQuery to TF examples."""
+    pipeline_options = beam.options.pipeline_options.PipelineOptions(
+        self._beam_pipeline_args)
+    project = pipeline_options.get_all_options().get('project')
+    use_dataflow_runner = pipeline_options.get_all_options().get('runner') in [
+        'dataflow', 'DataflowRunner']
+    return (_BigQueryToExample, {'project': project,
+                                 'use_bigquery_source': use_dataflow_runner})

@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Tuple
 
 import absl
 import apache_beam as beam
@@ -94,6 +94,7 @@ class Executor(BaseExampleGenExecutor):
         executor_class=avro_executor.Executor)
   """
 
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
+  def GetInputSourceToExamplePTransform(self) -> Tuple[beam.PTransform,
+                                                       Dict[Text, Any]]:
     """Returns PTransform for avro to TF examples."""
-    return _AvroToExample
+    return _AvroToExample, {}

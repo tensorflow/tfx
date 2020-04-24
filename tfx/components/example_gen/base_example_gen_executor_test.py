@@ -64,7 +64,7 @@ def _TestInputSourceToExamplePTransform(
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
 
   def GetInputSourceToExamplePTransform(self):
-    return _TestInputSourceToExamplePTransform
+    return _TestInputSourceToExamplePTransform, {}
 
 
 class BaseExampleGenExecutorTest(tf.test.TestCase):

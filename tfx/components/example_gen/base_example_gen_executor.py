@@ -22,7 +22,7 @@ import abc
 import bisect
 import hashlib
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Tuple, Union
 
 import absl
 import apache_beam as beam
@@ -77,11 +77,12 @@ def _InputToSerializedExample(pipeline: beam.Pipeline,
                               input_to_example: beam.PTransform,
                               input_dict: Dict[Text, List[types.Artifact]],
                               exec_properties: Dict[Text, Any],
-                              split_pattern: Text) -> beam.pvalue.PCollection:
+                              split_pattern: Text,
+                              **kwargs) -> beam.pvalue.PCollection:
   """Converts input to serialized TF examples."""
   return (pipeline
           | 'InputSourceToExample' >> input_to_example(
-              input_dict, exec_properties, split_pattern)
+              input_dict, exec_properties, split_pattern, **kwargs)
           # Returns deterministic string as partition is based on it.
           | 'SerializeDeterministically' >>
           beam.Map(lambda x: x.SerializeToString(deterministic=True)))
@@ -114,8 +115,10 @@ class BaseExampleGenExecutor(
   """
 
   @abc.abstractmethod
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
-    """Returns PTransform for converting input source to TF examples.
+  def GetInputSourceToExamplePTransform(self) -> Union[
+      beam.PTransform,
+      Tuple[beam.PTransform, Dict[Text, Any]]]:
+    """Returns PTransform and kwargs for converting input source to TF examples.
 
     Note that each input split will be transformed by this function separately.
     For complex use case, consider override 'GenerateExamplesByBeam' instead.
@@ -128,7 +131,8 @@ class BaseExampleGenExecutor(
           pipeline: beam.Pipeline,
           input_dict: Dict[Text, List[types.Artifact]],
           exec_properties: Dict[Text, Any],
-          split_pattern: Text) -> beam.pvalue.PCollection
+          split_pattern: Text,
+          **kwargs: Dict[Text, Any]) -> beam.pvalue.PCollection
     """
     pass
 
@@ -166,9 +170,14 @@ class BaseExampleGenExecutor(
     json_format.Parse(exec_properties['output_config'], output_config)
     # Get output split names.
     split_names = utils.generate_output_split_names(input_config, output_config)
-
     example_splits = []
+
     input_to_example = self.GetInputSourceToExamplePTransform()
+    kwargs = {}
+    if type(input_to_example) == tuple:
+      # Backward compatible for custom example_gen before TFX 0.22.
+      (input_to_example, kwargs) = input_to_example
+
     if output_config.split_config.splits:
       # Use output splits, input must have only one split.
       assert len(
@@ -184,7 +193,7 @@ class BaseExampleGenExecutor(
           pipeline
           | 'InputToSerializedExample' >> _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
               input_to_example, input_dict, exec_properties,
-              input_config.splits[0].pattern)
+              input_config.splits[0].pattern, **kwargs)
           | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets))
     else:
       # Use input splits.
@@ -193,7 +202,7 @@ class BaseExampleGenExecutor(
             pipeline
             | 'InputToSerializedExample[{}]'.format(split.name) >>
             _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
-                input_to_example, input_dict, exec_properties, split.pattern))
+                input_to_example, input_dict, exec_properties, split.pattern, kwargs))
         example_splits.append(examples)
 
     result = {}

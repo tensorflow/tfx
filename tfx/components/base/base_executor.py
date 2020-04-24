@@ -40,14 +40,7 @@ from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
 
-# TODO(b/149185015): remove apache_beam.portability.api once we remove support
-# for Apache Beam 2.17 or below.
-beam_runner_api_pb2 = None
-environments = None
-try:
-  from apache_beam.portability.api import beam_runner_api_pb2  # pylint: disable=g-import-not-at-top
-except ImportError:
-  from apache_beam.transforms import environments  # pylint: disable=g-import-not-at-top
+from apache_beam.transforms import environments  # pylint: disable=g-import-not-at-top
 
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
@@ -131,13 +124,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
                         parallelism)
 
       if parallelism > 1:
-        if beam_runner_api_pb2:
-          env = beam_runner_api_pb2.Environment(
-              urn=python_urns.SUBPROCESS_SDK,
-              payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
-              (sys.executable or sys.argv[0]).encode('ascii'))
-        else:
-          env = environments.SubprocessSDKEnvironment(
+        env = environments.SubprocessSDKEnvironment(
               command_string='%s -m apache_beam.runners.worker.sdk_worker_main'
               % (sys.executable or sys.argv[0]))
         return beam.Pipeline(

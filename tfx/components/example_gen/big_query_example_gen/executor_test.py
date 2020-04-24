@@ -33,7 +33,7 @@ from tfx.types import standard_artifacts
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery(pipeline, query, project_id):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -46,7 +46,7 @@ def _MockReadFromBigQuery(pipeline, query):  # pylint: disable=invalid-name, unu
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery2(pipeline, query, project_id):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
       'b': True,
@@ -70,7 +70,7 @@ class ExecutorTest(tf.test.TestCase):
 
   @mock.patch.multiple(
       executor,
-      _ReadFromBigQuery=_MockReadFromBigQuery2,  # pylint: disable=invalid-name, unused-argument
+      _ReadFromBigQueryImpl=_MockReadFromBigQuery2,  # pylint: disable=invalid-name, unused-argument
   )
   @mock.patch.object(bigquery, 'Client')
   def testBigQueryToExample(self, mock_client):
@@ -82,7 +82,8 @@ class ExecutorTest(tf.test.TestCase):
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
               input_dict={},
               exec_properties={},
-              split_pattern='SELECT i, b, f, s FROM `fake`'))
+              split_pattern='SELECT i, b, f, s FROM `fake`',
+              project_id='project_id'))
 
       feature = {}
       feature['i'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
@@ -97,7 +98,7 @@ class ExecutorTest(tf.test.TestCase):
 
   @mock.patch.multiple(
       executor,
-      _ReadFromBigQuery=_MockReadFromBigQuery,  # pylint: disable=invalid-name, unused-argument
+      _ReadFromBigQueryImpl=_MockReadFromBigQuery,  # pylint: disable=invalid-name, unused-argument
   )
   @mock.patch.object(bigquery, 'Client')
   def testDo(self, mock_client):

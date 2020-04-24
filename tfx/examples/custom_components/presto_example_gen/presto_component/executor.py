@@ -195,6 +195,7 @@ def _PrestoToExample(  # pylint: disable=invalid-name
 class Executor(base_example_gen_executor.BaseExampleGenExecutor):
   """Generic TFX PrestoExampleGen executor."""
 
-  def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
+  def GetInputSourceToExamplePTransform(self) -> Tuple[beam.PTransform,
+                                                       Dict[Text, Any]]:
     """Returns PTransform for Presto to TF examples."""
-    return _PrestoToExample
+    return _PrestoToExample, {}
