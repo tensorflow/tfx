@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import sys
 import types
-from typing import Any, Dict, List, Text
+from typing import Any, Callable, Dict, List, Text
 
 # Standard Imports
 
@@ -35,7 +35,7 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.components.base import function_parser
 from tfx.types import channel_utils
-from tfx.types.component_spec import ChannelParameter
+from tfx.types import component_spec
 
 
 class _SimpleComponent(base_component.BaseComponent):
@@ -77,6 +77,8 @@ class _FunctionExecutor(base_executor.BaseExecutor):
   # Describes the format of each argument passed to the component function, as
   # a dictionary from name to a `function_parser.ArgFormats` enum value.
   _ARG_FORMATS = {}
+  # Map from names of optional arguments to their default argument values.
+  _ARG_DEFAULTS = {}
   # User-defined component function. Should be wrapped in staticmethod() to
   # avoid being interpreted as a bound method (i.e. one taking `self` as its
   # first argument.
@@ -91,18 +93,45 @@ class _FunctionExecutor(base_executor.BaseExecutor):
     function_args = {}
     for name, arg_format in self._ARG_FORMATS.items():
       if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
-        assert len(input_dict.get(name, [])) == 1, (
-            'Expected input %r to %s to be a singleton ValueArtifact channel '
-            '(got %s instead).') % input_dict.get(name, [])
-        if arg_format == function_parser.ArgFormats.INPUT_ARTIFACT:
-          function_args[name] = input_dict[name][0]
+        input_list = input_dict.get(name, [])
+        if len(input_list) == 1:
+          function_args[name] = input_list[0]
+        elif not input_list and name in self._ARG_DEFAULTS:
+          # Do not pass the missing optional input.
+          pass
+        else:
+          raise ValueError((
+              'Expected input %r to %s to be a singleton ValueArtifact channel '
+              '(got %s instead).') % (name, self, input_list))
       elif arg_format == function_parser.ArgFormats.OUTPUT_ARTIFACT:
-        assert len(output_dict.get(name, [])) == 1, (
-            'Expected output %r to %s to be a singleton ValueArtifact channel '
-            '(got %s instead).') % input_dict.get(name, [])
-        function_args[name] = output_dict[name][0]
+        output_list = output_dict.get(name, [])
+        if len(output_list) == 1:
+          function_args[name] = output_list[0]
+        else:
+          raise ValueError((
+              'Expected output %r to %s to be a singleton ValueArtifact channel '
+              '(got %s instead).') % (name, self, output_list))
       elif arg_format == function_parser.ArgFormats.ARTIFACT_VALUE:
-        function_args[name] = input_dict[name][0].value
+        input_list = input_dict.get(name, [])
+        if len(input_list) == 1:
+          function_args[name] = input_list[0].value
+        elif not input_list and name in self._ARG_DEFAULTS:
+          # Do not pass the missing optional input.
+          pass
+        else:
+          raise ValueError((
+              'Expected input %r to %s to be a singleton ValueArtifact channel '
+              '(got %s instead).') % (name, self, input_list))
+      elif arg_format == function_parser.ArgFormats.PARAMETER:
+        if name in exec_properties:
+          function_args[name] = exec_properties[name]
+        elif name in self._ARG_DEFAULTS:
+          # Do not pass the missing optional input.
+          pass
+        else:
+          raise ValueError((
+              'Expected non-optional parameter %r of %s to be provided, but no '
+              'value was passed.') % (name, self))
       else:
         raise ValueError('Unknown argument format: %r' % (arg_format,))
 
@@ -128,25 +157,33 @@ class _FunctionExecutor(base_executor.BaseExecutor):
              '%r.') % (outputs[name], name, output_dict[name][0].__class__))
 
 
-def component(func: types.FunctionType):
+def component(func: types.FunctionType) -> Callable[..., Any]:
   """Decorator: creates a component from a typehint-annotated Python function.
 
   This decorator creates a component based on typehint annotations specified for
   the arguments and return value for a Python function. Specifically, function
   arguments can be annotated with the following types and associated semantics:
 
+  * `Parameter[T]` where `T` is `int`, `float`, `str`, or `bytes`: indicates
+    that a primitive type execution parameter, whose value is known at pipeline
+    construction time, will be passed for this argument. These parameters will
+    be recorded in ML Metadata as part of the component's execution record. Can
+    be an optional argument.
   * `int`, `float`, `str`, `bytes`: indicates that a primitive type value will
     be passed for this argument. This value is tracked as an `Integer`, `Float`
     `String` or `Bytes` artifact (see `tfx.types.standard_artifacts`) whose
-    value is read and passed into the given Python component function.
+    value is read and passed into the given Python component function. Can be
+    an optional argument.
   * `InputArtifact[ArtifactType]`: indicates that an input artifact object of
     type `ArtifactType` (deriving from `tfx.types.Artifact`) will be passed for
     this argument. This artifact is intended to be consumed as an input by this
-    component (possibly reading from the path specified by its `.uri`).
+    component (possibly reading from the path specified by its `.uri`). Can be
+    an optional argument by specifying a default value of `None`.
   * `OutputArtifact[ArtifactType]`: indicates that an output artifact object of
     type `ArtifactType` (deriving from `tfx.types.Artifact`) will be passed for
     this argument. This artifact is intended to be emitted as an output by this
-    component (and written to the path specified by its `.uri`).
+    component (and written to the path specified by its `.uri`). Cannot be an
+    optional argument.
 
   The return value typehint should be either empty or `None`, in the case of a
   component function that has no return values, or an instance of
@@ -170,6 +207,8 @@ def component(func: types.FunctionType):
       InputArtifact
       from tfx.components.base.annotations import
       OutputArtifact
+      from tfx.components.base.annotations import
+      Parameter
       from tfx.components.base.decorators import component
       from tfx.types.standard_artifacts import Examples
       from tfx.types.standard_artifacts import Model
@@ -178,18 +217,28 @@ def component(func: types.FunctionType):
       def MyTrainerComponent(
           training_data: InputArtifact[Examples],
           model: OutputArtifact[Model],
-          num_iterations: int
+          dropout_hyperparameter: float,
+          num_iterations: Parameter[int] = 10
           ) -> OutputDict(loss=float, accuracy=float):
         '''My simple trainer component.'''
 
         records = read_examples(training_data.uri)
-        model_obj = train_model(records, num_iterations)
+        model_obj = train_model(records, num_iterations, dropout_hyperparameter)
         model_obj.write_to(model.uri)
 
         return {
           'loss': model_obj.loss,
           'accuracy': model_obj.accuracy
         }
+
+      # Example usage in a pipeline graph definition:
+      # ...
+      trainer = MyTrainerComponent(
+          examples=example_gen.outputs['examples'],
+          dropout_hyperparameter=other_component.outputs['dropout'],
+          num_iterations=1000)
+      pusher = Pusher(model=trainer.outputs['model'])
+      # ...
 
   Experimental: no backwards compatibility guarantees.
 
@@ -218,25 +267,26 @@ def component(func: types.FunctionType):
         'at the module level. It cannot be used to construct a component for a '
         'function defined in a nested class or function closure.')
 
-  inputs, outputs, arg_formats, returned_values = (
+  inputs, outputs, parameters, arg_formats, arg_defaults, returned_values = (
       function_parser.parse_typehint_component_function(func))
 
-  channel_inputs = {}
-  channel_outputs = {}
+  spec_inputs = {}
+  spec_outputs = {}
+  spec_parameters = {}
   for key, artifact_type in inputs.items():
-    channel_inputs[key] = ChannelParameter(type=artifact_type)
+    spec_inputs[key] = component_spec.ChannelParameter(
+        type=artifact_type, optional=(key in arg_defaults))
   for key, artifact_type in outputs.items():
-    channel_outputs[key] = ChannelParameter(type=artifact_type)
-  component_spec = type(
-      '%s_Spec' % func.__name__,
-      (tfx_types.ComponentSpec,),
-      {
-          'INPUTS': channel_inputs,
-          'OUTPUTS': channel_outputs,
-          # TODO(ccy): add support for execution properties or remove
-          # execution properties from the SDK, merging them with component
-          # inputs.
-          'PARAMETERS': {},
+    assert key not in arg_defaults, 'Optional outputs are not supported.'
+    spec_outputs[key] = component_spec.ChannelParameter(type=artifact_type)
+  for key, primitive_type in parameters.items():
+    spec_parameters[key] = component_spec.ExecutionParameter(
+        type=primitive_type, optional=(key in arg_defaults))
+  component_spec_class = type(
+      '%s_Spec' % func.__name__, (tfx_types.ComponentSpec,), {
+          'INPUTS': spec_inputs,
+          'OUTPUTS': spec_outputs,
+          'PARAMETERS': spec_parameters,
       })
 
   executor_class = type(
@@ -244,6 +294,7 @@ def component(func: types.FunctionType):
       (_FunctionExecutor,),
       {
           '_ARG_FORMATS': arg_formats,
+          '_ARG_DEFAULTS': arg_defaults,
           # The function needs to be marked with `staticmethod` so that later
           # references of `self._FUNCTION` do not result in a bound method (i.e.
           # one with `self` as its first parameter).
@@ -264,7 +315,7 @@ def component(func: types.FunctionType):
 
   return type(
       func.__name__, (_SimpleComponent,), {
-          'SPEC_CLASS': component_spec,
+          'SPEC_CLASS': component_spec_class,
           'EXECUTOR_SPEC': executor_spec_instance,
           '__module__': func.__module__,
       })
