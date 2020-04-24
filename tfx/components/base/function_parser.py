@@ -17,8 +17,8 @@
 Internal use only. No backwards compatibility guarantees.
 """
 
-# TODO(ccy): Remove "pytype: disable=module-attr" overrides after Python 2
-# support is removed from TFX.
+# TODO(ccy): Remove pytype "disable=attribute-error" and "disable=module-attr"
+# overrides after Python 2 support is removed from TFX.
 
 from __future__ import absolute_import
 from __future__ import division
@@ -27,8 +27,7 @@ from __future__ import print_function
 import enum
 import inspect
 import types
-import typing
-from typing import Any, Dict, Set, Text, Tuple, Type
+from typing import Any, Dict, Optional, Set, Text, Tuple, Type, Union
 
 from tfx.components.base import annotations
 from tfx.types import artifact
@@ -39,6 +38,7 @@ class ArgFormats(enum.Enum):
   INPUT_ARTIFACT = 1
   OUTPUT_ARTIFACT = 2
   ARTIFACT_VALUE = 3
+  PARAMETER = 4
 
 
 _PRIMITIVE_TO_ARTIFACT = {
@@ -49,22 +49,22 @@ _PRIMITIVE_TO_ARTIFACT = {
 }
 
 
+# Map from `Optional[T]` to `T` for primitive types. This map is a simple way
+# to extract the value of `T` from its optional typehint, since the internal
+# fields of the typehint vary depending on the Python version.
+_OPTIONAL_PRIMITIVE_MAP = dict((Optional[t], t) for t in _PRIMITIVE_TO_ARTIFACT)
+
+
 def _validate_signature(
     func: types.FunctionType,
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
     typehints: Dict[Text, Any],
     subject_message: Text) -> None:
   """Validates signature of a typehint-annotated component executor function."""
-  args, varargs, keywords, defaults = (argspec.args, argspec.varargs,
-                                       argspec.varkw, argspec.defaults)
+  args, varargs, keywords = argspec.args, argspec.varargs, argspec.varkw
   if varargs or keywords:
     raise ValueError('%s does not support *args or **kwargs arguments.' %
                      subject_message)
-  if defaults:
-    # TODO(ccy): add support for optional arguments / default values.
-    raise ValueError(
-        '%s currently does not support optional arguments / default values.' %
-        subject_message)
 
   # Validate argument type hints.
   for arg in args:
@@ -89,11 +89,11 @@ def _validate_signature(
              '`tfx.types.annotations.OutputArtifact[T]` where T is a '
              'subclass of `tfx.types.Artifact`. They should not be declared '
              'as part of the return value `OutputDict` type hint.') % func)
-  elif 'return' not in typehints or typehints['return'] == type(None):
+  elif 'return' not in typehints or typehints['return'] in (None, type(None)):
     pass
   else:
     raise ValueError(
-        ('%s must have either an OutputDict instance or None as its return '
+        ('%s must have either an OutputDict instance or `None` as its return '
          'value typehint.') % subject_message)
 
 
@@ -102,7 +102,9 @@ def _parse_signature(
     argspec: inspect.FullArgSpec,  # pytype: disable=module-attr
     typehints: Dict[Text, Any]
 ) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
-    Text, Type[artifact.Artifact]], Dict[Text, ArgFormats], Set[Text]]:
+    Text, Type[artifact.Artifact]], Dict[Text, Type[Union[
+        int, float, Text, bytes]]], Dict[Text, Any], Dict[Text, ArgFormats],
+           Set[Text]]:
   """Parses signature of a typehint-annotated component executor function.
 
   Args:
@@ -110,34 +112,75 @@ def _parse_signature(
     argspec: A `inspect.FullArgSpec` instance describing the component executor
       function. Usually obtained from `inspect.getfullargspec(func)`.
     typehints: A dictionary mapping function argument names to type hints.
-      Usually obtained from `typing.get_type_hints(func)`.
+      Usually obtained from `func.__annotations__`.
 
   Returns:
     inputs: A dictionary mapping each input name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
+    parameters: A dictionary mapping each parameter name to its primitive type
+      (one of `int`, `float`, `Text` and `bytes`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
       the function (given by a value of the `ArgFormats` enum).
+    arg_defaults: Dictionary mapping names of optional arguments to default
+      values.
     returned_outputs: A set of output names that are declared as ValueArtifact
       returned outputs.
   """
+  # Extract optional arguments as dict from name to its declared optional value.
+  arg_defaults = {}
+  if argspec.defaults:
+    arg_defaults = dict(
+        zip(argspec.args[-len(argspec.defaults):], argspec.defaults))
+
   # Parse function arguments.
   inputs = {}
   outputs = {}
+  parameters = {}
   arg_formats = {}
   returned_outputs = set()
   for arg in argspec.args:
     arg_typehint = typehints[arg]
+    # If the typehint is `Optional[T]` for a primitive type `T`, unwrap it.
+    if arg_typehint in _OPTIONAL_PRIMITIVE_MAP:
+      arg_typehint = _OPTIONAL_PRIMITIVE_MAP[arg_typehint]
     if isinstance(arg_typehint, annotations.InputArtifact):
+      if arg_defaults.get(arg, None) is not None:
+        raise ValueError(
+            ('If an input artifact is declared as an optional argument, '
+             'its default value must be `None` (got default value %r for '
+             'input argument %r of %r instead).') %
+            (arg_defaults[arg], arg, func))
       arg_formats[arg] = ArgFormats.INPUT_ARTIFACT
       inputs[arg] = arg_typehint.type
     elif isinstance(arg_typehint, annotations.OutputArtifact):
+      if arg in arg_defaults:
+        raise ValueError(
+            ('Output artifact of component function cannot be declared as '
+             'optional (error for argument %r of %r).') % (arg, func))
       arg_formats[arg] = ArgFormats.OUTPUT_ARTIFACT
       outputs[arg] = arg_typehint.type
+    elif isinstance(arg_typehint, annotations.Parameter):
+      if arg in arg_defaults:
+        if not (arg_defaults[arg] is None or
+                isinstance(arg_defaults[arg], arg_typehint.type)):
+          raise ValueError((
+              'The default value for optional parameter %r on function %r must '
+              'be an instance of its declared type %r or `None` (got %r '
+              'instead)') % (arg, func, arg_typehint.type, arg_defaults[arg]))
+      arg_formats[arg] = ArgFormats.PARAMETER
+      parameters[arg] = arg_typehint.type
     elif arg_typehint in _PRIMITIVE_TO_ARTIFACT:
+      if arg in arg_defaults:
+        if not (arg_defaults[arg] is None or
+                isinstance(arg_defaults[arg], arg_typehint)):
+          raise ValueError(
+              ('The default value for optional input value %r on function %r '
+               'must be an instance of its declared type %r or `None` (got %r '
+               'instead)') % (arg, func, arg_typehint, arg_defaults[arg]))
       arg_formats[arg] = ArgFormats.ARTIFACT_VALUE
       inputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
     elif (inspect.isclass(arg_typehint) and
@@ -153,23 +196,26 @@ def _parse_signature(
           'Unknown type hint annotation for argument %r on function %r' %
           (arg, func))
 
-  if 'return' in typehints and typehints['return'] != type(None):
+  if 'return' in typehints and typehints['return'] not in (None, type(None)):
     for arg, arg_typehint in typehints['return'].kwargs.items():
       if arg_typehint in _PRIMITIVE_TO_ARTIFACT:
         outputs[arg] = _PRIMITIVE_TO_ARTIFACT[arg_typehint]
         returned_outputs.add(arg)
       else:
         raise ValueError(
-            ('Unknown type hint annotation for returned output %r on function '
-             '%r') % (arg, func))
+            ('Unknown type hint annotation %r for returned output %r on '
+             'function %r') % (arg_typehint, arg, func))
 
-  return inputs, outputs, arg_formats, returned_outputs
+  return (inputs, outputs, parameters, arg_formats, arg_defaults,
+          returned_outputs)
 
 
 def parse_typehint_component_function(
     func: types.FunctionType
 ) -> Tuple[Dict[Text, Type[artifact.Artifact]], Dict[
-    Text, Type[artifact.Artifact]], Dict[Text, ArgFormats], Set[Text]]:
+    Text, Type[artifact.Artifact]], Dict[Text, Type[Union[
+        int, float, Text, bytes]]], Dict[Text, Any], Dict[Text, ArgFormats],
+           Set[Text]]:
   """Parses the given component executor function.
 
   This method parses a typehinted-annotated Python function that is intended to
@@ -186,10 +232,14 @@ def parse_typehint_component_function(
       subclass of `tfx.types.Artifact`).
     outputs: A dictionary mapping each output name to its artifact type (as a
       subclass of `tfx.types.Artifact`).
+    parameters: A dictionary mapping each parameter name to its primitive type
+      (one of `int`, `float`, `Text` and `bytes`).
     arg_formats: Dictionary representing the input arguments of the given
       component executor function. Each entry's key is the argument's string
       name; each entry's value is the format of the argument to be passed into
       the function (given by a value of the `ArgFormats` enum).
+    arg_defaults: Dictionary mapping names of optional arguments to default
+      values.
     returned_outputs: A set of output names that are declared as ValueArtifact
       returned outputs.
   """
@@ -200,12 +250,14 @@ def parse_typehint_component_function(
         (func,))
 
   # Inspect the component executor function.
-  typehints = typing.get_type_hints(func)
+  typehints = func.__annotations__  # pytype: disable=attribute-error
   argspec = inspect.getfullargspec(func)  # pytype: disable=module-attr
   subject_message = 'Component declared as a typehint-annotated function'
   _validate_signature(func, argspec, typehints, subject_message)
 
   # Parse the function and return its details.
-  inputs, outputs, arg_formats, returned_outputs = (
+  inputs, outputs, parameters, arg_formats, arg_defaults, returned_outputs = (
       _parse_signature(func, argspec, typehints))
-  return inputs, outputs, arg_formats, returned_outputs
+
+  return (inputs, outputs, parameters, arg_formats, arg_defaults,
+          returned_outputs)

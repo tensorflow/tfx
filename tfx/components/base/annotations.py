@@ -22,7 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import inspect
-from typing import Type
+from typing import Text, Type, Union
 from six import with_metaclass
 
 from tfx.types import artifact
@@ -33,7 +33,7 @@ class _ArtifactGenericMeta(type):
 
   def __getitem__(cls: Type['_ArtifactGeneric'],
                   params: Type[artifact.Artifact]):
-    """Metaclass method allowing indexing of class (`_ArtifactGeneric[T]`)."""
+    """Metaclass method allowing indexing class (`_ArtifactGeneric[T]`)."""
     return cls._generic_getitem(params)  # pytype: disable=attribute-error
 
 
@@ -70,6 +70,45 @@ class _ArtifactGeneric(with_metaclass(_ArtifactGenericMeta, object)):
     return '%s[%s]' % (self.__class__.__name__, self.type)
 
 
+class _PrimitiveTypeGenericMeta(type):
+  """Metaclass for _PrimitiveTypeGeneric, to enable primitive type indexing."""
+
+  def __getitem__(cls: Type[Union[int, float, Text, bytes]],
+                  params: Type[artifact.Artifact]):
+    """Metaclass method allowing indexing class (`_PrimitiveTypeGeneric[T]`)."""
+    return cls._generic_getitem(params)  # pytype: disable=attribute-error
+
+
+class _PrimitiveTypeGeneric(with_metaclass(_PrimitiveTypeGenericMeta, object)):
+  """A generic that takes a primitive type as its single argument."""
+
+  def __init__(  # pylint: disable=invalid-name
+      self,
+      artifact_type: Type[Union[int, float, Text, bytes]],
+      _init_via_getitem=False):
+    if not _init_via_getitem:
+      class_name = self.__class__.__name__
+      raise ValueError(
+          ('%s should be instantiated via the syntax `%s[T]`, where T is '
+           '`int`, `float`, `str` or `bytes`.') % (class_name, class_name))
+    self.type = artifact_type
+
+  @classmethod
+  def _generic_getitem(cls, params):
+    """Return the result of `_PrimitiveTypeGeneric[T]` for a given type T."""
+    # Check that the given parameter is a primitive type.
+    if inspect.isclass(params) and params in (int, float, Text, bytes):
+      return cls(params, _init_via_getitem=True)
+    else:
+      class_name = cls.__name__
+      raise ValueError(
+          ('Generic type `%s[T]` expects the single parameter T to be '
+           '`int`, `float`, `str` or `bytes` (got %r instead).') %
+          (class_name, params))
+
+  def __repr__(self):
+    return '%s[%s]' % (self.__class__.__name__, self.type)
+
 # Typehint annotations for component authoring.
 
 
@@ -80,6 +119,11 @@ class InputArtifact(_ArtifactGeneric):
 
 class OutputArtifact(_ArtifactGeneric):
   """Output artifact object type annotation."""
+  pass
+
+
+class Parameter(_PrimitiveTypeGeneric):
+  """Component parameter type annotation."""
   pass
 
 

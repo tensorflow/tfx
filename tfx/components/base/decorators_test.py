@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Text
+from typing import Optional, Text
 import unittest
 
 # Standard Imports
@@ -31,13 +31,17 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
+from tfx.components.base.annotations import InputArtifact
+from tfx.components.base.annotations import OutputArtifact
 from tfx.components.base.annotations import OutputDict
+from tfx.components.base.annotations import Parameter
 from tfx.components.base.decorators import _SimpleComponent
 from tfx.components.base.decorators import component
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
+from tfx.types import standard_artifacts
 
 
 class _InputArtifact(types.Artifact):
@@ -66,7 +70,11 @@ if not six.PY2:
   # nested class or function scope). We define the test components here.
 
   @component
-  def _injector() -> OutputDict(a=int, b=int, c=Text, d=bytes):
+  def _injector_1(
+      foo: Parameter[int], bar: Parameter[Text]) -> OutputDict(
+          a=int, b=int, c=Text, d=bytes):
+    assert foo == 9
+    assert bar == 'secret'
     return {'a': 10, 'b': 22, 'c': 'unicode', 'd': b'bytes'}
 
   @component
@@ -78,6 +86,54 @@ if not six.PY2:
   @component
   def _verify(e: float, f: float):
     assert (e, f) == (32.0, 220.0), (e, f)
+
+  @component
+  def _injector_2(
+      examples: OutputArtifact[standard_artifacts.Examples]
+  ) -> OutputDict(
+      a=int, b=float, c=Text, d=bytes, e=Text):
+    del examples
+    return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
+
+  @component
+  def _optionalarg_component(
+      foo: Parameter[int],
+      bar: Parameter[Text],
+      examples: InputArtifact[standard_artifacts.Examples],
+      a: int,
+      b: float,
+      c: Text,
+      d: bytes,
+      e1: Text = 'default',
+      e2: Optional[Text] = 'default',
+      f: bytes = b'default',
+      g: Parameter[float] = 1000.0,
+      h: Parameter[Text] = '2000',
+      optional_examples_1: InputArtifact[standard_artifacts.Examples] = None,
+      optional_examples_2: InputArtifact[standard_artifacts.Examples] = None):
+    # Test non-optional parameters.
+    assert foo == 9
+    assert bar == 'secret'
+    assert isinstance(examples, standard_artifacts.Examples)
+    # Test non-optional `int`, `float`, `Text` and `bytes` input values.
+    assert a == 1
+    assert b == 2.0
+    assert c == '3'
+    assert d == b'4'
+    # Test passed optional arguments (with and without the `Optional` typehint
+    # specifier).
+    assert e1 == 'passed'
+    assert e2 == 'passed'
+    # Test that non-passed optional argument becomes the argument default.
+    assert f == b'default'
+    # Test passed optional parameter.
+    assert g == 999.0
+    # Test non-passed optional parameter.
+    assert h == '2000'
+    # Test passed optional input artifact.
+    assert optional_examples_1 and optional_examples_1.uri
+    # Test non-passed optional input artifact.
+    assert optional_examples_2 is None
 
 
 @unittest.skipIf(six.PY2, 'Not compatible with Python 2.')
@@ -114,7 +170,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""
-    instance_1 = _injector()
+    instance_1 = _injector_1(foo=9, bar='secret')
     instance_2 = _simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
@@ -134,7 +190,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
 
   def testBeamExecutionFailure(self):
     """Test execution with return values; failure case."""
-    instance_1 = _injector()
+    instance_1 = _injector_1(foo=9, bar='secret')
     instance_2 = _simple_component(
         a=instance_1.outputs['a'],
         b=instance_1.outputs['b'],
@@ -154,6 +210,33 @@ class ComponentDecoratorTest(tf.test.TestCase):
     with self.assertRaisesRegexp(RuntimeError,
                                  r'AssertionError: \(220.0, 32.0\)'):
       beam_dag_runner.BeamDagRunner().run(test_pipeline)
+
+  def testBeamExecutionOptionalInputsAndParameters(self):
+    """Test execution with optional inputs and parameters."""
+    instance_1 = _injector_2()  # pylint: disable=no-value-for-parameter
+    self.assertEqual(1, len(instance_1.outputs['examples'].get()))
+    instance_2 = _optionalarg_component(  # pylint: disable=assignment-from-no-return
+        foo=9,
+        bar='secret',
+        examples=instance_1.outputs['examples'],
+        a=instance_1.outputs['a'],
+        b=instance_1.outputs['b'],
+        c=instance_1.outputs['c'],
+        d=instance_1.outputs['d'],
+        e1=instance_1.outputs['e'],
+        e2=instance_1.outputs['e'],
+        g=999.0,
+        optional_examples_1=instance_1.outputs['examples'])
+
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='test_pipeline_1',
+        pipeline_root=self._test_dir,
+        metadata_connection_config=metadata_config,
+        components=[instance_1, instance_2])
+
+    beam_dag_runner.BeamDagRunner().run(test_pipeline)
 
 
 if __name__ == '__main__':
