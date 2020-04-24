@@ -18,15 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 from absl.testing import absltest
+from absl.testing import parameterized
 from tfx.components.trainer.rewriting import rewriter_factory
 
 
-class RewriterFactoryTest(absltest.TestCase):
+class RewriterFactoryTest(parameterized.TestCase):
 
-  def testRewriterSuccessfullyCreatedTFLiteRewriter(self):
-    tfrw = rewriter_factory.create_rewriter(
-        rewriter_factory.TFLITE_REWRITER, name='my_rewriter')
+  @parameterized.named_parameters(('TFJS', rewriter_factory.TFJS_REWRITER),
+                                  ('TFLite', rewriter_factory.TFLITE_REWRITER))
+  def testRewriterFactorySuccessfullyCreatedRewriter(self, rewriter_name):
+    tfrw = rewriter_factory.create_rewriter(rewriter_name, name='my_rewriter')
     self.assertTrue(tfrw)
     self.assertEqual(tfrw.name, 'my_rewriter')
 
