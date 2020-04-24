@@ -35,6 +35,7 @@ class ModelType(enum.Enum):
   ANY_MODEL = 1
   SAVED_MODEL = 2
   TFLITE_MODEL = 3
+  TFJS_MODEL = 4
 
 
 class BaseRewriter(six.with_metaclass(abc.ABCMeta, object)):

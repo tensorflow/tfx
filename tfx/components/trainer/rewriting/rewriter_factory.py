@@ -25,9 +25,11 @@ from __future__ import print_function
 from typing import Text
 
 from tfx.components.trainer.rewriting import rewriter
+from tfx.components.trainer.rewriting import tfjs_rewriter  # pylint: disable=unused-import
 from tfx.components.trainer.rewriting import tflite_rewriter  # pylint: disable=unused-import
 
 TFLITE_REWRITER = "TFLiteRewriter"
+TFJS_REWRITER = "TFJSRewriter"
 
 
 def create_rewriter(rewriter_type: Text, *args,
