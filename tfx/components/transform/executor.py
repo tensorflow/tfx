@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Text, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
 import apache_beam as beam
@@ -534,6 +534,16 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       beam.pvalue.PDone.
     """
+    def _FilterInternalColumn(record_batch):
+      filtered_column_names = []
+      filtered_columns = []
+      for i, column_name in enumerate(record_batch.schema.names):
+        if column_name != _TRANSFORM_INTERNAL_FEATURE_FOR_KEY:
+          filtered_column_names.append(column_name)
+          filtered_columns.append(record_batch.column(i))
+      return pa.RecordBatch.from_arrays(filtered_columns, filtered_column_names)
+
+    pcoll |= 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
     stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
     # TODO(b/153368237): Clean this up after a release post tfx 0.21.
@@ -1034,9 +1044,7 @@ class Executor(base_executor.BaseExecutor):
         'use_deep_copy_optimization': True
     }
     if use_tfxio:
-      # TODO(zhuo): add support for formats that have passthrough_keys (only KV
-      # formats do).
-      beam_context_kwargs['passthrough_keys'] = None
+      beam_context_kwargs['passthrough_keys'] = self._GetTFXIOPassthroughKeys()  # pylint: disable=assignment-from-none
       beam_context_kwargs['use_tfxio'] = True
 
     with self._CreatePipeline(transform_output_path) as pipeline:
@@ -1081,26 +1089,10 @@ class Executor(base_executor.BaseExecutor):
         for dataset in analyze_data_list:
           infix = 'AnalysisIndex{}'.format(dataset.index)
           if use_tfxio:
-            if self._ShouldDecodeAsRawExample(raw_examples_data_format):
-              serialized = (
-                  pipeline | 'TFXIOReadRawRecords[{}]'.format(infix) >>
-                  dataset.tfxio.origin.RawRecordBeamSource())
-              dataset.standardized = (
-                  serialized
-                  | 'TFXIODecodeRawRecords[{}]'.format(infix) >>
-                  dataset.tfxio.origin.RawRecordToRecordBatch(
-                      desired_batch_size))
-              # dataset.serialized should be a
-              # PCollection[Tuple[Optional[str], str]]
-              dataset.serialized = (
-                  serialized
-                  | 'AddKeyToRawRecords[{}]'.format(infix) >> beam.Map(
-                      lambda x: (None, x)))
-            else:
-              dataset.standardized = (
-                  pipeline
-                  | 'TFXIOReadAndDecode[{}]'.format(infix) >>
-                  dataset.tfxio.BeamSource(desired_batch_size))
+            dataset.standardized = (
+                pipeline
+                | 'TFXIOReadAndDecode[{}]'.format(infix) >>
+                dataset.tfxio.BeamSource(desired_batch_size))
           else:
             dataset.serialized = (
                 pipeline
@@ -1216,15 +1208,22 @@ class Executor(base_executor.BaseExecutor):
 
             if use_tfxio and self._IsDataFormatSequenceExample(
                 raw_examples_data_format):
+              def _ExtractRawExampleBatches(record_batch):
+                return record_batch.column(
+                    record_batch.schema.get_field_index(
+                        RAW_EXAMPLE_KEY)).flatten().to_pylist()
               # Make use of the fact that tf.SequenceExample is wire-format
               # compatible with tf.Example
               stats_input = []
               for dataset in analyze_data_list:
                 infix = 'AnalysisIndex{}'.format(dataset.index)
                 stats_input.append(
-                    dataset.serialized
+                    dataset.standardized
+                    | 'ExtractRawExampleBatches[{}]'.format(infix) >> beam.Map(
+                        _ExtractRawExampleBatches)
                     | 'DecodeSequenceExamplesAsExamplesIntoRecordBatches[{}]'
-                    .format(infix) >> self._ToArrowRecordBatches(schema_proto))
+                    .format(infix) >> beam.ParDo(
+                        self._ToArrowRecordBatchesFn(schema_proto)))
             else:
               stats_input = [
                   dataset.standardized for dataset in analyze_data_list]
@@ -1559,3 +1558,8 @@ class Executor(base_executor.BaseExecutor):
     for dataset in datasets[1:]:
       assert (datasets[0].tfxio.ArrowSchema().equals(
           dataset.tfxio.ArrowSchema()))
+
+  @staticmethod
+  def _GetTFXIOPassthroughKeys() -> Optional[Set[Text]]:
+    """Always returns None."""
+    return None
