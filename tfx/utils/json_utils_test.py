@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+
+from google.protobuf import struct_pb2
 from tfx.proto import trainer_pb2
 from tfx.utils import json_utils
 
@@ -72,6 +74,97 @@ class JsonUtilsTest(tf.test.TestCase):
 
     actual_obj = json_utils.loads(json_text)
     self.assertEqual(_DefaultJsonableObject, actual_obj)
+
+
+class StructUtilsTest(tf.test.TestCase):
+
+  def testStruct_WithDict(self):
+    s = json_utils.Struct({'hello': 'world'})
+
+    self.assertEqual(s, struct_pb2.Struct(
+        fields={
+            'hello': struct_pb2.Value(
+                string_value='world'
+            )
+        }
+    ))
+
+  def testStruct_WithKwargs(self):
+    s = json_utils.Struct(hello='world')
+
+    self.assertEqual(s, struct_pb2.Struct(
+        fields={
+            'hello': struct_pb2.Value(
+                string_value='world'
+            )
+        }
+    ))
+
+  def testStruct_NestedStruct(self):
+    s = json_utils.Struct(
+        nested=json_utils.Struct(
+            hello='world'
+        )
+    )
+
+    self.assertEqual(s, struct_pb2.Struct(
+        fields={
+            'nested': struct_pb2.Value(
+                struct_value=struct_pb2.Struct(
+                    fields={
+                        'hello': struct_pb2.Value(
+                            string_value='world'
+                        )
+                    }
+                )
+            )
+        }
+    ))
+
+  def testStructToDict_FloatToInteger(self):
+    s = json_utils.Struct(
+        int=123,
+        float_int=123.0,
+        float=123.4)
+
+    d = json_utils.struct_to_dict(s)
+    self.assertEqual(d, {
+        'int': 123,        # Integer.
+        'float_int': 123,  # Also integer.
+        'float': 123.4     # Float is float.
+    })
+
+  def testRoundTrip_StructDictStruct(self):
+    s1 = json_utils.Struct(
+        number=123,
+        text='abc',
+        boolean=True,
+        nullable=None,
+        list=[1, 'x', False],
+        object={
+            'hello': 'world',
+            'empty_object': {}
+        }
+    )
+    s2 = json_utils.Struct(json_utils.struct_to_dict(s1))
+
+    self.assertEqual(s1, s2)
+
+  def testRoundTrip_DictStructDict(self):
+    d1 = {
+        'number': 123,
+        'text': 'abc',
+        'boolean': True,
+        'nullable': None,
+        'list': [1, 'x', False],
+        'object': {
+            'hello': 'world',
+            'empty_object': {}
+        }
+    }
+    d2 = json_utils.struct_to_dict(json_utils.Struct(d1))
+
+    self.assertEqual(d1, d2)
 
 
 if __name__ == '__main__':

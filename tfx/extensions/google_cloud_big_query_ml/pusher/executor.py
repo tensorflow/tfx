@@ -82,7 +82,7 @@ class Executor(tfx_pusher_executor.Executor):
     self._log_startup(input_dict, output_dict, exec_properties)
     model_push = artifact_utils.get_single_instance(
         output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
-    if not self.CheckBlessing(input_dict):
+    if not self._CheckBlessing(input_dict):
       self._MarkNotPushed(model_push)
       return
 

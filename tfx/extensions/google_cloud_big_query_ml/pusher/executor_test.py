@@ -71,7 +71,7 @@ class ExecutorTest(tf.test.TestCase):
     self.addCleanup(mock.patch.stopall)
     self.mock_bq = mock.patch.object(bigquery, 'Client', autospec=True).start()
     self.mock_check_blessing = mock.patch.object(
-        Executor, 'CheckBlessing', autospec=True).start()
+        Executor, '_CheckBlessing', autospec=True).start()
     self.mock_copy_dir = mock.patch.object(
         io_utils, 'copy_dir', autospec=True).start()
 

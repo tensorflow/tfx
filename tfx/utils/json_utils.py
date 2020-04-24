@@ -22,10 +22,11 @@ import abc
 import importlib
 import inspect
 import json
-from typing import Any, Dict, List, Text, Type, Union
+from typing import Any, cast, Dict, List, Text, Type, Union
 
 from six import with_metaclass
 
+from google.protobuf import struct_pb2
 from google.protobuf import json_format
 from google.protobuf import message
 
@@ -191,3 +192,89 @@ def dumps(obj: Any) -> Text:
 def loads(s: Text) -> Any:
   """Loads a JSON into an object with Jsonable decoding."""
   return json.loads(s, cls=_DefaultDecoder)
+
+
+# Json compatible python type definitions.
+_PyJsonValue = Any  # TODO(jjong) Recursive type annotations not supported yet.
+_PyJsonObject = Dict[Text, _PyJsonValue]
+_PyJsonList = List[_PyJsonValue]
+_PyJsonValue = Union[Text, int, float, bool, None, _PyJsonList, _PyJsonObject]
+
+
+def Struct(input_dict: _PyJsonObject = None, **kwargs) -> struct_pb2.Struct:  # pylint: disable=invalid-name
+  """Convenient wrapper for creating google.protobuf.Struct with dict.
+
+  Struct is often used to configure arbitrary user-data into the component's
+  execution properties within the proto buffer message. Normally user need to
+  instantiate Struct message and then do parsing in two steps:
+
+  ```python
+  custom_config = google.protobuf.struct_pb2.Struct()
+  json_format.ParseDict({
+      'option_one': 'blah-blah'
+      'option_two': 123
+  }, custom_config)
+
+  SomeComponent(custom_config=custom_config)
+  ```
+
+  This utility function helps to do it in one line:
+
+  ```python
+  SomeComponent(
+      custom_config=json_utils.Struct({
+          'option_one': 'blah-blah',
+          'option_two': 123
+      })
+  )
+  ```
+
+  Or using a keyword arguments:
+
+  ```python
+  SomeComponent(
+      custom_config=json_utils.Struct(
+          option_one='blah-blah',
+          option_two=123
+      )
+  )
+  ```
+
+  Args:
+    input_dict: Input dict object to convert to Struct.
+    **kwargs: Named arguments can be given instead of `input_dict`.
+
+  Returns:
+    google.protobuf.Struct proto message.
+  """
+  result = struct_pb2.Struct()
+  result.update(input_dict or kwargs)
+  return result
+
+
+def struct_to_dict(struct: struct_pb2.Struct) -> _PyJsonObject:
+  """Convert google.protobuf.Struct to python dict.
+
+  google.protobuf.Struct stores all number as a IEEE 754 (float64) format, but
+  it is mostly undesirable as a configuration object where integer is more
+  frequent than floating values. This function explicitly cast integer number to
+  an int type.
+
+  Args:
+    struct: google.protobuf.Struct proto message.
+
+  Returns:
+    Python dict with integer values converted to int type.
+  """
+  return cast(_PyJsonObject,
+              _maybe_float_to_int(json_format.MessageToDict(struct)))
+
+
+def _maybe_float_to_int(value: _PyJsonValue):
+  if isinstance(value, float):
+    return int(value) if value.is_integer() else value
+  if isinstance(value, dict):
+    return {k: _maybe_float_to_int(v) for k, v in value.items()}
+  if isinstance(value, list):
+    return [_maybe_float_to_int(v) for v in value]
+  return value
