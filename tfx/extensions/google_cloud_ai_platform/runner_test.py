@@ -199,7 +199,7 @@ class RunnerTest(tf.test.TestCase):
     runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
-            'name': 'v{}'.format(self._model_version),
+            'name': self._model_version,
             'deployment_uri': self._serving_path,
             'runtime_version': runtime_version,
             'python_version': runner._get_caip_python_version(runtime_version),
@@ -247,7 +247,7 @@ class RunnerTest(tf.test.TestCase):
     runtime_version = runner._get_tf_runtime_version(tf.__version__)
     self.assertDictEqual(
         {
-            'name': 'v{}'.format(self._model_version),
+            'name': self._model_version,
             'deployment_uri': self._serving_path,
             'runtime_version': runtime_version,
             'python_version': runner._get_caip_python_version(runtime_version),

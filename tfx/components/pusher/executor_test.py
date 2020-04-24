@@ -18,12 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 import os
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx.components.pusher import executor
-from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
 
 
@@ -55,21 +54,34 @@ class ExecutorTest(tf.test.TestCase):
     self._serving_model_dir = os.path.join(self._output_data_dir,
                                            'serving_model_dir')
     tf.io.gfile.makedirs(self._serving_model_dir)
-    self._exec_properties = {
-        'push_destination':
-            json_format.MessageToJson(
-                pusher_pb2.PushDestination(
-                    filesystem=pusher_pb2.PushDestination.Filesystem(
-                        base_directory=self._serving_model_dir)),
-                preserving_proto_field_name=True),
-    }
+    self._exec_properties = self._MakeExecProperties()
     self._executor = executor.Executor()
+
+  def _MakeExecProperties(self, versioning='AUTO'):
+    return {
+        'push_destination': json.dumps({
+            'filesystem': {
+                'base_directory': self._serving_model_dir,
+                'versioning': versioning
+            }
+        })
+    }
 
   def assertDirectoryEmpty(self, path):
     self.assertEqual(len(tf.io.gfile.listdir(path)), 0)
 
   def assertDirectoryNotEmpty(self, path):
     self.assertGreater(len(tf.io.gfile.listdir(path)), 0)
+
+  def assertPushed(self):
+    self.assertDirectoryNotEmpty(self._serving_model_dir)
+    self.assertDirectoryNotEmpty(self._model_push.uri)
+    self.assertEqual(1, self._model_push.get_int_custom_property('pushed'))
+
+  def assertNotPushed(self):
+    self.assertDirectoryEmpty(self._serving_model_dir)
+    self.assertDirectoryEmpty(self._model_push.uri)
+    self.assertEqual(0, self._model_push.get_int_custom_property('pushed'))
 
   def testDoBlessed(self):
     # Prepare blessed ModelBlessing.
@@ -82,10 +94,12 @@ class ExecutorTest(tf.test.TestCase):
                       self._exec_properties)
 
     # Check model successfully pushed.
-    self.assertDirectoryNotEmpty(self._serving_model_dir)
-    self.assertDirectoryNotEmpty(self._model_push.uri)
+    self.assertPushed()
+    version = self._model_push.get_string_custom_property('pushed_version')
+    self.assertTrue(version.isdigit())
     self.assertEqual(
-        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+        self._model_push.get_string_custom_property('pushed_destination'),
+        os.path.join(self._serving_model_dir, version))
 
   def testDoNotBlessed(self):
     # Prepare not blessed ModelBlessing.
@@ -98,10 +112,7 @@ class ExecutorTest(tf.test.TestCase):
                       self._exec_properties)
 
     # Check model not pushed.
-    self.assertDirectoryEmpty(self._serving_model_dir)
-    self.assertDirectoryEmpty(self._model_push.uri)
-    self.assertEqual(
-        0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+    self.assertNotPushed()
 
   def testDo_ModelBlessedAndInfraBlessed_Pushed(self):
     # Prepare blessed ModelBlessing and blessed InfraBlessing.
@@ -115,10 +126,7 @@ class ExecutorTest(tf.test.TestCase):
     self._executor.Do(input_dict, self._output_dict, self._exec_properties)
 
     # Check model is pushed.
-    self.assertDirectoryNotEmpty(self._serving_model_dir)
-    self.assertDirectoryNotEmpty(self._model_push.uri)
-    self.assertEqual(
-        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+    self.assertPushed()
 
   def testDo_InfraNotBlessed_NotPushed(self):
     # Prepare blessed ModelBlessing and **not** blessed InfraBlessing.
@@ -132,23 +140,22 @@ class ExecutorTest(tf.test.TestCase):
     self._executor.Do(input_dict, self._output_dict, self._exec_properties)
 
     # Check model is not pushed.
-    self.assertDirectoryEmpty(self._serving_model_dir)
-    self.assertDirectoryEmpty(self._model_push.uri)
-    self.assertEqual(
-        0, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+    self.assertNotPushed()
 
-  def testKerasModel(self):
+  def testDo_KerasModelPath(self):
+    # Prepare blessed ModelBlessing.
     self._model_export.uri = os.path.join(self._source_data_dir,
                                           'trainer/keras')
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
+
+    # Run executor
     self._executor.Do(self._input_dict, self._output_dict,
                       self._exec_properties)
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._serving_model_dir)))
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(self._model_push.uri)))
-    self.assertEqual(
-        1, self._model_push.mlmd_artifact.custom_properties['pushed'].int_value)
+
+    # Check model is pushed.
+    self.assertPushed()
 
 
 if __name__ == '__main__':

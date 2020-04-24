@@ -202,7 +202,6 @@ def deploy_model_for_aip_prediction(
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
     executor_class_path: class path for TFX core default trainer.
 
-
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
@@ -232,7 +231,7 @@ def deploy_model_for_aip_prediction(
       {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
     job_labels = telemetry_utils.get_labels_dict()
   body = {
-      'name': 'v{}'.format(model_version),
+      'name': model_version,
       'deployment_uri': serving_path,
       'runtime_version': runtime_version,
       'python_version': python_version,

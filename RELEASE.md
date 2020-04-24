@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 *   Implemented a TFJS rewriter.
+*   Pusher's `filesystem` destination can now explicitly specify the versioning
+    method using `versioning` field. By default it is using `UNIX_TIMESTAMP`
+    version.
 
 ## Bug fixes and other changes
 *   Depends on `kubernetes>=10.0.1,<12`.
@@ -10,6 +13,11 @@
 ### Deprecations
 
 ## Breaking changes
+*   Pusher's `PushedModel` output artifact properties have been changed. Please
+    refer to the [document](https://www.tensorflow.org/tfx/guide/pusher).
+*   Pusher's `PushedModel` output artifact does not have a version subdirectory
+    anymore. Your SavedModel will be located directly under the
+    `PushedModel.uri`.
 
 ### For pipeline authors
 
