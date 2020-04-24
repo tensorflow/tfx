@@ -1,7 +1,6 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
-*   Implemented a TFJS rewriter.
 *   Pusher's `filesystem` destination can now explicitly specify the versioning
     method using `versioning` field. By default it is using `UNIX_TIMESTAMP`
     version.
