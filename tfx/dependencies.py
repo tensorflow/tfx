@@ -72,6 +72,13 @@ def make_extra_packages_docker_image():
   ]
 
 
+def make_extra_packages_tfjs():
+  # Packages needed for tfjs.
+  return [
+      'tensorflowjs>=1.7.3,<2',
+  ]
+
+
 def make_all_dependency_packages():
   # All extra dependencies.
-  return make_required_test_packages()
+  return make_required_test_packages() + make_extra_packages_tfjs()

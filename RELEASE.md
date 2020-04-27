@@ -1,6 +1,7 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
+*   Implemented a TFJS rewriter.
 *   Introduced experimental Python function component decorator (`@component`
     decorator under `tfx.dsl.component.experimental.decorators`) allowing
     Python function-based component definition.
