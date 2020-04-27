@@ -33,7 +33,7 @@ from tfx import types as tfx_types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.components.base import function_parser
+from tfx.dsl.component.experimental import function_parser
 from tfx.types import channel_utils
 from tfx.types import component_spec
 

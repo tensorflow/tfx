@@ -29,7 +29,7 @@ import inspect
 import types
 from typing import Any, Dict, Optional, Set, Text, Tuple, Type, Union
 
-from tfx.components.base import annotations
+from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
 from tfx.types import standard_artifacts
 
