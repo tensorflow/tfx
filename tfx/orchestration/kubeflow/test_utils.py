@@ -32,14 +32,11 @@ from typing import Any, Dict, List, Text
 
 import absl
 import docker
-from grpc import insecure_channel
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
 from google.cloud import storage
-from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
-from ml_metadata.proto import metadata_store_service_pb2_grpc
+
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -53,7 +50,6 @@ from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.base.base_component import BaseComponent
 from tfx.dsl.experimental import latest_artifacts_resolver
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -303,8 +299,6 @@ class BaseKubeflowTest(tf.test.TestCase):
                                           cls._random_id())
     cls._build_and_push_docker_image(cls._container_image)
 
-    cls._grpc_forward_process = cls._setup_mlmd_port_forward()
-
   @classmethod
   def tearDownClass(cls):
     super(BaseKubeflowTest, cls).tearDownClass()
@@ -314,7 +308,6 @@ class BaseKubeflowTest(tf.test.TestCase):
     subprocess.run(
         ['gcloud', 'container', 'images', 'delete', cls._container_image],
         check=True)
-    cls._grpc_forward_process.kill()
 
   @classmethod
   def _build_and_push_docker_image(cls, container_image: Text):
@@ -354,109 +347,6 @@ class BaseKubeflowTest(tf.test.TestCase):
     ]).decode('utf-8').strip('\n')
     absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
-
-  @classmethod
-  def _get_grpc_port(cls) -> Text:
-    """Get the port number used by MLMD gRPC server."""
-    grpc_port = subprocess.check_output([
-        'kubectl', '-n', 'kubeflow', 'get', 'configmap',
-        'metadata-grpc-configmap', '-o',
-        'jsonpath={.data.METADATA_GRPC_SERVICE_PORT}'
-    ])
-    return grpc_port.decode('utf-8')
-
-  @classmethod
-  def _setup_mlmd_port_forward(cls) -> subprocess.Popen:
-    """Uses port forward to talk to MLMD gRPC server."""
-    grpc_port = cls._get_grpc_port()
-    grpc_forward_command = [
-        'kubectl', 'port-forward', 'deployment/metadata-deployment', '-n',
-        'kubeflow', ('%s:%s' % (int(grpc_port) + 1, grpc_port))
-    ]
-    # Begin port forwarding.
-    proc = subprocess.Popen(grpc_forward_command)
-    # Wait while port forward to pod is being established
-    poll_grpc_port_command = ['lsof', '-i', ':%s' % (int(grpc_port) + 1)]
-    result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
-    timeout = 10
-    for _ in range(timeout):
-      if result.returncode == 0:
-        break
-      absl.logging.info(
-          'Waiting while gRPC port-forward is being established...')
-      time.sleep(1)
-      result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
-
-    if result.returncode != 0:
-      raise RuntimeError('Failed to establish gRPC port-forward to cluster.')
-
-    # Establish MLMD gRPC channel.
-    forwarding_channel = insecure_channel('localhost:%s' % (int(grpc_port) + 1))
-    cls._stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(
-        forwarding_channel)
-
-    return proc
-
-  def _get_artifacts_with_type(
-      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
-    """Helper function returns artifacts with given type."""
-    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
-        type_name=type_name)
-    return self._stub.GetArtifactsByType(request).artifacts
-
-  def _get_artifacts_with_type_and_pipeline(
-      self, type_name: Text,
-      pipeline_name: Text) -> List[metadata_store_pb2.Artifact]:
-    """Helper function returns artifacts of specified pipeline and type."""
-    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
-        type_name=type_name)
-    all_artifacts = self._stub.GetArtifactsByType(request).artifacts
-    return [
-        artifact for artifact in all_artifacts
-        if artifact.custom_properties['pipeline_name'].string_value ==
-        pipeline_name
-    ]
-
-  def _get_value_of_string_artifact(
-      self, string_artifact: metadata_store_pb2.Artifact) -> Text:
-    """Helper function returns the actual value of a ValueArtifact."""
-    file_path = os.path.join(string_artifact.uri,
-                             standard_artifacts.String.VALUE_FILE)
-    # Assert there is a file exists.
-    if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
-      raise RuntimeError(
-          'Given path does not exist or is not a valid file: %s' % file_path)
-    serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-    return standard_artifacts.String().decode(serialized_value)
-
-  def _get_executions_by_pipeline_name(
-      self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
-    """Helper function returns executions under a given pipeline name."""
-    # step 1: get context id by context name
-    request = metadata_store_service_pb2.GetContextByTypeAndNameRequest(
-        type_name='pipeline', context_name=pipeline_name)
-    context_id = self._stub.GetContextByTypeAndName(request).context.id
-    # step 2: get executions by context id
-    request = metadata_store_service_pb2.GetExecutionsByContextRequest(
-        context_id=context_id)
-    return self._stub.GetExecutionsByContext(request).executions
-
-  def _get_executions_by_pipeline_name_and_state(
-      self, pipeline_name: Text,
-      state: Text) -> List[metadata_store_pb2.Execution]:
-    """Helper function returns executions for a given state."""
-    if state not in metadata.FINAL_EXECUTION_STATES:
-      raise ValueError(
-          'Only following execution states are accepted: %s, got %s' %
-          (str(metadata.FINAL_EXECUTION_STATES), state))
-
-    executions = self._get_executions_by_pipeline_name(pipeline_name)
-    result = []
-    for e in executions:
-      if e.properties['state'].string_value == state:
-        result.append(e)
-
-    return result
 
   @classmethod
   def _get_mlmd_db_name(cls, pipeline_name: Text):
@@ -717,11 +607,3 @@ class BaseKubeflowTest(tf.test.TestCase):
         '\nFailed workflow logs:\n{}'.format(pipeline_name, status,
                                              logs_output))
 
-  def _assert_infra_validator_passed(self, pipeline_name: Text):
-    pipeline_root = self._pipeline_root(pipeline_name)
-    blessing_path = os.path.join(pipeline_root, 'InfraValidator', 'blessing')
-    executions = tf.io.gfile.listdir(blessing_path)
-    self.assertGreaterEqual(len(executions), 1)
-    for exec_id in executions:
-      blessed = os.path.join(blessing_path, exec_id, 'INFRA_BLESSED')
-      self.assertTrue(tf.io.gfile.exists(blessed))
