@@ -1,9 +1,9 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
-*   Pusher's `filesystem` destination can now explicitly specify the versioning
-    method using `versioning` field. By default it is using `UNIX_TIMESTAMP`
-    version.
+*   Introduced experimental Python function component decorator (`@component`
+    decorator under `tfx.dsl.component.experimental.decorators`) allowing
+    Python function-based component definition.
 
 ## Bug fixes and other changes
 *   Depends on `kubernetes>=10.0.1,<12`.
