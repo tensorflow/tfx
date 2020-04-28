@@ -33,6 +33,7 @@ from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
+from tfx.utils import telemetry_utils
 
 
 # 2-step pipeline under test.
@@ -97,9 +98,9 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
           c['metadata'] for c in pipeline['spec']['templates'] if 'dag' not in c
       ]
       for m in metadata:
-        self.assertEqual('tfx', m['labels'][kubeflow_dag_runner.SDK_ENV_LABEL])
+        self.assertEqual('tfx', m['labels'][telemetry_utils.SDK_ENV_LABEL])
         self.assertIsNotNone(
-            m['labels'][kubeflow_dag_runner.PIPELINE_UUID_LABEL])
+            m['labels'][telemetry_utils.PIPELINE_UUID_LABEL])
 
       # Ensure dependencies between components are captured.
       dag = [c for c in pipeline['spec']['templates'] if 'dag' in c]
