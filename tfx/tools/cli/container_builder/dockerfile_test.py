@@ -31,6 +31,8 @@ class DockerfileTest(tf.test.TestCase):
 
   def setUp(self):
     super(DockerfileTest, self).setUp()
+    self._testdata_dir = os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), 'testdata')
     # change to a temporary working dir such that
     # there is no setup.py in the working dir.
     self._old_working_dir = os.getcwd()
@@ -46,8 +48,7 @@ class DockerfileTest(tf.test.TestCase):
     dockerfile.Dockerfile(filename=generated_dockerfile_path)
     self.assertTrue(
         filecmp.cmp(
-            os.path.join(
-                os.path.dirname(__file__), 'testdata', 'test_dockerfile'),
+            os.path.join(self._testdata_dir, 'test_dockerfile'),
             generated_dockerfile_path))
 
   def testGenerateWithBaseOverride(self):
@@ -57,9 +58,8 @@ class DockerfileTest(tf.test.TestCase):
         base_image='my_customized_image:latest')
     self.assertTrue(
         filecmp.cmp(
-            os.path.join(
-                os.path.dirname(__file__), 'testdata',
-                'test_dockerfile_with_base'), generated_dockerfile_path))
+            os.path.join(self._testdata_dir, 'test_dockerfile_with_base'),
+            generated_dockerfile_path))
 
 
 if __name__ == '__main__':

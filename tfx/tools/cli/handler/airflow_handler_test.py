@@ -29,6 +29,9 @@ from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.utils import io_utils
 
+_testdata_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
+
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   # Store pipeline_args in a json file.
@@ -58,9 +61,8 @@ def _MockSubprocess3(cmd, env):  # pylint: disable=invalid-name, unused-argument
 
 
 def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
-  list_dags_output_path = os.path.join(
-      os.path.dirname(os.path.dirname(__file__)), 'testdata',
-      'test_airflow_list_dags_output.txt')
+  list_dags_output_path = os.path.join(_testdata_dir,
+                                       'test_airflow_list_dags_output.txt')
   with open(list_dags_output_path, 'rb') as f:
     list_dags_output = f.read()
   return list_dags_output
@@ -82,9 +84,7 @@ class AirflowHandlerTest(tf.test.TestCase):
 
     # Flags for handler.
     self.engine = 'airflow'
-    self.chicago_taxi_pipeline_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-    self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+    self.pipeline_path = os.path.join(_testdata_dir,
                                       'test_pipeline_airflow_1.py')
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
     self.pipeline_name = 'chicago_taxi_simple'
@@ -140,8 +140,7 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_airflow_1.py')
+    pipeline_path_1 = os.path.join(_testdata_dir, 'test_pipeline_airflow_1.py')
     flags_dict_1 = {labels.ENGINE_FLAG: self.engine,
                     labels.PIPELINE_DSL_PATH: pipeline_path_1}
     handler = airflow_handler.AirflowHandler(flags_dict_1)

@@ -62,6 +62,8 @@ class BeamHandlerTest(tf.test.TestCase):
 
   def setUp(self):
     super(BeamHandlerTest, self).setUp()
+    self.chicago_taxi_pipeline_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
     self._tmp_dir = os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
                                    self.get_temp_dir())
     self._home = os.path.join(self._tmp_dir, self._testMethodName)
@@ -75,8 +77,6 @@ class BeamHandlerTest(tf.test.TestCase):
 
     # Flags for handler.
     self.engine = 'beam'
-    self.chicago_taxi_pipeline_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
     self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
                                       'test_pipeline_beam_1.py')
     self.pipeline_name = 'chicago_taxi_beam'
@@ -357,8 +357,7 @@ class BeamHandlerTest(tf.test.TestCase):
     handler = beam_handler.BeamHandler(flags_dict)
     with self.captureWritesToStream(sys.stdout) as captured:
       handler.create_run()
-    self.assertIn("[%s, '%s']" % (sys.executable, self.pipeline_path),
-                  captured.contents())
+    self.assertIn(self.pipeline_path, captured.contents())
 
   def testCreateRunNoPipeline(self):
     # Run pipeline without creating one.

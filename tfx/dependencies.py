@@ -50,18 +50,13 @@ def make_required_install_packages():
 
 
 def make_required_test_packages():
-  """Prepare extra packages needed for 'python setup.py test'."""
+  """Prepare extra packages needed for running unit tests."""
+  # Note: It is okay to pin packages to exact verions in this list to minimize
+  # conflicts.
   return [
-      'apache-airflow>=1.10,<2',
-      # LINT.IfChange
-      'kfp>=0.4.0,<0.5; python_version >= "3.0"',
-      # LINT.ThenChange(
-      #     testing/github/common.sh,
-      #     testing/github/ubuntu/image/image.sh,
-      #     testing/kubeflow/common.sh
-      # )
+      'apache-airflow>=1.10.10,<2',
+      'kfp>=0.4.0,<0.5',
       'pytest>=5,<6',
-      'tzlocal>=1.5,<2',
   ]
 
 
