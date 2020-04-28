@@ -12,19 +12,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Define KubeflowDagRunner to run the pipeline using Kubeflow.
-"""
+"""Define KubeflowDagRunner to run the pipeline using Kubeflow."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import os
 from absl import logging
+
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import trainer_pb2
-
+from tfx.utils import telemetry_utils
 
 # TFX pipeline produces many output files and metadata. All output data will be
 # stored under this OUTPUT_DIR.
@@ -65,14 +65,12 @@ def run():
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-      kubeflow_metadata_config=metadata_config,
-      tfx_image=tfx_image
-  )
-
-  # Set the SDK type label environment.
-  os.environ[kubeflow_dag_runner.SDK_ENV_LABEL] = 'tfx-template'
-
-  kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
+      kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
+  pod_labels = kubeflow_dag_runner.get_default_pod_labels().update(
+      {telemetry_utils.SDK_ENV_LABEL: 'tfx-template'})
+  kubeflow_dag_runner.KubeflowDagRunner(
+      config=runner_config, pod_labels_to_attach=pod_labels
+  ).run(
       pipeline.create_pipeline(
           pipeline_name=configs.PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,

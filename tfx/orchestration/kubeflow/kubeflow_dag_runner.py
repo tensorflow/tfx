@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Callable, List, Optional, Text, Type
+from typing import Callable, Dict, List, Optional, Text, Type
 import uuid
 
 from kfp import compiler
@@ -40,6 +40,7 @@ from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import json_utils
+from tfx.utils import telemetry_utils
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -55,14 +56,6 @@ _KUBEFLOW_GCP_SECRET_NAME = 'user-gcp-sa'
 
 # Default TFX container image to use in KubeflowDagRunner.
 _KUBEFLOW_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
-
-# The pod label indicating the SDK environment.
-# LINT.IfChange
-SDK_ENV_LABEL = 'pipelines.kubeflow.org/pipeline-sdk-type'
-# LINT.ThenChange(../../tools/cli/handler/base_handler.py)
-
-# The pod label of pipeline unique ID.
-PIPELINE_UUID_LABEL = 'pipelines.kubeflow.org/pipeline-uuid'
 
 
 def _mount_config_map_op(config_map_name: Text) -> OpFunc:
@@ -155,6 +148,18 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
+def _get_default_pod_labels() -> Dict[Text, Text]:
+  """Returns the default pod label dict for Kubeflow."""
+  # KFP default transformers add pod env:
+  # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
+  result = {
+      'add-pod-env': 'true',
+      telemetry_utils.PIPELINE_UUID_LABEL: str(uuid.uuid4()),
+      telemetry_utils.SDK_ENV_LABEL: 'tfx'
+  }
+  return result
+
+
 class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration parameters specific to execution on Kubeflow."""
 
@@ -222,6 +227,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       output_dir: Optional[Text] = None,
       output_filename: Optional[Text] = None,
       config: Optional[KubeflowDagRunnerConfig] = None,
+      pod_labels_to_attach: Optional[Dict[Text, Text]] = None
   ):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
@@ -235,6 +241,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           for format restriction.
       config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
+      pod_labels_to_attach: Optional set of pod labels to attach to GKE pod
+        spinned up for this pipeline. Default to the 3 labels:
+        1. add-pod-env: true,
+        2. pipeline SDK type,
+        3. pipeline unique ID,
+        where 2 and 3 are instrumentation of usage tracking.
     """
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
@@ -244,9 +256,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._deduped_parameter_names = set()  # Set of unique param names used.
-    # Set the SDK environment label. This is hold off from user interface
-    # intentionally. Default to TFX.
-    self._sdk_env = os.getenv(SDK_ENV_LABEL) or 'tfx'
+    if pod_labels_to_attach is None:
+      self._pod_labels_to_attach = _get_default_pod_labels()
+    else:
+      self._pod_labels_to_attach = pod_labels_to_attach
 
   def _parse_parameter_from_component(
       self, component: base_component.BaseComponent) -> None:
@@ -315,15 +328,11 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
-          component_config=component_config)
+          component_config=component_config,
+          pod_labels_to_attach=self._pod_labels_to_attach)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
-
-      kfp_component.container_op.add_pod_label(SDK_ENV_LABEL, self._sdk_env)
-      assert self._pipeline_id, 'Failed to generate pipeline ID.'
-      kfp_component.container_op.add_pod_label(PIPELINE_UUID_LABEL,
-                                               self._pipeline_id)
 
       component_to_kfp_op[component] = kfp_component.container_op
 
@@ -339,8 +348,6 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     dsl_pipeline_root = dsl.PipelineParam(
         name=pipeline_root.name, value=pipeline.pipeline_info.pipeline_root)
     self._params.append(dsl_pipeline_root)
-    # Randomly generates pipeline id.
-    self._pipeline_id = str(uuid.uuid4())
 
     def _construct_pipeline():
       """Constructs a Kubeflow pipeline.
