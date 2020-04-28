@@ -267,7 +267,7 @@ The notebook then uses the `tfx` CLI to copy the pipeline template. This
 tutorial uses the Chicago Taxi dataset to perform binary classification, so the
 template sets the model to `taxi`:
 
-```
+```python
 !tfx template copy \
   --pipeline-name={PIPELINE_NAME} \
   --destination-path={PROJECT_DIR} \
@@ -343,7 +343,7 @@ Caution: You must open the `pipeline`/`configs.py` file and set the
 
 The notebook then uses the `tfx pipeline create` command to create the pipeline.
 
-```
+```python
 !tfx pipeline create  \
 --pipeline-path=kubeflow_dag_runner.py \
 --endpoint={ENDPOINT} \
@@ -360,7 +360,7 @@ The notebook then uses the `tfx run create` command to start an execution run of
 your pipeline. You will also see this run listed under Experiments in the
 Kubeflow Pipelines Dashboard.
 
-```
+```python
 !tfx run create --pipeline-name={PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
 
@@ -402,7 +402,7 @@ data.
 In `pipeline`/`pipeline.py`, uncomment the lines which append these components
 to your pipeline:
 
-```
+```python
 # components.append(statistics_gen)
 # components.append(infer_schema)
 # components.append(validate_stats)
@@ -412,7 +412,7 @@ to your pipeline:
 
 ### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
 ! tfx pipeline update \
   --pipeline-path=kubeflow_dag_runner.py \
@@ -464,13 +464,13 @@ serving.
 In `pipeline`/`pipeline.py`, find and uncomment the line which appends
 [Transform](https://www.tensorflow.org/tfx/guide/transform) to the pipeline.
 
-```
+```python
 # components.append(transform)
 ```
 
 ### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
 ! tfx pipeline update \
   --pipeline-path=kubeflow_dag_runner.py \
@@ -512,13 +512,13 @@ Train a TensorFlow model with your nice, clean, transformed data.
 In `pipeline`/`pipeline.py`, find and uncomment the which appends Trainer to the
 pipeline:
 
-```
+```python
 # components.append(trainer)
 ```
 
 ### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
 ! tfx pipeline update \
   --pipeline-path=kubeflow_dag_runner.py \
@@ -563,13 +563,13 @@ Understanding more than just the top level metrics.
 In `pipeline`/`pipeline.py`, find and uncomment the line which appends Evaluator
 to the pipeline:
 
-```
+```python
 components.append(model_analyzer)
 ```
 
 ### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
 ! tfx pipeline update \
   --pipeline-path=kubeflow_dag_runner.py \
@@ -614,7 +614,7 @@ Deployment targets receive new models from well-known locations
 In `pipeline`/`pipeline.py`, find and uncomment the line that appends Pusher to
 the pipeline:
 
-```
+```python
 # components.append(pusher)
 ```
 
@@ -627,8 +627,7 @@ your pipeline.
 
 ### Available deployment targets
 
-You have now trained and validated your model,
-<!-- and something something WHERE DID IT GO?!--> Your model is now ready for
+You have now trained and validated your model, and your model is now ready for
 production. You can now deploy your model to any of the TensorFlow deployment
 targets, including:
 
@@ -646,78 +645,161 @@ targets, including:
 ### Try `BigQueryExampleGen`
 
 [BigQuery](https://cloud.google.com/bigquery) is a serverless, highly scalable,
-and cost-effective cloud data warehouse. It can be used as a source for training
-examples in TFX.
+and cost-effective cloud data warehouse. BigQuery can be used as a source for
+training examples in TFX. In this step, we will add `BigQueryExampleGen` to the
+pipeline.
 
 #### In Jupyter lab file editor:
 
-1.  Open `pipeline`/`pipeline.py`.
+**Double-click to open `pipeline.py`**. Comment out `CsvExampleGen` and
+uncomment the line which creates an instance of `BigQueryExampleGen`. You also
+need to uncomment the `query` argument of the `create_pipeline` function.
 
-    1.  Comment out `CsvExampleGen`.
-    1.  Uncomment the line which creates an instance of `BigQueryExampleGen`.
-    1.  Uncomment `query` argument of the `create_pipeline` function.
-    1.  Specify which GCP project to use for BigQuery by setting `--project` in
-        `beam_pipeline_args` when creating a pipeline.
+We need to specify which GCP project to use for BigQuery, and this is done by
+setting `--project` in `beam_pipeline_args` when creating a pipeline.
 
-1.  Open `pipeline`/`configs.py`
+**Double-click to open `configs.py`**. Uncomment the definition of
+`GCP_PROJECT_ID`, `GCP_REGION`,
+`BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS` and `BIG_QUERY_QUERY`. You
+should replace the project id and the region value in this file with the correct
+values for your GCP project.
 
-    1.  Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`,
-        `BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS` and `BIG_QUERY_QUERY`.
-    1.  Replace the project id and the region value in this file.
+>**Note: You MUST set your GCP project ID and region in the `configs.py` file
+before proceeding.**
 
-1.  Open `kubeflow_dag_runner.py`
+**Change directory one level up.** Click the name of the directory above the
+file list. The name of the directory is the name of the pipeline which is
+`my_pipeline` if you didn't change the pipeline name.
 
-    1.  In the `create_pipeline() method,
-        uncomment`query`and`beam_pipeline_args`
+**Double-click to open `kubeflow_dag_runner.py`**. Uncomment two arguments,
+`query` and `beam_pipeline_args`, for the `create_pipeline` function.
+
+Now the pipeline is ready to use BigQuery as an example source. Update the
+pipeline as before and create a new execution run as we did in step 5 and 6.
 
 #### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
-! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
-  --endpoint={ENDPOINT}
+!tfx pipeline update \
+--pipeline-path=kubeflow_dag_runner.py \
+--endpoint={ENDPOINT}
 
-! tfx run create --pipeline-name "{PIPELINE_NAME}"
+!tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
+
+### Try Dataflow
+Several
+[TFX Components uses Apache Beam](https://www.tensorflow.org/tfx/guide/beam) to
+implement data-parallel pipelines, and it means that you can distribute data
+processing workloads using
+[Google Cloud Dataflow](https://cloud.google.com/dataflow/). In this step, we
+will set the Kubeflow orchestrator to use Dataflow as the data processing
+back-end for Apache Beam.
+
+>**Note:** If the Dataflow API is not already enabled, you can enable it using
+the console, or from the CLI using this command (for example, in the Cloud
+Shell):
+
+```bash
+# Select your project:
+gcloud config set project YOUR_PROJECT_ID
+
+# Get a list of services that you can enable in your project:
+gcloud services list --available | grep Dataflow
+
+# If you don't see dataflow.googleapis.com listed, that means you haven't been
+# granted access to enable the Dataflow API.  See your account adminstrator.
+
+# Enable the Dataflow service:
+
+gcloud services enable dataflow.googleapis.com
+```
+
+>**Note:** Execution speed may be limited by default
+[Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
+recommend setting a sufficient quota for approximately 250 Dataflow VMs:
+**250 CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more
+details, please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
+[Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation.
+
+**Double-click `pipeline` to change directory, and double-click to open
+`configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`, and
+`DATAFLOW_BEAM_PIPELINE_ARGS`.
+
+**Double-click to open `pipeline.py`**. Change the value of `enable_cache` to
+`False`.
+
+**Change directory one level up.** Click the name of the directory above the
+file list. The name of the directory is the name of the pipeline which is
+`my_pipeline` if you didn't change.
+
+**Double-click to open `kubeflow_dag_runner.py`**. Uncomment
+`beam_pipeline_args`. (Also make sure to comment out current
+`beam_pipeline_args` that you added in Step 7.)
+
+>Note that we deliberately disabled caching. Because we have already run the
+pipeline successfully, we will get cached execution result for all components
+if cache is enabled.
+
+#### Update the pipeline and re-run it
+
+```python
+# Update the pipeline
+!tfx pipeline update \
+--pipeline-path=kubeflow_dag_runner.py \
+--endpoint={ENDPOINT}
+
+!tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
+```
+
+You can find your Dataflow jobs in
+[Dataflow in Cloud Console](http://console.cloud.google.com/dataflow).
+
+Please reset `enable_cache` to `True` to benefit from caching execution results.
+
+**Double-click to open `pipeline.py`**. Reset the value of `enable_cache` to
+`True`.
 
 ### Try Cloud AI Platform Training and Prediction with KFP
 
-TFX interoperates with serveral managed GCP services, such as
+TFX interoperates with several managed GCP services, such as
 [Cloud AI Platform for Training and Prediction](https://cloud.google.com/ai-platform/).
-You can set your Trainer component to use Cloud AI Platform Training, a managed
-service for ML training workload. Moreover, when your model is built and ready
-to be served, you can *push* your model to Cloud AI Platform Prediction for
-serving. In this step, we will set the `Trainer` and `Pusher` component to use
-Cloud AI Platform services.
+You can set your `Trainer` component to use Cloud AI Platform Training, a
+managed service for training ML models. Moreover, when your model is built and
+ready to be served, you can *push* your model to Cloud AI Platform Prediction
+for serving. In this step, we will set our `Trainer` and `Pusher` component to
+use Cloud AI Platform services.
 
-#### Enable [AI Platform Training & Prediction API]()
+Before editing files, you might first have to enable *AI Platform Training &
+Prediction API*.
 
-<!-- HOW?! -->
+**Double-click `pipeline` to change directory, and double-click to open
+`configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`,
+`GCP_AI_PLATFORM_TRAINING_ARGS` and `GCP_AI_PLATFORM_SERVING_ARGS`. We will use
+our custom built container image to train a model in Cloud AI Platform Training,
+so we should set `masterConfig.imageUri` in `GCP_AI_PLATFORM_TRAINING_ARGS` to
+the same value as `CUSTOM_TFX_IMAGE` above.
 
-#### In Jupyter lab file editor:
-
-1.  Open `pipeline`/`configs.py`
-
-    1.  Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`,
-        `GCP_AI_PLATFORM_TRAINING_ARGS` and `GCP_AI_PLATFORM_SERVING_ARGS`.
-    1.  Set `masterConfig.imageUri` in `GCP_AI_PLATFORM_TRAINING_ARGS` to the
-        same value as `CUSTOM_TFX_IMAGE` above.
-
-1.  Open `kubeflow_dag_runner.py`
-
-    1.  Uncomment `ai_platform_training_args` and `ai_platform_serving_args`.
+**Change directory one level up, and double-click to open
+`kubeflow_dag_runner.py`**. Uncomment `ai_platform_training_args` and
+`ai_platform_serving_args`.
 
 #### Update the pipeline and re-run it
 
-```
+```python
 # Update the pipeline
-! tfx pipeline update \
-  --pipeline-path=kubeflow_dag_runner.py \
-  --endpoint={ENDPOINT}
+!tfx pipeline update \
+--pipeline-path=kubeflow_dag_runner.py \
+--endpoint={ENDPOINT}
 
-! tfx run create --pipeline-name "{PIPELINE_NAME}"
+!tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT}
 ```
+
+You can find your training jobs in
+[Cloud AI Platform Jobs](https://console.cloud.google.com/ai-platform/jobs). If
+your pipeline completed successfully, you can find your model in
+[Cloud AI Platform Models](https://console.cloud.google.com/ai-platform/models).
 
 ## 14. Use your own data
 
