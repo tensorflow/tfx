@@ -18,8 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
-from typing import Dict, Text
+from typing import Dict, List, Optional, Text
 from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
@@ -101,11 +102,37 @@ _ai_platform_serving_args = {
 }
 
 
-def _create_pipeline(
-    pipeline_name: Text, pipeline_root: Text, module_file: Text,
+def create_pipeline(
+    pipeline_name: Text,
+    pipeline_root: Text,
+    module_file: Text,
     ai_platform_training_args: Dict[Text, Text],
-    ai_platform_serving_args: Dict[Text, Text]) -> pipeline.Pipeline:
-  """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
+    ai_platform_serving_args: Dict[Text, Text],
+    beam_pipeline_args: Optional[List[Text]] = None) -> pipeline.Pipeline:
+  """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines.
+
+  Args:
+    pipeline_name: name of the TFX pipeline being created.
+    pipeline_root: root directory of the pipeline. Should be a valid GCS path.
+    module_file: uri of the module files used in Trainer and Transform
+      components.
+    ai_platform_training_args: Args of CAIP training job. Please refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
+      for detailed description.
+    ai_platform_serving_args: Args of CAIP model deployment. Please refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
+      for detailed description.
+    beam_pipeline_args: Optional list of beam pipeline options. Please refer to
+      https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options.
+      When this argument is not provided, the default is to use GCP
+      DataflowRunner with 50GB disk size as specified in this function. If an
+      empty list is passed in, default specified by Beam will be used, which can
+      be found at
+      https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options
+
+  Returns:
+    A TFX pipeline object.
+  """
 
   # The rate at which to sample rows from the Taxi dataset using BigQuery.
   # The full taxi dataset is > 200M record.  In the interest of resource
@@ -113,7 +140,7 @@ def _create_pipeline(
   # Feel free to crank it up and process the full dataset!
   # By default it generates a 0.1% random sample.
   query_sample_rate = data_types.RuntimeParameter(
-      name='query-sample-rate', ptype=float, default=0.001)
+      name='query_sample_rate', ptype=float, default=0.001)
 
   # This is the upper bound of FARM_FINGERPRINT in Bigquery (ie the max value of
   # signed int64).
@@ -150,25 +177,26 @@ def _create_pipeline(
   # Beam args to run data processing on DataflowRunner.
   # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
   # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
-  beam_pipeline_args = [
-      '--runner=DataflowRunner',
-      '--experiments=shuffle_mode=auto',
-      '--project=' + _project_id,
-      '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
-      '--region=' + _gcp_region,
-      '--disk_size_gb=50',
-  ]
+  if beam_pipeline_args is None:
+    beam_pipeline_args = [
+        '--runner=DataflowRunner',
+        '--experiments=shuffle_mode=auto',
+        '--project=' + _project_id,
+        '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
+        '--region=' + _gcp_region,
+        '--disk_size_gb=50',
+    ]
 
   # Number of epochs in training.
   train_steps = data_types.RuntimeParameter(
-      name='train-steps',
+      name='train_steps',
       default=10000,
       ptype=int,
   )
 
   # Number of epochs in evaluation.
   eval_steps = data_types.RuntimeParameter(
-      name='eval-steps',
+      name='eval_steps',
       default=5000,
       ptype=int,
   )
@@ -198,20 +226,22 @@ def _create_pipeline(
   # Update ai_platform_training_args if distributed training was enabled.
   # Number of worker machines used in distributed training.
   worker_count = data_types.RuntimeParameter(
-      name='worker-count',
+      name='worker_count',
       default=2,
       ptype=int,
   )
 
   # Type of worker machines used in distributed training.
   worker_type = data_types.RuntimeParameter(
-      name='worker-type',
+      name='worker_type',
       default='standard',
       ptype=str,
   )
 
+  local_training_args = copy.deepcopy(ai_platform_training_args)
+
   if FLAGS.distributed_training:
-    ai_platform_training_args.update({
+    local_training_args.update({
         # You can specify the machine types, the number of replicas for workers
         # and parameter servers.
         # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#ScaleTier
@@ -236,7 +266,7 @@ def _create_pipeline(
       eval_args={'num_steps': eval_steps},
       custom_config={
           ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-              ai_platform_training_args
+              local_training_args
       })
 
   # Get the latest blessed model for model validation.
@@ -312,7 +342,7 @@ def main(unused_argv):
       tfx_image=tfx_image)
 
   kubeflow_dag_runner.KubeflowDagRunner(config=runner_config).run(
-      _create_pipeline(
+      create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
           module_file=_module_file,

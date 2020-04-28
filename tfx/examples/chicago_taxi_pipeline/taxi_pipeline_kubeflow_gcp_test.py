@@ -38,7 +38,7 @@ class TaxiPipelineKubeflowTest(tf.test.TestCase):
     os.chdir(self._olddir)
 
   def testTaxiPipelineConstructionAndDefinitionFileExists(self):
-    logical_pipeline = taxi_pipeline_kubeflow_gcp._create_pipeline(
+    logical_pipeline = taxi_pipeline_kubeflow_gcp.create_pipeline(
         pipeline_name=taxi_pipeline_kubeflow_gcp._pipeline_name,
         pipeline_root=taxi_pipeline_kubeflow_gcp._pipeline_root,
         module_file=taxi_pipeline_kubeflow_gcp._module_file,

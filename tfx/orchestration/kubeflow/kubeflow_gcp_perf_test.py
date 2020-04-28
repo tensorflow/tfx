@@ -19,10 +19,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import os
+import time
+from typing import Text
+
+from absl import logging
 import kfp
 import tensorflow as tf
 
+from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
+from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow import test_utils
@@ -32,8 +39,12 @@ from tfx.orchestration.kubeflow import test_utils
 # inverse proxy.
 _KFP_ENDPOINT = os.environ['KFP_E2E_ENDPOINT']
 
-# Timeout for a single pipeline run. Set to 1 hour.
-_TIME_OUT_SECONDS = 3600
+# Timeout for a single pipeline run. Set to 6 hours.
+# TODO(b/150222976): Tune this timeout to align with our observation.
+# Note: the Chicago Taxi dataset is a dataset growing with time. The 6 hour
+# timeout here was calibrated according to our empirical study in
+# b/150222976. This might need to be adjusted occasionally.
+_TIME_OUT_SECONDS = 6 * 3600
 
 # The base container image name to use when building the image used in tests.
 _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
@@ -46,6 +57,55 @@ _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 
 # The GCP bucket to use to write output artifacts.
 _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
+
+# Various execution status of a KFP pipeline.
+_KFP_RUNNING_STATUS = 'running'
+_KFP_SUCCESS_STATUS = 'succeeded'
+_KFP_FAIL_STATUS = 'failed'
+_KFP_SKIPPED_STATUS = 'skipped'
+_KFP_ERROR_STATUS = 'error'
+
+_KFP_FINAL_STATUS = frozenset((_KFP_SUCCESS_STATUS, _KFP_FAIL_STATUS,
+                               _KFP_SKIPPED_STATUS, _KFP_ERROR_STATUS))
+
+# The location of test user module file.
+# It is retrieved from inside the container subject to testing.
+_MODULE_FILE = '/tfx-src/tfx/examples/chicago_taxi_pipeline/taxi_utils.py'
+
+# Parameterize worker type/count for easily ramping up the pipeline scale.
+_WORKER_COUNT = data_types.RuntimeParameter(
+    name='worker_count',
+    default=2,
+    ptype=int,
+)
+
+_WORKER_TYPE = data_types.RuntimeParameter(
+    name='worker_type',
+    default='standard',
+    ptype=str,
+)
+
+# Parameterize parameter server count for easily ramping up the scale.
+_PARAMETER_SERVER_COUNT = data_types.RuntimeParameter(
+    name='parameter_server_count',
+    default=1,
+    ptype=int,
+)
+
+_AI_PLATFORM_SERVING_ARGS = {
+    'model_name': 'chicago_taxi',
+    'project_id': _GCP_PROJECT_ID,
+    'regions': [_GCP_REGION],
+}
+
+_BEAM_PIPELINE_ARGS = [
+    '--runner=DataflowRunner',
+    '--experiments=shuffle_mode=auto',
+    '--project=' + _GCP_PROJECT_ID,
+    '--temp_location=gs://' + os.path.join(_BUCKET_NAME, 'dataflow', 'tmp'),
+    '--region=' + _GCP_REGION,
+    '--disk_size_gb=50',
+]
 
 
 class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
@@ -64,8 +124,55 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
   def tearDownClass(cls):
     super(test_utils.BaseKubeflowTest, cls).tearDownClass()
 
-  def _compile_and_run_pipeline(self,
-                                pipeline: tfx_pipeline.Pipeline,
+  # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
+  # This should be changed after
+  # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
+  # Currently gcloud authentication token has a one hour expiration by default
+  # but kfp.Client() does not have a refreshing mechanism in place. This
+  # causes failure when attempting to get running status for a long pipeline
+  # execution (> 1 hour).
+  # Instead of implementing a full-fledged authentication refreshing mechanism
+  # here, we chose re-creating kfp.Client() frequently to make sure the
+  # authentication does not expire. This is based on the fact that kfp.Client()
+  # is very light-weight.
+  # See more details at
+  # https://github.com/kubeflow/pipelines/issues/3630
+  def _assert_successful_run_completion(self, host: Text, run_id: Text,
+                                        timeout: int):
+    """Waits and asserts a successful KFP pipeline execution.
+
+    Args:
+      host: the endpoint of the KFP deployment.
+      run_id: the run ID of the execution, can be obtained from the respoonse
+        when submitting the pipeline.
+      timeout: maximal waiting time for this execution, in seconds.
+
+    Raises:
+      RuntimeError: when timeout exceeds after waiting for specified duration.
+    """
+    status = None
+    start_time = datetime.datetime.now()
+    while True:
+      client = kfp.Client(host=host)
+      get_run_response = client._run_api.get_run(run_id=run_id)
+
+      if (get_run_response and get_run_response.run and
+          get_run_response.run.status and
+          get_run_response.run.status.lower() in _KFP_FINAL_STATUS):
+        # Break because final status is reached.
+        status = get_run_response.run.status
+        break
+      elif (datetime.datetime.now() - start_time).seconds > timeout:
+        # Timeout.
+        raise RuntimeError('Waiting for run timeout at %s' %
+                           datetime.datetime.now().strftime('%H:%M:%S'))
+      else:
+        logging.info('Waiting for the job to complete...')
+        time.sleep(10)
+
+    self.assertEqual(status.lower(), _KFP_SUCCESS_STATUS)
+
+  def _compile_and_run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
                                 **kwargs):
     """Compiles and runs a KFP pipeline.
 
@@ -91,18 +198,36 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
     run_result = client.create_run_from_pipeline_package(
         pipeline_file=file_path, arguments=kwargs)
     run_id = run_result.run_id
-    response = client.wait_for_run_completion(
-        run_id=run_id, timeout=_TIME_OUT_SECONDS)
-    print(response)
-    self.assertEqual(response.run.status.lower(), 'succeeded')
 
-  def testPrimitiveEnd2EndPipeline(self):
-    pipeline_name = 'gcp-perf-test-primitive-e2e-test-{}'.format(
-        self._random_id())
-    # TODO(b/150222976): Switch to taxi_pipeline_kubeflow_gcp example.
-    components = test_utils.create_primitive_type_components(pipeline_name)
-    pipeline = self._create_pipeline(pipeline_name, components)
-    self._compile_and_run_pipeline(pipeline=pipeline)
+    self._assert_successful_run_completion(
+        host=_KFP_ENDPOINT, run_id=run_id, timeout=_TIME_OUT_SECONDS)
+
+  def testFullTaxiGcpPipeline(self):
+    pipeline_name = 'gcp-perf-test-full-e2e-test-{}'.format(self._random_id())
+
+    # Custom CAIP training job using a testing image.
+    ai_platform_training_args = {
+        'project': _GCP_PROJECT_ID,
+        'region': _GCP_REGION,
+        'scaleTier': 'CUSTOM',
+        'masterType': 'large_model',
+        'masterConfig': {
+            'imageUri': self._container_image
+        },
+        'workerType': _WORKER_TYPE,
+        'parameterServerType': 'standard',
+        'workerCount': _WORKER_COUNT,
+        'parameterServerCount': _PARAMETER_SERVER_COUNT
+    }
+
+    pipeline = taxi_pipeline_kubeflow_gcp.create_pipeline(
+        pipeline_name=pipeline_name,
+        pipeline_root=self._pipeline_root(pipeline_name),
+        module_file=_MODULE_FILE,
+        ai_platform_training_args=ai_platform_training_args,
+        ai_platform_serving_args=_AI_PLATFORM_SERVING_ARGS,
+        beam_pipeline_args=_BEAM_PIPELINE_ARGS)
+    self._compile_and_run_pipeline(pipeline=pipeline, query_sample_rate=1)
 
 
 if __name__ == '__main__':
