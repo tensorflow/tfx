@@ -7,17 +7,15 @@
     Python function-based component definition.
 
 ## Bug fixes and other changes
+
 *   Depends on `kubernetes>=10.0.1,<12`.
 *   Removed `python-snappy` from `[all]` extra dependency list.
+*   Tests depends on `apache-airflow>=1.10.10,<2`;
+*   Removed test dependency to tzlocal.
 
 ### Deprecations
 
 ## Breaking changes
-*   Pusher's `PushedModel` output artifact properties have been changed. Please
-    refer to the [document](https://www.tensorflow.org/tfx/guide/pusher).
-*   Pusher's `PushedModel` output artifact does not have a version subdirectory
-    anymore. Your SavedModel will be located directly under the
-    `PushedModel.uri`.
 
 ### For pipeline authors
 

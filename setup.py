@@ -79,7 +79,6 @@ with open('tfx/dependencies.py') as fp:
   globals_dict = {}
   exec(fp.read(), globals_dict)  # pylint: disable=exec-used
 _make_required_install_packages = globals_dict['make_required_install_packages']
-_make_required_test_packages = globals_dict['make_required_test_packages']
 _make_extra_packages_docker_image = globals_dict[
     'make_extra_packages_docker_image']
 _make_all_dependency_packages = globals_dict['make_all_dependency_packages']
@@ -130,7 +129,6 @@ setup(
         'all': _make_all_dependency_packages(),
     },
     setup_requires=['pytest-runner'],
-    tests_require=_make_required_test_packages(),
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
     packages=find_packages(),
     include_package_data=True,
