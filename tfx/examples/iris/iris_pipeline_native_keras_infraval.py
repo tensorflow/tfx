@@ -127,7 +127,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   'sparse_categorical_accuracy':
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
-                              lower_bound={'value': 0.9}),
+                              lower_bound={'value': 0.6}),
                           change_threshold=tfma.GenericChangeThreshold(
                               direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                               absolute={'value': -1e-10}))
