@@ -25,11 +25,10 @@ import sys
 import absl
 import mock
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import dependency_utils
 
 
-class DepsUtilsTest(tf.test.TestCase):
+class DependencyUtilsTest(tf.test.TestCase):
 
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
@@ -69,13 +68,6 @@ class DepsUtilsTest(tf.test.TestCase):
     mock_mkdtemp.return_value = self._tmp_dir
     package = dependency_utils.build_ephemeral_package()
     self.assertEqual(expected_package, os.path.basename(package))
-
-  @mock.patch('tempfile.mkdtemp')
-  def testRequirementFile(self, mock_mkdtemp):
-    mock_mkdtemp.return_value = self._tmp_dir
-    requirements_file = dependency_utils._build_requirements_file()
-    content = file_io.read_file_to_string(requirements_file)
-    self.assertRegexpMatches(content, 'tfx==.*')
 
 
 if __name__ == '__main__':
