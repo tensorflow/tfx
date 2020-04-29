@@ -99,10 +99,12 @@ _AI_PLATFORM_SERVING_ARGS = {
 }
 
 _BEAM_PIPELINE_ARGS = [
-    '--runner=DataflowRunner', '--experiments=shuffle_mode=auto',
+    '--runner=DataflowRunner',
+    '--experiments=shuffle_mode=auto',
     '--project=' + _GCP_PROJECT_ID,
     '--temp_location=gs://' + os.path.join(_BUCKET_NAME, 'dataflow', 'tmp'),
-    '--region=' + _GCP_REGION, '--disk_size_gb=50', '--no_use_public_ips'
+    '--region=' + _GCP_REGION,
+    '--disk_size_gb=50',
 ]
 
 
@@ -225,15 +227,7 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
         ai_platform_training_args=ai_platform_training_args,
         ai_platform_serving_args=_AI_PLATFORM_SERVING_ARGS,
         beam_pipeline_args=_BEAM_PIPELINE_ARGS)
-    self._compile_and_run_pipeline(
-        pipeline=pipeline,
-        query_sample_rate=1,
-        # (1M * batch_size=200) / 200M records ~ 1 epoch
-        train_steps=1000000,
-        eval_steps=10000,
-        worker_count=20,
-        parameter_server_count=3,
-    )
+    self._compile_and_run_pipeline(pipeline=pipeline, query_sample_rate=1)
 
 
 if __name__ == '__main__':
