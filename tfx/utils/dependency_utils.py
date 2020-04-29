@@ -22,7 +22,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import List, Optional, Text
+from typing import List, Text
 
 import absl
 import apache_beam as beam
@@ -31,16 +31,6 @@ import tensorflow as tf
 from tfx import dependencies
 from tfx import version
 from tfx.utils import io_utils
-
-
-def _get_pypi_package_version() -> Optional[Text]:
-  """Returns package version if TFX is installed from PyPI, otherwise None."""
-  # We treat any integral patch version as published to PyPI, since development
-  # packages always end with 'dev' or 'rc'.
-  if version.__version__.split('.')[-1].isdigit():
-    return version.__version__
-  else:
-    return None
 
 
 def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
@@ -67,19 +57,9 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
       return beam_pipeline_args
   absl.logging.info('Attempting to infer TFX Python dependency for beam')
   dependency_flags = []
-  pypi_version = _get_pypi_package_version()
-  # TODO(b/147438224): refactor once PortableRunner drops no-binary.
-  if (pypi_version and '--runner=PortableRunner' not in beam_pipeline_args and
-      '--runner=FlinkRunner' not in beam_pipeline_args and
-      '--runner=SparkRunner' not in beam_pipeline_args):
-    requirements_file = _build_requirements_file()
-    absl.logging.info('Added --requirements_file=%s to beam args',
-                      requirements_file)
-    dependency_flags.append('--requirements_file=%s' % requirements_file)
-  else:
-    sdist_file = build_ephemeral_package()
-    absl.logging.info('Added --extra_package=%s to beam args', sdist_file)
-    dependency_flags.append('--extra_package=%s' % sdist_file)
+  sdist_file = build_ephemeral_package()
+  absl.logging.info('Added --extra_package=%s to beam args', sdist_file)
+  dependency_flags.append('--extra_package=%s' % sdist_file)
   return beam_pipeline_args + dependency_flags
 
 
@@ -94,14 +74,6 @@ if __name__ == '__main__':
       install_requires=[{install_requires}],
       )
 """
-
-
-def _build_requirements_file() -> Text:
-  """Returns a requirements.txt file which includes current TFX package."""
-  result = os.path.join(tempfile.mkdtemp(), 'requirement.txt')
-  absl.logging.info('Generating a temp requirements.txt file at %s', result)
-  io_utils.write_string_file(result, 'tfx==%s' % version.__version__)
-  return result
 
 
 def build_ephemeral_package() -> Text:
