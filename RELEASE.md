@@ -34,6 +34,8 @@
     thread safe.
 *   Stopped requiring `avro-python3`.
 *   Requires [Bazel](https://bazel.build/) to build TFX source code.
+*   Using the correct import for the ml_metadata.errors instead of
+    tensorflow.errors
 
 ## Breaking changes
 
