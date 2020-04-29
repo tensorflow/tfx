@@ -690,7 +690,7 @@ pipeline as before and create a new execution run as we did in step 5 and 6.
 
 ### Try Dataflow
 Several
-[TFX Components uses Apache Beam](https://www.tensorflow.org/tfx/guide/beam) to
+[TFX Components use Apache Beam](https://www.tensorflow.org/tfx/guide/beam) to
 implement data-parallel pipelines, and it means that you can distribute data
 processing workloads using
 [Google Cloud Dataflow](https://cloud.google.com/dataflow/). In this step, we
