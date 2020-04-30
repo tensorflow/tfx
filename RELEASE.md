@@ -5,6 +5,8 @@
 *   Introduced experimental Python function component decorator (`@component`
     decorator under `tfx.dsl.component.experimental.decorators`) allowing
     Python function-based component definition.
+*   Added the experimental TemplatedExecutorContainerSpec executor class that
+    supports structural placeholders (not Jinja placeholders).
 
 ## Bug fixes and other changes
 

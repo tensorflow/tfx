@@ -28,6 +28,7 @@ from kubernetes import client
 
 from tfx import types
 from tfx.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import kubernetes_component_config
 from tfx.orchestration.launcher import base_component_launcher
@@ -67,7 +68,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       return False
 
     return isinstance(component_executor_spec,
-                      executor_spec.ExecutorContainerSpec)
+                      (executor_spec.ExecutorContainerSpec,
+                       executor_specs.TemplatedExecutorContainerSpec))
 
   def _run_executor(self, execution_id: int,
                     input_dict: Dict[Text, List[types.Artifact]],
