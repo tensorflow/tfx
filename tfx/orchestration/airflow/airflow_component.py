@@ -74,7 +74,8 @@ def _airflow_component_launcher(
       beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
-  with telemetry_utils.scoped_labels({telemetry_utils.TFX_RUNNER: 'airflow'}):
+  with telemetry_utils.scoped_labels(
+      {telemetry_utils.LABEL_TFX_RUNNER: 'airflow'}):
     launcher.launch()
 
 

@@ -20,7 +20,6 @@ from __future__ import print_function
 import os
 import re
 from typing import Callable, Dict, List, Optional, Text, Type
-import uuid
 
 from kfp import compiler
 from kfp import dsl
@@ -154,8 +153,7 @@ def _get_default_pod_labels() -> Dict[Text, Text]:
   # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
   result = {
       'add-pod-env': 'true',
-      telemetry_utils.PIPELINE_UUID_LABEL: str(uuid.uuid4()),
-      telemetry_utils.SDK_ENV_LABEL: 'tfx'
+      telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx'
   }
   return result
 

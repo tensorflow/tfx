@@ -148,7 +148,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
   with telemetry_utils.scoped_labels(
-      {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
+      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
     job_labels = telemetry_utils.get_labels_dict()
 
   # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
@@ -228,7 +228,7 @@ def deploy_model_for_aip_prediction(
     else:
       raise RuntimeError('AI Platform Push failed: {}'.format(e))
   with telemetry_utils.scoped_labels(
-      {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
+      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
     job_labels = telemetry_utils.get_labels_dict()
   body = {
       'name': model_version,

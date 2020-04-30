@@ -370,7 +370,7 @@ def main():
   # TODO(zhitaoli): Pass this from KFP runner side when the same container
   # entrypoint can be used by a different runner.
   with telemetry_utils.scoped_labels({
-      telemetry_utils.TFX_RUNNER: 'kfp',
+      telemetry_utils.LABEL_TFX_RUNNER: 'kfp',
   }):
     execution_info = launcher.launch()
 
