@@ -29,6 +29,8 @@ import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
 
+from tensorflow.python.data.ops import dataset_ops  # pylint: disable=g-direct-tensorflow-import
+
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
 
@@ -283,7 +285,11 @@ def _input_fn(file_pattern: Text,
       batch_size=batch_size,
       features=transformed_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=_transformed_name(_LABEL_KEY))
+      label_key=_transformed_name(_LABEL_KEY),
+      # `reader_num_threads` Defaults to one thread, which is suboptimal if
+      # multiple cores available.
+      reader_num_threads=dataset_ops.AUTOTUNE,
+  )
 
   return dataset
 
