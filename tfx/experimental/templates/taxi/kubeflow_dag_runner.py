@@ -67,7 +67,7 @@ def run():
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
   pod_labels = kubeflow_dag_runner.get_default_pod_labels().update(
-      {telemetry_utils.SDK_ENV_LABEL: 'tfx-template'})
+      {telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
   kubeflow_dag_runner.KubeflowDagRunner(
       config=runner_config, pod_labels_to_attach=pod_labels
   ).run(

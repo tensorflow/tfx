@@ -107,7 +107,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       # TODO(zhitaoli): Rethink how we can add labels and only normalize them
       # if the job is submitted against GCP.
       with telemetry_utils.scoped_labels(
-          {telemetry_utils.TFX_EXECUTOR: executor_class_path}):
+          {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
         self._beam_pipeline_args.extend(telemetry_utils.make_beam_labels_args())
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors

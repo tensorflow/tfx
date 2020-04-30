@@ -98,9 +98,7 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
           c['metadata'] for c in pipeline['spec']['templates'] if 'dag' not in c
       ]
       for m in metadata:
-        self.assertEqual('tfx', m['labels'][telemetry_utils.SDK_ENV_LABEL])
-        self.assertIsNotNone(
-            m['labels'][telemetry_utils.PIPELINE_UUID_LABEL])
+        self.assertEqual('tfx', m['labels'][telemetry_utils.LABEL_KFP_SDK_ENV])
 
       # Ensure dependencies between components are captured.
       dag = [c for c in pipeline['spec']['templates'] if 'dag' in c]

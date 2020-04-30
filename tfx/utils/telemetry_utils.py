@@ -26,16 +26,13 @@ from typing import Dict, List, Text
 from tfx import version
 
 # Common label names used.
-TFX_RUNNER = 'tfx_runner'
-TFX_EXECUTOR = 'tfx_executor'
-_TFX_VERSION = 'tfx_version'
-_TFX_PY_VERSION = 'tfx_py_version'
+LABEL_TFX_RUNNER = 'tfx_runner'
+LABEL_TFX_EXECUTOR = 'tfx_executor'
+_LABEL_TFX_VERSION = 'tfx_version'
+_LABEL_TFX_PY_VERSION = 'tfx_py_version'
 
 # The GKE pod label indicating the SDK environment.
-SDK_ENV_LABEL = 'pipelines.kubeflow.org/pipeline-sdk-type'
-
-# The pod label of pipeline unique ID.
-PIPELINE_UUID_LABEL = 'pipelines.kubeflow.org/pipeline-uuid'
+LABEL_KFP_SDK_ENV = 'pipelines.kubeflow.org/pipeline-sdk-type'
 
 # A list of global labels registered so far.
 _labels = {}
@@ -66,9 +63,9 @@ def get_labels_dict() -> Dict[Text, Text]:
   """
   result = dict(
       {
-          _TFX_VERSION:
+          _LABEL_TFX_VERSION:
               version.__version__,
-          _TFX_PY_VERSION:
+          _LABEL_TFX_PY_VERSION:
               '%d.%d' % (sys.version_info.major, sys.version_info.minor),
       }, **_labels)
   for k, v in result.items():

@@ -102,8 +102,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       beam_orchestrator_args: beam args for the beam orchestrator. Note that
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
-      config: Optional pipeline config for customizing the launching
-        of each component.
+      config: Optional pipeline config for customizing the launching of each
+        component.
     """
     super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
@@ -121,7 +121,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    with telemetry_utils.scoped_labels({telemetry_utils.TFX_RUNNER: 'beam'}):
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
       with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
         # Uses for triggering the component DoFns.
         root = p | 'CreateRoot' >> beam.Create([None])
