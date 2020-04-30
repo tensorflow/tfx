@@ -28,10 +28,9 @@ message ExecutionResult {
   // execution result.
   string result_message = 1;
 
-  // Holds any type of custom proto to be record as details of TFX's metadata
-  // http://cs/symbol:tensorflow.pipeline.Metadata.details Please note that such
-  // details should only be used in tooling or debugging purpose. Please don't
-  // assume that it will affect orechestration behavior.
+  // Holds any type of custom proto to be record as execution result.
+  // Please note that such details should only be used in tooling or debugging
+  // purpose. Please don't assume that it will affect orechestration behavior.
   repeated google.protobuf.Any metadata_details = 2;
 }
 
