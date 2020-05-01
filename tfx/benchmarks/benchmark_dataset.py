@@ -24,6 +24,20 @@ import tensorflow as tf
 class BenchmarkDataset(object):
   """Base class for classes representing a dataset for the benchmark."""
 
+  def __init__(self, base_dir=None):
+    """Construct a dataset instance.
+
+    Args:
+      base_dir: The directory in which datasets artifacts are located. This will
+        be used for reading during benchmark execution, as well as writing
+        during benchmark regeneration. By default, the directory in which this
+        file is located at runtime will be used to infer the location of
+        `tfx/benchmarks/datasets`.
+    """
+    self._base_dir = (
+        base_dir if base_dir else os.path.join(
+            os.path.dirname(__file__), "datasets"))
+
   def datasets_dir(self, subdir=""):
     """Returns the path to the datasets directory.
 
@@ -33,7 +47,7 @@ class BenchmarkDataset(object):
     Returns:
       The path to the datasets directory, with the subdir joined at the end.
     """
-    return os.path.join(os.path.dirname(__file__), "datasets", subdir)
+    return os.path.join(self._base_dir, subdir)
 
   def dataset_path(self):
     """Returns the path to the dataset file."""

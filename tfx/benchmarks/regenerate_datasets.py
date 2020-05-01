@@ -27,7 +27,8 @@ FLAGS = flags.FLAGS
 
 def main(argv):
   del argv
-  dataset = benchmark_utils.get_dataset(FLAGS.dataset)
+  dataset = benchmark_utils.get_dataset(FLAGS.dataset,
+                                        base_dir=FLAGS.output_base_dir)
 
   # Regenerate the dataset and models.
   logging.info("Using dataset: %s", FLAGS.dataset)
@@ -43,6 +44,8 @@ def main(argv):
 
 if __name__ == "__main__":
   flags.DEFINE_string("dataset", "chicago_taxi", "Dataset to run on.")
+  flags.DEFINE_string("output_base_dir", "", "Base directory under which to "
+                      "write generated Dataset artifacts.")
   flags.DEFINE_string(
       "generate_dataset_args", "",
       "Arguments to pass to the dataset when regenerating the raw dataset or "
