@@ -585,12 +585,6 @@ page for your pipeline run. Click "Experiments" tab on the left, and "All runs"
 in the Experiments page. You should be able to find the run with the name of
 your pipeline.
 
-### More advanced example
-
-The example presented here is really only meant to get you started. For a more
-advanced example see the
-[TFMA Chicago Taxi Tutorial](https://www.tensorflow.org/tfx/tutorials/model_analysis/chicago_taxi).
-
 ## 12. Serving the model
 
 If the new model is ready, make it so.
@@ -640,7 +634,50 @@ targets, including:
 *   [TensorFlow.js](https://www.tensorflow.org/js), for running your model in a
     web browser or Node.JS application.
 
-## 13. More scalable pipelines on Google Cloud (optional)
+## More advanced examples
+
+The example presented above is really only meant to get you started. Below are
+some examples of integration with other Cloud services.
+
+### Kubeflow Pipelines resource considerations
+
+Depending on the requirements of your workload, the default configuration for
+your Kubeflow Pipelines deployment may or may not meet your needs.  You can
+customize your resource configurations using `pipeline_operator_funcs` in your
+call to `KubeflowDagRunnerConfig`.
+
+`pipeline_operator_funcs` is a list of `OpFunc` items, which transforms all the
+generated `ContainerOp` instances in the KFP pipeline spec which is compiled
+from `KubeflowDagRunner`.
+
+For example, to configure memory we can use
+[`set_memory_request`](https://github.com/kubeflow/pipelines/blob/646f2fa18f857d782117a078d626006ca7bde06d/sdk/python/kfp/dsl/_container_op.py#L249)
+to declare the amount of memory needed. A typical way to do that is to create a
+wrapper for `set_memory_request` and use it to add to to the list of pipeline
+`OpFunc`s:
+
+```python
+def request_more_memory():
+  def _set_memory_spec(container_op):
+    container_op.set_memory_request('32G')
+  return _set_memory_spec
+
+# Then use this opfunc in KubeflowDagRunner
+pipeline_op_funcs = kubeflow_dag_runner.get_default_pipeline_operator_funcs()
+pipeline_op_funcs.append(request_more_memory())
+config = KubeflowDagRunnerConfig(
+    pipeline_operator_funcs=pipeline_op_funcs,
+    ...
+)
+kubeflow_dag_runner.KubeflowDagRunner(config=config).run(pipeline)
+```
+
+Similar resource configuration functions include:
+
+* `set_memory_limit`
+* `set_cpu_request`
+* `set_cpu_limit`
+* `set_gpu_limit`
 
 ### Try `BigQueryExampleGen`
 
