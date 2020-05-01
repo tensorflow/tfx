@@ -196,7 +196,6 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
 
     transformed_features = model.tft_layer(parsed_features)
-    transformed_features.pop(_TRANSFORMED_LABEL_KEY)
 
     return model(transformed_features)
 

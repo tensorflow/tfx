@@ -165,7 +165,6 @@ _FARE_KEY = 'fare'
 #                                           feature_spec)
 #
 #     transformed_features = model.tft_layer(parsed_features)
-#     transformed_features.pop(_transformed_name(_LABEL_KEY))
 #
 #     return model(transformed_features)
 #
