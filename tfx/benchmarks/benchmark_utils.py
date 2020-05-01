@@ -30,10 +30,10 @@ def read_schema(proto_path):
   return result
 
 
-def get_dataset(name):
+def get_dataset(name, base_dir=None):
   """Imports the given dataset and returns an instance of it."""
   lib = importlib.import_module("..datasets.%s.dataset" % name, __name__)
-  return lib.get_dataset()
+  return lib.get_dataset(base_dir)
 
 
 def batched_iterator(records, batch_size):

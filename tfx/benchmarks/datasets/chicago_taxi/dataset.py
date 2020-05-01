@@ -174,7 +174,7 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
       return os.path.join(path, dirs[0])
 
     trainer_output_dir = join_unique_subdir(
-        os.path.join(pipeline_root, "Trainer/output"))
+        os.path.join(pipeline_root, "Trainer/model"))
     eval_model_dir = join_unique_subdir(
         os.path.join(trainer_output_dir, "eval_model_dir"))
     serving_model_dir = join_unique_subdir(
@@ -187,5 +187,5 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
     shutil.copytree(eval_model_dir, self.tfma_saved_model_path())
 
 
-def get_dataset():
-  return ChicagoTaxiDataset()
+def get_dataset(base_dir=None):
+  return ChicagoTaxiDataset(base_dir)
