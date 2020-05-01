@@ -131,6 +131,7 @@ oauth2client,https://raw.githubusercontent.com/google/oauth2client/master/LICENS
 oauthlib,https://raw.githubusercontent.com/oauthlib/oauthlib/master/LICENSE,BSD
 opencv-python,https://raw.githubusercontent.com/skvark/opencv-python/master/LICENSE.txt,MIT
 opt-einsum,https://raw.githubusercontent.com/dgasmith/opt_einsum/master/LICENSE,MIT
+packaging,https://raw.githubusercontent.com/pypa/packaging/master/LICENSE.BSD,BSD
 pandas,https://raw.githubusercontent.com/pandas-dev/pandas/master/LICENSE,3-Clause BSD
 pandocfilters,https://raw.githubusercontent.com/jgm/pandocfilters/master/LICENSE,3-Clause BSD
 parso,https://raw.githubusercontent.com/davidhalter/parso/master/LICENSE.txt,MIT
