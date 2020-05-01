@@ -14,6 +14,8 @@
 *   Removed `python-snappy` from `[all]` extra dependency list.
 *   Tests depends on `apache-airflow>=1.10.10,<2`;
 *   Removed test dependency to tzlocal.
+*   Fixes unintentional overriding of user-specified setup.py file for Dataflow
+    jobs when running on KFP container.
 
 ### Deprecations
 

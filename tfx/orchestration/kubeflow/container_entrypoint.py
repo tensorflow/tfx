@@ -115,28 +115,6 @@ def _get_grpc_metadata_connection_config(
   return connection_config
 
 
-def _make_beam_pipeline_args(json_beam_pipeline_args: Text) -> List[Text]:
-  """Constructs beam_pipeline_args for ComponentLauncher.
-
-  Args:
-    json_beam_pipeline_args: JSON serialized list of beam pipeline args.
-
-  Returns:
-    List containing `beam_pipeline_args`.
-  """
-  beam_pipeline_args = json.loads(json_beam_pipeline_args)
-
-  # Ensure beam pipelines args has a setup.py file so we can use
-  # DataflowRunner.
-  module_dir = os.environ['TFX_SRC_DIR']
-  setup_file = os.path.join(module_dir, 'setup.py')
-  absl.logging.info('Using setup_file \'%s\' to capture TFX dependencies',
-                    setup_file)
-  beam_pipeline_args.append('--setup_file={}'.format(setup_file))
-
-  return beam_pipeline_args
-
-
 def _sanitize_underscore(name: Text) -> Text:
   """Sanitize the underscore in pythonic name for markdown visualization."""
   if name:
@@ -350,7 +328,7 @@ def main():
       _get_metadata_connection_config(kubeflow_metadata_config))
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
-  beam_pipeline_args = _make_beam_pipeline_args(args.beam_pipeline_args)
+  beam_pipeline_args = json.loads(args.beam_pipeline_args)
 
   additional_pipeline_args = json.loads(args.additional_pipeline_args)
 
