@@ -415,7 +415,7 @@ class Executor(base_executor.BaseExecutor):
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
           'transform_columns_count').inc(transform_columns_count)
-      return None
+      return beam.pvalue.PDone(pipeline)
 
     return (
         pipeline
@@ -426,7 +426,7 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
   # TODO(b/38376110): Obviate the first bytes (ie the key part).
-  @beam.typehints.with_output_types(Tuple[bytes, bytes])
+  @beam.typehints.with_output_types(Tuple[None, bytes])
   def _ReadExamples(
       pipeline: beam.Pipeline, dataset: _Dataset,
       input_dataset_metadata: dataset_metadata.DatasetMetadata
@@ -455,7 +455,7 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[bytes, bytes])
+  @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: Text,
                      transformed_example_path: Text) -> beam.pvalue.PDone:
@@ -577,7 +577,7 @@ class Executor(base_executor.BaseExecutor):
   # TODO(zhuo): Obviate this once TFXIO is used.
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[bytes, bytes])
+  @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(pa.RecordBatch)
   def _ToArrowRecordBatches(
       pcoll: beam.pvalue.PCollection,
@@ -628,7 +628,7 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[bytes, bytes])
+  @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(Dict[Text, Any])
   def _DecodeInputs(pcoll: beam.pvalue.PCollection,
                     decode_fn: Any) -> beam.pvalue.PCollection:
