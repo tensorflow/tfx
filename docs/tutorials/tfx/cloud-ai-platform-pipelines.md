@@ -404,8 +404,8 @@ to your pipeline:
 
 ```python
 # components.append(statistics_gen)
-# components.append(infer_schema)
-# components.append(validate_stats)
+# components.append(schema_gen)
+# components.append(example_validator)
 ```
 
 (`ExampleGen` was already enabled when the template files were copied.)
@@ -564,7 +564,7 @@ In `pipeline`/`pipeline.py`, find and uncomment the line which appends Evaluator
 to the pipeline:
 
 ```python
-components.append(model_analyzer)
+components.append(evaluator)
 ```
 
 ### Update the pipeline and re-run it
