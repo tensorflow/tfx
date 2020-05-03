@@ -822,6 +822,8 @@ the same value as `CUSTOM_TFX_IMAGE` above.
 `kubeflow_dag_runner.py`**. Uncomment `ai_platform_training_args` and
 `ai_platform_serving_args`.
 
+>Note: If you receive a permissions error in the Training step, you may need to provide Storage Object Viewer permissions to the Cloud Machine Learning Engine (AI Platform Prediction & Training) service account. More information is available in the [Container Registry documentation](https://cloud.google.com/container-registry/docs/access-control#grant).
+
 #### Update the pipeline and re-run it
 
 ```python
@@ -845,7 +847,7 @@ dataset. Now try putting your own data into the pipeline. Your data can be
 stored anywhere the pipeline can access it, including Google Cloud Storage,
 BigQuery, or CSV files.
 
-You need to modify the pipeline definition to accomodate your data.
+You need to modify the pipeline definition to accommodate your data.
 
 ### If your data is stored in files
 
