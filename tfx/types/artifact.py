@@ -488,8 +488,10 @@ class ValueArtifact(Artifact):
 
   def write(self, value):
     serialized_value = self.encode(value)
-    tf.io.gfile.GFile(os.path.join(self.uri, self.__class__.VALUE_FILE),
-                      'wb').write(serialized_value)
+    value_file_path = os.path.join(self.uri, self.__class__.VALUE_FILE)
+    if not tf.io.gfile.exists(value_file_path):
+      tf.io.gfile.makedirs(os.path.dirname(value_file_path))
+    tf.io.gfile.GFile(value_file_path, 'wb').write(serialized_value)
 
   @property
   def value(self):
