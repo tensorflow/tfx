@@ -7,9 +7,12 @@
     Python function-based component definition.
 *   Added the experimental TemplatedExecutorContainerSpec executor class that
     supports structural placeholders (not Jinja placeholders).
-
+*   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
+    PTramsform when not using Dataflow runner.
 ## Bug fixes and other changes
 
+*   Depends on `apache-beam[gcp]>=2.20,<3`.
+*   Depends on `grpcio>=2.18.1,<3`.
 *   Depends on `kubernetes>=10.0.1,<12`.
 *   Removed `python-snappy` from `[all]` extra dependency list.
 *   Tests depends on `apache-airflow>=1.10.10,<2`;

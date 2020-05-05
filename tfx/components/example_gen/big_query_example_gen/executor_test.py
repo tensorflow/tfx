@@ -31,9 +31,11 @@ from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
+_test_project = 'test-project'
+
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -46,7 +48,7 @@ def _MockReadFromBigQuery(pipeline, query):  # pylint: disable=invalid-name, unu
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery2(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
       'b': True,
@@ -70,7 +72,7 @@ class ExecutorTest(tf.test.TestCase):
 
   @mock.patch.multiple(
       executor,
-      _ReadFromBigQuery=_MockReadFromBigQuery2,  # pylint: disable=invalid-name, unused-argument
+      _ReadFromBigQueryImpl=_MockReadFromBigQuery2,  # pylint: disable=invalid-name, unused-argument
   )
   @mock.patch.object(bigquery, 'Client')
   def testBigQueryToExample(self, mock_client):
@@ -81,7 +83,9 @@ class ExecutorTest(tf.test.TestCase):
       examples = (
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
               input_dict={},
-              exec_properties={},
+              exec_properties={
+                  '_beam_pipeline_args': ['--project=' + _test_project],
+              },
               split_pattern='SELECT i, b, f, s FROM `fake`'))
 
       feature = {}
@@ -97,7 +101,7 @@ class ExecutorTest(tf.test.TestCase):
 
   @mock.patch.multiple(
       executor,
-      _ReadFromBigQuery=_MockReadFromBigQuery,  # pylint: disable=invalid-name, unused-argument
+      _ReadFromBigQueryImpl=_MockReadFromBigQuery,  # pylint: disable=invalid-name, unused-argument
   )
   @mock.patch.object(bigquery, 'Client')
   def testDo(self, mock_client):
