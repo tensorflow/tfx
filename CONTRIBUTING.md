@@ -39,6 +39,8 @@ these operation system for development and testing.
 
 If Python 3.5 is used, our usage of type hints requires at least 3.5.3.
 
+If Python 3.8 or above is used, note that this will likely introduce an [error when trying to install ml-metadata](https://github.com/google/ml-metadata/issues/37).
+
 ## Testing Conventions
 
 All python unit tests in this repo is based on Tensorflow's
