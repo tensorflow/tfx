@@ -22,7 +22,7 @@ def make_required_install_packages():
   return [
       'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.17,<2.18',
+      'apache-beam[gcp]>=2.20,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       # TODO(b/149399451): remove once avro has a healthy release.
       ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
@@ -30,7 +30,7 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
-      'grpcio>=1.25,!=1.27.2,<2',
+      'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
@@ -55,7 +55,7 @@ def make_required_test_packages():
   # conflicts.
   return [
       'apache-airflow>=1.10.10,<2',
-      'kfp>=0.4.0,<0.5',
+      'kfp>=0.4,<0.5',
       'pytest>=5,<6',
   ]
 

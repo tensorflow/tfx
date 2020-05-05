@@ -22,7 +22,6 @@ import abc
 import json
 import multiprocessing
 import os
-import sys
 from typing import Any, Dict, List, Optional, Text
 
 import absl
@@ -30,7 +29,6 @@ import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import StandardOptions
-from apache_beam.portability import python_urns
 from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
@@ -39,15 +37,6 @@ from tfx import types
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
-
-# TODO(b/149185015): remove apache_beam.portability.api once we remove support
-# for Apache Beam 2.17 or below.
-beam_runner_api_pb2 = None
-environments = None
-try:
-  from apache_beam.portability.api import beam_runner_api_pb2  # pylint: disable=g-import-not-at-top
-except ImportError:
-  from apache_beam.transforms import environments  # pylint: disable=g-import-not-at-top
 
 
 class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
@@ -114,37 +103,32 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
     """Makes beam pipeline."""
-    # TODO(b/142684737): refactor when beam support multi-processing by args.
+    # TODO(b/142684737): refactor when beam support multi-processing by args,
+    # possibly starting with apache-beam 2.22.
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
-    if not pipeline_options.view_as(StandardOptions).runner:
-      parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
+    if pipeline_options.view_as(StandardOptions).runner:
+      return beam.Pipeline(argv=self._beam_pipeline_args)
 
-      if parallelism == 0:
-        try:
-          parallelism = multiprocessing.cpu_count()
-        except NotImplementedError as e:
-          absl.logging.warning('Cannot get cpu count: %s' % e)
-          parallelism = 1
-        pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
+    parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
+    if parallelism == 0:
+      try:
+        parallelism = multiprocessing.cpu_count()
+      except NotImplementedError as e:
+        absl.logging.warning('Cannot get cpu count: %s' % e)
+        parallelism = 1
 
-      absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                        parallelism)
+    absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
+                      parallelism)
 
-      if parallelism > 1:
-        if beam_runner_api_pb2:
-          env = beam_runner_api_pb2.Environment(
-              urn=python_urns.SUBPROCESS_SDK,
-              payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
-              (sys.executable or sys.argv[0]).encode('ascii'))
-        else:
-          env = environments.SubprocessSDKEnvironment(
-              command_string='%s -m apache_beam.runners.worker.sdk_worker_main'
-              % (sys.executable or sys.argv[0]))
-        return beam.Pipeline(
-            options=pipeline_options,
-            runner=fn_api_runner.FnApiRunner(default_environment=env))
-
-    return beam.Pipeline(argv=self._beam_pipeline_args)
+    pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
+    # When using default value 'in_memory' and parallelism is great than
+    # one, use 'multi_processing' instead.
+    if parallelism > 1 and pipeline_options.view_as(
+        DirectOptions).direct_running_mode == 'in_memory':
+      pipeline_options.view_as(
+          DirectOptions).direct_running_mode = 'multi_processing'
+    return beam.Pipeline(
+        options=pipeline_options, runner=fn_api_runner.FnApiRunner())
 
   def _get_tmp_dir(self) -> Text:
     """Get the temporary directory path."""
