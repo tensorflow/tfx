@@ -49,13 +49,16 @@ class _BigQueryConverter(object):
         feature[key] = tf.train.Feature()
       elif data_type in ('INTEGER', 'BOOLEAN'):
         feature[key] = tf.train.Feature(
-            int64_list=tf.train.Int64List(value=[value]))
+            int64_list=tf.train.Int64List(value=value if isinstance(value, list) else [value]))
       elif data_type == 'FLOAT':
         feature[key] = tf.train.Feature(
-            float_list=tf.train.FloatList(value=[value]))
+            float_list=tf.train.FloatList(value=value if isinstance(value, list) else [value]))
       elif data_type == 'STRING':
-        feature[key] = tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(value)]))
+        if isinstance(value, list):
+          v = [tf.compat.as_bytes(elem) for elem in value]
+        else:
+          v = [tf.compat.as_bytes(value)]
+        feature[key] = tf.train.Feature(bytes_list=tf.train.BytesList(value=v))
       else:
         # TODO(jyzhao): support more types.
         raise RuntimeError(
