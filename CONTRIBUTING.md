@@ -29,7 +29,7 @@ TODO(zhitaoli): Configure a CI/CD on Github so that each PR submission is tested
 before merged.
 
 ## Community Guidelines
-This project follows[Google's Open Source Community Guidelines](
+This project follows [Google's Open Source Community Guidelines](
 https://opensource.google.com/conduct/).
 
 # Contributing Guidelines
