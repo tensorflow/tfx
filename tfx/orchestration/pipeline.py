@@ -27,7 +27,7 @@ from typing import List, Optional, Text
 import absl
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -78,7 +78,7 @@ class Pipeline(object):
                pipeline_root: Text,
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
-               components: Optional[List[base_component.BaseComponent]] = None,
+               components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
@@ -138,7 +138,7 @@ class Pipeline(object):
     return self._components
 
   @components.setter
-  def components(self, components: List[base_component.BaseComponent]):
+  def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
     producer_map = {}
     instances_per_component_type = collections.defaultdict(set)

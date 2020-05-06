@@ -39,7 +39,7 @@ from six.moves import builtins
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.interactive import execution_result
@@ -130,7 +130,7 @@ class InteractiveContext(object):
   @requires_ipython
   def run(
       self,
-      component: base_component.BaseComponent,
+      component: base_node.BaseNode,
       enable_cache: bool = True,
       beam_pipeline_args: Optional[List[Text]] = None
   ) -> execution_result.ExecutionResult:

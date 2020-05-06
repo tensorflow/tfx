@@ -30,7 +30,7 @@ import absl
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
@@ -207,7 +207,7 @@ def _render_artifact_as_mdstr(single_artifact: artifact.Artifact) -> Text:
               single_artifact.producer_component) or 'None'))
 
 
-def _dump_ui_metadata(component: base_component.BaseComponent,
+def _dump_ui_metadata(component: base_node.BaseNode,
                       execution_info: data_types.ExecutionInfo) -> None:
   """Dump KFP UI metadata json file for visualization purpose.
 

@@ -25,7 +25,7 @@ from typing import Any, Iterable, List, Optional, Text, Type
 import absl
 import apache_beam as beam
 
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -43,7 +43,7 @@ from tfx.utils import telemetry_utils
 class _ComponentAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
-  def __init__(self, component: base_component.BaseComponent,
+  def __init__(self, component: base_node.BaseNode,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
                component_config: base_component_config.BaseComponentConfig,
