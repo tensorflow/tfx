@@ -27,6 +27,16 @@
 ### Deprecations
 
 ## Breaking changes
+*   Changed custom config for the Do function of Trainer and Pusher to accept
+    a JSON-serialized dict instead of a dict object. This also impacts all the 
+    Do functions under `tfx.extensions.google_cloud_ai_platform` and
+    `tfx.extensions.google_cloud_big_query_ml`. Note that this breaking
+    change occurs at the signature of the executor's Do function. Therefore, if
+    the user did not customize the Do function, and the compile time SDK version
+    is aligned with the run time SDK version, previous pipelines should still
+    work as intended. If the user is using a custom component with customized
+    Do function, `custom_config` should be assumed to be a JSON-serialized
+    string from next release.
 
 ### For pipeline authors
 

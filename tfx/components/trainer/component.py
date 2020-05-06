@@ -29,6 +29,7 @@ from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TrainerSpec
+from tfx.utils import json_utils
 
 
 # TODO(b/147702778): update when switch generic executor as default.
@@ -228,7 +229,7 @@ class Trainer(base_component.BaseComponent):
         module_file=module_file,
         run_fn=run_fn,
         trainer_fn=trainer_fn,
-        custom_config=custom_config,
+        custom_config=json_utils.dumps(custom_config),
         model=output)
     super(Trainer, self).__init__(
         spec=spec,
