@@ -34,8 +34,8 @@ https://opensource.google.com/conduct/).
 
 # Contributing Guidelines
 
-At this point, TFX only supports Python 3 on Linux and MacOS. Please use one of
-these operation system for development and testing.
+At this point, TFX only supports Python 3 (up to version 3.7) on Linux and
+MacOS. Please use one of these operation system for development and testing.
 
 If Python 3.5 is used, our usage of type hints requires at least 3.5.3.
 
