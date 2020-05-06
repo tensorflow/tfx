@@ -37,7 +37,7 @@ _POLLING_INTERVAL_IN_SECONDS = 30
 
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
-_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
+_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(version.__version__)
 
 _TF_COMPATIBILITY_OVERRIDE = {
     # Generally, runtimeVersion should be same as <major>.<minor> of currently
@@ -117,11 +117,11 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   training_inputs = training_inputs.copy()
 
   json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  absl.logging.info('json_inputs=\'%s\'.', json_inputs)
+  absl.logging.info('json_inputs=\'{}\'.'.format(json_inputs))
   json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  absl.logging.info('json_outputs=\'%s\'.', json_outputs)
+  absl.logging.info('json_outputs=\'{}\'.'.format(json_outputs))
   json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-  absl.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+  absl.logging.info('json_exec_properties=\'{}\'.'.format(json_exec_properties))
 
   # Configure AI Platform training job
   api_client = discovery.build('ml', 'v1')
@@ -152,7 +152,8 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     job_labels = telemetry_utils.get_labels_dict()
 
   # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
-  job_id = job_id or 'tfx_%s' % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+  job_id = job_id or 'tfx_{}'.format(
+      datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
   job_spec = {
       'jobId': job_id,
       'trainingInput': training_inputs,
@@ -246,18 +247,20 @@ def deploy_model_for_aip_prediction(
 
   while True:
     deploy_status = api.projects().operations().get(name=op_name).execute()
+
+    if deploy_status.get('error'):
+      # The operation completed with an error.
+      absl.logging.error(deploy_status['error'])
+      raise RuntimeError(
+          'Failed to deploy model to AI Platform for serving: {}'.format(
+              deploy_status['error']))
+
     if deploy_status.get('done'):
       # Set the new version as default.
       api.projects().models().versions().setDefault(
           name='{}/versions/{}'.format(model_name, deploy_status['response']
                                        ['name'])).execute()
       break
-    if 'error' in deploy_status:
-      # The operation completed with an error.
-      absl.logging.error(deploy_status['error'])
-      raise RuntimeError(
-          'Failed to deploy model to AI Platform for serving: {}'.format(
-              deploy_status['error']))
 
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     absl.logging.info('Model still being deployed...')
