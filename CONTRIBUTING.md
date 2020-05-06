@@ -59,6 +59,11 @@ pushd <your_source_dir>
 pip install -e .[all]   # the [all] suffix includes additional packages for test
 ```
 
+Note that you have to have protocol buffer compiler `protoc` installed in order
+to be able to install the requirements. Download the latest version
+[here](https://github.com/protocolbuffers/protobuf/releases) and follow the
+instructions in the readme.
+
 ## Running Unit Tests
 
 At this point all unit tests are safe to run externaly. We are working on
