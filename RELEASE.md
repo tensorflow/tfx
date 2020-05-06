@@ -9,6 +9,9 @@
     supports structural placeholders (not Jinja placeholders).
 *   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
     PTramsform when not using Dataflow runner.
+*   Added the experimental function "create_container_component" that
+    simplifies creating container-based components.
+
 ## Bug fixes and other changes
 
 *   Depends on `apache-beam[gcp]>=2.20,<3`.
