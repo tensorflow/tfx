@@ -28,6 +28,7 @@ from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import PusherSpec
+from tfx.utils import json_utils
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
@@ -124,7 +125,7 @@ class Pusher(base_component.BaseComponent):
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,
         push_destination=push_destination,
-        custom_config=custom_config,
+        custom_config=json_utils.dumps(custom_config),
         pushed_model=output)
     super(Pusher, self).__init__(
         spec=spec,

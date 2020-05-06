@@ -18,15 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
 import sys
+from typing import Any, Dict, Text
+
 # Standard Imports
+
 import mock
 import tensorflow as tf
 
 from tfx import version
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor
+from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
 
 
@@ -45,6 +50,8 @@ class RunnerTest(tf.test.TestCase):
         'project': self._project_id,
     }
     self._job_id = 'my_jobid'
+    # Dict format of exec_properties. custom_config needs to be serialized
+    # before being passed into start_aip_training function.
     self._exec_properties = {
         'custom_config': {
             executor.TRAINING_ARGS_KEY: self._training_inputs,
@@ -65,6 +72,12 @@ class RunnerTest(tf.test.TestCase):
         'state': 'SUCCEEDED',
     }
 
+  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+    """Converts self._exec_properties['custom_config'] to string."""
+    result = copy.deepcopy(self._exec_properties)
+    result['custom_config'] = json_utils.dumps(result['custom_config'])
+    return result
+
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
   )
@@ -75,7 +88,8 @@ class RunnerTest(tf.test.TestCase):
     class_path = 'foo.bar.class'
 
     runner.start_aip_training(self._inputs, self._outputs,
-                              self._exec_properties, class_path,
+                              self._serialize_custom_config_under_test(),
+                              class_path,
                               self._training_inputs, None)
 
     self._mock_create.assert_called_with(
@@ -92,7 +106,8 @@ class RunnerTest(tf.test.TestCase):
             'args': [
                 '--executor_class_path', class_path, '--inputs', '{}',
                 '--outputs', '{}', '--exec-properties', '{"custom_config": '
-                '{"ai_platform_training_args": {"project": "12345"}}}'
+                '"{\\"ai_platform_training_args\\": {\\"project\\": \\"12345\\"'
+                '}}"}'
             ],
         }, body['trainingInput'])
     self.assertStartsWith(body['jobId'], 'tfx_')
@@ -110,7 +125,8 @@ class RunnerTest(tf.test.TestCase):
     self._training_inputs['masterConfig'] = {'imageUri': 'my-custom-image'}
     self._exec_properties['custom_config'][executor.JOB_ID_KEY] = self._job_id
     runner.start_aip_training(self._inputs, self._outputs,
-                              self._exec_properties, class_path,
+                              self._serialize_custom_config_under_test(),
+                              class_path,
                               self._training_inputs, self._job_id)
 
     self._mock_create.assert_called_with(
@@ -125,10 +141,10 @@ class RunnerTest(tf.test.TestCase):
             'args': [
                 '--executor_class_path', class_path, '--inputs', '{}',
                 '--outputs', '{}', '--exec-properties', '{"custom_config": '
-                '{"ai_platform_training_args": '
-                '{"masterConfig": {"imageUri": "my-custom-image"}, '
-                '"project": "12345"}, '
-                '"ai_platform_training_job_id": "my_jobid"}}'
+                '"{\\"ai_platform_training_args\\": '
+                '{\\"masterConfig\\": {\\"imageUri\\": \\"my-custom-image\\"}, '
+                '\\"project\\": \\"12345\\"}, '
+                '\\"ai_platform_training_job_id\\": \\"my_jobid\\"}"}'
             ],
         }, body['trainingInput'])
     self.assertEqual(body['jobId'], 'my_jobid')

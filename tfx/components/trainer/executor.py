@@ -36,6 +36,7 @@ from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 from tfx.utils import path_utils
 
 # Key for base model in executor input_dict.
@@ -48,6 +49,8 @@ HYPERPARAMETERS_KEY = 'hyperparameters'
 SCHEMA_KEY = 'schema'
 # Key for transform graph in executor input_dict.
 TRANSFORM_GRAPH_KEY = 'transform_graph'
+# Key for custom config.
+_CUSTOM_CONFIG_KEY = 'custom_config'
 
 # Key for output model in executor output_dict.
 OUTPUT_MODEL_KEY = 'model'
@@ -136,10 +139,17 @@ class GenericExecutor(base_executor.BaseExecutor):
   def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
                  output_dict: Dict[Text, List[types.Artifact]],
                  exec_properties: Dict[Text, Any]) -> TrainerFnArgs:
-    custom_config = exec_properties.get('custom_config') or {}
-    if not isinstance(custom_config, dict):
-      raise ValueError('Expect custom_config to be a dict but got %s instead' %
-                       type(custom_config))
+
+    # Load and deserialize custom config from execution properties.
+    # Note that in the component interface the default serialization of custom
+    # config is 'null' instead of '{}'. Therefore we need to default the
+    # json_utils.loads to 'null' then populate it with an empty dict when
+    # needed.
+    custom_config = json_utils.loads(
+        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null')) or {}
+    if not isinstance(custom_config, Dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict. Got %s instead.' % type(custom_config))
 
     # Set up training parameters
     train_files = [
@@ -236,8 +246,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
-        - custom_config: Optional. Additional parameters to pass to trainer
-          function.
+        - custom_config: Optional. JSON-serialized dict of additional parameters
+          to pass to trainer function.
 
     Returns:
       None
@@ -303,8 +313,8 @@ class Executor(GenericExecutor):
         - warm_starting: Whether or not we need to do warm starting.
         - warm_start_from: Optional. If warm_starting is True, this is the
           directory to find previous model to warm start on.
-        - custom_config: Optional. Additional parameters to pass to trainer
-          function.
+        - custom_config: Optional. JSON-serialized dict of additional parameters
+          to pass to trainer function.
 
     Returns:
       None

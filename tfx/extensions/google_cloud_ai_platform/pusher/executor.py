@@ -25,8 +25,8 @@ from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 from tfx.utils import path_utils
-
 
 # Google Cloud AI Platform's ModelVersion resource path format.
 # https://cloud.google.com/ai-platform/prediction/docs/reference/rest/v1/projects.models.versions/get
@@ -76,16 +76,19 @@ class Executor(tfx_pusher_executor.Executor):
     model_export = artifact_utils.get_single_instance(
         input_dict[tfx_pusher_executor.MODEL_KEY])
 
-    exec_properties_copy = exec_properties.copy()
-    custom_config = exec_properties_copy.pop(_CUSTOM_CONFIG_KEY, {})
+    custom_config = json_utils.loads(
+        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
+    if custom_config is not None and not isinstance(custom_config, Dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict.')
+
     ai_platform_serving_args = custom_config.get(SERVING_ARGS_KEY)
     if not ai_platform_serving_args:
       raise ValueError(
           '\'ai_platform_serving_args\' is missing in \'custom_config\'')
     # Deploy the model.
     io_utils.copy_dir(
-        src=path_utils.serving_model_path(model_export.uri),
-        dst=model_push.uri)
+        src=path_utils.serving_model_path(model_export.uri), dst=model_push.uri)
     model_path = model_push.uri
     # TODO(jjong): Introduce Versioning.
     # Note that we're adding "v" prefix as Cloud AI Prediction only allows the

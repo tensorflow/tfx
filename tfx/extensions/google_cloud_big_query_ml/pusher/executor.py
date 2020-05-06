@@ -24,6 +24,7 @@ from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
 
@@ -44,11 +45,11 @@ _CUSTOM_CONFIG_KEY = 'custom_config'
 
 # Model name should be enclosed within backticks.
 # model_path should ends with asterisk glob (/*).
-_BQML_CREATE_OR_REPLACE_MODEL_QUERY_TEMPLATE = '''
+_BQML_CREATE_OR_REPLACE_MODEL_QUERY_TEMPLATE = """
 CREATE OR REPLACE MODEL `{model_uri}`
 OPTIONS (model_type='tensorflow',
          model_path='{model_path}/*')
-'''
+"""
 
 
 class Executor(tfx_pusher_executor.Executor):
@@ -90,7 +91,12 @@ class Executor(tfx_pusher_executor.Executor):
         input_dict[tfx_pusher_executor.MODEL_KEY])
     model_export_uri = model_export.uri
 
-    custom_config = exec_properties.get(_CUSTOM_CONFIG_KEY, {})
+    custom_config = json_utils.loads(
+        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
+    if custom_config is not None and not isinstance(custom_config, Dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict.')
+
     bigquery_serving_args = custom_config.get(SERVING_ARGS_KEY)
     # if configuration is missing error out
     if bigquery_serving_args is None:
@@ -104,12 +110,10 @@ class Executor(tfx_pusher_executor.Executor):
 
     # Deploy the model.
     io_utils.copy_dir(
-        src=path_utils.serving_model_path(model_export_uri),
-        dst=model_push.uri)
+        src=path_utils.serving_model_path(model_export_uri), dst=model_push.uri)
     model_path = model_push.uri
     if not model_path.startswith(_GCS_PREFIX):
-      raise ValueError(
-          'pipeline_root must be gs:// for BigQuery ML Pusher.')
+      raise ValueError('pipeline_root must be gs:// for BigQuery ML Pusher.')
 
     logging.info('Deploying the model to BigQuery ML for serving: %s from %s',
                  bigquery_serving_args, model_path)
@@ -133,8 +137,8 @@ class Executor(tfx_pusher_executor.Executor):
     except Exception as e:
       raise RuntimeError('BigQuery ML Push failed: {}'.format(e))
 
-    logging.info('Successfully deployed model %s serving from %s',
-                 bq_model_uri, model_path)
+    logging.info('Successfully deployed model %s serving from %s', bq_model_uri,
+                 model_path)
 
     # Setting the push_destination to bigquery uri
     self._MarkPushed(model_push, pushed_destination=bq_model_uri)

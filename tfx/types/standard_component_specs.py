@@ -189,7 +189,7 @@ class PusherSpec(ComponentSpec):
       'push_destination':
           ExecutionParameter(type=pusher_pb2.PushDestination, optional=True),
       'custom_config':
-          ExecutionParameter(type=Dict[Text, Any], optional=True),
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'model': ChannelParameter(type=standard_artifacts.Model),
@@ -285,7 +285,7 @@ class TrainerSpec(ComponentSpec):
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
       'run_fn': ExecutionParameter(type=(str, Text), optional=True),
       'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
