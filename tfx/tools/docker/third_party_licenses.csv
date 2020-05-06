@@ -77,7 +77,12 @@ google-cloud-bigtable,https://raw.githubusercontent.com/googleapis/google-cloud-
 google-cloud-core,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-python/master/LICENSE,Apache 2.0
 google-cloud-datastore,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-datastore/master/LICENSE,Apache 2.0
 google-cloud-datastore-v1,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-datastore/master/LICENSE,Apache 2.0
+google-cloud-dlp,https://raw.githubusercontent.com/googleapis/python-dlp/master/LICENSE,Apache 2.0
+google-cloud-language,https://raw.githubusercontent.com/googleapis/google-cloud-python/master/LICENSE,Apache 2.0
 google-cloud-pubsub,https://raw.githubusercontent.com/googleapis/google-cloud-python/master/LICENSE,Apache 2.0
+google-cloud-spanner,https://raw.githubusercontent.com/googleapis/python-spanner/master/LICENSE,Apache 2.0
+google-cloud-videointelligence,https://raw.githubusercontent.com/googleapis/python-videointelligence/master/LICENSE,Apache 2.0
+google-cloud-vision,https://raw.githubusercontent.com/googleapis/python-vision/master/LICENSE,Apache 2.0
 google-gax,https://raw.githubusercontent.com/googleapis/gax-python/master/LICENSE,Apache 2.0
 google-pasta,https://raw.githubusercontent.com/google/pasta/master/LICENSE,Apache 2.0
 google-resumable-media,https://raw.githubusercontent.com/googleapis/google-resumable-media-python/master/LICENSE,Apache 2.0
@@ -86,6 +91,7 @@ googledatastore,https://raw.githubusercontent.com/GoogleCloudPlatform/google-clo
 greenlet,https://raw.githubusercontent.com/python-greenlet/greenlet/master/LICENSE,MIT
 grpc-google-iam-v1,https://raw.githubusercontent.com/googleapis/googleapis/master/LICENSE,Apache 2.0
 grpcio,https://raw.githubusercontent.com/grpc/grpc/master/LICENSE,Apache 2.0
+grpcio-gcp,https://raw.githubusercontent.com/grpc/grpc/master/LICENSE,Apache 2.0
 gym,https://raw.githubusercontent.com/openai/gym/master/LICENSE.md,MIT
 h5py,https://raw.githubusercontent.com/h5py/h5py/master/licenses/license.txt
 hdfs,https://github.com/mtth/hdfs/blob/master/LICENSE,MIT
