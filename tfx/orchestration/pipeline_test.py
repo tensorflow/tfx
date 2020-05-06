@@ -29,14 +29,35 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
+from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
 
 
 class _OutputArtifact(types.Artifact):
   TYPE_NAME = 'OutputArtifact'
+
+
+def _make_fake_node_instance(name: Text):
+
+  class _FakeNode(base_node.BaseNode):
+
+    @property
+    def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+
+    @property
+    def outputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
+      return node_common._PropertyDictWrapper({})  # pylint: disable=protected-access
+
+    @property
+    def exec_properties(self) -> Dict[Text, Any]:
+      return {}
+
+  return _FakeNode(instance_name=name)
 
 
 def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
@@ -168,6 +189,14 @@ class PipelineTest(tf.test.TestCase):
           pipeline_root='root',
           components=[],
           metadata_connection_config=self._metadata_connection_config)
+
+  def testPipelineWithNode(self):
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='my_pipeline',
+        pipeline_root='root',
+        components=[_make_fake_node_instance('my_node')],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(1, len(my_pipeline.components))
 
   def testPipelineWithLoop(self):
     channel_one = types.Channel(type=_ArtifactTypeOne)

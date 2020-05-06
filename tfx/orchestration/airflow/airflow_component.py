@@ -26,7 +26,7 @@ from airflow import models
 from airflow.operators import python_operator
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.config import base_component_config
@@ -35,7 +35,7 @@ from tfx.utils import telemetry_utils
 
 
 def _airflow_component_launcher(
-    component: base_component.BaseComponent, component_launcher_class: Type[
+    component: base_node.BaseNode, component_launcher_class: Type[
         base_component_launcher.BaseComponentLauncher],
     pipeline_info: data_types.PipelineInfo, driver_args: data_types.DriverArgs,
     metadata_connection_config: metadata_store_pb2.ConnectionConfig,
@@ -85,8 +85,7 @@ class AirflowComponent(python_operator.PythonOperator):
   This class wrap a component run into its own PythonOperator in Airflow.
   """
 
-  def __init__(self, parent_dag: models.DAG,
-               component: base_component.BaseComponent,
+  def __init__(self, parent_dag: models.DAG, component: base_node.BaseNode,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
                pipeline_info: data_types.PipelineInfo, enable_cache: bool,
@@ -98,7 +97,7 @@ class AirflowComponent(python_operator.PythonOperator):
 
     Args:
       parent_dag: An AirflowPipeline instance as the pipeline DAG.
-      component: An instance of base_component.BaseComponent that holds all
+      component: An instance of base_node.BaseNode that holds all
         properties of a logical component.
       component_launcher_class: the class of the launcher to launch the
         component.

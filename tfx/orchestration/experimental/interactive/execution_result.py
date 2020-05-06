@@ -24,15 +24,13 @@ from __future__ import print_function
 
 # Standard Imports
 
-from tfx.components.base.base_component import BaseComponent
+from tfx.components.base import base_node
 
 
 class ExecutionResult(object):
   """Execution result from a component launch."""
 
-  def __init__(self,
-               component: BaseComponent,
-               execution_id: int):
+  def __init__(self, component: base_node.BaseNode, execution_id: int):
     self.component = component
     self.execution_id = execution_id
 
