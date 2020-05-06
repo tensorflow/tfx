@@ -85,6 +85,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
 
   def __init__(self, context: Optional[Context] = None):
     """Constructs a beam based executor."""
+    # DO NOT SUBMIT
     self._context = context
     self._beam_pipeline_args = context.beam_pipeline_args if context else None
 
