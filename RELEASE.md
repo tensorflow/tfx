@@ -11,6 +11,7 @@
     PTramsform when not using Dataflow runner.
 *   Added the experimental function "create_container_component" that
     simplifies creating container-based components.
+*   Removed the incomplete cifar10 example.
 
 ## Bug fixes and other changes
 
