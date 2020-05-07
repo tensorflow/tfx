@@ -67,12 +67,12 @@ class ExecutorTest(tf.test.TestCase):
     # Mock BigQuery result schema.
     self._schema = [
         bigquery.SchemaField('i', 'INTEGER', mode='REQUIRED'),
-        bigquery.SchemaField('i2', 'INTEGER', mode='REQUIRED'),
+        bigquery.SchemaField('i2', 'INTEGER', mode='REPEATED'),
         bigquery.SchemaField('b', 'BOOLEAN', mode='REQUIRED'),
         bigquery.SchemaField('f', 'FLOAT', mode='REQUIRED'),
-        bigquery.SchemaField('f2', 'FLOAT', mode='REQUIRED'),
+        bigquery.SchemaField('f2', 'FLOAT', mode='REPEATED'),
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
-        bigquery.SchemaField('s2', 'STRING', mode='REQUIRED'),
+        bigquery.SchemaField('s2', 'STRING', mode='NULLABLE'),
 
     ]
     super(ExecutorTest, self).setUp()
