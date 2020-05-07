@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Text
 import absl
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import constants as tfma_constants
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import tf_example_record
 
@@ -194,7 +195,7 @@ class Executor(base_executor.BaseExecutor):
           tfxio = tf_example_record.TFExampleRecord(
               file_pattern=file_pattern,
               schema=schema,
-              raw_record_column_name=tfma.BATCHED_INPUT_KEY)
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
           if schema is not None:
             tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
                 arrow_schema=tfxio.ArrowSchema(),
