@@ -22,7 +22,7 @@ import contextlib
 import re
 import sys
 from typing import Dict, List, Text
-
+import frozendict
 from tfx import version
 
 # Common label names used.
@@ -34,19 +34,73 @@ _LABEL_TFX_PY_VERSION = 'tfx_py_version'
 # The GKE pod label indicating the SDK environment.
 LABEL_KFP_SDK_ENV = 'pipelines.kubeflow.org/pipeline-sdk-type'
 
+# A flag that enable the telemetry. Defaults to True.
+enable_telemetry = True
+
 # A list of global labels registered so far.
 _labels = {}
+
+# Mapping from first party components class path to component name.
+# Note: don't lint the following format.
+_EXECUTOR_CLASS_TO_NAME = frozendict.frozendict({
+    'tfx.components.example_gen.csv_example_gen.executor.Executor':
+        'csv_example_gen',
+    'tfx.components.example_gen.import_example_gen.executor.Executor':
+        'import_example_gen',
+    'tfx.components.example_gen.big_query_example_gen.executor.Executor':
+        'big_query_example_gen',
+    'tfx.components.example_gen.custom_executors.avro_executor.Executor':
+        'avro_example_gen',
+    'tfx.components.example_gen.custom_executors.parquet_executor.Executor':
+        'parquet_example_gen',
+    'tfx.components.bulk_inferrer.executor.Executor':
+        'bulk_inferrer',
+    'tfx.components.evaluator.executor.Executor':
+        'evaluator',
+    'tfx.components.example_validator.executor.Executor':
+        'example_validator',
+    'tfx.components.infra_validator.executor.Executor':
+        'infra_validator',
+    'tfx.components.model_validator.executor.Executor':
+        'model_validator',
+    'tfx.components.pusher.executor.Executor':
+        'pusher',
+    'tfx.components.schema_gen.executor.Executor':
+        'schema_gen',
+    'tfx.components.statistics_gen.executor.Executor':
+        'statistics_gen',
+    'tfx.components.trainer.executor.Executor':
+        'trainer',
+    'tfx.extensions.google_cloud_ai_platform.trainer.executor.Executor':
+        'caip_trainer',
+    'tfx.extensions.google_cloud_ai_platform.pusher.executor.Executor':
+        'caip_pusher',
+    'tfx.extensions.google_cloud_big_query_ml.pusher.executor.Executor':
+        'bqml_pusher',
+    'tfx.components.transform.executor.Executor':
+        'transform',
+})
 
 
 @contextlib.contextmanager
 def scoped_labels(labels: Dict[Text, Text]):
+  """Appends labels within the current context."""
+  # Only whitelist the first party component executors.
   for key, value in labels.items():
+    if key in (LABEL_TFX_EXECUTOR, LABEL_TFX_RUNNER) and not enable_telemetry:
+      continue
+    if key == LABEL_TFX_EXECUTOR:
+      if value not in _EXECUTOR_CLASS_TO_NAME:
+        continue
+      else:
+        value = _EXECUTOR_CLASS_TO_NAME.get(value)
     _labels[key] = _normalize_label(value)
   try:
     yield
   finally:
     for key in labels:
-      _labels.pop(key)
+      if key in _labels:
+        _labels.pop(key)
 
 
 def _normalize_label(value: Text) -> Text:
@@ -56,21 +110,25 @@ def _normalize_label(value: Text) -> Text:
 
 
 def get_labels_dict() -> Dict[Text, Text]:
-  """Get all registered and system generated labels as a dict.
+  """Gets all registered and system labels as a dict if telemetry is enabled.
 
   Returns:
-    All registered and system generated labels as a dict.
+    All registered and system generated labels as a dict. If telemetry is
+    disabled, an empty dict is returned.
   """
-  result = dict(
-      {
-          _LABEL_TFX_VERSION:
-              version.__version__,
-          _LABEL_TFX_PY_VERSION:
-              '%d.%d' % (sys.version_info.major, sys.version_info.minor),
-      }, **_labels)
-  for k, v in result.items():
-    result[k] = _normalize_label(v)
-  return result
+  if enable_telemetry:
+    result = dict(
+        {
+            _LABEL_TFX_VERSION:
+                version.__version__,
+            _LABEL_TFX_PY_VERSION:
+                '%d.%d' % (sys.version_info.major, sys.version_info.minor),
+        }, **_labels)
+    for k, v in result.items():
+      result[k] = _normalize_label(v)
+    return result
+  else:
+    return {}
 
 
 def make_beam_labels_args() -> List[Text]:

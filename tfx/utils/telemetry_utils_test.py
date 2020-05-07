@@ -22,6 +22,7 @@ import sys
 # Standard Imports
 import tensorflow as tf
 
+from tfx import components
 from tfx import version
 from tfx.utils import telemetry_utils
 
@@ -41,16 +42,31 @@ class TelemetryUtilsTest(tf.test.TestCase):
 
   def testScopedLabels(self):
     """Test for scoped_labels."""
+    bq_example_gen = components.BigQueryExampleGen(query='empty query')
+    executor_class = bq_example_gen.executor_spec.executor_class
     orig_labels = telemetry_utils.get_labels_dict()
     with telemetry_utils.scoped_labels({'foo': 'bar'}):
       self.assertDictEqual(telemetry_utils.get_labels_dict(),
                            dict({'foo': 'bar'}, **orig_labels))
-      with telemetry_utils.scoped_labels({'inner': 'baz'}):
+      with telemetry_utils.scoped_labels({
+          telemetry_utils.LABEL_TFX_EXECUTOR:
+              'my_component_repo.my_random_component.executor'
+      }):
+        self.assertDictEqual(
+            telemetry_utils.get_labels_dict(),
+            dict({'foo': 'bar'}, **orig_labels))
+      with telemetry_utils.scoped_labels({
+          'inner':
+              'baz',
+          telemetry_utils.LABEL_TFX_EXECUTOR:
+              '%s.%s' % (executor_class.__module__, executor_class.__name__)
+      }):
         self.assertDictEqual(
             telemetry_utils.get_labels_dict(),
             dict({
                 'foo': 'bar',
-                'inner': 'baz'
+                'inner': 'baz',
+                telemetry_utils.LABEL_TFX_EXECUTOR: 'big_query_example_gen'
             }, **orig_labels))
 
 

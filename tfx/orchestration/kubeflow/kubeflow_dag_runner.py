@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -151,10 +151,10 @@ def _get_default_pod_labels() -> Dict[Text, Text]:
   """Returns the default pod label dict for Kubeflow."""
   # KFP default transformers add pod env:
   # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
-  result = {
-      'add-pod-env': 'true',
-      telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx'
-  }
+  result = {'add-pod-env': 'true'}
+  if telemetry_utils.enable_telemetry:
+    result.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx'})
+
   return result
 
 
@@ -306,33 +306,43 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     # Assumption: There is a partial ordering of components in the list, i.e.,
     # if component A depends on component B and C, then A appears after B and C
     # in the list.
-    for component in pipeline.components:
-      # Keep track of the set of upstream dsl.ContainerOps for this component.
-      depends_on = set()
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_RUNNER: 'kfp'}):
+      for component in pipeline.components:
+        # Keep track of the set of upstream dsl.ContainerOps for this component.
+        depends_on = set()
 
-      for upstream_component in component.upstream_nodes:
-        depends_on.add(component_to_kfp_op[upstream_component])
+        for upstream_component in component.upstream_nodes:
+          depends_on.add(component_to_kfp_op[upstream_component])
 
-      (component_launcher_class,
-       component_config) = config_utils.find_component_launch_info(
-           self._config, component)
+        (component_launcher_class,
+         component_config) = config_utils.find_component_launch_info(
+             self._config, component)
 
-      kfp_component = base_component.BaseComponent(
-          component=component,
-          component_launcher_class=component_launcher_class,
-          depends_on=depends_on,
-          pipeline=pipeline,
-          pipeline_name=pipeline.pipeline_info.pipeline_name,
-          pipeline_root=pipeline_root,
-          tfx_image=self._config.tfx_image,
-          kubeflow_metadata_config=self._config.kubeflow_metadata_config,
-          component_config=component_config,
-          pod_labels_to_attach=self._pod_labels_to_attach)
+        executor_class = component.executor_spec.executor_class
+        with telemetry_utils.scoped_labels({
+            telemetry_utils.LABEL_TFX_EXECUTOR:
+                '%s.%s' % (executor_class.__module__, executor_class.__name__)
+        }):
+          kfp_component = base_component.BaseComponent(
+              component=component,
+              component_launcher_class=component_launcher_class,
+              depends_on=depends_on,
+              pipeline=pipeline,
+              pipeline_name=pipeline.pipeline_info.pipeline_name,
+              pipeline_root=pipeline_root,
+              tfx_image=self._config.tfx_image,
+              kubeflow_metadata_config=self._config.kubeflow_metadata_config,
+              component_config=component_config,
+              pod_labels_to_attach={
+                  **self._pod_labels_to_attach,
+                  **telemetry_utils.get_labels_dict()
+              })
 
-      for operator in self._config.pipeline_operator_funcs:
-        kfp_component.container_op.apply(operator)
+        for operator in self._config.pipeline_operator_funcs:
+          kfp_component.container_op.apply(operator)
 
-      component_to_kfp_op[component] = kfp_component.container_op
+        component_to_kfp_op[component] = kfp_component.container_op
 
   def run(self, pipeline: tfx_pipeline.Pipeline):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.

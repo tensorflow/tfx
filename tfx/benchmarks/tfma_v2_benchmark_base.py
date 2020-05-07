@@ -26,7 +26,6 @@ import apache_beam as beam
 from apache_beam.runners.portability import fn_api_runner
 
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
@@ -136,7 +135,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
             self._dataset.tf_metadata_schema_path()),
-        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        raw_record_column_name=tfma.BATCHED_INPUT_KEY)
     raw_data = (
         pipeline
         | "Examples" >> beam.Create(

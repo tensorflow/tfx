@@ -98,6 +98,13 @@ class KubeflowDagRunnerTest(tf.test.TestCase):
           c['metadata'] for c in pipeline['spec']['templates'] if 'dag' not in c
       ]
       for m in metadata:
+        self.assertEqual('true', m['labels']['add-pod-env'])
+        self.assertIn(
+            m['labels'][telemetry_utils.LABEL_TFX_EXECUTOR],
+            ('big_query_example_gen', 'statistics_gen'),
+            'Unexpected component label: %s' %
+            m['labels'][telemetry_utils.LABEL_TFX_EXECUTOR])
+        self.assertEqual('kfp', m['labels'][telemetry_utils.LABEL_TFX_RUNNER])
         self.assertEqual('tfx', m['labels'][telemetry_utils.LABEL_KFP_SDK_ENV])
 
       # Ensure dependencies between components are captured.
