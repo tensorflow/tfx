@@ -83,6 +83,7 @@ def make_beam_labels_args() -> List[Text]:
   # See following file for reference to the '--labes ' flag.
   # https://github.com/apache/beam/blob/master/sdks/python/apache_beam/options/pipeline_options.py
   result = []
+
   for k in sorted(labels):
     result.extend(['--labels', '%s=%s' % (k, labels[k])])
   return result
