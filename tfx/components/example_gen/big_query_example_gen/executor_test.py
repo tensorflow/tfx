@@ -72,7 +72,7 @@ class ExecutorTest(tf.test.TestCase):
         bigquery.SchemaField('f', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('f2', 'FLOAT', mode='REPEATED'),
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
-        bigquery.SchemaField('s2', 'STRING', mode='NULLABLE'),
+        bigquery.SchemaField('s2', 'STRING', mode='REPEATED'),
 
     ]
     super(ExecutorTest, self).setUp()
