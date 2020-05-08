@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import datetime
 import os
+import subprocess
 import time
 from typing import Text
 
@@ -38,6 +39,9 @@ from tfx.orchestration.kubeflow import test_utils
 # This test fixture assumes an established KFP instance authenticated via
 # inverse proxy.
 _KFP_ENDPOINT = os.environ['KFP_E2E_ENDPOINT']
+
+# The namespace where KFP is deployed.
+_KFP_NAMESPACE = 'kubeflow'
 
 # Timeout for a single pipeline run. Set to 6 hours.
 # TODO(b/150222976): Tune this timeout to align with our observation.
@@ -122,6 +126,26 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
   def tearDownClass(cls):
     super(test_utils.BaseKubeflowTest, cls).tearDownClass()
 
+  def _get_workflow_name(self, pipeline_name: Text) -> Text:
+    """Gets the Argo workflow name using pipeline name."""
+    get_workflow_name_command = (
+        'argo --namespace %s list | grep -o "%s[^ ]*"' %
+        (_KFP_NAMESPACE, pipeline_name))
+    # Need to explicitly decode because the test fixture is running on
+    # Python 3.5. Also need to remove the new line at the end of the string.
+    return subprocess.check_output(
+        get_workflow_name_command, shell=True).decode('utf-8')[:-1]
+
+  def _get_workflow_log(self, pipeline_name: Text) -> Text:
+    """Gets the workflow log for all the pods using pipeline name."""
+    get_workflow_log_command = [
+        'argo', '--namespace', _KFP_NAMESPACE, 'logs', '-w',
+        self._get_workflow_name(pipeline_name)
+    ]
+    # Need to explicitly decode because the test fixture is running on
+    # Python 3.5.
+    return subprocess.check_output(get_workflow_log_command).decode('utf-8')
+
   # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
   # This should be changed after
   # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
@@ -136,13 +160,14 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
   # See more details at
   # https://github.com/kubeflow/pipelines/issues/3630
   def _assert_successful_run_completion(self, host: Text, run_id: Text,
-                                        timeout: int):
+                                        pipeline_name: Text, timeout: int):
     """Waits and asserts a successful KFP pipeline execution.
 
     Args:
       host: the endpoint of the KFP deployment.
       run_id: the run ID of the execution, can be obtained from the respoonse
         when submitting the pipeline.
+      pipeline_name: the name of the pipeline under test.
       timeout: maximal waiting time for this execution, in seconds.
 
     Raises:
@@ -168,7 +193,12 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
         logging.info('Waiting for the job to complete...')
         time.sleep(10)
 
-    self.assertEqual(status.lower(), _KFP_SUCCESS_STATUS)
+    workflow_log = self._get_workflow_log(pipeline_name)
+
+    self.assertEqual(
+        status.lower(), _KFP_SUCCESS_STATUS,
+        'Pipeline %s failed to complete successfully: %s' %
+        (pipeline_name, workflow_log))
 
   def _compile_and_run_pipeline(self, pipeline: tfx_pipeline.Pipeline,
                                 **kwargs):
@@ -198,7 +228,10 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
     run_id = run_result.run_id
 
     self._assert_successful_run_completion(
-        host=_KFP_ENDPOINT, run_id=run_id, timeout=_TIME_OUT_SECONDS)
+        host=_KFP_ENDPOINT,
+        run_id=run_id,
+        pipeline_name=pipeline_name,
+        timeout=_TIME_OUT_SECONDS)
 
   def testFullTaxiGcpPipeline(self):
     pipeline_name = 'gcp-perf-test-full-e2e-test-{}'.format(self._random_id())
