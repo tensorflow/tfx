@@ -22,7 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text
+from typing import List, Text
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -260,13 +260,13 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-def _input_fn(file_pattern: Text,
+def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
-    file_pattern: input tfrecord file pattern.
+    file_pattern: List of paths or patterns of input tfrecord files.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
