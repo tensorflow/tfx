@@ -29,7 +29,7 @@
 
 ## Breaking changes
 *   Changed custom config for the Do function of Trainer and Pusher to accept
-    a JSON-serialized dict instead of a dict object. This also impacts all the 
+    a JSON-serialized dict instead of a dict object. This also impacts all the
     Do functions under `tfx.extensions.google_cloud_ai_platform` and
     `tfx.extensions.google_cloud_big_query_ml`. Note that this breaking
     change occurs at the signature of the executor's Do function. Therefore, if
@@ -38,6 +38,10 @@
     work as intended. If the user is using a custom component with customized
     Do function, `custom_config` should be assumed to be a JSON-serialized
     string from next release.
+*   For users of BigQueryExampleGen, `--temp_location` is now a required Beam
+    argument, even for DirectRunner. Previously this argument was only required
+    for DataflowRunner. Note that the specified value of `--temp_location`
+    should point to a Google Cloud Storage bucket.
 
 ### For pipeline authors
 
