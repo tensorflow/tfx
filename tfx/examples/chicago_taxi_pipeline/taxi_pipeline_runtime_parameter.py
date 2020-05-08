@@ -150,7 +150,7 @@ def _create_parameterized_pipeline(
       metrics_specs=[
           tfma.MetricsSpec(
               thresholds={
-                  'accuracy':
+                  'binary_accuracy':
                       tfma.config.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.6}),

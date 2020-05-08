@@ -213,7 +213,7 @@ def create_e2e_components(
           tfma.MetricsSpec(
               metrics=[tfma.MetricConfig(class_name='ExampleCount')],
               thresholds={
-                  'accuracy':
+                  'binary_accuracy':
                       tfma.MetricThreshold(
                           value_threshold=tfma.GenericValueThreshold(
                               lower_bound={'value': 0.5}),

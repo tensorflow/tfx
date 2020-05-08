@@ -45,11 +45,7 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # some TensorFlow runtime versions are not explicitly supported by
     # CAIP pusher. See:
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
-    '2.0': '1.15',
-    # TODO(b/157039850) Remove this once CAIP model support TF 2.2 runtime.
-    '2.2': '2.1',
-    '2.3': '2.1',
-    '2.4': '2.1'
+    '2.0': '1.15'
 }
 
 
@@ -251,12 +247,10 @@ def deploy_model_for_aip_prediction(
       body=body, parent=model_name).execute()
   op_name = response['name']
 
-  deploy_status_resc = api.projects().operations().get(name=op_name)
-  while not deploy_status_resc.execute().get('done'):
+  deploy_status = api.projects().operations().get(name=op_name).execute()
+  while not deploy_status.get('done'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     absl.logging.info('Model still being deployed...')
-
-  deploy_status = deploy_status_resc.execute()
 
   if deploy_status.get('error'):
     # The operation completed with an error.
