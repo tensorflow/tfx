@@ -260,7 +260,7 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
         beam_pipeline_args=_BEAM_PIPELINE_ARGS)
     self._compile_and_run_pipeline(
         pipeline=pipeline,
-        query_sample_rate=1,
+        query_sample_rate=0.0001,
         # (1M * batch_size=200) / 200M records ~ 1 epoch
         train_steps=1000000,
         eval_steps=10000,
