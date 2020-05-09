@@ -24,6 +24,7 @@
 *   Removed test dependency to tzlocal.
 *   Fixes unintentional overriding of user-specified setup.py file for Dataflow
     jobs when running on KFP container.
+*   Depends on `frozendict>=1,<2`.
 
 ### Deprecations
 
