@@ -29,6 +29,7 @@ def make_required_install_packages():
        'python_version=="3.5" and platform_system=="Darwin"'),
       'click>=7,<8',
       'docker>=4.1,<5',
+      'frozendict>=1,<2',
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
