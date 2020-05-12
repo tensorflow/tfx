@@ -60,6 +60,7 @@ DEFAULT_EXAMPLE_SPLITS = ['train', 'eval']
 CUSTOM_PROPERTIES_PREFIX = 'custom:'
 
 
+# DO NOT SUBMIT: just to trigger kokoro. DO NOT SUBMIT.
 class PropertyType(enum.Enum):
   INT = 1
   STRING = 2

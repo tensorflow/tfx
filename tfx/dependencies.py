@@ -38,7 +38,6 @@ def make_required_install_packages():
       'ml-metadata>=0.21.2,<0.22',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
-      'pyarrow>=0.16,<0.17',
       'pyyaml>=5,<6',
       'six>=1.10,<2',
       # TODO(b/156035765): enable TF2.2.
