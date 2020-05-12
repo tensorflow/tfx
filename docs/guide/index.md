@@ -14,7 +14,6 @@ https://github.com/tensorflow/tfx)
 [![PyPI](https://badge.fury.io/py/tfx.svg)](https://badge.fury.io/py/tfx)
 
 ```
-pip install tensorflow
 pip install tfx
 ```
 
@@ -105,30 +104,33 @@ online, native mobile, and JavaScript targets.
 
 A TFX pipeline typically includes the following components:
 
-* [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
-that ingests and optionally splits the input dataset.
+*   [**ExampleGen**](examplegen.md) is the initial input component of a pipeline
+    that ingests and optionally splits the input dataset.
 
-* [**StatisticsGen**](statsgen.md) calculates statistics for the dataset.
+*   [**StatisticsGen**](statsgen.md) calculates statistics for the dataset.
 
-* [**SchemaGen**](schemagen.md) examines the statistics and creates a data
-schema.
+*   [**SchemaGen**](schemagen.md) examines the statistics and creates a data
+    schema.
 
-* [**ExampleValidator**](exampleval.md) looks for anomalies and missing values
-in the dataset.
+*   [**ExampleValidator**](exampleval.md) looks for anomalies and missing values
+    in the dataset.
 
-* [**Transform**](transform.md) performs feature engineering on the dataset.
+*   [**Transform**](transform.md) performs feature engineering on the dataset.
 
-* [**Trainer**](trainer.md) trains the model.
+*   [**Trainer**](trainer.md) trains the model.
 
-* [**Evaluator**](evaluator.md) performs deep analysis of the training results
-and helps you validate your exported models, ensuring that they are
-"good enough" to be pushed to production.
+*   [**Evaluator**](evaluator.md) performs deep analysis of the training results
+    and helps you validate your exported models, ensuring that they are "good
+    enough" to be pushed to production.
 
-* [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
+*   [**InfraValidator**](infra_validator.md) checks the model is actually
+    servable from the infrastructure, and prevents bad model from being pushed.
+
+*   [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
 
 This diagram illustrates the flow of data between these components:
 
-![Component Flow](images/diag_all.png)
+![Component Flow](images/prog_fin.png)
 
 ### Anatomy of a Component
 
@@ -386,7 +388,7 @@ code once.
 
 ### Data Exploration, Visualization, and Cleaning
 
-![Data Exploration, Visualization, and Cleaning](images/wrangling.png)
+![Data Exploration, Visualization, and Cleaning](images/prog_schemagen.png)
 
 TFX pipelines typically begin with an [ExampleGen](examplegen.md) component, which
 accepts input data and formats it as tf.Examples.  Often this is done after the
@@ -437,7 +439,7 @@ dataset, and if necessary modify as required.
 
 ### Developing and Training Models
 
-![Feature Engineering](images/feature_eng.png)
+![Feature Engineering](images/prog_transform.png)
 
 A typical TFX pipeline will include a [Transform](transform.md) component, which
 will perform feature engineering by leveraging the capabilities of the
@@ -450,7 +452,7 @@ the Transform component if there is ever a possibility that these will also be
 present in data sent for inference requests.  [There are some important
 considerations](train.md) when designing TensorFlow code for training in TFX.
 
-![Modeling and Training](images/train.png)
+![Modeling and Training](images/prog_trainer.png)
 
 The result of a Transform component is a SavedModel which will be imported and
 used in your modeling code in TensorFlow, during a [Trainer](trainer.md)
@@ -479,7 +481,7 @@ tfma.export.export_eval_savedmodel(
 
 ### Analyzing and Understanding Model Performance
 
-![Model Analysis](images/analysis.png)
+![Model Analysis](images/prog_evaluator.png)
 
 Following initial model development and training it's important to analyze and
 really understand you model's performance.  A typical TFX pipeline will include
@@ -519,6 +521,18 @@ and [tfma.view.render_slicing_metrics()](`tfma/view/render_slicing_metrics`)
 Using this visualization you can better understand the characteristics of your
 model, and if necessary modify as required.
 
+### Validating That A Model Can Be Served
+
+![Infra Validation](images/prog_infraval.png)
+
+Before deploying the trained model, you might want to validate whether the model
+is really servable in the serving infrastructure. This is especially important
+in production environments to ensure that the newly published model does not
+prevent the system from serving predictions. The
+[InfraValidator](infra_validator.md) component will make a canary deployment of
+your model in a sandboxed environment, and optionally send real requests to
+check that your model works correctly.
+
 ## Deployment Targets
 
 Once you have developed and trained a model that you're happy with, it's now
@@ -527,7 +541,7 @@ inference requests.  TFX supports deployment to three classes of deployment
 targets.  Trained models which have been exported as SavedModels can be deployed
 to any or all of these deployment targets.
 
-![Component Flow](images/diag_all.png)
+![Component Flow](images/prog_fin.png)
 
 ### Inference: TensorFlow Serving
 
@@ -539,9 +553,12 @@ using one of several advanced architectures to handle synchronization and
 distributed computation. See the [TFS documentation](serving.md) for more
 information on developing and deploying TFS solutions.
 
-In a typical pipeline a [Pusher](pusher.md) component will consume SavedModels which
-have been trained in a Trainer component and deploy them to your TFS infrastructure.
-This includes handling multiple versions and model updates.
+In a typical pipeline, a SavedModel which has been trained in a
+[Trainer](trainer.md) component would first be infra-validated in an
+[InfraValidator](infra_validator.md) component. InfraValidator launches a canary
+TFS model server to actually serve the SavedModel. If validation has passed, a
+[Pusher](pusher.md) component will finally deploy the SavedModel to your TFS
+infrastructure. This includes handling multiple versions and model updates.
 
 ### Inference in Native Mobile and IoT Applications: TensorFlow Lite
 

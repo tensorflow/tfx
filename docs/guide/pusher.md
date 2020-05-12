@@ -2,13 +2,16 @@
 
 The Pusher component is used to push a validated model to a
 [deployment target](index.md#deployment_targets) during model training or
-re-training.
-It relies on a [Evaluator](evaluator.md) component to ensure that the new
-model is "good enough" to be pushed to production.
+re-training. Before the deployment, Pusher relies on one or more blessings from
+other validation components to decide whether to push the model or not.
 
-* Consumes: A Trained model in [SavedModel](
-https://www.tensorflow.org/versions/r1.15/api_docs/python/tf/saved_model) format
-* Emits: The same SavedModel, along with versioning metadata
+-   [Evaluator](evaluator) blesses the model if the new trained model is "good
+    enough" to be pushed to production.
+-   (Optional but recommended) [InfraValidator](infra_validator) blesses the
+    model if the model is mechanically servable in a production environment.
+
+A Pusher component consumes a trained model in [SavedModel](/guide/saved_model)
+format, and produces the same SavedModel, along with versioning metadata.
 
 ## Using the Pusher Component
 
@@ -24,6 +27,7 @@ from tfx import components
 pusher = components.Pusher(
   model=trainer.outputs['model'],
   model_blessing=model_validator.outputs['blessing'],
+  infra_blessing=infra_validator.outputs['blessing'],
   push_destination=pusher_pb2.PushDestination(
     filesystem=pusher_pb2.PushDestination.Filesystem(
         base_directory=serving_model_dir)
