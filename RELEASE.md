@@ -12,6 +12,12 @@
 *   Added the experimental function "create_container_component" that
     simplifies creating container-based components.
 *   Removed the incomplete cifar10 example.
+*   Enhanced add_downstream_node / add_upstream_node to apply symmetric changes
+    when being called. This method enables task-based dependencies by enforcing
+    execution order for synchronous pipelines on supported platforms. Currently,
+    the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
+    this API call should be considered experimental, and may not work with
+    asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
 
 ## Bug fixes and other changes
 

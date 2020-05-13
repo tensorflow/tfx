@@ -140,6 +140,7 @@ class BeamDagRunnerTest(tf.test.TestCase):
         _FakeComponentSpecC(
             a=component_a.outputs['output'],
             output=types.Channel(type=_ArtifactTypeC)), True)
+    component_c.add_upstream_node(component_b)
     component_d = _FakeComponent(
         _FakeComponentSpecD(
             b=component_b.outputs['output'],
@@ -161,13 +162,10 @@ class BeamDagRunnerTest(tf.test.TestCase):
         ])
 
     beam_dag_runner.BeamDagRunner().run(test_pipeline)
-    self.assertCountEqual(_executed_components, [
+    self.assertEqual(_executed_components, [
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'
     ])
-    self.assertEqual(_executed_components[0], '_FakeComponent.a')
-    self.assertEqual(_executed_components[3], '_FakeComponent.d')
-    self.assertEqual(_executed_components[4], '_FakeComponent.e')
 
     self.assertDictEqual(
         {

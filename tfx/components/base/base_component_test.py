@@ -211,5 +211,16 @@ class ComponentTest(tf.test.TestCase):
     component.enable_cache = True
     self.assertEqual(True, component.enable_cache)
 
+  def testTaskDependency(self):
+    channel_1 = types.Channel(type=_InputArtifact)
+    component_1 = _BasicComponent(folds=10, input=channel_1)
+    channel_2 = types.Channel(type=_InputArtifact)
+    component_2 = _BasicComponent(folds=10, input=channel_2)
+    self.assertEqual(False, component_2 in component_1.downstream_nodes)
+    self.assertEqual(False, component_1 in component_2.upstream_nodes)
+    component_1.add_downstream_node(component_2)
+    self.assertEqual(True, component_2 in component_1.downstream_nodes)
+    self.assertEqual(True, component_1 in component_2.upstream_nodes)
+
 if __name__ == "__main__":
   tf.test.main()

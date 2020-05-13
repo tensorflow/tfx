@@ -154,14 +154,50 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     return self._upstream_nodes
 
   def add_upstream_node(self, upstream_node):
+    """Experimental: Add another component that must run before this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+    It is symmetric with `add_downstream_node`.
+
+    Args:
+      upstream_node: a component that must run before this node.
+    """
     self._upstream_nodes.add(upstream_node)
+    if self not in upstream_node.downstream_nodes:
+      upstream_node.add_downstream_node(self)
 
   @property
   def downstream_nodes(self):
     return self._downstream_nodes
 
   def add_downstream_node(self, downstream_node):
+    """Experimental: Add another component that must run after this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+    It is symmetric with `add_upstream_node`.
+
+    Args:
+      downstream_node: a component that must run after this node.
+    """
     self._downstream_nodes.add(downstream_node)
+    if self not in downstream_node.upstream_nodes:
+      downstream_node.add_upstream_node(self)
 
   @property
   def enable_cache(self) -> bool:
