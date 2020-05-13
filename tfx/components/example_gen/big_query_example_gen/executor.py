@@ -60,7 +60,8 @@ class _BigQueryConverter(object):
             float_list=tf.train.FloatList(value=value_list))
       elif data_type == 'STRING':
         feature[key] = tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(elem) for elem in value_list]))
+            bytes_list=tf.train.BytesList(
+                value=[tf.compat.as_bytes(elem) for elem in value_list]))
       else:
         # TODO(jyzhao): support more types.
         raise RuntimeError(

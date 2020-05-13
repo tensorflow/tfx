@@ -83,7 +83,8 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(bigquery, 'Client')
   def testBigQueryToExample(self, mock_client):
     # Mock query result schema for _BigQueryConverter.
-    mock_client.return_value.query.return_value.result.return_value.schema = self._schema
+    mock_client.return_value.query.return_value.result.return_value.schema =\
+        self._schema
 
     with beam.Pipeline() as pipeline:
       examples = (
@@ -119,7 +120,8 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch.object(bigquery, 'Client')
   def testDo(self, mock_client):
     # Mock query result schema for _BigQueryConverter.
-    mock_client.return_value.query.return_value.result.return_value.schema = self._schema
+    mock_client.return_value.query.return_value.result.return_value.schema =\
+        self._schema
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
