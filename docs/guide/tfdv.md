@@ -23,7 +23,7 @@ TFX tools can both help find data bugs, and help with feature engineering.
 
 *   [Overview](#overview)
 *   [Schema Based Example Validation](#schema_based_example_validation)
-*   [Training-Serving Skew Detection](#training-serving_skew_detection)
+*   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift_detection)
 
 ### Overview
@@ -41,7 +41,7 @@ be configured to detect different classes of anomalies in the data. It can
 We document each of these functionalities independently:
 
 *   [Schema Based Example Validation](#schema_based_example_validation)
-*   [Training-Serving Skew Detection](#training-serving_skew_detection)
+*   [Training-Serving Skew Detection](#skewdetect)
 *   [Drift Detection](#drift_detection)
 
 ### Schema Based Example Validation
@@ -137,7 +137,7 @@ _Note: The auto-generated schema is best-effort and only tries to infer basic
 properties of the data. It is expected that users review and modify it as
 needed._
 
-### Training-Serving Skew Detection
+### Training-Serving Skew Detection<a name="skewdetect"></a>
 
 #### Overview
 
