@@ -165,8 +165,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
       colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
   })
 
-  # TODO(b/161952382): Replace with Keras premade models and
-  # Keras preprocessing layers.
+  # TODO(b/144500510): SparseFeatures for feature columns + Keras.
   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
   for numnodes in dnn_hidden_units:
     deep = tf.keras.layers.Dense(numnodes)(deep)
