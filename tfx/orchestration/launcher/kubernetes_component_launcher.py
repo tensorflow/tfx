@@ -254,7 +254,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
                 namespace: Text,
                 exit_condition_lambda: Callable[[client.V1Pod], bool],
                 condition_description: Text,
-                timeout_sec: int = 300) -> client.V1Pod:
+                timeout_sec: int = 100) -> client.V1Pod:
     """Wait for a POD to meet an exit condition.
 
     Args:
@@ -265,7 +265,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         for a POD to exit. The function returns True to exit.
       condition_description: The description of the exit condition which will be
         set in the error message if the wait times out.
-      timeout_sec: The seconds for the function to wait. Defaults to 300s.
+      timeout_sec: The seconds for the function to wait. Defaults to 100s.
 
     Returns:
       The POD object which meets the exit condition.
