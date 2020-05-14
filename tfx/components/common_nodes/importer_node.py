@@ -194,6 +194,8 @@ class ImporterNode(base_node.BaseNode):
       MLMD.
   """
 
+  DRIVER_CLASS = ImporterDriver
+
   def __init__(self,
                instance_name: Text,
                source_uri: Text,
@@ -229,10 +231,7 @@ class ImporterNode(base_node.BaseNode):
             types.Channel(type=artifact_type, artifacts=[artifact])
     }
 
-    super(ImporterNode, self).__init__(
-        instance_name=instance_name,
-        driver_class=ImporterDriver,
-    )
+    super(ImporterNode, self).__init__(instance_name=instance_name)
 
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
