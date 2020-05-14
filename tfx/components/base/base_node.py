@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Type
 
 from six import with_metaclass
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.components.base import executor_spec as executor_spec_module
 from tfx.types import node_common
 from tfx.utils import json_utils
 
@@ -37,20 +37,7 @@ def _abstract_property() -> Any:
 
 
 class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
-  """Base class for a node in TFX pipeline.
-
-  Attributes:
-    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes how
-      to execute this node (optional, defaults to an empty executor indicates
-      no-op.
-    DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
-      this node (optional, defaults to base_driver.BaseDriver).
-  """
-
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.EmptyExecutor)
-  # Subclasses will usually use the default driver class, but may override this
-  # property as well.
-  DRIVER_CLASS = base_driver.BaseDriver
+  """Base class for a node in TFX pipeline."""
 
   @classmethod
   def get_id(cls, instance_name: Optional[Text] = None):
@@ -75,9 +62,13 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     else:
       return node_class_name
 
-  def __init__(self,
-               instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+  def __init__(
+      self,
+      instance_name: Optional[Text] = None,
+      enable_cache: Optional[bool] = None,
+      executor_spec: Optional[executor_spec_module.ExecutorSpec] = None,
+      driver_class: Optional[Type[base_driver.BaseDriver]] = None,
+  ):
     """Initialize a node.
 
     Args:
@@ -87,10 +78,21 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
       enable_cache: Optional boolean to indicate if cache is enabled for this
         node. If not specified, defaults to the value specified for pipeline's
         enable_cache parameter.
+      executor_spec: Optional instance of executor_spec.ExecutorSpec which
+        describes how to execute this node (optional, defaults to an empty
+        executor indicates no-op.
+      driver_class: Optional subclass of base_driver.BaseDriver as a custom
+        driver for this node (optional, defaults to base_driver.BaseDriver).
+        Nodes usually use the default driver class, but may override it.
     """
+    if executor_spec is None:
+      executor_spec = executor_spec_module.ExecutorClassSpec(
+          base_executor.EmptyExecutor)
+    if driver_class is None:
+      driver_class = base_driver.BaseDriver
     self._instance_name = instance_name
-    self.executor_spec = self.__class__.EXECUTOR_SPEC
-    self.driver_class = self.__class__.DRIVER_CLASS
+    self.executor_spec = executor_spec
+    self.driver_class = driver_class
     self._upstream_nodes = set()
     self._downstream_nodes = set()
     self._enable_cache = enable_cache
