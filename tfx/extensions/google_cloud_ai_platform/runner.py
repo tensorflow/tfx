@@ -213,7 +213,9 @@ def deploy_model_for_aip_prediction(
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
   regions = ai_platform_serving_args.get('regions', [])
-  runtime_version = _get_tf_runtime_version(tf.__version__)
+  default_runtime_version = _get_tf_runtime_version(tf.__version__)
+  runtime_version = ai_platform_serving_args.get('runtime_version',
+                                                 default_runtime_version)
   python_version = _get_caip_python_version(runtime_version)
 
   api = discovery.build('ml', 'v1')
