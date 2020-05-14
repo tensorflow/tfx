@@ -150,7 +150,7 @@ class Pipeline(object):
         raise RuntimeError('Duplicated component_id %s for component type %s' %
                            (component.id, component.type))
       instances_per_component_type[component.type].add(component.id)
-      for key, output_channel in component.outputs.get_all().items():
+      for key, output_channel in component.outputs.items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
         producer_map[output_channel] = component
@@ -164,7 +164,7 @@ class Pipeline(object):
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.get_all().values():
+      for i in component.inputs.values():
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)

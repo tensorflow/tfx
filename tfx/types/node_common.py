@@ -57,3 +57,12 @@ class _PropertyDictWrapper(json_utils.Jsonable):
 
   def get_all(self) -> Dict[Text, Channel]:
     return self._data
+
+  def keys(self):
+    return self._data.keys()
+
+  def values(self):
+    return self._data.values()
+
+  def items(self):
+    return self._data.items()
