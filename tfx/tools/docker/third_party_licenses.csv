@@ -1,4 +1,5 @@
 APScheduler,https://raw.githubusercontent.com/agronholm/apscheduler/master/LICENSE.txt,MIT
+astunparse,https://raw.githubusercontent.com/simonpercivall/astunparse/master/LICENSE,PSF
 Click,https://raw.githubusercontent.com/pallets/click/master/LICENSE.rst,3-Clause BSD
 Flask,https://raw.githubusercontent.com/pallets/flask/master/LICENSE,3-Clause BSD
 Jinja2,https://raw.githubusercontent.com/pallets/jinja/master/LICENSE.rst,BSD
@@ -58,6 +59,7 @@ fasteners,https://raw.githubusercontent.com/harlowja/fasteners/master/LICENSE,Ap
 fastrlock,https://raw.githubusercontent.com/scoder/fastrlock/master/LICENSE,MIT
 filelock,https://raw.githubusercontent.com/benediktschmitt/py-filelock/master/LICENSE.rst,Public Domain
 fire,https://raw.githubusercontent.com/google/python-fire/master/LICENSE,Apache 2.0
+frozendict,https://raw.githubusercontent.com/slezica/python-frozendict/master/LICENSE.txt,MIT
 funcsigs,https://raw.githubusercontent.com/aliles/funcsigs/master/LICENSE,Apache 2.0
 functools32,https://raw.githubusercontent.com/michilu/python-functools32/master/LICENSE,PSF
 future,https://raw.githubusercontent.com/PythonCharmers/python-future/master/LICENSE.txt,MIT
@@ -190,6 +192,7 @@ statistics,https://raw.githubusercontent.com/digitalemagine/py-statistics/master
 strip-hints,https://github.com/abarker/strip-hints/blob/master/LICENSE.txt,MIT
 subprocess32,https://raw.githubusercontent.com/google/python-subprocess32/master/LICENSE,Python Software Foundation License
 tensorboard,https://raw.githubusercontent.com/tensorflow/tensorboard/master/LICENSE,Apache 2.0
+tensorboard-plugin-wit,https://raw.githubusercontent.com/tensorflow/tensorboard/master/LICENSE,Apache 2.0
 tensorflow,https://raw.githubusercontent.com/tensorflow/tensorflow/master/LICENSE,Apache 2.0
 tensorflow-data-validation,https://raw.githubusercontent.com/tensorflow/data-validation/master/LICENSE,Apache 2.0
 tensorflow-estimator,https://raw.githubusercontent.com/tensorflow/estimator/master/LICENSE,Apache 2.0
