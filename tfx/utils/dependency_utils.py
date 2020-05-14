@@ -50,7 +50,7 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       flags=beam_pipeline_args)
   all_options = pipeline_options.get_all_options()
-  for flag_name in ['extra_package', 'setup_file', 'requirements_file']:
+  for flag_name in ['extra_packages', 'setup_file', 'requirements_file']:
     if all_options.get(flag_name):
       absl.logging.info('Nonempty beam arg %s already includes dependency',
                         flag_name)
