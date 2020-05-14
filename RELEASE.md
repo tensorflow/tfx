@@ -50,6 +50,8 @@
     argument, even for DirectRunner. Previously this argument was only required
     for DataflowRunner. Note that the specified value of `--temp_location`
     should point to a Google Cloud Storage bucket.
+*   Converted the BaseNode class attributes to the constructor parameters. This
+    won't affect any components derived from BaseComponent.
 
 ### For pipeline authors
 

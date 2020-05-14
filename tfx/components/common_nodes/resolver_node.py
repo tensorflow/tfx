@@ -123,8 +123,6 @@ class ResolverNode(base_node.BaseNode):
       _resolver_class.
   """
 
-  DRIVER_CLASS = ResolverDriver
-
   def __init__(self,
                instance_name: Text,
                resolver_class: Type[base_resolver.BaseResolver],
@@ -146,7 +144,10 @@ class ResolverNode(base_node.BaseNode):
     self._output_dict = {}
     for k, c in self._input_dict.items():
       self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
-    super(ResolverNode, self).__init__(instance_name=instance_name)
+    super(ResolverNode, self).__init__(
+        instance_name=instance_name,
+        driver_class=ResolverDriver,
+    )
 
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access  # pylint: disable=protected-access
