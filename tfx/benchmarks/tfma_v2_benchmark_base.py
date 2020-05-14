@@ -25,6 +25,7 @@ from absl import flags
 import apache_beam as beam
 from apache_beam.runners.portability import fn_api_runner
 
+import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
@@ -68,7 +69,10 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     # call before each benchmark.
     self._eval_config = tfma.EvalConfig(
         model_specs=[tfma.ModelSpec(label_key="tips")],
-        metrics_specs=metric_specs.example_count_specs())
+        metrics_specs=metric_specs.specs_from_metrics([
+            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
+        ]))
+    # metrics_specs=metric_specs.example_count_specs())
 
     self._eval_shared_model = tfma.default_eval_shared_model(
         self._dataset.trained_saved_model_path(), eval_config=self._eval_config)
@@ -221,9 +225,13 @@ class TFMAV2BenchmarkBase(test.Benchmark):
         iters=1, wall_time=delta, extras={"num_examples": len(records)})
 
   def _runMetricsAndPlotsEvaluatorManualActuation(self,
-                                                  with_confidence_intervals):
+                                                  with_confidence_intervals,
+                                                  metrics_specs=None):
     """Benchmark MetricsAndPlotsEvaluatorV2 "manually"."""
     self._init_model()
+    if not metrics_specs:
+      metrics_specs = self._eval_config.metrics_specs
+
     records = self._readDatasetIntoExtracts()
     extracts = []
     for elem in records:
@@ -247,8 +255,7 @@ class TFMAV2BenchmarkBase(test.Benchmark):
     computations, _ = (
         metrics_and_plots_evaluator_v2._filter_and_separate_computations(  # pylint: disable=protected-access
             metric_specs.to_computations(
-                self._eval_config.metrics_specs,
-                eval_config=self._eval_config)))
+                metrics_specs, eval_config=self._eval_config)))
 
     processed = []
     for elem in predict_result:
@@ -319,3 +326,34 @@ class TFMAV2BenchmarkBase(test.Benchmark):
       self):
     self._runMetricsAndPlotsEvaluatorManualActuation(
         with_confidence_intervals=True)
+
+  def benchmarkMetricsAndPlotsEvaluatorAUC10k(self):
+    self._runMetricsAndPlotsEvaluatorManualActuation(
+        with_confidence_intervals=False,
+        metrics_specs=metric_specs.specs_from_metrics([
+            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
+        ]))
+
+  def benchmarkMetricsAndPlotsEvaluatorBinaryClassification(self):
+    self._runMetricsAndPlotsEvaluatorManualActuation(
+        with_confidence_intervals=False,
+        metrics_specs=metric_specs.specs_from_metrics([
+            tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf.keras.metrics.AUC(
+                name="auc",
+                num_thresholds=10000
+            ),
+            tf.keras.metrics.AUC(
+                name="auc_precison_recall",
+                curve="PR",
+                num_thresholds=10000
+            ),
+            tf.keras.metrics.Precision(name="precision"),
+            tf.keras.metrics.Recall(name="recall"),
+            tfma.metrics.MeanLabel(name="mean_label"),
+            tfma.metrics.MeanPrediction(name="mean_prediction"),
+            tfma.metrics.Calibration(name="calibration"),
+            tfma.metrics.ConfusionMatrixPlot(
+                name="confusion_matrix_plot"),
+            tfma.metrics.CalibrationPlot(name="calibration_plot"),
+        ]))
