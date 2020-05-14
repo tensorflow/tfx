@@ -57,8 +57,9 @@ class RunnerTest(tf.test.TestCase):
             executor.TRAINING_ARGS_KEY: self._training_inputs,
         },
     }
+    self._model_name = 'model_name'
     self._ai_platform_serving_args = {
-        'model_name': 'model_name',
+        'model_name': self._model_name,
         'project_id': self._project_id,
     }
     self._executor_class_path = 'my.executor.Executor'
@@ -183,24 +184,34 @@ class RunnerTest(tf.test.TestCase):
     }
 
   def _assertDeployModelMockCalls(self,
-                                  expected_models_create_body,
+                                  expected_models_create_body=None,
+                                  expected_versions_create_body=None,
                                   expect_set_default=True):
-    with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
-      labels = telemetry_utils.get_labels_dict()
+    if not expected_models_create_body:
+      expected_models_create_body = {
+          'name':
+              self._model_name,
+          'regions':
+              [],
+      }
 
-    expected_versions_create_body = {
-        'name':
-            self._model_version,
-        'deployment_uri':
-            self._serving_path,
-        'runtime_version':
-            runner._get_tf_runtime_version(tf.__version__),
-        'python_version':
-            runner._get_caip_python_version(
-                runner._get_tf_runtime_version(tf.__version__)),
-        'labels': labels
-    }
+    if not expected_versions_create_body:
+      with telemetry_utils.scoped_labels(
+          {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
+        labels = telemetry_utils.get_labels_dict()
+
+      expected_versions_create_body = {
+          'name':
+              self._model_version,
+          'deployment_uri':
+              self._serving_path,
+          'runtime_version':
+              runner._get_tf_runtime_version(tf.__version__),
+          'python_version':
+              runner._get_caip_python_version(
+                  runner._get_tf_runtime_version(tf.__version__)),
+          'labels': labels
+      }
 
     self._mock_models_create.assert_called_with(
         body=mock.ANY,
@@ -212,7 +223,8 @@ class RunnerTest(tf.test.TestCase):
 
     self._mock_versions_create.assert_called_with(
         body=mock.ANY,
-        parent='projects/{}/models/{}'.format(self._project_id, 'model_name'))
+        parent='projects/{}/models/{}'.format(self._project_id,
+                                              self._model_name))
     (_, versions_create_kwargs) = self._mock_versions_create.call_args
 
     self.assertDictEqual(expected_versions_create_body,
@@ -223,7 +235,7 @@ class RunnerTest(tf.test.TestCase):
 
     self._mock_set_default.assert_called_with(
         name='projects/{}/models/{}/versions/{}'.format(
-            self._project_id, 'model_name', self._model_version))
+            self._project_id, self._model_name, self._model_version))
     self._mock_set_default_execute.assert_called_with()
 
   @mock.patch(
@@ -238,10 +250,12 @@ class RunnerTest(tf.test.TestCase):
                                            self._ai_platform_serving_args,
                                            self._executor_class_path)
 
-    self._assertDeployModelMockCalls({
-        'name': 'model_name',
+    expected_models_create_body = {
+        'name': self._model_name,
         'regions': []
-    }, False)
+    }
+    self._assertDeployModelMockCalls(
+        expected_models_create_body=expected_models_create_body)
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
@@ -264,10 +278,13 @@ class RunnerTest(tf.test.TestCase):
                                              self._ai_platform_serving_args,
                                              self._executor_class_path)
 
-    self._assertDeployModelMockCalls({
-        'name': 'model_name',
+    expected_models_create_body = {
+        'name': self._model_name,
         'regions': []
-    }, False)
+    }
+    self._assertDeployModelMockCalls(
+        expected_models_create_body=expected_models_create_body,
+        expect_set_default=False)
 
   @mock.patch(
       'tfx.extensions.google_cloud_ai_platform.runner.discovery'
@@ -282,11 +299,39 @@ class RunnerTest(tf.test.TestCase):
                                            self._ai_platform_serving_args,
                                            self._executor_class_path)
 
+    expected_models_create_body = {
+        'name': self._model_name,
+        'regions': ['custom-region'],
+    }
     self._assertDeployModelMockCalls(
-        {
-            'name': 'model_name',
-            'regions': ['custom-region']
-        }, False)
+        expected_models_create_body=expected_models_create_body)
+
+  @mock.patch(
+      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
+  )
+  def testDeployModelForAIPPredictionWithCustomRuntime(self, mock_discovery):
+    mock_discovery.build.return_value = self._mock_api_client
+    self._setUpPredictionMocks()
+
+    self._ai_platform_serving_args['runtime_version'] = '1.23.45'
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._executor_class_path)
+
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
+      labels = telemetry_utils.get_labels_dict()
+
+    expected_versions_create_body = {
+        'name': self._model_version,
+        'deployment_uri': self._serving_path,
+        'runtime_version': '1.23.45',
+        'python_version': runner._get_caip_python_version('1.23.45'),
+        'labels': labels,
+    }
+    self._assertDeployModelMockCalls(
+        expected_versions_create_body=expected_versions_create_body)
 
   def testGetTensorflowRuntime(self):
     self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
