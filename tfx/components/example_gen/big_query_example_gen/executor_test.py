@@ -51,9 +51,12 @@ def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pyl
 def _MockReadFromBigQuery2(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
+      'i2': [2, 3],
       'b': True,
       'f': 2.0,
+      'f2': [2.7, 3.8],
       's': 'abc',
+      's2': ['abc', 'def']
   }]
   return pipeline | beam.Create(mock_query_results)
 
@@ -64,9 +67,12 @@ class ExecutorTest(tf.test.TestCase):
     # Mock BigQuery result schema.
     self._schema = [
         bigquery.SchemaField('i', 'INTEGER', mode='REQUIRED'),
+        bigquery.SchemaField('i2', 'INTEGER', mode='REPEATED'),
         bigquery.SchemaField('b', 'BOOLEAN', mode='REQUIRED'),
         bigquery.SchemaField('f', 'FLOAT', mode='REQUIRED'),
+        bigquery.SchemaField('f2', 'FLOAT', mode='REPEATED'),
         bigquery.SchemaField('s', 'STRING', mode='REQUIRED'),
+        bigquery.SchemaField('s2', 'STRING', mode='REPEATED'),
     ]
     super(ExecutorTest, self).setUp()
 
@@ -86,15 +92,23 @@ class ExecutorTest(tf.test.TestCase):
               exec_properties={
                   '_beam_pipeline_args': ['--project=' + _test_project],
               },
-              split_pattern='SELECT i, b, f, s FROM `fake`'))
+              split_pattern='SELECT i, i2, b, f, f2, s, s2 FROM `fake`'))
 
       feature = {}
       feature['i'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
+      feature['i2'] = tf.train.Feature(
+          int64_list=tf.train.Int64List(value=[2, 3]))
       feature['b'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[1]))
       feature['f'] = tf.train.Feature(
           float_list=tf.train.FloatList(value=[2.0]))
+      feature['f2'] = tf.train.Feature(
+          float_list=tf.train.FloatList(value=[2.7, 3.8]))
       feature['s'] = tf.train.Feature(
           bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes('abc')]))
+      feature['s2'] = tf.train.Feature(
+          bytes_list=tf.train.BytesList(
+              value=[tf.compat.as_bytes('abc'),
+                     tf.compat.as_bytes('def')]))
       example_proto = tf.train.Example(
           features=tf.train.Features(feature=feature))
       util.assert_that(examples, util.equal_to([example_proto]))
