@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import datetime
 import os
-from typing import Any, Iterable, List, Optional, Text, Type
+from typing import cast, Any, Callable, Iterable, List, Optional, Text, Type
 
 import absl
 import apache_beam as beam
@@ -108,7 +108,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 
-  def run(self, tfx_pipeline: pipeline.Pipeline) -> None:
+  def run(self, tfx_pipeline: pipeline.PipelineOrBuilder) -> None:
     """Deploys given logical pipeline on Beam.
 
     Args:
@@ -118,6 +118,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     # and hence we avoid deploying the pipeline.
     if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
       return
+
+    if isinstance(tfx_pipeline, Callable):
+      # In the future we will be entering a context here
+      tfx_pipeline = tfx_pipeline()
+    tfx_pipeline = cast(pipeline.Pipeline, tfx_pipeline)
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 

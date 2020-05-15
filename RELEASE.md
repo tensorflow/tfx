@@ -18,6 +18,7 @@
     the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
+*   Runners can now accept a pipeline builder instead of a pipeline object.
 
 ## Bug fixes and other changes
 

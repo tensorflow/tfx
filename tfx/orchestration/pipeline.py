@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import collections
 import json
 import os
-from typing import List, Optional, Text
+from typing import Callable, List, Optional, Text, Union
 
 import absl
 
@@ -189,3 +189,6 @@ class Pipeline(object):
     # has all its dependencies visited.
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
+
+
+PipelineOrBuilder = Union[Pipeline, Callable[[], Pipeline]]

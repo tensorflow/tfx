@@ -20,7 +20,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
-from typing import Any, Dict, Optional, Text, Union
+from typing import cast, Any, Callable, Dict, Optional, Text, Union
 
 import absl
 from airflow import models
@@ -68,7 +68,7 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
       config = AirflowPipelineConfig(airflow_dag_config=config)
     super(AirflowDagRunner, self).__init__(config)
 
-  def run(self, tfx_pipeline: pipeline.Pipeline):
+  def run(self, tfx_pipeline: pipeline.PipelineOrBuilder):
     """Deploys given logical pipeline on Airflow.
 
     Args:
@@ -77,6 +77,10 @@ class AirflowDagRunner(tfx_runner.TfxRunner):
     Returns:
       An Airflow DAG.
     """
+    if isinstance(tfx_pipeline, Callable):
+      # In the future we will be entering a context here
+      tfx_pipeline = tfx_pipeline()
+    tfx_pipeline = cast(pipeline.Pipeline, tfx_pipeline)
 
     # Merge airflow-specific configs with pipeline args
     airflow_dag = models.DAG(

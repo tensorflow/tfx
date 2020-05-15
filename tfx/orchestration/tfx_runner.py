@@ -47,7 +47,7 @@ class TfxRunner(with_metaclass(abc.ABCMeta, object)):
     """Runs logical TFX pipeline on specific platform.
 
     Args:
-      pipeline: logical TFX pipeline definition.
+      pipeline: logical TFX pipeline definition or a function returning it.
 
     Returns:
       Platform-specific object.

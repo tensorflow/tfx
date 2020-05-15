@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Callable, Dict, List, Optional, Text, Type
+from typing import cast, Callable, Dict, List, Optional, Text, Type
 
 from kfp import compiler
 from kfp import dsl
@@ -334,13 +334,19 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
 
       component_to_kfp_op[component] = kfp_component.container_op
 
-  def run(self, pipeline: tfx_pipeline.Pipeline):
+  def run(self, pipeline: tfx_pipeline.PipelineOrBuilder):
     """Compiles and outputs a Kubeflow Pipeline YAML definition file.
 
     Args:
       pipeline: The logical TFX pipeline to use when building the Kubeflow
         pipeline.
     """
+    if isinstance(pipeline, Callable):
+      # In the future we will be entering a context here
+      pipeline = pipeline()
+
+    pipeline = cast(tfx_pipeline.Pipeline, pipeline)
+
     pipeline_root = tfx_pipeline.ROOT_PARAMETER
     # KFP DSL representation of pipeline root parameter.
     dsl_pipeline_root = dsl.PipelineParam(
