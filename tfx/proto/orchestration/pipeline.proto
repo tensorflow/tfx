@@ -1,0 +1,314 @@
+// Copyright 2019 Google LLC. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+package tfx.orchestration;
+
+import "google/protobuf/any.proto";
+import "ml_metadata/proto/metadata_store.proto";
+
+// ResolverConfig is subject to change. Currently we only use enum to represent
+// two of the currently available policies. We plan to introduce a flexible
+// config to enable more sophisticated policies in the future.
+// TODO(b/152230663): Support more flexibility for resolution logic.
+message ResolverConfig {
+  enum ResolverPolicy {
+    RESOLVER_POLICY_UNSPECIFIED = 0;
+    // Given a list of artifacts, always select the artifact with largest
+    // `last_update_time_since_epoch`.
+    LATEST_ARTIFACT = 1;
+    // Given a list of Model artifacts and a list of ModelBlessing artifacts,
+    // select the the latest Model that is blessed (represented by having a
+    // corresponding ModelBlessing artifact. The result will be consumed by
+    // components that need the latest model that is blessed such as Evaluator.
+    LATEST_BLESSED_MODEL = 2;
+  }
+  // TODO(b/152230663): Make this one of special resolver policies or generic
+  // ResolverConfig.
+  ResolverPolicy resolver_policy = 1;
+}
+
+// Definition for runtime parameters.
+message RuntimeParameter {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    INT = 1;
+    DOUBLE = 2;
+    STRING = 3;
+  }
+  // Required field. The name of the runtime parameter. This should be globally
+  // unique within the pipeline scope.
+  string name = 1;
+  // Required field. The type of the runtime parameter.
+  Type type = 2;
+  // Optional field. Default value of the runtime parameter. If not set and the
+  // runtime parameter value is not provided during runtime, an error will be
+  // raised.
+  ml_metadata.Value default_value = 3;
+}
+
+// Definition for Value in uDSL IR. A Value instance can be either a field value
+// that is determined during compilation time, or a runtime parameter which will
+// be determined during runtime.
+message Value {
+  oneof value {
+    ml_metadata.Value field_value = 1;
+    RuntimeParameter runtime_parameter = 2;
+  }
+}
+
+// Definition of a predicate on property values. It can be one of the following:
+// 1. A value comparator that predicates on a certain property and target value.
+// 2. A unary logical operator that operates on a sub predicate.
+// 3. A binary logical operator that operates on two sub predicates.
+message PropertyPredicate {
+  // Property value comparator.
+  message ValueComparator {
+    // Operators for comparison.
+    enum Op {
+      OP_UNSPECIFIED = 0;
+      // The following two ops are available for all types.
+      EQUAL = 1;
+      LT = 2;
+    }
+    // The name of the property.
+    string property_name = 1;
+    // The target value to compare with.
+    Value target_value = 2;
+    Op op = 3;
+    // Optional field that is only used if the predicate is operated on a dict.
+    string input_key = 4;
+    // Optional field that is only used if the predicate is operated on a list.
+    int32 input_index = 5;
+  }
+  // Logical operator on one element.
+  message UnaryLogicalOperator {
+    enum LogicalOp {
+      OP_UNSPECIFIED = 0;
+      NOT = 1;
+    }
+    LogicalOp op = 1;
+    // The operand to operate on.
+    PropertyPredicate operand = 2;
+  }
+  // Logical operator on two elements.
+  message BinaryLogicalOperator {
+    enum LogicalOp {
+      OP_UNSPECIFIED = 0;
+      AND = 1;
+      OR = 2;
+    }
+    LogicalOp op = 1;
+    // The left-hand side element to the logical operator.
+    PropertyPredicate lhs = 2;
+    // The right-hand side element to the logical operator.
+    PropertyPredicate rhs= 3;
+  }
+  oneof operator {
+    ValueComparator value_comparator = 1;
+    UnaryLogicalOperator unary_logical_operator = 2;
+    BinaryLogicalOperator binary_logical_operator = 3;
+  }
+}
+
+// A proto message wrapping all information needed to query one set of artifacts
+// from MLMD.
+message InputSpec {
+  message Channel {
+    // Information to query the producer node of the artifacts.
+    message ProducerNodeQuery {
+      // The unique identifier of the node that produced the artifacts.
+      string id = 1;
+      // Predicate on producer node properties.
+      PropertyPredicate property_predicate = 2;
+    }
+    // Information to query the contexts the desired artifacts are in.
+    message ContextQuery {
+      // The type of the Context.
+      ml_metadata.ContextType type = 1;
+      // The name of the context.
+      string name = 2;
+      // Predicate on the context properties.
+      PropertyPredicate property_predicate = 3;
+    }
+    // Information to query the desired artifacts.
+    message ArtifactQuery {
+      // The type of the artifact.
+      ml_metadata.ArtifactType type = 1;
+      // The output name of the artifact.
+      string output_name = 2;
+      // Predicate on the artifact properties.
+      PropertyPredicate property_predicate = 3;
+    }
+    ProducerNodeQuery producer_node_query = 1;
+    repeated ContextQuery context_query = 2;
+    ArtifactQuery artifact_query = 3;
+  }
+  repeated Channel channels = 1;
+  // The minimum number of artifacts desired. If minimum requirement is not met,
+  // the execution should not be triggered. If min_count is less than or equal
+  // to 0, it means this input is optional.
+  int32 min_count = 2;
+}
+
+// The proto message describes specs of all inputs needed for a component
+// execution.
+message NodeInputs {
+  // A map between the input tag and specs for the inputs of that tag.
+  map<string, InputSpec> inputs = 1;
+  // Optional resolver configs. This will apply on top of the results of all
+  // inputs.
+  ResolverConfig resolver_config = 2;
+}
+
+// A proto message wrapping all information needed to query one set of artifacts
+// from MLMD.
+message OutputSpec {
+  // Information of the desired artifacts.
+  message ArtifactSpec {
+    // The name of the artifact type.
+    ml_metadata.ArtifactType type = 1;
+    // Additional properties to set when outputting artifacts.
+    map<string, Value> additional_properties = 2;
+  }
+  ArtifactSpec artifact_spec = 1;
+}
+
+// ExecutorSpec is still WIP
+message ExecutorSpec {
+  // Executor specification for Python-class based executors.
+  message PythonClassExecutorSpec {
+    // The full class path of the executor.
+    string class_path = 1;
+  }
+  oneof spec {
+    PythonClassExecutorSpec python_class_executor_spec = 1;
+  }
+}
+
+// Spec of a context.
+message ContextSpec {
+  // The type of the context.
+  ml_metadata.ContextType type = 1;
+  // The name of the context.
+  string name = 2;
+  // Properties of the context.
+  map<string, Value> properties = 3;
+}
+
+// Basic info of a pipeline node, including the type and id of the node.
+// The information in `NodeInfo` should stay stable across time. Asynchronous
+// data fetching behavior might change if this changes.
+message NodeInfo {
+  // The MLMD type of the node. For example, is it an `ExampleGen` or `Trainer`.
+  ml_metadata.ExecutionType type = 1;
+  // The unique identifier of the node within the pipeline definition. This id
+  // will be used in upstream and downstream nodes to indicate node
+  // dependencies. This is generated by the system.
+  string id = 2;
+}
+
+// Specifications of contexts that this node belongs to. All input artifacts,
+// output artifacts and execution of the node will be linked to the (MLMD)
+// contexts generated from these specifications.
+message NodeContexts {
+  repeated ContextSpec contexts = 1;
+}
+// Specifications for node outputs.
+message NodeOutputs {
+  map<string, OutputSpec> outputs = 1;
+}
+// Specifications for node parameters.
+message NodeParameters {
+  map<string, Value> parameters = 1;
+}
+// Options for executing the node.
+message NodeExecutionOptions {
+  message CachingOptions {
+    // Whether or not to enable cache for this node.
+    bool enable_cache = 1;
+  }
+  CachingOptions caching_options = 1;
+}
+// Pipeline node definition.
+message PipelineNode {
+  // Basic info of a pipeline node.
+  NodeInfo node_info = 1;
+  // Specification for contexts that this node belongs to.
+  NodeContexts contexts = 2;
+  // Specification for node inputs.
+  NodeInputs inputs = 3;
+  // Specification for node outputs.
+  NodeOutputs outputs = 4;
+  // Specification for node parameters.
+  NodeParameters parameters = 5;
+  // Specification for the executor of the node.
+  ExecutorSpec executor = 6;
+  // Ids of the upstream nodes of the current node.
+  repeated string upstream_nodes = 7;
+  // Ids of the downstream nodes of the current node.
+  repeated string downstream_nodes = 8;
+  // Options for executing the node.
+  NodeExecutionOptions execution_options = 9;
+}
+
+// Message struct that contains pipeline runtime specifications.
+message PipelineRuntimeSpec {
+  // Required field. Base directory of the pipeline. If not specified in DSL,
+  // sub-pipelines will be compiled to use the same pipeline root as the parent
+  // pipeline.
+  string pipeline_root = 1;
+  // A unique id to identify a pipeline run. This will not be set during
+  // compilation time but is required for synchronous pipeline execution.
+  string pipeline_run_id = 2;
+}
+
+// Basic info of a pipeline.
+// The information in `PipelineInfo` should stay stable across time.
+// Asynchronous data fetching behavior might change if this changes.
+message PipelineInfo {
+  // Required field. A pipeline must have an id.
+  string id = 1;
+}
+
+// Definition for a uDSL pipeline. This is also the definition of a
+// sub-pipeline.
+message Pipeline {
+  enum ExecutionMode {
+    EXECUTION_MODE_UNSPECIFIED = 0;
+    SYNC = 1;
+    ASYNC = 2;
+  }
+  // A node inside a pipeline can be either a `PipelineNode` or a `Pipeline` as
+  // a sub-pipeline.
+  message PipelineOrNode {
+    oneof node {
+      // A normal pipeline node. This is the unsplittable execution unit.
+      PipelineNode pipeline_node = 1;
+      // Sub-pipelines should only have execution mode `SYNC`.
+      Pipeline sub_pipeline = 2;
+    }
+  }
+
+  PipelineInfo pipeline_info = 1;
+  repeated PipelineOrNode nodes = 2;
+  PipelineRuntimeSpec runtime_spec = 3;
+  // Execution mode of the pipeline. Only the outermost pipeline can be `ASYNC`.
+  ExecutionMode execution_mode = 4;
+  // Configs for different platforms, keyed by tags for different platforms that
+  // users provide.
+  map<string, google.protobuf.Any> platform_configs = 5;
+  // TFX DSL SDK version for this pipeline.
+  string sdk_version = 6;
+}
