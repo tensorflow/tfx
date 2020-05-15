@@ -753,12 +753,15 @@ gcloud services list --available | grep Dataflow
 gcloud services enable dataflow.googleapis.com
 ```
 
->**Note:** Execution speed may be limited by default
-[Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
-recommend setting a sufficient quota for approximately 250 Dataflow VMs:
-**250 CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more
-details, please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
-[Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation.
+> **Note:** Execution speed may be limited by default
+> [Google Compute Engine (GCE)](https://cloud.google.com/compute) quota. We
+> recommend setting a sufficient quota for approximately 250 Dataflow VMs: **250
+> CPUs, 250 IP Addresses, and 62500 GB of Persistent Disk**. For more details,
+> please see the [GCE Quota](https://cloud.google.com/compute/quotas) and
+> [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
+> you are blocked by IP Address quota, using a bigger
+> [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
+> might reduce the number of needed IPs.
 
 **Double-click `pipeline` to change directory, and double-click to open
 `configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`, and

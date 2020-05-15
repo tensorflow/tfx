@@ -105,6 +105,9 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    # TODO(tensorflow/tfx#1459) Remove `disk_size_gb` after default is
 #    #                           increased.  # pylint: disable=g-bad-todo
 #    '--disk_size_gb=50',
+#    # If you are blocked by IP Address quota, using a bigger machine_type might
+#    # reduce the number of needed IPs.
+#    # '--machine_type=n1-standard-8',
 #    ]
 
 # A dict which contains the training job parameters to be passed to Google
