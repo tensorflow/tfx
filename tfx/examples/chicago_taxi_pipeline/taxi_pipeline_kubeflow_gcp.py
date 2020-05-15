@@ -185,6 +185,9 @@ def create_pipeline(
         '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
         '--region=' + _gcp_region,
         '--disk_size_gb=50',
+        # If you are blocked by IP Address quota, using a bigger machine_type
+        # might reduce the number of needed IPs.
+        # '--machine_type=n1-standard-8',
     ]
 
   # Number of epochs in training.
