@@ -38,9 +38,9 @@ def make_required_install_packages():
       'ml-metadata>=0.21.2,<0.22',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
-      # TODO(b/156131638): Remove this when dependency conflicts are resolved
-      # after 0.22.0 releasing window.
+      # TODO(b/148212028): Change pyarrow version to 0.16 with tfx-bsl 0.22
       'pyarrow==0.15.1',
+      # 'pyarrow>=0.16,<0.17',
       'pyyaml>=5,<6',
       'six>=1.10,<2',
       # TODO(b/156035765): enable TF2.2.
