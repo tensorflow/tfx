@@ -186,7 +186,7 @@ def create_pipeline(
         '--region=' + _gcp_region,
         '--disk_size_gb=50',
         # If you are blocked by IP Address quota, using a bigger machine_type
-        # might reduce the number of needed IPs.
+        # will reduce the number of needed IPs.
         # '--machine_type=n1-standard-8',
     ]
 

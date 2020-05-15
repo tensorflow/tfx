@@ -761,7 +761,7 @@ gcloud services enable dataflow.googleapis.com
 > [Dataflow Quota](https://cloud.google.com/dataflow/quotas) documentation. If
 > you are blocked by IP Address quota, using a bigger
 > [`worker_type`](https://cloud.google.com/dataflow/docs/guides/specifying-exec-params#setting-other-cloud-dataflow-pipeline-options)
-> might reduce the number of needed IPs.
+> will reduce the number of needed IPs.
 
 **Double-click `pipeline` to change directory, and double-click to open
 `configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`, and
