@@ -22,15 +22,16 @@ We use GitHub pull requests for this purpose. Consult GitHub Help for more
 information on using pull requests.
 
 Proper code review should include proper unit tests with them. Please see
-[Testing Conventions](##Testing Conventions) for our conventions on how to write
+[Testing Conventions](#testing-conventions) for our conventions on how to write
 proper unit tests.
 
 TODO(zhitaoli): Configure a CI/CD on Github so that each PR submission is tested
 before merged.
 
 ## Community Guidelines
-This project follows[Google's Open Source Community Guidelines](
-https://opensource.google.com/conduct/).
+
+This project follows
+[Google's Open Source Community Guidelines](https://opensource.google.com/conduct/).
 
 # Contributing Guidelines
 
