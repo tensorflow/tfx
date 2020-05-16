@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC. All Rights Reserved.
+// Copyright 2020 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ message PropertyPredicate {
     enum Op {
       OP_UNSPECIFIED = 0;
       // The following two ops are available for all types.
-      EQUAL = 1;
+      EQ = 1;
       LT = 2;
     }
     // The name of the property.
@@ -87,9 +87,15 @@ message PropertyPredicate {
     // The target value to compare with.
     Value target_value = 2;
     Op op = 3;
-    // Optional field that is only used if the predicate is operated on a dict.
+    // Users can choose to set 0, 1 or 2 of the following two fields.
+    //   - If none of them is set, the predicate is operated on single Artifact.
+    //   - If only 'input_key' is set, the predicate is operated on
+    //     Dict[Text, Artifact].
+    //   - If only 'input_index' is set, the predicate is operated on
+    //     List[Artifact].
+    //   - If both 'input_key' and 'input_index' are set, the predicate is
+    //     operated on Dict[Text, List[Artifact]].
     string input_key = 4;
-    // Optional field that is only used if the predicate is operated on a list.
     int32 input_index = 5;
   }
   // Logical operator on one element.
