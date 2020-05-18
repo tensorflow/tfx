@@ -106,9 +106,10 @@ def _build_keras_model(hidden_units, learning_rate):
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
-          num_buckets=features.BUCKET_FEATURE_BUCKET_COUNT,
-          default_value=0)
-      for key in features.transformed_names(features.BUCKET_FEATURE_KEYS)
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              features.transformed_names(features.BUCKET_FEATURE_KEYS),
+              features.BUCKET_FEATURE_BUCKET_COUNT)
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
