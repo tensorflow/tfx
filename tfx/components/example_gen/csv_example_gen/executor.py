@@ -136,6 +136,11 @@ def _CsvToExample(  # pylint: disable=invalid-name
       | 'ReadFromText' >> beam.io.ReadFromText(
           file_pattern=csv_pattern, skip_header_lines=1)
       | 'ParseCSVLine' >> beam.ParDo(csv_decoder.ParseCSVLine(delimiter=',')))
+  # TODO(b/155997704) clean this up once tfx_bsl makes a release.
+  if getattr(csv_decoder, 'PARSE_CSV_LINE_YIELDS_RAW_RECORDS', False):
+    # parsed_csv_lines is the following tuple (parsed_lines, raw_records)
+    # we only want the parsed_lines.
+    parsed_csv_lines |= 'ExtractParsedCSVLines' >> beam.Keys()
   column_infos = beam.pvalue.AsSingleton(
       parsed_csv_lines
       | 'InferColumnTypes' >> beam.CombineGlobally(
