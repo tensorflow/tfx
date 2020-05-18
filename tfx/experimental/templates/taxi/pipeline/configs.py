@@ -54,7 +54,6 @@ EVAL_ACCURACY_THRESHOLD = 0.6
 #               BigQuery.
 # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS = [
 #    '--project=' + GCP_PROJECT_ID,
-#    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
 #    ]
 
 # The rate at which to sample rows from the Chicago Taxi dataset using BigQuery.

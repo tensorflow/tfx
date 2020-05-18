@@ -62,8 +62,6 @@ def run():
   # This pipeline automatically injects the Kubeflow TFX image if the
   # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx
   # cli tool exports the environment variable to pass to the pipelines.
-  # TODO(b/157598477) Find a better way to pass parameters from CLI handler to
-  # pipeline DSL file, instead of using environment vars.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
