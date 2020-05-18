@@ -247,25 +247,23 @@ def deploy_model_for_aip_prediction(
       body=body, parent=model_name).execute()
   op_name = response['name']
 
-  while True:
-    deploy_status = api.projects().operations().get(name=op_name).execute()
-
-    if deploy_status.get('error'):
-      # The operation completed with an error.
-      absl.logging.error(deploy_status['error'])
-      raise RuntimeError(
-          'Failed to deploy model to AI Platform for serving: {}'.format(
-              deploy_status['error']))
-
-    if deploy_status.get('done'):
-      # Set the new version as default.
-      api.projects().models().versions().setDefault(
-          name='{}/versions/{}'.format(model_name, deploy_status['response']
-                                       ['name'])).execute()
-      break
-
+  deploy_status = api.projects().operations().get(name=op_name).execute()
+  while not deploy_status.get('done'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     absl.logging.info('Model still being deployed...')
+
+  if deploy_status.get('error'):
+    # The operation completed with an error.
+    raise RuntimeError(
+        'Failed to deploy model to AI Platform for serving: {}'.format(
+            deploy_status['error']))
+
+  # Set the new version as default.
+  # By API specification, if Long-Running-Operation is done and there is
+  # no error, 'response' is guaranteed to exist.
+  api.projects().models().versions().setDefault(
+      name='{}/versions/{}'.format(model_name, deploy_status['response']
+                                   ['name'])).execute()
 
   absl.logging.info(
       'Successfully deployed model {} with version {}, serving from {}'.format(
