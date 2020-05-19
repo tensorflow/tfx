@@ -117,7 +117,10 @@ def resolve_container_command_line(
   resolved_command_line = []
   for cmd_arg in (container_spec.command or []):
     resolved_cmd_arg = expand_command_line_arg(cmd_arg)
-    assert isinstance(resolved_cmd_arg, Text)
+    if not isinstance(resolved_cmd_arg, (str, Text)):
+      raise TypeError(
+          'Resolved argument "{}" (type="{}") is not a string.'.format(
+              resolved_cmd_arg, type(resolved_cmd_arg)))
     resolved_command_line.append(resolved_cmd_arg)
 
   return resolved_command_line
