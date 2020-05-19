@@ -32,6 +32,8 @@
     jobs when running on KFP container.
 *   Depends on `frozendict>=1,<2`.
 *   Made ComponentSpec().inputs and .outputs behave more like real dictionaries.
+*   Slack custom component example uses experimental function-based component
+    definition.
 
 ### Deprecations
 
