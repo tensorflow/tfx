@@ -61,7 +61,7 @@ feature {
   type: INT
   int_domain {
     min: 0
-    max: 9
+    max: 10
     is_categorical: true
   }
   presence {
@@ -148,7 +148,7 @@ feature {
   type: INT
   int_domain {
     min: 0
-    max: 9
+    max: 10
     is_categorical: true
   }
   presence {

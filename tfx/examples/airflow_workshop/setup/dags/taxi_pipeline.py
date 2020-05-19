@@ -139,16 +139,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   #     model_specs=[tfma.ModelSpec(label_key='tips')], # Step 6
   #     slicing_specs=[tfma.SlicingSpec()], # Step 6
   #     metrics_specs=[ # Step 6
-  #         tfma.MetricsSpec(metrics=[ # Step 6
-  #             tfma.MetricConfig( # Step 6
-  #                 class_name='BinaryAccuracy', # Step 6
-  #                 threshold=tfma.MetricThreshold( # Step 6
-  #                     value_threshold=tfma.GenericValueThreshold( # Step 6
-  #                         lower_bound={'value': 0.6}), # Step 6
-  #                     change_threshold=tfma.GenericChangeThreshold( # Step 6
-  #                         direction=tfma.MetricDirection.HIGHER_IS_BETTER, # Step 6
-  #                         absolute={'value': -1e-10}))) # Step 6
-  #         ]) # Step 6
+  #         tfma.MetricsSpec( # Step 6
+  #             thresholds={ # Step 6
+  #                 'binary_accuracy': # Step 6
+  #                     tfma.config.MetricThreshold( # Step 6
+  #                         value_threshold=tfma.GenericValueThreshold( # Step 6
+  #                             lower_bound={'value': 0.6}), # Step 6
+  #                         change_threshold=tfma.GenericChangeThreshold( # Step 6
+  #                             direction=tfma.MetricDirection.HIGHER_IS_BETTER, # Step 6
+  #                             absolute={'value': -1e-10})) # Step 6
+  #             }) # Step 6
   #     ]) # Step 6
 
   # model_analyzer = Evaluator( # Step 6

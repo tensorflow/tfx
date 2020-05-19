@@ -22,6 +22,8 @@ from kubernetes import client
 import tensorflow as tf
 
 from tfx.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration.launcher import container_common
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
@@ -68,6 +70,40 @@ class ContainerUtilsTest(tf.test.TestCase):
         '--model-path',
         'gcs://model',
     ], actual_spec.args)
+
+  def testResolveTemplatedExecutorContainerSpec(self):
+    container_spec = executor_specs.TemplatedExecutorContainerSpec(
+        image='gcr.io/my/trainer:latest',
+        command=[
+            'trainer',
+            '--steps', placeholders.InputValuePlaceholder('num_steps'),
+            '--examples', placeholders.InputUriPlaceholder('examples'),
+            '--model-path', placeholders.OutputUriPlaceholder('model'),
+        ],
+    )
+    examples_artifact_1 = standard_artifacts.Examples()
+    examples_artifact_1.uri = 'gcs://examples/1'
+    examples_artifact_2 = standard_artifacts.Examples()
+    examples_artifact_2.uri = 'gcs://examples/2'
+    model = standard_artifacts.Model()
+    model.uri = 'gcs://model'
+    input_dict = {'examples': [examples_artifact_1]}
+    output_dict = {'model': [model]}
+    exec_properties = {
+        'version': 'v1',
+        'model': 'cnn',
+        'num_steps': '10000',
+    }
+
+    actual_spec = container_common.resolve_container_template(
+        container_spec, input_dict, output_dict, exec_properties)
+
+    self.assertListEqual(actual_spec.command, [
+        'trainer',
+        '--steps', '10000',
+        '--examples', 'gcs://examples/1',
+        '--model-path', 'gcs://model',
+    ])
 
   def testToSwaggerDict(self):
     pod = client.V1Pod(

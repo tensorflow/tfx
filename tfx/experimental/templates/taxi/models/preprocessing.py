@@ -72,7 +72,8 @@ def preprocessing_fn(inputs):
                               features.BUCKET_FEATURE_BUCKET_COUNT):
     outputs[features.transformed_name(key)] = tft.bucketize(
         _fill_in_missing(inputs[key]),
-        num_buckets)
+        num_buckets,
+        always_return_num_quantiles=False)
 
   for key in features.CATEGORICAL_FEATURE_KEYS:
     outputs[features.transformed_name(key)] = _fill_in_missing(inputs[key])

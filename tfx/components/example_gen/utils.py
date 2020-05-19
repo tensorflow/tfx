@@ -18,24 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import re
-from typing import Any, Dict, Iterable, List, Text, Tuple, Union
+from typing import Any, Dict, List, Text, Union
 
-import absl
 import six
 import tensorflow as tf
 
 from tfx.proto import example_gen_pb2
-from tfx.utils import io_utils
 from google.protobuf import json_format
-
-# Fingerprint custom property.
-FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
-# Span custom property.
-SPAN_PROPERTY_NAME = 'span'
-# Span spec used in split pattern.
-SPAN_SPEC = '{SPAN}'
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -182,96 +171,3 @@ def make_default_output_config(
             example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
             example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
         ]))
-
-
-def _glob_to_regex(glob_pattern: Text) -> Text:
-  """Changes glob pattern to regex pattern."""
-  regex_pattern = glob_pattern
-  regex_pattern = regex_pattern.replace('.', '\\.')
-  regex_pattern = regex_pattern.replace('+', '\\+')
-  regex_pattern = regex_pattern.replace('*', '[^/]*')
-  regex_pattern = regex_pattern.replace('?', '[^/]')
-  regex_pattern = regex_pattern.replace('(', '\\(')
-  regex_pattern = regex_pattern.replace(')', '\\)')
-  return regex_pattern
-
-
-def _retrieve_latest_span(uri: Text,
-                          split: example_gen_pb2.Input.Split) -> Text:
-  """Retrieves the most recently updated span matching a given split pattern."""
-  split_pattern = os.path.join(uri, split.pattern)
-  if split_pattern.count(SPAN_SPEC) != 1:
-    raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
-
-  split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
-  absl.logging.info('Glob pattern for split %s: %s' %
-                    (split.name, split_glob_pattern))
-  split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, '(.*)')
-  absl.logging.info('Regex pattern for split %s: %s' %
-                    (split.name, split_regex_pattern))
-  if re.compile(split_regex_pattern).groups != 1:
-    raise ValueError('Regex should have only one group')
-
-  files = tf.io.gfile.glob(split_glob_pattern)
-  latest_span = None
-  for file_path in files:
-    result = re.search(split_regex_pattern, file_path)
-    if result is None:
-      raise ValueError('Glob pattern does not match regex pattern')
-    try:
-      span = int(result.group(1))
-    except ValueError:
-      raise ValueError('Cannot not find span number from %s based on %s' %
-                       (file_path, split_regex_pattern))
-    if latest_span is None or span >= int(latest_span):
-      # Uses str instead of int because of zero padding digits.
-      latest_span = result.group(1)
-
-  if latest_span is None:
-    raise ValueError('Cannot not find matching for split %s based on %s' %
-                     (split.name, split.pattern))
-  return latest_span
-
-
-def calculate_splits_fingerprint_and_span(
-    input_base_uri: Text,
-    splits: Iterable[example_gen_pb2.Input.Split]) -> Tuple[Text, Any]:
-  """Calculates the fingerprint of files in a URI matching split patterns.
-
-  If a pattern has the {SPAN} placeholder, attempts to find an identical value
-  across splits that results in all splits having the most recently updated
-  files.
-
-  Args:
-    input_base_uri: The base path from which files will be searched
-    splits: An iterable collection of example_gen_pb2.Input.Split objects
-
-  Returns:
-    A Tuple of [fingerprint, select_span], where select_span is either
-    the value matched with the {SPAN} placeholder, or None if the placeholder
-    wasn't specified.
-  """
-
-  split_fingerprints = []
-  select_span = None
-  # Calculate the fingerprint of files under input_base_uri.
-  for split in splits:
-    absl.logging.info('select span = %s' % select_span)
-    if SPAN_SPEC in split.pattern:
-      latest_span = _retrieve_latest_span(input_base_uri, split)
-      absl.logging.info('latest span = %s' % latest_span)
-      if select_span is None:
-        select_span = latest_span
-      if select_span != latest_span:
-        raise ValueError(
-            'Latest span should be the same for each split: %s != %s' %
-            (select_span, latest_span))
-      split.pattern = split.pattern.replace(SPAN_SPEC, select_span)
-    if select_span is None:
-      select_span = '0'
-    # Calculate fingerprint
-    pattern = os.path.join(input_base_uri, split.pattern)
-    fingerprint = io_utils.generate_fingerprint(split.name, pattern)
-    split_fingerprints.append(fingerprint)
-  fingerprint = '\n'.join(split_fingerprints)
-  return fingerprint, select_span

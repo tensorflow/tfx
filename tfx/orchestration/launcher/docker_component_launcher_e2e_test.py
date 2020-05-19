@@ -22,6 +22,8 @@ import tensorflow as tf
 
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.component.experimental import placeholders
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
@@ -53,6 +55,23 @@ class _HelloWorldComponent(base_component.BaseComponent):
     super(_HelloWorldComponent, self).__init__(_HelloWorldSpec(name=name))
 
 
+class _HelloWorldComponent2(base_component.BaseComponent):
+
+  SPEC_CLASS = _HelloWorldSpec
+  EXECUTOR_SPEC = executor_specs.TemplatedExecutorContainerSpec(
+      # TODO(b/143965964): move the image to private repo if the test is flaky
+      # due to docker hub.
+      image='alpine:latest',
+      command=[
+          'echo',
+          'hello', placeholders.InputValuePlaceholder('name'),
+      ]
+  )
+
+  def __init__(self, name):
+    super(_HelloWorldComponent2, self).__init__(_HelloWorldSpec(name=name))
+
+
 # TODO(hongyes): Add more complicated samples to pass inputs/outputs between
 # containers.
 def _create_pipeline(
@@ -62,11 +81,12 @@ def _create_pipeline(
     name,
 ):
   hello_world = _HelloWorldComponent(name=name)
+  hello_world2 = _HelloWorldComponent2(name=name)
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[hello_world],
+      components=[hello_world, hello_world2],
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),

@@ -43,7 +43,8 @@ def make_required_install_packages():
       'pyarrow==0.15.1',
       'pyyaml>=5,<6',
       'six>=1.10,<2',
-      'tensorflow>=1.15,<3',
+      # TODO(b/156035765): enable TF2.2.
+      'tensorflow>=1.15,<2.2',
       'tensorflow-data-validation>=0.21.4,<0.22',
       'tensorflow-model-analysis>=0.21.4,<0.22',
       'tensorflow-serving-api>=1.15,<3',

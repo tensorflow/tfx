@@ -129,7 +129,8 @@ _FARE_KEY = 'fare'
 #   for key in _BUCKET_FEATURE_KEYS:
 #     outputs[_transformed_name(key)] = tft.bucketize(
 #         _fill_in_missing(inputs[key]),
-#         _FEATURE_BUCKET_COUNT)
+#         _FEATURE_BUCKET_COUNT,
+#         always_return_num_quantiles=False)
 #
 #   for key in _CATEGORICAL_FEATURE_KEYS:
 #     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
