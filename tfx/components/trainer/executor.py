@@ -26,37 +26,17 @@ import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
-from google.protobuf import json_format
-
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.proto import trainer_pb2
+from tfx.components.trainer import constants
+from tfx.components.trainer import fn_args_utils
+from tfx.components.util import udf_utils
 from tfx.types import artifact_utils
-from tfx.utils import import_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
-
-# Key for base model in executor input_dict.
-BASE_MODEL_KEY = 'base_model'
-# Key for examples in executor input_dict.
-EXAMPLES_KEY = 'examples'
-# Key for hyperparameters in executor input_dict.
-HYPERPARAMETERS_KEY = 'hyperparameters'
-# Key for schema in executor input_dict.
-SCHEMA_KEY = 'schema'
-# Key for transform graph in executor input_dict.
-TRANSFORM_GRAPH_KEY = 'transform_graph'
-# Key for custom config.
-_CUSTOM_CONFIG_KEY = 'custom_config'
-
-# Key for output model in executor output_dict.
-OUTPUT_MODEL_KEY = 'model'
-
-# The name of environment variable to indicate distributed training cluster.
-_TF_CONFIG_ENV = 'TF_CONFIG'
 
 
 def _all_files_pattern(file_pattern: Text) -> Text:
@@ -65,7 +45,7 @@ def _all_files_pattern(file_pattern: Text) -> Text:
 
 def _is_chief():
   """Returns true if this is run in the master (chief) of training cluster."""
-  tf_config = json.loads(os.environ.get(_TF_CONFIG_ENV) or '{}')
+  tf_config = json.loads(os.environ.get(constants.TF_CONFIG_ENV) or '{}')
 
   # If non distributed mode, current process should always behave as chief.
   if not tf_config or not tf_config.get('cluster', {}):
@@ -117,28 +97,10 @@ class GenericExecutor(base_executor.BaseExecutor):
   # Name of subdirectory which contains checkpoints from prior runs
   _CHECKPOINT_FILE_NAME = 'checkpoint'
 
-  def _GetFn(self, exec_properties: Dict[Text, Any], fn_name: Text) -> Any:
-    """Loads and returns user-defined function."""
-
-    has_module_file = bool(exec_properties.get('module_file'))
-    has_fn = bool(exec_properties.get(fn_name))
-
-    if has_module_file == has_fn:
-      raise ValueError(
-          'Neither or both of module file and user function have been supplied '
-          "in 'exec_properties'.")
-
-    if has_module_file:
-      return import_utils.import_func_from_source(
-          exec_properties['module_file'], fn_name)
-
-    fn_path_split = exec_properties[fn_name].split('.')
-    return import_utils.import_func_from_module('.'.join(fn_path_split[0:-1]),
-                                                fn_path_split[-1])
-
   def _GetFnArgs(self, input_dict: Dict[Text, List[types.Artifact]],
                  output_dict: Dict[Text, List[types.Artifact]],
                  exec_properties: Dict[Text, Any]) -> TrainerFnArgs:
+    fn_args = fn_args_utils.get_common_fn_args(input_dict, exec_properties)
 
     # Load and deserialize custom config from execution properties.
     # Note that in the component interface the default serialization of custom
@@ -146,73 +108,52 @@ class GenericExecutor(base_executor.BaseExecutor):
     # json_utils.loads to 'null' then populate it with an empty dict when
     # needed.
     custom_config = json_utils.loads(
-        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null')) or {}
+        exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null')) or {}
     if not isinstance(custom_config, Dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict. Got %s instead.' % type(custom_config))
 
-    # Set up training parameters
-    train_files = [
-        _all_files_pattern(
-            artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], 'train'))
-    ]
-    transform_output = artifact_utils.get_single_uri(
-        input_dict[TRANSFORM_GRAPH_KEY]) if input_dict.get(
-            TRANSFORM_GRAPH_KEY, None) else None
-    eval_files = [
-        _all_files_pattern(
-            artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], 'eval'))
-    ]
-    schema_file = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
-    base_model = path_utils.serving_model_path(
-        artifact_utils.get_single_uri(input_dict[BASE_MODEL_KEY])
-    ) if input_dict.get(BASE_MODEL_KEY) else None
-    if input_dict.get(HYPERPARAMETERS_KEY):
+    if input_dict.get(constants.BASE_MODEL_KEY):
+      base_model = path_utils.serving_model_path(
+          artifact_utils.get_single_uri(input_dict[constants.BASE_MODEL_KEY]))
+    else:
+      base_model = None
+
+    if input_dict.get(constants.HYPERPARAMETERS_KEY):
       hyperparameters_file = io_utils.get_only_uri_in_dir(
-          artifact_utils.get_single_uri(input_dict[HYPERPARAMETERS_KEY]))
+          artifact_utils.get_single_uri(
+              input_dict[constants.HYPERPARAMETERS_KEY]))
       hyperparameters_config = json.loads(
           file_io.read_file_to_string(hyperparameters_file))
     else:
       hyperparameters_config = None
 
-    train_args = trainer_pb2.TrainArgs()
-    eval_args = trainer_pb2.EvalArgs()
-    json_format.Parse(exec_properties['train_args'], train_args)
-    json_format.Parse(exec_properties['eval_args'], eval_args)
-
-    # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
-    # num_steps=None.  Conversion of the proto to python will set the default
-    # value of an int as 0 so modify the value here.  Tensorflow will raise an
-    # error if num_steps <= 0.
-    train_steps = train_args.num_steps or None
-    eval_steps = eval_args.num_steps or None
-
-    output_path = artifact_utils.get_single_uri(output_dict[OUTPUT_MODEL_KEY])
+    output_path = artifact_utils.get_single_uri(
+        output_dict[constants.OUTPUT_MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
         # A list of uris for train files.
-        train_files=train_files,
+        train_files=fn_args.train_files,
         # An optional single uri for transform graph produced by TFT. Will be
         # None if not specified.
-        transform_output=transform_output,
+        transform_output=fn_args.transform_graph_path,
         # A single uri for the output directory of the serving model.
         serving_model_dir=serving_model_dir,
         # A single uri for the output directory of the eval model.
         # Note that this is estimator only, Keras doesn't require it for TFMA.
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
-        eval_files=eval_files,
+        eval_files=fn_args.eval_files,
         # A single uri for schema file.
-        schema_file=schema_file,
+        schema_file=fn_args.schema_path,
         # Number of train steps.
-        train_steps=train_steps,
+        train_steps=fn_args.train_steps,
         # Number of eval steps.
-        eval_steps=eval_steps,
+        eval_steps=fn_args.eval_steps,
         # Base model that will be used for this training job.
         base_model=base_model,
         # An optional kerastuner.HyperParameters config.
@@ -260,7 +201,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
-    run_fn = self._GetFn(exec_properties, 'run_fn')
+    run_fn = udf_utils.get_fn(exec_properties, 'run_fn')
 
     # Train the model
     absl.logging.info('Training model.')
@@ -326,7 +267,7 @@ class Executor(GenericExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
-    trainer_fn = self._GetFn(exec_properties, 'trainer_fn')
+    trainer_fn = udf_utils.get_fn(exec_properties, 'trainer_fn')
 
     schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
