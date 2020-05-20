@@ -112,8 +112,12 @@ def build_ephemeral_package() -> Text:
   # Create the package
   curdir = os.getcwd()
   os.chdir(tmp_dir)
-  cmd = [sys.executable, setup_file, 'sdist']
-  subprocess.call(cmd)
+  temp_log = os.path.join(tmp_dir, 'setup.log')
+  with open(temp_log, 'w') as f:
+    absl.logging.info('Creating temporary sdist package, logs available at %s',
+                      temp_log)
+    cmd = [sys.executable, setup_file, 'sdist']
+    subprocess.call(cmd, stdout=f, stderr=f)
   os.chdir(curdir)
 
   # Return the package dir+filename
