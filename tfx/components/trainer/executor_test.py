@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx.components.testdata.module_file import trainer_module
+from tfx.components.trainer import constants
 from tfx.components.trainer import executor
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
@@ -59,17 +60,17 @@ class ExecutorTest(tf.test.TestCase):
     previous_model.uri = os.path.join(self._source_data_dir, 'trainer/previous')
 
     self._input_dict = {
-        executor.EXAMPLES_KEY: [examples],
-        executor.TRANSFORM_GRAPH_KEY: [transform_output],
-        executor.SCHEMA_KEY: [schema],
-        executor.BASE_MODEL_KEY: [previous_model]
+        constants.EXAMPLES_KEY: [examples],
+        constants.TRANSFORM_GRAPH_KEY: [transform_output],
+        constants.SCHEMA_KEY: [schema],
+        constants.BASE_MODEL_KEY: [previous_model]
     }
 
     # Create output dict.
     self._model_exports = standard_artifacts.Model()
     self._model_exports.uri = os.path.join(self._output_data_dir,
                                            'model_export_path')
-    self._output_dict = {executor.OUTPUT_MODEL_KEY: [self._model_exports]}
+    self._output_dict = {constants.OUTPUT_MODEL_KEY: [self._model_exports]}
 
     # Create exec properties skeleton.
     self._exec_properties = {
@@ -163,7 +164,7 @@ class ExecutorTest(tf.test.TestCase):
         os.path.join(hp_artifact.uri, 'hyperparameters.txt'),
         json.dumps(hyperparameters))
 
-    self._input_dict[executor.HYPERPARAMETERS_KEY] = [hp_artifact]
+    self._input_dict[constants.HYPERPARAMETERS_KEY] = [hp_artifact]
 
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
