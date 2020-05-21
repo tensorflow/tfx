@@ -147,7 +147,7 @@ def get_default_kubeflow_metadata_config(
   return config
 
 
-def _get_default_pod_labels() -> Dict[Text, Text]:
+def get_default_pod_labels() -> Dict[Text, Text]:
   """Returns the default pod label dict for Kubeflow."""
   # KFP default transformers add pod env:
   # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
@@ -255,7 +255,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._deduped_parameter_names = set()  # Set of unique param names used.
     if pod_labels_to_attach is None:
-      self._pod_labels_to_attach = _get_default_pod_labels()
+      self._pod_labels_to_attach = get_default_pod_labels()
     else:
       self._pod_labels_to_attach = pod_labels_to_attach
 
