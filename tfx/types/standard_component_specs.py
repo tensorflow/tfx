@@ -27,6 +27,7 @@ from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
@@ -312,6 +313,31 @@ class TrainerSpec(ComponentSpec):
   }
   _OUTPUT_COMPATIBILITY_ALIASES = {
       'output': 'model',
+  }
+
+
+class TunerSpec(ComponentSpec):
+  """ComponentSpec for TFX Tuner Component."""
+
+  PARAMETERS = {
+      'module_file': ExecutionParameter(type=(str, Text), optional=True),
+      'tuner_fn': ExecutionParameter(type=(str, Text), optional=True),
+      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
+      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
+      'tune_args': ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
+  }
+  INPUTS = {
+      'examples':
+          ChannelParameter(type=standard_artifacts.Examples),
+      'schema':
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      'transform_graph':
+          ChannelParameter(
+              type=standard_artifacts.TransformGraph, optional=True),
+  }
+  OUTPUTS = {
+      'best_hyperparameters':
+          ChannelParameter(type=standard_artifacts.HyperParameters),
   }
 
 

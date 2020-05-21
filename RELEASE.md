@@ -18,6 +18,7 @@
     the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
+*   Added Tuner component.
 
 ## Bug fixes and other changes
 
@@ -32,6 +33,7 @@
     jobs when running on KFP container.
 *   Depends on `frozendict>=1,<2`.
 *   Made ComponentSpec().inputs and .outputs behave more like real dictionaries.
+*   Depends on `kerastuner>=1,<2`.
 
 ### Deprecations
 

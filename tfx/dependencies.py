@@ -33,6 +33,7 @@ def make_required_install_packages():
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
+      'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
       'ml-metadata>=0.21.2,<0.22',
