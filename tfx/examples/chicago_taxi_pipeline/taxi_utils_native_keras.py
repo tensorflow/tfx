@@ -61,8 +61,7 @@ _VOCAB_FEATURE_KEYS = [
 ]
 
 # Keys
-_LABEL_KEY = 'tips'
-_FARE_KEY = 'fare'
+_LABEL_KEY = 'big_tipper'
 
 
 def _transformed_name(key):
@@ -92,12 +91,15 @@ def _fill_in_missing(x):
   Returns:
     A rank 1 tensor where missing values of `x` have been filled in.
   """
-  default_value = '' if x.dtype == tf.string else 0
-  return tf.squeeze(
-      tf.sparse.to_dense(
-          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
-          default_value),
-      axis=1)
+  if isinstance(x, tf.sparse.SparseTensor):
+    default_value = '' if x.dtype == tf.string else 0
+    dense_tensor = tf.sparse.to_dense(
+        tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+        default_value)
+  else:
+    dense_tensor = x
+
+  return tf.squeeze(dense_tensor, axis=1)
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -236,6 +238,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units):
   output = tf.keras.layers.Dense(
       1, activation='sigmoid')(
           tf.keras.layers.concatenate([deep, wide]))
+  output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
@@ -277,15 +280,9 @@ def preprocessing_fn(inputs):
   for key in _CATEGORICAL_FEATURE_KEYS:
     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
 
-  # Was this passenger a big tipper?
-  taxi_fare = _fill_in_missing(inputs[_FARE_KEY])
-  tips = _fill_in_missing(inputs[_LABEL_KEY])
-  outputs[_transformed_name(_LABEL_KEY)] = tf.where(
-      tf.math.is_nan(taxi_fare),
-      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
-      # Test if the tip was > 20% of the fare.
-      tf.cast(
-          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+  # TODO(b/157064428): Support label transformation for Keras.
+  # Do not apply label transformation as it will result in wrong evaluation.
+  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
 
   return outputs
 
