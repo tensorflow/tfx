@@ -18,12 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
 import os
-import random
 import re
 import shutil
-import string
 import subprocess
 import tarfile
 import tempfile
@@ -31,11 +28,8 @@ import time
 from typing import Any, Dict, List, Text
 
 import absl
-import docker
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-
-from google.cloud import storage
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -53,6 +47,8 @@ from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.orchestration.test_utils import _Timer
+from tfx.orchestration.test_utils import BasePipelineE2ETest
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -70,6 +66,9 @@ _POLLING_INTERVAL_IN_SECONDS = 10
 
 # The base container image name to use when building the image used in tests.
 _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
+
+# The src path to use to build docker image
+_REPO_BASE = os.environ['KFP_E2E_SRC']
 
 # The project id to use to run tests.
 _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
@@ -263,72 +262,17 @@ def create_e2e_components(
   ]
 
 
-class _Timer(object):
-  """Helper class to time operations in Kubeflow e2e tests."""
-
-  def __init__(self, operation: Text):
-    """Creates a context object to measure time taken.
-
-    Args:
-      operation: A description of the operation being measured.
-    """
-    self._operation = operation
-
-  def __enter__(self):
-    self._start = time.time()
-
-  def __exit__(self, *unused_args):
-    self._end = time.time()
-
-    absl.logging.info(
-        'Timing Info >> Operation: %s Elapsed time in seconds: %d' %
-        (self._operation, self._end - self._start))
-
-
-class BaseKubeflowTest(tf.test.TestCase):
+class BaseKubeflowTest(BasePipelineE2ETest):
   """Base class that defines testing harness for pipeline on KubeflowRunner."""
 
   @classmethod
   def setUpClass(cls):
+    cls._repo_base = _REPO_BASE
+    cls._base_container_image = _BASE_CONTAINER_IMAGE
+    cls._gcp_project_id = _GCP_PROJECT_ID
+    cls._gcp_region = _GCP_REGION
+    cls._bucket_name = _BUCKET_NAME
     super(BaseKubeflowTest, cls).setUpClass()
-
-    # Create a container image for use by test pipelines.
-    base_container_image = _BASE_CONTAINER_IMAGE
-
-    cls._container_image = '{}:{}'.format(base_container_image,
-                                          cls._random_id())
-    cls._build_and_push_docker_image(cls._container_image)
-
-  @classmethod
-  def tearDownClass(cls):
-    super(BaseKubeflowTest, cls).tearDownClass()
-
-    # Delete container image used in tests.
-    absl.logging.info('Deleting image {}'.format(cls._container_image))
-    subprocess.run(
-        ['gcloud', 'container', 'images', 'delete', cls._container_image],
-        check=True)
-
-  @classmethod
-  def _build_and_push_docker_image(cls, container_image: Text):
-    client = docker.from_env()
-    repo_base = os.environ['KFP_E2E_SRC']
-
-    absl.logging.info('Building image {}'.format(container_image))
-    with _Timer('BuildingTFXContainerImage'):
-      _ = client.images.build(
-          path=repo_base,
-          dockerfile='tfx/tools/docker/Dockerfile',
-          tag=container_image,
-          buildargs={
-              # Skip license gathering for tests.
-              'gather_third_party_licenses': 'false',
-          },
-      )
-
-    absl.logging.info('Pushing image {}'.format(container_image))
-    with _Timer('PushingTFXContainerImage'):
-      client.images.push(repository=container_image)
 
   @classmethod
   def _get_mysql_pod_name(cls):
@@ -362,9 +306,6 @@ class BaseKubeflowTest(tf.test.TestCase):
     self._test_dir = tempfile.mkdtemp()
     os.chdir(self._test_dir)
 
-    self._gcp_project_id = _GCP_PROJECT_ID
-    self._gcp_region = _GCP_REGION
-    self._bucket_name = _BUCKET_NAME
     self._testdata_root = _TEST_DATA_ROOT
 
     self._test_output_dir = 'gs://{}/test_output'.format(self._bucket_name)
@@ -390,23 +331,6 @@ class BaseKubeflowTest(tf.test.TestCase):
     super(BaseKubeflowTest, self).tearDown()
     os.chdir(self._old_cwd)
     shutil.rmtree(self._test_dir)
-
-  @staticmethod
-  def _random_id():
-    """Generates a random string that is also a valid Kubernetes DNS name."""
-    random.seed(datetime.datetime.now())
-
-    choices = string.ascii_lowercase + string.digits
-    return '{}-{}'.format(datetime.datetime.now().strftime('%s'),
-                          ''.join([random.choice(choices) for _ in range(10)]))
-
-  def _delete_test_dir(self, test_id: Text):
-    """Deletes files for this test including the module file and data files.
-
-    Args:
-      test_id: Randomly generated id of the test.
-    """
-    self._delete_gcs_files('test_data/{}'.format(test_id))
 
   def _delete_workflow(self, workflow_name: Text):
     """Deletes the specified Argo workflow."""
@@ -462,28 +386,6 @@ class BaseKubeflowTest(tf.test.TestCase):
         time.sleep(_POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
-  def _delete_gcs_files(self, path: Text):
-    """Deletes files under specified path in the test bucket.
-
-    Args:
-      path: path(or prefix) of the file to delete.
-    """
-    client = storage.Client(project=self._gcp_project_id)
-    bucket = client.get_bucket(self._bucket_name)
-    absl.logging.info('Deleting files under GCS bucket path: {}'.format(path))
-
-    with _Timer('ListingAndDeletingFilesFromGCS'):
-      blobs = bucket.list_blobs(prefix=path)
-      bucket.delete_blobs(blobs)
-
-  def _delete_pipeline_output(self, pipeline_name: Text):
-    """Deletes output produced by the named pipeline.
-
-    Args:
-      pipeline_name: The name of the pipeline.
-    """
-    self._delete_gcs_files('test_output/{}'.format(pipeline_name))
-
   def _delete_pipeline_metadata(self, pipeline_name: Text):
     """Drops the database containing metadata produced by the pipeline.
 
@@ -511,9 +413,6 @@ class BaseKubeflowTest(tf.test.TestCase):
 
     with _Timer('DeletingMLMDDatabase'):
       subprocess.run(command, check=True)
-
-  def _pipeline_root(self, pipeline_name: Text):
-    return os.path.join(self._test_output_dir, pipeline_name)
 
   def _create_pipeline(self, pipeline_name: Text,
                        components: List[BaseComponent]):
