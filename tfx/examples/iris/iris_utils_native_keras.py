@@ -141,6 +141,8 @@ def preprocessing_fn(inputs):
 
   for key in _FEATURE_KEYS:
     outputs[_transformed_name(key)] = tft.scale_to_z_score(inputs[key])
+  # TODO(b/157064428): Support label transformation for Keras.
+  # Do not apply label transformation as it will result in wrong evaluation.
   outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
 
   return outputs
