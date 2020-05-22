@@ -39,8 +39,8 @@ from tensorflow_model_analysis.metrics import metric_types
 from tfx_bsl.tfxio import test_util
 
 import tfx
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import benchmark_base
 
 FLAGS = flags.FLAGS
 
@@ -52,7 +52,7 @@ MAX_NUM_EXAMPLES = 100000
 
 # TODO(b/147827582): Also add "TF-level" Keras benchmarks for how TFMAv2
 # gets predictions / computes metrics.
-class TFMAV2BenchmarkBase(test.Benchmark):
+class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   """TFMA benchmark."""
 
   def __init__(self, dataset, **kwargs):

@@ -27,8 +27,8 @@ import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis.eval_saved_model import load
 
 import tfx
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import benchmark_base
 
 # Maximum number of examples to read from the dataset.
 # TFMA is much slower than TFT, so we may have to read a smaller subset of the
@@ -36,7 +36,7 @@ from tfx.benchmarks import benchmark_utils
 MAX_NUM_EXAMPLES = 100000
 
 
-class TFMABenchmarkBase(test.Benchmark):
+class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
   """TFMA benchmark base class."""
 
   def __init__(self, dataset, **kwargs):
