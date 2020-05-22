@@ -39,8 +39,8 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx_bsl.beam import shared
 
 import tfx
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import benchmark_base
 
 
 class _CopySavedModel(beam.PTransform):
@@ -179,7 +179,7 @@ def _get_batched_records(dataset):
   return batch_size, benchmark_utils.batched_iterator(records, batch_size)
 
 
-class TFTBenchmarkBase(test.Benchmark):
+class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
   """TFT benchmark base class."""
 
   def __init__(self, dataset, **kwargs):
