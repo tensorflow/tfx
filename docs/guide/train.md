@@ -7,14 +7,18 @@ aware of, including the choice of a modeling API.
 [ExampleGen](examplegen.md)
 * Emits: Trained model in SavedModel format
 
-<aside class="note" id="tf2-support"><b>Note:</b> TFX fully supports Tensorflow
-1.15 and partially supports TensorFlow 2.x, with development of full support in
-progress:
+<aside class="note" id="tf2-support"><b>Note:</b> TFX supports nearly all of
+  TensorFlow 2.X, with minor exceptions. TFX also fully supports TensorFlow
+  1.15.
 
 <ul>
-  <li>Existing TFX pipelines can continue to use TensorFlow 1.X. To switch to TensorFlow 2.X, see the <a href="https://www.tensorflow.org/guide/migrate">TensorFlow migration guide</a>.</li>
-  <li>New TFX pipelines should use TensorFlow 2.x with Keras models via <a href="https://www.tensorflow.org/api_docs/python/tf/keras/estimator/model_to_estimator">tf.keras.estimator.model_to_estimator</a>.</li>
-  <li>Full support, including the Keras API without Estimator and tf.distribute, will be added incrementally in upcoming releases. </li>
+  <li>New TFX pipelines should use TensorFlow 2.x with Keras models via the
+    <a href="https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md">Generic Trainer</a>.</li>
+  <li>Full support for TensorFlow 2.X, including improved support for
+    tf.distribute, will be added incrementally in upcoming releases.</li>
+  <li>Previous TFX pipelines can continue to use TensorFlow 1.15. To switch them
+    to TensorFlow 2.X, see the
+    <a href="https://www.tensorflow.org/guide/migrate">TensorFlow migration guide</a>.</li>
 </ul>
 
 To keep up to date on TFX releases, see the
