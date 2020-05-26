@@ -19,9 +19,6 @@
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
 *   Added Tuner component.
-*   Added the container-based sample pipeline (download, filter, print)
-*   Added the scripts/run_component.py script which makes it easy to run the
-    component code and executor code. (Similar to scripts/run_executor.py)
 
 ## Bug fixes and other changes
 
