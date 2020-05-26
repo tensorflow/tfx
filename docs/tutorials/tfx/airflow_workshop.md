@@ -213,9 +213,6 @@ virtualenv -p python3 tfx-env
 source ~/tfx-env/bin/activate
 
 git clone https://github.com/tensorflow/tfx.git
-cd ~/tfx
-# These instructions are specific to the 0.21 release
-git checkout -f origin/r0.21
 cd ~/tfx/tfx/examples/airflow_workshop/setup
 ./setup_demo.sh
 ```
