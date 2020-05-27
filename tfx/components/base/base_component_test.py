@@ -204,13 +204,6 @@ class ComponentTest(tf.test.TestCase):
         _BasicComponent.get_id(instance_name="my_instance"),
         "_BasicComponent.my_instance")
 
-  def testEnableCache(self):
-    input_channel = types.Channel(type=_InputArtifact)
-    component = _BasicComponent(folds=10, input=input_channel)
-    self.assertEqual(None, component.enable_cache)
-    component.enable_cache = True
-    self.assertEqual(True, component.enable_cache)
-
   def testTaskDependency(self):
     channel_1 = types.Channel(type=_InputArtifact)
     component_1 = _BasicComponent(folds=10, input=channel_1)

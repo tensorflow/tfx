@@ -58,8 +58,7 @@ class BulkInferrer(base_component.BaseComponent):
                model_spec: Optional[Union[bulk_inferrer_pb2.ModelSpec,
                                           Dict[Text, Any]]] = None,
                inference_result: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               instance_name: Optional[Text] = None):
     """Construct an BulkInferrer component.
 
     Args:
@@ -82,9 +81,6 @@ class BulkInferrer(base_component.BaseComponent):
       instance_name: Optional name assigned to this specific instance of
         BulkInferrer. Required only if multiple BulkInferrer components are
         declared in the same pipeline.
-      enable_cache: Optional boolean to indicate if cache is enabled for the
-        BulkInferrer component. If not specified, defaults to the value
-        specified for pipeline's enable_cache parameter.
     """
     inference_result = inference_result or types.Channel(
         type=standard_artifacts.InferenceResult,
@@ -96,5 +92,4 @@ class BulkInferrer(base_component.BaseComponent):
         data_spec=data_spec or bulk_inferrer_pb2.DataSpec(),
         model_spec=model_spec or bulk_inferrer_pb2.ModelSpec(),
         inference_result=inference_result)
-    super(BulkInferrer, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+    super(BulkInferrer, self).__init__(spec=spec, instance_name=instance_name)
