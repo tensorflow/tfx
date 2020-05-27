@@ -25,7 +25,6 @@ import locale
 import os
 import random
 import shutil
-import string
 import subprocess
 import sys
 import tempfile
@@ -78,11 +77,8 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
         self._testMethodName)
     tf.io.gfile.makedirs(self._testdata_dir_updated)
 
-    self._pipeline_name = 'cli-kubeflow-e2e-test-%s-%s' % (
-        datetime.datetime.now().strftime('%s'), ''.join([
-            random.choice(string.ascii_lowercase + string.digits)
-            for _ in range(10)
-        ]))
+    self._pipeline_name = ('cli-kubeflow-e2e-test-' +
+                           test_utils.generate_random_id())
     absl.logging.info('Pipeline name is %s' % self._pipeline_name)
     self._pipeline_name_v2 = self._pipeline_name + '_v2'
 

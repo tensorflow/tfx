@@ -18,6 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
+import random
+import string
+
 from typing import List, Text
 
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -28,9 +32,7 @@ from tfx.components.base.base_component import BaseComponent
 from tfx.utils import dsl_utils
 
 
-def create_e2e_components(
-    csv_input_location: Text,
-) -> List[BaseComponent]:
+def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:
   """Creates components for a simple Chicago Taxi TFX pipeline for testing.
 
      Because we don't need to run whole pipeline, we will make a very short
@@ -51,6 +53,13 @@ def create_e2e_components(
       infer_feature_shape=False)
 
   return [example_gen, statistics_gen, schema_gen]
+
+
+def generate_random_id():
+  """Generate a random id string which has a timestamp prefix."""
+  return datetime.datetime.now().strftime('%s') + ''.join([
+      random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
+  ])
 
 
 def copy_and_change_pipeline_name(orig_path: Text, new_path: Text,

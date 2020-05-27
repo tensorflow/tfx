@@ -26,6 +26,8 @@ from typing import Sequence, Set, Text
 import absl
 import tensorflow as tf
 
+from tfx.orchestration.airflow import test_utils as airflow_test_utils
+from tfx.tools.cli.e2e import test_utils
 from tfx.utils import io_utils
 
 
@@ -120,15 +122,21 @@ class AirflowEndToEndTest(tf.test.TestCase):
     os.environ['HOME'] = self._airflow_home
     absl.logging.info('Using %s as AIRFLOW_HOME and HOME in this e2e test',
                       self._airflow_home)
+
+    self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
+    db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name)
+    self.addCleanup(airflow_test_utils.delete_mysql_container,
+                    self._mysql_container_name)
+    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
+        'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
+
     # Set a couple of important environment variables. See
     # https://airflow.apache.org/howto/set-config.html for details.
-    os.environ['AIRFLOW__CORE__AIRFLOW_HOME'] = self._airflow_home
     os.environ['AIRFLOW__CORE__DAGS_FOLDER'] = os.path.join(
         self._airflow_home, 'dags')
     os.environ['AIRFLOW__CORE__BASE_LOG_FOLDER'] = os.path.join(
         self._airflow_home, 'logs')
-    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = ('sqlite:///%s/airflow.db' %
-                                                     self._airflow_home)
     # Do not load examples to make this a bit faster.
     os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
     # Following environment variables make scheduler process dags faster.
@@ -137,16 +145,13 @@ class AirflowEndToEndTest(tf.test.TestCase):
     os.environ['AIRFLOW__SCHEDULER__RUN_DURATION'] = '-1'
     os.environ['AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL'] = '1'
     os.environ['AIRFLOW__SCHEDULER__PRINT_STATS_INTERVAL'] = '30'
-    # Using more than one thread results in a warning for sqlite backend.
-    # See https://github.com/tensorflow/tfx/issues/141
-    os.environ['AIRFLOW__SCHEDULER__MAX_THREADS'] = '1'
 
     # Following fields are specific to the chicago_taxi_simple example.
     self._dag_id = 'chicago_taxi_simple'
     self._run_id = 'manual_run_id_1'
     # This execution date must be after the start_date in chicago_taxi_simple
     # but before current execution date.
-    self._execution_date = '2019-02-01T01:01:01+01:01'
+    self._execution_date = '2019-02-01T01:01:01'
     self._all_tasks = [
         'CsvExampleGen',
         'Evaluator',
@@ -179,11 +184,11 @@ class AirflowEndToEndTest(tf.test.TestCase):
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
 
     # Initialize database.
-    _ = subprocess.check_output(['airflow', 'initdb'])
-    _ = subprocess.check_output(['airflow', 'unpause', self._dag_id])
+    subprocess.run(['airflow', 'initdb'], check=True)
+    subprocess.run(['airflow', 'unpause', self._dag_id], check=True)
 
   def testSimplePipeline(self):
-    _ = subprocess.check_output([
+    subprocess.run([
         'airflow',
         'trigger_dag',
         self._dag_id,
@@ -191,7 +196,9 @@ class AirflowEndToEndTest(tf.test.TestCase):
         self._run_id,
         '-e',
         self._execution_date,
-    ])
+    ],
+                   check=True)
+    absl.logging.info('Dag triggered: %s', self._dag_id)
     # We will use subprocess to start the DAG instead of webserver, so only
     # need to start a scheduler on the background.
     # Airflow scheduler should be launched after triggering the dag to mitigate
