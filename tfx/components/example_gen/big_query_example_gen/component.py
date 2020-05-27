@@ -42,8 +42,7 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
                input_config: Optional[example_gen_pb2.Input] = None,
                output_config: Optional[example_gen_pb2.Output] = None,
                example_artifacts: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None,
-               enable_cache: Optional[bool] = None):
+               instance_name: Optional[Text] = None):
     """Constructs a BigQueryExampleGen component.
 
     Args:
@@ -63,9 +62,6 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
         eval examples.
       instance_name: Optional unique instance name. Necessary if multiple
         BigQueryExampleGen components are declared in the same pipeline.
-      enable_cache: Optional boolean to indicate if cache is enabled for the
-        BigQueryExampleGen component. If not specified, defaults to the value
-        specified for pipeline's enable_cache parameter.
 
     Raises:
       RuntimeError: Only one of query and input_config should be set.
@@ -77,5 +73,4 @@ class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=pr
         input_config=input_config,
         output_config=output_config,
         example_artifacts=example_artifacts,
-        instance_name=instance_name,
-        enable_cache=enable_cache)
+        instance_name=instance_name)

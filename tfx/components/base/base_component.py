@@ -73,8 +73,7 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       self,
       spec: types.ComponentSpec,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
-      instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      instance_name: Optional[Text] = None):
     """Initialize a component.
 
     Args:
@@ -84,15 +83,11 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
       instance_name: Optional unique identifying name for this instance of the
         component in the pipeline. Required if two instances of the same
         component is used in the pipeline.
-      enable_cache: Optional boolean to indicate if cache is enabled for this
-        component. If not specified, defaults to the value specified for
-        pipeline's enable_cache parameter.
     """
     executor_spec_obj = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
     driver_class = self.__class__.DRIVER_CLASS
     super(BaseComponent, self).__init__(
         instance_name=instance_name,
-        enable_cache=enable_cache,
         executor_spec=executor_spec_obj,
         driver_class=driver_class,
     )

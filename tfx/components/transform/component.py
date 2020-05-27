@@ -75,8 +75,7 @@ class Transform(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
     Args:
@@ -107,9 +106,7 @@ class Transform(base_component.BaseComponent):
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
-      enable_cache: Optional boolean to indicate if cache is enabled for the
-        Transform component. If not specified, defaults to the value
-        specified for pipeline's enable_cache parameter.
+
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
         is supplied.
@@ -141,5 +138,4 @@ class Transform(base_component.BaseComponent):
         preprocessing_fn=preprocessing_fn,
         transform_graph=transform_graph,
         transformed_examples=transformed_examples)
-    super(Transform, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+    super(Transform, self).__init__(spec=spec, instance_name=instance_name)

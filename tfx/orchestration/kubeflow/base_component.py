@@ -120,8 +120,7 @@ class BaseComponent(object):
         json_utils.dumps(component_config),
     ]
 
-    if component.enable_cache or (component.enable_cache is None and
-                                  pipeline.enable_cache):
+    if pipeline.enable_cache:
       arguments.append('--enable_cache')
 
     self.container_op = dsl.ContainerOp(

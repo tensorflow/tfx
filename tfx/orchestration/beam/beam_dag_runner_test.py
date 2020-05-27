@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
@@ -31,7 +30,6 @@ from tfx.orchestration.beam import beam_dag_runner
 from tfx.types.component_spec import ChannelParameter
 
 _executed_components = []
-_executed_components_cached = {}
 
 
 class _ArtifactTypeA(types.Artifact):
@@ -58,8 +56,6 @@ class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
 
   def _run_component(self):
     _executed_components.append(self._component_id)
-    _executed_components_cached[
-        self._component_id] = self._component_launcher._driver_args.enable_cache
 
 
 # We define fake component spec classes below for testing. Note that we can't
@@ -112,13 +108,10 @@ class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = types.ComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self,
-               spec: types.ComponentSpec,
-               enable_cache: Optional[bool] = None):
+  def __init__(self, spec: types.ComponentSpec):
     instance_name = spec.__class__.__name__.replace(
         '_FakeComponentSpec', '').lower()
-    super(_FakeComponent, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+    super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
 class BeamDagRunnerTest(tf.test.TestCase):
@@ -129,23 +122,21 @@ class BeamDagRunnerTest(tf.test.TestCase):
   )
   def testRun(self):
     component_a = _FakeComponent(
-        _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)),
-        enable_cache=True)
+        _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_b = _FakeComponent(
         _FakeComponentSpecB(
             a=component_a.outputs['output'],
-            output=types.Channel(type=_ArtifactTypeB)),
-        enable_cache=False)
+            output=types.Channel(type=_ArtifactTypeB)))
     component_c = _FakeComponent(
         _FakeComponentSpecC(
             a=component_a.outputs['output'],
-            output=types.Channel(type=_ArtifactTypeC)), True)
+            output=types.Channel(type=_ArtifactTypeC)))
     component_c.add_upstream_node(component_b)
     component_d = _FakeComponent(
         _FakeComponentSpecD(
             b=component_b.outputs['output'],
             c=component_c.outputs['output'],
-            output=types.Channel(type=_ArtifactTypeD)), False)
+            output=types.Channel(type=_ArtifactTypeD)))
     component_e = _FakeComponent(
         _FakeComponentSpecE(
             a=component_a.outputs['output'],
@@ -166,15 +157,6 @@ class BeamDagRunnerTest(tf.test.TestCase):
         '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
         '_FakeComponent.d', '_FakeComponent.e'
     ])
-
-    self.assertDictEqual(
-        {
-            '_FakeComponent.a': True,
-            '_FakeComponent.b': False,
-            '_FakeComponent.c': True,
-            '_FakeComponent.d': False,
-            '_FakeComponent.e': False,
-        }, _executed_components_cached)
 
 
 if __name__ == '__main__':
