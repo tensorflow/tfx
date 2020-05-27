@@ -22,6 +22,8 @@
 *   Added the container-based sample pipeline (download, filter, print)
 *   Added the scripts/run_component.py script which makes it easy to run the
     component code and executor code. (Similar to scripts/run_executor.py)
+*   Added the experimental enable_kfp_components() function that allows
+    using KFP components in a TFX pipeline
 
 ## Bug fixes and other changes
 
