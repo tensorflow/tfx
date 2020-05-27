@@ -42,9 +42,12 @@ For detailed previous and upcoming changes, please
 
 #### Requests For Comment
 
-For designs, we started to publish
-[RFCs](https://github.com/tensorflow/community/tree/master/rfcs) under the
-Tensorflow community.
+TFX is an open-source project and we strongly encourage active participation
+by the ML community in helping to shape TFX to meet or exceed their needs. An
+important component of that effort is the RFC process.  Please see the listing
+of [current and past TFX RFCs](RFCs.md). Please see the
+[TensorFlow Request for Comments (TF-RFC)](https://github.com/tensorflow/community/blob/master/governance/TF-RFCs.md)
+process page for information on how community members can contribute.
 
 ## Examples
 

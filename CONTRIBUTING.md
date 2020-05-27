@@ -3,6 +3,15 @@
 We'd love to accept your patches and contributions to this project. There are
 just a few small guidelines you need to follow.
 
+## Requests For Comment
+
+TFX is an open-source project and we strongly encourage active participation
+by the ML community in helping to shape TFX to meet or exceed their needs. An
+important component of that effort is the RFC process.  Please see the listing
+of [current and past TFX RFCs](RFCs.md). Please see the
+[TensorFlow Request for Comments (TF-RFC)](https://github.com/tensorflow/community/blob/master/governance/TF-RFCs.md)
+process page for information on how community members can contribute.
+
 ## Contributor License Agreement
 
 Contributions to this project must be accompanied by a Contributor License
