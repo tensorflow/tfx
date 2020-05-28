@@ -25,7 +25,7 @@
 
 ## Bug fixes and other changes
 
-*   Depends on `apache-beam[gcp]>=2.20,<3`.
+*   Depends on `apache-beam[gcp]>=2.21,<3`.
 *   Depends on `grpcio>=2.18.1,<3`.
 *   Depends on `kubernetes>=10.0.1,<12`.
 *   Depends on `pyarrow>=0.16,<0.17`.
