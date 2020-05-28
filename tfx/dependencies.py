@@ -42,7 +42,7 @@ def make_required_install_packages():
       # TODO(b/156131638): Remove this when dependency conflicts are resolved
       # after 0.22.0 releasing window.
       'pyarrow==0.15.1',
-      'pyyaml>=5,<6',
+      'pyyaml>=3.12,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15,<3',
       'tensorflow-data-validation>=0.21.4,<0.22',
