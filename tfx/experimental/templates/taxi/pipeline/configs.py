@@ -25,18 +25,27 @@ import os  # pylint: disable=unused-import
 PIPELINE_NAME = '{{PIPELINE_NAME}}'
 
 # GCP related configs.
-# These configs are only useful if you are using Google Cloud.
-# TODO(step 4,step 8): Specify your GCS bucket name here.
-#                      You have to use GCS to store output files when running a
-#                      pipeline with Kubeflow Pipeline on GCP or when running a
-#                      job using Dataflow.
-GCS_BUCKET_NAME = 'YOUR_GCS_BUCKET_NAME'
 
-# TODO(step 7,step 8,step 9): (Optional) Set your project ID and region to use
-#                             GCP services including BigQuery, Dataflow and
-#                             Cloud AI Platform.
-# GCP_PROJECT_ID = 'YOUR_GCP_PROJECT_ID'
-# GCP_REGION = 'YOUR_GCP_REGION'  # ex) 'us-central1'
+# Following code will retrieve your GCP project. You can choose which project
+# to use by setting GOOGLE_CLOUD_PROJECT environment variable.
+try:
+  import google.auth  # pylint: disable=g-import-not-at-top
+  try:
+    _, GOOGLE_CLOUD_PROJECT = google.auth.default()
+  except google.auth.exceptions.DefaultCredentialsError:
+    GOOGLE_CLOUD_PROJECT = ''
+except ImportError:
+  GOOGLE_CLOUD_PROJECT = ''
+
+# Specify your GCS bucket name here. You have to use GCS to store output files
+# when running a pipeline with Kubeflow Pipeline on GCP or when running a job
+# using Dataflow. Default is '<gcp_project_name>-kubeflowpipelines-default'.
+# This bucket is created automatically when you deploy KFP from marketplace.
+GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
+
+# TODO(step 8,step 9): (Optional) Set your region to use GCP services including
+#                      BigQuery, Dataflow and Cloud AI Platform.
+# GOOGLE_CLOUD_REGION = ''  # ex) 'us-central1'
 
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
 RUN_FN = 'models.keras.model.run_fn'
@@ -53,7 +62,7 @@ EVAL_ACCURACY_THRESHOLD = 0.6
 # TODO(step 7): (Optional) Uncomment here to provide GCP related configs for
 #               BigQuery.
 # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS = [
-#    '--project=' + GCP_PROJECT_ID,
+#    '--project=' + GOOGLE_CLOUD_PROJECT,
 #    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
 #    ]
 
@@ -97,10 +106,10 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
 # TODO(step 8): (Optional) Uncomment below to use Dataflow.
 # DATAFLOW_BEAM_PIPELINE_ARGS = [
-#    '--project=' + GCP_PROJECT_ID,
+#    '--project=' + GOOGLE_CLOUD_PROJECT,
 #    '--runner=DataflowRunner',
 #    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
-#    '--region=' + GCP_REGION,
+#    '--region=' + GOOGLE_CLOUD_REGION,
 #    # TODO(tensorflow/tfx#1461) Remove `shuffle_mode` after default is changed.  # pylint: disable=g-bad-todo
 #    '--experiments=shuffle_mode=auto',
 #    # TODO(tensorflow/tfx#1459) Remove `disk_size_gb` after default is
@@ -117,15 +126,15 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#Job
 # TODO(step 9): (Optional) Uncomment below to use AI Platform training.
 # GCP_AI_PLATFORM_TRAINING_ARGS = {
-#     'project': GCP_PROJECT_ID,
-#     'region': GCP_REGION,
+#     'project': GOOGLE_CLOUD_PROJECT,
+#     'region': GOOGLE_CLOUD_REGION,
 #     # Starting from TFX 0.14, training on AI Platform uses custom containers:
 #     # https://cloud.google.com/ml-engine/docs/containers-overview
 #     # You can specify a custom container here. If not specified, TFX will use
 #     # a public container image matching the installed version of TFX.
 #     # TODO(step 9): (Optional) Set your container name below.
 #     'masterConfig': {
-#       'imageUri': 'gcr.io/' + GCP_PROJECT_ID + '/tfx-pipeline'
+#       'imageUri': 'gcr.io/' + GOOGLE_CLOUD_PROJECT + '/tfx-pipeline'
 #     },
 #     # Note that if you do specify a custom container, ensure the entrypoint
 #     # calls into TFX's run_executor script (tfx/scripts/run_executor.py)
@@ -138,10 +147,10 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # TODO(step 9): (Optional) Uncomment below to use AI Platform serving.
 # GCP_AI_PLATFORM_SERVING_ARGS = {
 #     'model_name': PIPELINE_NAME,
-#     'project_id': GCP_PROJECT_ID,
+#     'project_id': GOOGLE_CLOUD_PROJECT,
 #     # The region to use when serving the model. See available regions here:
 #     # https://cloud.google.com/ml-engine/docs/regions
 #     # Note that serving currently only supports a single region:
 #     # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models#Model  # pylint: disable=line-too-long
-#     'regions': [GCP_REGION],
+#     'regions': [GOOGLE_CLOUD_REGION],
 # }
