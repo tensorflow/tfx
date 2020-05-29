@@ -42,8 +42,9 @@ _INTERNAL_TODO_PREFIX = re.compile(r'\s*# TODO\((?:b/\d+|[a-z]+)\):.*')
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
     'taxi': [  # template name
-        _TemplateFilePath('examples/chicago_taxi_pipeline/data/simple/data.csv',
-                          'data/data.csv'),
+        _TemplateFilePath(
+            'examples/chicago_taxi_pipeline/data/big_tipper_label/data.csv',
+            'data/data.csv'),
     ],
 }
 
