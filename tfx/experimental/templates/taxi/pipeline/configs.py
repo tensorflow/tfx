@@ -48,9 +48,10 @@ GCS_BUCKET_NAME = GOOGLE_CLOUD_PROJECT + '-kubeflowpipelines-default'
 # GOOGLE_CLOUD_REGION = ''  # ex) 'us-central1'
 
 PREPROCESSING_FN = 'models.preprocessing.preprocessing_fn'
-RUN_FN = 'models.keras.model.run_fn'
-# NOTE: Uncomment below to use an estimator based model.
-# RUN_FN = 'models.estimator.model.run_fn'
+RUN_FN = 'models.estimator.model.run_fn'
+# TODO(b/157692326): Change the default to Keras after b/157692326 is fixed.
+# NOTE: Uncomment below to use an Keras based model.
+# RUN_FN = 'models.keras.model.run_fn'
 
 TRAIN_NUM_STEPS = 100
 EVAL_NUM_STEPS = 100
