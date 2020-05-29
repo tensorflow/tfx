@@ -38,12 +38,15 @@ def _fill_in_missing(x):
   Returns:
     A rank 1 tensor where missing values of `x` have been filled in.
   """
-  default_value = '' if x.dtype == tf.string else 0
-  return tf.squeeze(
-      tf.sparse.to_dense(
-          tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
-          default_value),
-      axis=1)
+  if isinstance(x, tf.sparse.SparseTensor):
+    default_value = '' if x.dtype == tf.string else 0
+    dense_tensor = tf.sparse.to_dense(
+        tf.SparseTensor(x.indices, x.values, [x.dense_shape[0], 1]),
+        default_value)
+  else:
+    dense_tensor = x
+
+  return tf.squeeze(dense_tensor, axis=1)
 
 
 def preprocessing_fn(inputs):
@@ -77,15 +80,9 @@ def preprocessing_fn(inputs):
   for key in features.CATEGORICAL_FEATURE_KEYS:
     outputs[features.transformed_name(key)] = _fill_in_missing(inputs[key])
 
-  # Was this passenger a big tipper?
-  fare_key = 'fare'
-  taxi_fare = _fill_in_missing(inputs[fare_key])
-  tips = _fill_in_missing(inputs[features.LABEL_KEY])
-  outputs[features.transformed_name(features.LABEL_KEY)] = tf.compat.v1.where(
-      tf.math.is_nan(taxi_fare),
-      tf.cast(tf.zeros_like(taxi_fare), tf.int64),
-      # Test if the tip was > 20% of the fare.
-      tf.cast(
-          tf.greater(tips, tf.multiply(taxi_fare, tf.constant(0.2))), tf.int64))
+  # TODO(b/157064428): Support label transformation for Keras.
+  # Do not apply label transformation as it will result in wrong evaluation.
+  outputs[features.transformed_name(
+      features.LABEL_KEY)] = inputs[features.LABEL_KEY]
 
   return outputs

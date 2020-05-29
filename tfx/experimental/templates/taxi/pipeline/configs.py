@@ -96,7 +96,8 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #           company,
 #           trip_seconds,
 #           dropoff_community_area,
-#           tips
+#           tips,
+#           IF(tips > fare * 0.2, 1, 0) AS big_tipper
 #         FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
 #         WHERE (ABS(FARM_FINGERPRINT(unique_key)) / 0x7FFFFFFFFFFFFFFF)
 #           < {query_sample_rate}""".format(

@@ -176,6 +176,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
   output = tf.keras.layers.Dense(
       1, activation='sigmoid')(
           tf.keras.layers.concatenate([deep, wide]))
+  output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(

@@ -85,7 +85,7 @@ def create_pipeline(
   # Generates schema based on statistics files.
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
-      infer_feature_shape=False)
+      infer_feature_shape=True)
   # TODO(step 5): Uncomment here to add SchemaGen to the pipeline.
   # components.append(schema_gen)
 
@@ -142,7 +142,7 @@ def create_pipeline(
   # Uses TFMA to compute a evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='tips')],
+      model_specs=[tfma.ModelSpec(label_key='big_tipper')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
           tfma.MetricsSpec(metrics=[
