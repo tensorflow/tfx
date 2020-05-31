@@ -98,8 +98,14 @@ def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
     return (pipeline
             | 'ReadFromBigQuerySource' >> beam.io.Read(
                 beam.io.BigQuerySource(query=query, use_standard_sql=True)))
+  # TODO(b/155441037): Change this to top level import after Beam version is
+  # upgraded to 2.22.
+  try:
+    from apache_beam.io.gcp.bigquery import ReadFromBigQuery  # pylint: disable=import-outside-toplevel,g-import-not-at-top
+  except ImportError:
+    from apache_beam.io.gcp.bigquery import _ReadFromBigQuery as ReadFromBigQuery  # pylint: disable=import-outside-toplevel,g-import-not-at-top
   return (pipeline
-          | 'ReadFromBigQuery' >> beam.io.gcp.bigquery.ReadFromBigQuery(
+          | 'ReadFromBigQuery' >> ReadFromBigQuery(
               query=query, use_standard_sql=True, project=project))
 
 
