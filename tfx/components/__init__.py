@@ -33,6 +33,7 @@ from tfx.components.schema_gen.component import SchemaGen
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
+from tfx.components.tuner.component import Tuner
 
 # Prevents double logging: TFX and TF uses `tf.logging` but Beam uses standard
 # logging, both logging modules add its own handler. Following setting disables
