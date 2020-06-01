@@ -34,6 +34,8 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
+from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.utils import telemetry_utils
 
 
@@ -100,8 +102,16 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
       config: Optional pipeline config for customizing the launching of each
-        component.
+        component. Defaults to pipeline config that supports
+        InProcessComponentLauncher and DockerComponentLauncher.
     """
+    if config is None:
+      config = pipeline_config.PipelineConfig(
+          supported_launcher_classes=[
+              in_process_component_launcher.InProcessComponentLauncher,
+              docker_component_launcher.DockerComponentLauncher,
+          ],
+      )
     super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 

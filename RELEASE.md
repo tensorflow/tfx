@@ -22,6 +22,7 @@
 *   Added the container-based sample pipeline (download, filter, print)
 *   Added the scripts/run_component.py script which makes it easy to run the
     component code and executor code. (Similar to scripts/run_executor.py)
+*   Added support for container component execution to BeamDagRunner.
 
 ## Bug fixes and other changes
 

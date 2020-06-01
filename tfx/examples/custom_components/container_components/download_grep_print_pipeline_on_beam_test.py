@@ -23,9 +23,6 @@ from tfx.examples.custom_components.container_components import download_grep_pr
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_module
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-from tfx.orchestration.config import docker_component_config
-from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.launcher import docker_component_launcher
 
 
 def create_pipeline():
@@ -61,14 +58,7 @@ def create_pipeline():
 def run_pipeline_on_beam():
   """Runs the pipelineon Beam."""
   pipeline = create_pipeline()
-  default_config = docker_component_config.DockerComponentConfig()
-  p_config = pipeline_config.PipelineConfig(
-      supported_launcher_classes=[
-          docker_component_launcher.DockerComponentLauncher
-      ],
-      default_component_configs=[default_config],
-  )
-  BeamDagRunner(config=p_config).run(pipeline)
+  BeamDagRunner().run(pipeline)
 
 
 class PipelineTest(tf.test.TestCase):
