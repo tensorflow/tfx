@@ -23,6 +23,7 @@
 *   Added the scripts/run_component.py script which makes it easy to run the
     component code and executor code. (Similar to scripts/run_executor.py)
 *   Added support for container component execution to BeamDagRunner.
+*   Introduced experimental generic Artifact types for ML workflows.
 
 ## Bug fixes and other changes
 
