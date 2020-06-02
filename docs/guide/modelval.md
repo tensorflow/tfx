@@ -46,18 +46,16 @@ eval_config = tfma.EvalConfig(
             # model.compile(..., metrics=[...]), etc) will be computed
             # automatically.
             metrics=[
-                tfma.MetricConfig(class_name='ExampleCount')
-            ],
-            # To add validation thresholds for metrics saved with the model,
-            # add them keyed by metric name to the thresholds map.
-            thresholds = {
-                "binary_accuracy": tfma.MetricThreshold(
-                    value_threshold=tfma.GenericValueThreshold(
-                        lower_bound={'value': 0.5}),
-                    change_threshold=tfma.GenericChangeThreshold(
-                       direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                       absolute={'value': -1e-10}))
-            }
+                tfma.MetricConfig(class_name='ExampleCount'),
+                tfma.MetricConfig(
+                    class_name='BinaryAccuracy',
+                    threshold=tfma.MetricThreshold(
+                        value_threshold=tfma.GenericValueThreshold(
+                            lower_bound={'value': 0.5}),
+                        change_threshold=tfma.GenericChangeThreshold(
+                            direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': -1e-10})))
+            ]
         )
     ],
     slicing_specs=[
