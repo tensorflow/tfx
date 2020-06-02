@@ -44,7 +44,7 @@ _KFP_ENDPOINT = os.environ['KFP_E2E_ENDPOINT']
 _KFP_NAMESPACE = 'kubeflow'
 
 # Timeout for a single pipeline run. Set to 6 hours.
-# TODO(b/150222976): Tune this timeout to align with our observation.
+# TODO(b/158009615): Tune this timeout to align with our observation.
 # Note: the Chicago Taxi dataset is a dataset growing with time. The 6 hour
 # timeout here was calibrated according to our empirical study in
 # b/150222976. This might need to be adjusted occasionally.
