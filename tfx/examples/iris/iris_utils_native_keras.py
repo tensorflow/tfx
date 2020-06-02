@@ -22,7 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
+from typing import Dict, List, Text
 
 import absl
 import kerastuner
@@ -60,13 +60,9 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   model.tft_layer = tf_transform_output.transform_features_layer()
 
   @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  def serve_tf_examples_fn(features: Dict[Text, tf.Tensor]):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
-    transformed_features = model.tft_layer(parsed_features)
+    transformed_features = model.tft_layer(features)
     # TODO(b/148082271): Remove this line once TFT 0.22 is used.
     transformed_features.pop(_transformed_name(_LABEL_KEY), None)
 
@@ -245,13 +241,33 @@ def run_fn(fn_args: TrainerFnArgs):
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)
 
+  # TODO(b/158316670): better way other than manually create spec.
+  #                    expose schema2tensorspec util function from TFXIO?
+  features_spec = dict(
+      sepal_length=tf.TensorSpec(
+          shape=(None, 1), dtype=tf.float32, name='sepal_length'),
+      sepal_width=tf.TensorSpec(
+          shape=(None, 1), dtype=tf.float32, name='sepal_width'),
+      petal_length=tf.TensorSpec(
+          shape=(None, 1), dtype=tf.float32, name='petal_length'),
+      petal_width=tf.TensorSpec(
+          shape=(None, 1), dtype=tf.float32, name='petal_width'))
   signatures = {
       'serving_default':
-          _get_serve_tf_examples_fn(model,
-                                    tf_transform_output).get_concrete_function(
-                                        tf.TensorSpec(
-                                            shape=[None],
-                                            dtype=tf.string,
-                                            name='examples')),
+          _get_serve_tf_examples_fn(
+              model, tf_transform_output).get_concrete_function(features_spec),
   }
+
+  # test it.
+  result = signatures['serving_default'](
+      dict(
+          sepal_length=tf.constant([[5.1]]),
+          sepal_width=tf.constant([[3.4]]),
+          petal_length=tf.constant([[1.5]]),
+          petal_width=tf.constant([[0.2]]),
+      ))
+  print(result)
+  # it prints
+  #   "tf.Tensor([[9.9e-01 2.4e-03 1.2e-04]], shape=(1, 3), dtype=float32)"
+
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
