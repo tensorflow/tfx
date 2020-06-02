@@ -244,12 +244,16 @@ class PipelineTest(tf.test.TestCase):
     component_c = _make_fake_component_instance('component_a', _OutputTypeA, {},
                                                 {})
 
-    with self.assertRaises(RuntimeError):
-      pipeline.Pipeline(
-          pipeline_name='a',
-          pipeline_root='b',
-          components=[component_c, component_b, component_a],
-          metadata_connection_config=self._metadata_connection_config)
+    pipeline.Pipeline(
+        pipeline_name='a',
+        pipeline_root='b',
+        components=[component_a, component_b, component_c],
+        metadata_connection_config=self._metadata_connection_config)
+    self.assertEqual(
+        {component_a.id, component_b.id, component_c.id},
+        {'_FakeComponent.component_a', '_FakeComponent.instance_2',
+         '_FakeComponent.instance_3'}
+    )
 
   def testPipelineWithArtifactInfo(self):
     artifacts_collection = [_ArtifactTypeOne()]

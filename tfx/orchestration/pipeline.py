@@ -147,8 +147,9 @@ class Pipeline(object):
     for component in deduped_components:
       # Guarantees every component of a component type has unique component_id.
       if component.id in instances_per_component_type[component.type]:
-        raise RuntimeError('Duplicated component_id %s for component type %s' %
-                           (component.id, component.type))
+        component._instance_name = (  # pylint: disable=protected-access
+            'instance_' +
+            str(len(instances_per_component_type[component.type]) + 1))
       instances_per_component_type[component.type].add(component.id)
       for key, output_channel in component.outputs.items():
         assert not producer_map.get(

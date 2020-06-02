@@ -24,6 +24,8 @@
     component code and executor code. (Similar to scripts/run_executor.py)
 *   Added support for container component execution to BeamDagRunner.
 *   Introduced experimental generic Artifact types for ML workflows.
+*   When using multiple instances of the same component the component instance
+    names can now be auto-generated so that they're unique.
 
 ## Bug fixes and other changes
 

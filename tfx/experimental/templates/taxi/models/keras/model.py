@@ -21,7 +21,6 @@ parameters defined in constants.py.
 from __future__ import division
 from __future__ import print_function
 
-import os
 from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -208,17 +207,12 @@ def run_fn(fn_args):
     model = _build_keras_model(
         hidden_units=constants.HIDDEN_UNITS,
         learning_rate=constants.LEARNING_RATE)
-  # This log path might change in the future.
-  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps,
-      callbacks=[tensorboard_callback])
+      validation_steps=fn_args.eval_steps)
 
   signatures = {
       'serving_default':
