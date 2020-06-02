@@ -47,7 +47,7 @@ def _prepare_output_paths(artifact: types.Artifact):
   # which can handle permission bits.
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact.uri)
-  tf.io.gfile.makedirs(artifact.uri)
+  tf.io.gfile.makedirs(os.path.dirname(artifact.uri))
   # TODO(b/147242148): Avoid special-casing the "split_names" property.
   if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
     split_names = artifact_utils.decode_split_names(artifact.split_names)

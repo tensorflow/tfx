@@ -61,6 +61,10 @@
     won't affect any components derived from BaseComponent.
 *   Revert current per-component cache API (with `enable_cache`, which was only
     available in tfx>=0.21.3,<0.22), in preparing for a future redesign.
+*   The BaseDriver no longer pre-creates the output artifact directory.
+    The component code needs to create something at the output.uri location if
+    the output is going to be passed to another component.
+    For example the component can do `tf.io.gfile.makedirs(output.uri)`.
 
 ### For pipeline authors
 

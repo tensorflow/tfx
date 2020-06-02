@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
+import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants as tfma_constants
 from tfx_bsl.tfxio import tensor_adapter
@@ -187,6 +188,7 @@ class Executor(base_executor.BaseExecutor):
               artifact_utils.get_single_uri(input_dict[constants.SCHEMA_KEY])))
 
     absl.logging.info('Evaluating model.')
+    tf.io.gfile.makedirs(output_uri)
     with self._make_beam_pipeline() as pipeline:
       # pylint: disable=expression-not-assigned
       if _USE_TFXIO:
