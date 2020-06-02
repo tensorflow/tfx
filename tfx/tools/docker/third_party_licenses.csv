@@ -60,7 +60,6 @@ fasteners,https://raw.githubusercontent.com/harlowja/fasteners/master/LICENSE,Ap
 fastrlock,https://raw.githubusercontent.com/scoder/fastrlock/master/LICENSE,MIT
 filelock,https://raw.githubusercontent.com/benediktschmitt/py-filelock/master/LICENSE.rst,Public Domain
 fire,https://raw.githubusercontent.com/google/python-fire/master/LICENSE,Apache 2.0
-frozendict,https://raw.githubusercontent.com/slezica/python-frozendict/master/LICENSE.txt,MIT
 funcsigs,https://raw.githubusercontent.com/aliles/funcsigs/master/LICENSE,Apache 2.0
 functools32,https://raw.githubusercontent.com/michilu/python-functools32/master/LICENSE,PSF
 future,https://raw.githubusercontent.com/PythonCharmers/python-future/master/LICENSE.txt,MIT
