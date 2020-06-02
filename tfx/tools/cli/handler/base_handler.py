@@ -30,6 +30,7 @@ import click
 from six import with_metaclass
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
@@ -219,13 +220,16 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       )
 
     # Get the latest SchemaGen output.
-    schemagen_outputs = tf.io.gfile.listdir(
-        os.path.join(pipeline_root, 'SchemaGen', 'schema', ''))
-    latest_schema_folder = max(schemagen_outputs, key=int)
+    artifact_map = base_driver.get_artifacts_for_executions(
+        pipeline_root=pipeline_root,
+        component_id='SchemaGen',
+        output_name='schema',
+    )
+    latest_execution_id = max(artifact_map.keys())
+    latest_schema_uri = artifact_map[latest_execution_id]
 
     # Copy schema to current dir.
-    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'schema',
-                                      latest_schema_folder, 'schema.pbtxt')
+    latest_schema_path = os.path.join(latest_schema_uri, 'schema.pbtxt')
     curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
     io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)
 

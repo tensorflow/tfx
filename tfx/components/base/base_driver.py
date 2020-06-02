@@ -36,6 +36,24 @@ def _generate_output_uri(base_output_dir: Text, name: Text,
   return os.path.join(base_output_dir, name, str(execution_id))
 
 
+def get_artifacts_for_executions(
+    pipeline_root: Text,
+    component_id: Text,
+    output_name: Text
+) -> Dict[Text, Text]:
+  """Returns map from execution ID to artifact URI."""
+  component_dir = os.path.join(pipeline_root, component_id)
+  executions_dir = os.path.join(component_dir, output_name)
+  execution_ids = tf.io.gfile.listdir(executions_dir)
+  results = {}
+  for execution_id in execution_ids:
+    execution_id = int(execution_id.strip('/', '\\'))
+    results[execution_id] = _generate_output_uri(
+        component_dir, output_name, execution_id
+    )
+  return results
+
+
 def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
   if tf.io.gfile.exists(artifact.uri):
