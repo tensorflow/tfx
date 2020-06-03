@@ -35,3 +35,6 @@ bulk_inferrer = components.BulkInferrer(
     model_spec=bulk_inferrer_pb2.ModelSpec()
 )
 ```
+
+More details are available in the
+[BulkInferrer API reference](/tfx/api_docs/python/tfx/components/BulkInferrer)
