@@ -19,7 +19,7 @@ of component runs, input and output artifacts, and runtime configuration. This
 metadata backend enables advanced functionality like experiment tracking or
 warmstarting/resuming ML models from previous runs.
 
-![TFX Components](https://raw.github.com/tensorflow/tfx/master/docs/guide/images/diag_all.png)
+![TFX Components](https://lh6.googleusercontent.com/N2XRzWQ4AsphPgTzCILVhbXx5xi8j5DlyUhKEEuusGEBJU-ncHZC-1-WQfHB4OqjLSE-n6PkuUwlUWrZ7N-ecX6gmJ1ySQy08nckzOevYLF7dotx5GhFmA-rqpGgL_C0INZjTJG_ZfA)
 
 ## Documentation
 
