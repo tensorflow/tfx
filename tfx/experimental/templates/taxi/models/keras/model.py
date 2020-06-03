@@ -208,7 +208,7 @@ def run_fn(fn_args):
     model = _build_keras_model(
         hidden_units=constants.HIDDEN_UNITS,
         learning_rate=constants.LEARNING_RATE)
-  # This log path might change in the future.
+  # TODO(b/158106209): This log path might change in the future.
   log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=log_dir, update_freq='batch')
