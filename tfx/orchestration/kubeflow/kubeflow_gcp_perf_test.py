@@ -27,6 +27,7 @@ from typing import Text
 
 from absl import logging
 import kfp
+from kfp_server_api import rest
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubeflow_gcp
@@ -48,7 +49,14 @@ _KFP_NAMESPACE = 'kubeflow'
 # Note: the Chicago Taxi dataset is a dataset growing with time. The 6 hour
 # timeout here was calibrated according to our empirical study in
 # b/150222976. This might need to be adjusted occasionally.
-_TIME_OUT_SECONDS = 6 * 3600
+_TIME_OUT = datetime.timedelta(hours=6)
+
+# KFP client polling interval, in seconds
+_POLLING_INTERVAL = 60
+
+# TODO(b/156784019): temporary workaround.
+# Number of retries when `get_run` returns remote error.
+_N_RETRIES = 5
 
 # The base container image name to use when building the image used in tests.
 _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']
@@ -59,8 +67,14 @@ _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 # The GCP region in which the end-to-end test is run.
 _GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
 
+# The GCP zone in which the cluster is created.
+_GCP_ZONE = os.environ['KFP_E2E_GCP_ZONE']
+
 # The GCP bucket to use to write output artifacts.
 _BUCKET_NAME = os.environ['KFP_E2E_BUCKET_NAME']
+
+# The GCP GKE cluster name where the KFP deployment is installed.
+_CLUSTER_NAME = os.environ['KFP_E2E_CLUSTER_NAME']
 
 # Various execution status of a KFP pipeline.
 _KFP_RUNNING_STATUS = 'running'
@@ -125,6 +139,13 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
   @classmethod
   def tearDownClass(cls):
     super(test_utils.BaseKubeflowTest, cls).tearDownClass()
+    # Delete the cluster created in the test.
+    delete_cluster_command = [
+        'gcloud', 'container', 'clusters', 'delete', _CLUSTER_NAME,
+        '--region=%s' % _GCP_ZONE, '--quiet'
+    ]
+    logging.info(
+        subprocess.check_output(delete_cluster_command).decode('utf-8'))
 
   def _get_workflow_name(self, pipeline_name: Text) -> Text:
     """Gets the Argo workflow name using pipeline name."""
@@ -146,21 +167,81 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
     # Python 3.5.
     return subprocess.check_output(get_workflow_log_command).decode('utf-8')
 
-  # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
-  # This should be changed after
-  # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
-  # Currently gcloud authentication token has a one hour expiration by default
-  # but kfp.Client() does not have a refreshing mechanism in place. This
-  # causes failure when attempting to get running status for a long pipeline
-  # execution (> 1 hour).
-  # Instead of implementing a full-fledged authentication refreshing mechanism
-  # here, we chose re-creating kfp.Client() frequently to make sure the
-  # authentication does not expire. This is based on the fact that kfp.Client()
-  # is very light-weight.
-  # See more details at
-  # https://github.com/kubeflow/pipelines/issues/3630
+  def _poll_kfp_with_retry(self, host: Text, run_id: Text, retry_limit: int,
+                           timeout: datetime.timedelta,
+                           polling_interval: int) -> Text:
+    """Gets the pipeline execution status by polling KFP at the specified host.
+
+    Args:
+      host: address of the KFP deployment.
+      run_id: id of the execution of the pipeline.
+      retry_limit: number of retries that will be performed before raise an
+        error.
+      timeout: timeout of this long-running operation, in timedelta.
+      polling_interval: interval between two consecutive polls, in seconds.
+
+    Returns:
+      The final status of the execution. Possible value can be found at
+      https://github.com/kubeflow/pipelines/blob/master/backend/api/run.proto#L254
+
+    Raises:
+      RuntimeError: if polling failed for retry_limit times consecutively.
+    """
+
+    start_time = datetime.datetime.now()
+    retry_count = 0
+    while True:
+      # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
+      # This should be changed after
+      # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
+      # Currently gcloud authentication token has a 1-hour expiration by default
+      # but kfp.Client() does not have a refreshing mechanism in place. This
+      # causes failure when attempting to get running status for a long pipeline
+      # execution (> 1 hour).
+      # Instead of implementing a whole authentication refreshing mechanism
+      # here, we chose re-creating kfp.Client() frequently to make sure the
+      # authentication does not expire. This is based on the fact that
+      # kfp.Client() is very light-weight.
+      # See more details at
+      # https://github.com/kubeflow/pipelines/issues/3630
+      client = kfp.Client(host=host)
+      # TODO(b/156784019): workaround the known issue at b/156784019 and
+      # https://github.com/kubeflow/pipelines/issues/3669
+      # by wait-and-retry when ApiException is hit.
+      try:
+        get_run_response = client._run_api.get_run(run_id=run_id)
+      except rest.ApiException as api_err:
+        # If get_run failed with ApiException, wait _POLLING_INTERVAL and retry.
+        if retry_count < retry_limit:
+          retry_count += 1
+          logging.info('API error %s was hit. Retrying: %s / %s.', api_err,
+                       retry_count, retry_limit)
+          time.sleep(_POLLING_INTERVAL)
+          continue
+
+        raise RuntimeError('Still hit remote error after %s retries: %s' %
+                           (retry_limit, api_err))
+      else:
+        # If get_run succeeded, reset retry_count.
+        retry_count = 0
+
+      if (get_run_response and get_run_response.run and
+          get_run_response.run.status and
+          get_run_response.run.status.lower() in _KFP_FINAL_STATUS):
+        # Return because final status is reached.
+        return get_run_response.run.status
+
+      if datetime.datetime.now() - start_time > timeout:
+        # Timeout.
+        raise RuntimeError('Waiting for run timeout at %s' %
+                           datetime.datetime.now().strftime('%H:%M:%S'))
+
+      logging.info('Waiting for the job to complete...')
+      time.sleep(_POLLING_INTERVAL)
+
   def _assert_successful_run_completion(self, host: Text, run_id: Text,
-                                        pipeline_name: Text, timeout: int):
+                                        pipeline_name: Text,
+                                        timeout: datetime.timedelta):
     """Waits and asserts a successful KFP pipeline execution.
 
     Args:
@@ -168,30 +249,18 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
       run_id: the run ID of the execution, can be obtained from the respoonse
         when submitting the pipeline.
       pipeline_name: the name of the pipeline under test.
-      timeout: maximal waiting time for this execution, in seconds.
+      timeout: maximal waiting time for this execution, in timedelta.
 
     Raises:
       RuntimeError: when timeout exceeds after waiting for specified duration.
     """
-    status = None
-    start_time = datetime.datetime.now()
-    while True:
-      client = kfp.Client(host=host)
-      get_run_response = client._run_api.get_run(run_id=run_id)
 
-      if (get_run_response and get_run_response.run and
-          get_run_response.run.status and
-          get_run_response.run.status.lower() in _KFP_FINAL_STATUS):
-        # Break because final status is reached.
-        status = get_run_response.run.status
-        break
-      elif (datetime.datetime.now() - start_time).seconds > timeout:
-        # Timeout.
-        raise RuntimeError('Waiting for run timeout at %s' %
-                           datetime.datetime.now().strftime('%H:%M:%S'))
-      else:
-        logging.info('Waiting for the job to complete...')
-        time.sleep(10)
+    status = self._poll_kfp_with_retry(
+        host=host,
+        run_id=run_id,
+        retry_limit=_N_RETRIES,
+        timeout=timeout,
+        polling_interval=_POLLING_INTERVAL)
 
     workflow_log = self._get_workflow_log(pipeline_name)
 
@@ -231,7 +300,7 @@ class KubeflowGcpPerfTest(test_utils.BaseKubeflowTest):
         host=_KFP_ENDPOINT,
         run_id=run_id,
         pipeline_name=pipeline_name,
-        timeout=_TIME_OUT_SECONDS)
+        timeout=_TIME_OUT)
 
   def testFullTaxiGcpPipeline(self):
     pipeline_name = 'gcp-perf-test-full-e2e-test-{}'.format(self._random_id())
