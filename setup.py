@@ -81,6 +81,8 @@ with open('tfx/dependencies.py') as fp:
 _make_required_install_packages = globals_dict['make_required_install_packages']
 _make_extra_packages_docker_image = globals_dict[
     'make_extra_packages_docker_image']
+_make_extra_packages_tfjs = globals_dict[
+    'make_extra_packages_tfjs']
 _make_all_dependency_packages = globals_dict['make_all_dependency_packages']
 
 # Get version from version module.
@@ -107,12 +109,11 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Scientific/Engineering :: Mathematics',
@@ -126,10 +127,11 @@ setup(
         # In order to use 'docker-image' or 'all', system libraries specified
         # under 'tfx/tools/docker/Dockerfile' are required
         'docker-image': _make_extra_packages_docker_image(),
+        'tfjs': _make_extra_packages_tfjs(),
         'all': _make_all_dependency_packages(),
     },
     setup_requires=['pytest-runner'],
-    python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4',
+    python_requires='>=3.5,<4',
     packages=find_packages(),
     include_package_data=True,
     description='TensorFlow Extended (TFX) is a TensorFlow-based general-purpose machine learning platform implemented at Google',
