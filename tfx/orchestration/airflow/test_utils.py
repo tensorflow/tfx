@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import subprocess
 import time
 
 from typing import Text
@@ -53,12 +54,29 @@ def create_mysql_container(container_name: Text) -> int:
       ports={_MYSQL_PORT: None},
       detach=True)
   container.reload()  # required to get auto-assigned ports
+  port = int(container.ports[_MYSQL_PORT][0]['HostPort'])
 
   for _ in range(_MYSQL_POLLING_MAX_ATTEMPTS):
     logging.info('Waiting for mysqld container...')
     time.sleep(_MYSQL_POLLING_INTERVAL_SEC)
-    exit_code, _ = container.exec_run('mysql -uroot -proot -e "SELECT 1;"')
-    if exit_code == 0:
+    # MySQL availability should be checked with a network access to distinguish
+    # a temporary server with a real mysql. See
+    # https://github.com/docker-library/mysql/blob/bc6e37a2bed792b1c4fc6ab1ec3ce316e6a5f061/5.7/docker-entrypoint.sh#L360-L362
+    check_available = subprocess.run(  # pylint: disable=subprocess-run-check
+        [
+            'mysql',
+            '-uroot',
+            '-proot',
+            '-h',
+            '127.0.0.1',
+            '-P',
+            str(port),
+            '-e',
+            'SELECT 1;',
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    if check_available.returncode == 0:
       break
   else:
     logging.error('Logs from mysql container:\n%s', container.logs())
@@ -80,7 +98,7 @@ def create_mysql_container(container_name: Text) -> int:
     logging.error('Failed to run sql for initialization:\n%s', output)
     raise RuntimeError('Failed to run initialization SQLs: {}'.format(output))
 
-  return int(container.ports[_MYSQL_PORT][0]['HostPort'])
+  return port
 
 
 def delete_mysql_container(container_name: Text):
