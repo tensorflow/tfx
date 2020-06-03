@@ -23,7 +23,7 @@
 *   Added the scripts/run_component.py script which makes it easy to run the
     component code and executor code. (Similar to scripts/run_executor.py)
 *   Added support for container component execution to BeamDagRunner.
-*   Introduced experimental generic Artifact types for ML workflows.
+*   Added component-level GPU support for KubeflowDagRunner.
 
 ## Bug fixes and other changes
 
@@ -39,6 +39,7 @@
 *   Made ComponentSpec().inputs and .outputs behave more like real dictionaries.
 *   Depends on `kerastuner>=1,<2`.
 *   Depends on `pyyaml>=3.12,<6`.
+*   Provided TensorBoard callback for Iris native Keras sample.
 
 ### Deprecations
 

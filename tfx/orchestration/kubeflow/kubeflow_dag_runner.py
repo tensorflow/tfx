@@ -171,6 +171,8 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
       # SUPPORTED_LAUNCHER_CLASSES
       supported_launcher_classes: List[Type[
           base_component_launcher.BaseComponentLauncher]] = None,
+      component_operator_funcs: Optional[Dict[Text, List[OpFunc]]] = None,
+      component_tfx_image: Optional[Dict[Text, Text]] = None,
       **kwargs):
     """Creates a KubeflowDagRunnerConfig object.
 
@@ -186,8 +188,16 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
         "my-volume-name",
         "/mnt/volume-mount-path")
 
+      def gpu_op(task):
+        task.set_gpu_limit(1)
+        task.add_node_selector_constraint('cloud.google.com/gke-accelerator',
+                                          'nvidia-tesla-p100')
+        return task
+
       config = KubeflowDagRunnerConfig(
-        pipeline_operator_funcs=[mount_secret_op, mount_volume_op]
+        pipeline_operator_funcs=[mount_secret_op, mount_volume_op],
+        component_operator_funcs={'Trainer': [gpu_op]},
+        component_tfx_image={'Trainer': 'tensorflow/tensorflow:latest-gpu'},
       )
 
     Args:
@@ -199,6 +209,11 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
       supported_launcher_classes: A list of component launcher classes that are
         supported by the current pipeline. List sequence determines the order in
         which launchers are chosen for each component being run.
+      component_operator_funcs: A map from component ID to a list of ContainerOp
+        modifying functions that will be applied to certain container step in
+        the pipeline.
+      component_tfx_image: A map from component ID to container image. It will
+        be used for the specific component.
       **kwargs: keyword args for PipelineConfig.
     """
     supported_launcher_classes = supported_launcher_classes or [
@@ -212,6 +227,8 @@ class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
     self.tfx_image = tfx_image or _KUBEFLOW_TFX_IMAGE
     self.kubeflow_metadata_config = (
         kubeflow_metadata_config or get_default_kubeflow_metadata_config())
+    self.component_operator_funcs = component_operator_funcs
+    self.component_tfx_image = component_tfx_image
 
 
 class KubeflowDagRunner(tfx_runner.TfxRunner):
@@ -317,6 +334,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
        component_config) = config_utils.find_component_launch_info(
            self._config, component)
 
+      if (self._config.component_tfx_image and
+          component.id in self._config.component_tfx_image):
+        component_tfx_image = self._config.component_tfx_image[component.id]
+      else:
+        component_tfx_image = self._config.tfx_image
+
       kfp_component = base_component.BaseComponent(
           component=component,
           component_launcher_class=component_launcher_class,
@@ -324,13 +347,19 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           pipeline=pipeline,
           pipeline_name=pipeline.pipeline_info.pipeline_name,
           pipeline_root=pipeline_root,
-          tfx_image=self._config.tfx_image,
+          tfx_image=component_tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
           component_config=component_config,
           pod_labels_to_attach=self._pod_labels_to_attach)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)
+
+      if (self._config.component_operator_funcs and
+          component.id in self._config.component_operator_funcs):
+        funcs_list = self._config.component_operator_funcs[component.id]
+        for operator in funcs_list:
+          kfp_component.container_op.apply(operator)
 
       component_to_kfp_op[component] = kfp_component.container_op
 
