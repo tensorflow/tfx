@@ -23,7 +23,10 @@ import os
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
+# If move kerastuner after airflow, py3.6 py3.7 kokoro will pass.
+import kerastuner  # pylint: disable=unused-import,g-bad-import-order
 from airflow import models
+
 
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
