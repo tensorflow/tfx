@@ -126,8 +126,8 @@ def _CsvToExample(  # pylint: disable=invalid-name
         'Split pattern {} does not match any files.'.format(csv_pattern))
 
   column_names = io_utils.load_csv_column_names(csv_files[0])
-  for csv_files in csv_files[1:]:
-    if io_utils.load_csv_column_names(csv_files) != column_names:
+  for csv_file in csv_files[1:]:
+    if io_utils.load_csv_column_names(csv_file) != column_names:
       raise RuntimeError(
           'Files in same split {} have different header.'.format(csv_pattern))
 
