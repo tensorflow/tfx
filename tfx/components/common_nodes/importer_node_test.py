@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.model_validator.component."""
+"""Tests for tfx.components.common_nodes.importer_node."""
 
 from __future__ import absolute_import
 from __future__ import division

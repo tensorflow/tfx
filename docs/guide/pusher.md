@@ -26,7 +26,7 @@ from tfx import components
 
 pusher = components.Pusher(
   model=trainer.outputs['model'],
-  model_blessing=model_validator.outputs['blessing'],
+  model_blessing=evaluator.outputs['blessing'],
   infra_blessing=infra_validator.outputs['blessing'],
   push_destination=pusher_pb2.PushDestination(
     filesystem=pusher_pb2.PushDestination.Filesystem(
