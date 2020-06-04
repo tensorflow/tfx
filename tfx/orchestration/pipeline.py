@@ -46,7 +46,7 @@ _PIPELINE_ROOT = 'pipeline-root'
 #
 # pusher = Pusher(
 #     model_export=trainer.outputs['model'],
-#     model_blessing=model_validator.outputs['blessing'],
+#     model_blessing=evaluator.outputs['blessing'],
 #     push_destination=pusher_pb2.PushDestination(
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
