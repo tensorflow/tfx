@@ -41,6 +41,7 @@
 *   Added support for container component execution to BeamDagRunner.
 *   Introduced experimental generic Artifact types for ML workflows.
 *   Added support for `float` execution properties.
+*   Enable GPU support for TFX docker image.
 
 ## Bug fixes and other changes
 *   Removed `python-snappy` from `[all]` extra dependency list.
