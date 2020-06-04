@@ -35,6 +35,8 @@ from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
+# TODO(b/156633036): move Tuner to components/ __init__ file.
+from tfx.components.tuner.component import Tuner
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
@@ -71,7 +73,7 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
+                     metadata_path: Text, enable_tuning: bool,
                      direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the Iris flowers pipeline with TFX."""
   examples = external_input(data_root)
@@ -97,14 +99,43 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that trains a model using TF-Learn.
+  # Tunes the hyperparameters for model training based on user-provided Python
+  # function. Note that once the hyperparameters are tuned, you can drop the
+  # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
+  if enable_tuning:
+    tuner = Tuner(
+        module_file=module_file,
+        examples=transform.outputs['transformed_examples'],
+        transform_graph=transform.outputs['transform_graph'],
+        train_args=trainer_pb2.TrainArgs(num_steps=20),
+        eval_args=trainer_pb2.EvalArgs(num_steps=5))
+
+  # Uses user-provided Python function that trains a model.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      # If Tuner is in the pipeline, Trainer can take Tuner's output
+      # best_hyperparameters artifact as input and utilize it in the user module
+      # code.
+      #
+      # If there isn't Tuner in the pipeline, either use ImporterNode to import
+      # a previous Tuner's output to feed to Trainer, or directly use the tuned
+      # hyperparameters in user module code and set hyperparameters to None
+      # here.
+      #
+      # Example of ImporterNode,
+      #   hparams_importer = ImporterNode(
+      #     instance_name='import_hparams',
+      #     source_uri='path/to/best_hyperparameters.txt',
+      #     artifact_type=HyperParameters)
+      #   ...
+      #   hyperparameters = hparams_importer.outputs['result'],
+      hyperparameters=(tuner.outputs['best_hyperparameters']
+                       if enable_tuning else None),
+      train_args=trainer_pb2.TrainArgs(num_steps=100),
       eval_args=trainer_pb2.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
@@ -147,20 +178,24 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher,
+  ]
+  if enable_tuning:
+    components.append(tuner)
+
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          model_resolver,
-          evaluator,
-          pusher,
-      ],
+      components=components,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
@@ -181,6 +216,7 @@ if __name__ == '__main__':
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
+          enable_tuning=True,
           # 0 means auto-detect based on the number of CPUs available during
           # execution time.
           direct_num_workers=0))
