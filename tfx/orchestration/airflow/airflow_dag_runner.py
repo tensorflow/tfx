@@ -19,13 +19,42 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
 import os
+import sys
 from typing import Any, Dict, Optional, Text, Union
 
-import absl
-from airflow import models
+logging.basicConfig(level=logging.DEBUG)
+import absl  # pylint: disable=g-import-not-at-top
+import logging_tree  # pylint: disable=g-import-not-at-top
+logging_tree.printout()
+logging.warning('-' * 50)
 
-from tfx.orchestration import pipeline
+
+def trace(frame, event, _):
+  if event == 'call':
+    filename = frame.f_code.co_filename
+    lineno = frame.f_lineno
+    print('%s @ %s' % (filename, lineno))
+  return trace
+
+sys.settrace(trace)
+
+try:
+  import kerastuner  # pylint: disable=unused-import,g-bad-import-order,g-import-not-at-top
+  logging_tree.printout()
+  logging.warning('-' * 30)
+  from airflow import settings  # pylint: disable=g-import-not-at-top, unused-import
+  logging_tree.printout()
+  logging.warning('-' * 100)
+  from airflow import models  # pylint: disable=g-import-not-at-top
+  logging_tree.printout()
+  logging.warning('-' * 200)
+except Exception as e:
+  absl.logging.error(e)
+  raise
+
+from tfx.orchestration import pipeline  # pylint: disable=g-import-not-at-top
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.config import config_utils
