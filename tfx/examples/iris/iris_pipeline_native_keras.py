@@ -33,10 +33,9 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.components import Tuner
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
-# TODO(b/156633036): move Tuner to components/ __init__ file.
-from tfx.components.tuner.component import Tuner
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
