@@ -31,7 +31,7 @@ from tfx.utils import json_utils
 # Constant to access resolver class from resolver exec_properties.
 RESOLVER_CLASS = 'resolver_class'
 # Constant to access resolver config from resolver exec_properties.
-RESOLVER_CONFIGS = 'source_uri'
+RESOLVER_CONFIGS = 'resolver_configs'
 
 
 class ResolverDriver(base_driver.BaseDriver):
