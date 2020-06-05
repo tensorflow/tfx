@@ -1,31 +1,31 @@
 # Version 0.22.0
 
 ## Major Features and Improvements
-*   Implemented a TFJS rewriter.
 *   Introduced experimental Python function component decorator (`@component`
     decorator under `tfx.dsl.component.experimental.decorators`) allowing
     Python function-based component definition.
 *   Added the experimental TemplatedExecutorContainerSpec executor class that
     supports structural placeholders (not Jinja placeholders).
-*   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
-    PTramsform when not using Dataflow runner.
 *   Added the experimental function "create_container_component" that
     simplifies creating container-based components.
-*   Removed the incomplete cifar10 example.
+*   Implemented a TFJS rewriter.
+*   Added the scripts/run_component.py script which makes it easy to run the
+    component code and executor code. (Similar to scripts/run_executor.py)
+*   Added support for container component execution to BeamDagRunner.
+*   Introduced experimental generic Artifact types for ML workflows.
+*   Added support for `float` execution properties.
+
+## Bug fixes and other changes
+*   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
+    PTramsform when not using Dataflow runner.
 *   Enhanced add_downstream_node / add_upstream_node to apply symmetric changes
     when being called. This method enables task-based dependencies by enforcing
     execution order for synchronous pipelines on supported platforms. Currently,
     the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
-*   Added Tuner component.
 *   Added the container-based sample pipeline (download, filter, print)
-*   Added the scripts/run_component.py script which makes it easy to run the
-    component code and executor code. (Similar to scripts/run_executor.py)
-*   Added support for container component execution to BeamDagRunner.
-*   Introduced experimental generic Artifact types for ML workflows.
-
-## Bug fixes and other changes
+*   Removed the incomplete cifar10 example.
 *   Removed `python-snappy` from `[all]` extra dependency list.
 *   Tests depends on `apache-airflow>=1.10.10,<2`;
 *   Removed test dependency to tzlocal.
