@@ -32,6 +32,7 @@ from ml_metadata.proto import metadata_store_service_pb2
 from ml_metadata.proto import metadata_store_service_pb2_grpc
 from tfx.orchestration import metadata
 from tfx.orchestration.kubeflow import test_utils
+from tfx.orchestration.test_pipelines import download_grep_print_pipeline
 from tfx.types import standard_artifacts
 
 # TODO(jxzheng): Change this hard-coded port forwarding address to a dynamic
@@ -213,6 +214,30 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
     cached_execution = self._get_executions_by_pipeline_name_and_state(
         pipeline_name=pipeline_name, state=metadata.EXECUTION_STATE_CACHED)
     self.assertEqual(2, len(cached_execution))
+
+  def testCreateContainerComponentEnd2EndPipeline(self):
+    """End-to-End test for container components."""
+    pipeline_name = 'kubeflow-container-e2e-test-{}'.format(self._random_id())
+    text_url = (
+        'https://storage.googleapis.com/ml-pipeline-playground/hamlet.txt')
+    pattern = 'art thou'
+    component_instances = download_grep_print_pipeline.create_pipeline_component_instances(
+        text_url=text_url,
+        pattern=pattern,
+    )
+    # Test that the pipeline can be executed successfully.
+    pipeline = self._create_pipeline(pipeline_name, component_instances)
+    self._compile_and_run_pipeline(
+        pipeline=pipeline, workflow_name=pipeline_name)
+    # Test if the correct value has been passed.
+    artifacts = self._get_artifacts_with_type_and_pipeline(
+        type_name='ExternalArtifact', pipeline_name=pipeline_name)
+    # There should be exactly two artifacts.
+    self.assertEqual(len(artifacts), 2)
+    for artifact in artifacts:
+      # TODO(b/150515270) Remove the '/data' suffix when b/150515270 is fixed.
+      artifact_value = tf.io.gfile.GFile(artifact.uri + '/data', 'r').read()
+      self.assertGreater(len(artifact_value), 100)
 
 
 if __name__ == '__main__':
