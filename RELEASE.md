@@ -67,6 +67,7 @@
 ### For component authors
 *   Converted the BaseNode class attributes to the constructor parameters. This
     won't affect any components derived from BaseComponent.
+*   Changed the encoding of the Integer and Float artifacts to be more portable.
 
 ## Documentation updates
 *   N/A
