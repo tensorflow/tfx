@@ -31,7 +31,8 @@ from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 from ml_metadata.proto import metadata_store_service_pb2_grpc
 from tfx.orchestration import metadata
-from tfx.orchestration.kubeflow import test_utils
+from tfx.orchestration import test_utils
+from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.test_pipelines import download_grep_print_pipeline
 from tfx.types import standard_artifacts
 
@@ -43,7 +44,7 @@ from tfx.types import standard_artifacts
 _KFP_E2E_TEST_FORWARDING_PORT = '8081'
 
 
-class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
+class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
   @classmethod
   def setUpClass(cls):
@@ -180,8 +181,8 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
   def testSimpleEnd2EndPipeline(self):
     """End-to-End test for simple pipeline."""
-    pipeline_name = 'kubeflow-e2e-test-{}'.format(self._random_id())
-    components = test_utils.create_e2e_components(
+    pipeline_name = 'kubeflow-e2e-test-{}'.format(test_utils.random_id())
+    components = kubeflow_test_utils.create_e2e_components(
         self._pipeline_root(pipeline_name),
         self._data_root,
         self._transform_module,
@@ -194,8 +195,10 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
   def testPrimitiveEnd2EndPipeline(self):
     """End-to-End test for primitive artifacts passing."""
-    pipeline_name = 'kubeflow-primitive-e2e-test-{}'.format(self._random_id())
-    components = test_utils.create_primitive_type_components(pipeline_name)
+    pipeline_name = 'kubeflow-primitive-e2e-test-{}'.format(
+        test_utils.random_id())
+    components = kubeflow_test_utils.create_primitive_type_components(
+        pipeline_name)
     # Test that the pipeline can be executed successfully.
     pipeline = self._create_pipeline(pipeline_name, components)
     self._compile_and_run_pipeline(
@@ -217,7 +220,8 @@ class KubeflowEndToEndTest(test_utils.BaseKubeflowTest):
 
   def testCreateContainerComponentEnd2EndPipeline(self):
     """End-to-End test for container components."""
-    pipeline_name = 'kubeflow-container-e2e-test-{}'.format(self._random_id())
+    pipeline_name = 'kubeflow-container-e2e-test-{}'.format(
+        test_utils.random_id())
     text_url = (
         'https://storage.googleapis.com/ml-pipeline-playground/hamlet.txt')
     pattern = 'art thou'
