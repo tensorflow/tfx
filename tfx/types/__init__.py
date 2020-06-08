@@ -22,4 +22,4 @@ from tfx.types.channel import Channel
 from tfx.types.component_spec import ComponentSpec
 
 # Property type for artifacts, executions and contexts.
-PType = Union[int, float, Text]
+PropertyType = Union[int, float, Text]
