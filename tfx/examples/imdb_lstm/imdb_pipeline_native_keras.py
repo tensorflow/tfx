@@ -22,7 +22,6 @@ from typing import Text
 
 import absl
 import tensorflow_model_analysis as tfma
-import tensorflow_datasets as tfds
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -73,31 +72,32 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
                      direct_num_workers: int) -> pipeline.Pipeline:
-    """Implements the imdb sentiment analysis pipline with TFX."""
-    examples = external_input(data_root)
-    # Brings data in to the pipline
-    example_gen = CsvExampleGen(input=examples)
+  """Implements the imdb sentiment analysis pipline with TFX."""
+  examples = external_input(data_root)
+  # Brings data in to the pipline
+  example_gen = CsvExampleGen(input=examples)
 
-    # Computes statistics over data for visualization and example validation.
-    statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
-    # Generates schema based on statistics files.
-    schema_gen = SchemaGen(
-      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+  # Generates schema based on statistics files.
+  schema_gen = SchemaGen(
+      statistics=statistics_gen.outputs['statistics'],
+      infer_feature_shape=True)
 
-    # Performs anomaly detection based on statistics and data schema.
-    example_validator = ExampleValidator(
+  # Performs anomaly detection based on statistics and data schema.
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
-    # Performs transformations and feature engineering in training and serving.
-    transform = Transform(
+  # Performs transformations and feature engineering in training and serving.
+  transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-     # Uses user-provided Python function that trains a model using TF-Learn.
-    trainer = Trainer(
+    # Uses user-provided Python function that trains a model using TF-Learn.
+  trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
@@ -106,16 +106,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       train_args=trainer_pb2.TrainArgs(),
       eval_args=trainer_pb2.EvalArgs())
 
-    # Get the latest blessed model for model validation.
-    model_resolver = ResolverNode(
+  # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
       instance_name='latest_blessed_model_resolver',
       resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
       model=Channel(type=Model),
       model_blessing=Channel(type=ModelBlessing))
 
-    # Uses TFMA to compute an evaluation statistics over features of a model and
-    # perform quality validation of a candidate model (compared to a baseline).
-    eval_config = tfma.EvalConfig(
+  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(label_key='sentiment')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
@@ -130,24 +130,24 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                           absolute={'value': -1e-10})))
           ])
       ])
-  
-    evaluator = Evaluator(
+
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
-    # Checks whether the model passed the validation steps and pushes the model
-    # to a file destination if check passed.
-    pusher = Pusher(
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
-    
-    return pipeline.Pipeline(
+
+  return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=[
@@ -164,17 +164,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       enable_cache=True,
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-  ) 
+      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
 if __name__ == '__main__':
-   absl.logging.set_verbosity(absl.logging.INFO)
-   BeamDagRunner().run(
-           _create_pipeline(
-               pipeline_name = _pipeline_name,
-               pipeline_root = _pipeline_root,
-               data_root = _data_root,
-               module_file = _module_file,
-               serving_model_dir = _serving_model_dir,
-               metadata_path = _metadata_path,
-               direct_num_workers = 0))
+  absl.logging.set_verbosity(absl.logging.INFO)
+  BeamDagRunner().run(
+      _create_pipeline(
+          pipeline_name=_pipeline_name,
+          pipeline_root=_pipeline_root,
+          data_root=_data_root,
+          module_file=_module_file,
+          serving_model_dir=_serving_model_dir,
+          metadata_path=_metadata_path,
+          direct_num_workers=0))

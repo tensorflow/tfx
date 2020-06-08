@@ -33,30 +33,39 @@ _EVAL_BATCH_SIZE = 64
 _EVAL_DATA_SIZE = int(50000 / 3)
 _LABEL_KEY = "sentiment"
 DELIMITERS = '.,!?() '
-_MAX_FEATURES = 8000 
-_MAX_LEN = 100 
+_MAX_FEATURES = 8000
+_MAX_LEN = 100
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
-  return tf.data.TFRecordDataset(filenames, compression_type='GZIP'
-          )
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 def _sentiment_to_int(sentiment):
-    """Converting labels from string to integer"""
-    ints = tf.cast(sentiment, tf.int64)
-    return ints
+  """Cast the label type to int64"""
+  ints = tf.cast(sentiment, tf.int64)
+  return ints
 
 def _tokenize_review(review):
-    review_sparse = tf.compat.v1.string_split(tf.reshape(review, shape=[-1]), 
-            DELIMITERS)
-    review_indices = tft.compute_and_apply_vocabulary(review_sparse, 
-            default_value=_MAX_FEATURES,
-            top_k=_MAX_FEATURES)
-    dense = tf.sparse.to_dense(review_indices, default_value=_MAX_FEATURES)
-    padding_config = [[0, 0], [0, _MAX_LEN]]
-    dense = tf.pad(dense, padding_config, 'CONSTANT', constant_values = _MAX_FEATURES)
-    padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
-    return padded 
+  """Tokenize the reivews by spliting the reviews, then constructing a
+  vocabulary. Map the words to their frequency index in the vocabulary"""
+  review_sparse = tf.compat.v1.string_split(
+      tf.reshape(review, shape=[-1]),
+      DELIMITERS)
+
+  review_indices = tft.compute_and_apply_vocabulary(
+      review_sparse,
+      default_value=_MAX_FEATURES,
+      top_k=_MAX_FEATURES)
+
+  dense = tf.sparse.to_dense(review_indices, default_value=_MAX_FEATURES)
+  padding_config = [[0, 0], [0, _MAX_LEN]]
+  dense = tf.pad(
+      dense, padding_config,
+      'CONSTANT',
+      constant_values=_MAX_FEATURES)
+
+  padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
+  return padded
 
 def preprocessing_fn(inputs):
   """tf.transform's callback function for preprocessing inputs.
@@ -70,9 +79,8 @@ def preprocessing_fn(inputs):
   sentiment = inputs['sentiment']
   review = inputs['review']
   return {
-          'sentiment':_sentiment_to_int(sentiment),
-          'embedding_input':_tokenize_review(review),
-          }
+      'sentiment': _sentiment_to_int(sentiment),
+      'embedding_input': _tokenize_review(review)}
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
@@ -111,21 +119,24 @@ def _build_keras_model() -> tf.keras.Model:
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   model = tf.keras.Sequential([
       tf.keras.layers.Embedding(_MAX_FEATURES+1, 64),
-      tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64, 
+      tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
+          64,
           dropout=0.2,
           recurrent_dropout=0.2)),
       tf.keras.layers.Dense(64, activation='relu'),
       tf.keras.layers.Dense(1)
   ])
-  model.compile(loss='binary_crossentropy',
-              optimizer=tf.keras.optimizers.Adam(1e-4),
-              metrics=['accuracy'])
+
+  model.compile(
+      loss='binary_crossentropy',
+      optimizer=tf.keras.optimizers.Adam(1e-4),
+      metrics=['accuracy'])
+
   model.summary()
   return model
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example."""
-
   model.tft_layer = tf_transform_output.transform_features_layer()
 
   @tf.function
@@ -153,16 +164,21 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
-                            batch_size=_TRAIN_BATCH_SIZE)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
-                           batch_size=_EVAL_BATCH_SIZE)
+  train_dataset = _input_fn(
+      fn_args.train_files,
+      tf_transform_output,
+      batch_size=_TRAIN_BATCH_SIZE)
+
+  eval_dataset = _input_fn(
+      fn_args.eval_files,
+      tf_transform_output,
+      batch_size=_EVAL_BATCH_SIZE)
+
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
   eval_steps = _EVAL_DATA_SIZE / _EVAL_BATCH_SIZE
-
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
-      model = _build_keras_model()
+    model = _build_keras_model()
 
   model.fit(
       train_dataset,
