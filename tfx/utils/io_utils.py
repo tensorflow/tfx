@@ -70,7 +70,7 @@ def copy_dir(src: Text, dst: Text) -> None:
       tf.io.gfile.copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
-      tf.io.gfile.makedirs(os.path.join(dst, sub_dir))
+      tf.io.gfile.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
 
 
 def get_only_uri_in_dir(dir_path: Text) -> Text:
