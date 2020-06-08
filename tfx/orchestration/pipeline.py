@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import collections
 import json
 import os
-from typing import List, Optional, Text
+from typing import Optional, Sequence, Text
 
 from absl import logging
 
@@ -78,9 +78,9 @@ class Pipeline(object):
                pipeline_root: Text,
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
-               components: Optional[List[base_node.BaseNode]] = None,
+               components: Optional[Sequence[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
-               beam_pipeline_args: Optional[List[Text]] = None,
+               beam_pipeline_args: Optional[Sequence[Text]] = None,
                **kwargs):
     """Initialize pipeline.
 
@@ -138,7 +138,7 @@ class Pipeline(object):
     return self._components
 
   @components.setter
-  def components(self, components: List[base_node.BaseNode]):
+  def components(self, components: Sequence[base_node.BaseNode]):
     deduped_components = set(components)
     producer_map = {}
     instances_per_component_type = collections.defaultdict(set)

@@ -24,7 +24,7 @@ import json
 import os
 import re
 
-from typing import Dict, List, Optional, Text, Type
+from typing import Dict, Optional, Sequence, Text, Type
 
 import absl
 
@@ -34,7 +34,7 @@ from tfx.types.artifact import Artifact
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
-def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
+def parse_artifact_dict(json_str: Text) -> Dict[Text, Sequence[Artifact]]:
   """Parse a dict from key to list of Artifact from its json format."""
   tfx_artifacts = {}
   for k, l in json.loads(json_str).items():
@@ -43,7 +43,8 @@ def parse_artifact_dict(json_str: Text) -> Dict[Text, List[Artifact]]:
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.
-def jsonify_artifact_dict(artifact_dict: Dict[Text, List[Artifact]]) -> Text:
+def jsonify_artifact_dict(
+    artifact_dict: Dict[Text, Sequence[Artifact]]) -> Text:
   """Serialize a dict from key to list of Artifact into json format."""
   d = {}
   for k, l in artifact_dict.items():
@@ -51,7 +52,7 @@ def jsonify_artifact_dict(artifact_dict: Dict[Text, List[Artifact]]) -> Text:
   return json.dumps(d)
 
 
-def get_single_instance(artifact_list: List[Artifact]) -> Artifact:
+def get_single_instance(artifact_list: Sequence[Artifact]) -> Artifact:
   """Get a single instance of Artifact from a list of length one.
 
   Args:
@@ -69,7 +70,7 @@ def get_single_instance(artifact_list: List[Artifact]) -> Artifact:
   return artifact_list[0]
 
 
-def get_single_uri(artifact_list: List[Artifact]) -> Text:
+def get_single_uri(artifact_list: Sequence[Artifact]) -> Text:
   """Get the uri of Artifact from a list of length one.
 
   Args:
@@ -84,7 +85,7 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
-def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
+def get_split_uri(artifact_list: Sequence[Artifact], split: Text) -> Text:
   """Get the uri of Artifact with matching split from given list.
 
   Args:
@@ -109,7 +110,7 @@ def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   return os.path.join(matching_artifacts[0].uri, split)
 
 
-def encode_split_names(splits: List[Text]) -> Text:
+def encode_split_names(splits: Sequence[Text]) -> Text:
   """Get the encoded representation of a list of split names."""
   rewritten_splits = []
   for split in splits:
@@ -134,14 +135,14 @@ def encode_split_names(splits: List[Text]) -> Text:
   return json.dumps(rewritten_splits)
 
 
-def decode_split_names(split_names: Text) -> List[Text]:
+def decode_split_names(split_names: Text) -> Sequence[Text]:
   """Decode an encoded list of split names."""
   if not split_names:
     return []
   return json.loads(split_names)
 
 
-def _get_subclasses(cls: Type[Artifact]) -> List[Type[Artifact]]:
+def _get_subclasses(cls: Type[Artifact]) -> Sequence[Type[Artifact]]:
   """Internal method. Get transitive subclasses of an Artifact subclass."""
   all_subclasses = []
   for subclass in cls.__subclasses__():
