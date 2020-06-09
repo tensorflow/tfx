@@ -25,6 +25,10 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
+from tfx import dependencies
+from tfx import version
+
+
 # Find the Protocol Compiler.
 if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
   protoc = os.environ['PROTOC']
@@ -74,30 +78,14 @@ for file_pattern in _PROTO_FILE_PATTERNS:
   for proto_file in glob.glob(file_pattern):
     generate_proto(proto_file)
 
-# Get various package dependencies list.
-with open('tfx/dependencies.py') as fp:
-  globals_dict = {}
-  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
-_make_required_install_packages = globals_dict['make_required_install_packages']
-_make_extra_packages_docker_image = globals_dict[
-    'make_extra_packages_docker_image']
-_make_extra_packages_tfjs = globals_dict[
-    'make_extra_packages_tfjs']
-_make_all_dependency_packages = globals_dict['make_all_dependency_packages']
-
-# Get version from version module.
-with open('tfx/version.py') as fp:
-  globals_dict = {}
-  exec(fp.read(), globals_dict)  # pylint: disable=exec-used
-__version__ = globals_dict['__version__']
-
 # Get the long description from the README file.
 with open('README.md') as fp:
   _LONG_DESCRIPTION = fp.read()
 
+
 setup(
     name='tfx',
-    version=__version__,
+    version=version.__version__,
     author='Google LLC',
     author_email='tensorflow-extended-dev@googlegroups.com',
     license='Apache 2.0',
@@ -122,13 +110,13 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     namespace_packages=[],
-    install_requires=_make_required_install_packages(),
+    install_requires=dependencies.make_required_install_packages(),
     extras_require={
         # In order to use 'docker-image' or 'all', system libraries specified
         # under 'tfx/tools/docker/Dockerfile' are required
-        'docker-image': _make_extra_packages_docker_image(),
-        'tfjs': _make_extra_packages_tfjs(),
-        'all': _make_all_dependency_packages(),
+        'docker-image': dependencies.make_extra_packages_docker_image(),
+        'tfjs': dependencies.make_extra_packages_tfjs(),
+        'all': dependencies.make_all_dependency_packages(),
     },
     setup_requires=['pytest-runner'],
     python_requires='>=3.5,<4',
@@ -150,3 +138,4 @@ setup(
         [console_scripts]
         tfx=tfx.tools.cli.cli_main:cli_group
     """)
+
