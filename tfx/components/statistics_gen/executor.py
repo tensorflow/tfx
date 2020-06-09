@@ -23,8 +23,6 @@ from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
-import pyarrow as pa
-import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx_bsl.tfxio import tf_example_record
@@ -126,10 +124,6 @@ class Executor(base_executor.BaseExecutor):
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         data = p | 'TFXIORead[{}]'.format(split) >> input_tfxio.BeamSource()
-        # TODO(b/153368237): Clean this up after a release post tfx 0.21.
-        if not getattr(tfdv, 'TFDV_ACCEPT_RECORD_BATCH', False):
-          data |= 'RecordBatchToTable[{}]'.format(split) >> beam.Map(
-              lambda rb: pa.Table.from_batches([rb]))
         _ = (
             data
             | 'GenerateStatistics[{}]'.format(split) >>

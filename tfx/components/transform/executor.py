@@ -537,10 +537,6 @@ class Executor(base_executor.BaseExecutor):
     pcoll |= 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
     stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
-    # TODO(b/153368237): Clean this up after a release post tfx 0.21.
-    if not getattr(tfdv, 'TFDV_ACCEPT_RECORD_BATCH', False):
-      pcoll |= 'RecordBatchToTable' >> beam.Map(
-          lambda rb: pa.Table.from_batches([rb]))
     return (
         pcoll
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
