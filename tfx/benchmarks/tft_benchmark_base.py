@@ -26,7 +26,6 @@ import time
 
 from absl import logging
 import apache_beam as beam
-from apache_beam.runners.portability import fn_api_runner
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform import graph_tools
@@ -207,7 +206,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     """
     common_variables = _get_common_variables(self._dataset)
 
-    pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
+    pipeline = self._create_beam_pipeline()
     _ = pipeline | _AnalyzeAndTransformDataset(
         self._dataset, common_variables.tf_metadata_schema,
         common_variables.preprocessing_fn,
