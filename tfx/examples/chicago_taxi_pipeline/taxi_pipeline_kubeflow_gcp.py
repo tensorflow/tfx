@@ -175,19 +175,22 @@ def create_pipeline(
                 max_int64=max_int64, query_sample_rate=str(query_sample_rate))
 
   # Beam args to run data processing on DataflowRunner.
+  #
   # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
   # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
+  # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
+  #                    scaling bottleneck.
   if beam_pipeline_args is None:
     beam_pipeline_args = [
         '--runner=DataflowRunner',
-        '--experiments=shuffle_mode=auto',
         '--project=' + _project_id,
         '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
         '--region=' + _gcp_region,
+
+        # Temporary overrides of defaults.
         '--disk_size_gb=50',
-        # If you are blocked by IP Address quota, using a bigger machine_type
-        # will reduce the number of needed IPs.
-        # '--machine_type=n1-standard-8',
+        '--experiments=shuffle_mode=auto',
+        '--machine_type=n1-standard-8',
     ]
 
   # Number of epochs in training.

@@ -116,11 +116,23 @@ _AI_PLATFORM_SERVING_ARGS = {
     'regions': [_GCP_REGION],
 }
 
+# TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
+# TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
 _BEAM_PIPELINE_ARGS = [
-    '--runner=DataflowRunner', '--experiments=shuffle_mode=auto',
+    '--runner=DataflowRunner',
     '--project=' + _GCP_PROJECT_ID,
     '--temp_location=gs://' + os.path.join(_BUCKET_NAME, 'dataflow', 'tmp'),
-    '--region=' + _GCP_REGION, '--disk_size_gb=50', '--no_use_public_ips'
+    '--region=' + _GCP_REGION,
+
+    # In order not to consume in-use global IP addresses by Dataflow workers,
+    # configure workers to not use public IPs. If workers needs access to
+    # public Internet, CloudNAT needs to be configured for the VPC in which
+    # Dataflow runs.
+    '--no_use_public_ips'
+
+    # Temporary overrides of defaults.
+    '--disk_size_gb=50',
+    '--experiments=shuffle_mode=auto',
 ]
 
 
