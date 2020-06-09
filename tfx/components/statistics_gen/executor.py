@@ -27,7 +27,6 @@ import pyarrow as pa
 import tensorflow_data_validation as tfdv
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
-from tfx_bsl import tfxio
 from tfx_bsl.tfxio import tf_example_record
 
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -120,12 +119,9 @@ class Executor(base_executor.BaseExecutor):
       for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))
         input_uri = io_utils.all_files_pattern(uri)
-        tfxio_kwargs = {'file_pattern': input_uri}
-        # TODO(b/151624179): clean this up after tfx_bsl is released with the
-        # below flag.
-        if getattr(tfxio, 'TFXIO_HAS_TELEMETRY', False):
-          tfxio_kwargs['telemetry_descriptors'] = _TELEMETRY_DESCRIPTORS
-        input_tfxio = tf_example_record.TFExampleRecord(**tfxio_kwargs)
+        input_tfxio = tf_example_record.TFExampleRecord(
+            file_pattern=input_uri,
+            telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
         output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
