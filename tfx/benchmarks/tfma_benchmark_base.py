@@ -22,7 +22,6 @@ import time
 # Standard Imports
 
 import apache_beam as beam
-from apache_beam.runners.portability import fn_api_runner
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis.eval_saved_model import load
 
@@ -62,7 +61,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
     """
-    pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
+    pipeline = self._create_beam_pipeline()
     raw_data = (
         pipeline
         | "Examples" >> beam.Create(
