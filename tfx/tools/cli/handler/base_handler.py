@@ -121,6 +121,9 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     Returns:
       Python dictionary with pipeline details extracted from DSL.
     """
+    # TODO(b/157599419): Consider using a better way to extract pipeline info:
+    # e.g. pipeline name/root. Currently we relies on consulting a env var when
+    # creating Pipeline object, which is brittle.
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
     if os.path.isdir(pipeline_dsl_path):
       sys.exit('Provide dsl file path.')
