@@ -99,6 +99,35 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
           {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
         self._beam_pipeline_args.extend(telemetry_utils.make_beam_labels_args())
 
+  def _get_tmp_dir(self) -> Text:
+    """Get the temporary directory path."""
+    if not self._context:
+      raise RuntimeError('No context for the executor')
+    tmp_path = self._context.get_tmp_path()
+    if not tf.io.gfile.exists(tmp_path):
+      absl.logging.info('Creating temp directory at %s', tmp_path)
+      tf.io.gfile.makedirs(tmp_path)
+    return tmp_path
+
+  def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],
+                   outputs: Dict[Text, List[types.Artifact]],
+                   exec_properties: Dict[Text, Any]) -> None:
+    """Log inputs, outputs, and executor properties in a standard format."""
+    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
+    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
+                       artifact_utils.jsonify_artifact_dict(inputs))
+    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
+                       artifact_utils.jsonify_artifact_dict(outputs))
+    absl.logging.debug('Execution properties for %s are: %s',
+                       self.__class__.__name__, json.dumps(exec_properties))
+
+
+class BeamExecutor(BaseExecutor):
+  """ TFX executor class for handling Beam-related logic."""
+
+  def __init__(self, context: Optional[object] = None):
+    super().__init__(context)
+
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
@@ -129,28 +158,6 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
           DirectOptions).direct_running_mode = 'multi_processing'
     return beam.Pipeline(
         options=pipeline_options, runner=fn_api_runner.FnApiRunner())
-
-  def _get_tmp_dir(self) -> Text:
-    """Get the temporary directory path."""
-    if not self._context:
-      raise RuntimeError('No context for the executor')
-    tmp_path = self._context.get_tmp_path()
-    if not tf.io.gfile.exists(tmp_path):
-      absl.logging.info('Creating temp directory at %s', tmp_path)
-      tf.io.gfile.makedirs(tmp_path)
-    return tmp_path
-
-  def _log_startup(self, inputs: Dict[Text, List[types.Artifact]],
-                   outputs: Dict[Text, List[types.Artifact]],
-                   exec_properties: Dict[Text, Any]) -> None:
-    """Log inputs, outputs, and executor properties in a standard format."""
-    absl.logging.debug('Starting %s execution.', self.__class__.__name__)
-    absl.logging.debug('Inputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(inputs))
-    absl.logging.debug('Outputs for %s are: %s', self.__class__.__name__,
-                       artifact_utils.jsonify_artifact_dict(outputs))
-    absl.logging.debug('Execution properties for %s are: %s',
-                       self.__class__.__name__, json.dumps(exec_properties))
 
 
 class EmptyExecutor(BaseExecutor):
