@@ -35,7 +35,7 @@ from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow import kubeflow_test_utils
+from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
