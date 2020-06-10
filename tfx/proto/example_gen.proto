@@ -110,5 +110,7 @@ message SplitConfig {
   repeated Split splits = 1;
 
   // TODO(jyzhao): support feature based partition.
-  reserved 2;
+  string partition_feature_name = 2;
+  
+  reserved 3;
 }
