@@ -484,7 +484,7 @@ tfma.export.export_eval_savedmodel(
 ![Model Analysis](images/prog_evaluator.png)
 
 Following initial model development and training it's important to analyze and
-really understand you model's performance.  A typical TFX pipeline will include
+really understand your model's performance.  A typical TFX pipeline will include
 an [Evaluator](evaluator.md) component, which leverages the capabilities of the
 [TensorFlow Model Analysis (TFMA)](tfma.md) library, which provides a power
 toolset for this phase of development.  An Evaluator component consumes the
