@@ -1,18 +1,24 @@
-# Custom TFX Component
+# Building Fully Custom Components
 
-Note: This guide is based on TFX 0.15.0 and requires TFX >= 0.15.0.
+This guide describes how to use the TFX API to build a fully custom component.
+Fully custom components let you build components by defining the component
+specification, executor, and component interface classes. This approach lets you
+reuse and extend a standard component to fit your needs.
+
+If you are new to TFX pipelines,
+[learn more about the core concepts of TFX pipelines](understanding_tfx_pipelines).
 
 ## Custom executor or custom component
 
 If only custom processing logic is needed while the inputs, outputs, and
 execution properties of the component are the same as an existing component, a
-custom executor is sufficient. A custom component is needed when any of the
-inputs, outputs, or execution properties are different than any existing TFX
+custom executor is sufficient. A fully custom component is needed when any of
+the inputs, outputs, or execution properties are different than any existing TFX
 components.
 
 ## How to create a custom component?
 
-Developing a custom component will require:
+Developing a fully custom component requires:
 
 *   A defined set of input and output artifact specifications for the new
     component. Specially, the types for the input artifacts should be consistent
@@ -24,14 +30,14 @@ Developing a custom component will require:
 ### ComponentSpec
 
 The `ComponentSpec` class defines the component contract by defining the input
-and output artifacts to a component as well as the parameters that will be used
-for the component execution. There are three parts in it:
+and output artifacts to a component as well as the parameters that are used for
+the component execution. There are three parts in it:
 
-*   *INPUTS*: A dictionary of typed parameters for the input artifacts that will
-    be passed into the component executor. Normally input artifacts are the
-    outputs from upstream components and thus share the same type.
+*   *INPUTS*: A dictionary of typed parameters for the input artifacts that are
+    into the component executor. Normally input artifacts are the outputs from
+    upstream components and thus share the same type.
 *   *OUTPUTS*: A dictionary of typed parameters for the output artifacts which
-    the component will produce.
+    the component produces.
 *   *PARAMETERS*: A dictionary of additional
     [ExecutionParameter](https://github.com/tensorflow/tfx/blob/54aa6fbec6bffafa8352fe51b11251b1e44a2bf1/tfx/types/component_spec.py#L274)
     items that will be passed into the component executor. These are
@@ -176,7 +182,7 @@ def _create_pipeline():
   )
 ```
 
-## Deploy a custom component
+## Deploy a fully custom component
 
 Beside code changes, all the newly added parts (`ComponentSpec`, `Executor`,
 component interface) need to be accessible in pipeline running environment in
