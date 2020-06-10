@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text
 
-import absl
+from absl import logging
 
 from tfx import types
 from tfx.orchestration import data_types
@@ -60,8 +60,8 @@ class Publisher(object):
     Returns:
       A dict containing output artifacts.
     """
-    absl.logging.debug('Outputs: %s', output_artifacts)
-    absl.logging.debug('Execution properties: %s', exec_properties)
+    logging.debug('Outputs: %s', output_artifacts)
+    logging.debug('Execution properties: %s', exec_properties)
 
     self._metadata_handler.publish_execution(
         component_info=component_info,
