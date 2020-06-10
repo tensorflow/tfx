@@ -21,6 +21,7 @@ import datetime
 import mock
 import tensorflow as tf
 
+import sklearn  # pylint: disable=unused-import,g-bad-import-order
 # TODO(b/158143615): importing airflow after kerastuner causes issue.
 from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
 
