@@ -35,7 +35,7 @@ from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
-from tfx.orchestration.kubeflow import kubeflow_test_utils
+from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
 class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
