@@ -8,6 +8,7 @@
 *   Relaxed the rule that output artifact uris must be newly created. This is a
     temporary workaround to make retry work. We will introduce a more
     comprehensive solution for idempotent execution.
+*   Use TFXIO and batched extractors by default in Evaluator (TFMA V2).
 
 ## Breaking changes
 

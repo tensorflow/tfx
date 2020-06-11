@@ -38,10 +38,6 @@ from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 
-# TODO(pachristopher): After TFMA is released, make TFXIO as the default path.
-_USE_TFXIO = False
-
-
 class Executor(base_executor.BaseExecutor):
   """Generic TFX model evaluator executor."""
 
@@ -189,39 +185,28 @@ class Executor(base_executor.BaseExecutor):
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
       # pylint: disable=expression-not-assigned
-      if _USE_TFXIO:
-        tensor_adapter_config = None
-        if tfma.is_batched_input(eval_shared_model, eval_config):
-          tfxio = tf_example_record.TFExampleRecord(
-              file_pattern=file_pattern,
-              schema=schema,
-              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-          if schema is not None:
-            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                arrow_schema=tfxio.ArrowSchema(),
-                tensor_representations=tfxio.TensorRepresentations())
-          data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
-        else:
-          data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-              file_pattern=file_pattern)
-        (data
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec,
-             tensor_adapter_config=tensor_adapter_config))
+      tensor_adapter_config = None
+      if tfma.is_batched_input(eval_shared_model, eval_config):
+        tfxio = tf_example_record.TFExampleRecord(
+            file_pattern=file_pattern,
+            schema=schema,
+            raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+        if schema is not None:
+          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+              arrow_schema=tfxio.ArrowSchema(),
+              tensor_representations=tfxio.TensorRepresentations())
+        data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
       else:
         data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
             file_pattern=file_pattern)
-        (data
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec))
+      (data
+       | 'ExtractEvaluateAndWriteResults' >>
+       tfma.ExtractEvaluateAndWriteResults(
+           eval_shared_model=models[0] if len(models) == 1 else models,
+           eval_config=eval_config,
+           output_path=output_uri,
+           slice_spec=slice_spec,
+           tensor_adapter_config=tensor_adapter_config))
     absl.logging.info(
         'Evaluation complete. Results written to {}.'.format(output_uri))
 
