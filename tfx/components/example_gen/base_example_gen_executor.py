@@ -22,7 +22,7 @@ import abc
 import bisect
 import hashlib
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Optional
 
 import absl
 import apache_beam as beam
@@ -45,33 +45,20 @@ INPUT_KEY = 'input'
 EXAMPLES_KEY = 'examples'
 
 
-def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int], feature_name: Text) -> int:
+def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int], feature_name: Optional[Text]) -> int:
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
-
+  partition_str = record
+  # Use given feature for partitioning the examples.
   if feature_name:
-    # Use given feature for partitioning the examples.
     # Deserialize the record to tf.train.Example. 
     example = tf.train.Example()
     example.ParseFromString(record)
-    feature_list = example.features.feature[feature_name]
-    
-    # Initialize the feature value.
-    feature_value = ""
-    if feature_list.bytes_list.value:
-      feature_value = feature_list.bytes_list.value[0]
-    elif feature_list.float_list.value:
-      feature_value = feature_list.float_list.value[0]
-    elif feature_list.int64_list.value:
-      feature_value = feature_list.int64_list.value[0]
-    
-    # Convert the feature value to bytes for the fingerprint.
-    bytes_value = bytes(str(feature_value), "ascii")
-    bucket = int(hashlib.sha256(bytes_value).hexdigest(), 16) % buckets[-1]
-  else:
-    # Use the entire record.
-    bucket = int(hashlib.sha256(record).hexdigest(), 16) % buckets[-1]
-  
+    # Use the feature value to generate the fingerprint.
+    feature_proto = example.features.feature[feature_name]
+    partition_str = feature_proto.SerializeToString(deterministic=True)
+
+  bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
   #   bucket >=0 && < 10, returns 0
   #   bucket >=10 && < 50, returns 1
@@ -216,7 +203,7 @@ class BaseExampleGenExecutor(
           | 'InputToSerializedExample' >> _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
               input_to_example, input_dict, exec_properties,
               input_config.splits[0].pattern)
-          | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets, feature_name))
+          | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets, output_config.split_config))
     else:
       # Use input splits.
       for split in input_config.splits:
