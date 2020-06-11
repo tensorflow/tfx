@@ -39,12 +39,12 @@ Artifacts must be strongly typed with an **artifact type** registered in the
 
 Artifact types have a name and define a schema of its properties. Artifact type
 names must be unique in your ML Metadata store. TFX provides several
-[standard artifact types](https://github.com/tensorflow/tfx/blob/master/tfx/types/standard_artifacts.py)
+[standard artifact types](https://github.com/tensorflow/tfx/blob/master/tfx/types/standard_artifacts.py){: .external }
 that describe complex data types and value types, such as: string, integer, and
 float. You can
 [reuse these artifact types](https://github.com/tensorflow/tfx/blob/master/tfx/types/standard_artifacts.py){: .external }
 or define custom artifact types that derive from
-[`Artifact`](https://github.com/tensorflow/tfx/blob/master/tfx/types/artifact.py).
+[`Artifact`](https://github.com/tensorflow/tfx/blob/master/tfx/types/artifact.py){: .external }.
 
 ## Parameter
 
@@ -74,7 +74,7 @@ your TFX pipeline. Components are composed of:
 *   A component interface, which packages the component specification and
     executor for use in a pipeline.
 
-TFX provides several [standard components](guide#tfx_pipeline_components) that
+TFX provides several [standard components](index#tfx_standard_components) that
 you can use in your pipelines. If these components do not meet your needs, you
 can build custom components.
 [Learn more about custom components](understanding_custom_components).
