@@ -45,18 +45,22 @@ INPUT_KEY = 'input'
 EXAMPLES_KEY = 'examples'
 
 
-def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int], feature_name: Optional[Text]) -> int:
+def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int], 
+                 split_config: example_gen_pb2.SplitConfig) -> int:
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
   partition_str = record
-  # Use given feature for partitioning the examples.
-  if feature_name:
+  if split_config.HasField("splitting_method_config"):
+    # Use a feature for partitioning the examples.
+    feature_name = split_config.partition_feature_name
     # Deserialize the record to tf.train.Example. 
     example = tf.train.Example()
     example.ParseFromString(record)
-    # Use the feature value to generate the fingerprint.
-    feature_proto = example.features.feature[feature_name]
-    partition_str = feature_proto.SerializeToString(deterministic=True)
+    feature = example.features.feature[feature_name]
+    if feature.HasField("float_list"):
+        # Only bytes_list and int64_list features are supported.
+        raise RuntimeError('Feature type `float_list` is not supported.')
+    partition_str = feature.SerializeToString(deterministic=True)
 
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
@@ -196,8 +200,6 @@ class BaseExampleGenExecutor(
       for split in output_config.split_config.splits:
         total_buckets += split.hash_buckets
         buckets.append(total_buckets)
-      # If it's not empty, use a feature for partitioning the examples.
-      feature_name = output_config.split_config.partition_feature_name
       example_splits = (
           pipeline
           | 'InputToSerializedExample' >> _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
