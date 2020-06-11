@@ -22,7 +22,8 @@ from __future__ import unicode_literals
 import collections
 import json
 import os
-from typing import List, Optional, Text
+import abc
+from typing import List, Optional, Text, Type
 
 import absl
 
@@ -36,6 +37,8 @@ from tfx.components.base.executor_spec import ExecutorClassSpec
 from tfx.components.base.base_executor import BaseExecutor
 
 from tfx.types.artifact import Artifact
+from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
+
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
 # MySQL's database name cannot exceed 64 chars:
@@ -137,6 +140,7 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
+    self.mock_executor_spec = {}
     self.expected_inputs, self.expected_outputs = {}, {}
     # Mapping component's name to its executor to store dummy executors 
 
@@ -198,12 +202,24 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_executor(self, component_id: Text, executor: BaseExecutor, 
-                        input_artifacts: List[Artifact]=None,
-                         output_artifacts: List[Artifact]=None) -> None:
+  # def set_executor(self, component_id: Text, executor: BaseExecutor, 
+  #                       input_artifacts: List[Artifact]=None,
+  #                        output_artifacts: List[Artifact]=None) -> None:
+  #   for component in self._components:
+  #     if component_id is component.id:
+  #       component.executor_spec = ExecutorClassSpec(executor)
+  #       if input_artifacts is not None and output_artifacts is not None:
+  #         self.expected_inputs[component_id] = input_artifacts
+          # self.expected_outputs[component_id] = output_artifacts
+  def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory], 
+                      input_artifacts: List[Artifact]=None,
+                       output_artifacts: List[Artifact]=None) -> None:
     for component in self._components:
       if component_id is component.id:
-        component.executor_spec = ExecutorClassSpec(executor)
+        # exec_spec= FakeExecutorClassSpec(executor_factory)
+        self.mock_executor_spec[component_id] = executor_factory
+        # component.executor_spec = exec_spec # converts to base execspec
+        # absl.logging.info("exec_spec %s", exec_spec)
         if input_artifacts is not None and output_artifacts is not None:
           self.expected_inputs[component_id] = input_artifacts
           self.expected_outputs[component_id] = output_artifacts

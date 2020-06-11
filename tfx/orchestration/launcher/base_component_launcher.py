@@ -32,6 +32,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
 from tfx.components.base.executor_spec import ExecutorClassSpec
+from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
+
 
 from tfx.types.artifact import Artifact
 
@@ -48,6 +50,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
+      mock_executor_spec: Dict[Text, FakeComponentExecutorFactory]= None,
       expected_inputs:List[Artifact] = None,
       expected_outputs:List[Artifact] = None
   ):
@@ -89,8 +92,10 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
 
-    self.expected_inputs=expected_inputs
-    self.expected_outputs=expected_outputs
+    self.mock_executor_spec = mock_executor_spec
+
+    self.expected_inputs = expected_inputs
+    self.expected_outputs = expected_outputs
 
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
@@ -113,6 +118,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
+      mock_executor_spec: Dict[Text, FakeComponentExecutorFactory]= None,
       expected_inputs:List[Artifact]=None,
       expected_outputs:List[Artifact]=None
   ) -> 'BaseComponentLauncher':
@@ -146,6 +152,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
         component_config=component_config,
+        mock_executor_spec=mock_executor_spec,
         expected_inputs=expected_inputs,
         expected_outputs=expected_outputs)
 
@@ -205,6 +212,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
                       self._component_info.component_id)
     execution_decision = self._run_driver(self._input_dict, self._output_dict,
                                           self._exec_properties)
+    # absl.logging.info("after execution_decision, mock_executor_spec %s", self.mock_executor_spec)
 
     if not execution_decision.use_cached_results:
       absl.logging.info('Running executor for %s',

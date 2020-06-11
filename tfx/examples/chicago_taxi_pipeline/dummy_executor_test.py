@@ -56,6 +56,10 @@ from tfx.utils import dependency_utils
 from tfx.types.artifact import Artifact
 from functools import reduce
 
+from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory
+from unittest.mock import patch
+# from tfx.components.example_gen.base_example_gen_executor import 
+
 _pipeline_name = 'chicago_taxi_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
@@ -78,6 +82,7 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 # Sqlite ML-metadata db path.
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
+
 
 class DummyExecutor(BaseExecutor):
   def compare_artifacts(self, artifacts_lt: List[Artifact], artifacts_rt: List[Artifact]) -> bool:
@@ -106,6 +111,7 @@ class DummyExecutor(BaseExecutor):
       raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(inputs, input_artifacts))
     if not self.compare_artifacts(outputs, output_artifacts):
       raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(outputs, output_artifacts))
+
 # TODO(b/137289334): rename this as simple after DAG visualization is done.
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
@@ -203,51 +209,53 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           evaluator,
           pusher,
       ],
-      enable_cache=True,
+      # enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
-external_artifact = standard_artifacts.ExternalArtifact()
-external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+# @patch('tfx.components.example_gen.csv_example_gen.executor.Executor')
+def test():#W(MockExecutor):
+  # absl.logging.info("mockexecutor %s", MockExecutor)
+  external_artifact = standard_artifacts.ExternalArtifact()
+  external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
 
-examples = standard_artifacts.Examples()
-examples.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/CsvExampleGen/examples/2'
-# examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+  examples = standard_artifacts.Examples()
+  examples.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/CsvExampleGen/examples/2'
+  # examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-example_statistics=standard_artifacts.ExampleStatistics()
-example_statistics.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/StatisticsGen/statistics/70'
-# statistics.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+  example_statistics=standard_artifacts.ExampleStatistics()
+  example_statistics.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/StatisticsGen/statistics/70'
+  # statistics.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-schema=standard_artifacts.Schema()
-schema.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/SchemaGen/schema/71'
+  schema=standard_artifacts.Schema()
+  schema.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/SchemaGen/schema/71'
 
-anomalies=standard_artifacts.ExampleAnomalies()
-anomalies.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/ExampleValidator/anomalies/76'
+  anomalies=standard_artifacts.ExampleAnomalies()
+  anomalies.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/ExampleValidator/anomalies/76'
 
-# validation_output = 
+  # validation_output = 
 
-transform_graph=standard_artifacts.TransformGraph()
-transform_graph.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transform_graph/72'
+  transform_graph=standard_artifacts.TransformGraph()
+  transform_graph.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transform_graph/72'
 
-transformed_examples=standard_artifacts.Examples()
-transformed_examples.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transformed_examples/72'
-model=standard_artifacts.Model()
-model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Trainer/model/73'
+  transformed_examples=standard_artifacts.Examples()
+  transformed_examples.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transformed_examples/72'
+  model=standard_artifacts.Model()
+  model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Trainer/model/73'
 
-baseline_model=standard_artifacts.Model()
+  baseline_model=standard_artifacts.Model()
 
-evaluation=standard_artifacts.ModelEvaluation()
-evaluation.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/evaluation/74'
+  evaluation=standard_artifacts.ModelEvaluation()
+  evaluation.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/evaluation/74'
 
-model_blessing=standard_artifacts.ModelBlessing()
-model_blessing.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/blessing/74'
+  model_blessing=standard_artifacts.ModelBlessing()
+  model_blessing.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/blessing/74'
 
-pushed_model=standard_artifacts.PushedModel()
-pushed_model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Pusher/pushed_model/75'
-if __name__ == '__main__':
-  absl.logging.set_verbosity(absl.logging.INFO)
+  pushed_model=standard_artifacts.PushedModel()
+  pushed_model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Pusher/pushed_model/75'
+
   pipeline = _create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
@@ -258,16 +266,20 @@ if __name__ == '__main__':
           # 0 means auto-detect based on the number of CPUs available during
           # execution time.
           direct_num_workers=0) # pipeline dsl
+  #DummyExecutor MockExecutor
+  pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory, [external_artifact], [examples])
+  # pipeline.set_executor('StatisticsGen', DummyExecutor, [examples], [example_statistics])
+  # pipeline.set_executor('SchemaGen',  DummyExecutor, [example_statistics], [schema])
+  # pipeline.set_executor('ExampleValidator',  DummyExecutor, [example_statistics, schema], [anomalies])
+  # pipeline.set_executor('Transform',  DummyExecutor, [examples, schema], [transform_graph, transformed_examples])
+  # pipeline.set_executor('Trainer',  DummyExecutor, [examples, transform_graph, schema], [model])
+  # # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
+  # pipeline.set_executor('Evaluator',  DummyExecutor, [examples, model, baseline_model], [evaluation, model_blessing])
+  # pipeline.set_executor('Pusher',  DummyExecutor, [model, model_blessing], [pushed_model])
 
-  pipeline.set_executor('CsvExampleGen', DummyExecutor, [external_artifact], [examples])
-  pipeline.set_executor('StatisticsGen', DummyExecutor, [examples], [example_statistics])
-  pipeline.set_executor('SchemaGen',  DummyExecutor, [example_statistics], [schema])
-  pipeline.set_executor('ExampleValidator',  DummyExecutor, [example_statistics, schema], [anomalies])
-  pipeline.set_executor('Transform',  DummyExecutor, [examples, schema], [transform_graph, transformed_examples])
-  pipeline.set_executor('Trainer',  DummyExecutor, [examples, transform_graph, schema], [model])
-  # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
-  pipeline.set_executor('Evaluator',  DummyExecutor, [examples, model, baseline_model], [evaluation, model_blessing])
-  pipeline.set_executor('Pusher',  DummyExecutor, [model, model_blessing], [pushed_model])
-  
   BeamDagRunner().run(pipeline)
 
+
+if __name__ == '__main__':
+  absl.logging.set_verbosity(absl.logging.INFO)
+  test()

@@ -27,8 +27,10 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
+from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 import absl
+
 class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
   """Responsible for launching a python executor.
 
@@ -55,9 +57,16 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         beam_pipeline_args=self._beam_pipeline_args,
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
-
-    executor_class_spec = cast(executor_spec.ExecutorClassSpec,
-                               self._component_executor_spec)
+    component_id = self._component_info.component_id
+    absl.logging.info("mock_executor_spec %s", self.mock_executor_spec)
+    if component_id in self.mock_executor_spec:
+      absl.logging.info("\nmust print here\n")
+      executor_class_spec= FakeExecutorClassSpec(self.mock_executor_spec[component_id])
+    else:
+      absl.logging.info("\nwrong here\n")
+      executor_class_spec = cast(base_executor.ExecutorClassSpec,
+                                 self._component_executor_spec)
+    absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 
     # Type hint of component will cause not-instantiable error as
     # component.executor is Type[BaseExecutor] which has an abstract function.
@@ -65,7 +74,6 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         executor_context)  # type: ignore
     absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
-    component_id = self._component_info.component_id
     if component_id in self.expected_inputs and component_id in self.expected_outputs:
       executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])
 
