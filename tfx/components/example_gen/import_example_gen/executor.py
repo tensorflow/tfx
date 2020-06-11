@@ -19,25 +19,21 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf
 
-from tfx import types
+from tfx.components.example_gen import utils
 from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
-from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
-from tfx.types import artifact_utils
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _ImportExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read TFRecord files to PCollection of TF examples.
 
@@ -45,19 +41,17 @@ def _ImportExample(  # pylint: disable=invalid-name
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
-      - input_base: input dir that contains tf example data.
     exec_properties: A dict of execution properties.
+      - input: input dir that contains tf example data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
+  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
-  absl.logging.info(
-      'Reading input TFExample data {}.'.format(input_split_pattern))
+  logging.info('Reading input TFExample data %s.', input_split_pattern)
 
   # TODO(jyzhao): profile input examples.
   return (pipeline

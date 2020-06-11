@@ -31,7 +31,6 @@ from tfx.types import standard_artifacts
 @beam.ptransform_fn
 def _TestInputSourceToExamplePTransform(
     pipeline,
-    input_dict,  # pylint: disable=unused-argument
     exec_properties,  # pylint: disable=unused-argument
     split_pattern):
   mock_examples = []

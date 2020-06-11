@@ -3,6 +3,7 @@
   "__module__": "tfx.orchestration.kubeflow.node_wrapper",
   "__tfx_object_type__": "jsonable",
   "_exec_properties": {
+    "input_base": "",
     "custom_config": null,
     "input_config": "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}",
     "output_config": "{\"split_config\": {\"splits\": [{\"hash_buckets\": {{pipelineparam:op=;name=example-gen-buckets}}, \"name\": \"examples\"}]}}"
@@ -12,31 +13,8 @@
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
-    "_compat_aliases": {
-      "input_base": "input"
-    },
-    "_data": {
-      "input": {
-        "__class__": "Channel",
-        "__module__": "tfx.types.channel",
-        "__tfx_object_type__": "jsonable",
-        "artifacts": [
-          {
-            "__artifact_class_module__": "tfx.types.standard_artifacts",
-            "__artifact_class_name__": "ExternalArtifact",
-            "artifact": {},
-            "artifact_type": {
-              "name": "ExternalArtifact"
-            }
-          }
-        ],
-        "output_key": null,
-        "producer_component_id": null,
-        "type": {
-          "name": "ExternalArtifact"
-        }
-      }
-    }
+    "_compat_aliases": {},
+    "_data": {}
   },
   "_outputs": {
     "__class__": "_PropertyDictWrapper",

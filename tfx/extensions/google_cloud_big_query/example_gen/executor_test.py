@@ -88,7 +88,6 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
-              input_dict={},
               exec_properties={
                   '_beam_pipeline_args': ['--project=' + _test_project],
               },

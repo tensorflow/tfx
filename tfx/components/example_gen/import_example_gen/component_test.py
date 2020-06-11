@@ -21,16 +21,13 @@ from __future__ import print_function
 import tensorflow as tf
 from tfx.components.example_gen.import_example_gen import component
 from tfx.types import artifact_utils
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
 
 class ComponentTest(tf.test.TestCase):
 
   def testConstruct(self):
-    input_base = standard_artifacts.ExternalArtifact()
-    import_example_gen = component.ImportExampleGen(
-        input=channel_utils.as_channel([input_base]))
+    import_example_gen = component.ImportExampleGen(input_base='path')
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      import_example_gen.outputs['examples'].type_name)
     artifact_collection = import_example_gen.outputs['examples'].get()

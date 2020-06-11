@@ -56,7 +56,6 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-from tfx.utils import dsl_utils
 
 
 # Custom component definitions for testing purpose.
@@ -149,9 +148,7 @@ def create_e2e_components(
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
   """
-  examples = dsl_utils.csv_input(csv_input_location)
-
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input_base=csv_input_location)
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
