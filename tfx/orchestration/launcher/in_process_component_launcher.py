@@ -71,6 +71,7 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         executor_context)  # type: ignore
     absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
-    if component_id in self.expected_inputs and component_id in self.expected_outputs:
-      executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])
+    
+    # if component_id in self.expected_inputs and component_id in self.expected_outputs:
+    #   executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])
 

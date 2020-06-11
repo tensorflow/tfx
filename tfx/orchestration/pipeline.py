@@ -141,7 +141,6 @@ class Pipeline(object):
     # Calls property setter.
     self.components = components or []
     self.mock_executor_spec = {}
-    self.expected_inputs, self.expected_outputs = {}, {}
     # Mapping component's name to its executor to store dummy executors 
 
   @property
@@ -202,6 +201,16 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
+  def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory]) -> None:
+    for component in self._components:
+      if component_id is component.id:
+        self.mock_executor_spec[component_id] = executor_factory()
+
+  def get_artifacts(self, component_id: Text):
+    for component in self._components:
+      if component_id is component.id:
+        return {'input_dict':component.inputs.get_all(),'output_dict': component.outputs.get_all()}
+
   # def set_executor(self, component_id: Text, executor: BaseExecutor, 
   #                       input_artifacts: List[Artifact]=None,
   #                        output_artifacts: List[Artifact]=None) -> None:
@@ -211,16 +220,3 @@ class Pipeline(object):
   #       if input_artifacts is not None and output_artifacts is not None:
   #         self.expected_inputs[component_id] = input_artifacts
           # self.expected_outputs[component_id] = output_artifacts
-  def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory], 
-                      input_artifacts: List[Artifact]=None,
-                       output_artifacts: List[Artifact]=None) -> None:
-    for component in self._components:
-      if component_id is component.id:
-        # exec_spec= FakeExecutorClassSpec(executor_factory)
-        self.mock_executor_spec[component_id] = executor_factory()
-        # component.executor_spec = exec_spec # converts to base execspec
-        # absl.logging.info("exec_spec %s", exec_spec)
-        if input_artifacts is not None and output_artifacts is not None:
-          self.expected_inputs[component_id] = input_artifacts
-          self.expected_outputs[component_id] = output_artifacts
-  

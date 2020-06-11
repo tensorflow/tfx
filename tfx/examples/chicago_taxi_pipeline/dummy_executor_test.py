@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Text
 
 import absl
 import tensorflow_model_analysis as tfma
+import tensorflow as tf
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
@@ -58,61 +59,17 @@ from functools import reduce
 
 from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory
 from unittest.mock import patch
-# from tfx.components.example_gen.base_example_gen_executor import 
 
-_pipeline_name = 'chicago_taxi_beam'
+def _compare_artifacts(expected_artifacts:Dict[Text, List[Artifact]], artifacts:Dict[Text, List[Artifact]]):
+  for component_key, expected_artifact_list in expected_artifacts.items():
+    absl.logging.info("_compare_artifacts expected_artifact_list %s", expected_artifact_list)
+    if component_key not in artifacts:
+      assert False
+      # self.fail(msg="_compare_artifacts artifact type missing")
+    absl.logging.info("_compare_artifacts artifacts[component_key] %s", artifacts[component_key].get())
+    assert True
+    # self.assertProtoEquals(expected_artifact_list, artifacts[component_key])
 
-# This example assumes that the taxi data is stored in ~/taxi/data and the
-# taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-# _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-_taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
-_data_root = os.path.join(_taxi_root, 'data', 'simple')
-# Python module file to inject customized logic into the TFX components. The
-# Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_taxi_root, 'taxi_utils.py')
-# Path which can be listened to by the model server.  Pusher will output the
-# trained model here.
-_serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
-
-# Directory and data locations.  This example assumes all of the chicago taxi
-# example code and metadata library is relative to $HOME, but you can store
-# these files anywhere on your local filesystem.
-_tfx_root = os.path.join(os.environ['HOME'], 'tfx')
-_pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-# Sqlite ML-metadata db path.
-_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
-                              'metadata.db')
-
-
-class DummyExecutor(BaseExecutor):
-  def compare_artifacts(self, artifacts_lt: List[Artifact], artifacts_rt: List[Artifact]) -> bool:
-    # assert 
-    if len(artifacts_lt) == len(artifacts_rt):
-      return False
-    for artifact_lt in artifacts_lt:
-      absl.logging.info("artifact_lt.name %s", artifact_lt.artifact_type.name)
-      for artifact_rt in artifacts_rt:
-        if artifact_lt.artifact_type.name == artifact_rt.artifact_type.name:
-          if artifact_lt.uri != artifact_rt.uri:
-            return False
-      else:
-        return False
-    return True
-
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
-    self.input_dict, self.output_dict, self.exec_properties = input_dict, output_dict, exec_properties
-
-  def check_artifacts(self, input_artifacts: List[Artifact], output_artifacts:List[Artifact]):
-    inputs, outputs = reduce(lambda x,y:x+y,list(self.input_dict.values())), reduce(lambda x,y:x+y, list(self.output_dict.values()))
-
-    if not self.compare_artifacts(inputs, input_artifacts):
-      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(inputs, input_artifacts))
-    if not self.compare_artifacts(outputs, output_artifacts):
-      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(outputs, output_artifacts))
-
-# TODO(b/137289334): rename this as simple after DAG visualization is done.
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
@@ -215,9 +172,31 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
-# @patch('tfx.components.example_gen.csv_example_gen.executor.Executor')
-def test():#W(MockExecutor):
-  # absl.logging.info("mockexecutor %s", MockExecutor)
+def main():
+  _pipeline_name = 'chicago_taxi_beam'
+
+  # This example assumes that the taxi data is stored in ~/taxi/data and the
+  # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
+  # _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+  _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
+  _data_root = os.path.join(_taxi_root, 'data', 'simple')
+  # Python module file to inject customized logic into the TFX components. The
+  # Transform and Trainer both require user-defined functions to run successfully.
+  _module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+  # Path which can be listened to by the model server.  Pusher will output the
+  # trained model here.
+  _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
+
+  # Directory and data locations.  This example assumes all of the chicago taxi
+  # example code and metadata library is relative to $HOME, but you can store
+  # these files anywhere on your local filesystem.
+  _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+  _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
+  # Sqlite ML-metadata db path.
+  _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                                'metadata.db')
+
+  # Creating artifacts
   external_artifact = standard_artifacts.ExternalArtifact()
   external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
 
@@ -267,19 +246,53 @@ def test():#W(MockExecutor):
           # execution time.
           direct_num_workers=0) # pipeline dsl
   #DummyExecutor MockExecutor
-  pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory, [external_artifact], [examples])
-  pipeline.set_executor('StatisticsGen', FakeComponentExecutorFactory, [examples], [example_statistics])
-  pipeline.set_executor('SchemaGen',  FakeComponentExecutorFactory, [example_statistics], [schema])
-  pipeline.set_executor('ExampleValidator',  FakeComponentExecutorFactory, [example_statistics, schema], [anomalies])
-  pipeline.set_executor('Transform',  FakeComponentExecutorFactory, [examples, schema], [transform_graph, transformed_examples])
-  pipeline.set_executor('Trainer',  FakeComponentExecutorFactory, [examples, transform_graph, schema], [model])
+  pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory)#, [external_artifact], [examples])
+  pipeline.set_executor('StatisticsGen', FakeComponentExecutorFactory)#, [examples], [example_statistics])
+  pipeline.set_executor('SchemaGen',  FakeComponentExecutorFactory)#, [example_statistics], [schema])
+  pipeline.set_executor('ExampleValidator',  FakeComponentExecutorFactory)#, [example_statistics, schema], [anomalies])
+  pipeline.set_executor('Transform',  FakeComponentExecutorFactory)#, [examples, schema], [transform_graph, transformed_examples])
+  pipeline.set_executor('Trainer',  FakeComponentExecutorFactory)#, [examples, transform_graph, schema], [model])
   # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
-  pipeline.set_executor('Evaluator',  FakeComponentExecutorFactory, [examples, model, baseline_model], [evaluation, model_blessing])
-  pipeline.set_executor('Pusher',  FakeComponentExecutorFactory, [model, model_blessing], [pushed_model])
+  pipeline.set_executor('Evaluator',  FakeComponentExecutorFactory)#, [examples, model, baseline_model], [evaluation, model_blessing])
+  pipeline.set_executor('Pusher',  FakeComponentExecutorFactory)#, [model, model_blessing], [pushed_model])
 
   BeamDagRunner().run(pipeline)
 
+  csvgen_input, csvgen_output = pipeline.get_artifacts('CsvExampleGen')['input_dict'], pipeline.get_artifacts('CsvExampleGen')['output_dict']
+  _compare_artifacts({'input':[external_artifact]}, csvgen_input)
+  _compare_artifacts({'examples':[examples]}, csvgen_output)
 
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  test()
+  main()
+  # tf.test.main()
+
+"""
+
+class DummyExecutor(BaseExecutor):
+  def compare_artifacts(self, artifacts_lt: List[Artifact], artifacts_rt: List[Artifact]) -> bool:
+    # assert 
+    if len(artifacts_lt) == len(artifacts_rt):
+      return False
+    for artifact_lt in artifacts_lt:
+      absl.logging.info("artifact_lt.name %s", artifact_lt.artifact_type.name)
+      for artifact_rt in artifacts_rt:
+        if artifact_lt.artifact_type.name == artifact_rt.artifact_type.name:
+          if artifact_lt.uri != artifact_rt.uri:
+            return False
+      else:
+        return False
+    return True
+
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    self.input_dict, self.output_dict, self.exec_properties = input_dict, output_dict, exec_properties
+
+  def check_artifacts(self, input_artifacts: List[Artifact], output_artifacts:List[Artifact]):
+    inputs, outputs = reduce(lambda x,y:x+y,list(self.input_dict.values())), reduce(lambda x,y:x+y, list(self.output_dict.values()))
+
+    if not self.compare_artifacts(inputs, input_artifacts):
+      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(inputs, input_artifacts))
+    if not self.compare_artifacts(outputs, output_artifacts):
+      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(outputs, output_artifacts))"""

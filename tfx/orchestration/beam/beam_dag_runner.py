@@ -70,9 +70,7 @@ class _ComponentAsDoFn(beam.DoFn):
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
         component_config=component_config,
-        mock_executor_spec=tfx_pipeline.mock_executor_spec,
-        expected_inputs=tfx_pipeline.expected_inputs,
-        expected_outputs=tfx_pipeline.expected_outputs)
+        mock_executor_spec=tfx_pipeline.mock_executor_spec)
     self._component_id = component.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -88,7 +86,6 @@ class _ComponentAsDoFn(beam.DoFn):
 
   def _run_component(self) -> None:
     absl.logging.info('Component %s is running.', self._component_id)
-    absl.logging.info('run_component %s', self._component_launcher.mock_executor_spec)
     self._component_launcher.launch()
 
 

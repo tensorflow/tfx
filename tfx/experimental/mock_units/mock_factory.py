@@ -23,17 +23,24 @@ from typing import List, Text, Type
 
 from tfx.orchestration import pipeline
 from tfx.components.base import executor_spec
+from tfx.components.base.base_executor import BaseExecutor
 from tfx.components.base.executor_spec import ExecutorClassSpec
 # from tfx.components.base.base_executor import DummyExecutor
 #from unittest.mock import patch, MagicMock
-from unittest.mock import patch
-from unittest.mock import Mock
+# from unittest.mock import patch, Mock
+import mock
 import absl
 
+'''class DummyExecutor(BaseExecutor):
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    self.input_dict, self.output_dict, self.exec_properties = input_dict, output_dict, exec_properties
+'''
 class FakeComponentExecutorFactory(object):
-  @patch('tfx.components.base.base_executor.EmptyExecutor')
+  # @mock.patch('tfx.components.base.base_executor.EmptyExecutor')
   def __call__(self, executor_context):
-    return Mock()
+    return mock.Mock()
 
 class FakeExecutorClassSpec(ExecutorClassSpec):
   def __init__(self, fake_object_factory: FakeComponentExecutorFactory):
