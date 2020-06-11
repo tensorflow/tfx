@@ -31,7 +31,9 @@ from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
+from tfx.components.base.executor_spec import ExecutorClassSpec
 
+from tfx.types.artifact import Artifact
 
 class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
   """Responsible for launching driver, executor and publisher of component."""
@@ -46,6 +48,8 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
+      expected_inputs:List[Artifact] = None,
+      expected_outputs:List[Artifact] = None
   ):
     """Initialize a BaseComponentLauncher.
 
@@ -75,7 +79,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     self._driver_class = component.driver_class
     self._component_executor_spec = component.executor_spec
-
     self._input_dict = component.inputs.get_all()
     self._output_dict = component.outputs.get_all()
     self._exec_properties = component.exec_properties
@@ -85,6 +88,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
+
+    self.expected_inputs=expected_inputs
+    self.expected_outputs=expected_outputs
 
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
@@ -107,6 +113,8 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
+      expected_inputs:List[Artifact]=None,
+      expected_outputs:List[Artifact]=None
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -137,7 +145,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         metadata_connection=metadata_connection,
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
-        component_config=component_config)
+        component_config=component_config,
+        expected_inputs=expected_inputs,
+        expected_outputs=expected_outputs)
 
   @classmethod
   @abc.abstractmethod

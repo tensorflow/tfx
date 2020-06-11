@@ -28,7 +28,7 @@ from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 
-
+import absl
 class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
   """Responsible for launching a python executor.
 
@@ -63,5 +63,9 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     # component.executor is Type[BaseExecutor] which has an abstract function.
     executor = executor_class_spec.executor_class(
         executor_context)  # type: ignore
-
+    absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
+    component_id = self._component_info.component_id
+    if component_id in self.expected_inputs and component_id in self.expected_outputs:
+      executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])
+

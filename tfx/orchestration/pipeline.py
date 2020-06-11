@@ -29,7 +29,13 @@ import absl
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
+# from tfx.experimental.mock_units.mock_factory import FakeExecutorClassSpec, FakeComponentExecutorFactory
+# from unittest.mock import patch, MagicMock
+from tfx.components.base import executor_spec
+from tfx.components.base.executor_spec import ExecutorClassSpec
+from tfx.components.base.base_executor import BaseExecutor
 
+from tfx.types.artifact import Artifact
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
 # MySQL's database name cannot exceed 64 chars:
@@ -131,6 +137,8 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
+    self.expected_inputs, self.expected_outputs = {}, {}
+    # Mapping component's name to its executor to store dummy executors 
 
   @property
   def components(self):
@@ -189,3 +197,14 @@ class Pipeline(object):
     # has all its dependencies visited.
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
+
+  def set_executor(self, component_id: Text, executor: BaseExecutor, 
+                        input_artifacts: List[Artifact]=None,
+                         output_artifacts: List[Artifact]=None) -> None:
+    for component in self._components:
+      if component_id is component.id:
+        component.executor_spec = ExecutorClassSpec(executor)
+        if input_artifacts is not None and output_artifacts is not None:
+          self.expected_inputs[component_id] = input_artifacts
+          self.expected_outputs[component_id] = output_artifacts
+  

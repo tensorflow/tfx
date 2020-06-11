@@ -69,7 +69,9 @@ class _ComponentAsDoFn(beam.DoFn):
         metadata_connection=metadata_connection,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
-        component_config=component_config)
+        component_config=component_config,
+        expected_inputs=tfx_pipeline.expected_inputs,
+        expected_outputs=tfx_pipeline.expected_outputs)
     self._component_id = component.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -127,7 +129,6 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       return
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
-
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
       with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
@@ -139,7 +140,6 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         # pipeline.components are in topological order.
         for component in tfx_pipeline.components:
           component_id = component.id
-
           # Signals from upstream components.
           signals_to_wait = []
           if component.upstream_nodes:
