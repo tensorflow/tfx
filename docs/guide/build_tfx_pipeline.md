@@ -209,8 +209,9 @@ template.
 1.  Design your pipeline. The scaffolding that a template provides helps you
     implement a pipeline for tabular data using the TFX standard components. If
     you are moving an existing ML workflow into a pipeline, you may need to
-    revise your code to make full use of TFX standard components. You may also
-    need to create [custom components](understanding_custom_components) that
+    revise your code to make full use of
+    [TFX standard components](index#tfx_standard_components). You may also need
+    to create [custom components](understanding_custom_components) that
     implement features which are unique to your workflow or that are not yet
     supported by TFX standard components.
 
@@ -251,7 +252,7 @@ without using a template.
     features such as data augmentation.
 
     *   Learn more about
-        [standard TFX components](guide#tfx_pipeline_components).
+        [standard TFX components](index#tfx_pipeline_components).
     *   Learn more about [custom components](understanding_custom_components).
 
 1.  Create a script file to define your pipeline using the following example.
