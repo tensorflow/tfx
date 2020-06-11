@@ -151,7 +151,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     
   def testPartitionByFeature(self):
     # Create exec proterties.
-    # Test with partition_feature_name 'i', 'f' and 's'.
     exec_properties = {
         'input_config':
             json_format.MessageToJson(
