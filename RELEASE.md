@@ -5,6 +5,9 @@
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
+*   Relaxed the rule that output artifact uris must be newly created. This is a
+    temporary workaround to make retry work. We will introduce a more
+    comprehensive solution for idempotent execution.
 
 ## Breaking changes
 
