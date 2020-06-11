@@ -58,13 +58,10 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
     component_id = self._component_info.component_id
-    absl.logging.info("mock_executor_spec %s", self.mock_executor_spec)
     if component_id in self.mock_executor_spec:
-      absl.logging.info("\nmust print here\n")
       executor_class_spec= FakeExecutorClassSpec(self.mock_executor_spec[component_id])
     else:
-      absl.logging.info("\nwrong here\n")
-      executor_class_spec = cast(base_executor.ExecutorClassSpec,
+      executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                  self._component_executor_spec)
     absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 

@@ -268,14 +268,14 @@ def test():#W(MockExecutor):
           direct_num_workers=0) # pipeline dsl
   #DummyExecutor MockExecutor
   pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory, [external_artifact], [examples])
-  # pipeline.set_executor('StatisticsGen', DummyExecutor, [examples], [example_statistics])
-  # pipeline.set_executor('SchemaGen',  DummyExecutor, [example_statistics], [schema])
-  # pipeline.set_executor('ExampleValidator',  DummyExecutor, [example_statistics, schema], [anomalies])
-  # pipeline.set_executor('Transform',  DummyExecutor, [examples, schema], [transform_graph, transformed_examples])
-  # pipeline.set_executor('Trainer',  DummyExecutor, [examples, transform_graph, schema], [model])
-  # # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
-  # pipeline.set_executor('Evaluator',  DummyExecutor, [examples, model, baseline_model], [evaluation, model_blessing])
-  # pipeline.set_executor('Pusher',  DummyExecutor, [model, model_blessing], [pushed_model])
+  pipeline.set_executor('StatisticsGen', FakeComponentExecutorFactory, [examples], [example_statistics])
+  pipeline.set_executor('SchemaGen',  FakeComponentExecutorFactory, [example_statistics], [schema])
+  pipeline.set_executor('ExampleValidator',  FakeComponentExecutorFactory, [example_statistics, schema], [anomalies])
+  pipeline.set_executor('Transform',  FakeComponentExecutorFactory, [examples, schema], [transform_graph, transformed_examples])
+  pipeline.set_executor('Trainer',  FakeComponentExecutorFactory, [examples, transform_graph, schema], [model])
+  # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
+  pipeline.set_executor('Evaluator',  FakeComponentExecutorFactory, [examples, model, baseline_model], [evaluation, model_blessing])
+  pipeline.set_executor('Pusher',  FakeComponentExecutorFactory, [model, model_blessing], [pushed_model])
 
   BeamDagRunner().run(pipeline)
 

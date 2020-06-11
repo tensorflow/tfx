@@ -93,7 +93,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._component_config = component_config
 
     self.mock_executor_spec = mock_executor_spec
-
+    absl.logging.info("base_component_launcher %s", self.mock_executor_spec)
     self.expected_inputs = expected_inputs
     self.expected_outputs = expected_outputs
 

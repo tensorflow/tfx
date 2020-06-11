@@ -217,7 +217,7 @@ class Pipeline(object):
     for component in self._components:
       if component_id is component.id:
         # exec_spec= FakeExecutorClassSpec(executor_factory)
-        self.mock_executor_spec[component_id] = executor_factory
+        self.mock_executor_spec[component_id] = executor_factory()
         # component.executor_spec = exec_spec # converts to base execspec
         # absl.logging.info("exec_spec %s", exec_spec)
         if input_artifacts is not None and output_artifacts is not None:
