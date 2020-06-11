@@ -109,6 +109,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Check example gen outputs.
     self.assertTrue(tf.io.gfile.exists(self._train_output_file))
     self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+    
     # Input train split is bigger than eval split.
     self.assertGreater(
         tf.io.gfile.GFile(self._train_output_file).size(),
@@ -142,6 +143,42 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Check example gen outputs.
     self.assertTrue(tf.io.gfile.exists(self._train_output_file))
     self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+    
+    # Output split ratio: train:eval=2:1.
+    self.assertGreater(
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
+    
+  def testPartitionByFeature(self):
+    # Create exec proterties.
+    # Test with partition_feature_name 'i', 'f' and 's'.
+    exec_properties = {
+        'input_config':
+            json_format.MessageToJson(
+                example_gen_pb2.Input(splits=[
+                    example_gen_pb2.Input.Split(
+                        name='single', pattern='single/*'),
+                ]),
+                preserving_proto_field_name=True),
+        'output_config':
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ], partition_feature_name='i')))
+    }
+
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+    
     # Output split ratio: train:eval=2:1.
     self.assertGreater(
         tf.io.gfile.GFile(self._train_output_file).size(),
