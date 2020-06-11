@@ -34,8 +34,7 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.orchestration import test_utils
-from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
+from tfx.orchestration.kubeflow import test_utils
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
@@ -43,7 +42,7 @@ from tfx.utils import dsl_utils
 from tfx.utils import path_utils
 
 
-class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
+class KubeflowGCPIntegrationTest(test_utils.BaseKubeflowTest):
 
   def _delete_ai_platform_model(self, model_name):
     """Delete pushed model in AI Platform."""
@@ -137,7 +136,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
     pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
-        test_utils.random_id())
+        self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         CsvExampleGen(input=dsl_utils.csv_input(self._data_root)),
     ])
@@ -146,7 +145,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def testStatisticsGenOnDataflowRunner(self):
     """StatisticsGen-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-statistics-gen-dataflow-test-{}'.format(
-        test_utils.random_id())
+        self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         self.raw_examples_importer,
         StatisticsGen(examples=self.raw_examples_importer.outputs['result'])
@@ -156,7 +155,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def testTransformOnDataflowRunner(self):
     """Transform-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-transform-dataflow-test-{}'.format(
-        test_utils.random_id())
+        self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         self.raw_examples_importer, self.schema_importer,
         Transform(
@@ -169,7 +168,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def testEvaluatorOnDataflowRunner(self):
     """Evaluator-only test pipeline on DataflowRunner."""
     pipeline_name = 'kubeflow-evaluator-dataflow-test-{}'.format(
-        test_utils.random_id())
+        self._random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
         self.raw_examples_importer, self.model_1_importer,
         Evaluator(
@@ -185,11 +184,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def getCaipTrainingArgs(self, pipeline_name):
     """Training args for Google CAIP Training."""
     return {
-        'project': self._GCP_PROJECT_ID,
-        'region': self._GCP_REGION,
+        'project': self._gcp_project_id,
+        'region': self._gcp_region,
         'jobDir': os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
         'masterConfig': {
-            'imageUri': self._CONTAINER_IMAGE,
+            'imageUri': self._container_image,
         },
     }
 
@@ -228,8 +227,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""
-    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name = 'kubeflow-aip-trainer-test-{}'.format(self._random_id())
     pipeline = self._create_pipeline(pipeline_name, [
         self.schema_importer, self.transformed_examples_importer,
         self.transform_graph_importer,
@@ -254,7 +252,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   def testAIPlatformGenericTrainerPipeline(self):
     """Trainer-only pipeline on AI Platform Training with GenericTrainer."""
     pipeline_name = 'kubeflow-aip-generic-trainer-test-{}'.format(
-        test_utils.random_id())
+        self._random_id())
     pipeline = self._create_pipeline(pipeline_name, [
         self.schema_importer,
         self.transformed_examples_importer,
@@ -284,8 +282,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
   # works with CAIP prediction service.
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
-    pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(
-        test_utils.random_id())
+    pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(self._random_id())
     # AI Platform does not accept '-' in the model name.
     model_name = ('%s_model' % pipeline_name_base).replace('-', '_')
     self.addCleanup(self._delete_ai_platform_model, model_name)
@@ -299,7 +296,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
           custom_config={
               ai_platform_pusher_executor.SERVING_ARGS_KEY: {
                   'model_name': model_name,
-                  'project_id': self._GCP_PROJECT_ID,
+                  'project_id': self._gcp_project_id,
               }
           },
       )

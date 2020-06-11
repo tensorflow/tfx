@@ -25,7 +25,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 from typing import List, Text
 
 import absl
@@ -311,27 +310,18 @@ def run_fn(fn_args: TrainerFnArgs):
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 40)
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, 40)
 
-  # If no GPUs are found, CPU is used.
-  mirrored_strategy = tf.distribute.MirroredStrategy()
-  with mirrored_strategy.scope():
-    model = _build_keras_model(
-        # Construct layers sizes with exponetial decay
-        hidden_units=[
-            max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
-            for i in range(num_dnn_layers)
-        ])
-
-  # TODO(b/158106209): This log path might change in the future.
-  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
-  tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=log_dir, update_freq='batch')
+  model = _build_keras_model(
+      # Construct layers sizes with exponetial decay
+      hidden_units=[
+          max(2, int(first_dnn_layer_size * dnn_decay_factor**i))
+          for i in range(num_dnn_layers)
+      ])
 
   model.fit(
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps,
-      callbacks=[tensorboard_callback])
+      validation_steps=fn_args.eval_steps)
 
   signatures = {
       'serving_default':

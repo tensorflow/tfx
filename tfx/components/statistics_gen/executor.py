@@ -22,10 +22,12 @@ import os
 from typing import Any, Dict, List, Text
 
 import absl
+import apache_beam as beam
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx_bsl.tfxio import tf_example_record
 
+from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
@@ -126,7 +128,10 @@ class Executor(base_executor.BaseExecutor):
             data
             | 'GenerateStatistics[{}]'.format(split) >>
             stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput[{}]'.format(split) >>
-            stats_api.WriteStatisticsToTFRecord(output_path))
+            | 'WriteStatsOutput[{}]'.format(split) >> beam.io.WriteToTFRecord(
+                output_path,
+                shard_name_template='',
+                coder=beam.coders.ProtoCoder(
+                    statistics_pb2.DatasetFeatureStatisticsList)))
         absl.logging.info('Statistics for split {} written to {}.'.format(
             split, output_uri))

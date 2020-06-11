@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Text
 
-from absl import logging
+import absl
 from googleapiclient import discovery
 from googleapiclient import errors
 import tensorflow as tf
@@ -34,8 +34,6 @@ from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
-
-_CONNECTION_ERROR_RETRY_LIMIT = 5
 
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
@@ -62,6 +60,7 @@ def _get_tf_runtime_version(tf_version: Text) -> Text:
 
   Args:
     tf_version: version string returned from `tf.__version__`.
+
   Returns: same major.minor version of installed tensorflow, except when
     overriden by _TF_COMPATIBILITY_OVERRIDE.
   """
@@ -117,16 +116,16 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   Returns:
     None
   Raises:
-    RuntimeError: if the Google Cloud AI Platform training job failed/cancelled.
+    RuntimeError: if the Google Cloud AI Platform training job failed.
   """
   training_inputs = training_inputs.copy()
 
   json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  logging.info('json_inputs=\'%s\'.', json_inputs)
+  absl.logging.info('json_inputs=\'{}\'.'.format(json_inputs))
   json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  logging.info('json_outputs=\'%s\'.', json_outputs)
+  absl.logging.info('json_outputs=\'{}\'.'.format(json_outputs))
   json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-  logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+  absl.logging.info('json_exec_properties=\'{}\'.'.format(json_exec_properties))
 
   # Configure AI Platform training job
   api_client = discovery.build('ml', 'v1')
@@ -166,8 +165,9 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   }
 
   # Submit job to AIP Training
-  logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.', job_id,
-               project)
+  absl.logging.info(
+      'Submitting job=\'{}\', project=\'{}\' to AI Platform.'.format(
+          job_id, project))
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
   request.execute()
@@ -176,57 +176,18 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   job_name = '{}/jobs/{}'.format(project_id, job_id)
   request = api_client.projects().jobs().get(name=job_name)
   response = request.execute()
-  retry_count = 0
-
-  # Monitors the long-running operation by polling the job state periodically,
-  # and retries the polling when a transient connectivity issue is encountered.
-  #
-  # Long-running operation monitoring:
-  #   The possible states of "get job" response can be found at
-  #   https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs#State
-  #   where SUCCEEDED/FAILED/CANCELLED are considered to be final states.
-  #   The following logic will keep polling the state of the job until the job
-  #   enters a final state.
-  #
-  # During the polling, if a connection error was encountered, the GET request
-  # will be retried by recreating the Python API client to refresh the lifecycle
-  # of the connection being used. See
-  # https://github.com/googleapis/google-api-python-client/issues/218
-  # for a detailed description of the problem. If the error persists for
-  # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will exit
-  # with code 1.
-  while response['state'] not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+  while response['state'] not in ('SUCCEEDED', 'FAILED'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    try:
-      response = request.execute()
-      retry_count = 0
-    # Handle transient connection error.
-    except ConnectionError as err:
-      if retry_count < _CONNECTION_ERROR_RETRY_LIMIT:
-        retry_count += 1
-        logging.warning(
-            'ConnectionError (%s) encountered when polling job: %s. Trying to '
-            'recreate the API client.', err, job_id)
-        # Recreate the Python API client.
-        api_client = discovery.build('ml', 'v1')
-        request = api_client.projects().jobs().get(name=job_name)
-      else:
-        # TODO(b/158433873): Consider raising the error instead of exit with
-        # code 1 after CMLE supports configurable retry policy.
-        # Currently CMLE will automatically retry the job unless return code
-        # 1-128 is returned.
-        logging.error('Request failed after %s retries.',
-                      _CONNECTION_ERROR_RETRY_LIMIT)
-        sys.exit(1)
+    response = request.execute()
 
-  if response['state'] in ('FAILED', 'CANCELLED'):
+  if response['state'] == 'FAILED':
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
         job_name, response)
-    logging.error(err_msg)
+    absl.logging.error(err_msg)
     raise RuntimeError(err_msg)
 
   # AIP training complete
-  logging.info('Job \'%s\' successful.', job_name)
+  absl.logging.info('Job \'{}\' successful.'.format(job_name))
 
 
 def deploy_model_for_aip_prediction(
@@ -249,9 +210,9 @@ def deploy_model_for_aip_prediction(
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  logging.info(
-      'Deploying to model with version %s to AI Platform for serving: %s',
-      model_version, ai_platform_serving_args)
+  absl.logging.info(
+      'Deploying to model with version {} to AI Platform for serving: {}'
+      .format(model_version, ai_platform_serving_args))
 
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
@@ -270,7 +231,7 @@ def deploy_model_for_aip_prediction(
     # If the error is to create an already existing model, it's ok to ignore.
     # TODO(b/135211463): Remove the disable once the pytype bug is fixed.
     if e.resp.status == 409:  # pytype: disable=attribute-error
-      logging.warn('Model %s already exists', model_name)
+      absl.logging.warn('Model {} already exists'.format(model_name))
     else:
       raise RuntimeError('AI Platform Push failed: {}'.format(e))
   with telemetry_utils.scoped_labels(
@@ -293,7 +254,7 @@ def deploy_model_for_aip_prediction(
   deploy_status_resc = api.projects().operations().get(name=op_name)
   while not deploy_status_resc.execute().get('done'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    logging.info('Model still being deployed...')
+    absl.logging.info('Model still being deployed...')
 
   deploy_status = deploy_status_resc.execute()
 
@@ -306,9 +267,10 @@ def deploy_model_for_aip_prediction(
   # Set the new version as default.
   # By API specification, if Long-Running-Operation is done and there is
   # no error, 'response' is guaranteed to exist.
-  api.projects().models().versions().setDefault(name='{}/versions/{}'.format(
-      model_name, deploy_status['response']['name'])).execute()
+  api.projects().models().versions().setDefault(
+      name='{}/versions/{}'.format(model_name, deploy_status['response']
+                                   ['name'])).execute()
 
-  logging.info(
-      'Successfully deployed model %s with version %s, serving from %s',
-      model_name, model_version, serving_path)
+  absl.logging.info(
+      'Successfully deployed model {} with version {}, serving from {}'.format(
+          model_name, model_version, serving_path))

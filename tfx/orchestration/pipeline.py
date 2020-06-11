@@ -24,7 +24,7 @@ import json
 import os
 from typing import List, Optional, Text
 
-from absl import logging
+import absl
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
@@ -113,7 +113,7 @@ class Pipeline(object):
 
     # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
     if 'beam_pipeline_args' in self.additional_pipeline_args:
-      logging.warning(
+      absl.logging.warning(
           'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
       )
       self.beam_pipeline_args = self.additional_pipeline_args[

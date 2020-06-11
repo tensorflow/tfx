@@ -16,67 +16,12 @@
 
 from __future__ import print_function
 
-from distutils import spawn
-import glob
-import os
-import subprocess
-import sys
-
 from setuptools import find_packages
 from setuptools import setup
 
 from tfx import dependencies
 from tfx import version
 
-
-# Find the Protocol Compiler.
-if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
-  protoc = os.environ['PROTOC']
-elif os.path.exists('../src/protoc'):
-  protoc = '../src/protoc'
-elif os.path.exists('../src/protoc.exe'):
-  protoc = '../src/protoc.exe'
-elif os.path.exists('../vsprojects/Debug/protoc.exe'):
-  protoc = '../vsprojects/Debug/protoc.exe'
-elif os.path.exists('../vsprojects/Release/protoc.exe'):
-  protoc = '../vsprojects/Release/protoc.exe'
-else:
-  protoc = spawn.find_executable('protoc')
-
-
-def generate_proto(source):
-  """Invokes the Protocol Compiler to generate a _pb2.py."""
-
-  output = source.replace('.proto', '_pb2.py')
-
-  if (not os.path.exists(output) or
-      (os.path.exists(source) and
-       os.path.getmtime(source) > os.path.getmtime(output))):
-    print('Generating %s...' % output)
-
-    if not os.path.exists(source):
-      sys.stderr.write('Cannot find required file: %s\n' % source)
-      sys.exit(-1)
-
-    if protoc is None:
-      sys.stderr.write(
-          'protoc is not installed nor found in ../src.  Please compile it '
-          'or install the binary package.\n')
-      sys.exit(-1)
-
-    protoc_command = [protoc, '-I.', '--python_out=.', source]
-    if subprocess.call(protoc_command) != 0:
-      sys.exit(-1)
-
-
-_PROTO_FILE_PATTERNS = [
-    'tfx/proto/*.proto',
-    'tfx/orchestration/kubeflow/proto/*.proto',
-]
-
-for file_pattern in _PROTO_FILE_PATTERNS:
-  for proto_file in glob.glob(file_pattern):
-    generate_proto(proto_file)
 
 # Get the long description from the README file.
 with open('README.md') as fp:
