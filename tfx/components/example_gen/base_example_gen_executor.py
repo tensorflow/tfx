@@ -22,7 +22,7 @@ import abc
 import bisect
 import hashlib
 import os
-from typing import Any, Dict, List, Text, Optional
+from typing import Any, Dict, List, Text
 
 import absl
 import apache_beam as beam
@@ -50,7 +50,7 @@ def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int],
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
   partition_str = record
-  if split_config.HasField("splitting_method_config"):
+  if split_config.HasField("partition_feature_name"):
     # Use a feature for partitioning the examples.
     feature_name = split_config.partition_feature_name
     # Deserialize the record to tf.train.Example. 
@@ -58,7 +58,7 @@ def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int],
     example.ParseFromString(record)
     feature = example.features.feature[feature_name]
     if feature.HasField("float_list"):
-        # Only bytes_list and int64_list features are supported.
+        # float_list features are not supported for partition.
         raise RuntimeError('Feature type `float_list` is not supported.')
     partition_str = feature.SerializeToString(deterministic=True)
 
