@@ -252,7 +252,7 @@ without using a template.
     features such as data augmentation.
 
     *   Learn more about
-        [standard TFX components](index#tfx_pipeline_components).
+        [standard TFX components](index#tfx_standard_components).
     *   Learn more about [custom components](understanding_custom_components).
 
 1.  Create a script file to define your pipeline using the following example.
