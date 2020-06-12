@@ -60,215 +60,227 @@ from functools import reduce
 from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory
 from unittest.mock import patch
 
-def _compare_artifacts(expected_artifacts:Dict[Text, List[Artifact]], artifacts:Dict[Text, List[Artifact]]):
-  for component_key, expected_artifact_list in expected_artifacts.items():
-    absl.logging.info("_compare_artifacts expected_artifact_list %s", expected_artifact_list)
-    if component_key not in artifacts:
-      assert False
-      # self.fail(msg="_compare_artifacts artifact type missing")
-    absl.logging.info("_compare_artifacts artifacts[component_key] %s", artifacts[component_key].get())
-    assert True
-    # self.assertProtoEquals(expected_artifact_list, artifacts[component_key])
+class Test(tf.test.TestCase):
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
-  """Implements the chicago taxi pipeline with TFX."""
-  examples = external_input(data_root)
+  def testMockExecutor(self):
+    def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                         module_file: Text, serving_model_dir: Text,
+                         metadata_path: Text,
+                         direct_num_workers: int) -> pipeline.Pipeline:
+      """Implements the chicago taxi pipeline with TFX."""
+      examples = external_input(data_root)
 
-  # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
+      # Brings data into the pipeline or otherwise joins/converts training data.
+      example_gen = CsvExampleGen(input=examples)
 
-  # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+      # Computes statistics over data for visualization and example validation.
+      statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
-  # Generates schema based on statistics files.
-  schema_gen = SchemaGen(
-      statistics=statistics_gen.outputs['statistics'],
-      infer_feature_shape=False)
+      # Generates schema based on statistics files.
+      schema_gen = SchemaGen(
+          statistics=statistics_gen.outputs['statistics'],
+          infer_feature_shape=False)
 
-  # Performs anomaly detection based on statistics and data schema.
-  example_validator = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=schema_gen.outputs['schema'])
+      # Performs anomaly detection based on statistics and data schema.
+      example_validator = ExampleValidator(
+          statistics=statistics_gen.outputs['statistics'],
+          schema=schema_gen.outputs['schema'])
 
-  # Performs transformations and feature engineering in training and serving.
-  transform = Transform(
-      examples=example_gen.outputs['examples'],
-      schema=schema_gen.outputs['schema'],
-      module_file=module_file)
+      # Performs transformations and feature engineering in training and serving.
+      transform = Transform(
+          examples=example_gen.outputs['examples'],
+          schema=schema_gen.outputs['schema'],
+          module_file=module_file)
 
-  # Uses user-provided Python function that implements a model using TF-Learn.
-  trainer = Trainer(
-      module_file=module_file,
-      transformed_examples=transform.outputs['transformed_examples'],
-      schema=schema_gen.outputs['schema'],
-      transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+      # Uses user-provided Python function that implements a model using TF-Learn.
+      trainer = Trainer(
+          module_file=module_file,
+          transformed_examples=transform.outputs['transformed_examples'],
+          schema=schema_gen.outputs['schema'],
+          transform_graph=transform.outputs['transform_graph'],
+          train_args=trainer_pb2.TrainArgs(num_steps=10000),
+          eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
-  # Get the latest blessed model for model validation.
-  model_resolver = ResolverNode(
-      instance_name='latest_blessed_model_resolver',
-      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-      model=Channel(type=Model),
-      model_blessing=Channel(type=ModelBlessing))
+      # Get the latest blessed model for model validation.
+      model_resolver = ResolverNode(
+          instance_name='latest_blessed_model_resolver',
+          resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+          model=Channel(type=Model),
+          model_blessing=Channel(type=ModelBlessing))
 
-  # Uses TFMA to compute a evaluation statistics over features of a model and
-  # perform quality validation of a candidate model (compared to a baseline).
-  eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(signature_name='eval')],
-      slicing_specs=[
-          tfma.SlicingSpec(),
-          tfma.SlicingSpec(feature_keys=['trip_start_hour'])
-      ],
-      metrics_specs=[
-          tfma.MetricsSpec(
-              thresholds={
-                  'accuracy':
-                      tfma.config.MetricThreshold(
-                          value_threshold=tfma.GenericValueThreshold(
-                              lower_bound={'value': 0.6}),
-                          change_threshold=tfma.GenericChangeThreshold(
-                              direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                              absolute={'value': -1e-10}))
-              })
-      ])
-  evaluator = Evaluator(
-      examples=example_gen.outputs['examples'],
-      model=trainer.outputs['model'],
-      baseline_model=model_resolver.outputs['model'],
-      # Change threshold will be ignored if there is no baseline (first run).
-      eval_config=eval_config)
+      # Uses TFMA to compute a evaluation statistics over features of a model and
+      # perform quality validation of a candidate model (compared to a baseline).
+      eval_config = tfma.EvalConfig(
+          model_specs=[tfma.ModelSpec(signature_name='eval')],
+          slicing_specs=[
+              tfma.SlicingSpec(),
+              tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+          ],
+          metrics_specs=[
+              tfma.MetricsSpec(
+                  thresholds={
+                      'accuracy':
+                          tfma.config.MetricThreshold(
+                              value_threshold=tfma.GenericValueThreshold(
+                                  lower_bound={'value': 0.6}),
+                              change_threshold=tfma.GenericChangeThreshold(
+                                  direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                                  absolute={'value': -1e-10}))
+                  })
+          ])
+      evaluator = Evaluator(
+          examples=example_gen.outputs['examples'],
+          model=trainer.outputs['model'],
+          baseline_model=model_resolver.outputs['model'],
+          # Change threshold will be ignored if there is no baseline (first run).
+          eval_config=eval_config)
 
-  # Checks whether the model passed the validation steps and pushes the model
-  # to a file destination if check passed.
-  pusher = Pusher(
-      model=trainer.outputs['model'],
-      model_blessing=evaluator.outputs['blessing'],
-      push_destination=pusher_pb2.PushDestination(
-          filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)))
+      # Checks whether the model passed the validation steps and pushes the model
+      # to a file destination if check passed.
+      pusher = Pusher(
+          model=trainer.outputs['model'],
+          model_blessing=evaluator.outputs['blessing'],
+          push_destination=pusher_pb2.PushDestination(
+              filesystem=pusher_pb2.PushDestination.Filesystem(
+                  base_directory=serving_model_dir)))
 
 
-  return pipeline.Pipeline(
-      pipeline_name=pipeline_name,
-      pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          model_resolver,
-          evaluator,
-          pusher,
-      ],
-      # enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
-      # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
+      return pipeline.Pipeline(
+          pipeline_name=pipeline_name,
+          pipeline_root=pipeline_root,
+          components=[
+              example_gen,
+              statistics_gen,
+              schema_gen,
+              example_validator,
+              transform,
+              trainer,
+              model_resolver,
+              evaluator,
+              pusher,
+          ],
+          # enable_cache=True,
+          metadata_connection_config=metadata.sqlite_metadata_connection_config(
+              metadata_path),
+          # TODO(b/142684737): The multi-processing API might change.
+          beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
+    def _compare_artifacts(expected_artifacts:Dict[Text, List[Artifact]], artifacts:Dict[Text, List[Artifact]]):
+      for component_key, expected_artifact_list in expected_artifacts.items():
+        self.assertIn(component_key, artifacts,msg="{} missing".format(component_key))
+        artifact_output, artifact_expected = artifacts[component_key].get()[0], expected_artifact_list[0]
+        if artifact_output.type_name == artifact_expected.type_name:
+          self.assertProtoEquals(artifact_output.artifact_type, artifact_expected.artifact_type)
+          self.assertProtoEquals(artifact_output.mlmd_artifact, artifact_expected.mlmd_artifact)
+          self.assertProtoEquals(artifact_output.uri, artifact_expected.uri)
+        # absl.logging.info("_compare_artifacts artifacts[component_key] %s", artifacts_lt)
+        # absl.logging.info("_compare_artifacts expected_artifact_list %s", artifacts_rt)
+        '''TODO: for artifact_output in artifacts[component_key].get():
+                                  for artifact_expected in expected_artifact_list:
+                                    absl.logging("artifact_expected %s", artifact_expected)
+                                    absl.logging("artifact_output %s", artifact_output)
+                                    
+                                    absl.logging("artifact_output.type_name %s", artifact_output.type_name)
+                                    absl.logging("artifact_expected.type_name %s", artifact_expected.type_name)
+                                    if artifact_output.type_name == artifact_expected.type_name:
+                                      self.assertProtoEquals(artifact_output.artifact_type, artifact_output.artifact_type)
+                                      self.assertProtoEquals(artifact_output.mlmd_artifact, artifact_output.mlmd_artifact)
+                                      self.assertProtoEquals(artifact_output.uri, artifact_output.uri)
+                                  else:
+                                    self.fail("Artifacts don't match")'''
 
-def main():
-  _pipeline_name = 'chicago_taxi_beam'
+    _pipeline_name = 'chicago_taxi_beam'
 
-  # This example assumes that the taxi data is stored in ~/taxi/data and the
-  # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-  # _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
-  _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
-  _data_root = os.path.join(_taxi_root, 'data', 'simple')
-  # Python module file to inject customized logic into the TFX components. The
-  # Transform and Trainer both require user-defined functions to run successfully.
-  _module_file = os.path.join(_taxi_root, 'taxi_utils.py')
-  # Path which can be listened to by the model server.  Pusher will output the
-  # trained model here.
-  _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
+    # This example assumes that the taxi data is stored in ~/taxi/data and the
+    # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
+    # _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+    _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
+    _data_root = os.path.join(_taxi_root, 'data', 'simple')
+    # Python module file to inject customized logic into the TFX components. The
+    # Transform and Trainer both require user-defined functions to run successfully.
+    _module_file = os.path.join(_taxi_root, 'taxi_utils.py')
+    # Path which can be listened to by the model server.  Pusher will output the
+    # trained model here.
+    _serving_model_dir = os.path.join(_taxi_root, 'serving_model', _pipeline_name)
 
-  # Directory and data locations.  This example assumes all of the chicago taxi
-  # example code and metadata library is relative to $HOME, but you can store
-  # these files anywhere on your local filesystem.
-  _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
-  _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
-  # Sqlite ML-metadata db path.
-  _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
-                                'metadata.db')
+    # Directory and data locations.  This example assumes all of the chicago taxi
+    # example code and metadata library is relative to $HOME, but you can store
+    # these files anywhere on your local filesystem.
+    _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+    _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
+    # Sqlite ML-metadata db path.
+    _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                                  'metadata.db')
 
-  # Creating artifacts
-  external_artifact = standard_artifacts.ExternalArtifact()
-  external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+    # Creating artifacts
+    external_artifact = standard_artifacts.ExternalArtifact()
+    external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
 
-  examples = standard_artifacts.Examples()
-  examples.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/CsvExampleGen/examples/2'
-  # examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples = standard_artifacts.Examples()
+    examples.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/CsvExampleGen/examples/2'
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-  example_statistics=standard_artifacts.ExampleStatistics()
-  example_statistics.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/StatisticsGen/statistics/70'
-  # statistics.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    example_statistics=standard_artifacts.ExampleStatistics()
+    example_statistics.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/StatisticsGen/statistics/70'
+    # statistics.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-  schema=standard_artifacts.Schema()
-  schema.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/SchemaGen/schema/71'
+    schema=standard_artifacts.Schema()
+    schema.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/SchemaGen/schema/71'
 
-  anomalies=standard_artifacts.ExampleAnomalies()
-  anomalies.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/ExampleValidator/anomalies/76'
+    anomalies=standard_artifacts.ExampleAnomalies()
+    anomalies.uri = '/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/ExampleValidator/anomalies/76'
 
-  # validation_output = 
+    # validation_output = 
 
-  transform_graph=standard_artifacts.TransformGraph()
-  transform_graph.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transform_graph/72'
+    transform_graph=standard_artifacts.TransformGraph()
+    transform_graph.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transform_graph/72'
 
-  transformed_examples=standard_artifacts.Examples()
-  transformed_examples.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transformed_examples/72'
-  model=standard_artifacts.Model()
-  model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Trainer/model/73'
+    transformed_examples=standard_artifacts.Examples()
+    transformed_examples.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Transform/transformed_examples/72'
+    model=standard_artifacts.Model()
+    model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Trainer/model/73'
 
-  baseline_model=standard_artifacts.Model()
+    baseline_model=standard_artifacts.Model()
 
-  evaluation=standard_artifacts.ModelEvaluation()
-  evaluation.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/evaluation/74'
+    evaluation=standard_artifacts.ModelEvaluation()
+    evaluation.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/evaluation/74'
 
-  model_blessing=standard_artifacts.ModelBlessing()
-  model_blessing.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/blessing/74'
+    model_blessing=standard_artifacts.ModelBlessing()
+    model_blessing.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Evaluator/blessing/74'
 
-  pushed_model=standard_artifacts.PushedModel()
-  pushed_model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Pusher/pushed_model/75'
+    pushed_model=standard_artifacts.PushedModel()
+    pushed_model.uri='/usr/local/google/home/sujip/tfx/pipelines/chicago_taxi_beam/Pusher/pushed_model/75'
 
-  pipeline = _create_pipeline(
-          pipeline_name=_pipeline_name,
-          pipeline_root=_pipeline_root,
-          data_root=_data_root,
-          module_file=_module_file,
-          serving_model_dir=_serving_model_dir,
-          metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0) # pipeline dsl
-  #DummyExecutor MockExecutor
-  pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory)#, [external_artifact], [examples])
-  pipeline.set_executor('StatisticsGen', FakeComponentExecutorFactory)#, [examples], [example_statistics])
-  pipeline.set_executor('SchemaGen',  FakeComponentExecutorFactory)#, [example_statistics], [schema])
-  pipeline.set_executor('ExampleValidator',  FakeComponentExecutorFactory)#, [example_statistics, schema], [anomalies])
-  pipeline.set_executor('Transform',  FakeComponentExecutorFactory)#, [examples, schema], [transform_graph, transformed_examples])
-  pipeline.set_executor('Trainer',  FakeComponentExecutorFactory)#, [examples, transform_graph, schema], [model])
-  # pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
-  pipeline.set_executor('Evaluator',  FakeComponentExecutorFactory)#, [examples, model, baseline_model], [evaluation, model_blessing])
-  pipeline.set_executor('Pusher',  FakeComponentExecutorFactory)#, [model, model_blessing], [pushed_model])
+    mock_pipeline = _create_pipeline(
+            pipeline_name=_pipeline_name,
+            pipeline_root=_pipeline_root,
+            data_root=_data_root,
+            module_file=_module_file,
+            serving_model_dir=_serving_model_dir,
+            metadata_path=_metadata_path,
+            # 0 means auto-detect based on the number of CPUs available during
+            # execution time.
+            direct_num_workers=0) # pipeline dsl
+    #DummyExecutor MockExecutor
+    mock_pipeline.set_executor('CsvExampleGen', FakeComponentExecutorFactory)#, [external_artifact], [examples])
+    mock_pipeline.set_executor('StatisticsGen', FakeComponentExecutorFactory)#, [examples], [example_statistics])
+    mock_pipeline.set_executor('SchemaGen',  FakeComponentExecutorFactory)#, [example_statistics], [schema])
+    mock_pipeline.set_executor('ExampleValidator',  FakeComponentExecutorFactory)#, [example_statistics, schema], [anomalies])
+    mock_pipeline.set_executor('Transform',  FakeComponentExecutorFactory)#, [examples, schema], [transform_graph, transformed_examples])
+    mock_pipeline.set_executor('Trainer',  FakeComponentExecutorFactory)#, [examples, transform_graph, schema], [model])
+    # mock_pipeline.set_executor('ResolverNode.latest_blessed_model_resolver',  DummyExecutor, [])
+    mock_pipeline.set_executor('Evaluator',  FakeComponentExecutorFactory)#, [examples, model, baseline_model], [evaluation, model_blessing])
+    mock_pipeline.set_executor('Pusher',  FakeComponentExecutorFactory)#, [model, model_blessing], [pushed_model])
 
-  BeamDagRunner().run(pipeline)
+    BeamDagRunner().run(mock_pipeline)
+    csvgen_input, csvgen_output = mock_pipeline.get_artifacts('CsvExampleGen')['input_dict'], mock_pipeline.get_artifacts('CsvExampleGen')['output_dict']
+    _compare_artifacts({'input':[external_artifact]}, csvgen_input)
+    _compare_artifacts({'examples':[examples]}, csvgen_output)
 
-  csvgen_input, csvgen_output = pipeline.get_artifacts('CsvExampleGen')['input_dict'], pipeline.get_artifacts('CsvExampleGen')['output_dict']
-  _compare_artifacts({'input':[external_artifact]}, csvgen_input)
-  _compare_artifacts({'examples':[examples]}, csvgen_output)
 
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
-  main()
-  # tf.test.main()
-
+  tf.test.main()
 """
-
 class DummyExecutor(BaseExecutor):
   def compare_artifacts(self, artifacts_lt: List[Artifact], artifacts_rt: List[Artifact]) -> bool:
     # assert 
@@ -295,4 +307,48 @@ class DummyExecutor(BaseExecutor):
     if not self.compare_artifacts(inputs, input_artifacts):
       raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(inputs, input_artifacts))
     if not self.compare_artifacts(outputs, output_artifacts):
-      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(outputs, output_artifacts))"""
+      raise Exception('Test failed\nPusher got = "{}", want = "{}"'.format(outputs, output_artifacts))'''
+
+
+class Test(tf.test.TestCase):
+  def test1(self):
+    external_artifact = standard_artifacts.ExternalArtifact()
+    external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+    examples = standard_artifacts.ExternalArtifact()
+    examples.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+
+    self.assertProtoEquals(external_artifact.type_name, examples.type_name)
+    self.assertProtoEquals(external_artifact.artifact_type, examples.artifact_type)
+    self.assertProtoEquals(external_artifact.mlmd_artifact, examples.mlmd_artifact)
+    self.assertProtoEquals(external_artifact.uri, examples.uri)
+
+  def test2(self):
+    external_artifact = standard_artifacts.ExternalArtifact()
+    external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+
+    examples = standard_artifacts.ExternalArtifact()
+    examples.uri = ''
+
+    self.assertProtoEquals(external_artifact.type_name, examples.type_name)
+    self.assertProtoEquals(external_artifact.artifact_type, examples.artifact_type)
+    self.assertProtoEquals(external_artifact.mlmd_artifact, examples.mlmd_artifact)
+    self.assertProtoEquals(external_artifact.uri, examples.uri)
+
+  def test3(self):
+    external_artifact = standard_artifacts.ExternalArtifact()
+    external_artifact.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+    external_artifact.id = 3
+
+    examples = standard_artifacts.ExternalArtifact()
+    examples.uri = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline/data/simple'
+    examples.id = 0
+    
+    self.assertProtoEquals(external_artifact.type_name, examples.type_name)
+    self.assertProtoEquals(external_artifact.artifact_type, examples.artifact_type)
+    self.assertProtoEquals(external_artifact.mlmd_artifact, examples.mlmd_artifact)
+    self.assertProtoEquals(external_artifact.uri, examples.uri)
+
+if __name__ == '__main__':
+  absl.logging.set_verbosity(absl.logging.INFO)
+  tf.test.main()
+"""
