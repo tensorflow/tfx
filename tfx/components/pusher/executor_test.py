@@ -157,6 +157,16 @@ class ExecutorTest(tf.test.TestCase):
     # Check model is pushed.
     self.assertPushed()
 
+  def testDo_NoBlessing(self):
+    # Input without any blessing.
+    input_dict = {executor.MODEL_KEY: [self._model_export]}
+
+    # Run executor
+    self._executor.Do(input_dict, self._output_dict, self._exec_properties)
+
+    # Check model is pushed.
+    self.assertPushed()
+
 
 if __name__ == '__main__':
   tf.test.main()
