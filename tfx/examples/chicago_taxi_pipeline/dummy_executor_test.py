@@ -167,26 +167,20 @@ class Test(tf.test.TestCase):
     def _compare_artifacts(expected_artifacts:Dict[Text, List[Artifact]], artifacts:Dict[Text, List[Artifact]]):
       for component_key, expected_artifact_list in expected_artifacts.items():
         self.assertIn(component_key, artifacts,msg="{} missing".format(component_key))
-        artifact_output, artifact_expected = artifacts[component_key].get()[0], expected_artifact_list[0]
-        if artifact_output.type_name == artifact_expected.type_name:
-          self.assertProtoEquals(artifact_output.artifact_type, artifact_expected.artifact_type)
-          self.assertProtoEquals(artifact_output.mlmd_artifact, artifact_expected.mlmd_artifact)
-          self.assertProtoEquals(artifact_output.uri, artifact_expected.uri)
-        # absl.logging.info("_compare_artifacts artifacts[component_key] %s", artifacts_lt)
-        # absl.logging.info("_compare_artifacts expected_artifact_list %s", artifacts_rt)
-        '''TODO: for artifact_output in artifacts[component_key].get():
-                                  for artifact_expected in expected_artifact_list:
-                                    absl.logging("artifact_expected %s", artifact_expected)
-                                    absl.logging("artifact_output %s", artifact_output)
-                                    
-                                    absl.logging("artifact_output.type_name %s", artifact_output.type_name)
-                                    absl.logging("artifact_expected.type_name %s", artifact_expected.type_name)
-                                    if artifact_output.type_name == artifact_expected.type_name:
-                                      self.assertProtoEquals(artifact_output.artifact_type, artifact_output.artifact_type)
-                                      self.assertProtoEquals(artifact_output.mlmd_artifact, artifact_output.mlmd_artifact)
-                                      self.assertProtoEquals(artifact_output.uri, artifact_output.uri)
-                                  else:
-                                    self.fail("Artifacts don't match")'''
+
+        output_artifacts_list = artifacts[component_key].get()
+        for output_artifact in output_artifacts_list:
+          for expected_artifact in expected_artifact_list:
+            if output_artifact._artifact_type.name == expected_artifact._artifact_type.name:
+              # absl.logging.info("output_artifact._artifact_type.name %s", output_artifact._artifact_type.name)
+              # absl.logging.info("expected_artifact._artifact_type.name %s", expected_artifact._artifact_type.name)
+              # absl.logging.info("hi")
+              self.assertProtoEquals(output_artifact.artifact_type, expected_artifact.artifact_type)
+              self.assertProtoEquals(output_artifact.mlmd_artifact, expected_artifact.mlmd_artifact)
+              self.assertProtoEquals(output_artifact.uri, expected_artifact.uri)
+              break
+          else:
+            self.fail("Artifacts don't match")
 
     _pipeline_name = 'chicago_taxi_beam'
 
