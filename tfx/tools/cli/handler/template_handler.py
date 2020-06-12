@@ -37,7 +37,6 @@ _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
 _IMPORT_FROM_PACKAGE = re.compile(
     r'from tfx\.experimental\.templates\.[^\.]+\.')
 _IMPORT_FROM_LOCAL_DIR = 'from '
-_INTERNAL_TODO_PREFIX = re.compile(r'\s*# TODO\((?:b/\d+|[a-z]+)\):.*')
 
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
@@ -151,7 +150,6 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
   replace_dict = {
       _IMPORT_FROM_PACKAGE: _IMPORT_FROM_LOCAL_DIR,
       _PLACEHOLDER_PIPELINE_NAME: pipeline_name,
-      _INTERNAL_TODO_PREFIX: '',
   }
   _copy_and_replace_placeholder_dir(template_dir,
                                     destination_dir,
