@@ -26,7 +26,6 @@ import time
 
 from absl import logging
 import apache_beam as beam
-from apache_beam.runners.portability import fn_api_runner
 import tensorflow as tf
 import tensorflow_transform as tft
 from tensorflow_transform import graph_tools
@@ -39,8 +38,8 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tfx_bsl.beam import shared
 
 import tfx
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import benchmark_base
 
 
 class _CopySavedModel(beam.PTransform):
@@ -179,7 +178,7 @@ def _get_batched_records(dataset):
   return batch_size, benchmark_utils.batched_iterator(records, batch_size)
 
 
-class TFTBenchmarkBase(test.Benchmark):
+class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
   """TFT benchmark base class."""
 
   def __init__(self, dataset, **kwargs):
@@ -207,7 +206,7 @@ class TFTBenchmarkBase(test.Benchmark):
     """
     common_variables = _get_common_variables(self._dataset)
 
-    pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
+    pipeline = self._create_beam_pipeline()
     _ = pipeline | _AnalyzeAndTransformDataset(
         self._dataset, common_variables.tf_metadata_schema,
         common_variables.preprocessing_fn,

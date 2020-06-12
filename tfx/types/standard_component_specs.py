@@ -27,6 +27,7 @@ from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
@@ -189,11 +190,12 @@ class PusherSpec(ComponentSpec):
       'push_destination':
           ExecutionParameter(type=pusher_pb2.PushDestination, optional=True),
       'custom_config':
-          ExecutionParameter(type=Dict[Text, Any], optional=True),
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'model': ChannelParameter(type=standard_artifacts.Model),
-      'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing),
+      'model_blessing': ChannelParameter(type=standard_artifacts.ModelBlessing,
+                                         optional=True),
       'infra_blessing': ChannelParameter(type=standard_artifacts.InfraBlessing,
                                          optional=True),
   }
@@ -285,7 +287,7 @@ class TrainerSpec(ComponentSpec):
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
       'run_fn': ExecutionParameter(type=(str, Text), optional=True),
       'trainer_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
@@ -312,6 +314,31 @@ class TrainerSpec(ComponentSpec):
   }
   _OUTPUT_COMPATIBILITY_ALIASES = {
       'output': 'model',
+  }
+
+
+class TunerSpec(ComponentSpec):
+  """ComponentSpec for TFX Tuner Component."""
+
+  PARAMETERS = {
+      'module_file': ExecutionParameter(type=(str, Text), optional=True),
+      'tuner_fn': ExecutionParameter(type=(str, Text), optional=True),
+      'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
+      'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
+      'tune_args': ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
+  }
+  INPUTS = {
+      'examples':
+          ChannelParameter(type=standard_artifacts.Examples),
+      'schema':
+          ChannelParameter(type=standard_artifacts.Schema, optional=True),
+      'transform_graph':
+          ChannelParameter(
+              type=standard_artifacts.TransformGraph, optional=True),
+  }
+  OUTPUTS = {
+      'best_hyperparameters':
+          ChannelParameter(type=standard_artifacts.HyperParameters),
   }
 
 

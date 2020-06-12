@@ -24,7 +24,7 @@ import json
 import os
 from typing import List, Optional, Text
 
-import absl
+from absl import logging
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
@@ -46,7 +46,7 @@ _PIPELINE_ROOT = 'pipeline-root'
 #
 # pusher = Pusher(
 #     model_export=trainer.outputs['model'],
-#     model_blessing=model_validator.outputs['blessing'],
+#     model_blessing=evaluator.outputs['blessing'],
 #     push_destination=pusher_pb2.PushDestination(
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
@@ -113,7 +113,7 @@ class Pipeline(object):
 
     # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
     if 'beam_pipeline_args' in self.additional_pipeline_args:
-      absl.logging.warning(
+      logging.warning(
           'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
       )
       self.beam_pipeline_args = self.additional_pipeline_args[
@@ -150,7 +150,7 @@ class Pipeline(object):
         raise RuntimeError('Duplicated component_id %s for component type %s' %
                            (component.id, component.type))
       instances_per_component_type[component.type].add(component.id)
-      for key, output_channel in component.outputs.get_all().items():
+      for key, output_channel in component.outputs.items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
         producer_map[output_channel] = component
@@ -164,7 +164,7 @@ class Pipeline(object):
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.get_all().values():
+      for i in component.inputs.values():
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)

@@ -45,7 +45,7 @@ class AirflowPipelineConfig(pipeline_config.PipelineConfig):
       **kwargs: keyword args for PipelineConfig.
     """
 
-    super(AirflowPipelineConfig, self).__init__(kwargs)
+    super(AirflowPipelineConfig, self).__init__(**kwargs)
     self.airflow_dag_config = airflow_dag_config or {}
 
 

@@ -64,8 +64,7 @@ class SchemaGen(base_component.BaseComponent):
                                           data_types.RuntimeParameter]] = False,
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      instance_name: Optional[Text] = None):
     """Constructs a SchemaGen component.
 
     Args:
@@ -82,9 +81,6 @@ class SchemaGen(base_component.BaseComponent):
         SchemaGen.  Required only if multiple SchemaGen components are declared
         in the same pipeline.  Either `statistics` or `stats` must be present in
         the input arguments.
-      enable_cache: Optional boolean to indicate if cache is enabled for the
-        SchemaGen component. If not specified, defaults to the value
-        specified for pipeline's enable_cache parameter.
     """
     if stats:
       absl.logging.warning(
@@ -99,5 +95,4 @@ class SchemaGen(base_component.BaseComponent):
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
         schema=schema)
-    super(SchemaGen, self).__init__(
-        spec=spec, instance_name=instance_name, enable_cache=enable_cache)
+    super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)

@@ -54,10 +54,11 @@ class DependencyUtilsTest(tf.test.TestCase):
     test_file = os.path.join(source_data_dir, 'test.csv')
     expected_package = 'mypackage.tar.gz'
 
-    def side_effect(cmd):
+    def side_effect(cmd, stdout, stderr):
       self.assertEqual(3, len(cmd))
       self.assertEqual(sys.executable, cmd[0])
       self.assertEqual('sdist', cmd[2])
+      self.assertEqual(stdout, stderr)
       setup_file = cmd[1]
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
       tf.io.gfile.makedirs(dist_dir)

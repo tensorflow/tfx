@@ -41,7 +41,10 @@ from tfx.types import component_spec
 class _SimpleComponent(base_component.BaseComponent):
   """Component whose constructor generates spec instance from arguments."""
 
-  def __init__(self, **kwargs):
+  def __init__(self, *unused_args, **kwargs):
+    if unused_args:
+      raise ValueError(('%s expects arguments to be passed as keyword '
+                        'arguments') % (self.__class__.__name__,))
     spec_kwargs = {}
     unseen_args = set(kwargs.keys())
     for key, channel_parameter in self.SPEC_CLASS.INPUTS.items():
@@ -58,6 +61,8 @@ class _SimpleComponent(base_component.BaseComponent):
       if key in kwargs:
         spec_kwargs[key] = kwargs[key]
         unseen_args.remove(key)
+    instance_name = kwargs.get('instance_name', None)
+    unseen_args.discard('instance_name')
     if unseen_args:
       raise ValueError(
           'Unknown arguments to %r: %s.' %
@@ -65,7 +70,7 @@ class _SimpleComponent(base_component.BaseComponent):
     for key, channel_parameter in self.SPEC_CLASS.OUTPUTS.items():
       spec_kwargs[key] = channel_utils.as_channel([channel_parameter.type()])
     spec = self.SPEC_CLASS(**spec_kwargs)
-    super(_SimpleComponent, self).__init__(spec)
+    super(_SimpleComponent, self).__init__(spec, instance_name=instance_name)
 
 
 class _FunctionExecutor(base_executor.BaseExecutor):

@@ -130,6 +130,9 @@ dmypy.json
 **/*_pb2.py
 # LINT.ThenChange(.gitignore)
 
+# Github integration settings
+.github
+
 # .dockerignore and Dockerfile themselves are not needed by docker build.
 .dockerignore
 tfx/tools/docker/Dockerfile*

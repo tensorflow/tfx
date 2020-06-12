@@ -92,7 +92,7 @@ if not six.PY2:
       examples: OutputArtifact[standard_artifacts.Examples]
   ) -> OutputDict(
       a=int, b=float, c=Text, d=bytes, e=Text):
-    del examples
+    tf.io.gfile.makedirs(examples.uri)
     return {'a': 1, 'b': 2.0, 'c': '3', 'd': b'4', 'e': 'passed'}
 
   @component
@@ -154,9 +154,11 @@ class ComponentDecoratorTest(tf.test.TestCase):
           base_executor.BaseExecutor)
 
     input_channel = types.Channel(type=_InputArtifact)
-    instance = _MySimpleComponent(input=input_channel, folds=10)
+    instance = _MySimpleComponent(input=input_channel, folds=10,
+                                  instance_name='my_instance')
     self.assertIs(instance.inputs['input'], input_channel)
     self.assertEqual(instance.outputs['output'].type, _OutputArtifact)
+    self.assertEqual(instance._instance_name, 'my_instance')
 
   def testDefinitionInClosureFails(self):
     with self.assertRaisesRegexp(
@@ -167,6 +169,12 @@ class ComponentDecoratorTest(tf.test.TestCase):
       @component
       def my_component():  # pylint: disable=unused-variable
         return None
+
+  def testNonKwargFails(self):
+    with self.assertRaisesRegexp(
+        ValueError,
+        'expects arguments to be passed as keyword arguments'):
+      _injector_1(9, 'secret')
 
   def testBeamExecutionSuccess(self):
     """Test execution with return values; success case."""

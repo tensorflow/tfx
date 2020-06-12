@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text
+from typing import List, Text
 
 import absl
 import kerastuner
@@ -88,13 +88,13 @@ def _eval_input_receiver_fn(schema):
       receiver_tensors=serving_input_receiver.receiver_tensors)
 
 
-def _input_fn(file_pattern: Text,
+def _input_fn(file_pattern: List[Text],
               schema: schema_pb2.Schema,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
-    file_pattern: input tfrecord file pattern.
+    file_pattern: List of paths or patterns of input tfrecord files.
     schema: Schema of the input data.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -236,5 +236,5 @@ def tuner_fn(working_dir: Text, train_data_pattern: Text,
 
   return component.TunerFnResult(
       tuner=tuner,
-      train_dataset=_input_fn(train_data_pattern, schema, 10),
-      eval_dataset=_input_fn(eval_data_pattern, schema, 10))
+      train_dataset=_input_fn([train_data_pattern], schema, 10),
+      eval_dataset=_input_fn([eval_data_pattern], schema, 10))

@@ -155,7 +155,7 @@ class InteractiveContext(object):
     metadata_connection = metadata.Metadata(self.metadata_connection_config)
     beam_pipeline_args = beam_pipeline_args or []
     additional_pipeline_args = {}
-    for name, output in component.outputs.get_all().items():
+    for name, output in component.outputs.items():
       for artifact in output.get():
         artifact.pipeline_name = self.pipeline_name
         artifact.producer_component = component.id

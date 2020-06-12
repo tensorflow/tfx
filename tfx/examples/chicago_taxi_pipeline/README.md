@@ -2,7 +2,7 @@
 
 The Chicago Taxi example demonstrates the end-to-end workflow and the steps
 required to analyze, validate, and transform data, train a model, analyze its
-performance, and serve it. This example uses the following 
+performance, and serve it. This example uses the following
 [TFX](https://www.tensorflow.org/tfx) components:
 
 * [ExampleGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/examplegen.md)
@@ -20,6 +20,9 @@ performance, and serve it. This example uses the following
   or [Keras](https://www.tensorflow.org/guide/keras).
 * [Evaluator](https://github.com/tensorflow/tfx/blob/master/docs/guide/evaluator.md)
   performs deep analysis of the training results.
+* [InfraValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/infra_validator.md)
+  checks the model is actually servable from the infrastructure, and prevents
+  bad model from being pushed.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
 * [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulk_inferrer.md)

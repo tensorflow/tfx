@@ -62,13 +62,15 @@ CUSTOM_PROPERTIES_PREFIX = 'custom:'
 
 class PropertyType(enum.Enum):
   INT = 1
-  STRING = 2
+  FLOAT = 2
+  STRING = 3
 
 
 class Property(object):
   """Property specified for an Artifact."""
   _ALLOWED_MLMD_TYPES = {
       PropertyType.INT: metadata_store_pb2.INT,
+      PropertyType.FLOAT: metadata_store_pb2.DOUBLE,
       PropertyType.STRING: metadata_store_pb2.STRING,
   }
 
@@ -215,6 +217,11 @@ class Artifact(json_utils.Jsonable):
         # Avoid populating empty property protobuf with the [] operator.
         return 0
       return self._artifact.properties[name].int_value
+    elif property_mlmd_type == metadata_store_pb2.DOUBLE:
+      if name not in self._artifact.properties:
+        # Avoid populating empty property protobuf with the [] operator.
+        return 0.0
+      return self._artifact.properties[name].double_value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
                       (property_mlmd_type, name))
@@ -249,6 +256,12 @@ class Artifact(json_utils.Jsonable):
             'Expected integer value for property %r; got %r instead.' %
             (name, value))
       self._artifact.properties[name].int_value = value
+    elif property_mlmd_type == metadata_store_pb2.DOUBLE:
+      if not isinstance(value, float):
+        raise Exception(
+            'Expected integer value for property %r; got %r instead.' %
+            (name, value))
+      self._artifact.properties[name].double_value = value
     else:
       raise Exception('Unknown MLMD type %r for property %r.' %
                       (property_mlmd_type, name))
@@ -555,6 +568,8 @@ def _ArtifactType(  # pylint: disable=invalid-name
     for name, property_type in mlmd_artifact_type.properties.items():
       if property_type == metadata_store_pb2.PropertyType.INT:
         properties[name] = Property(PropertyType.INT)
+      elif property_type == metadata_store_pb2.PropertyType.DOUBLE:
+        properties[name] = Property(PropertyType.FLOAT)
       elif property_type == metadata_store_pb2.PropertyType.STRING:
         properties[name] = Property(PropertyType.STRING)
       else:

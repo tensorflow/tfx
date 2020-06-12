@@ -34,6 +34,8 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
+from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.utils import telemetry_utils
 
 
@@ -57,10 +59,7 @@ class _ComponentAsDoFn(beam.DoFn):
       component_config: component config to launch the component.
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
-    enable_cache = (
-        component.enable_cache
-        if component.enable_cache is not None else tfx_pipeline.enable_cache)
-    driver_args = data_types.DriverArgs(enable_cache=enable_cache)
+    driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
     metadata_connection = metadata.Metadata(
         tfx_pipeline.metadata_connection_config)
     self._component_launcher = component_launcher_class.create(
@@ -103,8 +102,16 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
       config: Optional pipeline config for customizing the launching of each
-        component.
+        component. Defaults to pipeline config that supports
+        InProcessComponentLauncher and DockerComponentLauncher.
     """
+    if config is None:
+      config = pipeline_config.PipelineConfig(
+          supported_launcher_classes=[
+              in_process_component_launcher.InProcessComponentLauncher,
+              docker_component_launcher.DockerComponentLauncher,
+          ],
+      )
     super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 

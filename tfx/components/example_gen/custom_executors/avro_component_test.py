@@ -29,8 +29,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
-from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
 
 
@@ -97,11 +95,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.assert_called_once()
 
     # Get output paths.
-    component_id = example_gen.id
-    output_path = os.path.join(pipeline_root, component_id, 'examples/1')
-    examples = standard_artifacts.Examples()
-    examples.uri = output_path
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples = example_gen.outputs['examples'].get()[0]
 
     # Check Avro example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',

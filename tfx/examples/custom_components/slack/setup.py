@@ -25,7 +25,7 @@ def _make_required_install_packages():
   # six, and protobuf) with TF.
   return [
       'slackclient>=2.0.0,<2.0.1',
-      'tfx>=0.21.0,<=0.22.0dev',
+      'tfx>=0.22.0,<=0.23.0.dev',
       'websocket-client>=0.56,<0.60',
   ]
 
@@ -57,6 +57,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3 :: Only',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Scientific/Engineering :: Mathematics',
