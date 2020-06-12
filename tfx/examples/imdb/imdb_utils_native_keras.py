@@ -27,44 +27,50 @@ import tensorflow_hub as hub
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
+""" 
+There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
+with a 2:1 train-eval ratio.
+Batch_size is an empirically sound configuration
+"""
 _TRAIN_BATCH_SIZE = 64 
 _TRAIN_DATA_SIZE = int(50000 * 2 / 3) 
 _EVAL_BATCH_SIZE = 64
 _EVAL_DATA_SIZE = int(50000 / 3)
 _LABEL_KEY = "sentiment"
-DELIMITERS = '.,!?() '
+_DELIMITERS = '.,!?() '
 _MAX_FEATURES = 8000
 _MAX_LEN = 100
+_LEARNING_RATE = 1e-4
+_TRAIN_EPOCHS = 10
+_DROPOUT_RATE = 0.2
+_HIDDEN_UNITS = 64
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
-
-def _sentiment_to_int(sentiment):
-  """Cast the label type to int64"""
-  ints = tf.cast(sentiment, tf.int64)
-  return ints
 
 def _tokenize_review(review):
   """Tokenize the reivews by spliting the reviews, then constructing a
   vocabulary. Map the words to their frequency index in the vocabulary"""
   review_sparse = tf.compat.v1.string_split(
       tf.reshape(review, shape=[-1]),
-      DELIMITERS)
+      _DELIMITERS)
 
   review_indices = tft.compute_and_apply_vocabulary(
       review_sparse,
-      default_value=_MAX_FEATURES,
+      default_value=-1,
       top_k=_MAX_FEATURES)
-
-  dense = tf.sparse.to_dense(review_indices, default_value=_MAX_FEATURES)
+  dense = tf.sparse.to_dense(review_indices, default_value=-1)
   padding_config = [[0, 0], [0, _MAX_LEN]]
   dense = tf.pad(
       dense, padding_config,
       'CONSTANT',
-      constant_values=_MAX_FEATURES)
+      constant_values=-1)
 
   padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
+  padded += 1
+  #padded = tf.sparse.to_dense(review_indices, default_value=-1)
+  #padded += 1
   return padded
 
 def preprocessing_fn(inputs):
@@ -79,7 +85,7 @@ def preprocessing_fn(inputs):
   sentiment = inputs['sentiment']
   review = inputs['review']
   return {
-      'sentiment': _sentiment_to_int(sentiment),
+      'sentiment': sentiment,
       'embedding_input': _tokenize_review(review)}
 
 def _input_fn(file_pattern: List[Text],
@@ -91,7 +97,7 @@ def _input_fn(file_pattern: List[Text],
     file_pattern: List of paths or patterns of input tfrecord files.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
-      dataset to combine in a single batch
+      dataset to combine in a single batch.
 
   Returns:
     A dataset that contains (features, indices) tuple where features is a
@@ -118,18 +124,18 @@ def _build_keras_model() -> tf.keras.Model:
   # The model below is built with Functional API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   model = tf.keras.Sequential([
-      tf.keras.layers.Embedding(_MAX_FEATURES+1, 64),
+      tf.keras.layers.Embedding(_MAX_FEATURES+1, _HIDDEN_UNITS),
       tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
-          64,
-          dropout=0.2,
-          recurrent_dropout=0.2)),
-      tf.keras.layers.Dense(64, activation='relu'),
+          _HIDDEN_UNITS,
+          dropout=_DROPOUT_RATE,
+          recurrent_dropout=_DROPOUT_RATE)),
+      tf.keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
       tf.keras.layers.Dense(1)
   ])
 
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(1e-4),
+      optimizer=tf.keras.optimizers.Adam(_LEARNING_RATE),
       metrics=['accuracy'])
 
   model.summary()
@@ -182,7 +188,7 @@ def run_fn(fn_args: TrainerFnArgs):
 
   model.fit(
       train_dataset,
-      epochs=10,
+      epochs=_TRAIN_EPOCHS,
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
       validation_steps=eval_steps)

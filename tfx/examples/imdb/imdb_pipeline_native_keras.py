@@ -47,10 +47,10 @@ from tfx.orchestration import metadata
 from tfx.orchestration import pipeline 
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
-_pipeline_name = 'imdb_lstm_native_keras'
+_pipeline_name = 'imdb_native_keras'
 
 # This exmaple assumes the utility function is in ~/imdb
-_imdb_root = os.path.join(os.environ['HOME'], 'imdb_lstm')
+_imdb_root = os.path.join(os.environ['HOME'], 'imdb')
 _data_root = os.path.join(_imdb_root, 'data') 
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -59,7 +59,7 @@ _module_file = os.path.join(_imdb_root, 'imdb_utils_native_keras.py')
 # trained model here.
 _serving_model_dir = os.path.join(_imdb_root, 'serving_model', _pipeline_name)
 
-# Directory and data locations.  This example assumes all of the flowers
+# Directory and data locations.  This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
@@ -96,7 +96,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-    # Uses user-provided Python function that trains a model using TF-Learn.
+    # Uses user-provided Python function that trains a model.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
