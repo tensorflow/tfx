@@ -21,6 +21,7 @@ parameters defined in constants.py.
 from __future__ import division
 from __future__ import print_function
 
+import os
 from absl import logging
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -106,9 +107,10 @@ def _build_keras_model(hidden_units, learning_rate):
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
           key,
-          num_buckets=features.BUCKET_FEATURE_BUCKET_COUNT,
-          default_value=0)
-      for key in features.transformed_names(features.BUCKET_FEATURE_KEYS)
+          num_buckets=num_buckets,
+          default_value=0) for key, num_buckets in zip(
+              features.transformed_names(features.BUCKET_FEATURE_KEYS),
+              features.BUCKET_FEATURE_BUCKET_COUNT)
   ]
   categorical_columns += [
       tf.feature_column.categorical_column_with_identity(  # pylint: disable=g-complex-comprehension
@@ -175,6 +177,7 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
   output = tf.keras.layers.Dense(
       1, activation='sigmoid')(
           tf.keras.layers.concatenate([deep, wide]))
+  output = tf.squeeze(output, -1)
 
   model = tf.keras.Model(input_layers, output)
   model.compile(
@@ -205,12 +208,17 @@ def run_fn(fn_args):
     model = _build_keras_model(
         hidden_units=constants.HIDDEN_UNITS,
         learning_rate=constants.LEARNING_RATE)
+  # This log path might change in the future.
+  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':

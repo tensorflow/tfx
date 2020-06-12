@@ -36,7 +36,7 @@ class ExecutionResult(object):
 
   def __repr__(self):
     outputs_parts = []
-    for name, chan in self.component.outputs.get_all().items():
+    for name, chan in self.component.outputs.items():
       repr_string = '%s: %s' % (name, repr(chan))
       for line in repr_string.split('\n'):
         outputs_parts.append(line)

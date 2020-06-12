@@ -69,7 +69,7 @@ class ExecutorClassSpec(ExecutorSpec):
 
 
 class ExecutorContainerSpec(ExecutorSpec):
-  """A specifcation of a container.
+  """A specification of a container.
 
   The spec includes image, command line entrypoint and arguments for a
   container. For example:

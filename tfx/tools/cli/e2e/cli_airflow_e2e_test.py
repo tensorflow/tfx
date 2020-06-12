@@ -28,6 +28,7 @@ import time
 import absl
 from click import testing as click_testing
 import tensorflow as tf
+from tfx.orchestration.airflow import test_utils as airflow_test_utils
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
@@ -66,9 +67,6 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     self._testdata_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    # Do not load examples to make this a bit faster.
-    os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
-
     self._pipeline_name = 'chicago_taxi_simple'
     self._pipeline_path = os.path.join(self._testdata_dir,
                                        'test_pipeline_airflow_1.py')
@@ -90,6 +88,16 @@ class CliAirflowEndToEndTest(tf.test.TestCase):
     io_utils.copy_file(
         os.path.join(chicago_taxi_pipeline_dir, 'taxi_utils.py'),
         os.path.join(self._airflow_home, 'taxi', 'taxi_utils.py'))
+
+    self._mysql_container_name = 'airflow_' + test_utils.generate_random_id()
+    db_port = airflow_test_utils.create_mysql_container(
+        self._mysql_container_name)
+    self.addCleanup(airflow_test_utils.delete_mysql_container,
+                    self._mysql_container_name)
+    os.environ['AIRFLOW__CORE__SQL_ALCHEMY_CONN'] = (
+        'mysql://tfx@127.0.0.1:%d/airflow' % db_port)
+    # Do not load examples to make this a bit faster.
+    os.environ['AIRFLOW__CORE__LOAD_EXAMPLES'] = 'False'
 
     self._airflow_initdb()
 

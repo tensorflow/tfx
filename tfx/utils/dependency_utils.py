@@ -50,7 +50,7 @@ def make_beam_dependency_flags(beam_pipeline_args: List[Text]) -> List[Text]:
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       flags=beam_pipeline_args)
   all_options = pipeline_options.get_all_options()
-  for flag_name in ['extra_package', 'setup_file', 'requirements_file']:
+  for flag_name in ['extra_packages', 'setup_file', 'requirements_file']:
     if all_options.get(flag_name):
       absl.logging.info('Nonempty beam arg %s already includes dependency',
                         flag_name)
@@ -112,8 +112,12 @@ def build_ephemeral_package() -> Text:
   # Create the package
   curdir = os.getcwd()
   os.chdir(tmp_dir)
-  cmd = [sys.executable, setup_file, 'sdist']
-  subprocess.call(cmd)
+  temp_log = os.path.join(tmp_dir, 'setup.log')
+  with open(temp_log, 'w') as f:
+    absl.logging.info('Creating temporary sdist package, logs available at %s',
+                      temp_log)
+    cmd = [sys.executable, setup_file, 'sdist']
+    subprocess.call(cmd, stdout=f, stderr=f)
   os.chdir(curdir)
 
   # Return the package dir+filename

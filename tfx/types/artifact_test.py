@@ -38,6 +38,8 @@ class _MyArtifact(artifact.Artifact):
   PROPERTIES = {
       'int1': artifact.Property(type=artifact.PropertyType.INT),
       'int2': artifact.Property(type=artifact.PropertyType.INT),
+      'float1': artifact.Property(type=artifact.PropertyType.FLOAT),
+      'float2': artifact.Property(type=artifact.PropertyType.FLOAT),
       'string1': artifact.Property(type=artifact.PropertyType.STRING),
       'string2': artifact.Property(type=artifact.PropertyType.STRING),
   }
@@ -47,6 +49,8 @@ _MyArtifact2 = artifact._ArtifactType(  # pylint: disable=invalid-name
     properties={
         'int1': artifact.Property(type=artifact.PropertyType.INT),
         'int2': artifact.Property(type=artifact.PropertyType.INT),
+        'float1': artifact.Property(type=artifact.PropertyType.FLOAT),
+        'float2': artifact.Property(type=artifact.PropertyType.FLOAT),
         'string1': artifact.Property(type=artifact.PropertyType.STRING),
         'string2': artifact.Property(type=artifact.PropertyType.STRING),
     })
@@ -58,6 +62,8 @@ json_format.Parse(
         'properties': {
             'int1': 'INT',
             'int2': 'INT',
+            'float1': 'DOUBLE',
+            'float2': 'DOUBLE',
             'string1': 'STRING',
             'string2': 'STRING'
         }
@@ -171,12 +177,18 @@ class ArtifactTest(tf.test.TestCase):
       self.assertEqual(0, my_artifact.int2)
       my_artifact.int1 = 111
       my_artifact.int2 = 222
+      self.assertEqual(0.0, my_artifact.float1)
+      self.assertEqual(0.0, my_artifact.float2)
+      my_artifact.float1 = 111.1
+      my_artifact.float2 = 222.2
       self.assertEqual('', my_artifact.string1)
       self.assertEqual('', my_artifact.string2)
       my_artifact.string1 = '111'
       my_artifact.string2 = '222'
       self.assertEqual(my_artifact.int1, 111)
       self.assertEqual(my_artifact.int2, 222)
+      self.assertEqual(my_artifact.float1, 111.1)
+      self.assertEqual(my_artifact.float2, 222.2)
       self.assertEqual(my_artifact.string1, '111')
       self.assertEqual(my_artifact.string2, '222')
 

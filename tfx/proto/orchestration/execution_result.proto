@@ -39,8 +39,15 @@ message ExecutionResult {
 // output artifacts together with (probably updated) MLMD properties.
 // TODO(b/155135683): Perhaps rename this to output_dict.
 message ExecutorOutput {
+  // Will be deprecated in favor of `output_artifacts`.
   map<string, ml_metadata.Artifact> outputs = 1;
 
+  message ArtifactList {
+    repeated ml_metadata.Artifact artifacts = 1;
+  }
+  // Holds any output artifacts that should be updated. Note that all artifacts
+  // for a certain output key should be updated as a whole.
+  map<string, ArtifactList> output_artifacts = 3;
   // Holds any execution properties that should be updated.
   map<string, ml_metadata.Value> execution_properties = 2;
 }

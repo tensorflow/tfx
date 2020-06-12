@@ -179,7 +179,7 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - model_export: exported model from trainer.
-        - model_blessing: model blessing path from model_validator.
+        - model_blessing: model blessing path from evaluator.
       output_dict: Output dict from key to a list of artifacts, including:
         - slack_blessing: model blessing result.
       exec_properties: A dict of execution properties, including:
@@ -216,8 +216,8 @@ class Executor(base_executor.BaseExecutor):
 
     # We only consider a model as blessed if both of the following conditions
     # are met:
-    # - The model is blessed by model validator. This is determined by looking
-    #   for file named 'BLESSED' from the output from Model Validator.
+    # - The model is blessed by evaluator. This is determined by looking
+    #   for file named 'BLESSED' from the output from Evaluator.
     # - The model is blessed by a human reviewer. This logic is in
     #   _fetch_slack_blessing().
     slack_response = None

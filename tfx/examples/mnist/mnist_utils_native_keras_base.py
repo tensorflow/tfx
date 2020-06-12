@@ -22,7 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text
+from typing import List, Text
 
 import absl
 import tensorflow as tf
@@ -43,13 +43,13 @@ def _gzip_reader_fn(filenames):
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 
-def input_fn(file_pattern: Text,
+def input_fn(file_pattern: List[Text],
              tf_transform_output: tft.TFTransformOutput,
              batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
   Args:
-    file_pattern: input tfrecord file pattern.
+    file_pattern: List of paths or patterns of input tfrecord files.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
@@ -112,6 +112,8 @@ def preprocessing_fn(inputs):
   # So scale_by_min_max is a identity operation, since the range is preserved.
   outputs[transformed_name(IMAGE_KEY)] = (
       tft.scale_by_min_max(inputs[IMAGE_KEY], -0.5, 0.5))
+  # TODO(b/157064428): Support label transformation for Keras.
+  # Do not apply label transformation as it will result in wrong evaluation.
   outputs[transformed_name(LABEL_KEY)] = inputs[LABEL_KEY]
 
   return outputs

@@ -18,7 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
+from typing import Any, Dict, Text
 # Standard Imports
 import mock
 import tensorflow as tf
@@ -26,6 +28,7 @@ import tensorflow as tf
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -55,6 +58,8 @@ class ExecutorTest(tf.test.TestCase):
     self._output_dict = {
         tfx_pusher_executor.PUSHED_MODEL_KEY: [self._model_push],
     }
+    # Dict format of exec_properties. custom_config needs to be serialized
+    # before being passed into Do function.
     self._exec_properties = {
         'custom_config': {
             executor.SERVING_ARGS_KEY: {
@@ -65,6 +70,12 @@ class ExecutorTest(tf.test.TestCase):
         'push_destination': None,
     }
     self._executor = executor.Executor()
+
+  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+    """Converts self._exec_properties['custom_config'] to string."""
+    result = copy.deepcopy(self._exec_properties)
+    result['custom_config'] = json_utils.dumps(result['custom_config'])
+    return result
 
   def assertDirectoryEmpty(self, path):
     self.assertEqual(len(tf.io.gfile.listdir(path)), 0)
@@ -86,7 +97,7 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
     self._executor.Do(self._input_dict, self._output_dict,
-                      self._exec_properties)
+                      self._serialize_custom_config_under_test())
     executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
                                      self._executor.__class__.__name__)
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
@@ -107,7 +118,7 @@ class ExecutorTest(tf.test.TestCase):
                                             'model_validator/not_blessed')
     self._model_blessing.set_int_custom_property('blessed', 0)
     self._executor.Do(self._input_dict, self._output_dict,
-                      self._exec_properties)
+                      self._serialize_custom_config_under_test())
     self.assertNotPushed()
     mock_runner.deploy_model_for_aip_prediction.assert_not_called()
 

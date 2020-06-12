@@ -17,16 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import os
-
 import mock
 import tensorflow as tf
+from typing import Any, Dict, Text
 
 from google.cloud import bigquery
 
 from tfx.extensions.google_cloud_big_query_ml.pusher.executor import Executor
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -75,6 +77,12 @@ class ExecutorTest(tf.test.TestCase):
     self.mock_copy_dir = mock.patch.object(
         io_utils, 'copy_dir', autospec=True).start()
 
+  def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
+    """Converts self._exec_properties['custom_config'] to string."""
+    result = copy.deepcopy(self._exec_properties)
+    result['custom_config'] = json_utils.dumps(result['custom_config'])
+    return result
+
   def assertPushed(self):
     self.mock_copy_dir.assert_called_with(
         src=mock.ANY, dst=self._model_push.uri)
@@ -87,11 +95,11 @@ class ExecutorTest(tf.test.TestCase):
     self._model_push.uri = '/none_gcs_pipeline_root'
     with self.assertRaises(ValueError):
       self._executor.Do(self._input_dict, self._output_dict,
-                        self._exec_properties)
+                        self._serialize_custom_config_under_test())
 
   def testBigQueryServingArgs(self):
     temp_exec_properties = {
-        'custom_config': {},
+        'custom_config': json_utils.dumps({}),
         'push_destination': None,
     }
     with self.assertRaises(ValueError):
@@ -101,14 +109,14 @@ class ExecutorTest(tf.test.TestCase):
   def testDoBlessed(self):
     self.mock_check_blessing.return_value = True
     self._executor.Do(self._input_dict, self._output_dict,
-                      self._exec_properties)
+                      self._serialize_custom_config_under_test())
     self.mock_bq.assert_called_once()
     self.assertPushed()
 
   def testDoNotBlessed(self):
     self.mock_check_blessing.return_value = False
     self._executor.Do(self._input_dict, self._output_dict,
-                      self._exec_properties)
+                      self._serialize_custom_config_under_test())
     self.mock_bq.assert_not_called()
     self.assertNotPushed()
 

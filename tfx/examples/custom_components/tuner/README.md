@@ -6,3 +6,5 @@ moving it as an official TFX component.
 The iris e2e example is similar to examples/iris except it includes the Tuner
 for hyperparameter tuning and Trainer component takes the tuning results as
 input for its hyperparameter setting.
+
+Note: This will be deprecated after TFX officially supports Tuner.

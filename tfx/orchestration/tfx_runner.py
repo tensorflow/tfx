@@ -22,12 +22,12 @@ from __future__ import unicode_literals
 import abc
 from typing import Any, Optional
 
-from six import with_metaclass
+import six
 
 from tfx.orchestration.config import pipeline_config
 
 
-class TfxRunner(with_metaclass(abc.ABCMeta, object)):
+class TfxRunner(six.with_metaclass(abc.ABCMeta, object)):
   """Base runner class for TFX.
 
   This is the base class for every TFX runner.

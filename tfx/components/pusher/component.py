@@ -28,6 +28,7 @@ from tfx.components.pusher import executor
 from tfx.proto import pusher_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import PusherSpec
+from tfx.utils import json_utils
 
 
 # TODO(b/133845381): Investigate other ways to keep push destination converged.
@@ -37,8 +38,9 @@ class Pusher(base_component.BaseComponent):
   The `Pusher` component can be used to push an validated SavedModel from output
   of the [Trainer component](https://www.tensorflow.org/tfx/guide/trainer) to
   [TensorFlow Serving](https://www.tensorflow.org/tfx/serving).  The Pusher
-  will check the validation results from the [ModelValidator
-  component](https://www.tensorflow.org/tfx/guide/model_validator)
+  will check the validation results from the [Evaluator
+  component](https://www.tensorflow.org/tfx/guide/evaluator) and [InfraValidator
+  component](https://www.tensorflow.org/tfx/guide/infra_validator)
   before deploying the model.  If the model has not been blessed, then the model
   will not be pushed.
 
@@ -54,7 +56,7 @@ class Pusher(base_component.BaseComponent):
     # to a file destination if check passed.
     pusher = Pusher(
         model=trainer.outputs['model'],
-        model_blessing=model_validator.outputs['blessing'],
+        model_blessing=evaluator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
@@ -67,7 +69,7 @@ class Pusher(base_component.BaseComponent):
   def __init__(
       self,
       model: types.Channel = None,
-      model_blessing: types.Channel = None,
+      model_blessing: Optional[types.Channel] = None,
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        Dict[Text, Any]]] = None,
@@ -75,15 +77,15 @@ class Pusher(base_component.BaseComponent):
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
       model_export: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None,
-      enable_cache: Optional[bool] = None):
+      instance_name: Optional[Text] = None):
     """Construct a Pusher component.
 
     Args:
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a Trainer component.
-      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
-        usually produced by a ModelValidator component. _required_
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component.
       infra_blessing: An optional Channel of type
         `standard_artifacts.InfraBlessing`, usually produced from an
         InfraValidator component.
@@ -102,9 +104,6 @@ class Pusher(base_component.BaseComponent):
       model_export: Backwards compatibility alias for the 'model' argument.
       instance_name: Optional unique instance name. Necessary if multiple Pusher
         components are declared in the same pipeline.
-      enable_cache: Optional boolean to indicate if cache is enabled for the
-        Pusher component. If not specified, defaults to the value
-        specified for pipeline's enable_cache parameter.
     """
     if model_export:
       absl.logging.warning(
@@ -124,10 +123,9 @@ class Pusher(base_component.BaseComponent):
         model_blessing=model_blessing,
         infra_blessing=infra_blessing,
         push_destination=push_destination,
-        custom_config=custom_config,
+        custom_config=json_utils.dumps(custom_config),
         pushed_model=output)
     super(Pusher, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,
-        instance_name=instance_name,
-        enable_cache=enable_cache)
+        instance_name=instance_name)

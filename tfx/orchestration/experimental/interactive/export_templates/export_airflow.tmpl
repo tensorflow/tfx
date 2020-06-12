@@ -20,11 +20,15 @@ tfx_pipeline = pipeline.Pipeline(
     metadata_connection_config=(
         metadata.sqlite_metadata_connection_config(_metadata_path)),
 
-    # direct_num_workers=0 means auto-detect based on the number of CPUs
-    # available during  execution time.
+    # We use `--direct_num_workers=1` by default to launch 1 Beam worker process
+    # during Beam DirectRunner component execution. This mitigates issues with
+    # GPU memory usage when many workers are run sharing GPU resources.  Change
+    # this to `--direct_num_workers=0` to run one worker per available CPU
+    # thread or `--direct_num_workers=$N`, where `$N` is a fixed number of
+    # worker processes.
     #
-    # TODO(b/142684737): The multi-processing API might change.
-    beam_pipeline_args = ['--direct_num_workers=0'],
+    # TODO(b/142684737): The Beam multi-processing API might change.
+    beam_pipeline_args = ['--direct_num_workers=1'],
 
     additional_pipeline_args={})
 

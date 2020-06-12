@@ -179,7 +179,7 @@ data_artifact.uri = 'path/to/data'
 data_artifact.properties["day"].int_value = 1
 data_artifact.properties["split"].string_value = 'train'
 data_artifact.type_id = data_type_id
-data_artifact_id = store.put_artifacts([data_artifact])
+data_artifact_id = store.put_artifacts([data_artifact])[0]
 ```
 
 4) With the DataSet Artifact created, we can create the Execution for a Trainer
@@ -190,7 +190,7 @@ run
 trainer_run = metadata_store_pb2.Execution()
 trainer_run.type_id = trainer_type_id
 trainer_run.properties["state"].string_value = "RUNNING"
-run_id = store.put_executions([trainer_run])
+run_id = store.put_executions([trainer_run])[0]
 ```
 
 5) Declare input event and read data.
@@ -215,7 +215,7 @@ model_artifact.uri = 'path/to/model/file'
 model_artifact.properties["version"].int_value = 1
 model_artifact.properties["name"].string_value = 'MNIST-v1'
 model_artifact.type_id = model_type_id
-model_artifact_id = store.put_artifacts(model_artifact)
+model_artifact_id = store.put_artifacts([model_artifact])[0]
 ```
 
 7) With the Model Artifact created, we can record the output event.
@@ -235,7 +235,7 @@ store.put_events([output_event])
 
 ```python
 trainer_run.id = run_id
-trainer_run.id.properties["state"].string_value = "COMPLETED"
+trainer_run.properties["state"].string_value = "COMPLETED"
 store.put_executions([trainer_run])
 ```
 
@@ -255,7 +255,7 @@ my_experiment.type_id = experiment_type_id
 # Give the experiment a name
 my_experiment.name = "exp1"
 my_experiment.properties["note"].string_value = "My first experiment."
-experiment_id = store.put_contexts([my_experiment])
+experiment_id = store.put_contexts([my_experiment])[0]
 
 attribution = metadata_store_pb2.Attribution()
 attribution.artifact_id = model_artifact_id
@@ -263,7 +263,7 @@ attribution.context_id = experiment_id
 
 association = metadata_store_pb2.Association()
 association.execution_id = run_id
-attribution.context_id = experiment_id
+association.context_id = experiment_id
 
 store.put_attributions_and_associations([attribution], [association])
 ```
