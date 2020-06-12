@@ -89,6 +89,9 @@ A TFX pipeline typically includes the following components:
 
 *   [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
 
+*   [**BulkInferrer**](bulkinferrer.md) performs batch processing on a model
+    with unlabelled inference requests.
+
 This diagram illustrates the flow of data between these components:
 
 ![Component Flow](images/prog_fin.png)
