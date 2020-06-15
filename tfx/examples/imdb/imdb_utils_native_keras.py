@@ -30,14 +30,11 @@ from tfx.components.trainer.executor import TrainerFnArgs
 """ 
 There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
 with a 2:1 train-eval ratio.
-Batch_size is an empirically sound configuration
+Batch_size is an empirically sound configuration.
 """
 _TRAIN_BATCH_SIZE = 64 
-_TRAIN_DATA_SIZE = int(50000 * 2 / 3) 
 _EVAL_BATCH_SIZE = 64
-_EVAL_DATA_SIZE = int(50000 / 3)
 _LABEL_KEY = "sentiment"
-_DELIMITERS = '.,!?() '
 _MAX_FEATURES = 8000
 _MAX_LEN = 100
 _LEARNING_RATE = 1e-4
@@ -52,25 +49,26 @@ def _gzip_reader_fn(filenames):
 def _tokenize_review(review):
   """Tokenize the reivews by spliting the reviews, then constructing a
   vocabulary. Map the words to their frequency index in the vocabulary"""
-  review_sparse = tf.compat.v1.string_split(
-      tf.reshape(review, shape=[-1]),
-      _DELIMITERS)
-
+  review_sparse = tf.strings.split(tf.reshape(review, [-1])).to_sparse()
+  """tft.apply_vocaublary doesn't reserve 0 for oov words. In order to comply
+  with convention and use mask_zero in keras.embedding layer, manually set
+  default value to -1 and add 1 to every index."""
   review_indices = tft.compute_and_apply_vocabulary(
       review_sparse,
       default_value=-1,
       top_k=_MAX_FEATURES)
+  dense = tf.sparse.reset_shape(review_indices, None)
   dense = tf.sparse.to_dense(review_indices, default_value=-1)
+  """TFX transform expect the transform result to be FixedLenFeature."""
   padding_config = [[0, 0], [0, _MAX_LEN]]
   dense = tf.pad(
-      dense, padding_config,
+      dense,
+      padding_config,
       'CONSTANT',
       constant_values=-1)
 
   padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
   padded += 1
-  #padded = tf.sparse.to_dense(review_indices, default_value=-1)
-  #padded += 1
   return padded
 
 def preprocessing_fn(inputs):
@@ -124,19 +122,22 @@ def _build_keras_model() -> tf.keras.Model:
   # The model below is built with Functional API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
   model = tf.keras.Sequential([
-      tf.keras.layers.Embedding(_MAX_FEATURES+1, _HIDDEN_UNITS),
+      tf.keras.layers.Embedding(
+          _MAX_FEATURES+1,
+          _HIDDEN_UNITS,
+          mask_zero=True),
       tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
           _HIDDEN_UNITS,
           dropout=_DROPOUT_RATE,
           recurrent_dropout=_DROPOUT_RATE)),
       tf.keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
-      tf.keras.layers.Dense(1)
+      tf.keras.layers.Dense(1, activation='sigmoid')
   ])
 
   model.compile(
       loss='binary_crossentropy',
       optimizer=tf.keras.optimizers.Adam(_LEARNING_RATE),
-      metrics=['accuracy'])
+      metrics=['AUC'])
 
   model.summary()
   return model
@@ -180,8 +181,6 @@ def run_fn(fn_args: TrainerFnArgs):
       tf_transform_output,
       batch_size=_EVAL_BATCH_SIZE)
 
-  steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
-  eval_steps = _EVAL_DATA_SIZE / _EVAL_BATCH_SIZE
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
     model = _build_keras_model()
@@ -189,9 +188,9 @@ def run_fn(fn_args: TrainerFnArgs):
   model.fit(
       train_dataset,
       epochs=_TRAIN_EPOCHS,
-      steps_per_epoch=steps_per_epoch,
+      steps_per_epoch=100,
       validation_data=eval_dataset,
-      validation_steps=eval_steps)
+      validation_steps=100)
 
   signatures = {
       'serving_default':
