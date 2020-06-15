@@ -56,11 +56,11 @@ def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int],
     # Deserialize the record to tf.train.Example. 
     example = tf.train.Example()
     example.ParseFromString(record)
-    if feature_name not in example.features.feature.keys():
+    if feature_name not in example.features.feature:
         raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
     feature = example.features.feature[feature_name]
     if feature.HasField("float_list"):
-        raise RuntimeError('Feature type `float_list` is not supported.')
+        raise RuntimeError('Feature type `float_list` is not supported for partition.')
     partition_str = feature.SerializeToString(deterministic=True)
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
