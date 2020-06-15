@@ -454,12 +454,15 @@ class BaseKubeflowTest(tf.test.TestCase):
         enable_cache=True,
     )
 
-  def _create_dataflow_pipeline(self, pipeline_name: Text,
-                                components: List[BaseComponent]):
+  def _create_dataflow_pipeline(self,
+                                pipeline_name: Text,
+                                components: List[BaseComponent],
+                                wait_until_finish_ms: int = 1000 * 60 * 20):
     """Creates a pipeline with Beam DataflowRunner."""
     pipeline = self._create_pipeline(pipeline_name, components)
     pipeline.beam_pipeline_args = [
-        '--runner=DataflowRunner',
+        '--runner=TestDataflowRunner',
+        '--wait_until_finish_duration=%d' % wait_until_finish_ms,
         '--project=' + self._GCP_PROJECT_ID,
         '--temp_location=' +
         os.path.join(self._pipeline_root(pipeline_name), 'tmp'),
