@@ -164,7 +164,7 @@ message InputSpec {
       // The type of the Context.
       ml_metadata.ContextType type = 1;
       // The name of the context.
-      string name = 2;
+      Value name = 2;
       // Predicate on the context properties.
       PropertyPredicate property_predicate = 3;
     }
@@ -301,10 +301,10 @@ message PipelineRuntimeSpec {
   // Required field. Base directory of the pipeline. If not specified in DSL,
   // sub-pipelines will be compiled to use the same pipeline root as the parent
   // pipeline.
-  string pipeline_root = 1;
+  Value pipeline_root = 1;
   // A unique id to identify a pipeline run. This will not be set during
   // compilation time but is required for synchronous pipeline execution.
-  string pipeline_run_id = 2;
+  Value pipeline_run_id = 2;
 }
 
 // Basic info of a pipeline.
