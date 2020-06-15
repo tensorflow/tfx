@@ -27,6 +27,7 @@ from typing import Any, Dict, List, Text
 import absl
 import apache_beam as beam
 from six import with_metaclass
+import tensorflow as tf
 
 from google.protobuf import json_format
 from tfx import types
@@ -44,10 +45,27 @@ INPUT_KEY = 'input'
 EXAMPLES_KEY = 'examples'
 
 
-def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int]) -> int:
+def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int],
+                 split_config: example_gen_pb2.SplitConfig) -> int:
+  """Partition function for the ExampleGen's output splits."""
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
-  bucket = int(hashlib.sha256(record).hexdigest(), 16) % buckets[-1]
+  partition_str = record
+  if split_config.HasField('partition_feature_name'):
+    # Use a feature for partitioning the examples.
+    feature_name = split_config.partition_feature_name
+    # Deserialize the record to tf.train.Example.
+    example = tf.train.Example()
+    example.ParseFromString(record)
+    if feature_name not in example.features.feature:
+      raise RuntimeError(
+          'Feature name `{}` does not exist.'.format(feature_name))
+    feature = example.features.feature[feature_name]
+    if feature.HasField('float_list'):
+      raise RuntimeError(
+          'Feature type `float_list` is not supported for partition.')
+    partition_str = feature.SerializeToString(deterministic=True)
+  bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
   #   bucket >=0 && < 10, returns 0
   #   bucket >=10 && < 50, returns 1
@@ -190,7 +208,8 @@ class BaseExampleGenExecutor(
           | 'InputToSerializedExample' >> _InputToSerializedExample(  # pylint: disable=no-value-for-parameter
               input_to_example, input_dict, exec_properties,
               input_config.splits[0].pattern)
-          | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets))
+          | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets,
+                                          output_config.split_config))
     else:
       # Use input splits.
       for split in input_config.splits:
