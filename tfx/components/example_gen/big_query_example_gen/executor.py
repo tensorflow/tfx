@@ -27,6 +27,8 @@ from google.cloud import bigquery
 from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 
+# TODO(b/155637606): Move Big query example gen to GCP extensions.
+
 
 class _BigQueryConverter(object):
   """Help class for bigquery result row to tf example conversion."""

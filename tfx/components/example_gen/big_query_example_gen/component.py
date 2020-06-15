@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2020 Google LLC. All Rights Reserved.
+# Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@ from tfx import types
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
-from tfx.extensions.google_cloud_big_query.example_gen import executor
+from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
 
 
-class BigQueryExampleGen(component.QueryBasedExampleGen):  # pylint: disable=protected-access
+class BigQueryExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train

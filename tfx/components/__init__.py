@@ -16,13 +16,12 @@
 
 import tensorflow as tf
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
-
 # For component user to direct use tfx.components.[...] as an alias.
 from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
+from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
@@ -35,13 +34,6 @@ from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.components.tuner.component import Tuner
-
-# TODO(b/155637606): Remove after deprecation cycle starting with TFX 0.22.
-from tfx.extensions.google_cloud_big_query.example_gen import component
-BigQueryExampleGen = deprecation.deprecated_alias(  # pylint: disable=invalid-name
-    deprecated_name='tfx.components.BigQueryExampleGen',
-    name='tfx.extensions.google_cloud_big_query.example_gen.component.BigQueryExampleGen',
-    func_or_class=component.BigQueryExampleGen)
 
 # Prevents double logging: TFX and TF uses `tf.logging` but Beam uses standard
 # logging, both logging modules add its own handler. Following setting disables

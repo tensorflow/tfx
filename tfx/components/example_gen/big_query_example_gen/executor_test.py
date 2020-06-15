@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_big_query.example_gen.executor."""
+"""Tests for tfx.components.example_gen.big_query_example_gen.executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,7 +26,7 @@ import mock
 import tensorflow as tf
 from google.cloud import bigquery
 from google.protobuf import json_format
-from tfx.extensions.google_cloud_big_query.example_gen import executor
+from tfx.components.example_gen.big_query_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
