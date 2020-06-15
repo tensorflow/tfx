@@ -9,7 +9,7 @@ BulkInferrer consumes:
 
 *   A Trained model in [SavedModel](/guide/saved_model.md) format.
 *   Validation result from [Evaluator](evaluator.md) component.
-*   Unlabeled Unlabelled [tf.Examples](https://www.tensorflow.org/tutorials/load_data/tfrecord.md) that contain features.
+*   Unlabelled [tf.Examples](https://www.tensorflow.org/tutorials/load_data/tfrecord.md) that contain features.
 
 BulkInferrer emits:
 
