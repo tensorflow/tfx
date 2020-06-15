@@ -38,7 +38,7 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
     pass
 
 
-class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
+class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
 

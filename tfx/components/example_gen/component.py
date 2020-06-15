@@ -36,10 +36,10 @@ from tfx.types.standard_component_specs import FileBasedExampleGenSpec
 from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
 
 
-class QueryBasedExampleGen(base_component.BaseComponent):
-  """A TFX component to ingest examples from query based systems.
+class _QueryBasedExampleGen(base_component.BaseComponent):
+  """A TFX component to ingest examples from a file system.
 
-  The QueryBasedExampleGen component can be extended to ingest examples from
+  The _QueryBasedExampleGen component can be extended to ingest examples from
   query based systems such as Presto or Bigquery. The component will also
   convert the input data into
   tf.record](https://www.tensorflow.org/tutorials/load_data/tf_records)
@@ -65,26 +65,25 @@ class QueryBasedExampleGen(base_component.BaseComponent):
                                              Dict[Text, Any]]] = None,
                example_artifacts: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
-    """Construct a QueryBasedExampleGen component.
+    """Construct an QueryBasedExampleGen component.
 
     Args:
       input_config: An
         [example_gen_pb2.Input](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing input configuration. If any field is provided as a
-          RuntimeParameter, input_config should be constructed as a dict with
-          the same field names as Input proto message. _required_
+        RuntimeParameter, input_config should be constructed as a dict with the
+        same field names as Input proto message. _required_
       output_config: An
         [example_gen_pb2.Output](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing output configuration. If unset, the default splits
         will be labeled as 'train' and 'eval' with a distribution ratio of 2:1.
-          If any field is provided as a RuntimeParameter, output_config should
-          be constructed as a dict with the same field names as Output proto
-          message.
+        If any field is provided as a RuntimeParameter, output_config should be
+        constructed as a dict with the same field names as Output proto message.
       custom_config: An
         [example_gen_pb2.CustomConfig](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
           instance, providing custom configuration for ExampleGen. If any field
-          is provided as a RuntimeParameter, output_config should be constructed
-          as a dict.
+          is provided as a RuntimeParameter, output_config should be
+          constructed as a dict.
       example_artifacts: Channel of `standard_artifacts.Examples` for output
         train and eval examples.
       instance_name: Optional unique instance name. Required only if multiple
@@ -103,7 +102,7 @@ class QueryBasedExampleGen(base_component.BaseComponent):
         output_config=output_config,
         custom_config=custom_config,
         examples=example_artifacts)
-    super(QueryBasedExampleGen, self).__init__(
+    super(_QueryBasedExampleGen, self).__init__(
         spec=spec, instance_name=instance_name)
 
 

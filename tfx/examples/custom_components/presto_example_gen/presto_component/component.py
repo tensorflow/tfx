@@ -30,7 +30,7 @@ from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 
 
-class PrestoExampleGen(component.QueryBasedExampleGen):  # pylint: disable=protected-access
+class PrestoExampleGen(component._QueryBasedExampleGen):  # pylint: disable=protected-access
   """Official TFX PrestoExampleGen component.
 
   The Presto examplegen component takes a query, connection client
