@@ -52,7 +52,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         'gcloud', 'ai-platform', 'versions', 'list',
         '--model=%s' % model_name
     ]
-    versions = subprocess.run(versions_command, stdout=subprocess.PIPE)
+    versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
 
     if versions.returncode == 0:
       absl.logging.info('Model %s has versions %s' %
