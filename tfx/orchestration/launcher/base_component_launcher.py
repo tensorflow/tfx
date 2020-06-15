@@ -27,12 +27,14 @@ from six import with_metaclass
 from tfx import types
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
+from tfx.components.base import base_executor 
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
 from tfx.components.base.executor_spec import ExecutorClassSpec
-from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
+
+# from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 
 from tfx.types.artifact import Artifact
@@ -50,7 +52,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
-      mock_executor_spec: Dict[Text, FakeComponentExecutorFactory]= None
+      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor]= None
   ):
     """Initialize a BaseComponentLauncher.
 
@@ -90,7 +92,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
 
-    self.mock_executor_spec = mock_executor_spec
+    self.dummy_executor_dict = dummy_executor_dict
 
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
@@ -113,7 +115,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
-      mock_executor_spec: Dict[Text, FakeComponentExecutorFactory]= None
+      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor]= None
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -145,7 +147,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
         component_config=component_config,
-        mock_executor_spec=mock_executor_spec)
+        dummy_executor_dict=dummy_executor_dict)
 
   @classmethod
   @abc.abstractmethod

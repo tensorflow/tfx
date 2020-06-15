@@ -37,7 +37,9 @@ from tfx.components.base.executor_spec import ExecutorClassSpec
 from tfx.components.base.base_executor import BaseExecutor
 
 from tfx.types.artifact import Artifact
-from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
+# from tfx.experimental.recorder_executor import make_recorder_executor
+from tfx.experimental.dummy_executor import DummyExecutor #make_dummy_executor_class
+# from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
@@ -140,7 +142,7 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
-    self.mock_executor_spec = {}
+    self.dummy_executor_dict = {}
     # Mapping component's name to its executor to store dummy executors 
 
   @property
@@ -201,16 +203,30 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory]) -> None:
+  def set_dummy_executor(self, component_id: Text):
     for component in self._components:
-      if component_id is component.id:
-        self.mock_executor_spec[component_id] = executor_factory()
+      if component_id == component.id:
+        absl.logging.info("set_dummy_executor component_id %s", component.id)
+        executor = DummyExecutor()
+        
+        self.dummy_executor_dict[component_id] = executor
+        absl.logging.info("set_dummy_executor executor %s", executor)
+        # component.executor_spec = ExecutorClassSpec(make_dummy_executor_class("/usr/local/google/home/sujip/record", component.id) )
 
-  def get_artifacts(self, component_id: Text):
-    for component in self._components:
-      if component_id is component.id:
-        return {'input_dict':component.inputs.get_all(),'output_dict': component.outputs.get_all()}
+  # def set_recorder(self):
+  #   for component in self._components:
+  #     component.executor_spec = ExecutorClassSpec(make_recorder_executor)
+  # def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory]) -> None:
+  #         for component in self._components:
+  #           component.executor_spec = executor_factory.
+  #           if component_id is component.id:
+  #             self.mock_executor_spec[component_id] = executor_factory()
 
+  # '''def get_artifacts(self, component_id: Text):
+  #         for component in self._components:
+  #           if component_id is component.id:
+  #             return {'input_dict':component.inputs.get_all(),'output_dict': component.outputs.get_all()}
+  #     '''
   # def set_executor(self, component_id: Text, executor: BaseExecutor, 
   #                       input_artifacts: List[Artifact]=None,
   #                        output_artifacts: List[Artifact]=None) -> None:

@@ -28,6 +28,7 @@ from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
+from tfx.experimental.recorder_executor import make_recorder_executor
 
 import absl
 
@@ -58,17 +59,30 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
     component_id = self._component_info.component_id
-    if component_id in self.mock_executor_spec:
-      executor_class_spec= FakeExecutorClassSpec(self.mock_executor_spec[component_id])
-    else:
-      executor_class_spec = cast(executor_spec.ExecutorClassSpec,
-                                 self._component_executor_spec)
+    executor_class_spec = cast(executor_spec.ExecutorClassSpec,
+                                             self._component_executor_spec)
     absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 
     # Type hint of component will cause not-instantiable error as
     # component.executor is Type[BaseExecutor] which has an abstract function.
-    executor = executor_class_spec.executor_class(
-        executor_context)  # type: ignore
+
+    # executor = executor_class_spec.executor_class(
+    #     executor_context)  # type: ignore
+    # recorder = make_recorder_executor(executor, "/usr/local/google/home/sujip/record", component_id)
+    # recorder.Do(input_dict, output_dict, exec_properties)
+
+    if component_id in self.dummy_executor_dict:
+      executor = self.dummy_executor_dict[component_id]
+      executor.set_args(component_id, "/usr/local/google/home/sujip/record")
+    else:
+      executor_class_spec = cast(executor_spec.ExecutorClassSpec,
+                                 self._component_executor_spec)
+      absl.logging.info("executor_class_spec [%s]", executor_class_spec)
+
+      # Type hint of component will cause not-instantiable error as
+      # component.executor is Type[BaseExecutor] which has an abstract function.
+      executor = executor_class_spec.executor_class(
+          executor_context)  # type: ignore
     absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
     
