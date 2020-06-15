@@ -69,7 +69,7 @@ class Pusher(base_component.BaseComponent):
   def __init__(
       self,
       model: types.Channel = None,
-      model_blessing: types.Channel = None,
+      model_blessing: Optional[types.Channel] = None,
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        Dict[Text, Any]]] = None,
@@ -83,8 +83,9 @@ class Pusher(base_component.BaseComponent):
     Args:
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a Trainer component.
-      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
-        usually produced by a Evaluator component. _required_
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component.
       infra_blessing: An optional Channel of type
         `standard_artifacts.InfraBlessing`, usually produced from an
         InfraValidator component.

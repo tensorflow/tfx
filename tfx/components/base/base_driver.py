@@ -40,8 +40,11 @@ def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
   if tf.io.gfile.exists(artifact.uri):
     msg = 'Output artifact uri %s already exists' % artifact.uri
-    absl.logging.error(msg)
-    raise RuntimeError(msg)
+    absl.logging.warning(msg)
+    # TODO(b/158689199): We currently simply return as a short-term workaround
+    # to unblock execution retires. A comprehensive solution to guarantee
+    # idempotent executions is needed.
+    return
 
   # TODO(zhitaoli): Consider refactoring this out into something
   # which can handle permission bits.

@@ -5,6 +5,10 @@
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
+*   Relaxed the rule that output artifact uris must be newly created. This is a
+    temporary workaround to make retry work. We will introduce a more
+    comprehensive solution for idempotent execution.
+*   Made evaluator output optional (while still recommended) for pusher.
 
 ## Breaking changes
 
@@ -90,7 +94,11 @@
 *   Changed the encoding of the Integer and Float artifacts to be more portable.
 
 ## Documentation updates
-*   N/A
+*   Added concept guides for understanding TFX pipelines and components.
+*   Added guides to building Python function-based components and
+    container-based components.
+*   Added BulkInferrer component and TFX CLI documentation to the table of
+    contents.
 
 ## Deprecations
 *   Deprecating Py2 support

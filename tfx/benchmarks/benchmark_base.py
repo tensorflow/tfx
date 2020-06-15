@@ -31,4 +31,10 @@ flags.DEFINE_string(
 class BenchmarkBase(test.Benchmark):
 
   def _create_beam_pipeline(self):
-    return beam.Pipeline(runner=beam.runners.create_runner(FLAGS.beam_runner))
+    # FLAGS may not be parsed if the benchmark is instantiated directly by a
+    # test framework (e.g. PerfZero creates the class and calls the methods
+    # directly)
+    runner_flag = (
+        FLAGS.beam_runner
+        if FLAGS.is_parsed() else FLAGS["beam_runner"].default)
+    return beam.Pipeline(runner=beam.runners.create_runner(runner_flag))

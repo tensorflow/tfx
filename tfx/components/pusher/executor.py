@@ -87,20 +87,25 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       True if the model is blessed by validator.
     """
-    model_blessing = artifact_utils.get_single_instance(
-        input_dict[MODEL_BLESSING_KEY])
     # TODO(jyzhao): should this be in driver or executor.
-    if not model_utils.is_model_blessed(model_blessing):
-      logging.info('Model on %s was not blessed by model validation',
-                   model_blessing.uri)
-      return False
-    if INFRA_BLESSING_KEY in input_dict:
-      infra_blessing = artifact_utils.get_single_instance(
-          input_dict[INFRA_BLESSING_KEY])
+    maybe_model_blessing = input_dict.get(MODEL_BLESSING_KEY)
+    if maybe_model_blessing:
+      model_blessing = artifact_utils.get_single_instance(maybe_model_blessing)
+      if not model_utils.is_model_blessed(model_blessing):
+        logging.info('Model on %s was not blessed by model validation',
+                     model_blessing.uri)
+        return False
+    maybe_infra_blessing = input_dict.get(INFRA_BLESSING_KEY)
+    if maybe_infra_blessing:
+      infra_blessing = artifact_utils.get_single_instance(maybe_infra_blessing)
       if not model_utils.is_infra_validated(infra_blessing):
         logging.info('Model on %s was not blessed by infra validator',
                      model_blessing.uri)
         return False
+    if not maybe_model_blessing and not maybe_infra_blessing:
+      logging.warning('Pusher is going to push the model without validation. '
+                      'Consider using Evaluator or InfraValidator in your '
+                      'pipeline.')
     return True
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],

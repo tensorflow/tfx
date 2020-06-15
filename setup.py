@@ -27,6 +27,7 @@ from setuptools import setup
 
 from tfx import dependencies
 from tfx import version
+from tfx.tools import resolve_deps
 
 
 # Find the Protocol Compiler.
@@ -118,7 +119,17 @@ setup(
         'tfjs': dependencies.make_extra_packages_tfjs(),
         'all': dependencies.make_all_dependency_packages(),
     },
-    setup_requires=['pytest-runner'],
+    # TODO(b/158761800): Move to [build-system] requires in pyproject.toml.
+    setup_requires=[
+        'pytest-runner',
+        'poetry==1.0.9',  # Required for ResolveDeps command.
+                          # Poetry API is not officially documented and subject
+                          # to change in the future. Thus fix the version.
+        'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
+    ],
+    cmdclass={
+        'resolve_deps': resolve_deps.ResolveDepsCommand,
+    },
     python_requires='>=3.5,<4',
     packages=find_packages(),
     include_package_data=True,
