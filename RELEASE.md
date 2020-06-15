@@ -2,6 +2,8 @@
 
 ## Major Features and Improvements
 
+*   Supported feature based split partition in ExampleGen.
+
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
