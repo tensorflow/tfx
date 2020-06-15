@@ -33,7 +33,7 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.trainer.executor import GenericExecutor
-from tfx.components.base import executor_spec 
+from tfx.components.base import executor_spec
 from tfx.utils.dsl_utils import external_input
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.types import Channel
@@ -41,17 +41,17 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
 from tfx.proto import pusher_pb2
-from tfx.proto import trainer_pb2 
+from tfx.proto import trainer_pb2
 
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline 
+from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 _pipeline_name = 'imdb_native_keras'
 
 # This exmaple assumes the utility function is in ~/imdb
 _imdb_root = os.path.join(os.environ['HOME'], 'imdb')
-_data_root = os.path.join(_imdb_root, 'data') 
+_data_root = os.path.join(_imdb_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_imdb_root, 'imdb_utils_native_keras.py')

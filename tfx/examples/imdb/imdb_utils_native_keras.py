@@ -12,27 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Python source file include IMDB pipeline functions and necessary utils.
 
+The utilities in this file are used to build a model with native Keras.
+This module file will be used in Transform and generic Trainer."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 from typing import List, Text
 
-import absl
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
-import tensorflow_hub as hub
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-""" 
-There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
-with a 2:1 train-eval ratio.
-Batch_size is an empirically sound configuration.
-"""
-_TRAIN_BATCH_SIZE = 64 
+"""There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
+with a 2:1 train-eval ratio. Batch_size is an empirically sound 
+configuration."""
+_TRAIN_BATCH_SIZE = 64
 _EVAL_BATCH_SIZE = 64
 _LABEL_KEY = "sentiment"
 _MAX_FEATURES = 8000
@@ -48,24 +47,24 @@ def _gzip_reader_fn(filenames):
 
 def _tokenize_review(review):
   """Tokenize the reivews by spliting the reviews, then constructing a
-  vocabulary. Map the words to their frequency index in the vocabulary"""
+  vocabulary. Map the words to their frequency index in the vocabulary."""
   review_sparse = tf.strings.split(tf.reshape(review, [-1])).to_sparse()
-  """tft.apply_vocaublary doesn't reserve 0 for oov words. In order to comply
-  with convention and use mask_zero in keras.embedding layer, manually set
-  default value to -1 and add 1 to every index."""
+  # tft.apply_vocaublary doesn't reserve 0 for oov words. In order to comply
+  # with convention and use mask_zero in keras.embedding layer, manually set
+  # default value to -1 and add 1 to every index.
   review_indices = tft.compute_and_apply_vocabulary(
       review_sparse,
       default_value=-1,
       top_k=_MAX_FEATURES)
   dense = tf.sparse.reset_shape(review_indices, None)
   dense = tf.sparse.to_dense(review_indices, default_value=-1)
-  """TFX transform expect the transform result to be FixedLenFeature."""
+  # TFX transform expect the transform result to be FixedLenFeature.
   padding_config = [[0, 0], [0, _MAX_LEN]]
   dense = tf.pad(
       dense,
       padding_config,
       'CONSTANT',
-      constant_values=-1)
+      -1)
 
   padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
   padded += 1
@@ -113,7 +112,7 @@ def _input_fn(file_pattern: List[Text],
 
   return dataset
 
-def _build_keras_model() -> tf.keras.Model:
+def _build_keras_model() -> keras.Model:
   """Creates a DNN Keras model for classifying imdb data.
 
   Returns:
@@ -121,22 +120,22 @@ def _build_keras_model() -> tf.keras.Model:
   """
   # The model below is built with Functional API, please refer to
   # https://www.tensorflow.org/guide/keras/overview for all API options.
-  model = tf.keras.Sequential([
-      tf.keras.layers.Embedding(
+  model = keras.Sequential([
+      keras.layers.Embedding(
           _MAX_FEATURES+1,
           _HIDDEN_UNITS,
           mask_zero=True),
-      tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(
+      keras.layers.Bidirectional(keras.layers.LSTM(
           _HIDDEN_UNITS,
           dropout=_DROPOUT_RATE,
           recurrent_dropout=_DROPOUT_RATE)),
-      tf.keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
-      tf.keras.layers.Dense(1, activation='sigmoid')
+      keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
+      keras.layers.Dense(1, activation='sigmoid')
   ])
 
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tf.keras.optimizers.Adam(_LEARNING_RATE),
+      optimizer=tkeras.optimizers.Adam(_LEARNING_RATE),
       metrics=['AUC'])
 
   model.summary()
