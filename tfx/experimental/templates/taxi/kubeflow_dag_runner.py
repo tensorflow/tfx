@@ -41,12 +41,16 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 
 # Specifies data file directory. DATA_PATH should be a directory containing CSV
 # files for CsvExampleGen in this example. By default, data files are in the
-# `data` directory.
-# NOTE: If you upload data files to GCS(which is recommended if you use
-#       Kubeflow), you can use a path starting "gs://YOUR_BUCKET_NAME/path" for
-#       DATA_PATH. For example,
-#       DATA_PATH = 'gs://bucket/chicago_taxi_trips/csv/'
-DATA_PATH = 'data'
+# GCS path: `gs://{GCS_BUCKET_NAME}/tfx-template/data/`. Using a GCS path is
+# recommended for KFP.
+#
+# One can optionally choose to use a data source located inside of the container
+# built by the template, by specifying
+# DATA_PATH = 'data'. Note that Dataflow does not support use container as a
+# dependency currently, so this means CsvExampleGen cannot be used with Dataflow
+# (step 8 in the template notebook).
+
+DATA_PATH = 'gs://{}/tfx-template/data/'.format(configs.GCS_BUCKET_NAME)
 
 
 def run():
