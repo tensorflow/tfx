@@ -28,9 +28,9 @@ import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-"""There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
-with a 2:1 train-eval ratio. Batch_size is an empirically sound 
-configuration."""
+# There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
+# with a 2:1 train-eval ratio. Batch_size is an empirically sound
+# configuration.
 _TRAIN_BATCH_SIZE = 64
 _EVAL_BATCH_SIZE = 64
 _LABEL_KEY = "sentiment"
