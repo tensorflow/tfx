@@ -7,8 +7,8 @@ contains the original features and the prediction results.
 
 BulkInferrer consumes:
 
-*   A Trained model in [SavedModel](/guide/saved_model.md) format.
-*   Validation result from [Evaluator](evaluator.md) component.
+*   A Trained model in [SavedModel](https://www.tensorflow.org/guide/saved_model.md) format.
+*   Validation result from [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component.
 *   Unlabelled [tf.Examples](https://www.tensorflow.org/tutorials/load_data/tfrecord.md) that contain features.
 
 BulkInferrer emits:
@@ -18,8 +18,8 @@ BulkInferrer emits:
 ## Using the BulkInferrer Component
 
 A BulkInferrer TFX component is used to perform batch inference on unlabeled
-tf.Examples. It is typically deployed after an [Evaluator](evaluator.md) component
-to perform inference with a validated model, or after a [Trainer](trainer.md)
+tf.Examples. It is typically deployed after an [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component
+to perform inference with a validated model, or after a [Trainer](https://www.tensorflow.org/tfx/guide/trainer.md)
 component to directly perform inference on exported model.
 
 It currently performs in-memory model inference and remote inference.
@@ -42,4 +42,4 @@ bulk_inferrer = components.BulkInferrer(
 ```
 
 More details are available in the
-[BulkInferrer API reference](/tfx/api_docs/python/tfx/components/BulkInferrer)
+[BulkInferrer API reference](https://www.tensorflow.org/tfx/api_docs/python/tfx/components/BulkInferrer).
