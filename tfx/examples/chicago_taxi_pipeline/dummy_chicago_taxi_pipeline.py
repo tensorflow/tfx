@@ -45,6 +45,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
+from tfx.experimental.dummy_executor import DummyExecutorFactory
 
 if not os.path.exists("/usr/local/google/home/sujip/record"):
   raise Exception("Must record input/output first")
@@ -169,7 +170,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           evaluator,
           pusher,
       ],
-      enable_cache=True,
+      # enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/142684737): The multi-processing API might change.
@@ -190,13 +191,14 @@ if __name__ == '__main__':
           # 0 means auto-detect based on the number of CPUs available during
           # execution time.
           direct_num_workers=0)
-  mock_pipeline.set_dummy_executor('CsvExampleGen')
-  mock_pipeline.set_dummy_executor('StatisticsGen')
-  mock_pipeline.set_dummy_executor('SchemaGen')
-  mock_pipeline.set_dummy_executor('ExampleValidator')
-  mock_pipeline.set_dummy_executor('Transform')
-  mock_pipeline.set_dummy_executor('Trainer')
-  mock_pipeline.set_dummy_executor('Evaluator')
-  mock_pipeline.set_dummy_executor('Pusher')
+  dummy_factory = DummyExecutorFactory()
+  mock_pipeline.set_dummy_executor('CsvExampleGen', dummy_factory)
+  mock_pipeline.set_dummy_executor('StatisticsGen', dummy_factory)
+  # mock_pipeline.set_dummy_executor('SchemaGen', dummy_factory)
+  mock_pipeline.set_dummy_executor('ExampleValidator', dummy_factory)
+  # mock_pipeline.set_dummy_executor('Transform', dummy_factory)
+  mock_pipeline.set_dummy_executor('Trainer', dummy_factory)
+  mock_pipeline.set_dummy_executor('Evaluator', dummy_factory)
+  mock_pipeline.set_dummy_executor('Pusher', dummy_factory)
 
   BeamDagRunner().run(mock_pipeline)

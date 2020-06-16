@@ -38,7 +38,7 @@ from tfx.components.base.base_executor import BaseExecutor
 
 from tfx.types.artifact import Artifact
 # from tfx.experimental.recorder_executor import make_recorder_executor
-from tfx.experimental.dummy_executor import DummyExecutor #make_dummy_executor_class
+from tfx.experimental.dummy_executor import DummyExecutorFactory
 # from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -203,14 +203,10 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_dummy_executor(self, component_id: Text):
+  def set_dummy_executor(self, component_id: Text, executor_factory: DummyExecutorFactory):
     for component in self._components:
       if component_id == component.id:
-        absl.logging.info("set_dummy_executor component_id %s", component.id)
-        executor = DummyExecutor()
-        
-        self.dummy_executor_dict[component_id] = executor
-        absl.logging.info("set_dummy_executor executor %s", executor)
+        self.dummy_executor_dict[component_id] = executor_factory(component_id)
         # component.executor_spec = ExecutorClassSpec(make_dummy_executor_class("/usr/local/google/home/sujip/record", component.id) )
 
   # def set_recorder(self):

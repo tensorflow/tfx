@@ -12,16 +12,15 @@ import absl
 import os
 import filecmp
 from distutils.dir_util import copy_tree
-# import shutil
+
 class DummyExecutor(base_executor.BaseExecutor):
-  def set_args(self, component_id, record_dir):
+  def set_args(self, component_id: Text, record_dir: Text):
     self.component_id = component_id
     self.record_dir = record_dir
     
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
      output_dict: Dict[Text, List[types.Artifact]],
      exec_properties: Dict[Text, Any]) -> None:
-    absl.logging.info("component_id %s", self.component_id)
     # verifier with recorded contents
     with open(os.path.join(self.record_dir, "{}.json".format(self.component_id)), "r") as f:
       content_dict = json.load(f)
@@ -29,11 +28,12 @@ class DummyExecutor(base_executor.BaseExecutor):
     input_uri_dict = content_dict['input_dict']
     output_uri_dict = content_dict['output_dict']
 
-    absl.logging.info("input_uri_dict %s", input_uri_dict)
-    absl.logging.info("input_dict %s", input_dict)
+    # absl.logging.info("component_id %s", self.component_id)
+    # absl.logging.info("input_uri_dict %s", input_uri_dict)
+    # absl.logging.info("input_dict %s", input_dict)
 
-    absl.logging.info('output_uri_dict %s', output_uri_dict)
-    absl.logging.info('output_dict %s', output_dict)
+    # absl.logging.info('output_uri_dict %s', output_uri_dict)
+    # absl.logging.info('output_dict %s', output_dict)
     
     for in_key_name, artifact_list in input_dict.items():
       if in_key_name == 'baseline_model':
@@ -42,17 +42,23 @@ class DummyExecutor(base_executor.BaseExecutor):
         assert artifact.type_name in input_uri_dict[in_key_name].keys()
         src = input_uri_dict[in_key_name][artifact.type_name]
         dest = artifact.uri
-        if src == dest:
-          continue
         copy_tree(src, dest)
+        absl.logging.info('from %s, copied to %s', src, dest)
+
     for out_key_name, artifact_list in output_dict.items():
       for artifact in artifact_list:
         assert artifact.type_name in output_uri_dict[out_key_name].keys()
         src = output_uri_dict[out_key_name][artifact.type_name]
         dest = artifact.uri
-        if src == dest:
-          continue
         copy_tree(src, dest)
+        absl.logging.info('from %s, copied to %s', src, dest)
+
+class DummyExecutorFactory(object):
+  def __call__(self, component_id: Text, 
+                record_dir: Text="/usr/local/google/home/sujip/record"):
+    executor = DummyExecutor()
+    executor.set_args(component_id, record_dir)
+    return executor
 
 # def make_dummy_executor_class(record_dir: Text, component_id: Text) -> base_executor.BaseExecutor:
 #   """
