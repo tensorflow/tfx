@@ -68,7 +68,7 @@ def requires_ipython(fn):
       absl.logging.warning(
           'Method "%s" is a no-op when invoked outside of IPython.',
           fn.__name__)
-
+    return None
   return run_if_ipython
 
 
@@ -226,8 +226,8 @@ class InteractiveContext(object):
   @requires_ipython
   def show(self, item: object) -> None:
     """Show the given object in an IPython notebook display."""
-    from IPython.core.display import display  # pylint: disable=g-import-not-at-top
-    from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
+    from IPython.core.display import display  # pylint: disable=import-outside-toplevel
+    from IPython.core.display import HTML  # pylint: disable=import-outside-toplevel
     if isinstance(item, types.Channel):
       channel = item
       artifacts = channel.get()
