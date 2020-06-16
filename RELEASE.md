@@ -2,7 +2,6 @@
 
 ## Major Features and Improvements
 *   Added TFX DSL IR compiler that encodes a TFX pipeline into a DSL proto.
-
 *   Supported feature based split partition in ExampleGen.
 
 ## Bug fixes and other changes
@@ -13,6 +12,11 @@
     comprehensive solution for idempotent execution.
 *   Made evaluator output optional (while still recommended) for pusher.
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`.
+*   Introduced dependency to `tensorflow-enterprise-addons` Python package,
+    with intention to separate out Google Cloud Platform specific extensions
+    to eventially this package. 
+
+
 ## Breaking changes
 
 ### For pipeline authors

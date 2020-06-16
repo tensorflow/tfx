@@ -43,6 +43,7 @@ def make_required_install_packages():
       'six>=1.10,<2',
       'tensorflow>=1.15,!=2.0.*,<3',
       'tensorflow-data-validation>=0.22,<0.23',
+      'tensorflow-enterprise-addons>=0.1,<0.2',
       'tensorflow-model-analysis>=0.22.1,<0.23',
       'tensorflow-serving-api>=1.15,<3',
       'tensorflow-transform>=0.22,<0.23',

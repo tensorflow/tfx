@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import random
 import apache_beam as beam
 import tensorflow as tf
 from google.protobuf import json_format
@@ -43,18 +44,17 @@ def _TestInputSourceToExamplePTransform(
   elif split_pattern == 'eval/*':
     size = 10000
   assert size != 0
-  has_empty = exec_properties.get('has_empty', True)
   for i in range(size):
     feature = {}
-    feature['i'] = tf.train.Feature(
-    ) if i % 10 == 0 and has_empty else tf.train.Feature(
-        int64_list=tf.train.Int64List(value=[i]))
-    feature['f'] = tf.train.Feature(
-    ) if i % 10 == 0 and has_empty else tf.train.Feature(
-        float_list=tf.train.FloatList(value=[float(i)]))
-    feature['s'] = tf.train.Feature(
-    ) if i % 10 == 0 and has_empty else tf.train.Feature(
-        bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
+    feature['i'] = tf.train.Feature() if random.randrange(
+        10) == 0 else tf.train.Feature(
+            int64_list=tf.train.Int64List(value=[i]))
+    feature['f'] = tf.train.Feature() if random.randrange(
+        10) == 0 else tf.train.Feature(
+            float_list=tf.train.FloatList(value=[float(i)]))
+    feature['s'] = tf.train.Feature() if random.randrange(
+        10) == 0 else tf.train.Feature(
+            bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
     example_proto = tf.train.Example(
         features=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
@@ -160,7 +160,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                         name='eval', hash_buckets=1)
                 ],
                 partition_feature_name='i')))
-    self._exec_properties['has_empty'] = False
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -194,25 +193,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                                  'Feature name `.*` does not exist.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
-  def testEmptyFeature(self):
-    # Add output config to exec proterties.
-    self._exec_properties['output_config'] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
-
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    with self.assertRaisesRegexp(
-        RuntimeError, 'Partition feature does not contain any value.'):
-      example_gen.Do({}, self._output_dict, self._exec_properties)
-
   def testInvalidFloatListFeature(self):
     # Add output config to exec proterties.
     self._exec_properties['output_config'] = json_format.MessageToJson(
@@ -225,14 +205,12 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                         name='eval', hash_buckets=1)
                 ],
                 partition_feature_name='f')))
-    self._exec_properties['has_empty'] = False
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
     with self.assertRaisesRegexp(
         RuntimeError,
-        'Only `bytes_list` and `int64_list` features are supported for partition.'
-    ):
+        'Feature type `float_list` is not supported for partition.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 

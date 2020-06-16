@@ -61,13 +61,9 @@ def _PartitionFn(record: bytes, num_partitions: int, buckets: List[int],
       raise RuntimeError(
           'Feature name `{}` does not exist.'.format(feature_name))
     feature = example.features.feature[feature_name]
-    if not feature.HasField('kind'):
-      raise RuntimeError('Partition feature does not contain any value.')
-    if (not feature.HasField('bytes_list') and
-        not feature.HasField('int64_list')):
+    if feature.HasField('float_list'):
       raise RuntimeError(
-          'Only `bytes_list` and `int64_list` features are supported for partition.'
-      )
+          'Feature type `float_list` is not supported for partition.')
     partition_str = feature.SerializeToString(deterministic=True)
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
