@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import click
+
 from tfx.tools.cli.commands.pipeline import pipeline_group
 from tfx.tools.cli.commands.run import run_group
 from tfx.tools.cli.commands.template import template_group
@@ -32,6 +33,7 @@ def cli_group():
 cli_group.add_command(pipeline_group)
 cli_group.add_command(run_group)
 cli_group.add_command(template_group)
+
 
 if __name__ == '__main__':
   cli_group()
