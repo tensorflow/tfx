@@ -2,10 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Text
 from tfx import types
-from tfx.types.artifact import Artifact
-from tfx.components.base import base_executor 
+from tfx.components.base import base_executor
 
 import json
 import absl
@@ -14,17 +13,44 @@ import filecmp
 from distutils.dir_util import copy_tree
 
 class DummyExecutor(base_executor.BaseExecutor):
+  def _compare_contents(self, uri: Text, expected_uri: Text):
+    """
+    recursively compare two directories,
+    Files are equal if names and contents are equal.
+    """
+    dirs_cmp = filecmp.dircmp(uri, expected_uri)
+    absl.logging.info("uri: %s", uri)
+    absl.logging.info("expected_uri: %s", expected_uri)
+    if len(dirs_cmp.left_only) > 0 or len(dirs_cmp.right_only) > 0 or \
+      len(dirs_cmp.funny_files) > 0:
+      return False
+
+    (_, mismatch, errors) = filecmp.cmpfiles(
+        uri, expected_uri, dirs_cmp.common_files, shallow=False)
+
+    if len(mismatch) > 0 or len(errors) > 0:
+      return False
+
+    for common_dir in dirs_cmp.common_dirs:
+      new_dir1 = os.path.join(uri, common_dir)
+      new_dir2 = os.path.join(expected_uri, common_dir)
+      if not self._compare_contents(new_dir1, new_dir2):
+        return False
+    return True
+
   def set_args(self, component_id: Text, record_dir: Text):
     self.component_id = component_id
     self.record_dir = record_dir
-    
+
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-     output_dict: Dict[Text, List[types.Artifact]],
-     exec_properties: Dict[Text, Any]) -> None:
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
     # verifier with recorded contents
-    with open(os.path.join(self.record_dir, "{}.json".format(self.component_id)), "r") as f:
+    json_path = os.path.join(self.record_dir,
+                             "{}.json".format(self.component_id))
+    with open(json_path, "r") as f:
       content_dict = json.load(f)
-    
+
     input_uri_dict = content_dict['input_dict']
     output_uri_dict = content_dict['output_dict']
 
@@ -34,16 +60,16 @@ class DummyExecutor(base_executor.BaseExecutor):
 
     # absl.logging.info('output_uri_dict %s', output_uri_dict)
     # absl.logging.info('output_dict %s', output_dict)
-    
+
     for in_key_name, artifact_list in input_dict.items():
       if in_key_name == 'baseline_model':
-          continue
+        continue
       for artifact in artifact_list:
         assert artifact.type_name in input_uri_dict[in_key_name].keys()
         src = input_uri_dict[in_key_name][artifact.type_name]
         dest = artifact.uri
-        copy_tree(src, dest)
-        absl.logging.info('from %s, copied to %s', src, dest)
+        if not self._compare_contents(dest, src):
+          raise Exception("input checking failed")
 
     for out_key_name, artifact_list in output_dict.items():
       for artifact in artifact_list:
@@ -54,55 +80,8 @@ class DummyExecutor(base_executor.BaseExecutor):
         absl.logging.info('from %s, copied to %s', src, dest)
 
 class DummyExecutorFactory(object):
-  def __call__(self, component_id: Text, 
-                record_dir: Text="/usr/local/google/home/sujip/record"):
+  def __call__(self, component_id: Text,
+               record_dir: Text = "/usr/local/google/home/sujip/record"):
     executor = DummyExecutor()
     executor.set_args(component_id, record_dir)
     return executor
-
-# def make_dummy_executor_class(record_dir: Text, component_id: Text) -> base_executor.BaseExecutor:
-#   """
-#   TODO: figure out passing class reference work, instead of instance
-#   """
-
-#   # take in expected inputs/outputs from recorded contents
-#   class DummyExecutor(base_executor.BaseExecutor):
-#     def set_args(self, component_id, record_dir="/usr/local/google/home/sujip/record"):
-#       self.component_id = component_id
-#       self.record_dir = record_dir
-
-#     def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-#        output_dict: Dict[Text, List[types.Artifact]],
-#        exec_properties: Dict[Text, Any]) -> None:
-#       # verifier with recorded contents
-#       with open(os.path.join(record_dir, "{}.json".format(component_id)), "r") as f:
-#         content_dict = json.load(f.read())
-      
-#       input_uri_dict = content_dict['input_dict']
-#       output_uri_dict = content_dict['output_dict']
-
-#       absl.logging.info("input_uri_dict %s", input_uri_dict)
-#       absl.logging.info("input_dict %s", input_dict)
-
-#       absl.logging.info('output_uri_dict %s', output_uri_dict)
-#       absl.logging.info('output_dict %s', output_dict)
-
-#       assert len(input_dict.keys()) == 1
-#       assert len(input_uri_dict.keys()) == 1
-#       assert len(output_dict.keys()) == 1
-#       assert len(output_uri_dict.keys()) == 1
-#       in_key_name = list(input_dict.keys())[0]
-#       out_key_name = list(output_dict.keys())[0]
-
-#       # assert set(input_uri_dict.keys()) == set(input_dict.keys())
-#       # assert set(output_uri_dict.keys()) == set(output_dict.keys())
-      
-#       for artifact in input_dict[in_key_name]:
-#         assert artifact.type_name in input_uri_dict[in_key_name].keys()
-#         shutil.copytree(input_uri_dict[in_key_name][artifact.type_name], artifact.uri)
-#       for artifact in output_dict[in_key_name]:
-#         assert artifact.type_name in input_uri_dict[out_key_name].keys()
-#         shutil.copytree(output_uri_dict[out_key_name][artifact.type_name], artifact.uri)
-
-#   return DummyExecutor 
-

@@ -182,21 +182,21 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   mock_pipeline = _create_pipeline(
-          pipeline_name=_pipeline_name,
-          pipeline_root=_pipeline_root,
-          data_root=_data_root,
-          module_file=_module_file,
-          serving_model_dir=_serving_model_dir,
-          metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0)
+      pipeline_name=_pipeline_name,
+      pipeline_root=_pipeline_root,
+      data_root=_data_root,
+      module_file=_module_file,
+      serving_model_dir=_serving_model_dir,
+      metadata_path=_metadata_path,
+      # 0 means auto-detect based on the number of CPUs available during
+      # execution time.
+      direct_num_workers=0)
   dummy_factory = DummyExecutorFactory()
   mock_pipeline.set_dummy_executor('CsvExampleGen', dummy_factory)
   mock_pipeline.set_dummy_executor('StatisticsGen', dummy_factory)
-  # mock_pipeline.set_dummy_executor('SchemaGen', dummy_factory)
+  mock_pipeline.set_dummy_executor('SchemaGen', dummy_factory)
   mock_pipeline.set_dummy_executor('ExampleValidator', dummy_factory)
-  # mock_pipeline.set_dummy_executor('Transform', dummy_factory)
+  mock_pipeline.set_dummy_executor('Transform', dummy_factory)
   mock_pipeline.set_dummy_executor('Trainer', dummy_factory)
   mock_pipeline.set_dummy_executor('Evaluator', dummy_factory)
   mock_pipeline.set_dummy_executor('Pusher', dummy_factory)

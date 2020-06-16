@@ -45,7 +45,6 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-from tfx.experimental.recorder_executor import make_recorder_executor
 import shutil
 if not os.path.exists("/usr/local/google/home/sujip/record"):
   os.makedirs("/usr/local/google/home/sujip/record")
@@ -186,15 +185,15 @@ if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
 
   pipeline = _create_pipeline(
-          pipeline_name=_pipeline_name,
-          pipeline_root=_pipeline_root,
-          data_root=_data_root,
-          module_file=_module_file,
-          serving_model_dir=_serving_model_dir,
-          metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0)
+      pipeline_name=_pipeline_name,
+      pipeline_root=_pipeline_root,
+      data_root=_data_root,
+      module_file=_module_file,
+      serving_model_dir=_serving_model_dir,
+      metadata_path=_metadata_path,
+      # 0 means auto-detect based on the number of CPUs available during
+      # execution time.
+      direct_num_workers=0)
 
   # pipeline.set_executor('StatisticsGen', make_recorder_executor)
   # pipeline.set_executor('SchemaGen', make_recorder_executor)

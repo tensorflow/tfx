@@ -27,17 +27,13 @@ from six import with_metaclass
 from tfx import types
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
-from tfx.components.base import base_executor 
+from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
-from tfx.components.base.executor_spec import ExecutorClassSpec
 
 # from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
-
-
-from tfx.types.artifact import Artifact
 
 class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
   """Responsible for launching driver, executor and publisher of component."""
@@ -52,7 +48,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
-      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor]= None
+      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor] = None
   ):
     """Initialize a BaseComponentLauncher.
 
@@ -115,7 +111,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
           base_component_config.BaseComponentConfig] = None,
-      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor]= None
+      dummy_executor_dict: Dict[Text, base_executor.BaseExecutor] = None
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 

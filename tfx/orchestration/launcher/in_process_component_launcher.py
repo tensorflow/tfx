@@ -27,8 +27,6 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
-from tfx.experimental.recorder_executor import make_recorder_executor
 
 import absl
 
@@ -60,7 +58,7 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         unique_id=str(execution_id))
     component_id = self._component_info.component_id
     executor_class_spec = cast(executor_spec.ExecutorClassSpec,
-                                             self._component_executor_spec)
+                               self._component_executor_spec)
     absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 
     # Type hint of component will cause not-instantiable error as
@@ -84,7 +82,6 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
           executor_context)  # type: ignore
     # absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
-    
+
     # if component_id in self.expected_inputs and component_id in self.expected_outputs:
     #   executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])
-
