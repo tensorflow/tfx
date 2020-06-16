@@ -52,8 +52,8 @@ RUN_FN = 'models.keras.model.run_fn'
 # NOTE: Uncomment below to use an estimator based model.
 # RUN_FN = 'models.estimator.model.run_fn'
 
-TRAIN_NUM_STEPS = 100
-EVAL_NUM_STEPS = 100
+TRAIN_NUM_STEPS = 1000
+EVAL_NUM_STEPS = 150
 
 # Change this value according to your use cases.
 EVAL_ACCURACY_THRESHOLD = 0.6
