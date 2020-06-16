@@ -12,10 +12,12 @@
     temporary workaround to make retry work. We will introduce a more
     comprehensive solution for idempotent execution.
 *   Made evaluator output optional (while still recommended) for pusher.
-
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`.
 ## Breaking changes
 
 ### For pipeline authors
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
+    previous module path from `tfx.components` is not available anymore.
 
 ### For component authors
 

@@ -21,7 +21,6 @@ from tfx.components.bulk_inferrer.component import BulkInferrer
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.common_nodes.resolver_node import ResolverNode
 from tfx.components.evaluator.component import Evaluator
-from tfx.components.example_gen.big_query_example_gen.component import BigQueryExampleGen
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
