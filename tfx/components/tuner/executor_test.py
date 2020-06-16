@@ -115,11 +115,11 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_output()
 
   def testTuneArgs(self):
-    with self.assertRaises(ValueError):
-      self._exec_properties['tune_args'] = tuner_pb2.TuneArgs(
-          num_parallel_trials=3)
+    self._exec_properties['tune_args'] = tuner_pb2.TuneArgs(
+        num_parallel_trials=3)
 
-      tuner = executor.Executor(self._context)
+    tuner = executor.Executor(self._context)
+    with self.assertRaises(ValueError):
       tuner.Do(
           input_dict=self._input_dict,
           output_dict=self._output_dict,

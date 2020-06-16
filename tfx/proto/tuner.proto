@@ -18,8 +18,12 @@ package tfx.components.tuner;
 // Args specific to tuning.
 message TuneArgs {
   // Number of trials to run in parallel. Each trial will be trained and
-  // evaluated by separate worker jobs.
-  // Note parallel trials are not supported in default in-process tuning.
+  // evaluated by separate worker processes.
+  // Note that the TFX Tuner is only responsible for executing worker processes,
+  // while the user application is responsible for setting up a centrally
+  // running oracle if the implementation of kerastuner.BaseTuner requires so.
+  // See https://keras-team.github.io/keras-tuner/tutorials/distributed-tuning/
+  // for details.
   int32 num_parallel_trials = 1;
 
   reserved 2, 3, 4;
