@@ -12,9 +12,9 @@ nodes {
   pipeline_node {
     node_info {
       type {
-        name: "tfx.components.example_gen.big_query_example_gen.component.BigQueryExampleGen"
+        name: "tfx.components.example_gen.csv_example_gen.component.CsvExampleGen"
       }
-      id: "BigQueryExampleGen"
+      id: "CsvExampleGen"
     }
     contexts {
       contexts {
@@ -35,6 +35,20 @@ nodes {
           runtime_parameter {
             name: "pipeline_run"
             type: STRING
+          }
+        }
+      }
+    }
+    inputs {
+      inputs {
+        key: "input"
+        value {
+          channels {
+            artifact_query {
+              type {
+                name: "ExternalArtifact"
+              }
+            }
           }
         }
       }
@@ -64,7 +78,7 @@ nodes {
         key: "input_config"
         value {
           field_value {
-            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"big_query\"\n    }\n  ]\n}"
+            string_value: "{\n  \"splits\": [\n    {\n      \"name\": \"single_split\",\n      \"pattern\": \"*\"\n    }\n  ]\n}"
           }
         }
       }
@@ -79,7 +93,7 @@ nodes {
     }
     executor {
       python_class_executor_spec {
-        class_path: "tfx.components.example_gen.big_query_example_gen.executor.Executor"
+        class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
       }
     }
     downstream_nodes: "Evaluator"
@@ -187,7 +201,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "BigQueryExampleGen"
+              id: "CsvExampleGen"
             }
             context_queries {
               type {
@@ -245,7 +259,7 @@ nodes {
         class_path: "tfx.components.statistics_gen.executor.Executor"
       }
     }
-    upstream_nodes: "BigQueryExampleGen"
+    upstream_nodes: "CsvExampleGen"
     downstream_nodes: "ExampleValidator"
     downstream_nodes: "SchemaGen"
   }
@@ -521,7 +535,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "BigQueryExampleGen"
+              id: "CsvExampleGen"
             }
             context_queries {
               type {
@@ -646,7 +660,7 @@ nodes {
         class_path: "tfx.components.trainer.executor.GenericExecutor"
       }
     }
-    upstream_nodes: "BigQueryExampleGen"
+    upstream_nodes: "CsvExampleGen"
     upstream_nodes: "SchemaGen"
     downstream_nodes: "Evaluator"
     downstream_nodes: "Pusher"
@@ -726,7 +740,7 @@ nodes {
         value {
           channels {
             producer_node_query {
-              id: "BigQueryExampleGen"
+              id: "CsvExampleGen"
             }
             context_queries {
               type {
@@ -833,7 +847,7 @@ nodes {
         class_path: "tfx.components.evaluator.executor.Executor"
       }
     }
-    upstream_nodes: "BigQueryExampleGen"
+    upstream_nodes: "CsvExampleGen"
     upstream_nodes: "ResolverNode.latest_blessed_model_resolver"
     upstream_nodes: "Trainer"
     downstream_nodes: "Pusher"
