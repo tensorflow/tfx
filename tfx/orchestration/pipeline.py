@@ -177,7 +177,7 @@ class Pipeline(object):
     # Sorts component in topological order.
     while current_layer:
       next_layer = []
-      for component in current_layer:
+      for component in sorted(current_layer, key=lambda c: c.id):
         self._components.append(component)
         visited.add(component)
         for downstream_node in component.downstream_nodes:
