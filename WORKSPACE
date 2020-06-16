@@ -5,18 +5,18 @@ workspace(name = "tfx")
 # 2. Get the sha256 hash of the archive with a command such as...
 #    curl -L https://github.com/tensorflow/tensorflow/archive/<git hash>.tar.gz | sha256sum
 #    and update the 'sha256' arg with the result.
-# 3. Request the new archive to be mirrored on mirror.bazel.build for more
-#    reliable downloads.
+# 3. Request the new archive to be mirrored on mirror.tensorflow.org for more
+#    reliable downloads (go/tf-mirror).
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# TF 1.15
+# TF 2.2.0
 # LINT.IfChange(tf_commit)
-_TENSORFLOW_GIT_COMMIT = "590d6eef7e91a6a7392c8ffffb7b58f2e0c8bc6b"
+_TENSORFLOW_GIT_COMMIT = "2b96f3662bd776e277f86997659e61046b56c315"
 # LINT.ThenChange(:io_bazel_rules_clousure)
 http_archive(
     name = "org_tensorflow",
-    sha256 = "750186951a699cb73d6b440c7cd06f4b2b80fd3ebb00cbe00f655c7da4ae243e",
+    sha256 = "0cfbaee5c8cde968de152e6bf5718dc5e7a128a780e78ee15dd30c4c380f6550",
     urls = [
       "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
       "https://github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
@@ -35,6 +35,8 @@ http_archive(
 
 # TensorFlow depends on "io_bazel_rules_closure" so we need this here.
 # Needs to be kept in sync with the same target in TensorFlow's WORKSPACE file.
+# Supress the LINT warning if there's no update (attach NO_IFTTT tag in the CL
+# description).
 # LINT.IfChange(io_bazel_rules_clousure)
 http_archive(
     name = "io_bazel_rules_closure",
