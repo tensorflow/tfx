@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Optional
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types.artifact import Artifact
@@ -14,8 +14,8 @@ import filecmp
 from distutils.dir_util import copy_tree
 
 class DummyExecutor(base_executor.BaseExecutor):
-  def __init__(self, component_id, record_dir, executor_context):
-    super(DummyExecutor, self).__init__(executor_context)
+  def __init__(self, component_id, record_dir, context):
+    super(DummyExecutor, self).__init__(context)
     self._component_id = component_id
     self._record_dir = record_dir
 
@@ -88,11 +88,11 @@ class DummyExecutor(base_executor.BaseExecutor):
         copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)
 
-class DummyExecutorFactory(object):
-  def __init__(self, component_id, record_dir):
-    self.component_id = component_id
-    self.record_dir = record_dir
+# class DummyExecutorFactory(object):
+#   def __init__(self, component_id, record_dir):
+#     self.component_id = component_id
+#     self.record_dir = record_dir
 
-  def __call__(self, executor_context):
-    return DummyExecutor(self._component_id, self._record_dir,
-                             executor_context)
+#   def __call__(self, executor_context):
+#     return DummyExecutor(self._component_id, self._record_dir,
+#                              executor_context)

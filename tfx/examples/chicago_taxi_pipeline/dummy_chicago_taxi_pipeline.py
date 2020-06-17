@@ -45,7 +45,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-from tfx.experimental.dummy_executor import DummyExecutorFactory
+# from tfx.experimental.dummy_executor import DummyExecutorFactory
 
 if not os.path.exists(os.path.join(os.environ['HOME'], "record")):
   raise Exception("Must record input/output first")
@@ -191,13 +191,14 @@ if __name__ == '__main__':
       # execution time.
       direct_num_workers=0)
   record_dir = os.path.join(os.environ['HOME'], "record")
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('CsvExampleGen', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('StatisticsGen', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('SchemaGen', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('ExampleValidator', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Transform', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Trainer', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Evaluator', record_dir))
-  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Pusher', record_dir))
+  
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('CsvExampleGen', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('StatisticsGen', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('SchemaGen', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('ExampleValidator', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('Transform', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('Trainer', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('Evaluator', record_dir))
+  # mock_pipeline.set_dummy_executor(DummyExecutorFactory('Pusher', record_dir))
 
   BeamDagRunner().run(mock_pipeline)

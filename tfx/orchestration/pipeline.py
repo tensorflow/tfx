@@ -38,7 +38,7 @@ from tfx.components.base.base_executor import BaseExecutor
 
 from tfx.types.artifact import Artifact
 # from tfx.experimental.recorder_executor import make_recorder_executor
-from tfx.experimental.dummy_executor import DummyExecutorFactory
+# from tfx.experimental.dummy_executor import DummyExecutorFactory
 # from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -202,11 +202,15 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_dummy_executor(self, executor_factory: DummyExecutorFactory):
+  def set_dummy_executor(self, component_id: Text):
     for component in self._components:
-      if executor_factory.component_id == component.id:
-        component.executor_spec = ExecutorClassSpec(executor_factory)
-        break
+      if component_id == component.id:
+        pass
+  # def set_dummy_executor(self, executor_factory: DummyExecutorFactory):
+  #   for component in self._components:
+  #     if executor_factory.component_id == component.id:
+  #       component.executor_spec = ExecutorClassSpec(executor_factory)
+  #       break
 
   # def set_recorder(self):
   #   for component in self._components:
@@ -230,4 +234,4 @@ class Pipeline(object):
   #       component.executor_spec = ExecutorClassSpec(executor)
   #       if input_artifacts is not None and output_artifacts is not None:
   #         self.expected_inputs[component_id] = input_artifacts
-          # self.expected_outputs[component_id] = output_artifacts
+  # self.expected_outputs[component_id] = output_artifacts

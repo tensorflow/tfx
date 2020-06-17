@@ -23,6 +23,7 @@ from typing import Dict, List, Text, Type
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.orchestration.launcher import dummy_component_launcher
 
 
 class PipelineConfig(object):
@@ -50,6 +51,7 @@ class PipelineConfig(object):
                component_config_overrides: Dict[
                    Text, base_component_config.BaseComponentConfig] = None):
     self.supported_launcher_classes = supported_launcher_classes or [
+        dummy_component_launcher.MyDummyComponentLauncher,
         in_process_component_launcher.InProcessComponentLauncher
     ]
     self.default_component_configs = default_component_configs or []
