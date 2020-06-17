@@ -1,3 +1,5 @@
+
+
 # Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
@@ -44,18 +46,17 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 import shutil
-# if not os.path.exists("/usr/local/google/home/sujip/record"):
-#   os.makedirs("/usr/local/google/home/sujip/record")
-# else:
-#   shutil.rmtree("/usr/local/google/home/sujip/record")
-#   os.makedirs("/usr/local/google/home/sujip/record")
+if not os.path.exists("/usr/local/google/home/sujip/record"):
+  os.makedirs("/usr/local/google/home/sujip/record")
+else:
+  shutil.rmtree("/usr/local/google/home/sujip/record")
+  os.makedirs("/usr/local/google/home/sujip/record")
 
 # make_recorder_executor(Executor, "/usr/local/google/home/sujip/abc")
 _pipeline_name = 'chicago_taxi_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-# _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
 _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
@@ -193,5 +194,14 @@ if __name__ == '__main__':
       # 0 means auto-detect based on the number of CPUs available during
       # execution time.
       direct_num_workers=0)
+
+  # pipeline.set_executor('StatisticsGen', make_recorder_executor)
+  # pipeline.set_executor('SchemaGen', make_recorder_executor)
+  # pipeline.set_executor('ExampleValidator', make_recorder_executor)
+  # pipeline.set_executor('Transform', make_recorder_executor)
+  # pipeline.set_executor('Trainer', make_recorder_executor)
+  # pipeline.set_executor('Evaluator', make_recorder_executor)
+  # pipeline.set_executor('Pusher', make_recorder_executor)
+
 
   BeamDagRunner().run(pipeline)

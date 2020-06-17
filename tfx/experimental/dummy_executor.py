@@ -5,7 +5,6 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.types.artifact import Artifact
 
 import json
 import absl
@@ -52,37 +51,30 @@ class DummyExecutor(base_executor.BaseExecutor):
     with open(json_path, "r") as f:
       content_dict = json.load(f)
 
-    expected_input_dict = content_dict['input_dict']
-    expected_output_dict = content_dict['output_dict']
+    input_uri_dict = content_dict['input_dict']
+    output_uri_dict = content_dict['output_dict']
 
     # absl.logging.info("component_id %s", self.component_id)
-    # absl.logging.info("expected_input_dict %s", expected_input_dict)
+    # absl.logging.info("input_uri_dict %s", input_uri_dict)
     # absl.logging.info("input_dict %s", input_dict)
 
-    # absl.logging.info('expected_output_dict %s', expected_output_dict)
+    # absl.logging.info('output_uri_dict %s', output_uri_dict)
     # absl.logging.info('output_dict %s', output_dict)
 
     for in_key_name, artifact_list in input_dict.items():
       if in_key_name == 'baseline_model':
         continue
       for artifact in artifact_list:
-        assert artifact.type_name in expected_input_dict[in_key_name].keys()
-        artifact_json = expected_input_dict[in_key_name][artifact.type_name]
-        expected_artifact = Artifact.from_json_dict(artifact_json)
-        src = expected_artifact.uri
+        assert artifact.type_name in input_uri_dict[in_key_name].keys()
+        src = input_uri_dict[in_key_name][artifact.type_name]
         dest = artifact.uri
-        # if artifact.type_name == 'ExampleGen': 
-          # self._compare_example_content()
         if not self._compare_contents(dest, src):
-          absl.logging.info("WARNING: input checker failed")
-          # raise Exception("input checking failed")
+          raise Exception("input checking failed")
 
     for out_key_name, artifact_list in output_dict.items():
       for artifact in artifact_list:
-        assert artifact.type_name in expected_output_dict[out_key_name].keys()
-        artifact_json = expected_output_dict[out_key_name][artifact.type_name]
-        expected_artifact = Artifact.from_json_dict(artifact_json)
-        src = expected_artifact.uri
+        assert artifact.type_name in output_uri_dict[out_key_name].keys()
+        src = output_uri_dict[out_key_name][artifact.type_name]
         dest = artifact.uri
         copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)

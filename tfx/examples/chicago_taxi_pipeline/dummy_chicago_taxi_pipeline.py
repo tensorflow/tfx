@@ -50,13 +50,12 @@ from tfx.experimental.dummy_executor import DummyExecutorFactory
 if not os.path.exists("/usr/local/google/home/sujip/record"):
   raise Exception("Must record input/output first")
 
+# make_recorder_executor(Executor, "/usr/local/google/home/sujip/abc")
 _pipeline_name = 'chicago_taxi_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-_taxi_root = '/usr/local/google/home/sujip/tΩfx/tfx/examples/chicago_taxi_pipeline'
-# _taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
-
+_taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
