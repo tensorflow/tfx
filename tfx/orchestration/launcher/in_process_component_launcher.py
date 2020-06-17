@@ -27,7 +27,7 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
-
+from tfx.experimental.recorder_executor import make_recorder_executor
 import absl
 
 class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
@@ -80,7 +80,7 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
       # component.executor is Type[BaseExecutor] which has an abstract function.
       executor = executor_class_spec.executor_class(
           executor_context)  # type: ignore
-    # absl.logging.info("Running executor [%s]", executor)
+    absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
 
     # if component_id in self.expected_inputs and component_id in self.expected_outputs:
