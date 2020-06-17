@@ -193,7 +193,7 @@ if __name__ == '__main__':
       direct_num_workers=0)
   dummy_factory = DummyExecutorFactory()
   mock_pipeline.set_dummy_executor('CsvExampleGen', dummy_factory)
-  mock_pipeline.set_dummy_executor('StatisticsGen', dummy_factory)
+  # mock_pipeline.set_dummy_executor('StatisticsGen', dummy_factory)
   mock_pipeline.set_dummy_executor('SchemaGen', dummy_factory)
   mock_pipeline.set_dummy_executor('ExampleValidator', dummy_factory)
   mock_pipeline.set_dummy_executor('Transform', dummy_factory)
