@@ -100,11 +100,11 @@ output names and the values are the desired return values.
 The completed function component can look like this:
 
 ```python
-from tfx.components.base.annotations import OutputDict
-from tfx.components.base.annotations import InputArtifact
-from tfx.components.base.annotations import OutputArtifact
-from tfx.components.base.annotations import Parameter
-from tfx.components.base.decorators import component
+from tfx.dsl.component.experimental.annotations import OutputDict
+from tfx.dsl.component.experimental.annotations import InputArtifact
+from tfx.dsl.component.experimental.annotations import OutputArtifact
+from tfx.dsl.component.experimental.annotations import Parameter
+from tfx.dsl.component.experimental.decorators import component
 from tfx.types.standard_artifacts import Examples
 from tfx.types.standard_artifacts import Model
 
