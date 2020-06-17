@@ -41,13 +41,13 @@ def make_recorder_executor(original_executor: base_executor.BaseExecutor, record
        exec_properties: Dict[Text, Any]) -> None:
       # read input contents to the record dir.
       original_executor.Do(input_dict, output_dict, exec_properties)
-      absl.logging.info("output_dict", output_dict)
+      absl.logging.info("output_dict %s", output_dict)
       record_f = open(os.path.join(record_dir, "{}.json".format(component_id)), "w")
       absl.logging.info("Recorder, recording to %s", record_dir)
 
       content_dict = {}
       input_uri_dict, output_uri_dict = {}, {}
-      absl.logging.info("input_dict", input_dict)
+      absl.logging.info("input_dict %s", input_dict)
       for input_component_id, in_artifact_list in input_dict.items():
         input_uri_dict[input_component_id] = {}
         for artifact in in_artifact_list:

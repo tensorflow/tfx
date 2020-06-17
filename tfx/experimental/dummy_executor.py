@@ -14,6 +14,11 @@ import filecmp
 from distutils.dir_util import copy_tree
 
 class DummyExecutor(base_executor.BaseExecutor):
+  def __init__(self, component_id, record_dir, executor_context):
+    super(DummyExecutor, self).__init__(executor_context)
+    self._component_id = component_id
+    self._record_dir = record_dir
+
   def _compare_contents(self, uri: Text, expected_uri: Text):
     """
     recursively compare two directories,
@@ -39,16 +44,12 @@ class DummyExecutor(base_executor.BaseExecutor):
         return False
     return True
 
-  def set_args(self, component_id: Text, record_dir: Text):
-    self.component_id = component_id
-    self.record_dir = record_dir
-
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     # verifier with recorded contents
-    json_path = os.path.join(self.record_dir,
-                             "{}.json".format(self.component_id))
+    json_path = os.path.join(self._record_dir,
+                             "{}.json".format(self._component_id))
     with open(json_path, "r") as f:
       content_dict = json.load(f)
 
@@ -88,8 +89,10 @@ class DummyExecutor(base_executor.BaseExecutor):
         absl.logging.info('from %s, copied to %s', src, dest)
 
 class DummyExecutorFactory(object):
-  def __call__(self, component_id: Text,
-               record_dir: Text = "/usr/local/google/home/sujip/record"):
-    executor = DummyExecutor()
-    executor.set_args(component_id, record_dir)
-    return executor
+  def __init__(self, component_id, record_dir):
+    self.component_id = component_id
+    self.record_dir = record_dir
+
+  def __call__(self, executor_context):
+    return DummyExecutor(self._component_id, self._record_dir,
+                             executor_context)

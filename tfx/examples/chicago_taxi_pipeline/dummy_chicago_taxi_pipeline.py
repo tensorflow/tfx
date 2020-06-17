@@ -47,15 +47,14 @@ from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 from tfx.experimental.dummy_executor import DummyExecutorFactory
 
-if not os.path.exists("/usr/local/google/home/sujip/record"):
+if not os.path.exists(os.path.join(os.environ['HOME'], "record")):
   raise Exception("Must record input/output first")
 
-# make_recorder_executor(Executor, "/usr/local/google/home/sujip/abc")
 _pipeline_name = 'chicago_taxi_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-_taxi_root = '/usr/local/google/home/sujip/tfx/tfx/examples/chicago_taxi_pipeline'
+_taxi_root = os.path.join(os.environ['HOME'], "tfx/tfx/examples/chicago_taxi_pipeline")
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -191,14 +190,14 @@ if __name__ == '__main__':
       # 0 means auto-detect based on the number of CPUs available during
       # execution time.
       direct_num_workers=0)
-  dummy_factory = DummyExecutorFactory()
-  mock_pipeline.set_dummy_executor('CsvExampleGen', dummy_factory)
-  # mock_pipeline.set_dummy_executor('StatisticsGen', dummy_factory)
-  mock_pipeline.set_dummy_executor('SchemaGen', dummy_factory)
-  mock_pipeline.set_dummy_executor('ExampleValidator', dummy_factory)
-  mock_pipeline.set_dummy_executor('Transform', dummy_factory)
-  mock_pipeline.set_dummy_executor('Trainer', dummy_factory)
-  mock_pipeline.set_dummy_executor('Evaluator', dummy_factory)
-  mock_pipeline.set_dummy_executor('Pusher', dummy_factory)
+  record_dir = os.path.join(os.environ['HOME'], "record")
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('CsvExampleGen', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('StatisticsGen', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('SchemaGen', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('ExampleValidator', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Transform', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Trainer', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Evaluator', record_dir))
+  mock_pipeline.set_dummy_executor(DummyExecutorFactory('Pusher', record_dir))
 
   BeamDagRunner().run(mock_pipeline)

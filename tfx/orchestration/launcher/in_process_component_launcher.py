@@ -57,31 +57,25 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
     component_id = self._component_info.component_id
+
+    # executor_class_spec = cast(executor_spec.ExecutorClassSpec,
+    #                            self._component_executor_spec)
+    # # Type hint of component will cause not-instantiable error as
+    # # component.executor is Type[BaseExecutor] which has an abstract function.
+
+    # executor = executor_class_spec.executor_class(
+    #     executor_context)  # type: ignore
+    # recorder = make_recorder_executor(executor, os.path.join(os.environ['HOME'], "record"), component_id)
+    # recorder.Do(input_dict, output_dict, exec_properties)
+
+ 
     executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                self._component_executor_spec)
     absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 
     # Type hint of component will cause not-instantiable error as
     # component.executor is Type[BaseExecutor] which has an abstract function.
-
-    # executor = executor_class_spec.executor_class(
-    #     executor_context)  # type: ignore
-    # recorder = make_recorder_executor(executor, "/usr/local/google/home/sujip/record", component_id)
-    # recorder.Do(input_dict, output_dict, exec_properties)
-
-    if component_id in self.dummy_executor_dict:
-      executor = self.dummy_executor_dict[component_id]
-    else:
-      executor_class_spec = cast(executor_spec.ExecutorClassSpec,
-                                 self._component_executor_spec)
-      # absl.logging.info("executor_class_spec [%s]", executor_class_spec)
-
-      # Type hint of component will cause not-instantiable error as
-      # component.executor is Type[BaseExecutor] which has an abstract function.
-      executor = executor_class_spec.executor_class(
-          executor_context)  # type: ignore
+    executor = executor_class_spec.executor_class(
+        executor_context)  # type: ignore
     absl.logging.info("Running executor [%s]", executor)
     executor.Do(input_dict, output_dict, exec_properties)
-
-    # if component_id in self.expected_inputs and component_id in self.expected_outputs:
-    #   executor.check_artifacts(self.expected_inputs[component_id], self.expected_outputs[component_id])

@@ -69,8 +69,7 @@ class _ComponentAsDoFn(beam.DoFn):
         metadata_connection=metadata_connection,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
-        component_config=component_config,
-        dummy_executor_dict=tfx_pipeline.dummy_executor_dict)
+        component_config=component_config)
     self._component_id = component.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:

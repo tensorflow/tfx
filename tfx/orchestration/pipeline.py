@@ -142,7 +142,6 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
-    self.dummy_executor_dict = {}
     # Mapping component's name to its executor to store dummy executors 
 
   @property
@@ -203,11 +202,11 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_dummy_executor(self, component_id: Text, executor_factory: DummyExecutorFactory):
+  def set_dummy_executor(self, executor_factory: DummyExecutorFactory):
     for component in self._components:
-      if component_id == component.id:
-        self.dummy_executor_dict[component_id] = executor_factory(component_id)
-        # component.executor_spec = ExecutorClassSpec(make_dummy_executor_class("/usr/local/google/home/sujip/record", component.id) )
+      if executor_factory.component_id == component.id:
+        component.executor_spec = ExecutorClassSpec(executor_factory)
+        break
 
   # def set_recorder(self):
   #   for component in self._components:
