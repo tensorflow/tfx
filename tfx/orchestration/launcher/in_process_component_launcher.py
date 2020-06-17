@@ -27,6 +27,7 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
+from tfx.experimental.recorder_executor import make_recorder_executor
 
 import absl
 
@@ -74,7 +75,7 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
     else:
       executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                  self._component_executor_spec)
-      # absl.logging.info("executor_class_spec [%s]", executor_class_spec)
+      absl.logging.info("executor_class_spec [%s]", executor_class_spec)
 
       # Type hint of component will cause not-instantiable error as
       # component.executor is Type[BaseExecutor] which has an abstract function.
