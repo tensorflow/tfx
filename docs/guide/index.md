@@ -80,6 +80,8 @@ A TFX pipeline typically includes the following components:
 
 *   [**Trainer**](trainer.md) trains the model.
 
+*   [**Tuner**](tuner.md) tunes the hyperparameters of the model.
+
 *   [**Evaluator**](evaluator.md) performs deep analysis of the training results
     and helps you validate your exported models, ensuring that they are "good
     enough" to be pushed to production.
@@ -139,6 +141,9 @@ TFX libraries include:
     training data and modeling code and creates a SavedModel result. It also
     integrates a feature engineering pipeline created by TensorFlow Transform
     for preprocessing input data.
+
+    [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) is used
+    for tuning hyperparameters for model.
 
     Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
     details, see [Designing TensorFlow Modeling Code For TFX](train.md).
@@ -416,6 +421,11 @@ tfma.export.export_eval_savedmodel(
         export_dir_base=eval_model_dir,
         eval_input_receiver_fn=receiver_fn)
 ```
+
+An optional [Tuner](tuner.md) component can be added before Trainer to tune the
+hyperparameters (e.g., number of layers) for the model. With the given model and
+hyperparameters' search space, tuning algorithm will find the best
+hyperparameters based on the objective.
 
 ### Analyzing and Understanding Model Performance
 
