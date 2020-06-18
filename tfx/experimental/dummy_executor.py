@@ -15,9 +15,9 @@ import os
 import filecmp
 from distutils.dir_util import copy_tree
 from tfx.orchestration.metadata import Metadata
-class DummyExecutor(base_executor.BaseExecutor):
+class BaseDummyExecutor(base_executor.BaseExecutor):
   def __init__(self, component_id, metadata_dir, context):
-    super(DummyExecutor, self).__init__(context)
+    super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(metadata_dir)
