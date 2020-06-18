@@ -133,36 +133,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  # TODO(b/143355786): Remove _makeTestPipeline once TFX depends on TFT 0.16 and
-  # use self._makeTestPipeline instead.
-  def _makeTestPipeline(self):
-
-    class _TestPipeline(tft_unit.beam.Pipeline):
-      """Test pipeline class that retains pipeline metrics."""
-
-      @property
-      def metrics(self):
-        return self._run_result.metrics()
-
-      def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_type:
-          self._run_result = self.run()
-          self._run_result.wait_until_finish()
-
-    return _TestPipeline(
-        **tft_unit.test_helpers.make_test_beam_pipeline_kwargs())
-
-  # TODO(b/143355786): Remove _assertMetricsCounterEqual once TFX depends on TFT
-  # 0.16 and use self.assertMetricsCounterEqual instead.
-  def _assertMetricsCounterEqual(self, metrics, name, expected_count):
-    metric = metrics.query(
-        tft_unit.beam.metrics.metric.MetricsFilter().with_name(
-            name))['counters']
-    committed = sum([r.committed for r in metric])
-    attempted = sum([r.attempted for r in metric])
-    self.assertEqual(committed, attempted)
-    self.assertEqual(committed, expected_count)
-
   def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
     pipelines = []
 
@@ -219,23 +189,27 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Since the analysis dataset (train) is read twice (once for analysis and
     # once for transform), the expected value of the num_instances counter is:
     # 10036 * 2 + 4964 = 25036.
-    self._assertMetricsCounterEqual(metrics, 'num_instances', 24909)
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909)
 
     # We expect 2 saved_models to be created because this is a 1 phase analysis
     # preprocessing_fn.
-    self._assertMetricsCounterEqual(metrics, 'saved_models_created', 2)
+    self.assertMetricsCounterEqual(metrics, 'saved_models_created', 2)
 
     # This should be the size of the preprocessing_fn's inputs dictionary which
     # is 18 according to the schema.
-    self._assertMetricsCounterEqual(metrics, 'total_columns_count', 18)
+    self.assertMetricsCounterEqual(metrics, 'total_columns_count', 18)
 
     # There are 9 features that are passed into tft analyzers in the
     # preprocessing_fn.
-    self._assertMetricsCounterEqual(metrics, 'analyze_columns_count', 9)
+    self.assertMetricsCounterEqual(metrics, 'analyze_columns_count', 9)
 
     # In addition, 7 features go through a pure TF map, not including the label,
     # so we expect 9 + 7 + 1 = 17 transform columns.
-    self._assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
+    self.assertMetricsCounterEqual(metrics, 'transform_columns_count', 17)
+
+    # There should be 1 path used for analysis since that's what input_dict
+    # specifies.
+    self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
   def testDoWithCache(self):
 
