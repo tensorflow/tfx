@@ -104,8 +104,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(),
-      eval_args=trainer_pb2.EvalArgs())
+      train_args=trainer_pb2.TrainArgs(num_steps=10),
+      eval_args=trainer_pb2.EvalArgs(num_steps=10))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -117,7 +117,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses TFMA to compute an evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='sentiment')],
+      model_specs=[tfma.ModelSpec(label_key='label')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
           tfma.MetricsSpec(metrics=[
@@ -128,7 +128,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                           lower_bound={'value': 0.6}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
+                          absolute={'value': -1e-2})))
           ])
       ])
 

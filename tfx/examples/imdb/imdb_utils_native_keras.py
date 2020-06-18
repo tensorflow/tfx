@@ -28,18 +28,20 @@ import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-# There are 50,000 entries in the imdb dataset. ExampleGen splits the dataset
+# There are 100 entries in the imdb_small dataset. ExampleGen splits the dataset
 # with a 2:1 train-eval ratio. Batch_size is an empirically sound
 # configuration.
-_TRAIN_BATCH_SIZE = 64
-_EVAL_BATCH_SIZE = 64
-_LABEL_KEY = "sentiment"
-_MAX_FEATURES = 8000
-_MAX_LEN = 100
-_LEARNING_RATE = 1e-4
-_TRAIN_EPOCHS = 10
+# To train on the entire imdb dataset, please refer to imdb_dataset_utils.py
+# and change the batch configuration accordingly.
 _DROPOUT_RATE = 0.2
-_HIDDEN_UNITS = 64
+_EVAL_BATCH_SIZE = 5 
+_HIDDEN_UNITS = 21 
+_LABEL_KEY = "label"
+_LEARNING_RATE = 1e-4
+_MAX_FEATURES = 8000
+_MAX_LEN = 128
+_TRAIN_BATCH_SIZE = 10 
+_TRAIN_EPOCHS = 10
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
@@ -80,11 +82,11 @@ def preprocessing_fn(inputs):
   Returns:
     Map from string feature key to transformed feature operations.
   """
-  sentiment = inputs['sentiment']
-  review = inputs['review']
+  label = inputs['label']
+  text = inputs['text']
   return {
-      'sentiment': sentiment,
-      'embedding_input': _tokenize_review(review)}
+      'label': label,
+      'embedding_input': _tokenize_review(text)}
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
@@ -130,14 +132,13 @@ def _build_keras_model() -> keras.Model:
           _HIDDEN_UNITS,
           dropout=_DROPOUT_RATE,
           recurrent_dropout=_DROPOUT_RATE)),
-      keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
       keras.layers.Dense(1, activation='sigmoid')
   ])
 
   model.compile(
       loss='binary_crossentropy',
-      optimizer=tkeras.optimizers.Adam(_LEARNING_RATE),
-      metrics=['AUC'])
+      optimizer=keras.optimizers.Adam(_LEARNING_RATE),
+      metrics=['AUC', 'binary_accuracy'])
 
   model.summary()
   return model
@@ -188,9 +189,9 @@ def run_fn(fn_args: TrainerFnArgs):
   model.fit(
       train_dataset,
       epochs=_TRAIN_EPOCHS,
-      steps_per_epoch=100,
+      steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=100)
+      validation_steps=fn_args.eval_steps)
 
   signatures = {
       'serving_default':
