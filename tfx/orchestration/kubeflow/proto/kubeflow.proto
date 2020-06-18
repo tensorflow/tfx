@@ -15,6 +15,8 @@ syntax = "proto3";
 
 package tfx.orchestration.kubeflow.proto;
 
+import "google/protobuf/any.proto";
+
 // ConfigValue specifies how Kubeflow components should obtain a runtime
 // configuration parameter value.
 message ConfigValue {
@@ -49,4 +51,106 @@ message KubeflowMetadataConfig {
   oneof connection_config {
     KubeflowGrpcMetadataConfig grpc_config = 7;
   }
+}
+
+
+// Message to specify a Kubeflow component
+message ComponentSpec {
+  string name = 1;
+  string description = 2;
+  message MetadataSpec {
+    map<string, string> annotations = 1;
+    map<string, string> labels = 2; 
+  }
+  MetadataSpec metadata = 3;
+  message InputSpec {
+    string name = 1;
+    // TypeSpecType, Union[str, Dict, List], only supports strings
+    string type = 2;
+    string description = 3;
+    // PrimitiveTypes = Union[str, int, float, bool]
+    string default = 4;
+    bool optional = 5;
+  }
+  repeated InputSpec inputs = 4;
+  message OutputSpec {
+    string name = 1;
+    // TypeSpecType, Union[str, Dict, List]
+    string type = 2;
+    string description = 3;
+  }
+  repeated OutputSpec outputs = 5;
+  message ContainerImplementaion {
+      message ContainerSpec {
+        message InputValuePlaceholder {
+          string inputValue = 1;
+        }
+        message InputPathPlaceholder {
+          string inputPath = 2;
+        }
+        message OutputPathPlaceholder {
+          string outputPath = 1;
+        }
+        string image = 1;
+        // CommandlineArgumentType, Union[
+        //  str,
+        //  InputValuePlaceholder,
+        //  InputPathPlaceholder,
+        //  OutputPathPlaceholder,
+        //  'ConcatPlaceholder',
+        //  'IfPlaceholder',
+        //]
+        repeated string command = 2;
+        repeated google.protobuf.Any args = 3;
+        map<string, string> env = 4;
+        map<string, string> file_outputs = 5;
+      }
+      ContainerSpec container = 1;
+  } 
+  message GraphImplementation {
+    message GraphSpec {
+      message TaskSpec {
+        message ComponentReference {
+          string name = 1;
+          string digest = 2;
+          string tag = 3;
+          string url = 4;
+          ComponentSpec spec = 5;
+        }
+        message GraphInputArgument {
+          message GraphInputReference {
+            string input_name = 1;
+            // TypeSpecType, Union[str, Dict, List]
+            string type = 2;
+          }
+          GraphInputReference graph_input = 1;
+        }
+        message TaskOutputArgument {
+          message TaskOutputReference {
+            string output_name = 1;
+            string task_id = 2;
+            TaskSpec task = 3;
+            // TypeSpecType, Union[str, Dict, List]
+            string type = 4;
+          }
+          TaskOutputReference task_output = 1;
+        }
+        ComponentReference component_ref = 1;
+        // ArgumentType, Union[PrimitiveTypes, GraphInputArgument, TaskOutputArgument]
+        map<string, google.protobuf.Any> arguments = 2;
+        // PredicateType, Union[
+        //  ArgumentType,
+        //  EqualsPredicate, NotEqualsPredicate, GreaterThanPredicate, GreaterThanOrEqualPredicate, LessThenPredicate, LessThenOrEqualPredicate,
+        //  'NotPredicate', 'AndPredicate', 'OrPredicate',
+        // ]
+        // TODO: finish rest of impl
+      }
+
+    }
+    GraphSpec graph = 1;
+  }
+  // ImplementationType, Union[ContainerImplementaion, GraphImplementation]
+  ContainerImplementaion implementation = 6;
+  // [default = 'google.com/cloud/pipelines/component/v1']
+  string version = 7;
 }
