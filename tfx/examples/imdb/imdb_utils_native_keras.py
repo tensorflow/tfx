@@ -46,10 +46,10 @@ def _gzip_reader_fn(filenames):
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
 def _tokenize_review(review):
-  """Tokenize the reivews by spliting the reviews, then constructing a
+  """Tokenize the reviews by spliting the reviews, then constructing a
   vocabulary. Map the words to their frequency index in the vocabulary."""
   review_sparse = tf.strings.split(tf.reshape(review, [-1])).to_sparse()
-  # tft.apply_vocaublary doesn't reserve 0 for oov words. In order to comply
+  # tft.apply_vocabulary doesn't reserve 0 for oov words. In order to comply
   # with convention and use mask_zero in keras.embedding layer, manually set
   # default value to -1 and add 1 to every index.
   review_indices = tft.compute_and_apply_vocabulary(
@@ -58,7 +58,7 @@ def _tokenize_review(review):
       top_k=_MAX_FEATURES)
   dense = tf.sparse.reset_shape(review_indices, None)
   dense = tf.sparse.to_dense(review_indices, default_value=-1)
-  # TFX transform expect the transform result to be FixedLenFeature.
+  # TFX transform expects the transform result to be FixedLenFeature.
   padding_config = [[0, 0], [0, _MAX_LEN]]
   dense = tf.pad(
       dense,
@@ -70,6 +70,7 @@ def _tokenize_review(review):
   padded += 1
   return padded
 
+# TFX Transform will call this function.
 def preprocessing_fn(inputs):
   """tf.transform's callback function for preprocessing inputs.
 
