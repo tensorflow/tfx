@@ -190,8 +190,8 @@ if __name__ == '__main__':
       # 0 means auto-detect based on the number of CPUs available during
       # execution time.
       direct_num_workers=0)
-  record_dir = os.path.join(os.environ['HOME'], "record")
-  
+  metadata_dir = os.path.join(os.environ['HOME'],  'tfx/metadata/chicago_taxi_beam/meta2.db')
+
   # mock_pipeline.set_dummy_executor(DummyExecutorFactory('CsvExampleGen', record_dir))
   # mock_pipeline.set_dummy_executor(DummyExecutorFactory('StatisticsGen', record_dir))
   # mock_pipeline.set_dummy_executor(DummyExecutorFactory('SchemaGen', record_dir))

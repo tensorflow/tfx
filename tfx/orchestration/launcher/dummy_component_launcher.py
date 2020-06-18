@@ -70,8 +70,9 @@ class MyDummyComponentLauncher(in_process_component_launcher.InProcessComponentL
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
     component_id = self._component_info.component_id
-    record_dir = os.path.join(os.environ['HOME'], "record")
-    executor = DummyExecutor(component_id, record_dir, executor_context)
+    # record_dir = os.path.join(os.environ['HOME'], "record")
+    metadata_dir = os.path.join(os.environ['HOME'],  'tfx/metadata/chicago_taxi_beam/meta3.db')
+    executor = DummyExecutor(component_id, metadata_dir, executor_context)
     # executor = self.dummy_dict[component_id]
  
     absl.logging.info("Running executor [%s]", executor)
