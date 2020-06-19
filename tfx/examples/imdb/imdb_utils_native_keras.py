@@ -116,7 +116,8 @@ def _input_fn(file_pattern: List[Text],
   return dataset
 
 def _build_keras_model() -> keras.Model:
-  """Creates a DNN Keras model for classifying imdb data.
+  """Creates a LSTM Keras model for classifying imdb data.
+  Reference: https://www.tensorflow.org/tutorials/text/text_classification_rnn
 
   Returns:
     A Keras Model.
