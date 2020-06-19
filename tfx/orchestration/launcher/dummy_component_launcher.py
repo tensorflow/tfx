@@ -44,11 +44,17 @@ class MyDummyComponentLauncher(in_process_component_launcher.InProcessComponentL
                                                           output_dict,
                                                           exec_properties)
     else:
+      if component_id == 'Trainer':
+        # TODO: verifier
+        pass
+      elif component_id == 'Transform':
+        pass
+
       executor_context = base_executor.BaseExecutor.Context(
           beam_pipeline_args=self._beam_pipeline_args,
           tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
           unique_id=str(execution_id))
-      metadata_dir = os.path.join(os.environ['HOME'], 'tfx/metadata/chicago_taxi_beam/meta3.db')
-      executor = self.dummy_dict[component_id](component_id, metadata_dir, executor_context)
+      record_dir = os.path.join(os.environ['HOME'], 'tfx/tfx/examples/chicago_taxi_pipeline/testdata')
+      executor = self.dummy_dict[component_id](component_id, record_dir, executor_context)
       absl.logging.info("Running executor [%s]", executor)
       executor.Do(input_dict, output_dict, exec_properties)
