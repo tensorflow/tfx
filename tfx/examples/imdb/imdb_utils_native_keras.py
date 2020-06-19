@@ -40,8 +40,7 @@ _LABEL_KEY = "label"
 _LEARNING_RATE = 1e-4
 _MAX_FEATURES = 8000
 _MAX_LEN = 128
-_TRAIN_BATCH_SIZE = 10 
-_TRAIN_EPOCHS = 10
+_TRAIN_BATCH_SIZE = 10
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
@@ -187,9 +186,13 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     model = _build_keras_model()
 
+  # In distributed training, it is common to use num_steps instead of num_epochs
+  # to control training.
+  # Reference: https://stackoverflow.com/questions/45989971/
+  # /distributed-training-with-tf-estimator-resulting-in-more-training-steps
   model.fit(
       train_dataset,
-      epochs=_TRAIN_EPOCHS,
+      epochs=1,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)
