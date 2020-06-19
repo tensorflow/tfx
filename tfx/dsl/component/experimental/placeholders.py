@@ -71,7 +71,6 @@ class OutputUriPlaceholder(json_utils.Jsonable):
   def __ne__(self, other):
     return not self.__eq__(other)
 
-
 class ConcatPlaceholder(object):
   """Represents a placeholder for result of concatenation of multiple parts.
 
