@@ -34,8 +34,8 @@ from tfx.components.trainer.executor import TrainerFnArgs
 # To train on the entire imdb dataset, please refer to imdb_dataset_utils.py
 # and change the batch configuration accordingly.
 _DROPOUT_RATE = 0.2
-_EVAL_BATCH_SIZE = 5 
-_HIDDEN_UNITS = 21 
+_EVAL_BATCH_SIZE = 5
+_HIDDEN_UNITS = 21
 _LABEL_KEY = "label"
 _LEARNING_RATE = 1e-4
 _MAX_FEATURES = 8000
