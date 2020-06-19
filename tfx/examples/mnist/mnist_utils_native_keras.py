@@ -32,18 +32,15 @@ from tfx.examples.mnist import mnist_utils_native_keras_base as base
 def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example."""
 
+  model.tft_layer = tf_transform_output.transform_features_layer()
+
   @tf.function
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
     feature_spec = tf_transform_output.raw_feature_spec()
     feature_spec.pop(base.LABEL_KEY)
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
-    transformed_features = tf_transform_output.transform_raw_features(
-        parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(base.transformed_name(base.LABEL_KEY), None)
-
+    transformed_features = model.tft_layer(parsed_features)
     return model(transformed_features)
 
   return serve_tf_examples_fn
