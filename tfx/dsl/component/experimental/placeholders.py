@@ -33,6 +33,11 @@ class InputValuePlaceholder(json_utils.Jsonable):
   def __init__(self, input_name: Text):
     self.input_name = input_name
 
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.input_name == other.input_name
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 class InputUriPlaceholder(json_utils.Jsonable):
   """Represents a placeholder for the URI of the input artifact argument.
@@ -44,6 +49,11 @@ class InputUriPlaceholder(json_utils.Jsonable):
   def __init__(self, input_name: Text):
     self.input_name = input_name
 
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.input_name == other.input_name
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 class OutputUriPlaceholder(json_utils.Jsonable):
   """Represents a placeholder for the URI of the output artifact argument.
@@ -55,6 +65,12 @@ class OutputUriPlaceholder(json_utils.Jsonable):
   def __init__(self, output_name: Text):
     self.output_name = output_name
 
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.output_name == other.output_name
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+
 
 class ConcatPlaceholder(object):
   """Represents a placeholder for result of concatenation of multiple parts.
@@ -65,6 +81,12 @@ class ConcatPlaceholder(object):
 
   def __init__(self, items: List['CommandlineArgumentType']):
     self.items = items
+
+  def __eq__(self, other):
+    return isinstance(other, self.__class__) and self.items == other.items
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
 
 
 CommandlineArgumentType = Union[
