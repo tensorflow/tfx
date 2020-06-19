@@ -34,7 +34,8 @@ class InputValuePlaceholder(json_utils.Jsonable):
     self.input_name = input_name
 
   def __eq__(self, other):
-    return isinstance(other, self.__class__) and self.input_name == other.input_name
+    return isinstance(other, self.__class__) and \
+      self.input_name == other.input_name
 
   def __ne__(self, other):
     return not self.__eq__(other)
@@ -50,7 +51,8 @@ class InputUriPlaceholder(json_utils.Jsonable):
     self.input_name = input_name
 
   def __eq__(self, other):
-    return isinstance(other, self.__class__) and self.input_name == other.input_name
+    return isinstance(other, self.__class__) and \
+      self.input_name == other.input_name
 
   def __ne__(self, other):
     return not self.__eq__(other)
@@ -66,7 +68,8 @@ class OutputUriPlaceholder(json_utils.Jsonable):
     self.output_name = output_name
 
   def __eq__(self, other):
-    return isinstance(other, self.__class__) and self.output_name == other.output_name
+    return isinstance(other, self.__class__) and \
+      self.output_name == other.output_name
 
   def __ne__(self, other):
     return not self.__eq__(other)
