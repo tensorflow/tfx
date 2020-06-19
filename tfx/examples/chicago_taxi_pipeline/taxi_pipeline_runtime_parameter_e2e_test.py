@@ -35,7 +35,15 @@ class TaxiPipelineRuntimeParameterEndToEndTest(
     pipeline_name = 'kubeflow-e2e-test-parameter-{}'.format(
         test_utils.random_id())
     pipeline = taxi_pipeline_runtime_parameter._create_parameterized_pipeline(
-        pipeline_name=pipeline_name, direct_num_workers=4)
+        pipeline_name=pipeline_name,
+        pipeline_root=taxi_pipeline_runtime_parameter._pipeline_root,
+        enable_cache=True,
+        beam_pipeline_args=[
+            '--direct_running_mode=multi_processing',
+            # 0 means auto-detect based on on the number of CPUs available
+            # during execution time.
+            '--direct_num_workers=4',
+        ])
 
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),

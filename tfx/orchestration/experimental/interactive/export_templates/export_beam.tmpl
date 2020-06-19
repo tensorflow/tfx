@@ -5,6 +5,14 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 absl.logging.set_verbosity(absl.logging.INFO)
 
+# Pipeline args for Beam jobs within Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
 tfx_pipeline = pipeline.Pipeline(
     pipeline_name=_pipeline_name,
     pipeline_root=_pipeline_root,
@@ -12,17 +20,7 @@ tfx_pipeline = pipeline.Pipeline(
     enable_cache=True,
     metadata_connection_config=(
         metadata.sqlite_metadata_connection_config(_metadata_path)),
-
-    # We use `--direct_num_workers=1` by default to launch 1 Beam worker process
-    # during Beam DirectRunner component execution. This mitigates issues with
-    # GPU memory usage when many workers are run sharing GPU resources.  Change
-    # this to `--direct_num_workers=0` to run one worker per available CPU
-    # thread or `--direct_num_workers=$N`, where `$N` is a fixed number of
-    # worker processes.
-    #
-    # TODO(b/142684737): The Beam multi-processing API might change.
-    beam_pipeline_args = ['--direct_num_workers=1'],
-
+    beam_pipeline_args=_beam_pipeline_args,
     additional_pipeline_args={})
 
 BeamDagRunner().run(tfx_pipeline)
