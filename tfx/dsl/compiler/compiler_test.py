@@ -65,7 +65,6 @@ class CompilerTest(tf.test.TestCase):
     tfx_root = "tfx_root"
     data_path = os.path.join(tfx_root, "data_path")
     pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
-    direct_num_workers = 0
     self.test_pipeline_info = data_types.PipelineInfo(pipeline_name, iris_root)
 
     example_gen = CsvExampleGen(input=external_input(data_path))
@@ -141,8 +140,7 @@ class CompilerTest(tf.test.TestCase):
             pusher,
         ],
         enable_cache=True,
-        beam_pipeline_args=["--direct_num_workers=%d" % direct_num_workers],
-    )
+        beam_pipeline_args=[])
 
   def _set_up_test_pipeline_pb(self):
     """Read expected pipeline pb from a text proto file."""

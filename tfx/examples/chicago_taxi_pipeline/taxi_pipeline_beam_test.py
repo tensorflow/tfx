@@ -57,7 +57,7 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir,
-        direct_num_workers=1)
+        beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
 
   def testTaxiPipelineNewStyleCompatibility(self):
