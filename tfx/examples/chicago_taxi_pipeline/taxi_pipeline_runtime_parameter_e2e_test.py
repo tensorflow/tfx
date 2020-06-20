@@ -38,12 +38,7 @@ class TaxiPipelineRuntimeParameterEndToEndTest(
         pipeline_name=pipeline_name,
         pipeline_root=taxi_pipeline_runtime_parameter._pipeline_root,
         enable_cache=True,
-        beam_pipeline_args=[
-            '--direct_running_mode=multi_processing',
-            # 0 means auto-detect based on on the number of CPUs available
-            # during execution time.
-            '--direct_num_workers=4',
-        ])
+        beam_pipeline_args=taxi_pipeline_runtime_parameter._beam_pipeline_args)
 
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),

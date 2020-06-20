@@ -71,7 +71,7 @@ _module_file = os.path.join(_input_base, 'taxi_utils.py')
 # Pusher will output the trained model here.
 _serving_model_dir = os.path.join(_output_base, _pipeline_name, 'serving_model')
 
-# Pipeline args for Beam jobs within Components.
+# Pipeline arguments for Beam powered Components.
 _beam_pipeline_args = [
     '--direct_running_mode=multi_processing',
     # 0 means auto-detect based on on the number of CPUs available

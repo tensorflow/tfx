@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional, Text
 
 import absl
 import apache_beam as beam
+from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
 from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.runners.portability import fn_api_runner
@@ -104,6 +105,17 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
     if pipeline_options.view_as(StandardOptions).runner:
       return beam.Pipeline(argv=self._beam_pipeline_args)
+
+    # TODO(b/159468583): move this warning to Beam.
+    direct_running_mode = pipeline_options.view_as(
+        DirectOptions).direct_running_mode
+    direct_num_workers = pipeline_options.view_as(
+        DirectOptions).direct_num_workers
+    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
+      absl.logging.warning(
+          'If direct_num_workers is not equal to 1, direct_running_mode should '
+          'be `multi_processing` or `multi_threading` instead of `in_memory` '
+          'in order for it to have the desired worker parallelism effect.')
 
     return beam.Pipeline(
         options=pipeline_options, runner=fn_api_runner.FnApiRunner())

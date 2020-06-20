@@ -58,19 +58,18 @@ class Pipeline(object):
   """Logical TFX pipeline object.
 
   Attributes:
-    pipeline_args: kwargs used to create real pipeline implementation. This is
+    pipeline_args: Kwargs used to create real pipeline implementation. This is
       forwarded to PipelineRunners instead of consumed in this class. This
       should include:
       - pipeline_name: Required. The unique name of this pipeline.
       - pipeline_root: Required. The root of the pipeline outputs.
-    components: logical components of this pipeline.
+    components: Logical components of this pipeline.
     pipeline_info: An instance of data_types.PipelineInfo that contains basic
       properties of the pipeline.
-    enable_cache: whether or not cache is enabled for this run.
-    metadata_connection_config: the config to connect to ML metadata.
-    beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-      Executor will use beam DirectRunner as Default.
-    additional_pipeline_args: other pipeline args.
+    enable_cache: Whether or not cache is enabled for this run.
+    metadata_connection_config: The config to connect to ML metadata.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    additional_pipeline_args: Other pipeline args.
   """
 
   def __init__(self,
@@ -85,16 +84,15 @@ class Pipeline(object):
     """Initialize pipeline.
 
     Args:
-      pipeline_name: name of the pipeline;
-      pipeline_root: path to root directory of the pipeline;
-      metadata_connection_config: the config to connect to ML metadata.
-      components: a list of components in the pipeline (optional only for
+      pipeline_name: Name of the pipeline;
+      pipeline_root: Path to root directory of the pipeline;
+      metadata_connection_config: The config to connect to ML metadata.
+      components: A list of components in the pipeline (optional only for
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
-      enable_cache: whether or not cache is enabled for this run.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-        Executor will use beam DirectRunner as Default.
-      **kwargs: additional kwargs forwarded as pipeline args.
+      enable_cache: Whether or not cache is enabled for this run.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
+      **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
       raise ValueError('pipeline name %s exceeds maximum allowed lenght' %

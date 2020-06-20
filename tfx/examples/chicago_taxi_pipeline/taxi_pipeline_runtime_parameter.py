@@ -49,7 +49,7 @@ _pipeline_name = 'taxi_pipeline_with_parameters'
 _pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
                               kfp.dsl.RUN_ID_PLACEHOLDER)
 
-# Pipeline args for Beam jobs within Components.
+# Pipeline arguments for Beam powered Components.
 _beam_pipeline_args = [
     '--direct_running_mode=multi_processing',
     # 0 means auto-detect based on on the number of CPUs available
@@ -67,7 +67,7 @@ def _create_parameterized_pipeline(
     pipeline_name: The name of the pipeline.
     pipeline_root: The root of the pipeline output.
     enable_cache: Whether to enable cache in this pipeline.
-    beam_pipeline_args: Pipeline args for Beam jobs within Components.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components.
 
   Returns:
     A logical TFX pipeline.Pipeline object.
