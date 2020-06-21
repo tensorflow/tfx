@@ -71,8 +71,7 @@ class _ComponentAsDoFn(beam.DoFn):
         metadata_connection=metadata_connection,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
-        component_config=component_config,
-        dummy_dict=tfx_pipeline.dummy_dict)
+        component_config=component_config)
     self._component_id = component.id
     absl.logging.info("_component_launcher._component_info %s", self._component_launcher._component_info)
 

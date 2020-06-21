@@ -47,8 +47,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
-          base_component_config.BaseComponentConfig] = None,
-      dummy_dict: Dict[Text, Type[base_executor.BaseExecutor]] = None
+          base_component_config.BaseComponentConfig] = None
   ):
     """Initialize a BaseComponentLauncher.
 
@@ -87,7 +86,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
-    self.dummy_dict = dummy_dict
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
       raise ValueError(
@@ -108,8 +106,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
-          base_component_config.BaseComponentConfig] = None,
-      dummy_dict: Dict[Text, Type[base_executor.BaseExecutor]] = None
+          base_component_config.BaseComponentConfig] = None
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -140,8 +137,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         metadata_connection=metadata_connection,
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
-        component_config=component_config,
-        dummy_dict=dummy_dict)
+        component_config=component_config)
 
   @classmethod
   @abc.abstractmethod

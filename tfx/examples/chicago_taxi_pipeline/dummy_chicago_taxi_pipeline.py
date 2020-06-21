@@ -190,16 +190,15 @@ if __name__ == '__main__':
       # 0 means auto-detect based on the number of CPUs available during
       # execution time.
       direct_num_workers=0)
-  # metadata_dir = os.path.join(os.environ['HOME'],  'tfx/metadata/chicago_taxi_beam/meta2.db')
-  record_dir = os.path.join(os.environ['HOME'], 'tfx/tfx/examples/chicago_taxi_pipeline/testdata')
+  # record_dir = os.path.join(os.environ['HOME'], 'tfx/tfx/examples/chicago_taxi_pipeline/testdata')
 
-  mock_pipeline.set_dummy_executor('CsvExampleGen', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('StatisticsGen', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('SchemaGen', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('ExampleValidator', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('Transform', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('Trainer', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('Evaluator', BaseDummyExecutor)
-  mock_pipeline.set_dummy_executor('Pusher', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('CsvExampleGen', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('StatisticsGen', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('SchemaGen', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('ExampleValidator', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('Transform', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('Trainer', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('Evaluator', BaseDummyExecutor)
+  # mock_pipeline.set_dummy_executor('Pusher', BaseDummyExecutor)
 
   BeamDagRunner().run(mock_pipeline)

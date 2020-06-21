@@ -56,7 +56,7 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
        exec_properties: Dict[Text, Any]) -> None:
     # print("input_dict", input_dict)
     # print("output_dict", output_dict)
-    for _, artifact_list in input_dict.items():
+    for input_key, artifact_list in input_dict.items():
       for artifact in artifact_list:
         if artifact.type_name == 'ExternalArtifact':
             continue
@@ -64,15 +64,17 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
         src = dest.replace(os.path.join(os.environ['HOME'], "tfx/pipelines/chicago_taxi_beam/"), "")
         src = src[:src.rfind('/')] # remove trailing number
         src = os.path.join(self._record_dir, src)
+        # print("src {} test_dir {}".format(src, os.path.join(self._record_dir, componentid, input_key)) ) need component id from component info
         if not self._compare_contents(dest, src):
           absl.logging.info("WARNING: input checker failed")
 
-    for _, artifact_list in output_dict.items():
+    for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
         src = dest.replace(os.path.join(os.environ['HOME'], "tfx/pipelines/chicago_taxi_beam/"), "")
         src = src[:src.rfind('/')] # remove trailing number
         src = os.path.join(self._record_dir, src)
+        # print("src: {}, path: {}".format(src, os.path.join(self._record_dir,artifact.type_name, output_key)))
         copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)
 

@@ -142,7 +142,6 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
-    self.dummy_dict = {}
     # Mapping component's name to its executor to store dummy executors 
 
   @property
@@ -203,36 +202,5 @@ class Pipeline(object):
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
 
-  def set_dummy_executor(self, component_id: Text, executor: Type[BaseExecutor]):
-    for component in self._components:
-      if component_id == component.id:
-        self.dummy_dict[component_id] = executor
-  # def set_dummy_executor(self, executor_factory: DummyExecutorFactory):
-  #   for component in self._components:
-  #     if executor_factory.component_id == component.id:
-  #       component.executor_spec = ExecutorClassSpec(executor_factory)
-  #       break
-
-  # def set_recorder(self):
-  #   for component in self._components:
-  #     component.executor_spec = ExecutorClassSpec(make_recorder_executor)
-  # def set_executor(self, component_id: Text, executor_factory: Type[FakeComponentExecutorFactory]) -> None:
-  #         for component in self._components:
-  #           component.executor_spec = executor_factory.
-  #           if component_id is component.id:
-  #             self.mock_executor_spec[component_id] = executor_factory()
-
-  # '''def get_artifacts(self, component_id: Text):
-  #         for component in self._components:
-  #           if component_id is component.id:
-  #             return {'input_dict':component.inputs.get_all(),'output_dict': component.outputs.get_all()}
-  #     '''
-  # def set_executor(self, component_id: Text, executor: BaseExecutor, 
-  #                       input_artifacts: List[Artifact]=None,
-  #                        output_artifacts: List[Artifact]=None) -> None:
-  #   for component in self._components:
-  #     if component_id is component.id:
-  #       component.executor_spec = ExecutorClassSpec(executor)
-  #       if input_artifacts is not None and output_artifacts is not None:
-  #         self.expected_inputs[component_id] = input_artifacts
-  # self.expected_outputs[component_id] = output_artifacts
+  # def set_dummy_executor(self, component_id: Text, executor: Type[BaseExecutor]):
+  #   pass
