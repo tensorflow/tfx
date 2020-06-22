@@ -38,20 +38,6 @@ nodes {
         }
       }
     }
-    inputs {
-      inputs {
-        key: "input"
-        value {
-          channels {
-            artifact_query {
-              type {
-                name: "ExternalArtifact"
-              }
-            }
-          }
-        }
-      }
-    }
     outputs {
       outputs {
         key: "examples"
@@ -73,6 +59,14 @@ nodes {
       }
     }
     parameters {
+      parameters {
+        key: "input_base"
+        value {
+          field_value {
+            string_value: "tfx_root/data_path"
+          }
+        }
+      }
       parameters {
         key: "input_config"
         value {

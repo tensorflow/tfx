@@ -24,7 +24,7 @@ import hashlib
 import os
 from typing import Any, Dict, List, Text, Union
 
-import absl
+from absl import logging
 import apache_beam as beam
 from six import with_metaclass
 import tensorflow as tf
@@ -38,17 +38,6 @@ from tfx.types import artifact_utils
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
-# Key for input in executor input_dict.
-INPUT_KEY = 'input'
-
-# Key for output examples in executor output_dict.
-EXAMPLES_KEY = 'examples'
-
-# Key for the `output_data_format` execution property.
-OUTPUT_DATA_FORMAT_EXEC_PROPERTY_KEY = 'output_data_format'
-
-# Key for the `payload_format` custom property of output examples artifact.
-PAYLOAD_FORMAT_PROPERTY_KEY = 'payload_format'
 
 
 def _ExamplePartitionKey(record: tf.train.Example,
@@ -124,14 +113,13 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
 def _InputToExampleOrBytes(
     pipeline: beam.Pipeline,
     input_to_example: beam.PTransform,
-    input_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any],
     split_pattern: Text,
 ) -> beam.pvalue.PCollection:
   """Converts input into a tf.train.Example, or a bytes (serialized proto)."""
   return (pipeline
           | 'InputSourceToExampleOrBytes' >> input_to_example(
-              input_dict, exec_properties, split_pattern))
+              exec_properties, split_pattern))
 
 
 class BaseExampleGenExecutor(
@@ -178,7 +166,6 @@ class BaseExampleGenExecutor(
       @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
       def ExamplePTransform(
           pipeline: beam.Pipeline,
-          input_dict: Dict[Text, List[types.Artifact]],
           exec_properties: Dict[Text, Any],
           split_pattern: Text) -> beam.pvalue.PCollection
     """
@@ -187,7 +174,6 @@ class BaseExampleGenExecutor(
   def GenerateExamplesByBeam(
       self,
       pipeline: beam.Pipeline,
-      input_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, Any],
   ) -> Dict[Text, beam.pvalue.PCollection]:
     """Converts input source to TF example splits based on configs.
@@ -199,14 +185,15 @@ class BaseExampleGenExecutor(
 
     Args:
       pipeline: beam pipeline.
-      input_dict: Input dict from input key to a list of Artifacts. Depends on
-        detailed example gen implementation.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
-        - input: JSON string of example_gen_pb2.Input instance, providing input
-          configuration.
-        - output: JSON string of example_gen_pb2.Output instance, providing
-          output configuration.
+        - input_base: an external directory containing the data files.
+        - input_config: JSON string of example_gen_pb2.Input instance, providing
+          input configuration.
+        - output_config: JSON string of example_gen_pb2.Output instance,
+          providing output configuration.
+        - output_data_format: Payload format of generated data in output
+          artifact, one of example_gen_pb2.PayloadFormat enum.
 
     Returns:
       Dict of beam PCollection with split name as key, each PCollection is a
@@ -214,10 +201,10 @@ class BaseExampleGenExecutor(
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties['input_config'], input_config)
+    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
     # Get output split information.
     output_config = example_gen_pb2.Output()
-    json_format.Parse(exec_properties['output_config'], output_config)
+    json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
     # Get output split names.
     split_names = utils.generate_output_split_names(input_config, output_config)
     # Make beam_pipeline_args available in exec_properties since certain
@@ -243,7 +230,7 @@ class BaseExampleGenExecutor(
           pipeline
           | 'InputToExampleOrBytes' >>
           # pylint: disable=no-value-for-parameter
-          _InputToExampleOrBytes(input_to_example, input_dict, exec_properties,
+          _InputToExampleOrBytes(input_to_example, exec_properties,
                                  input_config.splits[0].pattern)
           | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets,
                                           output_config.split_config))
@@ -254,8 +241,8 @@ class BaseExampleGenExecutor(
             pipeline
             | 'InputToExampleOrBytes[{}]'.format(split.name) >>
             # pylint: disable=no-value-for-parameter
-            _InputToExampleOrBytes(input_to_example, input_dict,
-                                   exec_properties, split.pattern))
+            _InputToExampleOrBytes(input_to_example, exec_properties,
+                                   split.pattern))
         example_splits.append(examples)
 
     result = {}
@@ -284,34 +271,35 @@ class BaseExampleGenExecutor(
         - examples: splits of tf examples.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
-        - input: JSON string of example_gen_pb2.Input instance, providing input
-          configuration.
-        - output: JSON string of example_gen_pb2.Output instance, providing
-          output configuration.
+        - input_base: an external directory containing the data files.
+        - input_config: JSON string of example_gen_pb2.Input instance, providing
+          input configuration.
+        - output_config: JSON string of example_gen_pb2.Output instance,
+          providing output configuration.
+        - output_data_format: Payload format of generated data in output
+          artifact, one of example_gen_pb2.PayloadFormat enum.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    absl.logging.info('Generating examples.')
+    logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
-      example_splits = self.GenerateExamplesByBeam(pipeline, input_dict,
-                                                   exec_properties)
+      example_splits = self.GenerateExamplesByBeam(pipeline, exec_properties)
 
       # pylint: disable=expression-not-assigned, no-value-for-parameter
       for split_name, example_split in example_splits.items():
         (example_split
          | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
-             artifact_utils.get_split_uri(output_dict[EXAMPLES_KEY],
+             artifact_utils.get_split_uri(output_dict[utils.EXAMPLES_KEY],
                                           split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
-    output_payload_format = exec_properties.get(
-        OUTPUT_DATA_FORMAT_EXEC_PROPERTY_KEY)
+    output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
-      for output_examples_artifact in output_dict[EXAMPLES_KEY]:
+      for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
         output_examples_artifact.set_string_custom_property(
-            PAYLOAD_FORMAT_PROPERTY_KEY,
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME,
             example_gen_pb2.PayloadFormat.Name(output_payload_format))
-    absl.logging.info('Examples generated.')
+    logging.info('Examples generated.')

@@ -43,7 +43,6 @@ from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'chicago_taxi_with_inference'
 
@@ -79,12 +78,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
                      module_file: Text, metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
-  training_examples = external_input(training_data_root)
-
   # Brings training data into the pipeline or otherwise joins/converts
   # training data.
   training_example_gen = CsvExampleGen(
-      input_base=training_examples, instance_name='training_example_gen')
+      input_base=training_data_root, instance_name='training_example_gen')
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(
@@ -149,15 +146,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
-  inference_examples = external_input(inference_data_root)
-
   # Brings inference data into the pipeline.
   inference_example_gen = CsvExampleGen(
-      input_base=inference_examples,
+      input_base=inference_data_root,
       output_config=example_gen_pb2.Output(
-          split_config=example_gen_pb2.SplitConfig(
-              splits=[example_gen_pb2.SplitConfig.Split(
-                  name='unlabelled', hash_buckets=100)])),
+          split_config=example_gen_pb2.SplitConfig(splits=[
+              example_gen_pb2.SplitConfig.Split(
+                  name='unlabelled', hash_buckets=100)
+          ])),
       instance_name='inference_example_gen')
 
   # Performs offline batch inference over inference examples.

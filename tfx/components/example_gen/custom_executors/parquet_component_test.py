@@ -29,7 +29,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-from tfx.utils.dsl_utils import external_input
 
 
 class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
@@ -61,7 +60,7 @@ class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):
     example_gen = FileBasedExampleGen(
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             parquet_executor.Executor),
-        input=external_input(self.parquet_dir_path),
+        input_base=self.parquet_dir_path,
         input_config=self.input_config,
         output_config=self.output_config,
         instance_name='ParquetExampleGen')

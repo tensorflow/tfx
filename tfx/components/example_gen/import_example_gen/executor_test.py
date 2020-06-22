@@ -23,7 +23,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from google.protobuf import json_format
-from tfx.components.example_gen import base_example_gen_executor
+from tfx.components.example_gen import utils
 from tfx.components.example_gen.import_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -34,13 +34,9 @@ class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
     super(ExecutorTest, self).setUp()
-    input_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
-
-    # Create input dict.
-    input_base = standard_artifacts.ExternalArtifact()
-    input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {base_example_gen_executor.INPUT_KEY: [input_base]}
+    self._input_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata',
+        'external')
 
     # Create values in exec_properties
     self._input_config = json_format.MessageToJson(
@@ -61,8 +57,7 @@ class ExecutorTest(tf.test.TestCase):
       examples = (
           pipeline
           | 'ToSerializedRecord' >> executor._ImportSerializedRecord(
-              input_dict=self._input_dict,
-              exec_properties={},
+              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
               split_pattern='tfrecord/*')
           | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
@@ -84,11 +79,11 @@ class ExecutorTest(tf.test.TestCase):
     self.examples.uri = output_data_dir
     self.examples.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
-    output_dict = {'examples': [self.examples]}
+    output_dict = {utils.EXAMPLES_KEY: [self.examples]}
 
     # Run executor.
     import_example_gen = executor.Executor()
-    import_example_gen.Do(self._input_dict, output_dict, exec_properties)
+    import_example_gen.Do({}, output_dict, exec_properties)
 
     # Check import_example_gen outputs.
     train_output_file = os.path.join(self.examples.uri, 'train',
@@ -109,9 +104,14 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDoWithExamples(self):
     exec_properties = {
-        'input_config': self._input_config,
-        'output_config': self._output_config,
-        'output_data_format': example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE,
+        utils.INPUT_BASE_KEY:
+            self._input_data_dir,
+        utils.INPUT_CONFIG_KEY:
+            self._input_config,
+        utils.OUTPUT_CONFIG_KEY:
+            self._output_config,
+        utils.OUTPUT_DATA_FORMAT_KEY:
+            example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE,
     }
 
     self._testDo(exec_properties)
@@ -119,13 +119,18 @@ class ExecutorTest(tf.test.TestCase):
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE),
         self.examples.get_string_custom_property(
-            base_example_gen_executor.PAYLOAD_FORMAT_PROPERTY_KEY))
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
   def testDoWithProto(self):
     exec_properties = {
-        'input_config': self._input_config,
-        'output_config': self._output_config,
-        'output_data_format': example_gen_pb2.PayloadFormat.FORMAT_PROTO,
+        utils.INPUT_BASE_KEY:
+            self._input_data_dir,
+        utils.INPUT_CONFIG_KEY:
+            self._input_config,
+        utils.OUTPUT_CONFIG_KEY:
+            self._output_config,
+        utils.OUTPUT_DATA_FORMAT_KEY:
+            example_gen_pb2.PayloadFormat.FORMAT_PROTO,
     }
 
     self._testDo(exec_properties)
@@ -133,7 +138,7 @@ class ExecutorTest(tf.test.TestCase):
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_PROTO),
         self.examples.get_string_custom_property(
-            base_example_gen_executor.PAYLOAD_FORMAT_PROPERTY_KEY))
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
 
 if __name__ == '__main__':

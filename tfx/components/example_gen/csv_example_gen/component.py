@@ -19,12 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
+from absl import logging
 
 from tfx import types
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.types import artifact_utils
 
 
 class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected-access
@@ -38,20 +40,22 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
 
   def __init__(
       self,
-      input: types.Channel = None,  # pylint: disable=redefined-builtin
+      # TODO(b/159467778): deprecate this, use input_base instead.
+      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
+      input_base: Optional[Text] = None,
       input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
                                                                Any]]] = None,
       output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
                                                                  Any]]] = None,
       example_artifacts: Optional[types.Channel] = None,
-      input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a CsvExampleGen component.
 
     Args:
       input: A Channel of type `standard_artifacts.ExternalArtifact`, which
-        includes one artifact whose uri is an external directory containing csv
-        files (required).
+        includes one artifact whose uri is an external directory containing the
+        CSV files. (Deprecated by input_base)
+      input_base: an external directory containing the CSV files.
       input_config: An example_gen_pb2.Input instance, providing input
         configuration. If unset, the files under input_base will be treated as a
         single split. If any field is provided as a RuntimeParameter,
@@ -64,14 +68,18 @@ class CsvExampleGen(component.FileBasedExampleGen):  # pylint: disable=protected
         as Output proto message.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
-      input_base: Backwards compatibility alias for the 'input' argument.
       instance_name: Optional unique instance name. Necessary if multiple
         CsvExampleGen components are declared in the same pipeline.
     """
+    if input:
+      logging.warning(
+          'The "input" argument to the CsvExampleGen component has been '
+          'deprecated by "input_base". Please update your usage as support for '
+          'this argument will be removed soon.')
+      input_base = artifact_utils.get_single_uri(list(input.get()))
     super(CsvExampleGen, self).__init__(
-        input=input,
+        input_base=input_base,
         input_config=input_config,
         output_config=output_config,
         example_artifacts=example_artifacts,
-        input_base=input_base,
         instance_name=instance_name)

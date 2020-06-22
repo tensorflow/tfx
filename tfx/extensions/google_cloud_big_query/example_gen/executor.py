@@ -18,13 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, Optional, Text
 
 import apache_beam as beam
 import tensorflow as tf
 
 from google.cloud import bigquery
-from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 
 
@@ -112,14 +111,12 @@ def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(tf.train.Example)
 def _BigQueryToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from BigQuery and transform to TF examples.
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, a BigQuery sql string.
 
