@@ -15,8 +15,6 @@ syntax = "proto3";
 
 package tfx.orchestration.kubeflow.proto;
 
-import "google/protobuf/any.proto";
-
 // ConfigValue specifies how Kubeflow components should obtain a runtime
 // configuration parameter value.
 message ConfigValue {
