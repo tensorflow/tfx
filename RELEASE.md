@@ -4,6 +4,7 @@
 *   Added TFX DSL IR compiler that encodes a TFX pipeline into a DSL proto.
 
 *   Supported feature based split partition in ExampleGen.
+*   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
 
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
