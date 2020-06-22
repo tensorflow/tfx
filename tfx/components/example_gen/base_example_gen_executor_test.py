@@ -29,19 +29,18 @@ from tfx.types import standard_artifacts
 
 
 @beam.ptransform_fn
-def _TestInputSourceToExamplePTransform(
-    pipeline,
-    input_dict,  # pylint: disable=unused-argument
-    exec_properties,  # pylint: disable=unused-argument
-    split_pattern):
+def _TestInputSourceToExamplePTransform(pipeline, input_dict, exec_properties,
+                                        split_pattern):
+
+  del input_dict
   mock_examples = []
   size = 0
   if split_pattern == 'single/*':
-    size = 30000
+    size = 6000
   elif split_pattern == 'train/*':
-    size = 20000
+    size = 4000
   elif split_pattern == 'eval/*':
-    size = 10000
+    size = 2000
   assert size != 0
   has_empty = exec_properties.get('has_empty', True)
   for i in range(size):
@@ -58,7 +57,12 @@ def _TestInputSourceToExamplePTransform(
     example_proto = tf.train.Example(
         features=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
-  return pipeline | beam.Create(mock_examples)
+  result = pipeline | beam.Create(mock_examples)
+
+  if exec_properties.get('format_proto', False):
+    result |= beam.Map(lambda x: x.SerializeToString(deterministic=True))
+
+  return result
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -134,6 +138,29 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
             ])))
+
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, self._exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+
+    # Output split ratio: train:eval=2:1.
+    self.assertGreater(
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
+
+  def testDoOutputSplitWithProto(self):
+    # Add output config to exec proterties.
+    self._exec_properties['output_config'] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(splits=[
+                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+            ])))
+    self._exec_properties['format_proto'] = True
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -233,6 +260,28 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         RuntimeError,
         'Only `bytes_list` and `int64_list` features are supported for partition.'
     ):
+      example_gen.Do({}, self._output_dict, self._exec_properties)
+
+  def testInvalidFeatureBasedPartitionWithProtos(self):
+    # Add output config to exec proterties.
+    self._exec_properties['output_config'] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(
+                splits=[
+                    example_gen_pb2.SplitConfig.Split(
+                        name='train', hash_buckets=2),
+                    example_gen_pb2.SplitConfig.Split(
+                        name='eval', hash_buckets=1)
+                ],
+                partition_feature_name='i')))
+    self._exec_properties['has_empty'] = False
+    self._exec_properties['format_proto'] = True
+
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    with self.assertRaisesRegexp(
+        RuntimeError, 'Split by `partition_feature_name` is only supported for '
+        'FORMAT_TF_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 

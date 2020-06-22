@@ -127,6 +127,8 @@ class FileBasedExampleGenSpec(ComponentSpec):
           ExecutionParameter(type=example_gen_pb2.Input),
       'output_config':
           ExecutionParameter(type=example_gen_pb2.Output),
+      'output_data_format':
+          ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
       'custom_config':
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }

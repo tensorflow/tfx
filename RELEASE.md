@@ -16,8 +16,12 @@
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`.
 *   Removed Tuner from custom_components/ as it's supported under components/
     now.
+*   Added support of non tf.train.Example protos as internal data payload
+    format by ImportExampleGen.
 
 ## Breaking changes
+*   Added required 'output_data_format' execution property to
+    FileBaseExampleGen.
 
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The

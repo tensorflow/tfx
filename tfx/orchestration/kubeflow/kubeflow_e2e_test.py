@@ -77,7 +77,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     """Uses port forward to talk to MLMD gRPC server."""
     grpc_port = cls._get_grpc_port()
     grpc_forward_command = [
-        'kubectl', 'port-forward', 'deployment/metadata-deployment', '-n',
+        'kubectl', 'port-forward', 'deployment/metadata-grpc-deployment', '-n',
         'kubeflow', ('%s:%s' % (_KFP_E2E_TEST_FORWARDING_PORT, grpc_port))
     ]
     # Begin port forwarding.

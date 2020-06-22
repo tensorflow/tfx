@@ -64,6 +64,20 @@ message CustomConfig {
   google.protobuf.Any custom_config = 1;
 }
 
+// Enum to indicate payload format that ExampleGen produces.
+enum PayloadFormat {
+  // Unknown or unspecified.
+  FORMAT_UNSPECIFIED = 0;
+
+  // Serialized tf.train.Example protocol buffer.
+  FORMAT_TF_EXAMPLE = 6;
+
+  // Serialized any protocol buffer.
+  FORMAT_PROTO = 11;
+
+  reserved 1 to 5, 7 to 10, 12 to max;
+}
+
 // Specification of the output of the example gen.
 message Output {
   // Specifies how the output should be split. If not specified, the output

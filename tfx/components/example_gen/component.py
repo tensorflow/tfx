@@ -142,6 +142,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
                                                                  Any]]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
+      output_data_format: Optional[type(
+          example_gen_pb2.PayloadFormat)]=example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       input_base: Optional[types.Channel] = None,
@@ -161,6 +163,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
         'eval' with size 2:1.
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
+      output_data_format: Payload format of generated data in output artifact,
+        one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of 'ExamplesPath' for output train and eval
         examples.
       custom_executor_spec: Optional custom executor spec overriding the default
@@ -190,6 +194,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
         input_config=input_config,
         output_config=output_config,
         custom_config=custom_config,
+        output_data_format=output_data_format,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(
         spec=spec,
