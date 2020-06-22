@@ -31,6 +31,7 @@
 
 
 ### For component authors
+*   Adding example of creating a custom component with the @component decorator.
 
 ## Documentation updates
 
