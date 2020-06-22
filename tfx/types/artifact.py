@@ -501,6 +501,7 @@ class ValueArtifact(Artifact):
 
   def write(self, value):
     serialized_value = self.encode(value)
+    tf.io.gfile.makedirs(self.uri)
     tf.io.gfile.GFile(os.path.join(self.uri, self.__class__.VALUE_FILE),
                       'wb').write(serialized_value)
 

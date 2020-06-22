@@ -61,7 +61,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
     executions = tf.io.gfile.listdir(blessing_path)
     self.assertGreaterEqual(len(executions), 1)
     for exec_id in executions:
-      blessed = os.path.join(blessing_path, exec_id, 'INFRA_BLESSED')
+      blessed = os.path.join(blessing_path, exec_id, 'data', 'INFRA_BLESSED')
       self.assertTrue(tf.io.gfile.exists(blessed))
 
   def assertPipelineExecution(self) -> None:

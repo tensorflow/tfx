@@ -30,10 +30,14 @@ from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
 
+ARTIFACT_SUFFIX = 'data'
+
+
 def _generate_output_uri(base_output_dir: Text, name: Text,
                          execution_id: int) -> Text:
   """Generate uri for output artifact."""
-  return os.path.join(base_output_dir, name, str(execution_id))
+  return os.path.join(base_output_dir, name, str(execution_id),
+                      ARTIFACT_SUFFIX)
 
 
 def _prepare_output_paths(artifact: types.Artifact):
@@ -50,7 +54,7 @@ def _prepare_output_paths(artifact: types.Artifact):
   # which can handle permission bits.
   absl.logging.debug('Creating output artifact uri %s as directory',
                      artifact.uri)
-  tf.io.gfile.makedirs(artifact.uri)
+  tf.io.gfile.makedirs(os.path.dirname(artifact.uri))
   # TODO(b/147242148): Avoid special-casing the "split_names" property.
   if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
     split_names = artifact_utils.decode_split_names(artifact.split_names)
