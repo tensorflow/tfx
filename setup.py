@@ -73,6 +73,7 @@ def generate_proto(source):
 _PROTO_FILE_PATTERNS = [
     'tfx/proto/*.proto',
     'tfx/orchestration/kubeflow/proto/*.proto',
+    'tfx/extensions/experimental/kfp_compatibility/proto/*.proto'
 ]
 
 for file_pattern in _PROTO_FILE_PATTERNS:

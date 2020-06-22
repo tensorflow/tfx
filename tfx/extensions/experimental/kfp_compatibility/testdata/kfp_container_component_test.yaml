@@ -1,5 +1,5 @@
-name: Test_KubeFlow_Container_Component
-description: Component spec for testing kubeflow_container_component
+name: Test_Kfp_Container_Component
+description: Component spec for testing kfp_container_component
 metadata:
   annotations: {annotation1: annotation1, annotation2: annotation2}
   labels: {labels1: labels1}
@@ -19,8 +19,8 @@ implementation:
     - inputValue: Subpath
     - outputPath: File
     args: [
-      --arg1, {inputValue: input3},
-      --arg2, {inputPath: input4},
-      --arg3, {outputPath: output2},
+      --arg1, {inputPath: input1},
+      --arg2, {inputValue: input2},
+      --arg3, {outputPath: output1},
     ]
 version: version1

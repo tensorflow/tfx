@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,35 +21,36 @@ import yaml
 from google.protobuf.json_format import ParseDict
 from tfx.components.base import base_component
 from tfx.dsl.component.experimental import executor_specs, placeholders, container_component
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
+from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types.experimental.simple_artifacts import File
 from typing import Any, Callable, Dict, Text
 
-def create_kubeflow_container_component(
-    component_path: Text
+def load_kfp_yaml_container_component(
+    component_yaml_path: Text
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component from a Kubeflow component spec.
 
   Args:
-    component_path: path to Kubeflow component.
+    component_yaml_path: local file path of a Kubeflow Pipelines component
+                         YAML file.
 
   Returns:
-    Component that can be instantiated and user inside pipeline.
+    Container component that can be instantiated in a TFX pipeline.
 
   Example:
-    component = create_kubeflow_container_component(
+    component = load_kfp_yaml_container_component(
       "kfp_pipelines_root/components/datasets/Chicago_Taxi_Trips/component.yaml"
     )
   """
-  with open(component_path) as component_file:
+  with open(component_yaml_path) as component_file:
     data = yaml.load(component_file, Loader=yaml.FullLoader)
-  convert_target_fields_to_kv_pair(data)
-  component_spec = ParseDict(data, kubeflow_pb2.ComponentSpec())
+  _convert_target_fields_to_kv_pair(data)
+  component_spec = ParseDict(data, kfp_component_spec_pb2.ComponentSpec())
   container_impl = component_spec.implementation.container
   name = component_spec.name
   image = container_impl.image
-  command = list(map(convert_command_type, container_impl.command)) + \
-    list(map(convert_command_type, container_impl.args))
+  command = (list(map(_convert_command_type, container_impl.command)) +
+             list(map(_convert_command_type, container_impl.args)))
   # TODO: Support classname to class translation in inputs.type
   inputs = {item.name: File for item in component_spec.inputs}
   outputs = {item.name: File for item in component_spec.outputs}
@@ -60,13 +60,14 @@ def create_kubeflow_container_component(
     )
 
 
-def convert_target_fields_to_kv_pair(
+def _convert_target_fields_to_kv_pair(
     parsed_dict: Dict[Text, Any]
 ) -> None:
   """ Converts in place specific string fields to key value pairs of {stringValue: [Text]} for proto3 compatibility.
 
   Args:
     parsed_dict: dictionary obtained from parsing a Kubeflow component spec.
+                 This argument is modified in place.
 
   Returns:
     None
@@ -85,8 +86,8 @@ def convert_target_fields_to_kv_pair(
           parsed_dict_location[ind] = {"stringValue": value}
 
 
-def convert_command_type(
-    command: kubeflow_pb2.CommandlineArgumentTypeWrapper
+def _convert_command_type(
+    command: kfp_component_spec_pb2.CommandlineArgumentTypeWrapper
 ) -> executor_specs.CommandlineArgumentType:
   """ Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
 

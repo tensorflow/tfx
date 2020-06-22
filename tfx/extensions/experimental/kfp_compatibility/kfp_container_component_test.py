@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.component.experimental.kubeflow_container_component."""
+"""Tests for tfx.extensions.experimental.kfp_compatibility.kfp_container_component."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,7 +20,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.dsl.component.experimental import placeholders, container_component
-from tfx.dsl.component.experimental.kubeflow_container_component import create_kubeflow_container_component
+from tfx.extensions.experimental.kfp_compatibility.kfp_container_component import load_kfp_yaml_container_component
 from tfx.types.experimental.simple_artifacts import File
 
 class KubeflowContainerComponentTest(tf.test.TestCase):
@@ -30,16 +29,16 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
     super(KubeflowContainerComponentTest, self).setUp()
     self._testdata_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        'component/experimental/testdata')
+        'experimental/kfp_compatibility/testdata')
 
 
   def testCreateComponent(self):
-    component = create_kubeflow_container_component(
+    component = load_kfp_yaml_container_component(
         os.path.join(self._testdata_path,
-                     'kubeflow_container_component_test.yaml')
+                     'kfp_container_component_test.yaml')
     )
     ref_component = container_component.create_container_component(
-        "Test_KubeFlow_Container_Component",
+        "Test_Kfp_Container_Component",
         "image1",
         [
             "command1",
@@ -48,9 +47,9 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
             placeholders.InputUriPlaceholder("Directory"),
             placeholders.InputValuePlaceholder("Subpath"),
             placeholders.OutputUriPlaceholder("File"),
-            "--arg1", placeholders.InputValuePlaceholder("input3"),
-            "--arg2", placeholders.InputUriPlaceholder("input4"),
-            "--arg3", placeholders.OutputUriPlaceholder("output2")
+            "--arg1", placeholders.InputUriPlaceholder("input1"),
+            "--arg2", placeholders.InputValuePlaceholder("input2"),
+            "--arg3", placeholders.OutputUriPlaceholder("output1")
         ],
         {
             "input1": File,
