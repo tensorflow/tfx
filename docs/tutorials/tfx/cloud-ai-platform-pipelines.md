@@ -138,7 +138,8 @@ for resources to be provisioned.
     1.  Click **Create**, and wait several minutes until the cluster has been
         created.
 
-    1.  Select a namespace and instance name (using the defaults is fine).
+    1.  Select a namespace and instance name (using the defaults is fine). You
+        don't have to check *Use managed storage*.
 
     1.  Click **Deploy**, and wait several moments until the pipeline has been
         deployed. By deploying Kubeflow Pipelines, you accept the Terms of
@@ -696,7 +697,6 @@ We need to specify which GCP project to use for BigQuery, and this is done by
 setting `--project` in `beam_pipeline_args` when creating a pipeline.
 
 **Double-click to open `configs.py`**. Uncomment the definition of
-`GCP_PROJECT_ID`, `GCP_REGION`,
 `BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS` and `BIG_QUERY_QUERY`. You
 should replace the project id and the region value in this file with the correct
 values for your GCP project.
@@ -764,7 +764,7 @@ gcloud services enable dataflow.googleapis.com
 > will reduce the number of needed IPs.
 
 **Double-click `pipeline` to change directory, and double-click to open
-`configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`, and
+`configs.py`**. Uncomment the definition of `GOOGLE_CLOUD_REGION`, and
 `DATAFLOW_BEAM_PIPELINE_ARGS`.
 
 **Double-click to open `pipeline.py`**. Change the value of `enable_cache` to
@@ -815,7 +815,7 @@ Before editing files, you might first have to enable *AI Platform Training &
 Prediction API*.
 
 **Double-click `pipeline` to change directory, and double-click to open
-`configs.py`**. Uncomment the definition of `GCP_PROJECT_ID`, `GCP_REGION`,
+`configs.py`**. Uncomment the definition of `GOOGLE_CLOUD_REGION`,
 `GCP_AI_PLATFORM_TRAINING_ARGS` and `GCP_AI_PLATFORM_SERVING_ARGS`. We will use
 our custom built container image to train a model in Cloud AI Platform Training,
 so we should set `masterConfig.imageUri` in `GCP_AI_PLATFORM_TRAINING_ARGS` to
