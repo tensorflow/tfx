@@ -59,9 +59,10 @@ class MyDummyComponentLauncher(InProcessComponentLauncher):
                                     'testdata')
     self.dummy_dict = {}
     # ['CsvExampleGen', 'StatisticsGen', 'SchemaGen', \
-    # 'ExampleValidator', 'Transform', 'Trainer', 'Evaluator', 'Pusher']:
-    for component_id in ['CsvExampleGen', 'StatisticsGen', 'SchemaGen', \
-                          'ExampleValidator', 'Evaluator', 'Pusher']:
+    # 'ExampleValidator', 'Transform', 'Trainer', 'Evaluator', 'Pusher']
+    for component_id in  ['CsvExampleGen', 'StatisticsGen', 'SchemaGen', \
+                          'ExampleValidator', 'Transform', 'Trainer', \
+                          'Evaluator', 'Pusher']:
       self.dummy_dict[component_id] = BaseDummyExecutor
 
   def _run_executor(self, execution_id: int,

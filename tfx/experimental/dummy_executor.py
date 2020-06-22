@@ -18,21 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text, Optional
-from tfx import types
-from tfx.components.base import base_executor
-from tfx.types.artifact import Artifact
-from tfx.orchestration import metadata
-from tfx.types import standard_artifacts
-
-import json
+from typing import Any, Dict, List, Text
 import absl
 import os
-import filecmp
 from distutils.dir_util import copy_tree
-from tfx.orchestration.metadata import Metadata
+
+from tfx import types
+from tfx.components.base import base_executor
 
 class BaseDummyExecutor(base_executor.BaseExecutor):
+  """TFX base dummy executor."""
   def __init__(self, component_id, record_dir, context):
     super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
@@ -40,7 +35,16 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
     self._record_dir = record_dir
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-       output_dict: Dict[Text, List[types.Artifact]],
-       exec_properties: Dict[Text, Any]) -> None:
-    # TODO: verifying logic
-    pass
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    for _, artifact_list in output_dict.items():
+      for artifact in artifact_list:
+        dest = artifact.uri
+        pipeline_path = os.path.join(os.environ['HOME'],
+                                     "tfx/pipelines/",
+                                     "chicago_taxi_beam/")
+        src = dest.replace(pipeline_path, "")
+        src = src[:src.rfind('/')] # remove trailing number
+        src = os.path.join(self._record_dir, src)
+        copy_tree(src, dest)
+        absl.logging.info('from %s, copied to %s', src, dest)
