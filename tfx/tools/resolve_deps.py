@@ -107,7 +107,10 @@ class ResolveDepsCommand(setuptools.Command):
 
   def _parse_deps(self, pep508_list):
     # pylint: disable=g-import-not-at-top
+    # These modules are not available on import time, but available when
+    # setup.py command is running.
     from poetry import packages
+
     return [packages.dependency_from_pep_508(v) for v in pep508_list]
 
   def run(self):
