@@ -36,8 +36,6 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
-from tfx.orchestration.launcher import dummy_component_launcher
-
 from tfx.utils import telemetry_utils
 
 
@@ -73,8 +71,6 @@ class _ComponentAsDoFn(beam.DoFn):
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
         component_config=component_config)
     self._component_id = component.id
-    absl.logging.info("_component_launcher._component_info %s", self._component_launcher._component_info)
-
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
     """Executes component based on signals.
@@ -90,6 +86,7 @@ class _ComponentAsDoFn(beam.DoFn):
   def _run_component(self) -> None:
     absl.logging.info('Component %s is running.', self._component_id)
     self._component_launcher.launch()
+    absl.logging.info('Component %s is finished.', self._component_id)
 
 
 class BeamDagRunner(tfx_runner.TfxRunner):
@@ -111,9 +108,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     if config is None:
       config = pipeline_config.PipelineConfig(
           supported_launcher_classes=[
-              dummy_component_launcher.MyDummyComponentLauncher,
               in_process_component_launcher.InProcessComponentLauncher,
-              docker_component_launcher.DockerComponentLauncher
+              docker_component_launcher.DockerComponentLauncher,
           ],
       )
     super(BeamDagRunner, self).__init__(config)
@@ -131,6 +127,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       return
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
+
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
       with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
@@ -142,6 +139,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
         # pipeline.components are in topological order.
         for component in tfx_pipeline.components:
           component_id = component.id
+
           # Signals from upstream components.
           signals_to_wait = []
           if component.upstream_nodes:
@@ -151,12 +149,11 @@ class BeamDagRunner(tfx_runner.TfxRunner):
               signals_to_wait.append(signal_map[upstream_node])
           absl.logging.info('Component %s depends on %s.', component_id,
                             [s.producer.full_label for s in signals_to_wait])
+
           (component_launcher_class,
            component_config) = config_utils.find_component_launch_info(
                self._config, component)
 
-          absl.logging.info("component_launcher_class %s", component_launcher_class)
-          absl.logging.info("component_config %s", component_config)
           # Each signal is an empty PCollection. AsIter ensures component will
           # be triggered after upstream components are finished.
           signal_map[component] = (

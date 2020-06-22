@@ -22,24 +22,13 @@ from __future__ import unicode_literals
 import collections
 import json
 import os
-import abc
-from typing import List, Optional, Text, Type
+from typing import List, Optional, Text
 
 import absl
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-# from tfx.experimental.mock_units.mock_factory import FakeExecutorClassSpec, FakeComponentExecutorFactory
-# from unittest.mock import patch, MagicMock
-from tfx.components.base import executor_spec
-from tfx.components.base.executor_spec import ExecutorClassSpec
-from tfx.components.base.base_executor import BaseExecutor
-
-from tfx.types.artifact import Artifact
-# from tfx.experimental.recorder_executor import make_recorder_executor
-# from tfx.experimental.dummy_executor import DummyExecutorFactory
-# from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.
@@ -142,7 +131,6 @@ class Pipeline(object):
 
     # Calls property setter.
     self.components = components or []
-    # Mapping component's name to its executor to store dummy executors 
 
   @property
   def components(self):
@@ -201,6 +189,3 @@ class Pipeline(object):
     # has all its dependencies visited.
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
-
-  # def set_dummy_executor(self, component_id: Text, executor: Type[BaseExecutor]):
-  #   pass

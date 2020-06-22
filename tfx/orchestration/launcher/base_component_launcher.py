@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Any, Dict, List, Optional, Text, Type
+from typing import Any, Dict, List, Optional, Text
 
 import absl
 from six import with_metaclass
@@ -27,13 +27,11 @@ from six import with_metaclass
 from tfx import types
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
-from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
 
-# from tfx.experimental.mock_units.mock_factory import FakeComponentExecutorFactory, FakeExecutorClassSpec
 
 class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
   """Responsible for launching driver, executor and publisher of component."""
@@ -47,7 +45,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
-          base_component_config.BaseComponentConfig] = None
+          base_component_config.BaseComponentConfig] = None,
   ):
     """Initialize a BaseComponentLauncher.
 
@@ -77,6 +75,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     self._driver_class = component.driver_class
     self._component_executor_spec = component.executor_spec
+
     self._input_dict = component.inputs.get_all()
     self._output_dict = component.outputs.get_all()
     self._exec_properties = component.exec_properties
@@ -86,6 +85,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     self._additional_pipeline_args = additional_pipeline_args
     self._component_config = component_config
+
     if not self.can_launch(self._component_executor_spec,
                            self._component_config):
       raise ValueError(
@@ -106,7 +106,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
-          base_component_config.BaseComponentConfig] = None
+          base_component_config.BaseComponentConfig] = None,
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -195,7 +195,6 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
                       self._component_info.component_id)
     execution_decision = self._run_driver(self._input_dict, self._output_dict,
                                           self._exec_properties)
-    # absl.logging.info("after execution_decision, mock_executor_spec %s", self.mock_executor_spec)
 
     if not execution_decision.use_cached_results:
       absl.logging.info('Running executor for %s',

@@ -1,5 +1,3 @@
-
-
 # Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
@@ -14,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Chicago taxi example using TFX."""
+""" Chicago taxi example using Dummy Executors."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -38,7 +36,7 @@ from tfx.components import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.experimental.beam.dummy_beam_dag_runner import DummyBeamDagRunner
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
@@ -190,7 +188,6 @@ if __name__ == '__main__':
       # 0 means auto-detect based on the number of CPUs available during
       # execution time.
       direct_num_workers=0)
-  # record_dir = os.path.join(os.environ['HOME'], 'tfx/tfx/examples/chicago_taxi_pipeline/testdata')
 
   # mock_pipeline.set_dummy_executor('CsvExampleGen', BaseDummyExecutor)
   # mock_pipeline.set_dummy_executor('StatisticsGen', BaseDummyExecutor)
@@ -201,4 +198,4 @@ if __name__ == '__main__':
   # mock_pipeline.set_dummy_executor('Evaluator', BaseDummyExecutor)
   # mock_pipeline.set_dummy_executor('Pusher', BaseDummyExecutor)
 
-  BeamDagRunner().run(mock_pipeline)
+  DummyBeamDagRunner().run(mock_pipeline)
