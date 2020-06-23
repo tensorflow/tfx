@@ -319,10 +319,10 @@ def run_fn(fn_args: TrainerFnArgs):
             for i in range(num_dnn_layers)
         ])
 
-  # TODO(b/158106209): This log path might change in the future.
+  # Write logs to path spcified by fn_args
   log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-      log_dir=log_dir, update_freq='batch')
+      log_dir=fn_args.log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
