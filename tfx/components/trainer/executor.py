@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import json
 import os
-import shutil
+import distutils.dir_util as dir_util
 from typing import Any, Dict, List, Text
 
 import absl
@@ -135,7 +135,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
     
-    log_output_path = artifact_util.get_single_uri(
+    log_output_path = artifact_utils.get_single_uri(
         output_dict[constants.LOG_OUTPUT_KEY])
     log_output_dir = path_utils.log_output_dir(log_output_path)
 
@@ -175,7 +175,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     The Trainer Executor invokes a run_fn callback function provided by
     the user via the module_file parameter. In this function, user defines the
-    model and train it, then save the model to the provided location.
+    model and trains it, then saves the model and writes Tensorboard logs
+    to the provided locations.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
@@ -214,13 +215,15 @@ class GenericExecutor(base_executor.BaseExecutor):
     # Train the model
     absl.logging.info('Training model.')
     run_fn(fn_args)
-
+    
     # Note: If trained with multi-node distribution workers, it is the user
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-    absl.logging.info('Training complete. Model written to %s',
-                      fn_args.serving_model_dir)
+    if not tf.io.gfile.exists(fn_args.log_dir):
+      raise RuntimeError('run_fn failed to write logs to correct location.')
+    absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
+            fn_args.serving_model_dir, fn_args.log_dir)
 
 
 class Executor(GenericExecutor):
@@ -290,8 +293,8 @@ class Executor(GenericExecutor):
     absl.logging.info('Training complete.  Model written to %s',
                       fn_args.serving_model_dir)
 
-    # TODO: copy serving model dir and remove all non-log items
-    shutil.copytree(fn_args.serving_model_dir, fn_args.log_dir)
+    # Copy model run information to ModelRun artifact
+    dir_util.copy_tree(fn_args.serving_model_dir, fn_args.log_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
