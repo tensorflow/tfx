@@ -82,15 +82,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text) -> pipeline.Pipeline:
   """Implements the imdb sentiment analysis pipline with TFX."""
-  output = example_gen_pb2.Output(
-    split_config=example_gen_pb2.SplitConfig(
+  output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
       splits=[
-        example_gen_pb2.SplitConfig.Split(
-          name='train',
-          hash_buckets=9),
-        example_gen_pb2.SplitConfig.Split(
-          name='eval',
-          hash_buckets=1)]))
+          example_gen_pb2.SplitConfig.Split(
+              name='train',
+              hash_buckets=9),
+          example_gen_pb2.SplitConfig.Split(
+              name='eval',
+              hash_buckets=1)]))
 
   examples = external_input(data_root)
   # Brings data in to the pipline
