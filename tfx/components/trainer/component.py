@@ -119,6 +119,7 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
+      log_output: Optional[types.Channel] = None,
       transform_output: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Trainer component.
@@ -214,6 +215,8 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     output = output or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
+    log_output = log_output or types.Channel(
+        type=standard_artifacts.ModelRun, artifacts=[standard_artifacts.ModelRun()])
     spec = TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,
@@ -226,7 +229,8 @@ class Trainer(base_component.BaseComponent):
         run_fn=run_fn,
         trainer_fn=trainer_fn,
         custom_config=json_utils.dumps(custom_config),
-        model=output)
+        model=output,
+        model_run=log_output)
     super(Trainer, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import json
 import os
+import shutil
 from typing import Any, Dict, List, Text
 
 import absl
@@ -133,6 +134,10 @@ class GenericExecutor(base_executor.BaseExecutor):
         output_dict[constants.OUTPUT_MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
+    
+    log_output_path = artifact_util.get_single_uri(
+        output_dict[constants.LOG_OUTPUT_KEY])
+    log_output_dir = path_utils.log_output_dir(log_output_path)
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
@@ -148,6 +153,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=fn_args.eval_files,
+        # A single uri for the output directory of the Tensorboard logs
+        log_dir=log_output_dir,
         # A single uri for schema file.
         schema_file=fn_args.schema_path,
         # Number of train steps.
@@ -178,6 +185,7 @@ class GenericExecutor(base_executor.BaseExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: Exported model.
+        - model_run: Log output.
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -245,6 +253,7 @@ class Executor(GenericExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: Exported model.
+        - model_run: Log output.
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -280,6 +289,9 @@ class Executor(GenericExecutor):
                                     training_spec['eval_spec'])
     absl.logging.info('Training complete.  Model written to %s',
                       fn_args.serving_model_dir)
+
+    # TODO: copy serving model dir and remove all non-log items
+    shutil.copytree(fn_args.serving_model_dir, fn_args.log_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
