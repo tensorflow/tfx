@@ -34,12 +34,14 @@ from tfx.components.trainer.executor import TrainerFnArgs
 # To train on the entire imdb dataset, please refer to imdb_dataset_utils.py
 # and change the batch configuration accordingly.
 _DROPOUT_RATE = 0.2
-_EVAL_BATCH_SIZE = 5
-_HIDDEN_UNITS = 21
+_EMBEDDING_UNITS = 64 
+_EVAL_BATCH_SIZE = 5 
+_HIDDEN_UNITS = 64
 _LABEL_KEY = "label"
 _LEARNING_RATE = 1e-4
-_MAX_FEATURES = 8000
-_MAX_LEN = 128
+_LSTM_UNITS = 64
+_VOCAB_SIZE = 8000
+_MAX_LEN = 400 
 _TRAIN_BATCH_SIZE = 10
 
 def _gzip_reader_fn(filenames):
@@ -56,8 +58,7 @@ def _tokenize_review(review):
   review_indices = tft.compute_and_apply_vocabulary(
       review_sparse,
       default_value=-1,
-      top_k=_MAX_FEATURES)
-  dense = tf.sparse.reset_shape(review_indices, None)
+      top_k=_VOCAB_SIZE)
   dense = tf.sparse.to_dense(review_indices, default_value=-1)
   # TFX transform expects the transform result to be FixedLenFeature.
   padding_config = [[0, 0], [0, _MAX_LEN]]
@@ -66,7 +67,6 @@ def _tokenize_review(review):
       padding_config,
       'CONSTANT',
       -1)
-
   padded = tf.slice(dense, [0, 0], [-1, _MAX_LEN])
   padded += 1
   return padded
@@ -81,11 +81,9 @@ def preprocessing_fn(inputs):
   Returns:
     Map from string feature key to transformed feature operations.
   """
-  label = inputs['label']
-  text = inputs['text']
   return {
-      'label': label,
-      'embedding_input': _tokenize_review(text)}
+      'label': inputs['label'],
+      'embedding_input': _tokenize_review(inputs['text'])}
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
@@ -121,24 +119,24 @@ def _build_keras_model() -> keras.Model:
   Returns:
     A Keras Model.
   """
-  # The model below is built with Functional API, please refer to
-  # https://www.tensorflow.org/guide/keras/overview for all API options.
+  # The model below is built with Sequential API, please refer to
+  # https://www.tensorflow.org/guide/keras/sequential_model
   model = keras.Sequential([
       keras.layers.Embedding(
-          _MAX_FEATURES+1,
-          _HIDDEN_UNITS,
-          mask_zero=True),
+          _VOCAB_SIZE+1,
+          _EMBEDDING_UNITS,
+          ),
       keras.layers.Bidirectional(keras.layers.LSTM(
-          _HIDDEN_UNITS,
-          dropout=_DROPOUT_RATE,
-          recurrent_dropout=_DROPOUT_RATE)),
-      keras.layers.Dense(1, activation='sigmoid')
+          _LSTM_UNITS,
+          dropout=_DROPOUT_RATE)),
+      keras.layers.Dense(_HIDDEN_UNITS, activation='relu'),
+      keras.layers.Dense(1)
   ])
 
   model.compile(
-      loss='binary_crossentropy',
+      loss=keras.losses.BinaryCrossentropy(from_logits=True),
       optimizer=keras.optimizers.Adam(_LEARNING_RATE),
-      metrics=['AUC', 'binary_accuracy'])
+      metrics=['accuracy'])
 
   model.summary()
   return model
@@ -193,6 +191,7 @@ def run_fn(fn_args: TrainerFnArgs):
   model.fit(
       train_dataset,
       epochs=1,
+      verbose=1,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)

@@ -40,6 +40,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 
+from tfx.proto import example_gen_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 
@@ -74,9 +75,18 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the imdb sentiment analysis pipline with TFX."""
+  output = example_gen_pb2.Output(
+             split_config=example_gen_pb2.SplitConfig(splits=[
+                 example_gen_pb2.SplitConfig.Split(
+                     name='train',
+                     hash_buckets=9),
+                 example_gen_pb2.SplitConfig.Split(
+                     name='eval',
+                     hash_buckets=1)
+             ]))
   examples = external_input(data_root)
   # Brings data in to the pipline
-  example_gen = CsvExampleGen(input=examples)
+  example_gen = CsvExampleGen(input=examples, output_config=output)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -104,8 +114,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=100),
-      eval_args=trainer_pb2.EvalArgs(num_steps=100))
+      train_args=trainer_pb2.TrainArgs(num_steps=90),
+      eval_args=trainer_pb2.EvalArgs(num_steps=20))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -125,7 +135,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='BinaryAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
+                          lower_bound={'value': 0.85}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-2})))

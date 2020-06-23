@@ -11,9 +11,9 @@
 # Change the hyperparameters to better suit the bigger dataset.
 # The configurations that were found reasonable are listed below:
 #     imdb_pipeline_native_kears.py:
-#         tfma.GenericValueThreshold(lower_bound={'value':0.8}
-#         trainer_pb2.TrainArgs(num_steps=5120)
-#         trainer_pb2.EvalArgs(num_steps=2560)
+#         tfma.GenericValueThreshold(lower_bound={'value':0.85}
+#         trainer_pb2.TrainArgs(num_steps=7000)
+#         trainer_pb2.EvalArgs(num_steps=800)
 #     imdb_utils_native_keras.py:
 #         _TRAIN_BATCH_SIZE=64
 #         _EVAL_BATCH_SIZE=64
