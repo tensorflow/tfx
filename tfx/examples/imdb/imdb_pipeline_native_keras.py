@@ -80,18 +80,18 @@ _beam_pipeline_args = [
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
+                     metadata_path: Text) -> pipeline.Pipeline:
   """Implements the imdb sentiment analysis pipline with TFX."""
   output = example_gen_pb2.Output(
-             split_config=example_gen_pb2.SplitConfig(splits=[
-                 example_gen_pb2.SplitConfig.Split(
-                     name='train',
-                     hash_buckets=9),
-                 example_gen_pb2.SplitConfig.Split(
-                     name='eval',
-                     hash_buckets=1)
-             ]))
+    split_config=example_gen_pb2.SplitConfig(
+      splits=[
+        example_gen_pb2.SplitConfig.Split(
+          name='train',
+          hash_buckets=9),
+        example_gen_pb2.SplitConfig.Split(
+          name='eval',
+          hash_buckets=1)]))
+
   examples = external_input(data_root)
   # Brings data in to the pipline
   example_gen = CsvExampleGen(input=examples, output_config=output)
@@ -194,5 +194,4 @@ if __name__ == '__main__':
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
-          metadata_path=_metadata_path,
-          direct_num_workers=0))
+          metadata_path=_metadata_path))

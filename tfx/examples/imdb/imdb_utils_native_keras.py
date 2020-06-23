@@ -34,14 +34,14 @@ from tfx.components.trainer.executor import TrainerFnArgs
 # To train on the entire imdb dataset, please refer to imdb_dataset_utils.py
 # and change the batch configuration accordingly.
 _DROPOUT_RATE = 0.2
-_EMBEDDING_UNITS = 64 
-_EVAL_BATCH_SIZE = 5 
+_EMBEDDING_UNITS = 64
+_EVAL_BATCH_SIZE = 5
 _HIDDEN_UNITS = 64
 _LABEL_KEY = "label"
 _LEARNING_RATE = 1e-4
 _LSTM_UNITS = 64
 _VOCAB_SIZE = 8000
-_MAX_LEN = 400 
+_MAX_LEN = 400
 _TRAIN_BATCH_SIZE = 10
 
 def _gzip_reader_fn(filenames):
