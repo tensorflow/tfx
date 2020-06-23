@@ -301,6 +301,7 @@ class TrainerSpec(ComponentSpec):
   }
   OUTPUTS = {
       'model': ChannelParameter(type=standard_artifacts.Model),
+      'model_run': ChannelParameter(type=standard_artifacts.ModelRun)
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards
