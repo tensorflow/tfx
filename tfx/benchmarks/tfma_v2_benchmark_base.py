@@ -21,9 +21,7 @@ import time
 
 # Standard Imports
 
-from absl import flags
 import apache_beam as beam
-from apache_beam.runners.portability import fn_api_runner
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -41,8 +39,6 @@ from tfx_bsl.tfxio import test_util
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
-
-FLAGS = flags.FLAGS
 
 # Maximum number of examples to read from the dataset.
 # TFMA is much slower than TFT, so we may have to read a smaller subset of the
@@ -95,7 +91,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     taken for the whole pipeline.
     """
     self._init_model()
-    pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
+    pipeline = self._create_beam_pipeline()
     raw_data = (
         pipeline
         | "Examples" >> beam.Create(
@@ -136,7 +132,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     taken for the whole pipeline.
     """
     self._init_model()
-    pipeline = beam.Pipeline(runner=fn_api_runner.FnApiRunner())
+    pipeline = self._create_beam_pipeline()
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
             self._dataset.tf_metadata_schema_path()),

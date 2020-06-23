@@ -2,9 +2,10 @@
 
 ## Introduction
 
-TFX is a Google-production-scale machine learning platform based on TensorFlow.
-It provides a configuration framework and shared libraries to integrate common
-components needed to define, launch, and monitor your machine learning system.
+TFX is a Google-production-scale machine learning (ML) platform based on
+TensorFlow. It provides a configuration framework and shared libraries to
+integrate common components needed to define, launch, and monitor your machine
+learning system.
 
 ## Installation
 
@@ -27,74 +28,34 @@ separately install runners that perform distributed computation, such as
 [Apache Flink](https://flink.apache.org/) or
 [Apache Spark](https://spark.apache.org/).
 
-## Core Concepts
+## About TFX
 
-### TFX Pipelines
+TFX is a platform for building and managing ML workflows in a production
+environment. TFX provides the following:
 
-A TFX pipeline defines a data flow through several components, with the goal of
-implementing a specific ML task (e.g., building and deploying a regression model
-for specific data). Pipeline components are built upon TFX libraries.
-The result of a pipeline is a TFX deployment target and/or service of an
-inference request.
+*   A toolkit for building ML pipelines. TFX pipelines let you orchestrate your
+    ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
+    Kubeflow Pipelines.
 
-### Artifacts
+    [Learn more about TFX pipelines](understanding_tfx_pipelines).
 
-In a pipeline, an **artifact** is a unit of data that is passed between
-components. Generally, components have at least one input artifact and one
-output artifact. All artifacts must have associated **metadata**, which defines
-the **type** and **properties** of the artifact. Artifacts must be strongly
-typed with an artifact type registered in the
-[ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) store. The concepts of
-**artifact** and **artifact type** originate from the data model that
-[ML Metadata](https://github.com/google/ml-metadata) defines, as described in
-[this document](https://github.com/google/ml-metadata/blob/master/g3doc/get_started.md#concepts).
-TFX defines and implements its own artifact type ontology to realize its
-higher-level functionality. As of TFX 0.15,
-[11 known artifact types](https://github.com/tensorflow/tfx/blob/0.15.0/tfx/types/standard_artifacts.py)
-are defined and used throughout the TFX system.
+*   A set of standard components that you can use as a part of a pipeline, or as
+    a part of your ML training script. TFX standard components provide proven
+    functionality to help you get started building an ML process easily.
 
-An **artifact type** has a unique name and a schema of properties of its
-instances. TFX utilizes artifact type as how the artifact is used by components
-in the pipeline, but not necessarily to determine what the artifact content
-physically is on a filesystem.
+    [Learn more about TFX standard components](#tfx_standard_components).
 
-For instance, the *Example* artifact type may represent Examples materialized in
-TFRecord of `tensorflow::Example` protocol buffer, CSV, JSON, or any other
-physical format. Regardless, the way Examples are used in a pipeline is exactly
-the same: being analyzed to generate statistics, being validated against
-expected schema, being pre-processed in advance to training, and being supplied
-to a Trainer to training models, and so forth. Likewise, the *Model* artifact
-type may represent trained model objects exported in various physical formats
-such as TensorFlow SavedModel, ONNX, PMML or PKL (of various types of model
-objects in Python). In any case, models are always to be evaluated, analyzed and
-deployed for serving in pipelines.
+*   Libraries which provide the base functionality for many of the standard
+    components. You can use the TFX libraries to add this functionality to your
+    own custom components, or use them separately.
 
-NOTE: As of TFX 0.15, implementations of TFX components assume *Examples*
-artifact to be `tensorflow::Example` protocol buffer in gzip-compressed TFRecord
-format. Likewise, *Model* artifact is assumed to be TensorFlow SavedModel.
-Future versions of TFX may expand those artifact types to support more variants.
+    [Learn more about the TFX libraries](#tfx_libraries).
 
-In order to differentiate such possible variants of the same **artifact type**,
-the ML Metadata defines a set of **artifact properties**. For instance, one such
-**artifact property** for an *Examples* artifact may be *format*, whose values
-may be one of `TFRecord`, `JSON`, `CSV`, and so forth. Artifacts of type
-*Examples* can always be passed to a component that is designed to take Examples
-as an input artifact (for example, a Trainer). However, the actual
-implementation of the consuming component may adjust its behavior in response to
-a particular value of the *format* property, or simply raise a runtime error if
-it doesn’t have implementation to process the particular format of the Examples.
+TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
+It provides a configuration framework and shared libraries to integrate common
+components needed to define, launch, and monitor your machine learning system.
 
-In summary, **artifact type**s define the ontology of **artifact**s in the
-entire TFX pipeline system, whereas **artifact properties** define the ontology
-specific to an **artifact type**. Users of the pipeline system can choose to
-extend such ontology locally to their pipeline applications, by defining and
-populating new custom properties. Users can also choose to extend the ontology
-globally for the system as a whole, by introducing new artifact types, and/or
-modifying predefined type-properties, in which case such extension would be
-contributed back to the master repository of the pipeline system (the TFX
-repository).
-
-## TFX Pipeline Components
+## TFX Standard Components
 
 A TFX pipeline is a sequence of components that implement an [ML
 pipeline](https://en.wikipedia.org/wiki/Pipeline_(computing)) which is
@@ -119,6 +80,8 @@ A TFX pipeline typically includes the following components:
 
 *   [**Trainer**](trainer.md) trains the model.
 
+*   [**Tuner**](tuner.md) tunes the hyperparameters of the model.
+
 *   [**Evaluator**](evaluator.md) performs deep analysis of the training results
     and helps you validate your exported models, ensuring that they are "good
     enough" to be pushed to production.
@@ -128,35 +91,12 @@ A TFX pipeline typically includes the following components:
 
 *   [**Pusher**](pusher.md) deploys the model on a serving infrastructure.
 
+*   [**BulkInferrer**](bulkinferrer.md) performs batch processing on a model
+    with unlabelled inference requests.
+
 This diagram illustrates the flow of data between these components:
 
 ![Component Flow](images/prog_fin.png)
-
-### Anatomy of a Component
-
-TFX components consist of three main pieces:
-
-* Driver
-* Executor
-* Publisher
-
-![Component Anatomy](images/component.png)
-
-#### Driver and Publisher
-
-The driver supplies metadata to the executor by querying the metadata store,
-while the publisher accepts the results of the executor and stores them in
-metadata. As a developer you will typically not need to interact with the
-driver and publisher directly, but messages logged by the driver and publisher
-may be useful during debugging.  See [Troubleshooting](#troubleshooting).
-
-#### Executor
-
-The executor is where a component performs its processing.  As a developer you
-write code which runs in the executor, based on the requirements
-of the classes which implement the type of component that you're working with.
-For example, when you're working on a [Transform component](transform.md) you
-will need to develop a `preprocessing_fn`.
 
 ## TFX Libraries
 
@@ -201,6 +141,9 @@ TFX libraries include:
     training data and modeling code and creates a SavedModel result. It also
     integrates a feature engineering pipeline created by TensorFlow Transform
     for preprocessing input data.
+
+    [KerasTuner](https://www.tensorflow.org/tutorials/keras/keras_tuner) is used
+    for tuning hyperparameters for model.
 
     Note: TFX supports TensorFlow 1.15 and, with some exceptions, 2.x. For
     details, see [Designing TensorFlow Modeling Code For TFX](train.md).
@@ -479,12 +422,17 @@ tfma.export.export_eval_savedmodel(
         eval_input_receiver_fn=receiver_fn)
 ```
 
+An optional [Tuner](tuner.md) component can be added before Trainer to tune the
+hyperparameters (e.g., number of layers) for the model. With the given model and
+hyperparameters' search space, tuning algorithm will find the best
+hyperparameters based on the objective.
+
 ### Analyzing and Understanding Model Performance
 
 ![Model Analysis](images/prog_evaluator.png)
 
 Following initial model development and training it's important to analyze and
-really understand you model's performance.  A typical TFX pipeline will include
+really understand your model's performance.  A typical TFX pipeline will include
 an [Evaluator](evaluator.md) component, which leverages the capabilities of the
 [TensorFlow Model Analysis (TFMA)](tfma.md) library, which provides a power
 toolset for this phase of development.  An Evaluator component consumes the

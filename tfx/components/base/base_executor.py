@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import abc
 import json
-import multiprocessing
 import os
 from typing import Any, Dict, List, Optional, Text
 
@@ -103,30 +102,21 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
     """Makes beam pipeline."""
-    # TODO(b/142684737): refactor when beam support multi-processing by args,
-    # possibly starting with apache-beam 2.22.
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
     if pipeline_options.view_as(StandardOptions).runner:
       return beam.Pipeline(argv=self._beam_pipeline_args)
 
-    parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
-    if parallelism == 0:
-      try:
-        parallelism = multiprocessing.cpu_count()
-      except NotImplementedError as e:
-        absl.logging.warning('Cannot get cpu count: %s' % e)
-        parallelism = 1
+    # TODO(b/159468583): move this warning to Beam.
+    direct_running_mode = pipeline_options.view_as(
+        DirectOptions).direct_running_mode
+    direct_num_workers = pipeline_options.view_as(
+        DirectOptions).direct_num_workers
+    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
+      absl.logging.warning(
+          'If direct_num_workers is not equal to 1, direct_running_mode should '
+          'be `multi_processing` or `multi_threading` instead of `in_memory` '
+          'in order for it to have the desired worker parallelism effect.')
 
-    absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                      parallelism)
-
-    pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
-    # When using default value 'in_memory' and parallelism is great than
-    # one, use 'multi_processing' instead.
-    if parallelism > 1 and pipeline_options.view_as(
-        DirectOptions).direct_running_mode == 'in_memory':
-      pipeline_options.view_as(
-          DirectOptions).direct_running_mode = 'multi_processing'
     return beam.Pipeline(
         options=pipeline_options, runner=fn_api_runner.FnApiRunner())
 

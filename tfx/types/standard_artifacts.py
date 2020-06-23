@@ -64,6 +64,7 @@ class ExampleStatistics(Artifact):
   }
 
 
+# TODO(b/158334890): deprecate ExternalArtifact.
 class ExternalArtifact(Artifact):
   TYPE_NAME = 'ExternalArtifact'
 

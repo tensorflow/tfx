@@ -64,6 +64,20 @@ message CustomConfig {
   google.protobuf.Any custom_config = 1;
 }
 
+// Enum to indicate payload format that ExampleGen produces.
+enum PayloadFormat {
+  // Unknown or unspecified.
+  FORMAT_UNSPECIFIED = 0;
+
+  // Serialized tf.train.Example protocol buffer.
+  FORMAT_TF_EXAMPLE = 6;
+
+  // Serialized any protocol buffer.
+  FORMAT_PROTO = 11;
+
+  reserved 1 to 5, 7 to 10, 12 to max;
+}
+
 // Specification of the output of the example gen.
 message Output {
   // Specifies how the output should be split. If not specified, the output
@@ -109,6 +123,24 @@ message SplitConfig {
   }
   repeated Split splits = 1;
 
-  // TODO(jyzhao): support feature based partition.
-  reserved 2;
+  // Additional configurations of the supported splitting_method.
+  oneof splitting_method_config {
+    // When using `hash_buckets` splitting method, instead of the entire record,
+    // one can use a feature for partitioning the examples. If it's not empty,
+    // ExampleGen will use a fingerprint of that feature as the partition key.
+    //
+    // This feature can be used to maintain a stable split w.r.t. certain
+    // properties of examples: for example, a user will always be put in the
+    // same split if "user_id" were selected as the partition feature name.
+    //
+    // The interpretation of what a "feature" means and how to match a "feature"
+    // with the specified name depends on the ExampleGen implementation and the
+    // type of the examples.
+    //
+    // For ready-made ExampleGen implementations:
+    //   - If it generates tf.Example, then a "feature" means an entry in
+    //     tf.Example.features.feature.
+    //   - Only bytes_list and int64_list features are supported.
+    string partition_feature_name = 2;
+  }
 }

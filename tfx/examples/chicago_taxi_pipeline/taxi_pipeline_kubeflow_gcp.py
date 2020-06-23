@@ -25,7 +25,6 @@ from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
 
-from tfx.components import BigQueryExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -38,6 +37,7 @@ from tfx.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -175,19 +175,22 @@ def create_pipeline(
                 max_int64=max_int64, query_sample_rate=str(query_sample_rate))
 
   # Beam args to run data processing on DataflowRunner.
+  #
   # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
   # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
+  # TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
+  #                    scaling bottleneck.
   if beam_pipeline_args is None:
     beam_pipeline_args = [
         '--runner=DataflowRunner',
-        '--experiments=shuffle_mode=auto',
         '--project=' + _project_id,
         '--temp_location=' + os.path.join(_output_bucket, 'tmp'),
         '--region=' + _gcp_region,
+
+        # Temporary overrides of defaults.
         '--disk_size_gb=50',
-        # If you are blocked by IP Address quota, using a bigger machine_type
-        # will reduce the number of needed IPs.
-        # '--machine_type=n1-standard-8',
+        '--experiments=shuffle_mode=auto',
+        '--machine_type=n1-standard-8',
     ]
 
   # Number of epochs in training.
@@ -205,7 +208,7 @@ def create_pipeline(
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = BigQueryExampleGen(query=query)
+  example_gen = big_query_example_gen_component.BigQueryExampleGen(query=query)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

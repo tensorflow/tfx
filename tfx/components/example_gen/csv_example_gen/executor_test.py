@@ -23,7 +23,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
 from google.protobuf import json_format
-from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
+from tfx.components.example_gen import utils
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
@@ -33,22 +33,17 @@ from tfx.types import standard_artifacts
 class ExecutorTest(tf.test.TestCase):
 
   def setUp(self):
-    input_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata')
-
-    # Create input dict.
-    input_base = standard_artifacts.ExternalArtifact()
-    input_base.uri = os.path.join(input_data_dir, 'external')
-    self._input_dict = {INPUT_KEY: [input_base]}
     super(ExecutorTest, self).setUp()
+    self._input_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'testdata',
+        'external')
 
   def testCsvToExample(self):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline
           | 'ToTFExample' >> executor._CsvToExample(
-              input_dict=self._input_dict,
-              exec_properties={},
+              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
               split_pattern='csv/*'))
 
       def check_result(got):
@@ -68,17 +63,19 @@ class ExecutorTest(tf.test.TestCase):
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    output_dict = {'examples': [examples]}
+    output_dict = {utils.EXAMPLES_KEY: [examples]}
 
     # Create exec proterties.
     exec_properties = {
-        'input_config':
+        utils.INPUT_BASE_KEY:
+            self._input_data_dir,
+        utils.INPUT_CONFIG_KEY:
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(name='csv', pattern='csv/*'),
                 ]),
                 preserving_proto_field_name=True),
-        'output_config':
+        utils.OUTPUT_CONFIG_KEY:
             json_format.MessageToJson(
                 example_gen_pb2.Output(
                     split_config=example_gen_pb2.SplitConfig(splits=[
@@ -92,7 +89,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Run executor.
     csv_example_gen = executor.Executor()
-    csv_example_gen.Do(self._input_dict, output_dict, exec_properties)
+    csv_example_gen.Do({}, output_dict, exec_properties)
 
     # Check CSV example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',

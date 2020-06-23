@@ -1,14 +1,49 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
+*   Added TFX DSL IR compiler that encodes a TFX pipeline into a DSL proto.
+*   Supported feature based split partition in ExampleGen.
+*   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
+*   Changed Span information as a property of ExampleGen's output artifact.
+    Deprecated ExampleGen input (external) artifact.
 
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
+*   Relaxed the rule that output artifact uris must be newly created. This is a
+    temporary workaround to make retry work. We will introduce a more
+    comprehensive solution for idempotent execution.
+*   Made evaluator output optional (while still recommended) for pusher.
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`.
+*   Removed Tuner from custom_components/ as it's supported under components/
+    now.
+*   Added support of non tf.train.Example protos as internal data payload
+    format by ImportExampleGen.
 
 ## Breaking changes
 
 ### For pipeline authors
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
+    previous module path from `tfx.components` is not available anymore.
+*   Updated beam pipeline args, users now need to set both `direct_running_mode`
+    and `direct_num_workers` explicitly for multi-processing.
+*   Added required 'output_data_format' execution property to
+    FileBaseExampleGen.
+*   Changed ExampleGen to take a string as input source directly instead of a
+    Channel of external artifact:
+    *   `input` Channel is deprecated. The use of `input` is valid but
+        should change to string type `input_base` ASAP.
+    *   Previously deprecated `input_base` Channel is changed to string type
+        instead of Channel. This is a breaking change, users should pass string
+        directly to `input_base`.
+*   ExternalArtifact and `external_input` function are deprecated. The use
+    of `external_input` with ExampleGen `input` is still valid but should change
+    to use `input_base` ASAP.
+*   Fully removed csv_input and tfrecord_input in dsl_utils. This is a breaking
+    change, users should pass string directly to `input_base`.
+*   Changed GetInputSourceToExamplePTransform interface by removing input_dict.
+    This is a breaking change, custom ExampleGens need to follow the interface
+    change.
 
 ### For component authors
 
@@ -90,7 +125,11 @@
 *   Changed the encoding of the Integer and Float artifacts to be more portable.
 
 ## Documentation updates
-*   N/A
+*   Added concept guides for understanding TFX pipelines and components.
+*   Added guides to building Python function-based components and
+    container-based components.
+*   Added BulkInferrer component and TFX CLI documentation to the table of
+    contents.
 
 ## Deprecations
 *   Deprecating Py2 support
