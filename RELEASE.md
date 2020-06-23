@@ -2,7 +2,6 @@
 
 ## Major Features and Improvements
 *   Added TFX DSL IR compiler that encodes a TFX pipeline into a DSL proto.
-
 *   Supported feature based split partition in ExampleGen.
 *   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
 *   Changed Span information as a property of ExampleGen's output artifact.
@@ -30,8 +29,6 @@
     and `direct_num_workers` explicitly for multi-processing.
 *   Added required 'output_data_format' execution property to
     FileBaseExampleGen.
-
-
 *   Changed ExampleGen to take a string as input source directly instead of a
     Channel of external artifact:
     *   `input` Channel is deprecated. The use of `input` is valid but
