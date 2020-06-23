@@ -12,7 +12,9 @@
 
 ## Bug Fixes and Other Changes
 
-*   Depends on `protobuf>=3.13,<4`.
+*  Depends on `protobuf>=3.13,<4`.
+*  Upgraded the protobuf (com_google_protobuf) to `3.13.0`.
+*  Upgraded the bazel_skylib to `1.0.2` due to the upgrading of protobuf.
 
 ## Documentation Updates
 
