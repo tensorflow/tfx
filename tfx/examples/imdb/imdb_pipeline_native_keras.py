@@ -70,6 +70,14 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
+# Pipeline arguments for Beam powered Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=1',
+]
+
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
@@ -114,8 +122,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=90),
-      eval_args=trainer_pb2.EvalArgs(num_steps=20))
+      train_args=trainer_pb2.TrainArgs(num_steps=900),
+      eval_args=trainer_pb2.EvalArgs(num_steps=200))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -175,7 +183,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       enable_cache=True,
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
+      beam_pipeline_args=_beam_pipeline_args)
 
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)

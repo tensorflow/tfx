@@ -151,11 +151,7 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
     feature_spec = tf_transform_output.raw_feature_spec()
     feature_spec.pop(_LABEL_KEY)
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
     transformed_features = model.tft_layer(parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(_LABEL_KEY, None)
-
     return model(transformed_features)
 
   return serve_tf_examples_fn
