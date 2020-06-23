@@ -27,7 +27,7 @@ import tempfile
 import time
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
@@ -72,8 +72,7 @@ class _HelloWorldSpec(component_spec.ComponentSpec):
 
 class _ByeWorldSpec(component_spec.ComponentSpec):
   INPUTS = {
-      'hearing':
-          component_spec.ChannelParameter(type=standard_artifacts.String)
+      'hearing': component_spec.ChannelParameter(type=standard_artifacts.String)
   }
   OUTPUTS = {}
   PARAMETERS = {}
@@ -230,6 +229,38 @@ def create_e2e_components(
   ]
 
 
+def delete_ai_platform_model(model_name):
+  """Delete pushed model with the given name in AI Platform."""
+  # In order to delete model, all versions in the model must be deleted first.
+  versions_command = ('gcloud', 'ai-platform', 'versions', 'list',
+                      '--model={}'.format(model_name))
+  # The return code of the following subprocess call will be explicitly checked
+  # using the logic below, so we don't need to call check_output().
+  versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
+  if versions.returncode == 0:
+    logging.info('Model %s has versions %s', model_name, versions.stdout)
+    # The first stdout line is headers, ignore. The columns are
+    # [NAME] [DEPLOYMENT_URI] [STATE]
+    #
+    # By specification of test case, the last version in the output list is the
+    # default version, which will be deleted last in the for loop, so there's no
+    # special handling needed hear.
+    # The operation setting default version is at
+    # https://github.com/tensorflow/tfx/blob/65633c772f6446189e8be7c6332d32ea221ff836/tfx/extensions/google_cloud_ai_platform/runner.py#L309
+    for version in versions.stdout.decode('utf-8').strip('\n').split('\n')[1:]:
+      version = version.split()[0]
+      logging.info('Deleting version %s of model %s', version, model_name)
+      version_delete_command = ('gcloud', '--quiet', 'ai-platform', 'versions',
+                                'delete', version,
+                                '--model={}'.format(model_name))
+      subprocess.run(version_delete_command, check=True)
+
+  logging.info('Deleting model %s', model_name)
+  subprocess.run(
+      ('gcloud', '--quiet', 'ai-platform', 'models', 'delete', model_name),
+      check=True)
+
+
 class BaseKubeflowTest(tf.test.TestCase):
   """Base class that defines testing harness for pipeline on KubeflowRunner."""
 
@@ -276,7 +307,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     super(BaseKubeflowTest, cls).tearDownClass()
 
     # Delete container image used in tests.
-    absl.logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
+    logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
     subprocess.run(
         ['gcloud', 'container', 'images', 'delete', cls._CONTAINER_IMAGE],
         check=True)
@@ -296,7 +327,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '-o',
         'custom-columns=:metadata.name',
     ]).decode('utf-8').strip('\n')
-    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
+    logging.info('MySQL pod name is: %s', pod_name)
     return pod_name
 
   @classmethod
@@ -349,7 +380,7 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def _delete_workflow(self, workflow_name: Text):
     """Deletes the specified Argo workflow."""
-    absl.logging.info('Deleting workflow {}'.format(workflow_name))
+    logging.info('Deleting workflow %s', workflow_name)
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
@@ -374,7 +405,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         result = []
         for k, v in parameter.items():
           result.append('-p')
-          result.append('%s=%s' % (k, v))
+          result.append('{}={}'.format(k, v))
         return result
       else:
         return []
@@ -391,8 +422,8 @@ class BaseKubeflowTest(tf.test.TestCase):
         workflow_file,
     ]
     run_command += _format_parameter(parameter)
-    absl.logging.info('Launching workflow {} with parameter {}'.format(
-        workflow_name, _format_parameter(parameter)))
+    logging.info('Launching workflow %s with parameter %s', workflow_name,
+                 _format_parameter(parameter))
     with test_utils.Timer('RunningPipelineToCompletion'):
       subprocess.run(run_command, check=True)
       # Wait in the loop while pipeline is running.
@@ -433,7 +464,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '--execute',
         'drop database if exists {};'.format(db_name),
     ]
-    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
+    logging.info('Dropping MLMD DB with name: %s', db_name)
 
     with test_utils.Timer('DeletingMLMDDatabase'):
       subprocess.run(command, check=True)
@@ -485,7 +516,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         'argo', '--namespace', 'kubeflow', 'get', workflow_name
     ]
     output = subprocess.check_output(get_workflow_command).decode('utf-8')
-    absl.logging.info('Argo output ----\n%s', output)
+    logging.info('Argo output ----\n%s', output)
     match = re.search(r'^Status:\s+(.+)$', output, flags=re.MULTILINE)
     self.assertIsNotNone(match)
     return match.group(1)
