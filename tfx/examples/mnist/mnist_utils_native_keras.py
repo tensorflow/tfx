@@ -75,11 +75,16 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     model = base.build_keras_model()
 
+  # Write logs to path specified by fn_args
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    log_dir=fn_args.log_dir, update_freq='batch')
+
   model.fit(
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':

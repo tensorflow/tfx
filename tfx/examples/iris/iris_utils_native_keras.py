@@ -236,12 +236,17 @@ def run_fn(fn_args: TrainerFnArgs):
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
 
+  # Write logs to path specified by fn_args
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    log_dir=fn_args.log_dir, update_freq='batch')
+
   model.fit(
       train_dataset,
       epochs=int(fn_args.train_steps / steps_per_epoch),
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps
+      callback=[tensorboard_callback])
 
   signatures = {
       'serving_default':

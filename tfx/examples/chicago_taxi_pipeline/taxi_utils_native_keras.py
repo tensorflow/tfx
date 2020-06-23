@@ -311,11 +311,16 @@ def run_fn(fn_args: TrainerFnArgs):
             for i in range(num_dnn_layers)
         ])
 
+  # Write logs to path specified by fn_args
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+    log_dir=fn_args.log_dir, update_freq='batch')
+
   model.fit(
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':

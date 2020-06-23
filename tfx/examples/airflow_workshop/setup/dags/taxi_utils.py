@@ -323,7 +323,6 @@ _FARE_KEY = 'fare'
 #         ])
 #
 #   # Write logs to path specfied by fn_args
-#   log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
 #   tensorboard_callback = tf.keras.callbacks.TensorBoard(
 #       log_dir=fn_args.log_dir, update_freq='batch')
 #
