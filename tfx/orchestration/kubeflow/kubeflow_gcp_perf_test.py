@@ -114,10 +114,8 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       ptype=int,
   )
 
-  _MODEL_NAME = 'chicago_taxi'
-
   _AI_PLATFORM_SERVING_ARGS = {
-      'model_name': _MODEL_NAME,
+      'model_name': 'chicago_taxi',
       'project_id': _GCP_PROJECT_ID,
       'regions': [_GCP_REGION],
   }
@@ -333,8 +331,6 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
         ai_platform_training_args=ai_platform_training_args,
         ai_platform_serving_args=self._AI_PLATFORM_SERVING_ARGS,
         beam_pipeline_args=self._BEAM_PIPELINE_ARGS)
-    self.addCleanup(kubeflow_test_utils.delete_ai_platform_model,
-                    self._MODEL_NAME)
     self._compile_and_run_pipeline(
         pipeline=pipeline,
         query_sample_rate=1,

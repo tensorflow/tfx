@@ -195,4 +195,6 @@ class AirflowDagRunnerTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  print('before main')
   tf.test.main()
+  print('after main')

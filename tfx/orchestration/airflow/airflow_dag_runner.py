@@ -22,14 +22,23 @@ from __future__ import unicode_literals
 import os
 from typing import Any, Dict, Optional, Text, Union
 
-import absl
-from airflow import models
+import absl  # pylint: disable=g-bad-import-order
+# If move kerastuner after airflow, py3.6 py3.7 kokoro will pass.
+# import kerastuner  # pylint: disable=unused-import,g-bad-import-order
+import colorama
+# colorama.deinit()
+# colorama.init(strip=False)
+colorama.init()
 
-from tfx.orchestration import pipeline
+from airflow import models  # pylint: disable=g-import-not-at-top,g-bad-import-order
+print('after airflow')
+
+from tfx.orchestration import pipeline  # pylint: disable=g-import-not-at-top,g-bad-import-order
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.airflow import airflow_component
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
+print('after all')
 
 
 class AirflowPipelineConfig(pipeline_config.PipelineConfig):
