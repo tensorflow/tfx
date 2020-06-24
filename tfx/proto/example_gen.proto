@@ -71,6 +71,9 @@ enum PayloadFormat {
 
   // Serialized tf.train.Example protocol buffer.
   FORMAT_TF_EXAMPLE = 6;
+  
+  // Serialized tf.train.SequenceExample protocol buffer.
+  FORMAT_TF_SEQUENCE_EXAMPLE = 7;
 
   // Serialized any protocol buffer.
   FORMAT_PROTO = 11;
@@ -140,6 +143,8 @@ message SplitConfig {
     // For ready-made ExampleGen implementations:
     //   - If it generates tf.Example, then a "feature" means an entry in
     //     tf.Example.features.feature.
+    //   - If it generates tf.SequenceExample, then a "feature" means an entry
+    //     in tf.SequenceExample.context.feature.
     //   - Only bytes_list and int64_list features are supported.
     string partition_feature_name = 2;
   }

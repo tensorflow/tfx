@@ -279,8 +279,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Run executor.
     example_gen = TestExampleGenExecutor()
     with self.assertRaisesRegexp(
-        RuntimeError, 'Split by `partition_feature_name` is only supported for '
-        'FORMAT_TF_EXAMPLE payload format.'):
+        RuntimeError, 'Split by `partition_feature_name` is only supported '
+        'for FORMAT_TF_EXAMPLE or FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 
