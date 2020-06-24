@@ -47,8 +47,8 @@ _VOCAB_SIZE = 8000
 _MAX_LEN = 400
 _TRAIN_BATCH_SIZE = 10
 
-def _transformed_name(key, isInput=False):
-  return key + ('_xf_input' if isInput else '_xf')
+def _transformed_name(key, is_input=False):
+  return key + ('_xf_input' if is_input else '_xf')
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
