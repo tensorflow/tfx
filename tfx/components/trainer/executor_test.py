@@ -70,11 +70,11 @@ class ExecutorTest(tf.test.TestCase):
     self._model_exports = standard_artifacts.Model()
     self._model_exports.uri = os.path.join(self._output_data_dir,
                                            'model_export_path')
-    self._log_exports = standard_artifacts.ModelRun()
-    self._log_exports.uri = os.path.join(self._output_data_dir, 
+    self._model_run_exports = standard_artifacts.ModelRun()
+    self._model_run_exports.uri = os.path.join(self._output_data_dir, 
                                          'model_run_path')
     self._output_dict = {constants.OUTPUT_MODEL_KEY: [self._model_exports],
-                         constants.LOG_OUTPUT_KEY: [self._log_exports]}
+                         constants.MODEL_RUN_OUTPUT_KEY: [self._model_run_exports]}
 
     # Create exec properties skeleton.
     self._exec_properties = {
@@ -110,9 +110,9 @@ class ExecutorTest(tf.test.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
 
-  def _verify_log_exports(self):
-    self.assertTrue(
-        tf.io.gfile.exists(path_utils.log_output_dir(self._log_exports.uri)))
+  def _verify_model_run_exports(self):
+    self.assertTrue
+        tf.io.gfile.exists(self._model_run_exports.uri))
 
   def _do(self, test_executor):
     test_executor.Do(
@@ -124,7 +124,7 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties['module_file'] = self._module_file
     self._do(self._generic_trainer_executor)
     self._verify_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoChief(self, mock_is_chief):
@@ -132,7 +132,7 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoNonChief(self, mock_is_chief):
@@ -140,19 +140,19 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_no_eval_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
   def testDoWithModuleFile(self):
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
   def testDoWithTrainerFn(self):
     self._exec_properties['trainer_fn'] = self._trainer_fn
     self._do(self._trainer_executor)
     self._verify_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
   def testDoWithNoTrainerFn(self):
     with self.assertRaises(ValueError):
@@ -182,7 +182,7 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
-    self._verify_log_exports()
+    self._verify_model_run_exports()
 
 
 if __name__ == '__main__':

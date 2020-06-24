@@ -27,7 +27,7 @@ from tfx.utils import io_utils
 
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
-LOG_OUTPUT_DIR = 'logs'
+
 
 # TODO(b/127149760): simplify this PPP-esque structure.
 #
@@ -81,8 +81,3 @@ def serving_model_path(output_uri: Text) -> Text:
   else:
     # If dir doesn't match estimator structure, use serving model root directly.
     return serving_model_dir(output_uri)
-
-def log_output_dir(output_uri: Text) -> Text:
-  """Returns directory for trainig logs."""
-  return os.path.join(output_uri, LOG_OUTPUT_DIR)
-

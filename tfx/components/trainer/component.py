@@ -119,7 +119,7 @@ class Trainer(base_component.BaseComponent):
       custom_config: Optional[Dict[Text, Any]] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       output: Optional[types.Channel] = None,
-      log_output: Optional[types.Channel] = None,
+      model_run: Optional[types.Channel] = None,
       transform_output: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Trainer component.
@@ -180,7 +180,8 @@ class Trainer(base_component.BaseComponent):
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
       output: Optional `Model` channel for result of exported models.
-      log_output: Optional `ModelRun` channel for the log output of models.
+      model_run: Optional `ModelRun` channel, as the working dir of models,
+        can be used to output non-model related output (e.g. TensorBoard logs)
       transform_output: Backwards compatibility alias for the 'transform_graph'
         argument.
       instance_name: Optional unique instance name. Necessary iff multiple
@@ -216,7 +217,7 @@ class Trainer(base_component.BaseComponent):
     examples = examples or transformed_examples
     output = output or types.Channel(
         type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
-    log_output = log_output or types.Channel(
+    model_run = model_run or types.Channel(
         type=standard_artifacts.ModelRun, artifacts=[standard_artifacts.ModelRun()])
     spec = TrainerSpec(
         examples=examples,
@@ -231,7 +232,7 @@ class Trainer(base_component.BaseComponent):
         trainer_fn=trainer_fn,
         custom_config=json_utils.dumps(custom_config),
         model=output,
-        model_run=log_output)
+        model_run=model_run)
     super(Trainer, self).__init__(
         spec=spec,
         custom_executor_spec=custom_executor_spec,

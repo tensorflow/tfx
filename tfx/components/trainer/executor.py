@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import json
 import os
-import distutils.dir_util as dir_util
 from typing import Any, Dict, List, Text
 
 import absl
@@ -38,6 +37,7 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
+from tfx.utils import io_utils
 
 
 def _all_files_pattern(file_pattern: Text) -> Text:
@@ -135,9 +135,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
     
-    log_output_path = artifact_utils.get_single_uri(
-        output_dict[constants.LOG_OUTPUT_KEY])
-    log_output_dir = path_utils.log_output_dir(log_output_path)
+    model_run_dir = artifact_utils.get_single_uri(
+        output_dict[constants.MODEL_RUN_OUTPUT_KEY])
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
@@ -153,8 +152,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=fn_args.eval_files,
-        # A single uri for the output directory of the Tensorboard logs
-        log_dir=log_output_dir,
+        # A single uri for the output directory for model run files.
+        model_run_dir=model_run_dir,
         # A single uri for schema file.
         schema_file=fn_args.schema_path,
         # Number of train steps.
@@ -220,7 +219,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-    if not tf.io.gfile.exists(fn_args.log_dir):
+    if not tf.io.gfile.exists(fn_args.model_run_dir):
       raise RuntimeError('run_fn failed to write logs to correct location.')
     absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
             fn_args.serving_model_dir, fn_args.log_dir)
@@ -293,9 +292,6 @@ class Executor(GenericExecutor):
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
 
-    # Copy model run information to ModelRun artifact
-    dir_util.copy_tree(fn_args.serving_model_dir, fn_args.log_dir)
-
     absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
         fn_args.serving_model_dir, fn_args.log_dir)
 
@@ -307,6 +303,9 @@ class Executor(GenericExecutor):
           estimator=training_spec['estimator'],
           export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+      # Copy model run information to ModelRun artifact
+      io_utils.copy_dir(fn_args.serving_model_dir, fn_args.model_run_dir)
 
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
