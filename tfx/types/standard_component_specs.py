@@ -123,27 +123,6 @@ class FileBasedExampleGenSpec(ComponentSpec):
   """File-based ExampleGen component spec."""
 
   PARAMETERS = {
-      'input_base':
-          ExecutionParameter(type=(str, Text)),
-      'input_config':
-          ExecutionParameter(type=example_gen_pb2.Input),
-      'output_config':
-          ExecutionParameter(type=example_gen_pb2.Output),
-      'output_data_format':
-          ExecutionParameter(type=int),  # example_gen_pb2.PayloadType enum.
-      'custom_config':
-          ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
-  }
-  INPUTS = {}
-  OUTPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-  }
-
-
-class QueryBasedExampleGenSpec(ComponentSpec):
-  """Query-based ExampleGen component spec."""
-
-  PARAMETERS = {
       'input_config':
           ExecutionParameter(type=example_gen_pb2.Input),
       'output_config':
@@ -151,9 +130,17 @@ class QueryBasedExampleGenSpec(ComponentSpec):
       'custom_config':
           ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
   }
-  INPUTS = {}
+  INPUTS = {
+      'input': ChannelParameter(type=standard_artifacts.ExternalArtifact),
+  }
   OUTPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
+  }
+  # TODO(b/139281215): these input / output names have recently been renamed.
+  # These compatibility aliases are temporarily provided for backwards
+  # compatibility.
+  _INPUT_COMPATIBILITY_ALIASES = {
+      'input_base': 'input',
   }
 
 
@@ -223,6 +210,23 @@ class PusherSpec(ComponentSpec):
   }
   _OUTPUT_COMPATIBILITY_ALIASES = {
       'model_push': 'pushed_model',
+  }
+
+
+class QueryBasedExampleGenSpec(ComponentSpec):
+  """Query-based ExampleGen component spec."""
+
+  PARAMETERS = {
+      'input_config':
+          ExecutionParameter(type=example_gen_pb2.Input),
+      'output_config':
+          ExecutionParameter(type=example_gen_pb2.Output),
+      'custom_config':
+          ExecutionParameter(type=example_gen_pb2.CustomConfig, optional=True),
+  }
+  INPUTS = {}
+  OUTPUTS = {
+      'examples': ChannelParameter(type=standard_artifacts.Examples),
   }
 
 
@@ -322,7 +326,6 @@ class TunerSpec(ComponentSpec):
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
       'tune_args': ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
-      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':

@@ -16,16 +16,5 @@ licenses(["notice"])  # Apache 2.0
 sh_binary(
     name = "build_pip_package",
     srcs = ["build_pip_package.sh"],
-    data = [
-        "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",
-        "//tfx/proto:bulk_inferrer_pb2.py",
-        "//tfx/proto:evaluator_pb2.py",
-        "//tfx/proto:example_gen_pb2.py",
-        "//tfx/proto:infra_validator_pb2.py",
-        "//tfx/proto:pusher_pb2.py",
-        "//tfx/proto:trainer_pb2.py",
-        "//tfx/proto/orchestration:execution_result_pb2.py",
-        "//tfx/proto/orchestration:executor_invocation_pb2.py",
-        "//tfx/proto/orchestration:pipeline_pb2.py",
-    ],
+    deps = ["//tfx/scripts:build_common"],
 )

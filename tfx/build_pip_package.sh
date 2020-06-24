@@ -17,6 +17,8 @@
 # Invoke `bazel run tfx:build_pip_package` from the root directory of the
 # repository will build the TFX pip wheel.
 
+source tfx/scripts/build_common.sh
+
 if [[ -z "$1" ]]; then
   PYTHON_BIN_PATH=python
 else
@@ -24,7 +26,7 @@ else
     shift
     PYTHON_BIN_PATH=$1
   else
-    printf "Unrecognized argument $1"
+    echo "Unrecognized argument $1"
     exit 1
   fi
 fi
@@ -33,20 +35,17 @@ set -u -x
 
 # `BUILD_WORKSPACE_DIRECTORY` is provided by Bazel.
 # See https://docs.bazel.build/versions/master/user-manual.html for details.
-if [ -z "${BUILD_WORKSPACE_DIRECTORY}" ]; then
-  die "BUILD_WORKSPACE_DIRECTORY is unexpectedly empty"
+if [[ -z "${BUILD_WORKSPACE_DIRECTORY}" ]]; then
+  echo "BUILD_WORKSPACE_DIRECTORY is unexpectedly empty."
+  exit 1
 fi
-cp -f tfx/proto/*.py \
-  ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto/
-cp -f tfx/proto/orchestration/*.py \
-  ${BUILD_WORKSPACE_DIRECTORY}/tfx/proto/orchestration/
-cp -f tfx/orchestration/kubeflow/proto/*.py \
-  ${BUILD_WORKSPACE_DIRECTORY}/tfx/orchestration/kubeflow/proto/
+
+tfx::copy_proto_stubs "${PWD}" "${BUILD_WORKSPACE_DIRECTORY}"
 
 # Create the wheel
-cd ${BUILD_WORKSPACE_DIRECTORY}
+pushd "${BUILD_WORKSPACE_DIRECTORY}"
 
-${PYTHON_BIN_PATH} setup.py bdist_wheel
+"${PYTHON_BIN_PATH}" setup.py bdist_wheel
 
 # Cleanup
-cd -
+popd

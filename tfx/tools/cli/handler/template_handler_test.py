@@ -55,8 +55,8 @@ class TemplateHandlerTest(tf.test.TestCase):
     self.assertNotEqual(copied_files, [])
     self.assertContainsSubset(['__init__.py', 'beam_dag_runner.py'],
                               copied_files)
-    self.assertFalse(os.path.exists(os.path.join(test_dir, 'e2e_tests')))
-    self.assertTrue(os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
+    self.assertTrue(
+        os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
 
     with open(os.path.join(test_dir, 'pipeline', 'configs.py')) as fp:
       configs_py_content = fp.read()

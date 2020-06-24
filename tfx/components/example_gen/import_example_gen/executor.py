@@ -19,76 +19,58 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, Text, Union
+from typing import Any, Dict, List, Text
 
-from absl import logging
+import absl
 import apache_beam as beam
 import tensorflow as tf
 
-from tfx.components.example_gen import base_example_gen_executor
-from tfx.components.example_gen import utils
-from tfx.proto import example_gen_pb2
+from tfx import types
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
+from tfx.types import artifact_utils
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(bytes)
-def _ImportSerializedRecord(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
+@beam.typehints.with_output_types(tf.train.Example)
+def _ImportExample(  # pylint: disable=invalid-name
+    pipeline: beam.Pipeline,
+    input_dict: Dict[Text, List[types.Artifact]],
+    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
     split_pattern: Text) -> beam.pvalue.PCollection:
-  """Read TFRecord files to PCollection of records.
+  """Read TFRecord files to PCollection of TF examples.
 
   Note that each input split will be transformed by this function separately.
 
   Args:
     pipeline: beam pipeline.
-    exec_properties: A dict of execution properties.
+    input_dict: Input dict from input key to a list of Artifacts.
       - input_base: input dir that contains tf example data.
+    exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
+  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
-  logging.info('Reading input TFExample data %s.', input_split_pattern)
+  absl.logging.info(
+      'Reading input TFExample data {}.'.format(input_split_pattern))
 
   # TODO(jyzhao): profile input examples.
   return (pipeline
-          # TODO(jyzhao): support multiple input container format.
+          # TODO(jyzhao): support multiple input format.
           | 'ReadFromTFRecord' >>
-          beam.io.ReadFromTFRecord(file_pattern=input_split_pattern))
+          beam.io.ReadFromTFRecord(file_pattern=input_split_pattern)
+          # TODO(jyzhao): consider move serialization out of base example gen.
+          | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """Generic TFX import example gen executor."""
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
-    """Returns PTransform for importing records."""
-
-    @beam.ptransform_fn
-    @beam.typehints.with_input_types(beam.Pipeline)
-    @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
-    def ImportProtoOrExample(pipeline: beam.Pipeline,
-                             exec_properties: Dict[Text, Any],
-                             split_pattern: Text) -> beam.pvalue.PCollection:
-      """PTransform to import tf.train.Example records or serialized proto."""
-      output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
-
-      serialized_records = (
-          pipeline
-          # pylint: disable=no-value-for-parameter
-          | _ImportSerializedRecord(exec_properties, split_pattern))
-      if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
-        return serialized_records
-
-      elif (output_payload_format ==
-            example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
-        return (serialized_records
-                | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
-
-      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE '
-                       'or FORMAT_PROTO')
-
-    return ImportProtoOrExample
+    """Returns PTransform for importing TF examples."""
+    return _ImportExample

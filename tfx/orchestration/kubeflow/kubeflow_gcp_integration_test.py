@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import subprocess
 
 import absl
 import tensorflow as tf
@@ -38,10 +39,43 @@ from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts
+from tfx.utils import dsl_utils
 from tfx.utils import path_utils
 
 
 class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
+
+  def _delete_ai_platform_model(self, model_name):
+    """Delete pushed model in AI Platform."""
+    # In order to delete model, all versions in the model must be deleted first.
+    versions_command = [
+        'gcloud', 'ai-platform', 'versions', 'list',
+        '--model=%s' % model_name
+    ]
+    versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
+
+    if versions.returncode == 0:
+      absl.logging.info('Model %s has versions %s' %
+                        (model_name, versions.stdout))
+
+      # First line of the output is the header: [NAME] [DEPLOYMENT_URI] [STATE]
+      # By specification of test case, the latest version is the default model,
+      # which needs to be deleted last.
+      for version in versions.stdout.decode('utf-8').strip('\n').split(
+          '\n')[1:]:
+        version = version.split()[0]
+        absl.logging.info('Deleting version %s of model %s' %
+                          (version, model_name))
+        version_delete_command = [
+            'gcloud', '--quiet', 'ai-platform', 'versions', 'delete', version,
+            '--model=%s' % model_name
+        ]
+        subprocess.run(version_delete_command, check=True)
+
+    absl.logging.info('Deleting model %s' % model_name)
+    subprocess.run(
+        ['gcloud', '--quiet', 'ai-platform', 'models', 'delete', model_name],
+        check=True)
 
   def setUp(self):
     super(KubeflowGCPIntegrationTest, self).setUp()
@@ -105,7 +139,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
         test_utils.random_id())
     pipeline = self._create_dataflow_pipeline(pipeline_name, [
-        CsvExampleGen(input_base=self._data_root),
+        CsvExampleGen(input=dsl_utils.csv_input(self._data_root)),
     ])
     self._compile_and_run_pipeline(pipeline)
 
@@ -254,7 +288,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         test_utils.random_id())
     # AI Platform does not accept '-' in the model name.
     model_name = ('%s_model' % pipeline_name_base).replace('-', '_')
-    self.addCleanup(kubeflow_test_utils.delete_ai_platform_model, model_name)
+    self.addCleanup(self._delete_ai_platform_model, model_name)
 
     def _pusher(model_importer, model_blessing_importer):
       return Pusher(

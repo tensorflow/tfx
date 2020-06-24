@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
-from absl import logging
+
+import absl
 
 from tfx import types
 from tfx.components.base import base_component
@@ -118,10 +119,12 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   ## Example
   ```
+  from tfx.utils.dsl_utils import external_input
+
   _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
   _data_root = os.path.join(_taxi_root, 'data', 'simple')
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = FileBasedExampleGen(input_base=_data_root)
+  example_gen = FileBasedExampleGen(input=external_input(_data_root))
   ```
   """
 
@@ -132,51 +135,47 @@ class FileBasedExampleGen(base_component.BaseComponent):
 
   def __init__(
       self,
-      # TODO(b/159467778): deprecate this, use input_base instead.
-      input: Optional[types.Channel] = None,  # pylint: disable=redefined-builtin
-      input_base: Optional[Text] = None,
+      input: types.Channel = None,  # pylint: disable=redefined-builtin
       input_config: Optional[Union[example_gen_pb2.Input, Dict[Text,
                                                                Any]]] = None,
       output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
                                                                  Any]]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
-      output_data_format: Optional[type(
-          example_gen_pb2.PayloadFormat)] = example_gen_pb2.FORMAT_TF_EXAMPLE,  # pylint: disable=bad-whitespace
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
+      input_base: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a FileBasedExampleGen component.
 
     Args:
       input: A Channel of type `standard_artifacts.ExternalArtifact`, which
         includes one artifact whose uri is an external directory containing the
-        data files. (Deprecated by input_base)
-      input_base: an external directory containing the data files.
+        data files. _required_
       input_config: An
         [`example_gen_pb2.Input`](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto)
-          instance, providing input configuration. If unset, input files will be
-          treated as a single split.
+          instance, providing input configuration. If unset, the files under
+          input_base will be treated as a single dataset.
       output_config: An example_gen_pb2.Output instance, providing the output
         configuration. If unset, default splits will be 'train' and
         'eval' with size 2:1.
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
-      output_data_format: Payload format of generated data in output artifact,
-        one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of 'ExamplesPath' for output train and eval
         examples.
       custom_executor_spec: Optional custom executor spec overriding the default
         executor spec specified in the component attribute.
+      input_base: Backwards compatibility alias for the 'input' argument.
       instance_name: Optional unique instance name. Required only if multiple
-        ExampleGen components are declared in the same pipeline.
+        ExampleGen components are declared in the same pipeline.  Either
+        `input_base` or `input` must be present in the input arguments.
     """
-    if input:
-      logging.warning(
-          'The "input" argument to the ExampleGen component has been '
-          'deprecated by "input_base". Please update your usage as support for '
-          'this argument will be removed soon.')
-      input_base = artifact_utils.get_single_uri(list(input.get()))
+    if input_base:
+      absl.logging.warning(
+          'The "input_base" argument to the ExampleGen component has '
+          'been renamed to "input" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      input = input_base
     # Configure inputs and outputs.
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
@@ -187,11 +186,10 @@ class FileBasedExampleGen(base_component.BaseComponent):
           utils.generate_output_split_names(input_config, output_config))
       example_artifacts = channel_utils.as_channel([artifact])
     spec = FileBasedExampleGenSpec(
-        input_base=input_base,
+        input=input,
         input_config=input_config,
         output_config=output_config,
         custom_config=custom_config,
-        output_data_format=output_data_format,
         examples=example_artifacts)
     super(FileBasedExampleGen, self).__init__(
         spec=spec,

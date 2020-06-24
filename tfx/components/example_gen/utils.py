@@ -20,9 +20,9 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Dict, Iterable, List, Text, Tuple, Union
 
-from absl import logging
+import absl
 import six
 import tensorflow as tf
 
@@ -30,23 +30,9 @@ from tfx.proto import example_gen_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
 
-# Key for `input_base` in executor exec_properties.
-INPUT_BASE_KEY = 'input_base'
-# Key for `input_config` in executor exec_properties.
-INPUT_CONFIG_KEY = 'input_config'
-# Key for `output_config` in executor exec_properties.
-OUTPUT_CONFIG_KEY = 'output_config'
-# Key for the `output_data_format` in executor exec_properties.
-OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
-
-# Key for output examples in executor output_dict.
-EXAMPLES_KEY = 'examples'
-
-# Key for the `payload_format` custom property of output examples artifact.
-PAYLOAD_FORMAT_PROPERTY_NAME = 'payload_format'
-# Key for the `input_fingerprint` custom property of output examples artifact.
+# Fingerprint custom property.
 FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
-# Key for the `span` custom property of output examples artifact.
+# Span custom property.
 SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
@@ -218,10 +204,11 @@ def _retrieve_latest_span(uri: Text,
     raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
 
   split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
-  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
+  absl.logging.info('Glob pattern for split %s: %s' %
+                    (split.name, split_glob_pattern))
   split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, '(.*)')
-  logging.info('Regex pattern for split %s: %s', split.name,
-               split_regex_pattern)
+  absl.logging.info('Regex pattern for split %s: %s' %
+                    (split.name, split_regex_pattern))
   if re.compile(split_regex_pattern).groups != 1:
     raise ValueError('Regex should have only one group')
 
@@ -247,8 +234,8 @@ def _retrieve_latest_span(uri: Text,
 
 
 def calculate_splits_fingerprint_and_span(
-    input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Optional[Text]]:
+    input_base_uri: Text,
+    splits: Iterable[example_gen_pb2.Input.Split]) -> Tuple[Text, Any]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder, attempts to find an identical value
@@ -257,9 +244,7 @@ def calculate_splits_fingerprint_and_span(
 
   Args:
     input_base_uri: The base path from which files will be searched
-    splits: An iterable collection of example_gen_pb2.Input.Split objects. Note
-      that this function will update the {SPAN} in this split config to actual
-      Span number.
+    splits: An iterable collection of example_gen_pb2.Input.Split objects
 
   Returns:
     A Tuple of [fingerprint, select_span], where select_span is either
@@ -271,10 +256,10 @@ def calculate_splits_fingerprint_and_span(
   select_span = None
   # Calculate the fingerprint of files under input_base_uri.
   for split in splits:
-    logging.info('select span = %s', select_span)
+    absl.logging.info('select span = %s' % select_span)
     if SPAN_SPEC in split.pattern:
       latest_span = _retrieve_latest_span(input_base_uri, split)
-      logging.info('latest span = %s', latest_span)
+      absl.logging.info('latest span = %s' % latest_span)
       if select_span is None:
         select_span = latest_span
       if select_span != latest_span:
@@ -286,7 +271,7 @@ def calculate_splits_fingerprint_and_span(
       select_span = '0'
     # Calculate fingerprint
     pattern = os.path.join(input_base_uri, split.pattern)
-    split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
-    split_fingerprints.append(split_fingerprint)
+    fingerprint = io_utils.generate_fingerprint(split.name, pattern)
+    split_fingerprints.append(fingerprint)
   fingerprint = '\n'.join(split_fingerprints)
   return fingerprint, select_span

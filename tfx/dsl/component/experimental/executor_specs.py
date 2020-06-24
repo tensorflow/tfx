@@ -29,7 +29,6 @@ CommandlineArgumentType = Union[
     placeholders.InputValuePlaceholder,
     placeholders.InputUriPlaceholder,
     placeholders.OutputUriPlaceholder,
-    placeholders.ConcatPlaceholder,
 ]
 
 

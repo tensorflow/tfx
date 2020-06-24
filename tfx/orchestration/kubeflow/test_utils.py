@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
 import os
 import re
 import shutil
@@ -28,9 +27,7 @@ import tempfile
 import time
 from typing import Any, Dict, List, Text
 
-from absl import logging
-import kfp
-from kfp_server_api import rest
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
@@ -59,89 +56,7 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-
-
-# Various execution status of a KFP pipeline.
-KFP_RUNNING_STATUS = 'running'
-KFP_SUCCESS_STATUS = 'succeeded'
-KFP_FAIL_STATUS = 'failed'
-KFP_SKIPPED_STATUS = 'skipped'
-KFP_ERROR_STATUS = 'error'
-
-KFP_FINAL_STATUS = frozenset(
-    (KFP_SUCCESS_STATUS, KFP_FAIL_STATUS, KFP_SKIPPED_STATUS, KFP_ERROR_STATUS))
-
-
-def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
-                        timeout: datetime.timedelta,
-                        polling_interval: int) -> Text:
-  """Gets the pipeline execution status by polling KFP at the specified host.
-
-  Args:
-    host: address of the KFP deployment.
-    run_id: id of the execution of the pipeline.
-    retry_limit: number of retries that will be performed before raise an error.
-    timeout: timeout of this long-running operation, in timedelta.
-    polling_interval: interval between two consecutive polls, in seconds.
-
-  Returns:
-    The final status of the execution. Possible value can be found at
-    https://github.com/kubeflow/pipelines/blob/master/backend/api/run.proto#L254
-
-  Raises:
-    RuntimeError: if polling failed for retry_limit times consecutively.
-  """
-
-  start_time = datetime.datetime.now()
-  retry_count = 0
-  while True:
-    # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
-    # This should be changed after
-    # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
-    # Currently gcloud authentication token has a 1-hour expiration by default
-    # but kfp.Client() does not have a refreshing mechanism in place. This
-    # causes failure when attempting to get running status for a long pipeline
-    # execution (> 1 hour).
-    # Instead of implementing a whole authentication refreshing mechanism
-    # here, we chose re-creating kfp.Client() frequently to make sure the
-    # authentication does not expire. This is based on the fact that
-    # kfp.Client() is very light-weight.
-    # See more details at
-    # https://github.com/kubeflow/pipelines/issues/3630
-    client = kfp.Client(host=host)
-    # TODO(b/156784019): workaround the known issue at b/156784019 and
-    # https://github.com/kubeflow/pipelines/issues/3669
-    # by wait-and-retry when ApiException is hit.
-    try:
-      get_run_response = client._run_api.get_run(run_id=run_id)  # pylint: disable=protected-access
-    except rest.ApiException as api_err:
-      # If get_run failed with ApiException, wait _POLLING_INTERVAL and retry.
-      if retry_count < retry_limit:
-        retry_count += 1
-        logging.info('API error %s was hit. Retrying: %s / %s.', api_err,
-                     retry_count, retry_limit)
-        time.sleep(polling_interval)
-        continue
-
-      raise RuntimeError('Still hit remote error after %s retries: %s' %
-                         (retry_limit, api_err))
-    else:
-      # If get_run succeeded, reset retry_count.
-      retry_count = 0
-
-    if (get_run_response and get_run_response.run and
-        get_run_response.run.status and
-        get_run_response.run.status.lower() in KFP_FINAL_STATUS):
-      # Return because final status is reached.
-      return get_run_response.run.status
-
-    if datetime.datetime.now() - start_time > timeout:
-      # Timeout.
-      raise RuntimeError('Waiting for run timeout at %s' %
-                         datetime.datetime.now().strftime('%H:%M:%S'))
-
-    logging.info('Waiting for the job to complete...')
-    time.sleep(polling_interval)
+from tfx.utils import dsl_utils
 
 
 # Custom component definitions for testing purpose.
@@ -158,7 +73,8 @@ class _HelloWorldSpec(component_spec.ComponentSpec):
 
 class _ByeWorldSpec(component_spec.ComponentSpec):
   INPUTS = {
-      'hearing': component_spec.ChannelParameter(type=standard_artifacts.String)
+      'hearing':
+          component_spec.ChannelParameter(type=standard_artifacts.String)
   }
   OUTPUTS = {}
   PARAMETERS = {}
@@ -233,7 +149,9 @@ def create_e2e_components(
   Returns:
     A list of TFX components that constitutes an end-to-end test pipeline.
   """
-  example_gen = CsvExampleGen(input_base=csv_input_location)
+  examples = dsl_utils.csv_input(csv_input_location)
+
+  example_gen = CsvExampleGen(input=examples)
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
   schema_gen = SchemaGen(
       statistics=statistics_gen.outputs['statistics'],
@@ -315,38 +233,6 @@ def create_e2e_components(
   ]
 
 
-def delete_ai_platform_model(model_name):
-  """Delete pushed model with the given name in AI Platform."""
-  # In order to delete model, all versions in the model must be deleted first.
-  versions_command = ('gcloud', 'ai-platform', 'versions', 'list',
-                      '--model={}'.format(model_name))
-  # The return code of the following subprocess call will be explicitly checked
-  # using the logic below, so we don't need to call check_output().
-  versions = subprocess.run(versions_command, stdout=subprocess.PIPE)  # pylint: disable=subprocess-run-check
-  if versions.returncode == 0:
-    logging.info('Model %s has versions %s', model_name, versions.stdout)
-    # The first stdout line is headers, ignore. The columns are
-    # [NAME] [DEPLOYMENT_URI] [STATE]
-    #
-    # By specification of test case, the last version in the output list is the
-    # default version, which will be deleted last in the for loop, so there's no
-    # special handling needed hear.
-    # The operation setting default version is at
-    # https://github.com/tensorflow/tfx/blob/65633c772f6446189e8be7c6332d32ea221ff836/tfx/extensions/google_cloud_ai_platform/runner.py#L309
-    for version in versions.stdout.decode('utf-8').strip('\n').split('\n')[1:]:
-      version = version.split()[0]
-      logging.info('Deleting version %s of model %s', version, model_name)
-      version_delete_command = ('gcloud', '--quiet', 'ai-platform', 'versions',
-                                'delete', version,
-                                '--model={}'.format(model_name))
-      subprocess.run(version_delete_command, check=True)
-
-  logging.info('Deleting model %s', model_name)
-  subprocess.run(
-      ('gcloud', '--quiet', 'ai-platform', 'models', 'delete', model_name),
-      check=True)
-
-
 class BaseKubeflowTest(tf.test.TestCase):
   """Base class that defines testing harness for pipeline on KubeflowRunner."""
 
@@ -393,7 +279,7 @@ class BaseKubeflowTest(tf.test.TestCase):
     super(BaseKubeflowTest, cls).tearDownClass()
 
     # Delete container image used in tests.
-    logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
+    absl.logging.info('Deleting image %s', cls._CONTAINER_IMAGE)
     subprocess.run(
         ['gcloud', 'container', 'images', 'delete', cls._CONTAINER_IMAGE],
         check=True)
@@ -413,7 +299,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '-o',
         'custom-columns=:metadata.name',
     ]).decode('utf-8').strip('\n')
-    logging.info('MySQL pod name is: %s', pod_name)
+    absl.logging.info('MySQL pod name is: {}'.format(pod_name))
     return pod_name
 
   @classmethod
@@ -466,7 +352,7 @@ class BaseKubeflowTest(tf.test.TestCase):
 
   def _delete_workflow(self, workflow_name: Text):
     """Deletes the specified Argo workflow."""
-    logging.info('Deleting workflow %s', workflow_name)
+    absl.logging.info('Deleting workflow {}'.format(workflow_name))
     subprocess.run(['argo', '--namespace', 'kubeflow', 'delete', workflow_name],
                    check=True)
 
@@ -491,7 +377,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         result = []
         for k, v in parameter.items():
           result.append('-p')
-          result.append('{}={}'.format(k, v))
+          result.append('%s=%s' % (k, v))
         return result
       else:
         return []
@@ -508,8 +394,8 @@ class BaseKubeflowTest(tf.test.TestCase):
         workflow_file,
     ]
     run_command += _format_parameter(parameter)
-    logging.info('Launching workflow %s with parameter %s', workflow_name,
-                 _format_parameter(parameter))
+    absl.logging.info('Launching workflow {} with parameter {}'.format(
+        workflow_name, _format_parameter(parameter)))
     with test_utils.Timer('RunningPipelineToCompletion'):
       subprocess.run(run_command, check=True)
       # Wait in the loop while pipeline is running.
@@ -550,7 +436,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         '--execute',
         'drop database if exists {};'.format(db_name),
     ]
-    logging.info('Dropping MLMD DB with name: %s', db_name)
+    absl.logging.info('Dropping MLMD DB with name: {}'.format(db_name))
 
     with test_utils.Timer('DeletingMLMDDatabase'):
       subprocess.run(command, check=True)
@@ -602,7 +488,7 @@ class BaseKubeflowTest(tf.test.TestCase):
         'argo', '--namespace', 'kubeflow', 'get', workflow_name
     ]
     output = subprocess.check_output(get_workflow_command).decode('utf-8')
-    logging.info('Argo output ----\n%s', output)
+    absl.logging.info('Argo output ----\n%s', output)
     match = re.search(r'^Status:\s+(.+)$', output, flags=re.MULTILINE)
     self.assertIsNotNone(match)
     return match.group(1)

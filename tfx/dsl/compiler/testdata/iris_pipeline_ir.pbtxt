@@ -4,6 +4,7 @@
 # This file contains the IR of an adapted Iris example pipeline
 # third_party/tfx/examples/iris/iris_pipeline_beam.py
 
+
 pipeline_info {
   id: "iris"
 }
@@ -38,6 +39,20 @@ nodes {
         }
       }
     }
+    inputs {
+      inputs {
+        key: "input"
+        value {
+          channels {
+            artifact_query {
+              type {
+                name: "ExternalArtifact"
+              }
+            }
+          }
+        }
+      }
+    }
     outputs {
       outputs {
         key: "examples"
@@ -60,14 +75,6 @@ nodes {
     }
     parameters {
       parameters {
-        key: "input_base"
-        value {
-          field_value {
-            string_value: "tfx_root/data_path"
-          }
-        }
-      }
-      parameters {
         key: "input_config"
         value {
           field_value {
@@ -80,14 +87,6 @@ nodes {
         value {
           field_value {
             string_value: "{\n  \"split_config\": {\n    \"splits\": [\n      {\n        \"hash_buckets\": 2,\n        \"name\": \"train\"\n      },\n      {\n        \"hash_buckets\": 1,\n        \"name\": \"eval\"\n      }\n    ]\n  }\n}"
-          }
-        }
-      }
-      parameters {
-        key: "output_data_format"
-        value {
-          field_value {
-            int_value: 6
           }
         }
       }
