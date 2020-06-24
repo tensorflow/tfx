@@ -322,6 +322,7 @@ class TunerSpec(ComponentSpec):
       'train_args': ExecutionParameter(type=trainer_pb2.TrainArgs),
       'eval_args': ExecutionParameter(type=trainer_pb2.EvalArgs),
       'tune_args': ExecutionParameter(type=tuner_pb2.TuneArgs, optional=True),
+      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
