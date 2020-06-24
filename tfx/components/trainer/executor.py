@@ -222,7 +222,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     if not tf.io.gfile.exists(fn_args.model_run_dir):
       raise RuntimeError('run_fn failed to write logs to correct location.')
     absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
-            fn_args.serving_model_dir, fn_args.log_dir)
+            fn_args.serving_model_dir, fn_args.model_run_dir)
 
 
 class Executor(GenericExecutor):
@@ -293,7 +293,7 @@ class Executor(GenericExecutor):
                                     training_spec['eval_spec'])
 
     absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
-        fn_args.serving_model_dir, fn_args.log_dir)
+        fn_args.serving_model_dir, fn_args.model_run_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
