@@ -20,31 +20,35 @@ from __future__ import print_function
 import argparse
 import os
 from distutils.dir_util import copy_tree
-
-import tensorflow as tf
-import tensorflow_data_validation as tfdv
+from collections import defaultdict
 
 from tfx.orchestration import metadata
+from ml_metadata.proto import metadata_store_pb2
 
-print('TF version: {}'.format(tf.version.VERSION))
-print('TFDV version: {}'.format(tfdv.version.__version__))
-# Read artifact information from metadata store.
-# import beam_dag_runner
-
-def main(record_dir, pipeline_path, context_id):
+def main(record_dir, pipeline_path, run_id):
   metadata_dir = os.path.join(os.environ['HOME'],
                               'tfx/tfx/examples/chicago_taxi_pipeline/',
                               'metadata.db')
 
-  
   metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
   with metadata.Metadata(metadata_config) as m:
-    for artifact in m.store.get_artifacts()#_by_context(context_id):
-      if artifact == 'ExternalArtifact':
-        continue
+    if not run_id:
+      execution_dict = defaultdict(list)# TODO: better naming
+      for execution in m.store.get_executions():
+        execution_run_id = execution.properties['run_id'].string_value
+        execution_dict[execution_run_id].append(execution)
+      run_id = max(execution_dict.keys()) # latest run id
+    # print(m.store.get_events_by_execution_ids([execution_id_dict[run_id]]) )
 
+    events = [
+        x for x in m.store.get_events_by_execution_ids(
+            [e.id for e in execution_dict[run_id]])
+        if x.type == metadata_store_pb2.Event.OUTPUT
+    ]
+    unique_artifact_ids = list({x.artifact_id for x in events})
+
+    for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):#_by_context(context_id):
       src_path = artifact.uri
-
       dest_path = src_path.replace(pipeline_path, "")
       dest_path = dest_path[:dest_path.rfind('/')] # remove trailing number
       dest_path = os.path.join(record_dir, dest_path)
@@ -54,24 +58,23 @@ def main(record_dir, pipeline_path, context_id):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  pipeline_path = os.path.join(os.environ['HOME'],
-                             "tfx/pipelines/chicago_taxi_beam/")
-  record_dir = os.path.join(os.environ['HOME'],
-                            'tfx/tfx/examples/chicago_taxi_pipeline/testdata')
   parser.add_argument(
       '--pipeline_path',
       type=str,
-      default=pipeline_path,
+      default=os.path.join(os.environ['HOME'],
+                           "tfx/pipelines/chicago_taxi_beam/"),
       help='Path to pipeline')
   parser.add_argument(
       '--record_path',
       type=str,
-      default=record_path,
+      default=os.path.join(os.environ['HOME'],
+                           'tfx/tfx/examples/chicago_taxi_pipeline/testdata'),
       help='Path to record')
   parser.add_argument(
-      '--context_id',
+      '--run_id',
       type=str,
       default=None,
-      help='Pipeline Context Id')
+      help='Pipeline Run Id')
+  args = parser.parse_args()
   # record_dir, pipeline_path = '', '', ''
-  main(record_dir, pipeline_path, context_id)
+  main(args.record_path, args.pipeline_path, args.run_id)
