@@ -40,8 +40,10 @@ from tfx.types import artifact_utils
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _ExamplePartitionKey(record: Union[tf.train.Example, tf.train.SequenceExample],
-                         split_config: example_gen_pb2.SplitConfig) -> bytes:
+def _ExamplePartitionKey(
+  record: Union[tf.train.Example, tf.train.SequenceExample],
+  split_config: example_gen_pb2.SplitConfig
+) -> bytes:
   """Generates key for partition for tf.train.Example or tf.SequenceExample."""
 
   if not split_config.HasField('partition_feature_name'):
@@ -56,6 +58,7 @@ def _ExamplePartitionKey(record: Union[tf.train.Example, tf.train.SequenceExampl
     features = record.context.feature
   if feature_name not in features:
     raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
+  # Find that feature value.
   feature = ""
   if isinstance(record, tf.train.Example):
     feature = record.features.feature[feature_name]
@@ -98,14 +101,17 @@ def _PartitionFn(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[tf.train.Example, bytes])
+@beam.typehints.with_input_types(Union[tf.train.Example, 
+                                       tf.train.SequenceExample, 
+                                       bytes])
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteSplit(example_split: beam.pvalue.PCollection,
                 output_split_path: Text) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord."""
 
   def _MaybeSerialize(x):
-    return x.SerializeToString() if isinstance(x, tf.train.Example) else x
+    return x.SerializeToString() if isinstance(x, (tf.train.Example,
+      tf.train.SequenceExample)) else x
 
   return (example_split
           # TODO(jyzhao): make shuffle optional.
@@ -119,14 +125,20 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(Union[tf.train.Example, bytes])
+@beam.typehints.with_output_types(Union[tf.train.Example, 
+                                        tf.train.SequenceExample, 
+                                        bytes])
 def _InputToExampleOrBytes(
     pipeline: beam.Pipeline,
     input_to_example: beam.PTransform,
     exec_properties: Dict[Text, Any],
     split_pattern: Text,
 ) -> beam.pvalue.PCollection:
-  """Converts input into a tf.train.Example, or a bytes (serialized proto)."""
+  """Converts input into one of the following:
+     - tf.train.Example,
+     - tf.train.SequenceExample, 
+     - a bytes (serialized proto).
+  """
   return (pipeline
           | 'InputSourceToExampleOrBytes' >> input_to_example(
               exec_properties, split_pattern))
@@ -137,8 +149,8 @@ class BaseExampleGenExecutor(
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data
-  sources to TensorFlow Examples (tf.train.Example), or any other protocol
-  buffer as subclass defines.
+  sources to TensorFlow Examples (tf.train.Example), tf.train.SequenceExample, 
+  or any other protocol buffer as subclass defines.
 
   The common configuration (defined in
   https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto#L44.)
@@ -173,7 +185,9 @@ class BaseExampleGenExecutor(
     Here is an example PTransform:
       @beam.ptransform_fn
       @beam.typehints.with_input_types(beam.Pipeline)
-      @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
+      @beam.typehints.with_output_types(Union[tf.train.Example, 
+                                              tf.train.SequenceExample,
+                                              bytes])
       def ExamplePTransform(
           pipeline: beam.Pipeline,
           exec_properties: Dict[Text, Any],
