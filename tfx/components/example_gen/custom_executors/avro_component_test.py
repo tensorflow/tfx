@@ -29,6 +29,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
+from tfx.utils.dsl_utils import external_input
 
 
 class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
@@ -59,7 +60,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     example_gen = FileBasedExampleGen(
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor),
-        input_base=self.avro_dir_path,
+        input=external_input(self.avro_dir_path),
         input_config=self.input_config,
         output_config=self.output_config,
         instance_name='AvroExampleGen')

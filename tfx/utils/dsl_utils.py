@@ -25,9 +25,6 @@ from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
 
-# TODO(b/158333888): deprecate external_input function.
-@deprecation.deprecated(
-    None, 'external_input is deprecated, directly pass the uri to ExampleGen.')
 def external_input(uri: Any) -> types.Channel:
   """Helper function to declare external input.
 
@@ -40,3 +37,14 @@ def external_input(uri: Any) -> types.Channel:
   instance = standard_artifacts.ExternalArtifact()
   instance.uri = str(uri)
   return channel_utils.as_channel([instance])
+
+
+csv_input = deprecation.deprecated_alias(
+    deprecated_name='csv_input',
+    name='external_input',
+    func_or_class=external_input)
+
+tfrecord_input = deprecation.deprecated_alias(
+    deprecated_name='tfrecord_input',
+    name='external_input',
+    func_or_class=external_input)

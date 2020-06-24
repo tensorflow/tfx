@@ -18,21 +18,72 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import codecs
+import locale
 import os
 import subprocess
 import sys
 
 from absl import logging
+from click import testing as click_testing
 import tensorflow as tf
 
-from tfx.experimental.templates.taxi.e2e_tests import test_utils
+from tfx.tools.cli.cli_main import cli_group
+from tfx.utils import io_utils
 
 
-class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
+class TaxiTemplateBeamEndToEndTest(tf.test.TestCase):
   """This test covers step 1~6 of the accompanying document[1] for taxi template.
 
+  TODO(b/148500754) Add a test using KFP.
   [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
   """
+
+  def setUp(self):
+    super(TaxiTemplateBeamEndToEndTest, self).setUp()
+
+    # Change the encoding for Click since Python 3 is configured to use ASCII as
+    # encoding for the environment.
+    # TODO(b/150100590) Delete this block after Python >=3.7
+    if codecs.lookup(locale.getpreferredencoding()).name == 'ascii':
+      os.environ['LANG'] = 'en_US.utf-8'
+
+    self._temp_dir = self.create_tempdir().full_path
+
+    self._pipeline_name = 'TAXI_TEMPLATE_E2E_TEST'
+    self._project_dir = os.path.join(self._temp_dir, 'src')
+    self._old_cwd = os.getcwd()
+    os.mkdir(self._project_dir)
+    os.chdir(self._project_dir)
+
+    # Initialize CLI runner.
+    self._cli_runner = click_testing.CliRunner()
+
+  def tearDown(self):
+    super(TaxiTemplateBeamEndToEndTest, self).tearDown()
+    os.chdir(self._old_cwd)
+
+  def _runCli(self, args):
+    logging.info('Running cli: %s', args)
+    result = self._cli_runner.invoke(cli_group, args)
+    logging.info('%s', result.output)
+    if result.exit_code != 0:
+      logging.error('Exit code from cli: %d, exception:%s', result.exit_code,
+                    result.exception)
+      logging.error('Traceback: %s', result.exc_info)
+
+    return result
+
+  def _addAllComponents(self):
+    """Change 'pipeline.py' file to put all components into the pipeline."""
+    pipeline_definition_file = os.path.join(self._project_dir, 'pipeline',
+                                            'pipeline.py')
+    with open(pipeline_definition_file) as fp:
+      content = fp.read()
+    # At the initial state, these are commented out. Uncomment them.
+    content = content.replace('# components.append(', 'components.append(')
+    io_utils.write_string_file(pipeline_definition_file, content)
+    return pipeline_definition_file
 
   def _getAllUnitTests(self):
     for root, _, files in os.walk(self._project_dir):
@@ -45,6 +96,20 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
       for filename in files:
         if filename.endswith('_test.py'):
           yield base_module + filename[:-3]
+
+  def _copyTemplate(self):
+    result = self._runCli([
+        'template',
+        'copy',
+        '--pipeline_name',
+        self._pipeline_name,
+        '--destination_path',
+        self._project_dir,
+        '--model',
+        'taxi',
+    ])
+    self.assertEqual(0, result.exit_code)
+    self.assertIn('Copying taxi pipeline template', result.output)
 
   def testGeneratedUnitTests(self):
     self._copyTemplate()

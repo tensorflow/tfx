@@ -13,23 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Convenience binary to build TFX from source.
-# Invoke `bazel run tfx:build_pip_package` from the root directory of the
-# repository will build the TFX pip wheel.
+# Build non-python part of the TFX and copy the build output to the source
+# directories (in-place).
 
 source tfx/scripts/build_common.sh
-
-if [[ -z "$1" ]]; then
-  PYTHON_BIN_PATH=python
-else
-  if [[ "$1" == --python_bin_path ]]; then
-    shift
-    PYTHON_BIN_PATH=$1
-  else
-    echo "Unrecognized argument $1"
-    exit 1
-  fi
-fi
 
 set -u -x
 
@@ -41,11 +28,3 @@ if [[ -z "${BUILD_WORKSPACE_DIRECTORY}" ]]; then
 fi
 
 tfx::copy_proto_stubs "${PWD}" "${BUILD_WORKSPACE_DIRECTORY}"
-
-# Create the wheel
-pushd "${BUILD_WORKSPACE_DIRECTORY}"
-
-"${PYTHON_BIN_PATH}" setup.py bdist_wheel
-
-# Cleanup
-popd

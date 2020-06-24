@@ -29,6 +29,7 @@ from tfx.components import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'taxi_hello_pipeline'
 
@@ -50,8 +51,10 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
+  examples = external_input(data_root)
+
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input_base=data_root)
+  example_gen = CsvExampleGen(input_base=examples)
 
   hello = component.HelloComponent(
       input_data=example_gen.outputs['examples'], name=u'HelloWorld')
