@@ -48,7 +48,9 @@ _pipeline_name = 'chicago_taxi_beam'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
-_taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+# _taxi_root = os.path.join(os.environ['HOME'], 'taxi')
+_taxi_root = os.path.join(os.environ['HOME'],
+                          "tfx/tfx/examples/chicago_taxi_pipeline")
 _data_root = os.path.join(_taxi_root, 'data', 'simple')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -163,7 +165,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           evaluator,
           pusher,
       ],
-      enable_cache=True,
+      # enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/142684737): The multi-processing API might change.

@@ -36,16 +36,18 @@ from tfx.components import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.experimental.beam.dummy_beam_dag_runner import DummyBeamDagRunner
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration.config import pipeline_config
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-
-if not os.path.exists(os.path.join(os.environ['HOME'], "record")):
-  raise Exception("Must record input/output first")
+from tfx.orchestration.launcher.dummy_component_launcher import MyDummyComponentLauncher
+from tfx.examples.chicago_taxi_pipeline import pipeline_verifier
+# if not os.path.exists(os.path.join(os.environ['HOME'], "testdata")):
+#   raise Exception("Must record input/output first")
 
 _pipeline_name = 'chicago_taxi_beam'
 
@@ -198,4 +200,10 @@ if __name__ == '__main__':
   # mock_pipeline.set_dummy_executor('Evaluator', BaseDummyExecutor)
   # mock_pipeline.set_dummy_executor('Pusher', BaseDummyExecutor)
 
-  DummyBeamDagRunner().run(mock_pipeline)
+  BeamDagRunner(config=pipeline_config.PipelineConfig(
+      supported_launcher_classes=[
+          MyDummyComponentLauncher,
+      ],
+      )).run(mock_pipeline)
+
+  pipeline_verifier.verify(mock_pipeline.pipeline_info)

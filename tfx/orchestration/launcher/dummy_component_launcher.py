@@ -61,7 +61,7 @@ class MyDummyComponentLauncher(InProcessComponentLauncher):
     # ['CsvExampleGen', 'StatisticsGen', 'SchemaGen', \
     # 'ExampleValidator', 'Transform', 'Trainer', 'Evaluator', 'Pusher']
     for component_id in  ['CsvExampleGen', 'StatisticsGen', 'SchemaGen', \
-                          'ExampleValidator', 'Transform', 'Trainer', \
+                          'Transform', 'Trainer', \
                           'Evaluator', 'Pusher']:
       self.dummy_dict[component_id] = BaseDummyExecutor
 
