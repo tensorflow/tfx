@@ -246,7 +246,7 @@ def run_fn(fn_args: TrainerFnArgs):
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps
-      callback=[tensorboard_callback])
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':

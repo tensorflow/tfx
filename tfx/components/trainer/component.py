@@ -180,6 +180,7 @@ class Trainer(base_component.BaseComponent):
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
       output: Optional `Model` channel for result of exported models.
+      log_output: Optional `ModelRun` channel for the log output of models.
       transform_output: Backwards compatibility alias for the 'transform_graph'
         argument.
       instance_name: Optional unique instance name. Necessary iff multiple

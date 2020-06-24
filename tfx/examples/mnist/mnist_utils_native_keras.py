@@ -83,7 +83,7 @@ def run_fn(fn_args: TrainerFnArgs):
       train_dataset,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps
+      validation_steps=fn_args.eval_steps,
       callbacks=[tensorboard_callback])
 
   signatures = {

@@ -175,8 +175,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     The Trainer Executor invokes a run_fn callback function provided by
     the user via the module_file parameter. In this function, user defines the
-    model and trains it, then saves the model and writes Tensorboard logs
-    to the provided locations.
+    model and trains it, then saves the model in the model artifact location 
+    and writes Tensorboard logs to a second artifact location.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
@@ -235,7 +235,9 @@ class Executor(GenericExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py#L285.
   This becomes the basis of the new Executor for Trainer. This Executor will
   then train and evaluate this estimator using the
-  tf.estimator.train_and_evaluate API to train locally.
+  tf.estimator.train_and_evaluate API to train locally, will save the
+  moel to the desired ouput artifact, and will copy the training logs to a 
+  seperate ModelRun artifact.
   """
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -246,7 +248,7 @@ class Executor(GenericExecutor):
     The Trainer Executor invokes a training_fn callback function provided by
     the user via the module_file parameter.  With the tf.estimator returned by
     this function, the Trainer Executor then builds a TensorFlow model using the
-    user-provided tf.estimator.
+    user-provided tf.estimator. 
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
