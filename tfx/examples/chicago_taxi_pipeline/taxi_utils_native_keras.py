@@ -311,9 +311,14 @@ def run_fn(fn_args: TrainerFnArgs):
             for i in range(num_dnn_layers)
         ])
 
-  # Write logs to path specified by fn_args
+  # TODO(b/158106209): deprecate logging to model artifact after next release
+  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+  if (fn_args.model_run_dir):
+      log_dir = fn_args.model_run_dir
+
+  # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=fn_args.log_dir, update_freq='batch')
+      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
