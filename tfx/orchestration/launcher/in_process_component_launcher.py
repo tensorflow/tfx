@@ -58,10 +58,10 @@ class InProcessComponentLauncher(base_component_launcher.BaseComponentLauncher):
 
     executor_class_spec = cast(executor_spec.ExecutorClassSpec,
                                self._component_executor_spec)
+
     # Type hint of component will cause not-instantiable error as
     # component.executor is Type[BaseExecutor] which has an abstract function.
     executor = executor_class_spec.executor_class(
         executor_context)  # type: ignore
 
-    print("executor", executor)
     executor.Do(input_dict, output_dict, exec_properties)
