@@ -112,7 +112,7 @@ class ExecutorTest(tf.test.TestCase):
 
   def _verify_model_run_exports(self):
     self.assertTrue(
-        tf.io.gfile.exists(self._model_run_exports.uri))
+        tf.io.gfile.exists(os.path.dirname(self._model_run_exports.uri)))
 
   def _do(self, test_executor):
     test_executor.Do(
