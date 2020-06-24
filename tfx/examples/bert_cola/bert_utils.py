@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import List, Text
 
 import absl
@@ -32,7 +33,7 @@ _TRAIN_BATCH_SIZE = 64
 _EVAL_BATCH_SIZE = 64
 _LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
-_MAX_LEN = 128
+_MAX_LEN = 256
 _EPOCHS = 1
 
 def _gzip_reader_fn(filenames):
@@ -43,7 +44,8 @@ def _gzip_reader_fn(filenames):
 
 def _tokenize(feature):
     """Tokenize the two sentences and insert appropriate tokens"""
-    vocab_dir = '/home/tommywei/bert_cola/assets/vocab.txt'
+    asset_dir = os.path.join(os.environ['HOME'], 'bert_cola/assets')
+    vocab_dir = os.path.join(asset_dir, 'vocab.txt') 
     tokenizer = Special_Bert_Tokenizer(vocab_dir)
     return tokenizer.tokenize_single_sentence(
       tf.reshape(feature, [-1]),
@@ -108,8 +110,6 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
 
     transformed_features = model.tft_layer(parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(_transformed_name(_LABEL_KEY), None)
 
     return model(transformed_features)
 
@@ -131,8 +131,11 @@ def run_fn(fn_args: TrainerFnArgs):
 
   #mirrored_strategy = tf.distribute.MirroredStrategy()
   # with mirrored_strategy.scope():
-  bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
-  model = BertForSingleSentenceSentimentAnalysis(bert_layer, _MAX_LEN)
+  bert_layer = hub.KerasLayer(_BERT_LINK, trainable=False)
+  model = BertForSingleSentenceSentimentAnalysis(
+          bert_layer,
+          _MAX_LEN,
+          hidden_layers=[(128, 'relu'), (64, 'relu')])
 
   model.fit(
       train_dataset,

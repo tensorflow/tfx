@@ -51,5 +51,5 @@ def BertForSingleSentenceSentimentAnalysis(
     model.compile(
         optimizer='adam',
         loss=tf.keras.losses.binary_crossentropy,
-        metrics=['AUC'])
+        metrics=['accuracy'])
     return model
