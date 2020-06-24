@@ -22,6 +22,8 @@ from __future__ import print_function
 
 from typing import List, Text
 
+import absl
+
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
@@ -36,6 +38,7 @@ from tfx.components.trainer.executor import TrainerFnArgs
 _DROPOUT_RATE = 0.2
 _EMBEDDING_UNITS = 64
 _EVAL_BATCH_SIZE = 5
+_FEATURE_KEY = 'text'
 _HIDDEN_UNITS = 64
 _LABEL_KEY = "label"
 _LEARNING_RATE = 1e-4
@@ -43,6 +46,9 @@ _LSTM_UNITS = 64
 _VOCAB_SIZE = 8000
 _MAX_LEN = 400
 _TRAIN_BATCH_SIZE = 10
+
+def _transformed_name(key, isInput=False):
+  return key + ('_xf_input' if isInput else '_xf')
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
@@ -81,9 +87,10 @@ def preprocessing_fn(inputs):
   Returns:
     Map from string feature key to transformed feature operations.
   """
+  tokenized = _tokenize_review(inputs[_FEATURE_KEY])
   return {
-      'label': inputs['label'],
-      'embedding_input': _tokenize_review(inputs['text'])}
+      _transformed_name(_LABEL_KEY): inputs[_LABEL_KEY],
+      _transformed_name(_FEATURE_KEY, True): tokenized}
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
@@ -108,7 +115,7 @@ def _input_fn(file_pattern: List[Text],
       batch_size=batch_size,
       features=transformed_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=_LABEL_KEY)
+      label_key=_transformed_name(_LABEL_KEY))
 
   return dataset
 
@@ -125,6 +132,7 @@ def _build_keras_model() -> keras.Model:
       keras.layers.Embedding(
           _VOCAB_SIZE+1,
           _EMBEDDING_UNITS,
+          name=_transformed_name(_FEATURE_KEY)
           ),
       keras.layers.Bidirectional(keras.layers.LSTM(
           _LSTM_UNITS,
@@ -138,7 +146,7 @@ def _build_keras_model() -> keras.Model:
       optimizer=keras.optimizers.Adam(_LEARNING_RATE),
       metrics=['accuracy'])
 
-  model.summary()
+  model.summary(print_fn=absl.logging.info)
   return model
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
