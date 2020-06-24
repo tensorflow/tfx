@@ -342,7 +342,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
   # Simulate writing a log to the path given by fn_args
-  f = open(os.path.join(fn_args.model_run_dir, "fake_log.txt"),"w+")
-  f.close()
+  io_utils.write_string_file(
+      os.path.join(fn_args.model_run_dir, "fake_log.txt"), "")
 
   absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
