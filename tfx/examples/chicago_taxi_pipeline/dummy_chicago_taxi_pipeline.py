@@ -45,9 +45,6 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 from tfx.orchestration.launcher.dummy_component_launcher import MyDummyComponentLauncher
-from tfx.examples.chicago_taxi_pipeline import pipeline_verifier
-# if not os.path.exists(os.path.join(os.environ['HOME'], "testdata")):
-#   raise Exception("Must record input/output first")
 
 _pipeline_name = 'chicago_taxi_beam'
 
@@ -169,7 +166,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           evaluator,
           pusher,
       ],
-      # enable_cache=True,
+      enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/142684737): The multi-processing API might change.
@@ -177,7 +174,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
 
 # To run this pipeline from the python CLI:
-#   $python taxi_pipeline_beam.py
+#   $python dummy_chicago_taxi_pipeline.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   mock_pipeline = _create_pipeline(
@@ -191,19 +188,8 @@ if __name__ == '__main__':
       # execution time.
       direct_num_workers=0)
 
-  # mock_pipeline.set_dummy_executor('CsvExampleGen', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('StatisticsGen', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('SchemaGen', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('ExampleValidator', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('Transform', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('Trainer', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('Evaluator', BaseDummyExecutor)
-  # mock_pipeline.set_dummy_executor('Pusher', BaseDummyExecutor)
-
   BeamDagRunner(config=pipeline_config.PipelineConfig(
       supported_launcher_classes=[
           MyDummyComponentLauncher,
       ],
       )).run(mock_pipeline)
-
-  pipeline_verifier.verify(mock_pipeline.pipeline_info)
