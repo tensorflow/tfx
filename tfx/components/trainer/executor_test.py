@@ -73,8 +73,8 @@ class ExecutorTest(tf.test.TestCase):
     self._log_exports = standard_artifacts.ModelRun()
     self._log_exports.uri = os.path.join(self._output_data_dir, 
                                          'model_run_path')
-    self._output_dict = {constants.OUTPUT_MODEL_KEY: [self._model_exports]
-                         constants.LOG_OUTPUT_KEY: [SELF._log_exports]}
+    self._output_dict = {constants.OUTPUT_MODEL_KEY: [self._model_exports],
+                         constants.LOG_OUTPUT_KEY: [self._log_exports]}
 
     # Create exec properties skeleton.
     self._exec_properties = {
@@ -110,9 +110,9 @@ class ExecutorTest(tf.test.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
 
-   def _verify_log_exports(self):
+  def _verify_log_exports(self):
     self.assertTrue(
-        tf.io.gfile.exists(path_utils.log_output_dir(self._log_exports.uri))
+        tf.io.gfile.exists(path_utils.log_output_dir(self._log_exports.uri)))
 
   def _do(self, test_executor):
     test_executor.Do(

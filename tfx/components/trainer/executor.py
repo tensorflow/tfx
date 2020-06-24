@@ -290,11 +290,12 @@ class Executor(GenericExecutor):
     tf.estimator.train_and_evaluate(training_spec['estimator'],
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
-    absl.logging.info('Training complete.  Model written to %s',
-                      fn_args.serving_model_dir)
 
     # Copy model run information to ModelRun artifact
     dir_util.copy_tree(fn_args.serving_model_dir, fn_args.log_dir)
+
+    absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
+        fn_args.serving_model_dir, fn_args.log_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
