@@ -184,7 +184,7 @@ class GenericExecutor(base_executor.BaseExecutor):
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
         - model_run: Model trainng related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
@@ -220,7 +220,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
     
-    absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
+    absl.logging.info('Training complete. Model written to %s. ModelRun written to %s', 
             fn_args.serving_model_dir, fn_args.model_run_dir)
 
 
@@ -233,9 +233,7 @@ class Executor(GenericExecutor):
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_utils.py#L285.
   This becomes the basis of the new Executor for Trainer. This Executor will
   then train and evaluate this estimator using the
-  tf.estimator.train_and_evaluate API to train locally, will save the
-  moel to the desired ouput artifact, and will copy the training logs to a 
-  seperate ModelRun artifact.
+  tf.estimator.train_and_evaluate API to train locally.
   """
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -255,7 +253,7 @@ class Executor(GenericExecutor):
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
         - model_run: Model trainng related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
@@ -291,7 +289,7 @@ class Executor(GenericExecutor):
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
 
-    absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
+    absl.logging.info('Training complete. Model written to %s. ModelRun written to %s', 
         fn_args.serving_model_dir, fn_args.model_run_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
