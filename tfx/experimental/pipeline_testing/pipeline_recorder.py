@@ -27,7 +27,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 def main(record_dir, pipeline_path, run_id):
   metadata_dir = os.path.join(os.environ['HOME'],
-                              'tfx/tfx/examples/chicago_taxi_pipeline/',
+                              'tfx/tfx/experimental/pipeline_testing/',
                               'metadata.db')
 
   metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
@@ -37,8 +37,7 @@ def main(record_dir, pipeline_path, run_id):
       for execution in m.store.get_executions():
         execution_run_id = execution.properties['run_id'].string_value
         execution_dict[execution_run_id].append(execution)
-      run_id = max(execution_dict.keys()) # latest run id
-    # print(m.store.get_events_by_execution_ids([execution_id_dict[run_id]]) )
+      run_id = max(execution_dict.keys()) # fetch the latest run_id
 
     events = [
         x for x in m.store.get_events_by_execution_ids(
@@ -47,10 +46,10 @@ def main(record_dir, pipeline_path, run_id):
     ]
     unique_artifact_ids = list({x.artifact_id for x in events})
 
-    for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):#_by_context(context_id):
+    for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):
       src_path = artifact.uri
       dest_path = src_path.replace(pipeline_path, "")
-      dest_path = dest_path[:dest_path.rfind('/')] # remove trailing number
+      dest_path = dest_path[:dest_path.rfind('/')]
       dest_path = os.path.join(record_dir, dest_path)
 
       os.makedirs(dest_path, exist_ok=True)
@@ -68,13 +67,14 @@ if __name__ == '__main__':
       '--record_path',
       type=str,
       default=os.path.join(os.environ['HOME'],
-                           'tfx/tfx/examples/chicago_taxi_pipeline/testdata'),
+                           'tfx/tfx/experimental/pipeline_testing/',
+                           'testdata'),
       help='Path to record')
   parser.add_argument(
       '--run_id',
       type=str,
       default=None,
       help='Pipeline Run Id')
+
   args = parser.parse_args()
-  # record_dir, pipeline_path = '', '', ''
   main(args.record_path, args.pipeline_path, args.run_id)

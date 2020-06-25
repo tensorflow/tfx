@@ -44,7 +44,7 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-from tfx.orchestration.launcher.dummy_component_launcher import MyDummyComponentLauncher
+from tfx.experimental.pipeline_testing.dummy_component_launcher import MyDummyComponentLauncher
 
 _pipeline_name = 'chicago_taxi_beam'
 
@@ -166,7 +166,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           evaluator,
           pusher,
       ],
-      enable_cache=True,
+      # enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       # TODO(b/142684737): The multi-processing API might change.
