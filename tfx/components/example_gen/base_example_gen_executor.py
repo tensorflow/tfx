@@ -135,7 +135,7 @@ def _InputToExampleOrBytes(
     exec_properties: Dict[Text, Any],
     split_pattern: Text,
 ) -> beam.pvalue.PCollection:
-  """Converts input into a tf.Example, tf.SequenceExample, or bytes (serialized proto)."""
+  """Converts input into a tf.train.Example, tf.train.SequenceExample, or serialized proto."""
   return (pipeline
           | 'InputSourceToExampleOrBytes' >> input_to_example(
               exec_properties, split_pattern))

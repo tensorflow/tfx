@@ -140,6 +140,25 @@ class ExecutorTest(tf.test.TestCase):
         self.examples.get_string_custom_property(
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
+  def testDoWithSequenceExamples(self):
+    exec_properties = {
+        utils.INPUT_BASE_KEY:
+            self._input_data_dir,
+        utils.INPUT_CONFIG_KEY:
+            self._input_config,
+        utils.OUTPUT_CONFIG_KEY:
+            self._output_config,
+        utils.OUTPUT_DATA_FORMAT_KEY:
+            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE,
+    }
+
+    self._testDo(exec_properties)
+    self.assertEqual(
+        example_gen_pb2.PayloadFormat.Name(
+            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE),
+        self.examples.get_string_custom_property(
+            utils.PAYLOAD_FORMAT_PROPERTY_NAME))
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -69,11 +69,13 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
 
     @beam.ptransform_fn
     @beam.typehints.with_input_types(beam.Pipeline)
-    @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
+    @beam.typehints.with_output_types(Union[tf.train.Example,
+                                            tf.train.SequenceExample,
+                                            bytes])
     def ImportProtoOrExample(pipeline: beam.Pipeline,
                              exec_properties: Dict[Text, Any],
                              split_pattern: Text) -> beam.pvalue.PCollection:
-      """PTransform to import tf.train.Example records or serialized proto."""
+      """PTransform to import a tf.train.Example, tf.train.SequenceExample or serialized proto."""
       output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
 
       serialized_records = (
@@ -88,7 +90,13 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
         return (serialized_records
                 | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
 
-      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE '
-                       'or FORMAT_PROTO')
+      elif (output_payload_format ==
+            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE):
+        return (serialized_records
+                | 'ToTFSequenceExample' >> beam.Map(
+                    tf.train.SequenceExample.FromString))
+
+      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE, '
+                       'FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
 
     return ImportProtoOrExample
