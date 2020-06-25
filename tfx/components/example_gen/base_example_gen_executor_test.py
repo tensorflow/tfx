@@ -55,7 +55,7 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
     # example_proto = tf.train.Example(
     #     features=tf.train.Features(feature=feature))
-    example_proto = tf.train.Example(
+    example_proto = tf.train.SequenceExample(
         context=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
