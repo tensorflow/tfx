@@ -53,8 +53,10 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     feature['s'] = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
+    # example_proto = tf.train.Example(
+    #     features=tf.train.Features(feature=feature))
     example_proto = tf.train.Example(
-        features=tf.train.Features(feature=feature))
+        context=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
 
