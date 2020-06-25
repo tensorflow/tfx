@@ -73,12 +73,12 @@ enum PayloadFormat {
   FORMAT_TF_EXAMPLE = 6;
   
   // Serialized tf.train.SequenceExample protocol buffer.
-  FORMAT_TF_SEQUENCE_EXAMPLE = 12;
+  FORMAT_TF_SEQUENCE_EXAMPLE = 7;
 
   // Serialized any protocol buffer.
   FORMAT_PROTO = 11;
 
-  reserved 1 to 5, 7 to 10, 13 to max;
+  reserved 1 to 5, 8 to 10, 12 to max;
 }
 
 // Specification of the output of the example gen.

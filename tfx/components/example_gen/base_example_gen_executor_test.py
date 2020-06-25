@@ -53,10 +53,12 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     feature['s'] = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
-    # example_proto = tf.train.Example(
-    #     features=tf.train.Features(feature=feature))
-    example_proto = tf.train.SequenceExample(
-        context=tf.train.Features(feature=feature))
+    if exec_properties.get('sequence_example', False):
+        example_proto = tf.train.SequenceExample(
+            context=tf.train.Features(feature=feature))
+    else:
+        example_proto = tf.train.Example(
+            features=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
 
@@ -139,6 +141,29 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
             ])))
+
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, self._exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+
+    # Output split ratio: train:eval=2:1.
+    self.assertGreater(
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
+
+  def testDoOutputSplitWithSequenceExample(self):
+    # Add output config to exec proterties.
+    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(splits=[
+                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+            ])))
+    self._exec_properties['sequence_example'] = True
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -282,7 +307,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     example_gen = TestExampleGenExecutor()
     with self.assertRaisesRegexp(
         RuntimeError, 'Split by `partition_feature_name` is only supported '
-        'for FORMAT_TF_EXAMPLE or FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
+        'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 

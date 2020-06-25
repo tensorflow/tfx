@@ -96,7 +96,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
                 | 'ToTFSequenceExample' >> beam.Map(
                     tf.train.SequenceExample.FromString))
 
-      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE, '
-                       'FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
+      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE,'
+                       ' FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
 
     return ImportProtoOrExample

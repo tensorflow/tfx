@@ -40,29 +40,36 @@ from tfx.types import artifact_utils
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _ExamplePartitionKey(
-    record: Union[tf.train.Example, tf.train.SequenceExample],
+def _GeneratePartitionKey(
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes],
     split_config: example_gen_pb2.SplitConfig
 ) -> bytes:
-  """Generates key for partition for tf.train.Example or tf.SequenceExample."""
+  """Generates key for partition."""
 
   if not split_config.HasField('partition_feature_name'):
+    if isinstance(record, bytes):
+      return record
     return record.SerializeToString(deterministic=True)
 
-  # Use a feature for partitioning the examples.
-  feature_name = split_config.partition_feature_name
   features = ""
   if isinstance(record, tf.train.Example):
     features = record.features.feature
   elif isinstance(record, tf.train.SequenceExample):
     features = record.context.feature
+  else:
+    raise RuntimeError('Split by `partition_feature_name` is only supported '
+                       'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE '
+                       'payload format.')
+
+  # Use a feature for partitioning the examples.
+  feature_name = split_config.partition_feature_name
   if feature_name not in features:
     raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
   # Find that feature value.
   feature = ""
   if isinstance(record, tf.train.Example):
     feature = record.features.feature[feature_name]
-  elif isinstance(record, tf.train.SequenceExample):
+  else:
     feature = record.context.feature[feature_name]
   if not feature.HasField('kind'):
     raise RuntimeError('Partition feature does not contain any value.')
@@ -82,16 +89,7 @@ def _PartitionFn(
   """Partition function for the ExampleGen's output splits."""
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
-
-  if isinstance(record, (tf.train.Example, tf.train.SequenceExample)):
-    partition_str = _ExamplePartitionKey(record, split_config)
-  elif split_config.HasField('partition_feature_name'):
-    raise RuntimeError('Split by `partition_feature_name` is only supported '
-                       'for FORMAT_TF_EXAMPLE or FORMAT_TF_SEQUENCE_EXAMPLE '
-                       'payload format.')
-  else:
-    partition_str = record
-
+  partition_str = _GeneratePartitionKey(record, split_config)
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
   #   bucket >=0 && < 10, returns 0
