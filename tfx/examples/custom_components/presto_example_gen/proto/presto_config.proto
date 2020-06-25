@@ -13,7 +13,7 @@
 // limitations under the License.
 syntax = "proto3";
 
-package third_party.tfx.examples.custom_components.presto_example_gen;
+package tfx.examples.custom_components.presto_example_gen;
 
 message PrestoConnConfig {
   // Based off official prestodb-python-client library
