@@ -77,12 +77,11 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     model = base.build_keras_model()
 
-  # TODO(b/158106209): deprecate logging to model artifact after next release
-  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
   try:
     log_dir = fn_args.model_run_dir
   except KeyError:
-    pass
+    # TODO(b/158106209): deprecate logging to model artifact after next release
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
     
   # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(

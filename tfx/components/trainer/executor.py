@@ -311,4 +311,3 @@ class Executor(GenericExecutor):
           'eval_savedmodel export for TFMA is skipped because '
           'this is not the chief worker.'
       )
-      
