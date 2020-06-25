@@ -66,11 +66,7 @@ def _GeneratePartitionKey(
   if feature_name not in features:
     raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
   # Find that feature value.
-  feature = ""
-  if isinstance(record, tf.train.Example):
-    feature = record.features.feature[feature_name]
-  else:
-    feature = record.context.feature[feature_name]
+  feature = features[feature_name]
   if not feature.HasField('kind'):
     raise RuntimeError('Partition feature does not contain any value.')
   if (not feature.HasField('bytes_list') and
