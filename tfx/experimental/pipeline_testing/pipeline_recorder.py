@@ -1,0 +1,74 @@
+# Copyright 2019 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Recording pipeline from MLMD metadata."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+from distutils.dir_util import copy_tree
+from collections import defaultdict
+from absl import app
+from absl import flags
+
+from tfx.orchestration import metadata
+from ml_metadata.proto import metadata_store_pb2
+
+FLAGS = flags.FLAGS
+
+default_pipeline_dir = os.path.join(os.environ['HOME'],
+                                    "tfx/pipelines/chicago_taxi_beam/")
+default_record_dir = os.path.join(os.environ['HOME'],
+                                  'tfx/tfx/experimental/pipeline_testing/',
+                                  'testdata')
+default_metadata_dir = os.path.join(os.environ['HOME'],
+                                    'tfx/tfx/experimental/pipeline_testing/',
+                                    'metadata.db')
+
+flags.DEFINE_string('pipeline_dir', default_pipeline_dir, 'Path to pipeline')
+flags.DEFINE_string('record_dir', default_record_dir, 'Path to record')
+flags.DEFINE_string('metadata_dir', default_metadata_dir, 'Path to metadata')
+flags.DEFINE_string('run_id', None, 'Pipeline Run Id')
+
+def main(unused_argv):
+  run_id = FLAGS.run_id
+  metadata_dir = FLAGS.metadata_dir
+  metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
+  with metadata.Metadata(metadata_config) as m:
+    if not run_id:
+      execution_dict = defaultdict(list)
+      for execution in m.store.get_executions():
+        execution_run_id = execution.properties['run_id'].string_value
+        execution_dict[execution_run_id].append(execution)
+      run_id = max(execution_dict.keys()) # fetch the latest run_id
+
+    events = [
+        x for x in m.store.get_events_by_execution_ids(
+            [e.id for e in execution_dict[run_id]])
+        if x.type == metadata_store_pb2.Event.OUTPUT
+    ]
+    unique_artifact_ids = list({x.artifact_id for x in events})
+
+    for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):
+      src_dir = artifact.uri
+      dest_dir = src_dir.replace(FLAGS.pipeline_dir, "")
+      dest_dir = dest_dir[:dest_dir.rfind('/')]
+      dest_dir = os.path.join(FLAGS.record_dir, dest_dir)
+
+      os.makedirs(dest_dir, exist_ok=True)
+      copy_tree(src_dir, dest_dir)
+
+if __name__ == '__main__':
+  app.run(main)
