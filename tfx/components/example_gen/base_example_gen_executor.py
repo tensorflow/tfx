@@ -51,7 +51,6 @@ def _GeneratePartitionKey(
       return record
     return record.SerializeToString(deterministic=True)
 
-  features = ""
   if isinstance(record, tf.train.Example):
     features = record.features.feature
   elif isinstance(record, tf.train.SequenceExample):
@@ -65,7 +64,6 @@ def _GeneratePartitionKey(
   feature_name = split_config.partition_feature_name
   if feature_name not in features:
     raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
-  # Find that feature value.
   feature = features[feature_name]
   if not feature.HasField('kind'):
     raise RuntimeError('Partition feature does not contain any value.')

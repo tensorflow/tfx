@@ -54,11 +54,11 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
     if exec_properties.get('sequence_example', False):
-        example_proto = tf.train.SequenceExample(
-            context=tf.train.Features(feature=feature))
+      example_proto = tf.train.SequenceExample(
+          context=tf.train.Features(feature=feature))
     else:
-        example_proto = tf.train.Example(
-            features=tf.train.Features(feature=feature))
+      example_proto = tf.train.Example(
+          features=tf.train.Features(feature=feature))
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
 
