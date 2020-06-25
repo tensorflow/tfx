@@ -131,12 +131,12 @@ class GenericExecutor(base_executor.BaseExecutor):
       hyperparameters_config = None
 
     output_path = artifact_utils.get_single_uri(
-        output_dict[constants.OUTPUT_MODEL_KEY])
+        output_dict[constants.MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
     
     model_run_dir = artifact_utils.get_single_uri(
-        output_dict[constants.MODEL_RUN_OUTPUT_KEY])
+        output_dict[constants.MODEL_RUN_KEY])
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
@@ -152,7 +152,7 @@ class GenericExecutor(base_executor.BaseExecutor):
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=fn_args.eval_files,
-        # A single uri for the output directory for model run files.
+        # A single uri for the output directory for model training related files.
         model_run_dir=model_run_dir,
         # A single uri for schema file.
         schema_file=fn_args.schema_path,
@@ -174,8 +174,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     The Trainer Executor invokes a run_fn callback function provided by
     the user via the module_file parameter. In this function, user defines the
-    model and trains it, then saves the model in the model artifact location 
-    and writes Tensorboard logs to a second artifact location.
+    model and trains it, then saves the model and training related files
+    (e.g, Tensorboard logs) to the provided locations.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
@@ -185,7 +185,7 @@ class GenericExecutor(base_executor.BaseExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: Exported model.
-        - model_run: Log output.
+        - model_run: Model trainng related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -219,8 +219,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-    if not tf.io.gfile.exists(fn_args.model_run_dir):
-      raise RuntimeError('run_fn failed to write logs to correct location.')
+    
     absl.logging.info('Training complete. Model written to %s. Logs written to %s', 
             fn_args.serving_model_dir, fn_args.model_run_dir)
 
@@ -257,7 +256,7 @@ class Executor(GenericExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - output: Exported model.
-        - model_run: Log output.
+        - model_run: Model trainng related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -314,3 +313,4 @@ class Executor(GenericExecutor):
           'eval_savedmodel export for TFMA is skipped because '
           'this is not the chief worker.'
       )
+      

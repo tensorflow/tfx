@@ -73,8 +73,8 @@ class ExecutorTest(tf.test.TestCase):
     self._model_run_exports = standard_artifacts.ModelRun()
     self._model_run_exports.uri = os.path.join(self._output_data_dir, 
                                          'model_run_path')
-    self._output_dict = {constants.OUTPUT_MODEL_KEY: [self._model_exports],
-                         constants.MODEL_RUN_OUTPUT_KEY: [self._model_run_exports]}
+    self._output_dict = {constants.MODEL_KEY: [self._model_exports],
+                         constants.MODEL_RUN_KEY: [self._model_run_exports]}
 
     # Create exec properties skeleton.
     self._exec_properties = {

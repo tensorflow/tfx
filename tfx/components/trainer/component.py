@@ -181,7 +181,7 @@ class Trainer(base_component.BaseComponent):
       custom_executor_spec: Optional custom executor spec.
       output: Optional `Model` channel for result of exported models.
       model_run: Optional `ModelRun` channel, as the working dir of models,
-        can be used to output non-model related output (e.g. TensorBoard logs)
+        can be used to output non-model related output (e.g., TensorBoard logs).
       transform_output: Backwards compatibility alias for the 'transform_graph'
         argument.
       instance_name: Optional unique instance name. Necessary iff multiple
@@ -232,6 +232,7 @@ class Trainer(base_component.BaseComponent):
         trainer_fn=trainer_fn,
         custom_config=json_utils.dumps(custom_config),
         model=output,
+        # TODO(b/158106209): change the model_run as optional output artifact
         model_run=model_run)
     super(Trainer, self).__init__(
         spec=spec,

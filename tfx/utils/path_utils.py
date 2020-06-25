@@ -28,7 +28,6 @@ from tfx.utils import io_utils
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
 
-
 # TODO(b/127149760): simplify this PPP-esque structure.
 #
 # Directory structure of exported model for estimator based trainer:
