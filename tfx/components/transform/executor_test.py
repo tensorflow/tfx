@@ -35,14 +35,6 @@ class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
 
-class _InputCache(types.Artifact):
-  TYPE_NAME = 'InputCache'
-
-
-class _OutputCache(types.Artifact):
-  TYPE_NAME = 'OutputCache'
-
-
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
@@ -205,8 +197,14 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testDoWithCache(self):
 
+    class InputCache(types.Artifact):
+      TYPE_NAME = 'InputCache'
+
+    class OutputCache(types.Artifact):
+      TYPE_NAME = 'OutputCache'
+
     # First run that creates cache.
-    output_cache_artifact = _OutputCache()
+    output_cache_artifact = OutputCache()
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
 
     self._output_dict['cache_output_path'] = [output_cache_artifact]
@@ -220,10 +218,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Second run from cache.
     self._output_data_dir = self._get_output_data_dir('2nd_run')
-    input_cache_artifact = _InputCache()
+    input_cache_artifact = InputCache()
     input_cache_artifact.uri = output_cache_artifact.uri
 
-    output_cache_artifact = _OutputCache()
+    output_cache_artifact = OutputCache()
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
@@ -238,17 +236,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._verify_transform_outputs()
     self.assertNotEqual(0,
                         len(tf.io.gfile.listdir(output_cache_artifact.uri)))
-
-  @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
-  def testDoWithCacheDisabledTooManyStages(self):
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
-    self._exec_properties['module_file'] = self._module_file
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
-    self._verify_transform_outputs()
-    self.assertFalse(tf.io.gfile.exists(output_cache_artifact.uri))
 
 
 if __name__ == '__main__':
