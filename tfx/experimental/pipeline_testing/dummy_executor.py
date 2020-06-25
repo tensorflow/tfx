@@ -33,6 +33,8 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._record_dir = record_dir
+    if not os.path.exists(self._record_dir):
+      raise Exception("Must record input/output in {}".format(self._record_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],

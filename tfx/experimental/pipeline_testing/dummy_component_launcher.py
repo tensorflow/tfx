@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import abc
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Text, Type, Optional
 import absl
 
 from tfx import types
@@ -36,21 +36,14 @@ class BaseDummyComponentLauncher(InProcessComponentLauncher):
   """
   def __init__(self, **kwargs):
     super(BaseDummyComponentLauncher, self).__init__(**kwargs)
-    self._record_dir = os.path.join(os.environ['HOME'],
-                                    'tfx/tfx/experimental/pipeline_testing/',
-                                    'testdata')
-    self._executors_dict = {}
-    self._dummy_component_id = []
-    if not os.path.exists(self._record_dir):
-      raise Exception("Must record input/output in {}".format(self._record_dir))
+    self._component_map = {}
+    self._component_ids = []
 
   @abc.abstractmethod
-  def set_dummy_executors(self, component_ids: List[Text],
-                          custom_executor_dict: base_executor.BaseExecutor):
-    """
-    component_ids: list of component_id to set a dummy executor
-    custom_executor_dict: dictionary holding user custom executors
-    """
+  def set_dummy_executors(self,
+                          record_dir: Text,
+                          component_ids: List[Text],
+                          component_map: Optional[base_executor.BaseExecutor]=None):
     pass
 
   def _run_executor(self, execution_id: int,
@@ -64,21 +57,19 @@ class BaseDummyComponentLauncher(InProcessComponentLauncher):
         beam_pipeline_args=self._beam_pipeline_args,
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
-    if component_id in self._dummy_component_id:
+    if component_id in self._component_ids:
       executor = BaseDummyExecutor(component_id,
                                    self._record_dir,
                                    executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
-    elif component_id in self._executors_dict.keys():
-      executor = self._executors_dict[component_id](executor_context)
+    elif component_id in self._component_map.keys():
+      executor = self._component_map[component_id](executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     else:
       super(BaseDummyComponentLauncher, self)._run_executor(execution_id,
                                                             input_dict,
                                                             output_dict,
                                                             exec_properties)
-
-
 class MyDummyComponentLauncher(BaseDummyComponentLauncher):
   """
   Concrete dummy component launcher
@@ -86,17 +77,25 @@ class MyDummyComponentLauncher(BaseDummyComponentLauncher):
   def __init__(self, **kwargs):
     absl.logging.info("Launching MyDummyComponentLauncher")
     super(MyDummyComponentLauncher, self).__init__(**kwargs)
-    self.set_dummy_executors(component_ids=['CsvExampleGen', \
+    record_dir = os.path.join(os.environ['HOME'],
+                                'tfx/tfx/experimental/pipeline_testing/',
+                                'testdata')
+    self.set_dummy_executors(record_dir, component_ids=['CsvExampleGen', \
                               'StatisticsGen', 'SchemaGen', \
                               'ExampleValidator', 'Transform', \
                               'Evaluator', 'Pusher'])
   def set_dummy_executors(self,
+                          record_dir: Text,
                           component_ids: List[Text],
-                          custom_executor_dict:
-                          Dict[Text, Type[base_executor.BaseExecutor]] = None):
-    # TODO: if component id in both component_ids and custom_executor_dict?
+                          component_map: base_executor.BaseExecutor=None):
+    """
+    component_ids: list of component_id to set a dummy executor
+    component_map: dictionary holding user custom executors
+    """
+    # TODO: if component id in both component_ids and component_map?
+    self._record_dir = record_dir
     for component_id in component_ids:
-      self._dummy_component_id.append(component_id)
-    if custom_executor_dict:
-      for component_id, custom_executor in custom_executor_dict.items():
-        self._executors_dict[component_id] = custom_executor
+      self._component_ids.append(component_id)
+    if component_map:
+      for component_id, custom_executor in component_map.items():
+        self._component_map[component_id] = custom_executor
