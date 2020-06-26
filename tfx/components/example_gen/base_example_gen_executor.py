@@ -127,7 +127,22 @@ def _InputToExampleOrBytes(
     exec_properties: Dict[Text, Any],
     split_pattern: Text,
 ) -> beam.pvalue.PCollection:
-  """Converts input into a tf.train.Example, tf.train.SequenceExample, or serialized proto."""
+  """Converts input into records.
+
+  The records are tf.train.Example, tf.train.SequenceExample, 
+  or serialized proto.
+
+  Args:
+    pipeline: beam pipeline.
+    input_to_example: PTransform for converting input source to records.
+    exec_properties: A dict of execution properties.
+      - input_base: input dir that contains tf example data.
+    split_pattern: Split.pattern in Input config, glob relative file pattern
+      that maps to input files with root directory given by input_base.
+
+  Returns:
+    PCollection of TF examples.
+  """
   return (pipeline
           | 'InputSourceToExampleOrBytes' >> input_to_example(
               exec_properties, split_pattern))
