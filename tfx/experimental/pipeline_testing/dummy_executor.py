@@ -31,7 +31,7 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
   def __init__(self,
                component_id: Text,
                record_dir: Text,
-               context: Optional = None):
+               context: Optional[base_executor.BaseExecutor.Context] = None):
     super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
     self._component_id = component_id
