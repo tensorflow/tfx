@@ -185,7 +185,7 @@ class GenericExecutor(base_executor.BaseExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - model: Exported model.
-        - model_run: Model trainng related outputs (e.g., Tensorboard logs)
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -214,7 +214,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # Train the model
     absl.logging.info('Training model.')
     run_fn(fn_args)
-    
+
     # Note: If trained with multi-node distribution workers, it is the user
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
@@ -244,7 +244,7 @@ class Executor(GenericExecutor):
     The Trainer Executor invokes a training_fn callback function provided by
     the user via the module_file parameter.  With the tf.estimator returned by
     this function, the Trainer Executor then builds a TensorFlow model using the
-    user-provided tf.estimator. 
+    user-provided tf.estimator.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
@@ -254,7 +254,7 @@ class Executor(GenericExecutor):
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
         - model: Exported model.
-        - model_run: Model trainng related outputs (e.g., Tensorboard logs)
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
