@@ -18,17 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Optional
 import absl
 import os
-from distutils.dir_util import copy_tree
+from distutils import dir_util
 
 from tfx import types
 from tfx.components.base import base_executor
 
 class BaseDummyExecutor(base_executor.BaseExecutor):
   """TFX base dummy executor."""
-  def __init__(self, component_id, record_dir, context):
+  def __init__(self,
+               component_id: Text,
+               record_dir: Text,
+               context: Optional = None):
     super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
     self._component_id = component_id
@@ -44,5 +47,5 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
         dest = artifact.uri
         component_id = artifact.producer_component
         src = os.path.join(self._record_dir, component_id, output_key)
-        copy_tree(src, dest)
+        dir_util.copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)
