@@ -29,8 +29,8 @@ from bert_models import BertForSingleSentenceClassification
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-_TRAIN_BATCH_SIZE = 64
-_EVAL_BATCH_SIZE = 64
+_TRAIN_BATCH_SIZE = 32
+_EVAL_BATCH_SIZE = 32
 _LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
 _MAX_LEN = 256

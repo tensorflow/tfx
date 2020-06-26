@@ -16,6 +16,7 @@
 
 import tensorflow.keras as keras
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 def BertForSingleSentenceClassification(
   bert_layer,
@@ -59,7 +60,7 @@ def BertForSingleSentenceClassification(
   output = keras.layers.Dense(1, activation='sigmoid')(fully_connected)
   model = keras.Model(input_layers, output)
   model.compile(
-    optimizer='adam',
+    optimizer=tf.keras.optimizers.Adam(5e-5),
     loss=tf.keras.losses.binary_crossentropy,
-    metrics=['accuracy'])
+    metrics=[tfa.metrics.MatthewsCorrelationCoefficient(2)])
   return model
