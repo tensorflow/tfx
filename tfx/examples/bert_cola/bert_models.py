@@ -18,6 +18,7 @@ def BertForSingleSentenceClassification(
     Returns:
         A Keras model.
     """
+
     input_id_layer = keras.layers.Input(
         shape=(max_len,),
         dtype=tf.int32,
