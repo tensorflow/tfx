@@ -32,7 +32,7 @@ default_pipeline_dir = os.path.join(os.environ['HOME'],
                                     "tfx/pipelines/chicago_taxi_beam/")
 default_record_dir = os.path.join(os.environ['HOME'],
                                   'tfx/tfx/experimental/pipeline_testing/',
-                                  'testdata')
+                                  'examples/chicago_taxi_pipeline/testdata')
 default_metadata_dir = os.path.join(os.environ['HOME'],
                                     'tfx/tfx/experimental/pipeline_testing/',
                                     'metadata.db')
@@ -63,10 +63,10 @@ def main(unused_argv):
 
     for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):
       src_dir = artifact.uri
-      dest_dir = src_dir.replace(FLAGS.pipeline_dir, "")
-      dest_dir = dest_dir[:dest_dir.rfind('/')]
-      dest_dir = os.path.join(FLAGS.record_dir, dest_dir)
-
+      component_id = \
+          artifact.custom_properties['producer_component'].string_value
+      name = artifact.custom_properties['name'].string_value
+      dest_dir = os.path.join(FLAGS.record_dir, component_id, name)
       os.makedirs(dest_dir, exist_ok=True)
       copy_tree(src_dir, dest_dir)
 
