@@ -38,24 +38,6 @@ class DummyComponentLauncher(InProcessComponentLauncher):
     self.component_map = DummyComponentLauncher.component_map
     self.component_ids = DummyComponentLauncher.component_ids
     self.record_dir = DummyComponentLauncher.record_dir
-    # self._component_ids = component_ids
-    # self._custom_component_map = custom_component_map
-  # def set_dummy_executors(self,
-  #                         record_dir: Text,
-  #                         component_ids: List[Text],
-  #                         component_map:
-  #                         Dict[Text, base_executor.BaseExecutor] = None):
-  #   """
-  #   component_ids: list of component_id to set a dummy executor
-  #   component_map: dictionary holding user custom executors
-  #   """
-  #   # TODO: if component id in both component_ids and component_map?
-  #   self._record_dir = record_dir
-  #   for component_id in component_ids:
-  #     self._component_ids.append(component_id)
-  #   if component_map:
-  #     for component_id, custom_executor in component_map.items():
-  #       self._component_map[component_id] = custom_executor
 
   def _run_executor(self, execution_id: int,
                     input_dict: Dict[Text, List[types.Artifact]],
