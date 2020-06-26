@@ -92,9 +92,25 @@ def _input_fn(file_pattern: List[Text],
 
   return dataset
 
+def _freeze_model_by_percentage(model: tf.keras.Model,
+                                percentage: float):
+  """Freeze part of the model based on specified percentage
+
+  Args:
+    model: The keras model need to be partially frozen
+    percentage: the percentage of layers to freeze
+  """
+  percentage = max(0.0, percentage)
+  percentage = min(1.0, percentage)
+  num_layers = len(model.layers)
+  num_layers_to_freeze = int(num_layers * percentage)
+  for idx, layer in enumerate(model.layers):
+    if idx >= num_layers_to_freeze:
+      break
+    layer.trainable = False
+
 def _build_keras_model() -> tf.keras.Model:
-  """Creates a MobileNet model pretrained on ImageNet for classifying
-  CIFAR10 images.
+  """Creates a MobileNet model pretrained on ImageNet for finetuning
 
   Returns:
     A Keras Model.
@@ -104,10 +120,7 @@ def _build_keras_model() -> tf.keras.Model:
       input_shape=(224, 224, 3), include_top=False, weights='imagenet',
       pooling='avg')
 
-  # Freeze all layers in the base model except last conv block
-  for layer in base_model.layers:
-    if '13' not in layer.name:
-      layer.trainable = False
+  _freeze_model_by_percentage(base_model, 0.9)
 
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
@@ -143,7 +156,6 @@ def preprocessing_fn(inputs):
   # We resize CIFAR10 images to match that size
   image_features = tf.image.resize(image_features, [224, 224])
 
-  image_features = tf.ensure_shape(image_features, (None, 224, 224, 3))
   image_features = tf.map_fn(tf.keras.applications.mobilenet.preprocess_input,
                              image_features, dtype=tf.float32)
 
@@ -173,15 +185,15 @@ def run_fn(fn_args: TrainerFnArgs):
     model = _build_keras_model()
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
-  validation_steps = _EVAL_DATA_SIZE / _EVAL_BATCH_SIZE
+  epochs = int(fn_args.train_steps / steps_per_epoch)
 
   model.fit(
       train_dataset,
-      epochs=int(fn_args.train_steps / steps_per_epoch),
+      epochs=epochs,
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=validation_steps
-      )
+      validation_steps=fn_args.eval_steps
+  )
 
   signatures = {
       'serving_default':
