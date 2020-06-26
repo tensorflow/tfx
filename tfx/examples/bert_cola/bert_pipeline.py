@@ -45,15 +45,15 @@ from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 _pipeline_name = 'bert_cola'
 
-# This exmaple assumes the utility function is in ~/bert_cola
-_imdb_root = os.path.join(os.environ['HOME'], 'bert_cola')
-_data_root = os.path.join(_imdb_root, 'data') 
+# This example assumes the utility function is in ~/bert_cola
+_bert_cola_root = os.path.join(os.environ['HOME'], 'bert_cola')
+_data_root = os.path.join(_bert_cola_root, 'data') 
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_imdb_root, 'bert_utils.py')
+_module_file = os.path.join(_bert_cola_root, 'bert_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
-_serving_model_dir = os.path.join(_imdb_root, 'serving_model', _pipeline_name)
+_serving_model_dir = os.path.join(_bert_cola_root, 'serving_model', _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the flowers
 # example code and metadata library is relative to $HOME, but you can store
@@ -65,16 +65,13 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
-_beam_pipeline_args = [
-    # 0 means auto-detect based on on the number of CPUs available
-    # during execution time.
-    '--direct_num_workers=1',
-]
+_beam_pipeline_args = ['--direct_num_workers=1']
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text) -> pipeline.Pipeline:
-    """Implements the imdb sentiment analysis pipline with TFX."""
+                     metadata_path: Text,
+                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+    """Implements the Bert classication on Cola dataset pipline with TFX."""
     output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
       splits=[
           example_gen_pb2.SplitConfig.Split(
@@ -116,25 +113,65 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       train_args=trainer_pb2.TrainArgs(num_steps=1200),
       eval_args=trainer_pb2.EvalArgs(num_steps=120))
     
-    
+   # Get the latest blessed model for model validation.
+  model_resolver = ResolverNode(
+      instance_name='latest_blessed_model_resolver',
+      resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+      model=Channel(type=Model),
+      model_blessing=Channel(type=ModelBlessing))
+
+  # Uses TFMA to compute an evaluation statistics over features of a model and
+  # perform quality validation of a candidate model (compared to a baseline).
+  eval_config = tfma.EvalConfig(
+      model_specs=[tfma.ModelSpec(label_key='variety')],
+      slicing_specs=[tfma.SlicingSpec()],
+      metrics_specs=[
+          tfma.MetricsSpec(metrics=[
+              tfma.MetricConfig(
+                  class_name='SparseCategoricalAccuracy',
+                  threshold=tfma.MetricThreshold(
+                      value_threshold=tfma.GenericValueThreshold(
+                          lower_bound={'value': 0.6}),
+                      change_threshold=tfma.GenericChangeThreshold(
+                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                          absolute={'value': -1e-10})))
+          ])
+      ])
+  evaluator = Evaluator(
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      baseline_model=model_resolver.outputs['model'],
+      # Change threshold will be ignored if there is no baseline (first run).
+      eval_config=eval_config)
+
+  # Checks whether the model passed the validation steps and pushes the model
+  # to a file destination if check passed.
+  pusher = Pusher(
+      model=trainer.outputs['model'],
+      model_blessing=evaluator.outputs['blessing'],
+      push_destination=pusher_pb2.PushDestination(
+          filesystem=pusher_pb2.PushDestination.Filesystem(
+              base_directory=serving_model_dir))) 
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher,
+  ]
+
     return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          #model_resolver,
-          #valuator,
-          #pusher,
-      ],
+      components=components,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
       enable_cache=True,
-      beam_pipeline_args=_beam_pipeline_args,
+      beam_pipeline_args=beam_pipeline_args,
   ) 
 
 if __name__ == '__main__':
@@ -146,4 +183,5 @@ if __name__ == '__main__':
                data_root = _data_root,
                module_file = _module_file,
                serving_model_dir = _serving_model_dir,
-               metadata_path = _metadata_path))
+               metadata_path = _metadata_path,
+               beam_pipeline_args=_beam_pipeline_args))

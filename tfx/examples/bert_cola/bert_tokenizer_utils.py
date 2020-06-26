@@ -10,19 +10,17 @@ class Special_Bert_Tokenizer():
     def _find_special_token(self):
         """Find the special token ID's for [CLS] [PAD] [SEP]"""
         f = open(self.vocab_dir, 'r')
-        i = 0
         self.SEP_ID = None
         self.CLS_ID = None
         self.PAD_ID = None
         lines = f.read().split('\n')
-        for line in lines:
-            if line == "[PAD]":
+        for i, line in lines:
+            if line == '[PAD]':
                 self.PAD_ID = tf.constant(i, dtype=tf.int64) 
-            elif line == "[CLS]":
+            elif line == '[CLS]':
                 self.CLS_ID = tf.constant(i, dtype=tf.int64) 
-            elif line == "[SEP]":
+            elif line == '[SEP]':
                 self.SEP_ID = tf.constant(i, dtype=tf.int64) 
-            i += 1
             if self.PAD_ID != None \
                 and self.CLS_ID != None \
                 and self.SEP_ID != None:
@@ -32,21 +30,22 @@ class Special_Bert_Tokenizer():
         self,
         sequence,
         max_len=128,
-        addCLS=True,
-        addSEP=True):
-        """Tokenize a single sentence to ID according to the vocab.txt provided.
-        Add special tokens according to config."""
+        add_CLS=True,
+        add_SEP=True):
+        """Tokenize a single sentence according to the vocab.txt provided.
+        Add special tokens according to config.
+        """
 
         tokenizer = text.BertTokenizer(self.vocab_dir, token_out_type=tf.int64)
         word_id = tokenizer.tokenize(sequence)
         word_id = word_id.merge_dims(1, 2)[:, :max_len]
         word_id = word_id.to_tensor(default_value=self.PAD_ID)
-        if addCLS:
+        if add_CLS:
             CLSToken = tf.fill([tf.shape(sequence)[0], 1], self.CLS_ID)
             word_id = word_id[:, :max_len-1]
             word_id = tf.concat([CLSToken, word_id], axis=1)
         
-        if addSEP:
+        if add_SEP:
             SEPToken = tf.fill([tf.shape(sequence)[0], 1], self.SEP_ID)
             word_id = word_id[:, :max_len-1]
             word_id = tf.concat([word_id, SEPToken], axis=1)
@@ -66,10 +65,3 @@ class Special_Bert_Tokenizer():
             tf.constant(0, dtype=tf.int64))
 
         return word_id, input_mask, segment_id
-
-
-
-
-    
-
-
