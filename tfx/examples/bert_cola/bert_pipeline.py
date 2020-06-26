@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import os
-from typing import Text
+from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -33,15 +33,18 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.trainer.executor import GenericExecutor
-from tfx.components.base import executor_spec 
-from tfx.utils.dsl_utils import tfrecord_input
-
-from tfx.proto import example_gen_pb2
-from tfx.proto import trainer_pb2 
-
+from tfx.components.base import executor_spec
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
-from tfx.orchestration import pipeline 
+from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.proto import example_gen_pb2
+from tfx.proto import pusher_pb2
+from tfx.proto import trainer_pb2
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
+from tfx.utils.dsl_utils import tfrecord_input
 
 _pipeline_name = 'bert_cola'
 
@@ -53,7 +56,10 @@ _data_root = os.path.join(_bert_cola_root, 'data')
 _module_file = os.path.join(_bert_cola_root, 'bert_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
-_serving_model_dir = os.path.join(_bert_cola_root, 'serving_model', _pipeline_name)
+_serving_model_dir = os.path.join(
+  _bert_cola_root,
+  'serving_model',
+  _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the flowers
 # example code and metadata library is relative to $HOME, but you can store
@@ -71,15 +77,16 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
-    """Implements the Bert classication on Cola dataset pipline with TFX."""
+
+  """Implements the Bert classication on Cola dataset pipline with TFX."""
   output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
-    splits=[
-        example_gen_pb2.SplitConfig.Split(
-            name='train',
-            hash_buckets=9),
-        example_gen_pb2.SplitConfig.Split(
-            name='eval',
-            hash_buckets=1)]))
+      splits=[
+          example_gen_pb2.SplitConfig.Split(
+              name='train',
+              hash_buckets=9),
+          example_gen_pb2.SplitConfig.Split(
+              name='eval',
+              hash_buckets=1)]))
 
   examples = tfrecord_input(data_root)
   # Brings data in to the pipline

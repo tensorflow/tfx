@@ -30,7 +30,7 @@ class SpecialBertTokenizer():
     self._CLS_ID = None
     self._PAD_ID = None
     lines = f.read().split('\n')
-    for i, line in lines:
+    for i, line in enumerate(lines):
       if line == '[PAD]':
         self._PAD_ID = tf.constant(i, dtype=tf.int64)
       elif line == '[CLS]':

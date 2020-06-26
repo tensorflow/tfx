@@ -62,5 +62,5 @@ def BertForSingleSentenceClassification(
   model.compile(
     optimizer=tf.keras.optimizers.Adam(5e-5),
     loss=tf.keras.losses.binary_crossentropy,
-    metrics=[tfa.metrics.MatthewsCorrelationCoefficient(2)])
+    metrics=[tfa.metrics.MatthewsCorrelationCoefficient(1)])
   return model

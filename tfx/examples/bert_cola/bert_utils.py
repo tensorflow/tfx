@@ -24,7 +24,7 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
-from bert_tokenizer_utils import Special_Bert_Tokenizer
+from bert_tokenizer_utils import SpecialBertTokenizer
 from bert_models import BertForSingleSentenceClassification
 
 from tfx.components.trainer.executor import TrainerFnArgs
@@ -46,7 +46,7 @@ def _tokenize(feature):
   """Tokenize the two sentences and insert appropriate tokens"""
   asset_dir = os.path.join(os.environ['HOME'], 'bert_cola/assets')
   vocab_dir = os.path.join(asset_dir, 'vocab.txt')
-  tokenizer = Special_Bert_Tokenizer(vocab_dir)
+  tokenizer = SpecialBertTokenizer(vocab_dir)
   return tokenizer.tokenize_single_sentence(
       tf.reshape(feature, [-1]),
       max_len=_MAX_LEN)
