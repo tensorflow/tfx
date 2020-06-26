@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+""" Python source file include bert pipeline functions and necessary utils."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -19,9 +21,7 @@ from __future__ import print_function
 import os
 from typing import List, Text
 
-import absl
 import tensorflow as tf
-from tensorflow import keras
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from bert_tokenizer_utils import Special_Bert_Tokenizer
@@ -39,15 +39,15 @@ _EPOCHS = 1
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
   return tf.data.TFRecordDataset(
-          filenames,
-          compression_type='GZIP')
+    filenames,
+    compression_type='GZIP')
 
 def _tokenize(feature):
-    """Tokenize the two sentences and insert appropriate tokens"""
-    asset_dir = os.path.join(os.environ['HOME'], 'bert_cola/assets')
-    vocab_dir = os.path.join(asset_dir, 'vocab.txt') 
-    tokenizer = Special_Bert_Tokenizer(vocab_dir)
-    return tokenizer.tokenize_single_sentence(
+  """Tokenize the two sentences and insert appropriate tokens"""
+  asset_dir = os.path.join(os.environ['HOME'], 'bert_cola/assets')
+  vocab_dir = os.path.join(asset_dir, 'vocab.txt')
+  tokenizer = Special_Bert_Tokenizer(vocab_dir)
+  return tokenizer.tokenize_single_sentence(
       tf.reshape(feature, [-1]),
       max_len=_MAX_LEN)
 
@@ -64,11 +64,10 @@ def preprocessing_fn(inputs):
   label = inputs['label']
   input_word_ids, input_mask, segment_ids = _tokenize(feature)
   return {
-          'label': label,
-          'input_word_ids': input_word_ids,
-          'input_mask': input_mask,
-          'segment_ids': segment_ids
-          }
+      'label': label,
+      'input_word_ids': input_word_ids,
+      'input_mask': input_mask,
+      'segment_ids': segment_ids}
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
@@ -96,7 +95,7 @@ def _input_fn(file_pattern: List[Text],
       label_key=_LABEL_KEY)
 
   return dataset
-  
+
 def _get_serve_tf_examples_fn(model, tf_transform_output):
   """Returns a function that parses a serialized tf.Example."""
 
@@ -133,9 +132,9 @@ def run_fn(fn_args: TrainerFnArgs):
   # with mirrored_strategy.scope():
   bert_layer = hub.KerasLayer(_BERT_LINK, trainable=False)
   model = BertForSingleSentenceClassification(
-          bert_layer,
-          _MAX_LEN,
-          hidden_layers=[(128, 'relu'), (64, 'relu')])
+      bert_layer,
+      _MAX_LEN,
+      [(128, 'relu'), (64, 'relu')])
 
   model.fit(
       train_dataset,
@@ -153,3 +152,4 @@ def run_fn(fn_args: TrainerFnArgs):
                                             dtype=tf.string,
                                             name='examples')),
   }
+  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
