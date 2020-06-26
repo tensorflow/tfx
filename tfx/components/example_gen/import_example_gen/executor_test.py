@@ -141,6 +141,13 @@ class ExecutorTest(tf.test.TestCase):
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
   def testDoWithSequenceExamples(self):
+    self._input_config = json_format.MessageToJson(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(name='tfrecord_sequence', 
+                                        pattern='tfrecord_sequence/*'),
+        ]),
+        preserving_proto_field_name=True)
+        
     exec_properties = {
         utils.INPUT_BASE_KEY:
             self._input_data_dir,

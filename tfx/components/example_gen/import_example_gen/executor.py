@@ -76,8 +76,8 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
                              exec_properties: Dict[Text, Any],
                              split_pattern: Text) -> beam.pvalue.PCollection:
       """PTransform to import records.
-      
-      The records are tf.train.Example, tf.train.SequenceExample, 
+
+      The records are tf.train.Example, tf.train.SequenceExample,
       or serialized proto.
 
       Args:

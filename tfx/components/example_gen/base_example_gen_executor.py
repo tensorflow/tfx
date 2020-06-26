@@ -129,7 +129,7 @@ def _InputToExampleOrBytes(
 ) -> beam.pvalue.PCollection:
   """Converts input into records.
 
-  The records are tf.train.Example, tf.train.SequenceExample, 
+  The records are tf.train.Example, tf.train.SequenceExample,
   or serialized proto.
 
   Args:
