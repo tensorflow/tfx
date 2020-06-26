@@ -39,14 +39,10 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    for _, artifact_list in output_dict.items():
+    for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
-        pipeline_path = os.path.join(os.environ['HOME'],
-                                     "tfx/pipelines/",
-                                     "chicago_taxi_beam/")
-        src = dest.replace(pipeline_path, "")
-        src = src[:src.rfind('/')] # remove trailing number
-        src = os.path.join(self._record_dir, src)
+        component_id = artifact.producer_component
+        src = os.path.join(self._record_dir, component_id, output_key)
         copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)

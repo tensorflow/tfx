@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import abc
-from typing import Any, Dict, List, Text, Type, Optional
+from typing import Any, Dict, List, Text
 import absl
 
 from tfx import types
@@ -43,7 +43,8 @@ class BaseDummyComponentLauncher(InProcessComponentLauncher):
   def set_dummy_executors(self,
                           record_dir: Text,
                           component_ids: List[Text],
-                          component_map: Optional[base_executor.BaseExecutor]=None):
+                          component_map:
+                          Dict[Text, base_executor.BaseExecutor] = None):
     pass
 
   def _run_executor(self, execution_id: int,
@@ -78,8 +79,8 @@ class MyDummyComponentLauncher(BaseDummyComponentLauncher):
     absl.logging.info("Launching MyDummyComponentLauncher")
     super(MyDummyComponentLauncher, self).__init__(**kwargs)
     record_dir = os.path.join(os.environ['HOME'],
-                                'tfx/tfx/experimental/pipeline_testing/',
-                                'testdata')
+                              'tfx/tfx/experimental/pipeline_testing/',
+                              'examples/chicago_taxi_pipeline/testdata')
     self.set_dummy_executors(record_dir, component_ids=['CsvExampleGen', \
                               'StatisticsGen', 'SchemaGen', \
                               'ExampleValidator', 'Transform', \
@@ -87,7 +88,8 @@ class MyDummyComponentLauncher(BaseDummyComponentLauncher):
   def set_dummy_executors(self,
                           record_dir: Text,
                           component_ids: List[Text],
-                          component_map: base_executor.BaseExecutor=None):
+                          component_map:
+                          Dict[Text, base_executor.BaseExecutor] = None):
     """
     component_ids: list of component_id to set a dummy executor
     component_map: dictionary holding user custom executors
