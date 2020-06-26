@@ -60,7 +60,7 @@ def _tokenize_review(review):
   """Tokenize the reviews by spliting the reviews.
   Constructing a vocabulary. Map the words to their frequency index in the
   vocabulary.
- 
+
   Args:
     review: tensors containing the reviews. (batch_size/None, 1)
 
