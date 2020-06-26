@@ -1,12 +1,13 @@
 import tensorflow.keras as keras
 import tensorflow as tf
 
-def BertForSingleSentenceSentimentAnalysis(
+def BertForSingleSentenceClassification(
     bert_layer,
     max_len,
     hidden_layers=[]):
-    """Keras model for single sentence sentiment analysis. Connect
-    configurable fully connected layers on top of the Bert pooled_output.
+    """Keras model for single sentence classification.
+    Connect configurable fully connected layers on top of the Bert 
+    pooled_output.
 
     Args:
         bert_layer: A tensroflow_hub.KerasLayer intence of Bert layer.

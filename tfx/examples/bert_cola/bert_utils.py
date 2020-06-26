@@ -25,7 +25,7 @@ from tensorflow import keras
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from bert_tokenizer_utils import Special_Bert_Tokenizer
-from bert_models import BertForSingleSentenceSentimentAnalysis
+from bert_models import BertForSingleSentenceClassification
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
@@ -132,7 +132,7 @@ def run_fn(fn_args: TrainerFnArgs):
   #mirrored_strategy = tf.distribute.MirroredStrategy()
   # with mirrored_strategy.scope():
   bert_layer = hub.KerasLayer(_BERT_LINK, trainable=False)
-  model = BertForSingleSentenceSentimentAnalysis(
+  model = BertForSingleSentenceClassification(
           bert_layer,
           _MAX_LEN,
           hidden_layers=[(128, 'relu'), (64, 'relu')])
