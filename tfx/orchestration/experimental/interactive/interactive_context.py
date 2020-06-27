@@ -68,7 +68,7 @@ def requires_ipython(fn):
       absl.logging.warning(
           'Method "%s" is a no-op when invoked outside of IPython.',
           fn.__name__)
-    return None
+      return None
   return run_if_ipython
 
 
@@ -188,8 +188,8 @@ class InteractiveContext(object):
     absl.logging.info('Exporting contents of %s to %s with %s runner.',
                       notebook_filepath, export_filepath, runner_type)
 
-    with open(notebook_filepath, encoding="utf-8") as notebook_f,\
-        open(export_filepath, 'w', encoding="utf-8") as export_f:
+    with open(notebook_filepath, encoding='utf-8') as notebook_f,\
+        open(export_filepath, 'w', encoding='utf-8') as export_f:
       notebook = nbformat.read(notebook_f, nbformat.NO_CONVERT)
       cells = notebook['cells']
       code_cells = (cell for cell in cells if cell['cell_type'] == 'code')
