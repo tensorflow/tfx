@@ -70,6 +70,7 @@ accelerate community innovation and collaboration.
     *   Custom component authoring was made easier by supporting python function
         and custom container.
     *   Created a new TFJS rewriter.
+    *   Created a new infra validation component.
     *   Introduced artifact types for primitive values and generic type.
 *   Q1 2020
     *   Released support for native Keras in TFX.
