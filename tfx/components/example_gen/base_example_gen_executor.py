@@ -234,7 +234,7 @@ class BaseExampleGenExecutor(
       for split in input_config.splits:
         examples = (
             pipeline
-            | 'InputRecord[{}]'.format(split.name) >>
+            | 'InputToRecord[{}]'.format(split.name) >>
             # pylint: disable=no-value-for-parameter
             input_to_record(exec_properties, split.pattern))
         example_splits.append(examples)
