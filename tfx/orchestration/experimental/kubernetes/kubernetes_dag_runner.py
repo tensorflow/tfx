@@ -36,6 +36,7 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import telemetry_utils
 
 
@@ -154,8 +155,9 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     if config is None:
       config = pipeline_config.PipelineConfig(
           supported_launcher_classes=[
-              in_process_component_launcher.InProcessComponentLauncher,
-              docker_component_launcher.DockerComponentLauncher,
+              #in_process_component_launcher.InProcessComponentLauncher,
+              #docker_component_launcher.DockerComponentLauncher,
+              kubernetes_component_launcher.kubernetesComponentLauncher,
           ],
       )
     super(KubernetesDagRunner, self).__init__(config)
