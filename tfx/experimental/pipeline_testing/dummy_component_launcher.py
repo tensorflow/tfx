@@ -50,15 +50,15 @@ class DummyComponentLauncher(InProcessComponentLauncher):
         beam_pipeline_args=self._beam_pipeline_args,
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
-    if component_id in self.component_ids:
-      executor = BaseDummyExecutor(component_id,
-                                   self.record_dir,
-                                   executor_context)
-      executor.Do(input_dict, output_dict, exec_properties)
-    elif component_id in self.component_map.keys():
+    if component_id in self.component_map.keys():
       executor = self.component_map[component_id](component_id,
                                                   self.record_dir,
                                                   executor_context)
+      executor.Do(input_dict, output_dict, exec_properties)
+    elif component_id in self.component_ids:
+      executor = BaseDummyExecutor(component_id,
+                                   self.record_dir,
+                                   executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     else:
       super(DummyComponentLauncher, self)._run_executor(execution_id,

@@ -50,12 +50,12 @@ class DummyLauncherTest(tf.test.TestCase):
     output_path = os.path.join(test_dir, 'output') # output/
     record_path = os.environ['HOME'] # place holder
 
-    input_artifact = test_utils._InputArtifact()
-    output_artifact = test_utils._OutputArtifact()
+    input_artifact = test_utils._InputArtifact() # pylint: disable=protected-access
+    output_artifact = test_utils._OutputArtifact() # pylint: disable=protected-access
     output_artifact.uri = output_path
 
 
-    component = test_utils._FakeComponent(
+    component = test_utils._FakeComponent( # pylint: disable=protected-access
         name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]),
         output_channel=channel_utils.as_channel([output_artifact]))
@@ -88,8 +88,6 @@ class DummyLauncherTest(tf.test.TestCase):
     generated_file = os.path.join(output_path, "test.txt")
     self.assertTrue(tf.io.gfile.exists(generated_file))
     contents = file_io.read_file_to_string(generated_file)
-    print(generated_file)
-    print(contents)
     self.assertEqual('custom component', contents)
 
 
@@ -113,11 +111,11 @@ class DummyLauncherTest(tf.test.TestCase):
     tf.io.gfile.makedirs(os.path.dirname(record_file))
     file_io.write_string_to_file(record_file, "hello world")
 
-    input_artifact = test_utils._InputArtifact()
-    output_artifact = test_utils._OutputArtifact()
+    input_artifact = test_utils._InputArtifact() # pylint: disable=protected-access
+    output_artifact = test_utils._OutputArtifact() # pylint: disable=protected-access
     output_artifact.uri = output_path
 
-    component = test_utils._FakeComponent(
+    component = test_utils._FakeComponent( # pylint: disable=protected-access
         name='FakeComponent',
         input_channel=channel_utils.as_channel([input_artifact]),
         output_channel=channel_utils.as_channel([output_artifact]))
