@@ -34,7 +34,6 @@ _EVAL_BATCH_SIZE = 32
 _LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
 _MAX_LEN = 256
-_EPOCHS = 1
 
 def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
@@ -138,7 +137,6 @@ def run_fn(fn_args: TrainerFnArgs):
 
   model.fit(
       train_dataset,
-      epochs=_EPOCHS,
       steps_per_epoch=fn_args.train_steps,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps)

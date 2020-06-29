@@ -131,20 +131,21 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # Uses TFMA to compute an evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compared to a baseline).
   eval_config = tfma.EvalConfig(
-    model_specs=[tfma.ModelSpec(label_key='variety')],
+    model_specs=[tfma.ModelSpec(label_key='label')],
     slicing_specs=[tfma.SlicingSpec()],
     metrics_specs=[
         tfma.MetricsSpec(metrics=[
             tfma.MetricConfig(
-                class_name='SparseCategoricalAccuracy',
+                class_name='BinaryAccuracy',
                 threshold=tfma.MetricThreshold(
                     value_threshold=tfma.GenericValueThreshold(
-                        lower_bound={'value': 0.6}),
+                        lower_bound={'value': 0.58}),
                     change_threshold=tfma.GenericChangeThreshold(
                         direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                         absolute={'value': -1e-10})))
         ])
     ])
+
   evaluator = Evaluator(
     examples=example_gen.outputs['examples'],
     model=trainer.outputs['model'],
@@ -160,6 +161,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     push_destination=pusher_pb2.PushDestination(
         filesystem=pusher_pb2.PushDestination.Filesystem(
             base_directory=serving_model_dir))) 
+        
   components = [
     example_gen,
     statistics_gen,
@@ -167,9 +169,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     example_validator,
     transform,
     trainer,
-    model_resolver,
-    evaluator,
-    pusher,
+    # model_resolver,
+    # evaluator,
+    # pusher,
   ]
 
   return pipeline.Pipeline(
@@ -180,7 +182,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
         metadata_path),
     enable_cache=True,
     beam_pipeline_args=beam_pipeline_args,
-) 
+    ) 
 
 if __name__ == '__main__':
    absl.logging.set_verbosity(absl.logging.INFO)
