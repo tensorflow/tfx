@@ -157,7 +157,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
           supported_launcher_classes=[
               #in_process_component_launcher.InProcessComponentLauncher,
               #docker_component_launcher.DockerComponentLauncher,
-              kubernetes_component_launcher.kubernetesComponentLauncher,
+              kubernetes_component_launcher.KubernetesComponentLauncher,
           ],
       )
     super(KubernetesDagRunner, self).__init__(config)
