@@ -51,9 +51,10 @@ def BertForSingleSentenceClassification(
 
   fully_connected = pooled_output
   if fully_connected_layers is not None:
-      for (i, activation) in fully_connected_layers:
-          fully_connected = keras.layers.Dense(i,
-              activation=activation)(fully_connected)
+    for (i, activation) in fully_connected_layers:
+      fully_connected = keras.layers.Dense(
+          i, activation=activation
+      )(fully_connected)
 
   output = keras.layers.Dense(1, activation='sigmoid')(fully_connected)
   model = keras.Model(input_layers, output)

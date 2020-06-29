@@ -131,10 +131,15 @@ def run_fn(fn_args: TrainerFnArgs):
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
 
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
-                            batch_size=_TRAIN_BATCH_SIZE)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
-                            batch_size=_EVAL_BATCH_SIZE)
+  train_dataset = _input_fn(
+      fn_args.train_files,
+      tf_transform_output,
+      batch_size=_TRAIN_BATCH_SIZE)
+
+  eval_dataset = _input_fn(
+      fn_args.eval_files,
+      tf_transform_output,
+      batch_size=_EVAL_BATCH_SIZE)
 
   #mirrored_strategy = tf.distribute.MirroredStrategy()
   # with mirrored_strategy.scope():
