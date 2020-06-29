@@ -69,7 +69,18 @@ class ExecutorTest(tf.test.TestCase):
 
       util.assert_that(examples, check_result)
 
-  def _testDo(self, exec_properties):
+  def _testDo(self, input_config, payload_format):
+    exec_properties = {
+        utils.INPUT_BASE_KEY:
+            self._input_data_dir,
+        utils.INPUT_CONFIG_KEY:
+            input_config,
+        utils.OUTPUT_CONFIG_KEY:
+            self._output_config,
+        utils.OUTPUT_DATA_FORMAT_KEY:
+            payload_format,
+    }
+
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -103,18 +114,8 @@ class ExecutorTest(tf.test.TestCase):
         tf.io.gfile.GFile(eval_output_file).size())
 
   def testDoWithExamples(self):
-    exec_properties = {
-        utils.INPUT_BASE_KEY:
-            self._input_data_dir,
-        utils.INPUT_CONFIG_KEY:
-            self._input_config,
-        utils.OUTPUT_CONFIG_KEY:
-            self._output_config,
-        utils.OUTPUT_DATA_FORMAT_KEY:
-            example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE,
-    }
-
-    self._testDo(exec_properties)
+    self._testDo(self._input_config,
+                 example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE),
@@ -122,18 +123,8 @@ class ExecutorTest(tf.test.TestCase):
             utils.PAYLOAD_FORMAT_PROPERTY_NAME))
 
   def testDoWithProto(self):
-    exec_properties = {
-        utils.INPUT_BASE_KEY:
-            self._input_data_dir,
-        utils.INPUT_CONFIG_KEY:
-            self._input_config,
-        utils.OUTPUT_CONFIG_KEY:
-            self._output_config,
-        utils.OUTPUT_DATA_FORMAT_KEY:
-            example_gen_pb2.PayloadFormat.FORMAT_PROTO,
-    }
-
-    self._testDo(exec_properties)
+    self._testDo(self._input_config,
+                 example_gen_pb2.PayloadFormat.FORMAT_PROTO)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_PROTO),
@@ -143,23 +134,13 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithSequenceExamples(self):
     self._input_config = json_format.MessageToJson(
         example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='tfrecord_sequence', 
+            example_gen_pb2.Input.Split(name='tfrecord_sequence',
                                         pattern='tfrecord_sequence/*'),
         ]),
         preserving_proto_field_name=True)
-        
-    exec_properties = {
-        utils.INPUT_BASE_KEY:
-            self._input_data_dir,
-        utils.INPUT_CONFIG_KEY:
-            self._input_config,
-        utils.OUTPUT_CONFIG_KEY:
-            self._output_config,
-        utils.OUTPUT_DATA_FORMAT_KEY:
-            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE,
-    }
 
-    self._testDo(exec_properties)
+    self._testDo(self._input_config,
+                 example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE)
     self.assertEqual(
         example_gen_pb2.PayloadFormat.Name(
             example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE),
