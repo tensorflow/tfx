@@ -19,6 +19,7 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
+*   Fixed the name of the usage telemetry when tfx templates are used.
 
 ## Breaking changes
 
