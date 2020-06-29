@@ -56,7 +56,9 @@ class DummyComponentLauncher(InProcessComponentLauncher):
                                    executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     elif component_id in self.component_map.keys():
-      executor = self.component_map[component_id](executor_context)
+      executor = self.component_map[component_id](component_id,
+                                                  self.record_dir,
+                                                  executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     else:
       super(DummyComponentLauncher, self)._run_executor(execution_id,
@@ -64,7 +66,9 @@ class DummyComponentLauncher(InProcessComponentLauncher):
                                                         output_dict,
                                                         exec_properties)
 
-def create_dummy_launcher_class(record_dir, component_ids, component_map):
+def create_dummy_launcher_class(record_dir: Text,
+                                component_ids: List[Text],
+                                component_map: Dict[Text, BaseDummyExecutor]):
   cls = DummyComponentLauncher
   cls.component_map = component_map
   cls.component_ids = component_ids

@@ -25,6 +25,8 @@ from distutils import dir_util
 
 from tfx import types
 from tfx.components.base import base_executor
+import tensorflow as tf
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 class BaseDummyExecutor(base_executor.BaseExecutor):
   """TFX base dummy executor."""
@@ -42,10 +44,22 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
+    print('output_dict', output_dict)
     for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
         component_id = artifact.producer_component
         src = os.path.join(self._record_dir, component_id, output_key)
+        absl.logging.info('from %s, copied to %s', src, dest)
         dir_util.copy_tree(src, dest)
         absl.logging.info('from %s, copied to %s', src, dest)
+
+class CustomDummyExecutor(BaseDummyExecutor):
+  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+         output_dict: Dict[Text, List[types.Artifact]],
+         exec_properties: Dict[Text, Any]) -> None:
+    for _, artifact_list in output_dict.items():
+      for artifact in artifact_list:
+        custom_output_path = os.path.join(artifact.uri, "test.txt")
+        tf.io.gfile.makedirs(os.path.dirname(custom_output_path))
+        file_io.write_string_to_file(custom_output_path, "custom component")
