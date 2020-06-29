@@ -50,15 +50,22 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     feature['f'] = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         float_list=tf.train.FloatList(value=[float(i)]))
-    feature['s'] = tf.train.Feature(
+    bytes_list_feature = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
+
     if exec_properties.get('sequence_example', False):
+      feature_list = {}
+      features = [bytes_list_feature]
+      feature_list['s'] = tf.train.FeatureList(feature=features)
       example_proto = tf.train.SequenceExample(
-          context=tf.train.Features(feature=feature))
+          context=tf.train.Features(feature=feature),
+          feature_lists=tf.train.FeatureLists(feature_list=feature_list))
     else:
+      feature['s'] = bytes_list_feature
       example_proto = tf.train.Example(
           features=tf.train.Features(feature=feature))
+
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
 
@@ -104,6 +111,20 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 preserving_proto_field_name=True)
     }
 
+  def _testDo(self, exec_properties):
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+
+    # Output split ratio: train:eval=2:1.
+    self.assertGreater(
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
+
   def testDoInputSplit(self):
     # Create exec proterties.
     exec_properties = {
@@ -120,18 +141,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Output(), preserving_proto_field_name=True)
     }
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Input train split is bigger than eval split.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo(exec_properties)
 
   def testDoOutputSplit(self):
     # Add output config to exec proterties.
@@ -142,18 +152,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
             ])))
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo(self._exec_properties)
 
   def testDoOutputSplitWithSequenceExample(self):
     # Add output config to exec proterties.
@@ -165,18 +164,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
             ])))
     self._exec_properties['sequence_example'] = True
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo(self._exec_properties)
 
   def testDoOutputSplitWithProto(self):
     # Add output config to exec proterties.
@@ -188,18 +176,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
             ])))
     self._exec_properties['format_proto'] = True
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo(self._exec_properties)
 
   def testFeatureBasedPartition(self):
     # Add output config to exec proterties.
@@ -215,18 +192,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 partition_feature_name='i')))
     self._exec_properties['has_empty'] = False
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo(self._exec_properties)
 
   def testInvalidFeatureName(self):
     # Add output config to exec proterties.

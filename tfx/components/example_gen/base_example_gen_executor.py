@@ -116,44 +116,12 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
               file_name_suffix='.gz'))
 
 
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(Union[tf.train.Example,
-                                        tf.train.SequenceExample,
-                                        bytes])
-def _InputToExampleOrBytes(
-    pipeline: beam.Pipeline,
-    input_to_example: beam.PTransform,
-    exec_properties: Dict[Text, Any],
-    split_pattern: Text,
-) -> beam.pvalue.PCollection:
-  """Converts input into records.
-
-  The records are tf.train.Example, tf.train.SequenceExample,
-  or serialized proto.
-
-  Args:
-    pipeline: beam pipeline.
-    input_to_example: PTransform for converting input source to records.
-    exec_properties: A dict of execution properties.
-      - input_base: input dir that contains tf example data.
-    split_pattern: Split.pattern in Input config, glob relative file pattern
-      that maps to input files with root directory given by input_base.
-
-  Returns:
-    PCollection of TF examples.
-  """
-  return (pipeline
-          | 'InputSourceToExampleOrBytes' >> input_to_example(
-              exec_properties, split_pattern))
-
-
 class BaseExampleGenExecutor(
     with_metaclass(abc.ABCMeta, base_executor.BaseExecutor)):
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data
-  sources to TensorFlow Examples (tf.train.Example), tf.train.SequenceExample,
+  sources to TensorFlow Examples (tf.train.Example, tf.train.SequenceExample),
   or any other protocol buffer as subclass defines.
 
   The common configuration (defined in
@@ -212,7 +180,7 @@ class BaseExampleGenExecutor(
     custom spliting logic.
 
     Args:
-      pipeline: beam pipeline.
+      pipeline: Beam pipeline.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
@@ -242,7 +210,7 @@ class BaseExampleGenExecutor(
     exec_properties['_beam_pipeline_args'] = self._beam_pipeline_args or []
 
     example_splits = []
-    input_to_example = self.GetInputSourceToExamplePTransform()
+    input_to_record = self.GetInputSourceToExamplePTransform()
     if output_config.split_config.splits:
       # Use output splits, input must have only one split.
       assert len(
@@ -256,10 +224,9 @@ class BaseExampleGenExecutor(
         buckets.append(total_buckets)
       example_splits = (
           pipeline
-          | 'InputToExampleOrBytes' >>
+          | 'InputToRecord' >>
           # pylint: disable=no-value-for-parameter
-          _InputToExampleOrBytes(input_to_example, exec_properties,
-                                 input_config.splits[0].pattern)
+          input_to_record(exec_properties, input_config.splits[0].pattern)
           | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets,
                                           output_config.split_config))
     else:
@@ -267,10 +234,9 @@ class BaseExampleGenExecutor(
       for split in input_config.splits:
         examples = (
             pipeline
-            | 'InputToExampleOrBytes[{}]'.format(split.name) >>
+            | 'InputRecord[{}]'.format(split.name) >>
             # pylint: disable=no-value-for-parameter
-            _InputToExampleOrBytes(input_to_example, exec_properties,
-                                   split.pattern))
+            input_to_record(exec_properties, split.pattern))
         example_splits.append(examples)
 
     result = {}

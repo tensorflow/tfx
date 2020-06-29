@@ -69,24 +69,6 @@ class ExecutorTest(tf.test.TestCase):
 
       util.assert_that(examples, check_result)
 
-  def testImportSequenceExample(self):
-    with beam.Pipeline() as pipeline:
-      examples = (
-          pipeline
-          | 'ToSerializedRecord' >> executor._ImportSerializedRecord(
-              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
-              split_pattern='tfrecord_sequence/*')
-          | 'ToTFSequenceExample' >> beam.Map(
-              tf.train.SequenceExample.FromString))
-
-      def check_result(got):
-        # We use Python assertion here to avoid Beam serialization error in
-        # pickling tf.test.TestCase.
-        assert (15000 == len(got)), 'Unexpected example count'
-        assert (2 == len(got[0].context.feature)), 'Example not match'
-
-      util.assert_that(examples, check_result)
-
   def _testDo(self, exec_properties):
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),

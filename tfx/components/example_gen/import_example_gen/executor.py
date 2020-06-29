@@ -41,14 +41,14 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   Note that each input split will be transformed by this function separately.
 
   Args:
-    pipeline: beam pipeline.
+    pipeline: Beam pipeline.
     exec_properties: A dict of execution properties.
       - input_base: input dir that contains tf example data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
   Returns:
-    PCollection of TF examples.
+    PCollection of records (tf.Example, tf.SequenceExample, or bytes).
   """
   input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
@@ -81,14 +81,14 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       or serialized proto.
 
       Args:
-        pipeline: beam pipeline.
+        pipeline: Beam pipeline.
         exec_properties: A dict of execution properties.
           - input_base: input dir that contains tf example data.
         split_pattern: Split.pattern in Input config, glob relative file pattern
           that maps to input files with root directory given by input_base.
 
       Returns:
-        PCollection of TF examples.
+        PCollection of records (tf.Example, tf.SequenceExample, or bytes).
       """
       output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
 
@@ -98,12 +98,10 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
           | _ImportSerializedRecord(exec_properties, split_pattern))
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
         return serialized_records
-
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
         return (serialized_records
                 | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
-
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE):
         return (serialized_records
