@@ -34,32 +34,19 @@ context: {
       }
     }
   }
-  feature: {
-    key  : "s"
-    value: {
-      bytes_list: {
-        value: [ "10000" ]
-      }
-    }
-  }
 }
 feature_lists: {
   feature_list: {
-    key  : "count"
+    key  : "s"
     value: {
       feature: {
-        int64_list: {
-          value: [ 10000 ]
-        }
-      }
-      feature: {
-        float_list: {
-          value: [ 10000.0 ]
+        bytes_list: {
+          value: [ "10000" ]
         }
       }
       feature: {
         bytes_list: {
-          value: [ "10000" ] 
+          value: [ "10001" ] 
         }
       }
     }

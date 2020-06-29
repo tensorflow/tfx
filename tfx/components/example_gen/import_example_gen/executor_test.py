@@ -83,7 +83,7 @@ class ExecutorTest(tf.test.TestCase):
         # We use Python assertion here to avoid Beam serialization error in
         # pickling tf.test.TestCase.
         assert (15000 == len(got)), 'Unexpected example count'
-        assert (3 == len(got[0].context.feature)), 'Example not match'
+        assert (2 == len(got[0].context.feature)), 'Example not match'
 
       util.assert_that(examples, check_result)
 
