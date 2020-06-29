@@ -165,5 +165,7 @@ def run_fn(fn_args: TrainerFnArgs):
                                             dtype=tf.string,
                                             name='examples')),
   }
-  model.save(fn_args.serving_model_dir,
-              save_format='tf', signatures=signatures)
+  model.save(
+      fn_args.serving_model_dir,
+      save_format='tf',
+      signatures=signatures)
