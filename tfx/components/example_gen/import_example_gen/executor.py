@@ -72,9 +72,9 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
     @beam.typehints.with_output_types(Union[tf.train.Example,
                                             tf.train.SequenceExample,
                                             bytes])
-    def ImportProtoOrExample(pipeline: beam.Pipeline,
-                             exec_properties: Dict[Text, Any],
-                             split_pattern: Text) -> beam.pvalue.PCollection:
+    def ImportRecord(pipeline: beam.Pipeline,
+                     exec_properties: Dict[Text, Any],
+                     split_pattern: Text) -> beam.pvalue.PCollection:
       """PTransform to import records.
 
       The records are tf.train.Example, tf.train.SequenceExample,
@@ -111,4 +111,4 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE,'
                        ' FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
 
-    return ImportProtoOrExample
+    return ImportRecord

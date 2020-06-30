@@ -121,10 +121,10 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                         ])))
     }
 
-  def _testDo(self, exec_properties):
+  def _testDo(self):
     # Run executor.
     example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, exec_properties)
+    example_gen.Do({}, self._output_dict, self._exec_properties)
 
     # Check example gen outputs.
     self.assertTrue(tf.io.gfile.exists(self._train_output_file))
@@ -137,7 +137,7 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
   def testDoInputSplit(self):
     # Create exec proterties for input split.
-    exec_properties = {
+    self._exec_properties = {
         utils.INPUT_CONFIG_KEY:
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
@@ -151,68 +151,53 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Output(), preserving_proto_field_name=True)
     }
 
-    self._testDo(exec_properties)
+    self._testDo()
 
   def testDoOutputSplit(self):
-    self._testDo(self._exec_properties)
+    self._testDo()
 
   def testDoOutputSplitWithProto(self):
     # Update exec proterties.
     self._exec_properties['format_proto'] = True
 
-    self._testDo(self._exec_properties)
+    self._testDo()
 
   def testDoOutputSplitWithSequenceExample(self):
     # Update exec proterties.
     self._exec_properties['sequence_example'] = True
 
-    self._testDo(self._exec_properties)
+    self._testDo()
+
+  def _testFeatureBasedPartition(self, partition_feature_name):
+    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(
+                splits=[
+                    example_gen_pb2.SplitConfig.Split(
+                        name='train', hash_buckets=2),
+                    example_gen_pb2.SplitConfig.Split(
+                        name='eval', hash_buckets=1)
+                ],
+                partition_feature_name=partition_feature_name)))
 
   def testFeatureBasedPartition(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
 
-    self._testDo(self._exec_properties)
+    self._testDo()
 
   def testFeatureBasedPartitionWithSequenceExample(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
     self._exec_properties['sequence_example'] = True
 
-    self._testDo(self._exec_properties)
+    self._testDo()
 
   def testInvalidFeatureName(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='invalid')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('invalid')
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -221,17 +206,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testEmptyFeature(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -240,17 +216,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testInvalidFloatListFeature(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='f')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('f')
     self._exec_properties['has_empty'] = False
 
     # Run executor.
@@ -262,17 +229,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testInvalidFeatureBasedPartitionWithProtos(self):
-    # Update output config in exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
     self._exec_properties['format_proto'] = True
 
