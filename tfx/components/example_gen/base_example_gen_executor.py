@@ -137,7 +137,8 @@ class BaseExampleGenExecutor(
   results in splits to the output path.
 
   For simple custom ExampleGens, the details of transforming input data
-  record(s) to specific output payload formats is expected to be given in
+  record(s) to a specific output payload format (e.g., tf.Example or
+  tf.SequenceExample) is expected to be given in
   `GetInputSourceToExamplePTransform`, which returns a Beam PTransform with the
   actual implementation. For complex use cases, such as joining multiple data
   sources and different interpretations of the configurations, the custom
