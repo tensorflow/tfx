@@ -18,26 +18,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
 import os
 from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.experimental.pipeline_testing import dummy_executor  
+from tfx.experimental.pipeline_testing import dummy_executor
 from tfx.orchestration.launcher import in_process_component_launcher
 
-class DummyComponentLauncher(in_process_component_launcher.InProcessComponentLauncher):
+class DummyComponentLauncher(
+    in_process_component_launcher.InProcessComponentLauncher):
   """Responsible for launching a dummy executor.
   The executor will be launched in the same process of the rest of the
   component, i.e. its driver and publisher.
   """
-  # def __init__(self, **kwargs):
-  #   super(DummyComponentLauncher, self).__init__(**kwargs)
-  #   absl.logging.info("DummyComponentLauncher")
-  #   self.component_map = DummyComponentLauncher.component_map
-  #   self.component_ids = DummyComponentLauncher.component_ids
-  #   self.record_dir = DummyComponentLauncher.record_dir
 
   def _run_executor(self, execution_id: int,
                     input_dict: Dict[Text, List[types.Artifact]],
@@ -57,8 +51,8 @@ class DummyComponentLauncher(in_process_component_launcher.InProcessComponentLau
       executor.Do(input_dict, output_dict, exec_properties)
     elif component_id in self.component_ids:
       executor = dummy_executor.BaseDummyExecutor(component_id,
-                                   self.record_dir,
-                                   executor_context)
+                                                  self.record_dir,
+                                                  executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     else:
       super(DummyComponentLauncher, self)._run_executor(execution_id,
@@ -68,7 +62,8 @@ class DummyComponentLauncher(in_process_component_launcher.InProcessComponentLau
 
 def create_dummy_launcher_class(record_dir: Text,
                                 component_ids: List[Text],
-                                component_map: Dict[Text, dummy_executor.BaseDummyExecutor]):
+                                component_map:
+                                Dict[Text, dummy_executor.BaseDummyExecutor]):
   cls = DummyComponentLauncher
   cls.component_map = component_map
   cls.component_ids = component_ids

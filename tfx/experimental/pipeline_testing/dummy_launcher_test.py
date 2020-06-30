@@ -93,7 +93,7 @@ class DummyLauncherTest(tf.test.TestCase):
   def testDummyExecutor(self, mock_publisher):
     # verify whether dummy substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
-    
+
     record_file = os.path.join(self.record_path, 'output/recorded.txt')
     tf.io.gfile.makedirs(os.path.dirname(record_file))
     file_io.write_string_to_file(record_file, "hello world")
