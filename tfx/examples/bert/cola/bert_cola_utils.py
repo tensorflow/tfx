@@ -19,6 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import sys
+_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
+sys.path.append(_bert_utils_root)
+
 from typing import List, Text
 
 import tensorflow as tf

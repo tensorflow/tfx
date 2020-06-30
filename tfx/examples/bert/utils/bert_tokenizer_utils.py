@@ -100,3 +100,39 @@ class SpecialBertTokenizer():
         tf.constant(0, dtype=tf.int64))
 
     return word_id, input_mask, segment_id
+
+  def tokenize_sentence_pair(
+      self,
+      sequence_a,
+      sequence_b,
+      max_len):
+    """Tokenize a sentence pair.
+    Add CLS token at the front, SEP token between the two sentences
+    """
+    sentence_len = max_len // 2
+    word_id_a, input_mask_a, segment_id_a = self.tokenize_single_sentence(
+        sequence_a,
+        sentence_len,
+        True,
+        True
+    )
+
+    word_id_b, input_mask_b, segment_id_b = self.tokenize_single_sentence(
+        sequence_b,
+        sentence_len,
+        False,
+        True
+    )
+
+    word_id = tf.concat([word_id_a, word_id_b], 1)
+    input_mask = tf.concat([input_mask_a, input_mask_b], 1)
+    segment_id_b = tf.fill(
+        tf.shape(segment_id_b),
+        tf.constant(1, dtype=tf.int64)
+    )
+
+    segment_id = tf.concat([segment_id_a, segment_id_b], 1)
+    return word_id, input_mask, segment_id
+
+
+    

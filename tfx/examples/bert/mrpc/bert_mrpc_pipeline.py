@@ -46,18 +46,18 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import tfrecord_input
 
-_pipeline_name = 'bert_cola'
+_pipeline_name = 'bert_mrpc'
 
-# This example assumes the utility function is in ~/bert_cola
-_bert_cola_root = os.path.join(os.environ['HOME'], 'bert_cola')
-_data_root = os.path.join(_bert_cola_root, 'data')
+# This example assumes the utility function is in ~/bert
+_bert_mrpc_root = os.path.join(os.environ['HOME'], 'bert', 'mrpc')
+_data_root = os.path.join(_bert_mrpc_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
-_module_file = os.path.join(_bert_cola_root, 'bert_utils.py')
+_module_file = os.path.join(_bert_mrpc_root, 'bert_mrpc_utils.py')
 # Path which can be listened to by the model server.  Pusher will output the
 # trained model here.
 _serving_model_dir = os.path.join(
-    _bert_cola_root,
+    _bert_mrpc_root,
     'serving_model',
     _pipeline_name)
 
@@ -78,7 +78,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
-  """Implements the Bert classication on Cola dataset pipline with TFX."""
+  """Implements the Bert classication on mrpc dataset pipline with TFX."""
   output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
       splits=[
           example_gen_pb2.SplitConfig.Split(
