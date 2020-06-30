@@ -27,6 +27,7 @@ from tfx.components.trainer import constants
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 # TODO(b/156929910): Change TrainerFnArgs to this FnArgs.
 #
@@ -38,11 +39,17 @@ from tfx.utils import io_utils
 # schema_path: A single uri for schema file. Will be None if not specified.
 # transform_graph_path: An optional single uri for transform graph produced by
 #                       TFT. Will be None if not specified.
-FnArgs = NamedTuple('FnArgs', [('working_dir', Text),
-                               ('train_files', List[Text]),
-                               ('eval_files', List[Text]), ('train_steps', int),
-                               ('eval_steps', int), ('schema_path', Text),
-                               ('transform_graph_path', Text)])
+# custom_config: An optional dictionary passed to the component.
+FnArgs = NamedTuple('FnArgs', [
+    ('working_dir', Text),
+    ('train_files', List[Text]),
+    ('eval_files', List[Text]),
+    ('train_steps', int),
+    ('eval_steps', int),
+    ('schema_path', Text),
+    ('transform_graph_path', Text),
+    ('custom_config', Dict[Text, Any]),
+])
 # Set default value to None.
 FnArgs.__new__.__defaults__ = (None,) * len(FnArgs._fields)
 
@@ -86,6 +93,11 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   train_steps = train_args.num_steps or None
   eval_steps = eval_args.num_steps or None
 
+  # TODO(b/156929910): Refactor Trainer to be consistent with empty or None
+  #                    custom_config handling.
+  custom_config = json_utils.loads(
+      exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null'))
+
   return FnArgs(
       working_dir=working_dir,
       train_files=train_files,
@@ -94,4 +106,5 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
       eval_steps=eval_steps,
       schema_path=schema_path,
       transform_graph_path=transform_graph_path,
+      custom_config=custom_config,
   )

@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import os
 import re
 import shutil
@@ -28,6 +29,8 @@ import time
 from typing import Any, Dict, List, Text
 
 from absl import logging
+import kfp
+from kfp_server_api import rest
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
@@ -56,6 +59,89 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
+
+
+# Various execution status of a KFP pipeline.
+KFP_RUNNING_STATUS = 'running'
+KFP_SUCCESS_STATUS = 'succeeded'
+KFP_FAIL_STATUS = 'failed'
+KFP_SKIPPED_STATUS = 'skipped'
+KFP_ERROR_STATUS = 'error'
+
+KFP_FINAL_STATUS = frozenset(
+    (KFP_SUCCESS_STATUS, KFP_FAIL_STATUS, KFP_SKIPPED_STATUS, KFP_ERROR_STATUS))
+
+
+def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
+                        timeout: datetime.timedelta,
+                        polling_interval: int) -> Text:
+  """Gets the pipeline execution status by polling KFP at the specified host.
+
+  Args:
+    host: address of the KFP deployment.
+    run_id: id of the execution of the pipeline.
+    retry_limit: number of retries that will be performed before raise an error.
+    timeout: timeout of this long-running operation, in timedelta.
+    polling_interval: interval between two consecutive polls, in seconds.
+
+  Returns:
+    The final status of the execution. Possible value can be found at
+    https://github.com/kubeflow/pipelines/blob/master/backend/api/run.proto#L254
+
+  Raises:
+    RuntimeError: if polling failed for retry_limit times consecutively.
+  """
+
+  start_time = datetime.datetime.now()
+  retry_count = 0
+  while True:
+    # TODO(jxzheng): workaround for 1hr timeout limit in kfp.Client().
+    # This should be changed after
+    # https://github.com/kubeflow/pipelines/issues/3630 is fixed.
+    # Currently gcloud authentication token has a 1-hour expiration by default
+    # but kfp.Client() does not have a refreshing mechanism in place. This
+    # causes failure when attempting to get running status for a long pipeline
+    # execution (> 1 hour).
+    # Instead of implementing a whole authentication refreshing mechanism
+    # here, we chose re-creating kfp.Client() frequently to make sure the
+    # authentication does not expire. This is based on the fact that
+    # kfp.Client() is very light-weight.
+    # See more details at
+    # https://github.com/kubeflow/pipelines/issues/3630
+    client = kfp.Client(host=host)
+    # TODO(b/156784019): workaround the known issue at b/156784019 and
+    # https://github.com/kubeflow/pipelines/issues/3669
+    # by wait-and-retry when ApiException is hit.
+    try:
+      get_run_response = client._run_api.get_run(run_id=run_id)  # pylint: disable=protected-access
+    except rest.ApiException as api_err:
+      # If get_run failed with ApiException, wait _POLLING_INTERVAL and retry.
+      if retry_count < retry_limit:
+        retry_count += 1
+        logging.info('API error %s was hit. Retrying: %s / %s.', api_err,
+                     retry_count, retry_limit)
+        time.sleep(polling_interval)
+        continue
+
+      raise RuntimeError('Still hit remote error after %s retries: %s' %
+                         (retry_limit, api_err))
+    else:
+      # If get_run succeeded, reset retry_count.
+      retry_count = 0
+
+    if (get_run_response and get_run_response.run and
+        get_run_response.run.status and
+        get_run_response.run.status.lower() in KFP_FINAL_STATUS):
+      # Return because final status is reached.
+      return get_run_response.run.status
+
+    if datetime.datetime.now() - start_time > timeout:
+      # Timeout.
+      raise RuntimeError('Waiting for run timeout at %s' %
+                         datetime.datetime.now().strftime('%H:%M:%S'))
+
+    logging.info('Waiting for the job to complete...')
+    time.sleep(polling_interval)
 
 
 # Custom component definitions for testing purpose.

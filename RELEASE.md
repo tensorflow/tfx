@@ -19,6 +19,8 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
 
 ## Breaking changes
 
@@ -96,6 +98,7 @@
 *   Depends on `tensorflow-transform>=0.22.0,<0.23.0`.
 *   Depends on `tfx-bsl>=0.22.0,<0.23.0`.
 *   Depends on `ml-metadata>=0.22.0,<0.23.0`.
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
 *   Fixed a bug in `io_utils.copy_dir` which prevent it to work correctly for
     nested sub-directories.
 
