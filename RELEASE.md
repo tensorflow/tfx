@@ -45,7 +45,6 @@
 *   Depends on `ml-metadata>=0.22.0,<0.23.0`.
 *   Fixed a bug in `io_utils.copy_dir` which prevent it to work correctly for
     nested sub-directories.
-*   Fixed the name of the usage telemetry when tfx templates are used.
 
 ## Breaking changes
 
