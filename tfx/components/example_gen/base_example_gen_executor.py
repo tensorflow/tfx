@@ -131,12 +131,12 @@ class BaseExampleGenExecutor(
 
   The conversion is done in `GenerateExamplesByBeam` as a Beam pipeline, which
   validates the configuration, reads the external data sources, converts the
-  record in the input source to TF record if needed, and splits the examples if
-  the output split config is given. Then the executor's `Do` writes the results
-  in splits to the output path.
+  record in the input source to tf.Example or tf.SequenceExample if needed,
+  and splits the examples if the output split config is given.
+  Then the executor's `Do` writes the results in splits to the output path.
 
   For simple custom ExampleGens, the details of transforming input data
-  record(s) to TF record(s) is expected to be given in
+  record(s) to tf.Example or tf.SequenceExample is expected to be given in
   `GetInputSourceToExamplePTransform`, which returns a Beam PTransform with the
   actual implementation. For complex use cases, such as joining multiple data
   sources and different interpretations of the configurations, the custom
@@ -172,10 +172,10 @@ class BaseExampleGenExecutor(
       pipeline: beam.Pipeline,
       exec_properties: Dict[Text, Any],
   ) -> Dict[Text, beam.pvalue.PCollection]:
-    """Converts input source to TF record splits based on configs.
+    """Converts input source to serialized record splits based on configs.
 
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
-    for converting input split to TF records. Overriding this
+    for converting input split to serialized records. Overriding this
     'GenerateExamplesByBeam' method instead if complex logic is need, e.g.,
     custom spliting logic.
 
@@ -193,7 +193,7 @@ class BaseExampleGenExecutor(
 
     Returns:
       Dict of beam PCollection with split name as key, each PCollection is a
-      single output split that contains serialized TF records.
+      single output split that contains serialized records.
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
@@ -252,22 +252,23 @@ class BaseExampleGenExecutor(
   ) -> None:
     """Take input data source and generates serialized data splits.
 
-    The output is intended to be serialized tf.train.Examples protocol buffer
-    in gzipped TFRecord format, but subclasses can choose to override to write
-    to any serialized records payload into gzipped TFRecord as specified,
-    so long as downstream component can consume it. The format of payload is
-    added to `payload_format` custom property of the output Example artifact.
+    The output is intended to be serialized tf.train.Examples or
+    tf.train.SequenceExamples protocol buffer in gzipped TFRecord format,
+    but subclasses can choose to override to write to any serialized records
+    payload into gzipped TFRecord as specified, so long as downstream
+    component can consume it. The format of payload is added to
+    `payload_format` custom property of the output Example artifact.
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts. Depends on
         detailed example gen implementation.
       output_dict: Output dict from output key to a list of Artifacts.
-        - examples: splits of TF records.
+        - examples: splits of serialized records.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
-        - input_config: JSON string of example_gen_pb2.Input instance, providing
-          input configuration.
+        - input_config: JSON string of example_gen_pb2.Input instance,
+          providing input configuration.
         - output_config: JSON string of example_gen_pb2.Output instance,
           providing output configuration.
         - output_data_format: Payload format of generated data in output

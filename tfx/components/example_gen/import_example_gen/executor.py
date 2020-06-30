@@ -43,7 +43,7 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   Args:
     pipeline: Beam pipeline.
     exec_properties: A dict of execution properties.
-      - input_base: input dir that contains TF record data.
+      - input_base: input dir that contains input data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
@@ -83,7 +83,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       Args:
         pipeline: Beam pipeline.
         exec_properties: A dict of execution properties.
-          - input_base: input dir that contains TF record data.
+          - input_base: input dir that contains input data.
         split_pattern: Split.pattern in Input config, glob relative file pattern
           that maps to input files with root directory given by input_base.
 

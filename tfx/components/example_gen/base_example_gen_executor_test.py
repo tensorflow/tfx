@@ -184,6 +184,23 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
 
     self._testDo(self._exec_properties)
 
+  def testFeatureBasedPartitionWithSequenceExample(self):
+    # Update output config in exec proterties.
+    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(
+                splits=[
+                    example_gen_pb2.SplitConfig.Split(
+                        name='train', hash_buckets=2),
+                    example_gen_pb2.SplitConfig.Split(
+                        name='eval', hash_buckets=1)
+                ],
+                partition_feature_name='i')))
+    self._exec_properties['has_empty'] = False
+    self._exec_properties['sequence_example'] = True
+
+    self._testDo(self._exec_properties)
+
   def testInvalidFeatureName(self):
     # Update output config in exec proterties.
     self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
