@@ -60,6 +60,7 @@
 *   Depends on `tensorflow-transform>=0.22.0,<0.23.0`.
 *   Depends on `tfx-bsl>=0.22.0,<0.23.0`.
 *   Depends on `ml-metadata>=0.22.0,<0.23.0`.
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
 *   Fixed a bug in `io_utils.copy_dir` which prevent it to work correctly for
     nested sub-directories.
 
