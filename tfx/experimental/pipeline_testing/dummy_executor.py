@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,15 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text, Optional
 import absl
-import os
 from distutils import dir_util
+import os
+from typing import Any, Dict, List, Text, Optional
 
-from tfx import types
-from tfx.components.base import base_executor
 import tensorflow as tf
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tfx import types
+from tfx.components.base import base_executor
 
 class BaseDummyExecutor(base_executor.BaseExecutor):
   """TFX base dummy executor."""
@@ -39,12 +39,11 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
     self._component_id = component_id
     self._record_dir = record_dir
     if not os.path.exists(self._record_dir):
-      raise Exception("Must record input/output in {}".format(self._record_dir))
+      raise ValueError("Must record pipeline in {}".format(self._record_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    print('output_dict', output_dict)
     for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
@@ -58,6 +57,7 @@ class CustomDummyExecutor(BaseDummyExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
+    absl.logging.info("Running CustomDummyExecutor")
     for _, artifact_list in output_dict.items():
       for artifact in artifact_list:
         custom_output_path = os.path.join(artifact.uri, "test.txt")
