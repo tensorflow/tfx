@@ -46,9 +46,7 @@ def _gzip_reader_fn(filenames):
 
 def _tokenize(feature):
   """Tokenize the two sentences and insert appropriate tokens"""
-  asset_dir = os.path.join(os.environ['HOME'], 'bert_cola/assets')
-  vocab_dir = os.path.join(asset_dir, 'vocab.txt')
-  tokenizer = SpecialBertTokenizer(vocab_dir)
+  tokenizer = SpecialBertTokenizer(_BERT_LINK)
   return tokenizer.tokenize_single_sentence(
       tf.reshape(feature, [-1]),
       max_len=_MAX_LEN)

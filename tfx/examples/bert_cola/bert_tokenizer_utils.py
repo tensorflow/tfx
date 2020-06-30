@@ -16,32 +16,41 @@
 
 import tensorflow as tf
 import tensorflow_text as text
+from tf_agents.utils import eager_utils
+from tensorflow.python.eager.context import eager_mode, graph_mode
+import tensorflow_hub as hub
+
+_BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
 
 class SpecialBertTokenizer():
   """ Bert Tokenizer built ontop of tensorflow_text.BertTokenizer"""
 
-  def __init__(self, vocab_dir):
-    self.vocab_dir = vocab_dir
+  def __init__(self, model_link):
+    self._model_link = model_link
     self._find_special_token()
 
   def _find_special_token(self):
     """Find the special token ID's for [CLS] [PAD] [SEP]"""
-    f = open(self.vocab_dir, 'r')
-    self._sep_id = None
-    self._cls_id = None
-    self._pad_id = None
-    lines = f.read().split('\n')
-    for i, line in enumerate(lines):
-      if line == '[PAD]':
-        self._pad_id = tf.constant(i, dtype=tf.int64)
-      elif line == '[CLS]':
-        self._cls_id = tf.constant(i, dtype=tf.int64)
-      elif line == '[SEP]':
-        self._sep_id = tf.constant(i, dtype=tf.int64)
-      if self._pad_id is not None \
-        and self._cls_id is not None \
-        and self._sep_id is not None:
-        break
+
+    with eager_mode():
+      model = hub.KerasLayer(self._model_link)
+      vocab = model.resolved_object.vocab_file.asset_path.numpy()
+      f = open(vocab, 'r')
+      self._sep_id = None
+      self._cls_id = None
+      self._pad_id = None
+      lines = f.read().split('\n')
+      for i, line in enumerate(lines):
+        if line == '[PAD]':
+          self._pad_id = i
+        elif line == '[CLS]':
+          self._cls_id = i
+        elif line == '[SEP]':
+          self._sep_id = i
+        if self._pad_id is not None \
+          and self._cls_id is not None \
+          and self._sep_id is not None:
+          break
 
   def tokenize_single_sentence(
       self,
@@ -52,25 +61,34 @@ class SpecialBertTokenizer():
     """Tokenize a single sentence according to the vocab.txt provided.
     Add special tokens according to config.
     """
-
-    tokenizer = text.BertTokenizer(self.vocab_dir, token_out_type=tf.int64)
+    model = hub.KerasLayer(self._model_link)
+    vocab_file_path = model.resolved_object.vocab_file.asset_path
+    tokenizer = text.BertTokenizer(vocab_file_path, token_out_type=tf.int64)
     word_id = tokenizer.tokenize(sequence)
     word_id = word_id.merge_dims(1, 2)[:, :max_len]
-    word_id = word_id.to_tensor(default_value=self._pad_id)
+    word_id = word_id.to_tensor(
+        default_value=tf.constant(self._pad_id, dtype=tf.int64))
+
     if add_cls:
-      cls_token = tf.fill([tf.shape(sequence)[0], 1], self._cls_id)
+      cls_token = tf.fill(
+          [tf.shape(sequence)[0], 1],
+          tf.constant(self._cls_id, dtype=tf.int64))
+
       word_id = word_id[:, :max_len-1]
       word_id = tf.concat([cls_token, word_id], 1)
 
     if add_sep:
-      sep_token = tf.fill([tf.shape(sequence)[0], 1], self._sep_id)
+      sep_token = tf.fill(
+          [tf.shape(sequence)[0], 1],
+          tf.constant(self._sep_id, dtype=tf.int64))
+
       word_id = word_id[:, :max_len-1]
       word_id = tf.concat([word_id, sep_token], 1)
 
     word_id = tf.pad(
         word_id,
         [[0, 0], [0, max_len]],
-        constant_values=self._pad_id)
+        constant_values=tf.constant(self._pad_id, dtype=tf.int64))
 
     word_id = tf.slice(word_id, [0, 0], [-1, max_len])
 
