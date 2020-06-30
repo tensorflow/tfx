@@ -46,6 +46,8 @@ class ComponentTest(tf.test.TestCase):
   def _verify_outputs(self, trainer):
     self.assertEqual(standard_artifacts.Model.TYPE_NAME,
                      trainer.outputs['model'].type_name)
+    self.assertEqual(standard_artifacts.ModelRun.TYPE_NAME,
+                     trainer.outputs['model_run'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'

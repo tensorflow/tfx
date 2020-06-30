@@ -617,6 +617,16 @@ nodes {
           }
         }
       }
+      outputs {
+        key: "model_run"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelRun"
+            }
+          }
+        }
+      }
     }
     parameters {
       parameters {

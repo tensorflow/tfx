@@ -25,6 +25,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -339,5 +340,9 @@ def run_fn(fn_args: executor.TrainerFnArgs):
       estimator=training_spec['estimator'],
       export_dir_base=fn_args.eval_model_dir,
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+  # Simulate writing a log to the path given by fn_args
+  io_utils.write_string_file(
+      os.path.join(fn_args.model_run_dir, 'fake_log.txt'), '')
 
   absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)

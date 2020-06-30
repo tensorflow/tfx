@@ -81,6 +81,10 @@ class Model(Artifact):
   TYPE_NAME = 'Model'
 
 
+class ModelRun(Artifact):
+  TYPE_NAME = 'ModelRun'
+
+
 class ModelBlessing(Artifact):
   TYPE_NAME = 'ModelBlessing'
 

@@ -6,6 +6,8 @@
 *   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
 *   Changed Span information as a property of ExampleGen's output artifact.
     Deprecated ExampleGen input (external) artifact.
+*   Added ModelRun artifact for Trainer for storing training related files,
+    e.g., Tensorboard logs.
 
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.

@@ -22,8 +22,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import List, Text
-
 import absl
 import kerastuner
 import tensorflow as tf
@@ -236,12 +236,23 @@ def run_fn(fn_args: TrainerFnArgs):
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
 
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  # Write logs to path
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=log_dir, update_freq='batch')
+
   model.fit(
       train_dataset,
       epochs=int(fn_args.train_steps / steps_per_epoch),
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':
