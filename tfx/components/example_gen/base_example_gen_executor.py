@@ -131,12 +131,13 @@ class BaseExampleGenExecutor(
 
   The conversion is done in `GenerateExamplesByBeam` as a Beam pipeline, which
   validates the configuration, reads the external data sources, converts the
-  record in the input source to tf.Example or tf.SequenceExample if needed,
-  and splits the examples if the output split config is given.
-  Then the executor's `Do` writes the results in splits to the output path.
+  record in the input source to any supported output payload formats
+  (e.g., tf.Example or tf.SequenceExample) if needed, and splits the examples
+  if the output split config is given. Then the executor's `Do` writes the
+  results in splits to the output path.
 
   For simple custom ExampleGens, the details of transforming input data
-  record(s) to tf.Example or tf.SequenceExample is expected to be given in
+  record(s) to specific output payload formats is expected to be given in
   `GetInputSourceToExamplePTransform`, which returns a Beam PTransform with the
   actual implementation. For complex use cases, such as joining multiple data
   sources and different interpretations of the configurations, the custom
