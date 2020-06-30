@@ -43,7 +43,7 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   Args:
     pipeline: Beam pipeline.
     exec_properties: A dict of execution properties.
-      - input_base: input dir that contains tf example data.
+      - input_base: input dir that contains TF record data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
@@ -52,7 +52,7 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   """
   input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
-  logging.info('Reading input TFExample data %s.', input_split_pattern)
+  logging.info('Reading input TFRecord data %s.', input_split_pattern)
 
   # TODO(jyzhao): profile input examples.
   return (pipeline
@@ -83,7 +83,7 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
       Args:
         pipeline: Beam pipeline.
         exec_properties: A dict of execution properties.
-          - input_base: input dir that contains tf example data.
+          - input_base: input dir that contains TF record data.
         split_pattern: Split.pattern in Input config, glob relative file pattern
           that maps to input files with root directory given by input_base.
 
