@@ -44,14 +44,9 @@ class DummyComponentLauncher(
         beam_pipeline_args=self._beam_pipeline_args,
         tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
         unique_id=str(execution_id))
-    if component_id in self.component_map.keys():
+    if component_id in self.component_map:
       executor = self.component_map[component_id](component_id,
-                                                  self.record_dir,
-                                                  executor_context)
-      executor.Do(input_dict, output_dict, exec_properties)
-    elif component_id in self.component_ids:
-      executor = dummy_executor.BaseDummyExecutor(component_id,
-                                                  self.record_dir,
+                                                  self.test_data_dir,
                                                   executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
     else:
@@ -60,12 +55,21 @@ class DummyComponentLauncher(
                                                         output_dict,
                                                         exec_properties)
 
-def create_dummy_launcher_class(record_dir: Text,
+def create_dummy_launcher_class(test_data_dir: Text,
                                 component_ids: List[Text],
                                 component_map:
                                 Dict[Text, dummy_executor.BaseDummyExecutor]):
+  """Creates a DummyComponentLauncher class
+  Args:
+    test_data_dir: The directory where pipeline outputs are recorded
+      (pipeline_recorder.py)
+    component_ids: List of component ids that should be replaced
+      with a dummy executor
+    component_map: Dictionary holding user-defined dummy executor
+  """
   cls = DummyComponentLauncher
   cls.component_map = component_map
-  cls.component_ids = component_ids
-  cls.record_dir = record_dir
+  for component_id in component_ids:
+    cls.component_map[component_id] = dummy_executor.BaseDummyExecutor
+  cls.test_data_dir = test_data_dir
   return cls
