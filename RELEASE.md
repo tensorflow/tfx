@@ -1,3 +1,20 @@
+# Version 0.22.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+*   Fixed the name of the usage telemetry when tfx templates are used.
+
+## Breaking changes
+
+### For pipeline authors
+
+### For component authors
+
+## Documentation updates
+
+## Deprecations
+
 # Version 0.22.0
 
 ## Major Features and Improvements
