@@ -153,7 +153,7 @@ def run_fn(fn_args: TrainerFnArgs):
       _MAX_LEN,
       tf.keras.losses.binary_crossentropy,
       ['accuracy'],
-      4e-5)
+      3e-5)
 
   model.fit(
       train_dataset,
