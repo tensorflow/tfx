@@ -33,23 +33,30 @@ separately install runners that perform distributed computation, such as
 TFX is a platform for building and managing ML workflows in a production
 environment. TFX provides the following:
 
-*   A toolkit for building ML pipelines. TFX pipelines let you orchestrate your
-    ML workflow on several platforms, such as: Apache Airflow, Apache Beam, and
-    Kubeflow Pipelines.
+*   **A toolkit for building ML pipelines**. TFX pipelines let you orchestrate
+    your ML workflow on several platforms, such as: Apache Airflow, Apache Beam,
+    and Kubeflow Pipelines.
 
-    [Learn more about TFX pipelines](understanding_tfx_pipelines).
+    [Learn more about TFX pipelines](understanding_tfx_pipelines)
 
-*   A set of standard components that you can use as a part of a pipeline, or as
-    a part of your ML training script. TFX standard components provide proven
-    functionality to help you get started building an ML process easily.
+*   **A set of standard components** that you can use to build your ML pipeline.
+    TFX standard components provide proven functionality to help you get started
+    building an ML process easily.
 
-    [Learn more about TFX standard components](#tfx_standard_components).
+    [Learn more about TFX standard components](#tfx_standard_components)
 
-*   Libraries which provide the base functionality for many of the standard
+*   **APIs which enable you to create custom components**.  The Standard
+    components themselves frequently allow extensibility points, but in the
+    event that the standard components don't fully meet your needs you can
+    create your own custom components.
+
+    [Learn how to create custom TFX components](understanding_custom_components)
+
+*   **Libraries which provide the base functionality** for many of the standard
     components. You can use the TFX libraries to add this functionality to your
     own custom components, or use them separately.
 
-    [Learn more about the TFX libraries](#tfx_libraries).
+    [Learn more about the TFX libraries](#tfx_libraries)
 
 TFX is a Google-production-scale machine learning toolkit based on TensorFlow.
 It provides a configuration framework and shared libraries to integrate common
