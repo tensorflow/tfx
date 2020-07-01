@@ -129,16 +129,16 @@ def _wrapContainerComponent(
 
   arguments = [
     '--pipeline_name',
-    pipeline.pipeline_info.pipeline_name,
+    tfx_pipeline.pipeline_info.pipeline_name,
     '--pipeline_root',
-    pipeline.pipeline_info.pipeline_root,
+    tfx_pipeline.pipeline_info.pipeline_root,
     '--metadata_config',
     json_format.MessageToJson(
         message=_getDefaultConnectionConfig(), preserving_proto_field_name=True),
     '--beam_pipeline_args',
-    json.dumps(pipeline.beam_pipeline_args),
+    json.dumps(tfx_pipeline.beam_pipeline_args),
     '--additional_pipeline_args',
-    json.dumps(pipeline.additional_pipeline_args),
+    json.dumps(tfx_pipeline.additional_pipeline_args),
     '--component_launcher_class_path',
     component_launcher_class_path,
     '--serialized_component',
