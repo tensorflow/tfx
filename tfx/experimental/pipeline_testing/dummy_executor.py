@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import absl
-from distutils import dir_util
+from tfx.utils import io_utils
 import os
 from typing import Any, Dict, List, Text, Optional
 
@@ -55,5 +55,5 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
         dest = artifact.uri
         component_id = artifact.producer_component
         src = os.path.join(self._test_data_dir, component_id, output_key)
-        dir_util.copy_tree(src, dest)
+        io_utils.copy_dir(src, dest)
         absl.logging.info('Finished copying from %s to %s', src, dest)

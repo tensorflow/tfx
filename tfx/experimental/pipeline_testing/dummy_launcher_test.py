@@ -34,6 +34,7 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
+from tfx.utils import io_utils
 
 class CustomDummyExecutor(dummy_executor.BaseDummyExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -44,7 +45,7 @@ class CustomDummyExecutor(dummy_executor.BaseDummyExecutor):
       for artifact in artifact_list:
         custom_output_path = os.path.join(artifact.uri, "result.txt")
         tf.io.gfile.makedirs(os.path.dirname(custom_output_path))
-        file_io.write_string_to_file(custom_output_path, "custom component")
+        io_utils.write_string_file(custom_output_path, "custom component")
 
 class DummyLauncherTest(tf.test.TestCase):
 
@@ -114,7 +115,7 @@ class DummyLauncherTest(tf.test.TestCase):
 
     record_file = os.path.join(self.record_dir, 'output', 'recorded.txt')
     tf.io.gfile.makedirs(os.path.dirname(record_file))
-    file_io.write_string_to_file(record_file, "hello world")
+    io_utils.write_string_file(record_file, "hello world")
     component_ids = ['_FakeComponent.FakeComponent']
 
     MyDummyLauncher = \
@@ -137,12 +138,13 @@ class DummyLauncherTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(copied_file))
     contents = file_io.read_file_to_string(copied_file)
     self.assertEqual('hello world', contents)
+
   @mock.patch.object(publisher, 'Publisher')
   def testExecutor(self, mock_publisher):
     # verify whether original executor can run
     mock_publisher.return_value.publish_execution.return_value = {}
 
-    file_io.write_string_to_file(
+    io_utils.write_string_file(
         os.path.join(self.input_dir, 'result.txt'), 'test')
 
     MyDummyLauncher = \
