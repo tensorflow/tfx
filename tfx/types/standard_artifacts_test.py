@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
+import absl
+import mock
 import tensorflow as tf
 
 from tfx.types import standard_artifacts
@@ -29,11 +32,14 @@ _TEST_BYTE_DECODED = b'hello world'
 _TEST_STRING_RAW = b'hello world'
 _TEST_STRING_DECODED = u'hello world'
 
-_TEST_INT_RAW = b'\x01%\xe5\x91'
+_TEST_INT_RAW = b'19260817'
 _TEST_INT_DECODED = 19260817
 
-_TEST_FLOAT_RAW = b'@\t!\xfbTA\x17D'
+_TEST_FLOAT_RAW = b'3.1415926535'
 _TEST_FLOAT_DECODED = 3.1415926535
+
+_TEST_FLOAT128_RAW = b'3.14159265358979323846264338327950288'
+_TEST_FLOAT128 = 3.14159265358979323846264338327950288  # Too precise
 
 
 class StandardArtifactsTest(tf.test.TestCase):
@@ -58,6 +64,47 @@ class StandardArtifactsTest(tf.test.TestCase):
     self.assertEqual(_TEST_FLOAT_RAW, instance.encode(_TEST_FLOAT_DECODED))
     self.assertAlmostEqual(_TEST_FLOAT_DECODED,
                            instance.decode(_TEST_FLOAT_RAW))
+
+  @mock.patch('absl.logging.warning')
+  def testFloatTypePrecisionLossWarning(self, *unused_mocks):
+    instance = standard_artifacts.Float()
+    # TODO(b/156776413): with self.assertWarnsRegex('lost precision'):
+    self.assertAlmostEqual(
+        instance.decode(_TEST_FLOAT128_RAW), _TEST_FLOAT128)
+    # Lost precision warning
+    absl.logging.warning.assert_called_once()
+
+  @mock.patch('absl.logging.warning')
+  def testFloatInfNanEncodingWarning(self, *unused_mocks):
+    instance = standard_artifacts.Float()
+    instance.encode(float('inf'))
+    # Non-portable encoding warning
+    absl.logging.warning.assert_called_once()
+
+  def testSpecialFloatValues(self):
+    coder = standard_artifacts.Float()
+    positive_infinity_float = float('inf')
+    negative_infinity_float = float('-inf')
+    nan_float = float('nan')
+
+    encoded_positive_infinity = coder.encode(positive_infinity_float)
+    encoded_negative_infinity = coder.encode(negative_infinity_float)
+    encoded_nan = coder.encode(nan_float)
+
+    decoded_positive_infinity = coder.decode(encoded_positive_infinity)
+    decoded_negative_infinity = coder.decode(encoded_negative_infinity)
+    decoded_nan = coder.decode(encoded_nan)
+
+    self.assertEqual(encoded_positive_infinity, b'Infinity')
+    self.assertEqual(encoded_negative_infinity, b'-Infinity')
+    self.assertEqual(encoded_nan, b'NaN')
+
+    self.assertEqual(decoded_positive_infinity, positive_infinity_float)
+    self.assertEqual(decoded_negative_infinity, negative_infinity_float)
+
+    self.assertTrue(math.isinf(decoded_positive_infinity))
+    self.assertTrue(math.isinf(decoded_negative_infinity))
+    self.assertTrue(math.isnan(decoded_nan))
 
 
 if __name__ == '__main__':

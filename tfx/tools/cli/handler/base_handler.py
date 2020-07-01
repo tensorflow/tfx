@@ -30,6 +30,7 @@ import click
 from six import with_metaclass
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
@@ -120,6 +121,9 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     Returns:
       Python dictionary with pipeline details extracted from DSL.
     """
+    # TODO(b/157599419): Consider using a better way to extract pipeline info:
+    # e.g. pipeline name/root. Currently we relies on consulting a env var when
+    # creating Pipeline object, which is brittle.
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
     if os.path.isdir(pipeline_dsl_path):
       sys.exit('Provide dsl file path.')
@@ -219,13 +223,18 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       )
 
     # Get the latest SchemaGen output.
-    schemagen_outputs = tf.io.gfile.listdir(
-        os.path.join(pipeline_root, 'SchemaGen', 'schema', ''))
+    component_output_dir = os.path.join(pipeline_root, 'SchemaGen')
+    schema1_uri = base_driver.generate_output_uri(component_output_dir,
+                                                  'schema', 1)
+    schema_dir = os.path.join(os.path.dirname(schema1_uri), '')
+    schemagen_outputs = tf.io.gfile.listdir(schema_dir)
     latest_schema_folder = max(schemagen_outputs, key=int)
 
     # Copy schema to current dir.
-    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'schema',
-                                      latest_schema_folder, 'schema.pbtxt')
+    latest_schema_uri = base_driver.generate_output_uri(component_output_dir,
+                                                        'schema',
+                                                        latest_schema_folder)
+    latest_schema_path = os.path.join(latest_schema_uri, 'schema.pbtxt')
     curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
     io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)
 

@@ -23,16 +23,22 @@ from absl import logging
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_runtime_parameter
-from tfx.orchestration.kubeflow import test_utils
+from tfx.orchestration import test_utils
+from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
-class TaxiPipelineRuntimeParameterEndToEndTest(test_utils.BaseKubeflowTest):
+class TaxiPipelineRuntimeParameterEndToEndTest(
+    kubeflow_test_utils.BaseKubeflowTest):
 
   def testEndToEndPipelineRun(self):
     """End-to-end test for pipeline with RuntimeParameter."""
-    pipeline_name = 'kubeflow-e2e-test-parameter-{}'.format(self._random_id())
+    pipeline_name = 'kubeflow-e2e-test-parameter-{}'.format(
+        test_utils.random_id())
     pipeline = taxi_pipeline_runtime_parameter._create_parameterized_pipeline(
-        pipeline_name=pipeline_name, direct_num_workers=4)
+        pipeline_name=pipeline_name,
+        pipeline_root=taxi_pipeline_runtime_parameter._pipeline_root,
+        enable_cache=True,
+        beam_pipeline_args=taxi_pipeline_runtime_parameter._beam_pipeline_args)
 
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),

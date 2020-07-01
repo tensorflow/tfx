@@ -84,7 +84,6 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._PrestoToExample(
-              input_dict={},
               exec_properties={
                   'input_config':
                       json_format.MessageToJson(

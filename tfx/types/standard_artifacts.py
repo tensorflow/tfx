@@ -21,8 +21,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import struct
+import decimal
+import math
 from typing import Text
+
+import absl
 
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
@@ -61,6 +64,7 @@ class ExampleStatistics(Artifact):
   }
 
 
+# TODO(b/158334890): deprecate ExternalArtifact.
 class ExternalArtifact(Artifact):
   TYPE_NAME = 'ExternalArtifact'
 
@@ -75,6 +79,10 @@ class InfraBlessing(Artifact):
 
 class Model(Artifact):
   TYPE_NAME = 'Model'
+
+
+class ModelRun(Artifact):
+  TYPE_NAME = 'ModelRun'
 
 
 class ModelBlessing(Artifact):
@@ -130,24 +138,60 @@ class Integer(ValueArtifact):
     if not isinstance(value, int):
       raise TypeError('Expecting int but got value %s of type %s' %
                       (str(value), type(value)))
-    return struct.pack('>i', value)
+    return str(value).encode('utf-8')
 
   def decode(self, serialized_value: bytes) -> int:
-    return struct.unpack('>i', serialized_value)[0]
+    return int(serialized_value)
 
 
 class Float(ValueArtifact):
   """Float-typed artifact."""
   TYPE_NAME = 'Float'
 
+  _POSITIVE_INFINITY = float('Inf')
+  _NEGATIVE_INFINITY = float('-Inf')
+
+  _ENCODED_POSITIVE_INFINITY = 'Infinity'
+  _ENCODED_NEGATIVE_INFINITY = '-Infinity'
+  _ENCODED_NAN = 'NaN'
+
   def encode(self, value: float) -> bytes:
     if not isinstance(value, float):
       raise TypeError('Expecting float but got value %s of type %s' %
                       (str(value), type(value)))
-    return struct.pack('>d', value)
+    if math.isinf(value) or math.isnan(value):
+      absl.logging.warning(
+          '! The number "%s" may be unsupported by non-python components.' %
+          value)
+    str_value = str(value)
+    # Special encoding for infinities and NaN to increase comatibility with
+    # other languages.
+    # Decoding works automatically.
+    if math.isinf(value):
+      if value >= 0:
+        str_value = Float._ENCODED_POSITIVE_INFINITY
+      else:
+        str_value = Float._ENCODED_NEGATIVE_INFINITY
+    if math.isnan(value):
+      str_value = Float._ENCODED_NAN
+
+    return str_value.encode('utf-8')
 
   def decode(self, serialized_value: bytes) -> float:
-    return struct.unpack('>d', serialized_value)[0]
+    result = float(serialized_value)
+
+    # Check that the decoded value exactly matches the encoded string.
+    # Note that float() can handle bytes, but Decimal() cannot.
+    serialized_string = serialized_value.decode('utf-8')
+    reserialized_string = str(result)
+    is_exact = (decimal.Decimal(serialized_string) ==
+                decimal.Decimal(reserialized_string))
+    if not is_exact:
+      absl.logging.warning(
+          'The number "%s" has lost precision when converted to float "%s"' %
+          (serialized_value, reserialized_string))
+
+    return result
 
 
 class TransformGraph(Artifact):

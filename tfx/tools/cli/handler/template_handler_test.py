@@ -29,15 +29,11 @@ class TemplateHandlerTest(tf.test.TestCase):
 
   _PLACEHOLDER_TEST_DATA_BEFORE = """
   from %s import mmm
-  # TODO(b/1): This will disappear.
-  # TODO(step 4): User instruction.
-  # TODO(zzzzzzz): This will disappear, too.
   pipeline_name = '{{PIPELINE_NAME}}'
   """ % ('tfx.experimental.templates.taxi.parent',)
 
   _PLACEHOLDER_TEST_DATA_AFTER = """
   from parent import mmm
-  # TODO(step 4): User instruction.
   pipeline_name = 'dummy'
   """
 
@@ -59,13 +55,12 @@ class TemplateHandlerTest(tf.test.TestCase):
     self.assertNotEqual(copied_files, [])
     self.assertContainsSubset(['__init__.py', 'beam_dag_runner.py'],
                               copied_files)
-    self.assertTrue(
-        os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
+    self.assertFalse(os.path.exists(os.path.join(test_dir, 'e2e_tests')))
+    self.assertTrue(os.path.exists(os.path.join(test_dir, 'data', 'data.csv')))
 
     with open(os.path.join(test_dir, 'pipeline', 'configs.py')) as fp:
       configs_py_content = fp.read()
     self.assertIn(pipeline_name, configs_py_content)
-    self.assertNotIn('# TODO(b/', configs_py_content)
 
   def testEscapePipelineName(self):
     # pylint: disable=protected-access
@@ -85,8 +80,6 @@ class TemplateHandlerTest(tf.test.TestCase):
             template_handler._IMPORT_FROM_LOCAL_DIR,
         template_handler._PLACEHOLDER_PIPELINE_NAME:
             pipeline_name,
-        template_handler._INTERNAL_TODO_PREFIX:
-            '',
     }
     src.write_text(self._PLACEHOLDER_TEST_DATA_BEFORE)
     template_handler._copy_and_replace_placeholder_file(src.full_path,

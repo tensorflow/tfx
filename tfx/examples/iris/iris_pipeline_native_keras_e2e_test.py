@@ -55,7 +55,7 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       execution = tf.io.gfile.listdir(os.path.join(component_path, output))
       self.assertEqual(1, len(execution))
 
-  def assertPipelineExecution(self) -> None:
+  def assertPipelineExecution(self, has_tuner: bool) -> None:
     self.assertExecutedOnce('CsvExampleGen')
     self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
@@ -64,17 +64,21 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('StatisticsGen')
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
+    if has_tuner:
+      self.assertExecutedOnce('Tuner')
 
   def testIrisPipelineNativeKeras(self):
-    BeamDagRunner().run(
-        iris_pipeline_native_keras._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=1))
+    pipeline = iris_pipeline_native_keras._create_pipeline(
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        enable_tuning=False,
+        beam_pipeline_args=[])
+
+    BeamDagRunner().run(pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -87,18 +91,10 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertEqual(expected_execution_count, execution_count)
 
-    self.assertPipelineExecution()
+    self.assertPipelineExecution(False)
 
     # Runs pipeline the second time.
-    BeamDagRunner().run(
-        iris_pipeline_native_keras._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=1))
+    BeamDagRunner().run(pipeline)
 
     # All executions but Evaluator and Pusher are cached.
     with metadata.Metadata(metadata_config) as m:
@@ -109,6 +105,16 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
                        len(m.store.get_executions()))
 
     # Runs pipeline the third time.
+    BeamDagRunner().run(pipeline)
+
+    # Asserts cache execution.
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is unchanged.
+      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      self.assertEqual(expected_execution_count * 3,
+                       len(m.store.get_executions()))
+
+  def testIrisPipelineNativeKerasWithTuner(self):
     BeamDagRunner().run(
         iris_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,
@@ -117,14 +123,21 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            enable_tuning=True,
+            beam_pipeline_args=[]))
 
-    # Asserts cache execution.
+    self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
+    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    expected_execution_count = 10  # 9 components + 1 resolver
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      self.assertEqual(expected_execution_count * 3,
-                       len(m.store.get_executions()))
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
+
+    self.assertPipelineExecution(True)
 
 
 if __name__ == '__main__':

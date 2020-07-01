@@ -81,15 +81,6 @@ _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 # TODO(b/125451545): Provide a safe temp path from base executor instead.
 _TEMP_DIR_IN_TRANSFORM_OUTPUT = '.temp_path'
 
-# TODO(b/151624179): clean this up after tfx_bsl is released with the below
-# flag.
-_TFXIO_HAS_TELEMETRY = False
-try:
-  from tfx_bsl.tfxio import TFXIO_HAS_TELEMETRY as _  # pylint: disable=g-import-not-at-top, unused-import
-  _TFXIO_HAS_TELEMETRY = True
-except ImportError:
-  pass
-
 _TRANSFORM_COMPONENT_DESCRIPTOR = 'Transform'
 
 
@@ -397,10 +388,11 @@ class Executor(base_executor.BaseExecutor):
   @beam.ptransform_fn
   @beam.typehints.with_input_types(beam.Pipeline)
   @beam.typehints.with_output_types(beam.pvalue.PDone)
-  def _IncrementColumnUsageCounter(pipeline: beam.Pipeline,
-                                   total_columns_count: int,
-                                   analyze_columns_count: int,
-                                   transform_columns_count: int):
+  def _IncrementPipelineMetrics(pipeline: beam.Pipeline,
+                                total_columns_count: int,
+                                analyze_columns_count: int,
+                                transform_columns_count: int,
+                                analyze_paths_count: int):
     """A beam PTransform to increment counters of column usage."""
 
     def _MakeAndIncrementCounters(unused_element):
@@ -415,6 +407,9 @@ class Executor(base_executor.BaseExecutor):
       beam.metrics.Metrics.counter(
           tft_beam_common.METRICS_NAMESPACE,
           'transform_columns_count').inc(transform_columns_count)
+      beam.metrics.Metrics.counter(
+          tft_beam_common.METRICS_NAMESPACE,
+          'analyze_paths_count').inc(analyze_paths_count)
       return beam.pvalue.PDone(pipeline)
 
     return (
@@ -546,10 +541,6 @@ class Executor(base_executor.BaseExecutor):
     pcoll |= 'FilterInternalColumn' >> beam.Map(_FilterInternalColumn)
     stats_options.schema = schema
     # pylint: disable=no-value-for-parameter
-    # TODO(b/153368237): Clean this up after a release post tfx 0.21.
-    if not getattr(tfdv, 'TFDV_ACCEPT_RECORD_BATCH', False):
-      pcoll |= 'RecordBatchToTable' >> beam.Map(
-          lambda rb: pa.Table.from_batches([rb]))
     return (
         pcoll
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
@@ -712,18 +703,17 @@ class Executor(base_executor.BaseExecutor):
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
       if self._input_cache_dir is not None:
-        # TODO(b/148082271, b/148212028, b/37788560): pass all kwargs directly
-        # when we stop supporting TFT 0.21.2.
-        read_cache_kwargs = dict(source=self._cache_source)
-        if hasattr(analyzer_cache, 'DatasetKey'):
-          read_cache_kwargs['cache_entry_keys'] = (
-              tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
-                  self._preprocessing_fn, self._feature_spec_or_typespec,
-                  dataset_keys_list))
+        cache_entry_keys = (
+            tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
+                self._preprocessing_fn, self._feature_spec_or_typespec,
+                dataset_keys_list))
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
-                self._input_cache_dir, dataset_keys_list, **read_cache_kwargs))
+                self._input_cache_dir,
+                dataset_keys_list,
+                source=self._cache_source,
+                cache_entry_keys=cache_entry_keys))
       elif self._output_cache_dir is not None:
         input_cache = {}
       else:
@@ -740,10 +730,6 @@ class Executor(base_executor.BaseExecutor):
             tft_beam.analysis_graph_builder.get_analysis_dataset_keys(
                 self._preprocessing_fn, self._feature_spec_or_typespec,
                 dataset_keys_list, input_cache))
-        # TODO(b/148082271, b/148212028, b/37788560): Remove this when we stop
-        # supporting TFT 0.21.2.
-        if isinstance(filtered_analysis_dataset_keys, tuple):
-          filtered_analysis_dataset_keys = filtered_analysis_dataset_keys[0]
 
       new_analyze_data_dict = {}
       for dataset in self._analyze_data_list:
@@ -947,25 +933,19 @@ class Executor(base_executor.BaseExecutor):
                       preprocessing_fn, input_dataset_metadata,
                       transform_output_path, raw_examples_data_format,
                       temp_path, input_cache_dir, output_cache_dir,
-                      compute_statistics,
-                      per_set_stats_output_paths,
-                      materialization_format)
+                      compute_statistics, per_set_stats_output_paths,
+                      materialization_format, len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
 
-  def _RunBeamImpl(self,
-                   use_tfxio: bool,
-                   analyze_data_list: List[_Dataset],
-                   transform_data_list: List[_Dataset],
-                   preprocessing_fn: Any,
+  def _RunBeamImpl(self, use_tfxio: bool, analyze_data_list: List[_Dataset],
+                   transform_data_list: List[_Dataset], preprocessing_fn: Any,
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
-                   transform_output_path: Text,
-                   raw_examples_data_format: Text,
-                   temp_path: Text,
-                   input_cache_dir: Optional[Text],
-                   output_cache_dir: Optional[Text],
-                   compute_statistics: bool,
+                   transform_output_path: Text, raw_examples_data_format: Text,
+                   temp_path: Text, input_cache_dir: Optional[Text],
+                   output_cache_dir: Optional[Text], compute_statistics: bool,
                    per_set_stats_output_paths: Sequence[Text],
-                   materialization_format: Optional[Text]) -> _Status:
+                   materialization_format: Optional[Text],
+                   analyze_paths_count: int) -> _Status:
     """Perform data preprocessing with TFT.
 
     Args:
@@ -984,6 +964,8 @@ class Executor(base_executor.BaseExecutor):
         per-set statistics is not produced.
       materialization_format: A string describing the format of the materialized
         data or None if materialization is not enabled.
+      analyze_paths_count: An integer, the number of paths that should be used
+        for analysis.
 
     Returns:
       Status of the execution.
@@ -1053,10 +1035,9 @@ class Executor(base_executor.BaseExecutor):
         # pylint: disable=no-value-for-parameter
         _ = (
             pipeline
-            | 'IncrementColumnUsageCounter'
-            >> self._IncrementColumnUsageCounter(
+            | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
                 len(feature_spec_or_typespec), len(analyze_input_columns),
-                len(transform_input_columns)))
+                len(transform_input_columns), analyze_paths_count))
 
         (new_analyze_data_dict, input_cache) = (
             pipeline
@@ -1534,23 +1515,16 @@ class Executor(base_executor.BaseExecutor):
                    schema: schema_pb2.Schema) -> tfxio.TFXIO:
     """Creates a TFXIO instance for `dataset`."""
     if self._ShouldDecodeAsRawExample(dataset.data_format):
-      kwargs = {
-          'file_pattern': dataset.file_pattern,
-          'raw_record_column_name': RAW_EXAMPLE_KEY,
-      }
-      if _TFXIO_HAS_TELEMETRY:
-        kwargs['telemetry_descriptors'] = [_TRANSFORM_COMPONENT_DESCRIPTOR]
-      return raw_tf_record.RawTfRecordTFXIO(**kwargs)
+      return raw_tf_record.RawTfRecordTFXIO(
+          file_pattern=dataset.file_pattern,
+          raw_record_column_name=RAW_EXAMPLE_KEY,
+          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR])
     else:
-      kwargs = {
-          'file_pattern': dataset.file_pattern,
-          # TODO(b/114938612): Eventually remove this override.
-          'validate': False,
-          'schema': schema
-      }
-      if _TFXIO_HAS_TELEMETRY:
-        kwargs['telemetry_descriptors'] = [_TRANSFORM_COMPONENT_DESCRIPTOR]
-      return tf_example_record.TFExampleRecord(**kwargs)
+      return tf_example_record.TFExampleRecord(
+          file_pattern=dataset.file_pattern,
+          validate=False,
+          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR],
+          schema=schema)
 
   def _AssertSameTFXIOSchema(self, datasets: Sequence[_Dataset]) -> None:
     if not datasets:

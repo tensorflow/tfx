@@ -22,34 +22,31 @@ def make_required_install_packages():
   return [
       'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.21,<3',
+      'apache-beam[gcp]>=2.22,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       # TODO(b/149399451): remove once avro has a healthy release.
-      ('avro-python3>=1.8.1,!=1.9.2.*,<2.0.0; '
+      ('avro-python3>=1.8.1,<1.9.2; '
        'python_version=="3.5" and platform_system=="Darwin"'),
       'click>=7,<8',
       'docker>=4.1,<5',
-      'frozendict>=1,<2',
       'google-api-python-client>=1.7.8,<2',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
-      'ml-metadata>=0.21.2,<0.22',
+      'ml-metadata>=0.22,<0.23',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
-      # TODO(b/156131638): Remove this when dependency conflicts are resolved
-      # after 0.22.0 releasing window.
-      'pyarrow==0.15.1',
+      'pyarrow>=0.16,<0.17',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
-      'tensorflow>=1.15,<3',
-      'tensorflow-data-validation>=0.21.4,<0.22',
-      'tensorflow-model-analysis>=0.21.4,<0.22',
+      'tensorflow>=1.15,!=2.0.*,<3',
+      'tensorflow-data-validation>=0.22,<0.23',
+      'tensorflow-model-analysis>=0.22.1,<0.23',
       'tensorflow-serving-api>=1.15,<3',
-      'tensorflow-transform>=0.21.2,<0.22',
-      'tfx-bsl>=0.21.3,<0.22',
+      'tensorflow-transform>=0.22,<0.23',
+      'tfx-bsl>=0.22,<0.23',
   ]
 
 
@@ -80,7 +77,10 @@ def make_extra_packages_docker_image():
 def make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=1.7.3,<2',
+      'tensorflowjs>=2.0.1.post1,<3',
+      # TODO(b/158034704): Remove prompt-toolkit pin resulted from
+      # tfjs -> PyInquirer dependency chain.
+      'prompt-toolkit>=2.0.10,<3',
   ]
 
 

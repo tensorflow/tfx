@@ -57,10 +57,20 @@ class ExecutorClassSpec(ExecutorSpec):
     #
     # See https://docs.python.org/3/library/pickle.html#object.__reduce__ for
     # more details.
-    executor_class_path = '%s.%s' % (self.executor_class.__module__,
-                                     self.executor_class.__name__)
     return (ExecutorClassSpec._reconstruct_from_executor_class_path,
-            (executor_class_path,))
+            (self.class_path,))
+
+  @property
+  def class_path(self):
+    """Fully qualified class name for the executor class.
+
+    <executor_class_module>.<executor_class_name>
+
+    Returns:
+      Fully qualified class name for the executor class.
+    """
+    return '{}.{}'.format(self.executor_class.__module__,
+                          self.executor_class.__name__)
 
   @staticmethod
   def _reconstruct_from_executor_class_path(executor_class_path):
@@ -69,7 +79,7 @@ class ExecutorClassSpec(ExecutorSpec):
 
 
 class ExecutorContainerSpec(ExecutorSpec):
-  """A specifcation of a container.
+  """A specification of a container.
 
   The spec includes image, command line entrypoint and arguments for a
   container. For example:

@@ -21,12 +21,14 @@ import datetime
 import mock
 import tensorflow as tf
 
+# TODO(b/158143615): importing airflow after kerastuner causes issue.
+from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow import airflow_dag_runner
 from tfx.types import component_spec
 
 

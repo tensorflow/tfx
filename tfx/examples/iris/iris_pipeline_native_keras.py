@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Text
+from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -33,6 +33,7 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.components import Tuner
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.experimental import latest_blessed_model_resolver
@@ -68,11 +69,19 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
+# Pipeline arguments for Beam powered Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
-                     metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
+                     metadata_path: Text, enable_tuning: bool,
+                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the Iris flowers pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -97,14 +106,43 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # Uses user-provided Python function that trains a model using TF-Learn.
+  # Tunes the hyperparameters for model training based on user-provided Python
+  # function. Note that once the hyperparameters are tuned, you can drop the
+  # Tuner component from pipeline and feed Trainer with tuned hyperparameters.
+  if enable_tuning:
+    tuner = Tuner(
+        module_file=module_file,
+        examples=transform.outputs['transformed_examples'],
+        transform_graph=transform.outputs['transform_graph'],
+        train_args=trainer_pb2.TrainArgs(num_steps=20),
+        eval_args=trainer_pb2.EvalArgs(num_steps=5))
+
+  # Uses user-provided Python function that trains a model.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      # If Tuner is in the pipeline, Trainer can take Tuner's output
+      # best_hyperparameters artifact as input and utilize it in the user module
+      # code.
+      #
+      # If there isn't Tuner in the pipeline, either use ImporterNode to import
+      # a previous Tuner's output to feed to Trainer, or directly use the tuned
+      # hyperparameters in user module code and set hyperparameters to None
+      # here.
+      #
+      # Example of ImporterNode,
+      #   hparams_importer = ImporterNode(
+      #     instance_name='import_hparams',
+      #     source_uri='path/to/best_hyperparameters.txt',
+      #     artifact_type=HyperParameters)
+      #   ...
+      #   hyperparameters = hparams_importer.outputs['result'],
+      hyperparameters=(tuner.outputs['best_hyperparameters']
+                       if enable_tuning else None),
+      train_args=trainer_pb2.TrainArgs(num_steps=100),
       eval_args=trainer_pb2.EvalArgs(num_steps=5))
 
   # Get the latest blessed model for model validation.
@@ -147,26 +185,28 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher,
+  ]
+  if enable_tuning:
+    components.append(tuner)
+
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          model_resolver,
-          evaluator,
-          pusher,
-      ],
+      components=components,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-  )
+      beam_pipeline_args=beam_pipeline_args)
 
 
 # To run this pipeline from the python CLI:
@@ -181,6 +221,5 @@ if __name__ == '__main__':
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
           metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0))
+          enable_tuning=True,
+          beam_pipeline_args=_beam_pipeline_args))

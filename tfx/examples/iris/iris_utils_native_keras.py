@@ -22,14 +22,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from typing import List, Text
-
 import absl
+import kerastuner
 import tensorflow as tf
 from tensorflow import keras
 import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.components.trainer.fn_args_utils import FnArgs
+from tfx.components.tuner.component import TunerFnResult
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
@@ -64,8 +67,6 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
 
     transformed_features = model.tft_layer(parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(_transformed_name(_LABEL_KEY), None)
 
     return model(transformed_features)
 
@@ -100,8 +101,20 @@ def _input_fn(file_pattern: List[Text],
   return dataset
 
 
-def _build_keras_model() -> tf.keras.Model:
+def _get_hyperparameters() -> kerastuner.HyperParameters:
+  """Returns hyperparameters for building Keras model."""
+  hp = kerastuner.HyperParameters()
+  # Defines search space.
+  hp.Choice('learning_rate', [1e-2, 1e-3], default=1e-2)
+  hp.Int('num_layers', 1, 3, default=2)
+  return hp
+
+
+def _build_keras_model(hparams: kerastuner.HyperParameters) -> tf.keras.Model:
   """Creates a DNN Keras model for classifying iris data.
+
+  Args:
+    hparams: Holds HyperParameters for tuning.
 
   Returns:
     A Keras Model.
@@ -113,13 +126,13 @@ def _build_keras_model() -> tf.keras.Model:
       for f in _FEATURE_KEYS
   ]
   d = keras.layers.concatenate(inputs)
-  for _ in range(3):
+  for _ in range(int(hparams.get('num_layers'))):
     d = keras.layers.Dense(8, activation='relu')(d)
   outputs = keras.layers.Dense(3, activation='softmax')(d)
 
   model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
-      optimizer=keras.optimizers.Adam(lr=0.0005),
+      optimizer=keras.optimizers.Adam(hparams.get('learning_rate')),
       loss='sparse_categorical_crossentropy',
       metrics=[keras.metrics.SparseCategoricalAccuracy()])
 
@@ -148,6 +161,52 @@ def preprocessing_fn(inputs):
   return outputs
 
 
+# TFX Tuner will call this function.
+def tuner_fn(fn_args: FnArgs) -> TunerFnResult:
+  """Build the tuner using the KerasTuner API.
+
+  Args:
+    fn_args: Holds args as name/value pairs.
+      - working_dir: working dir for tuning.
+      - train_files: List of file paths containing training tf.Example data.
+      - eval_files: List of file paths containing eval tf.Example data.
+      - train_steps: number of train steps.
+      - eval_steps: number of eval steps.
+      - schema_path: optional schema of the input data.
+      - transform_graph_path: optional transform graph produced by TFT.
+
+  Returns:
+    A namedtuple contains the following:
+      - tuner: A BaseTuner that will be used for tuning.
+      - fit_kwargs: Args to pass to tuner's run_trial function for fitting the
+                    model , e.g., the training and validation dataset. Required
+                    args depend on the above tuner's implementation.
+  """
+  # RandomSearch is a subclass of kerastuner.Tuner which inherits from
+  # BaseTuner.
+  tuner = kerastuner.RandomSearch(
+      _build_keras_model,
+      max_trials=6,
+      hyperparameters=_get_hyperparameters(),
+      allow_new_entries=False,
+      objective=kerastuner.Objective('val_sparse_categorical_accuracy', 'max'),
+      directory=fn_args.working_dir,
+      project_name='iris_tuning')
+
+  transform_graph = tft.TFTransformOutput(fn_args.transform_graph_path)
+  train_dataset = _input_fn(fn_args.train_files, transform_graph)
+  eval_dataset = _input_fn(fn_args.eval_files, transform_graph)
+
+  return TunerFnResult(
+      tuner=tuner,
+      fit_kwargs={
+          'x': train_dataset,
+          'validation_data': eval_dataset,
+          'steps_per_epoch': fn_args.train_steps,
+          'validation_steps': fn_args.eval_steps
+      })
+
+
 # TFX Trainer will call this function.
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
@@ -162,18 +221,38 @@ def run_fn(fn_args: TrainerFnArgs):
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
                            batch_size=_EVAL_BATCH_SIZE)
 
+  if fn_args.hyperparameters:
+    hparams = kerastuner.HyperParameters.from_config(fn_args.hyperparameters)
+  else:
+    # This is a shown case when hyperparameters is decided and Tuner is removed
+    # from the pipeline. User can also inline the hyperparameters directly in
+    # _build_keras_model.
+    hparams = _get_hyperparameters()
+  absl.logging.info('HyperParameters for training: %s' % hparams.get_config())
+
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
-    model = _build_keras_model()
+    model = _build_keras_model(hparams)
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
+
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  # Write logs to path
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=log_dir, update_freq='batch')
 
   model.fit(
       train_dataset,
       epochs=int(fn_args.train_steps / steps_per_epoch),
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps)
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback])
 
   signatures = {
       'serving_default':

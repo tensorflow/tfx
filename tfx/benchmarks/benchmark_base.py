@@ -17,8 +17,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import flags
+import apache_beam as beam
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
+
+FLAGS = flags.FLAGS
+flags.DEFINE_string(
+    "beam_runner", "DirectRunner",
+    "Beam runner to use - any runner name accepted by "
+    "apache_beam.runners.create_runner")
 
 
 class BenchmarkBase(test.Benchmark):
-  pass
+
+  def _create_beam_pipeline(self):
+    # FLAGS may not be parsed if the benchmark is instantiated directly by a
+    # test framework (e.g. PerfZero creates the class and calls the methods
+    # directly)
+    runner_flag = (
+        FLAGS.beam_runner
+        if FLAGS.is_parsed() else FLAGS["beam_runner"].default)
+    return beam.Pipeline(runner=beam.runners.create_runner(runner_flag))

@@ -23,8 +23,15 @@ import os
 import tempfile
 import tensorflow as tf
 
+from tfx import version
 from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels
+
+
+_test_dockerfile_content = '''FROM tensorflow/tfx:%s
+WORKDIR /pipeline
+COPY ./ ./
+ENV PYTHONPATH="/pipeline:${PYTHONPATH}"''' % version.__version__
 
 
 class DockerfileTest(tf.test.TestCase):
@@ -37,6 +44,10 @@ class DockerfileTest(tf.test.TestCase):
     # there is no setup.py in the working dir.
     self._old_working_dir = os.getcwd()
     self._tmp_working_dir = tempfile.mkdtemp()
+    self._test_dockerfile = os.path.join(self._tmp_working_dir,
+                                         '.test_dockerfile')
+    with open(self._test_dockerfile, 'w') as f:
+      f.writelines(_test_dockerfile_content)
     os.chdir(self._tmp_working_dir)
 
   def tearDown(self):
@@ -47,9 +58,7 @@ class DockerfileTest(tf.test.TestCase):
     generated_dockerfile_path = labels.DOCKERFILE_NAME
     dockerfile.Dockerfile(filename=generated_dockerfile_path)
     self.assertTrue(
-        filecmp.cmp(
-            os.path.join(self._testdata_dir, 'test_dockerfile'),
-            generated_dockerfile_path))
+        filecmp.cmp(self._test_dockerfile, generated_dockerfile_path))
 
   def testGenerateWithBaseOverride(self):
     generated_dockerfile_path = labels.DOCKERFILE_NAME

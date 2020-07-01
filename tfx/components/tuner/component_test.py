@@ -61,6 +61,16 @@ class TunerTest(tf.test.TestCase):
         tuner_fn='path.to.tuner_fn')
     self._verify_output(tuner)
 
+  def testConstructWithCustomConfig(self):
+    tuner = component.Tuner(
+        examples=self.examples,
+        transform_graph=self.transform_graph,
+        train_args=self.train_args,
+        eval_args=self.eval_args,
+        module_file='/path/to/module/file',
+        custom_config={'key': 'value'})
+    self._verify_output(tuner)
+
   def testConstructDuplicateUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Tuner(

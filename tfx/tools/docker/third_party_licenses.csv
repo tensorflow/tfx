@@ -60,7 +60,6 @@ fasteners,https://raw.githubusercontent.com/harlowja/fasteners/master/LICENSE,Ap
 fastrlock,https://raw.githubusercontent.com/scoder/fastrlock/master/LICENSE,MIT
 filelock,https://raw.githubusercontent.com/benediktschmitt/py-filelock/master/LICENSE.rst,Public Domain
 fire,https://raw.githubusercontent.com/google/python-fire/master/LICENSE,Apache 2.0
-frozendict,https://raw.githubusercontent.com/slezica/python-frozendict/master/LICENSE.txt,MIT
 funcsigs,https://raw.githubusercontent.com/aliles/funcsigs/master/LICENSE,Apache 2.0
 functools32,https://raw.githubusercontent.com/michilu/python-functools32/master/LICENSE,PSF
 future,https://raw.githubusercontent.com/PythonCharmers/python-future/master/LICENSE.txt,MIT
@@ -225,7 +224,7 @@ tzlocal,https://raw.githubusercontent.com/regebro/tzlocal/master/LICENSE.txt,MIT
 uritemplate,https://github.com/python-hyper/uritemplate/blob/master/LICENSE,BSD 3-Clause License or Apache 2.0
 urllib3,https://raw.githubusercontent.com/urllib3/urllib3/master/LICENSE.txt,MIT
 virtualenv,https://raw.githubusercontent.com/pypa/virtualenv/master/LICENSE.txt,MIT
-wcwidth,https://raw.githubusercontent.com/jquast/wcwidth/master/LICENSE.txt,MIT
+wcwidth,https://raw.githubusercontent.com/jquast/wcwidth/master/LICENSE,MIT
 webencodings,https://raw.githubusercontent.com/gsnedders/python-webencodings/master/LICENSE,BSD
 websocket-client,https://raw.githubusercontent.com/websocket-client/websocket-client/master/LICENSE,LGPL
 widgetsnbextension,https://raw.githubusercontent.com/jupyter-widgets/ipywidgets/master/widgetsnbextension/LICENSE,BSD

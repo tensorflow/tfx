@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-from typing import Any, Dict, Iterable, List, Text, Tuple
+from typing import Any, Dict, Iterable, Text, Tuple
 
 import apache_beam as beam
 import prestodb
@@ -27,7 +27,6 @@ from proto import presto_config_pb2
 import tensorflow as tf
 
 from google.protobuf import json_format
-from tfx import types
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.proto import example_gen_pb2
 
@@ -166,14 +165,12 @@ def _row_to_example(
 @beam.typehints.with_output_types(tf.train.Example)
 def _PrestoToExample(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],  # pylint: disable=unused-argument
     exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read from Presto and transform to TF examples.
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
     exec_properties: A dict of execution properties.
     split_pattern: Split.pattern in Input config, a Presto sql string.
 

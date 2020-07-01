@@ -52,8 +52,8 @@ RUN_FN = 'models.keras.model.run_fn'
 # NOTE: Uncomment below to use an estimator based model.
 # RUN_FN = 'models.estimator.model.run_fn'
 
-TRAIN_NUM_STEPS = 100
-EVAL_NUM_STEPS = 100
+TRAIN_NUM_STEPS = 1000
+EVAL_NUM_STEPS = 150
 
 # Change this value according to your use cases.
 EVAL_ACCURACY_THRESHOLD = 0.6
@@ -103,22 +103,22 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 #    query_sample_rate=_query_sample_rate)
 
 # Beam args to run data processing on DataflowRunner.
+#
 # TODO(b/151114974): Remove `disk_size_gb` flag after default is increased.
 # TODO(b/151116587): Remove `shuffle_mode` flag after default is changed.
+# TODO(b/156874687): Remove `machine_type` after IP addresses are no longer a
+#                    scaling bottleneck.
 # TODO(step 8): (Optional) Uncomment below to use Dataflow.
 # DATAFLOW_BEAM_PIPELINE_ARGS = [
 #    '--project=' + GOOGLE_CLOUD_PROJECT,
 #    '--runner=DataflowRunner',
 #    '--temp_location=' + os.path.join('gs://', GCS_BUCKET_NAME, 'tmp'),
 #    '--region=' + GOOGLE_CLOUD_REGION,
-#    # TODO(tensorflow/tfx#1461) Remove `shuffle_mode` after default is changed.  # pylint: disable=g-bad-todo
-#    '--experiments=shuffle_mode=auto',
-#    # TODO(tensorflow/tfx#1459) Remove `disk_size_gb` after default is
-#    #                           increased.  # pylint: disable=g-bad-todo
+#
+#    # Temporary overrides of defaults.
 #    '--disk_size_gb=50',
-#    # If you are blocked by IP Address quota, using a bigger machine_type will
-#    # reduce the number of needed IPs.
-#    # '--machine_type=n1-standard-8',
+#    '--experiments=shuffle_mode=auto',
+#    '--machine_type=n1-standard-8',
 #    ]
 
 # A dict which contains the training job parameters to be passed to Google
@@ -147,7 +147,7 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
 # TODO(step 9): (Optional) Uncomment below to use AI Platform serving.
 # GCP_AI_PLATFORM_SERVING_ARGS = {
-#     'model_name': PIPELINE_NAME,
+#     'model_name': PIPELINE_NAME.replace('-','_'),  # '-' is not allowed.
 #     'project_id': GOOGLE_CLOUD_PROJECT,
 #     # The region to use when serving the model. See available regions here:
 #     # https://cloud.google.com/ml-engine/docs/regions

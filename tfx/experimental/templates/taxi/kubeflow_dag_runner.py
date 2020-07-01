@@ -41,12 +41,16 @@ SERVING_MODEL_DIR = os.path.join(PIPELINE_ROOT, 'serving_model')
 
 # Specifies data file directory. DATA_PATH should be a directory containing CSV
 # files for CsvExampleGen in this example. By default, data files are in the
-# `data` directory.
-# NOTE: If you upload data files to GCS(which is recommended if you use
-#       Kubeflow), you can use a path starting "gs://YOUR_BUCKET_NAME/path" for
-#       DATA_PATH. For example,
-#       DATA_PATH = 'gs://bucket/chicago_taxi_trips/csv/'
-DATA_PATH = 'data'
+# GCS path: `gs://{GCS_BUCKET_NAME}/tfx-template/data/`. Using a GCS path is
+# recommended for KFP.
+#
+# One can optionally choose to use a data source located inside of the container
+# built by the template, by specifying
+# DATA_PATH = 'data'. Note that Dataflow does not support use container as a
+# dependency currently, so this means CsvExampleGen cannot be used with Dataflow
+# (step 8 in the template notebook).
+
+DATA_PATH = 'gs://{}/tfx-template/data/'.format(configs.GCS_BUCKET_NAME)
 
 
 def run():
@@ -68,8 +72,8 @@ def run():
 
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
-  pod_labels = kubeflow_dag_runner.get_default_pod_labels().update(
-      {telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
+  pod_labels = kubeflow_dag_runner.get_default_pod_labels()
+  pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
   kubeflow_dag_runner.KubeflowDagRunner(
       config=runner_config, pod_labels_to_attach=pod_labels
   ).run(

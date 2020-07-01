@@ -10,10 +10,11 @@ landing_page:
       Learn how to move models to production with TFX. Follow end-to-end examples for beginners and
       users. Create and manage machine learning pipelines with TensorFlow.
   rows:
-  - heading: "TensorFlow in Production tutorials"
+  - options:
+    - description-100
+    heading: "TensorFlow in Production tutorials"
     items:
-    - classname: devsite-landing-row-100
-      description: >
+    - description: >
         A great way to learn TensorFlow Extended (TFX) is to learn by doing.
         These tutorials are focused examples of the key parts of TFX. They
         include beginner tutorials to get started, and more advanced tutorials

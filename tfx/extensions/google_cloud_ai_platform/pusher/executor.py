@@ -50,7 +50,7 @@ class Executor(tfx_pusher_executor.Executor):
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - model_export: exported model from trainer.
-        - model_blessing: model blessing path from model_validator.
+        - model_blessing: model blessing path from evaluator.
       output_dict: Output dict from key to a list of artifacts, including:
         - model_push: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.

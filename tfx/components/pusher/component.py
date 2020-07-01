@@ -38,8 +38,9 @@ class Pusher(base_component.BaseComponent):
   The `Pusher` component can be used to push an validated SavedModel from output
   of the [Trainer component](https://www.tensorflow.org/tfx/guide/trainer) to
   [TensorFlow Serving](https://www.tensorflow.org/tfx/serving).  The Pusher
-  will check the validation results from the [ModelValidator
-  component](https://www.tensorflow.org/tfx/guide/model_validator)
+  will check the validation results from the [Evaluator
+  component](https://www.tensorflow.org/tfx/guide/evaluator) and [InfraValidator
+  component](https://www.tensorflow.org/tfx/guide/infra_validator)
   before deploying the model.  If the model has not been blessed, then the model
   will not be pushed.
 
@@ -55,7 +56,7 @@ class Pusher(base_component.BaseComponent):
     # to a file destination if check passed.
     pusher = Pusher(
         model=trainer.outputs['model'],
-        model_blessing=model_validator.outputs['blessing'],
+        model_blessing=evaluator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory=serving_model_dir)))
@@ -68,7 +69,7 @@ class Pusher(base_component.BaseComponent):
   def __init__(
       self,
       model: types.Channel = None,
-      model_blessing: types.Channel = None,
+      model_blessing: Optional[types.Channel] = None,
       infra_blessing: Optional[types.Channel] = None,
       push_destination: Optional[Union[pusher_pb2.PushDestination,
                                        Dict[Text, Any]]] = None,
@@ -82,8 +83,9 @@ class Pusher(base_component.BaseComponent):
     Args:
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a Trainer component.
-      model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
-        usually produced by a ModelValidator component. _required_
+      model_blessing: An optional Channel of type
+        `standard_artifacts.ModelBlessing`, usually produced from an Evaluator
+        component.
       infra_blessing: An optional Channel of type
         `standard_artifacts.InfraBlessing`, usually produced from an
         InfraValidator component.

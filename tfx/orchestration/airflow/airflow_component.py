@@ -50,14 +50,14 @@ def _airflow_component_launcher(
   Args:
     component: TFX BaseComponent instance. This instance holds all inputs and
       outputs placeholders as well as component properties.
-    component_launcher_class: the class of the launcher to launch the component.
-    pipeline_info: a data_types.PipelineInfo instance that holds pipeline
+    component_launcher_class: The class of the launcher to launch the component.
+    pipeline_info: A data_types.PipelineInfo instance that holds pipeline
       properties
-    driver_args: component specific args for driver.
-    metadata_connection_config: configuration for how to connect to metadata.
-    beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-    additional_pipeline_args: a dict of additional pipeline args.
-    component_config: component config to launch the component.
+    driver_args: Component specific args for driver.
+    metadata_connection_config: Configuration for how to connect to metadata.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    additional_pipeline_args: A dict of additional pipeline args.
+    component_config: Component config to launch the component.
     **kwargs: Context arguments that will be passed in by Airflow, including:
       - ti: TaskInstance object from which we can get run_id of the running
         pipeline.
@@ -99,15 +99,15 @@ class AirflowComponent(python_operator.PythonOperator):
       parent_dag: An AirflowPipeline instance as the pipeline DAG.
       component: An instance of base_node.BaseNode that holds all
         properties of a logical component.
-      component_launcher_class: the class of the launcher to launch the
+      component_launcher_class: The class of the launcher to launch the
         component.
       pipeline_info: An instance of data_types.PipelineInfo that holds pipeline
         properties.
       enable_cache: Whether or not cache is enabled for this component run.
       metadata_connection_config: A config proto for metadata connection.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
-      component_config: component config to launch the component.
+      component_config: Component config to launch the component.
     """
     # Prepare parameters to create TFX worker.
     driver_args = data_types.DriverArgs(enable_cache=enable_cache)

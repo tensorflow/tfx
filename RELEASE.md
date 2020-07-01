@@ -1,49 +1,112 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
-*   Implemented a TFJS rewriter.
+*   Added TFX DSL IR compiler that encodes a TFX pipeline into a DSL proto.
+*   Supported feature based split partition in ExampleGen.
+*   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
+*   Changed Span information as a property of ExampleGen's output artifact.
+    Deprecated ExampleGen input (external) artifact.
+*   Added ModelRun artifact for Trainer for storing training related files,
+    e.g., Tensorboard logs.
+
+## Bug fixes and other changes
+*   Added Tuner component, which is still work in progress.
+*   Added Tuner component to Iris e2e example.
+*   Relaxed the rule that output artifact uris must be newly created. This is a
+    temporary workaround to make retry work. We will introduce a more
+    comprehensive solution for idempotent execution.
+*   Made evaluator output optional (while still recommended) for pusher.
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`.
+*   Removed Tuner from custom_components/ as it's supported under components/
+    now.
+*   Added support of non tf.train.Example protos as internal data payload
+    format by ImportExampleGen.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
+
+## Breaking changes
+
+### For pipeline authors
+*   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
+    previous module path from `tfx.components` is not available anymore.
+*   Updated beam pipeline args, users now need to set both `direct_running_mode`
+    and `direct_num_workers` explicitly for multi-processing.
+*   Added required 'output_data_format' execution property to
+    FileBaseExampleGen.
+*   Changed ExampleGen to take a string as input source directly instead of a
+    Channel of external artifact:
+    *   `input` Channel is deprecated. The use of `input` is valid but
+        should change to string type `input_base` ASAP.
+    *   Previously deprecated `input_base` Channel is changed to string type
+        instead of Channel. This is a breaking change, users should pass string
+        directly to `input_base`.
+*   ExternalArtifact and `external_input` function are deprecated. The use
+    of `external_input` with ExampleGen `input` is still valid but should change
+    to use `input_base` ASAP.
+*   Fully removed csv_input and tfrecord_input in dsl_utils. This is a breaking
+    change, users should pass string directly to `input_base`.
+*   Changed GetInputSourceToExamplePTransform interface by removing input_dict.
+    This is a breaking change, custom ExampleGens need to follow the interface
+    change.
+
+### For component authors
+
+## Documentation updates
+
+## Deprecations
+
+# Version 0.22.0
+
+## Major Features and Improvements
 *   Introduced experimental Python function component decorator (`@component`
     decorator under `tfx.dsl.component.experimental.decorators`) allowing
     Python function-based component definition.
 *   Added the experimental TemplatedExecutorContainerSpec executor class that
     supports structural placeholders (not Jinja placeholders).
-*   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
-    PTramsform when not using Dataflow runner.
 *   Added the experimental function "create_container_component" that
     simplifies creating container-based components.
-*   Removed the incomplete cifar10 example.
+*   Implemented a TFJS rewriter.
+*   Added the scripts/run_component.py script which makes it easy to run the
+    component code and executor code. (Similar to scripts/run_executor.py)
+*   Added support for container component execution to BeamDagRunner.
+*   Introduced experimental generic Artifact types for ML workflows.
+*   Added support for `float` execution properties.
+
+## Bug fixes and other changes
+*   Migrated BigQueryExampleGen to the new (experimental) `ReadFromBigQuery`
+    PTramsform when not using Dataflow runner.
 *   Enhanced add_downstream_node / add_upstream_node to apply symmetric changes
     when being called. This method enables task-based dependencies by enforcing
     execution order for synchronous pipelines on supported platforms. Currently,
     the supported platforms are Airflow, Beam, and Kubeflow Pipelines. Note that
     this API call should be considered experimental, and may not work with
     asynchronous pipelines, sub-pipelines and pipelines with conditional nodes.
-*   Added Tuner component.
 *   Added the container-based sample pipeline (download, filter, print)
-*   Added the scripts/run_component.py script which makes it easy to run the
-    component code and executor code. (Similar to scripts/run_executor.py)
-*   Added support for container component execution to BeamDagRunner.
-*   Introduced experimental generic Artifact types for ML workflows.
-
-## Bug fixes and other changes
-
-*   Depends on `apache-beam[gcp]>=2.21,<3`.
-*   Depends on `grpcio>=2.18.1,<3`.
-*   Depends on `kubernetes>=10.0.1,<12`.
-*   Depends on `pyarrow>=0.16,<0.17`.
+*   Removed the incomplete cifar10 example.
 *   Removed `python-snappy` from `[all]` extra dependency list.
 *   Tests depends on `apache-airflow>=1.10.10,<2`;
 *   Removed test dependency to tzlocal.
 *   Fixes unintentional overriding of user-specified setup.py file for Dataflow
     jobs when running on KFP container.
-*   Depends on `frozendict>=1,<2`.
 *   Made ComponentSpec().inputs and .outputs behave more like real dictionaries.
 *   Depends on `kerastuner>=1,<2`.
 *   Depends on `pyyaml>=3.12,<6`.
-
-### Deprecations
+*   Depends on `apache-beam[gcp]>=2.21,<3`.
+*   Depends on `grpcio>=2.18.1,<3`.
+*   Depends on `kubernetes>=10.0.1,<12`.
+*   Depends on `tensorflow>=1.15,!=2.0.*,<3`.
+*   Depends on `tensorflow-data-validation>=0.22.0,<0.23.0`.
+*   Depends on `tensorflow-model-analysis>=0.22.1,<0.23.0`.
+*   Depends on `tensorflow-transform>=0.22.0,<0.23.0`.
+*   Depends on `tfx-bsl>=0.22.0,<0.23.0`.
+*   Depends on `ml-metadata>=0.22.0,<0.23.0`.
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
+*   Fixed a bug in `io_utils.copy_dir` which prevent it to work correctly for
+    nested sub-directories.
 
 ## Breaking changes
+
+### For pipeline authors
 *   Changed custom config for the Do function of Trainer and Pusher to accept
     a JSON-serialized dict instead of a dict object. This also impacts all the
     Do functions under `tfx.extensions.google_cloud_ai_platform` and
@@ -58,16 +121,23 @@
     argument, even for DirectRunner. Previously this argument was only required
     for DataflowRunner. Note that the specified value of `--temp_location`
     should point to a Google Cloud Storage bucket.
-*   Converted the BaseNode class attributes to the constructor parameters. This
-    won't affect any components derived from BaseComponent.
 *   Revert current per-component cache API (with `enable_cache`, which was only
     available in tfx>=0.21.3,<0.22), in preparing for a future redesign.
 
-### For pipeline authors
-
 ### For component authors
+*   Converted the BaseNode class attributes to the constructor parameters. This
+    won't affect any components derived from BaseComponent.
+*   Changed the encoding of the Integer and Float artifacts to be more portable.
 
 ## Documentation updates
+*   Added concept guides for understanding TFX pipelines and components.
+*   Added guides to building Python function-based components and
+    container-based components.
+*   Added BulkInferrer component and TFX CLI documentation to the table of
+    contents.
+
+## Deprecations
+*   Deprecating Py2 support
 
 # Version 0.21.4
 

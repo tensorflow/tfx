@@ -24,7 +24,7 @@ from __future__ import print_function
 import collections
 import os
 import re
-from typing import Text, Dict, Any, List, Pattern
+from typing import Text, Dict, Any, List, Pattern, Set
 import click
 
 import tensorflow as tf
@@ -37,7 +37,6 @@ _PIPELINE_NAME_ESCAPE_CHAR = ['\\', '\'', '"', '/']
 _IMPORT_FROM_PACKAGE = re.compile(
     r'from tfx\.experimental\.templates\.[^\.]+\.')
 _IMPORT_FROM_LOCAL_DIR = 'from '
-_INTERNAL_TODO_PREFIX = re.compile(r'\s*# TODO\((?:b/\d+|[a-z]+)\):.*')
 
 _TemplateFilePath = collections.namedtuple('_TemplateFilePath', ['src', 'dst'])
 _ADDITIONAL_FILE_PATHS = {
@@ -45,6 +44,11 @@ _ADDITIONAL_FILE_PATHS = {
         _TemplateFilePath(
             'examples/chicago_taxi_pipeline/data/big_tipper_label/data.csv',
             'data/data.csv'),
+    ],
+}
+_IGNORE_FILE_PATHS = {
+    'taxi': [  # template name
+        'e2e_tests',
     ],
 }
 
@@ -92,7 +96,8 @@ def list_template() -> List[Text]:
 
 
 def _copy_and_replace_placeholder_dir(
-    src: Text, dst: Text, replace_dict: Dict[Pattern[Text], Text]) -> None:
+    src: Text, dst: Text, ignore_paths: Set[Text],
+    replace_dict: Dict[Pattern[Text], Text]) -> None:
   """Copy a directory to destination path and replace the placeholders."""
   if not os.path.isdir(dst):
     if os.path.exists(dst):
@@ -103,10 +108,14 @@ def _copy_and_replace_placeholder_dir(
   for f in os.listdir(src):
     src_path = os.path.join(src, f)
     dst_path = os.path.join(dst, f)
+    if src_path in ignore_paths:
+      continue
+
     if os.path.isdir(src_path):
       if f.startswith('_'):  # Excludes __pycache__ and other private folders.
         continue
-      _copy_and_replace_placeholder_dir(src_path, dst_path, replace_dict)
+      _copy_and_replace_placeholder_dir(src_path, dst_path, ignore_paths,
+                                        replace_dict)
     else:  # a file.
       if f.endswith('.pyc'):  # Excludes .pyc
         continue
@@ -141,22 +150,25 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
   Args:
     flags_dict: Should have pipeline_name, model and dest_dir.
   """
+  model = flags_dict[labels.MODEL]
   pipeline_name = _sanitize_pipeline_name(flags_dict[labels.PIPELINE_NAME])
-  template_dir = os.path.join(_templates_src_dir(), flags_dict[labels.MODEL])
-  destination_dir = flags_dict[labels.DESTINATION_PATH]
+  template_dir = os.path.join(_templates_src_dir(), model)
   if not os.path.isdir(template_dir):
-    raise ValueError('Model {} does not exist.'.format(
-        flags_dict[labels.MODEL]))
+    raise ValueError('Model {} does not exist.'.format(model))
+  destination_dir = flags_dict[labels.DESTINATION_PATH]
 
+  ignore_paths = {
+      os.path.join(template_dir, x) for x in _IGNORE_FILE_PATHS.get(model, [])
+  }
   replace_dict = {
       _IMPORT_FROM_PACKAGE: _IMPORT_FROM_LOCAL_DIR,
       _PLACEHOLDER_PIPELINE_NAME: pipeline_name,
-      _INTERNAL_TODO_PREFIX: '',
   }
   _copy_and_replace_placeholder_dir(template_dir,
                                     destination_dir,
+                                    ignore_paths,
                                     replace_dict)
-  for additional_file in _ADDITIONAL_FILE_PATHS[flags_dict[labels.MODEL]]:
+  for additional_file in _ADDITIONAL_FILE_PATHS.get(model, []):
     src_path = os.path.join(_tfx_src_dir(), additional_file.src)
     dst_path = os.path.join(destination_dir, additional_file.dst)
     io_utils.copy_file(src_path, dst_path)

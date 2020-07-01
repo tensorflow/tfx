@@ -4,6 +4,8 @@ toc:
 
 - heading: "What's New"
   style: divider
+- title: "Automatic Hyperparameter Tuning"
+  path: /tfx/guide/tuner
 - title: "Using Keras with TFX"
   path: /tfx/guide/keras
 - title: "Using TFX in Cloud AI Platform Pipelines"
@@ -13,7 +15,14 @@ toc:
 - title: "Using InfraValidator to safely deploy models in production"
   path: /tfx/guide/infra_validator
 
-- heading: "Components"
+- heading: "TFX Pipelines"
+  style: divider
+- title: "Understanding TFX pipelines"
+  path: /tfx/guide/understanding_tfx_pipelines
+- title: "Building a TFX pipeline"
+  path: /tfx/guide/build_tfx_pipeline
+
+- heading: "TFX Standard Components"
   style: divider
 - title: "ExampleGen"
   path: /tfx/guide/examplegen
@@ -27,13 +36,26 @@ toc:
   path: /tfx/guide/transform
 - title: "Trainer"
   path: /tfx/guide/trainer
+- title: "Tuner"
+  path: /tfx/guide/tuner
 - title: "Evaluator"
   path: /tfx/guide/evaluator
 - title: "InfraValidator"
   path: /tfx/guide/infra_validator
 - title: "Pusher"
   path: /tfx/guide/pusher
-- title: "Advanced: Custom Components"
+- title: "BulkInferrer"
+  path: /tfx/guide/bulkinferrer
+
+- heading: "TFX Custom Components"
+  style: divider
+- title: "Understanding custom components"
+  path: /tfx/guide/understanding_custom_components
+- title: "Python function-based components"
+  path: /tfx/guide/custom_function_component
+- title: "Container-based components"
+  path: /tfx/guide/container_component
+- title: "Fully custom components"
   path: /tfx/guide/custom_component
 
 - heading: "Orchestrators"
@@ -44,6 +66,11 @@ toc:
   path: /tfx/guide/beam_orchestrator
 - title: "Kubeflow Pipelines"
   path: /tfx/guide/kubeflow
+
+- heading: "TFX CLI"
+  style: divider
+- title: "Using the TFX CLI"
+  path: /tfx/guide/cli
 
 - heading: "Libraries"
   style: divider
