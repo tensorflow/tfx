@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,14 +17,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-from distutils.dir_util import copy_tree
-from collections import defaultdict
 from absl import app
 from absl import flags
-
-from tfx.orchestration import metadata
+from collections import defaultdict
+from distutils.dir_util import copy_tree
 from ml_metadata.proto import metadata_store_pb2
+import os
+from tfx.orchestration import metadata
 
 FLAGS = flags.FLAGS
 
