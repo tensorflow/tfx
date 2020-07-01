@@ -28,8 +28,9 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
+import tensorflow_addons as tfa
 from bert_tokenizer_utils import SpecialBertTokenizer
-from bert_models import BertForSingleSentenceClassification
+from bert_models import BertForClassification
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
@@ -146,10 +147,13 @@ def run_fn(fn_args: TrainerFnArgs):
   #mirrored_strategy = tf.distribute.MirroredStrategy()
   # with mirrored_strategy.scope():
   bert_layer = hub.KerasLayer(_BERT_LINK, trainable=False)
-  model = BertForSingleSentenceClassification(
+  model = BertForClassification(
       bert_layer,
       _MAX_LEN,
-      [(128, 'relu'), (64, 'relu')])
+      tf.keras.losses.binary_crossentropy,
+      [tfa.metrics.MatthewsCorrelationCoefficient(1)],
+      [(128, 'relu'), (64, 'relu')]
+      )
 
   model.fit(
       train_dataset,

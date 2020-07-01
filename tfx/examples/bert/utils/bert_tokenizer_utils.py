@@ -16,8 +16,7 @@
 
 import tensorflow as tf
 import tensorflow_text as text
-from tf_agents.utils import eager_utils
-from tensorflow.python.eager.context import eager_mode, graph_mode
+from tensorflow.python.eager.context import eager_mode
 import tensorflow_hub as hub
 
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"

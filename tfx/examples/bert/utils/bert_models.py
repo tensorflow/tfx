@@ -16,12 +16,13 @@
 
 import tensorflow.keras as keras
 import tensorflow as tf
-import tensorflow_addons as tfa
 
-
-def BertForSingleSentenceClassification(
+def BertForClassification(
         bert_layer,
         max_len,
+        loss,
+        metrics,
+        learning_rate=5e-5,
         fully_connected_layers=None):
   """Keras model for single sentence classification.
   Connect configurable fully connected layers on top of the Bert
@@ -60,7 +61,7 @@ def BertForSingleSentenceClassification(
   model = keras.Model(input_layers, output)
   model.compile(
       optimizer=tf.keras.optimizers.Adam(5e-5),
-      loss=tf.keras.losses.binary_crossentropy,
-      metrics=[tfa.metrics.MatthewsCorrelationCoefficient(1)])
+      loss=loss,
+      metrics=metrics)
 
   return model
