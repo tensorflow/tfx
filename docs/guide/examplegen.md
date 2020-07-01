@@ -104,7 +104,7 @@ example_gen = CsvExampleGen(input=examples, output_config=output)
 Notice how the `partition_feature_name` was set in this example.
 
 Split by `partition_feature_name` is only supported for tf.Example and
-tf.SequenceExample payload format and with `bytes_list` and `int64_list`
+tf.SequenceExample output payload format and with `bytes_list` and `int64_list`
 features.
 
 For an input source which has already been split, set the `input_config` for
