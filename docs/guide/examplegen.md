@@ -83,6 +83,30 @@ example_gen = CsvExampleGen(input=examples, output_config=output)
 
 Notice how the `hash_buckets` were set in this example.
 
+To produce the train/eval split based on a feature in the examples, set the 
+`output_config` for ExampleGen component. For example:
+
+```python
+from  tfx.proto import example_gen_pb2
+
+# Input has a single split 'input_dir/*'.
+# Output 2 splits based on 'user_id': train:eval=3:1.
+output = example_gen_pb2.Output(
+             split_config=example_gen_pb2.SplitConfig(splits=[
+                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
+                 example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
+             ],
+             partition_feature_name='user_id'))
+examples = csv_input(input_dir)
+example_gen = CsvExampleGen(input=examples, output_config=output)
+```
+
+Notice how the `partition_feature_name` was set in this example.
+
+Split by `partition_feature_name` is only supported for tf.Example and
+tf.SequenceExample payload format and with `bytes_list` and `int64_list`
+features.
+
 For an input source which has already been split, set the `input_config` for
 ExampleGen component:
 
