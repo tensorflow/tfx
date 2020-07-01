@@ -53,8 +53,17 @@ def _TestInputSourceToExamplePTransform(pipeline, exec_properties,
     feature['s'] = tf.train.Feature(
     ) if i % 10 == 0 and has_empty else tf.train.Feature(
         bytes_list=tf.train.BytesList(value=[tf.compat.as_bytes(str(i))]))
-    example_proto = tf.train.Example(
-        features=tf.train.Features(feature=feature))
+
+    if exec_properties.get('sequence_example', False):
+      feature_list = {}
+      feature_list['list'] = tf.train.FeatureList(feature=[feature['s']])
+      example_proto = tf.train.SequenceExample(
+          context=tf.train.Features(feature=feature),
+          feature_lists=tf.train.FeatureLists(feature_list=feature_list))
+    else:
+      example_proto = tf.train.Example(
+          features=tf.train.Features(feature=feature))
+
     mock_examples.append(example_proto)
   result = pipeline | beam.Create(mock_examples)
 
@@ -97,12 +106,35 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                     example_gen_pb2.Input.Split(
                         name='single', pattern='single/*'),
                 ]),
-                preserving_proto_field_name=True)
+                preserving_proto_field_name=True),
+        utils.OUTPUT_CONFIG_KEY:
+            json_format.MessageToJson(
+                example_gen_pb2.Output(
+                    split_config=example_gen_pb2.SplitConfig(splits=[
+                        example_gen_pb2.SplitConfig.Split(
+                            name='train', hash_buckets=2),
+                        example_gen_pb2.SplitConfig.Split(
+                            name='eval', hash_buckets=1)
+                    ])))
     }
 
+  def _testDo(self):
+    # Run executor.
+    example_gen = TestExampleGenExecutor()
+    example_gen.Do({}, self._output_dict, self._exec_properties)
+
+    # Check example gen outputs.
+    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+
+    # Output split ratio: train:eval=2:1.
+    self.assertGreater(
+        tf.io.gfile.GFile(self._train_output_file).size(),
+        tf.io.gfile.GFile(self._eval_output_file).size())
+
   def testDoInputSplit(self):
-    # Create exec proterties.
-    exec_properties = {
+    # Create exec proterties for input split.
+    self._exec_properties = {
         utils.INPUT_CONFIG_KEY:
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
@@ -116,103 +148,53 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
                 example_gen_pb2.Output(), preserving_proto_field_name=True)
     }
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Input train split is bigger than eval split.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo()
 
   def testDoOutputSplit(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
-            ])))
-
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
-
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
-
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo()
 
   def testDoOutputSplitWithProto(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1)
-            ])))
+    # Update exec proterties.
     self._exec_properties['format_proto'] = True
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
+    self._testDo()
 
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+  def testDoOutputSplitWithSequenceExample(self):
+    # Update exec proterties.
+    self._exec_properties['sequence_example'] = True
 
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo()
+
+  def _testFeatureBasedPartition(self, partition_feature_name):
+    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
+        example_gen_pb2.Output(
+            split_config=example_gen_pb2.SplitConfig(
+                splits=[
+                    example_gen_pb2.SplitConfig.Split(
+                        name='train', hash_buckets=2),
+                    example_gen_pb2.SplitConfig.Split(
+                        name='eval', hash_buckets=1)
+                ],
+                partition_feature_name=partition_feature_name)))
 
   def testFeatureBasedPartition(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
 
-    # Run executor.
-    example_gen = TestExampleGenExecutor()
-    example_gen.Do({}, self._output_dict, self._exec_properties)
+    self._testDo()
 
-    # Check example gen outputs.
-    self.assertTrue(tf.io.gfile.exists(self._train_output_file))
-    self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+  def testFeatureBasedPartitionWithSequenceExample(self):
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
+    self._exec_properties['has_empty'] = False
+    self._exec_properties['sequence_example'] = True
 
-    # Output split ratio: train:eval=2:1.
-    self.assertGreater(
-        tf.io.gfile.GFile(self._train_output_file).size(),
-        tf.io.gfile.GFile(self._eval_output_file).size())
+    self._testDo()
 
   def testInvalidFeatureName(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='invalid')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('invalid')
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -221,17 +203,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testEmptyFeature(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
@@ -240,17 +213,8 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testInvalidFloatListFeature(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='f')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('f')
     self._exec_properties['has_empty'] = False
 
     # Run executor.
@@ -262,25 +226,16 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
   def testInvalidFeatureBasedPartitionWithProtos(self):
-    # Add output config to exec proterties.
-    self._exec_properties[utils.OUTPUT_CONFIG_KEY] = json_format.MessageToJson(
-        example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(
-                splits=[
-                    example_gen_pb2.SplitConfig.Split(
-                        name='train', hash_buckets=2),
-                    example_gen_pb2.SplitConfig.Split(
-                        name='eval', hash_buckets=1)
-                ],
-                partition_feature_name='i')))
+    # Update exec proterties.
+    self._testFeatureBasedPartition('i')
     self._exec_properties['has_empty'] = False
     self._exec_properties['format_proto'] = True
 
     # Run executor.
     example_gen = TestExampleGenExecutor()
     with self.assertRaisesRegexp(
-        RuntimeError, 'Split by `partition_feature_name` is only supported for '
-        'FORMAT_TF_EXAMPLE payload format.'):
+        RuntimeError, 'Split by `partition_feature_name` is only supported '
+        'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE payload format.'):
       example_gen.Do({}, self._output_dict, self._exec_properties)
 
 

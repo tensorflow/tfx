@@ -8,6 +8,10 @@
     Deprecated ExampleGen input (external) artifact.
 *   Added ModelRun artifact for Trainer for storing training related files,
     e.g., Tensorboard logs.
+*   Added support for `tf.train.SequenceExample` in ExampleGen:
+    *   ImportExampleGen now supports `tf.train.SequenceExample` importing.
+    *   base_example_gen_executor now supports `tf.train.SequenceExample` as
+        output payload format, which can be utilized by custom ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
