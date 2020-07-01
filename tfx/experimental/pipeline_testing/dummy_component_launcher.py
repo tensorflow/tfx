@@ -40,19 +40,19 @@ class DummyComponentLauncher(
     """Execute underlying component implementation."""
     component_id = self._component_info.component_id
     if component_id not in self.component_map:
-      return super(DummyComponentLauncher, self)._run_executor(execution_id,
+      super(DummyComponentLauncher, self)._run_executor(execution_id,
                                                         input_dict,
                                                         output_dict,
                                                         exec_properties)
-    executor_context = base_executor.BaseExecutor.Context(
-        beam_pipeline_args=self._beam_pipeline_args,
-        tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
-        unique_id=str(execution_id))
-    executor = self.component_map[component_id](component_id,
-                                                self.test_data_dir,
-                                                executor_context)
-    executor.Do(input_dict, output_dict, exec_properties)
-      
+    else:
+      executor_context = base_executor.BaseExecutor.Context(
+          beam_pipeline_args=self._beam_pipeline_args,
+          tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
+          unique_id=str(execution_id))
+      executor = self.component_map[component_id](component_id,
+                                                  self.test_data_dir,
+                                                  executor_context)
+      executor.Do(input_dict, output_dict, exec_properties)
 
 def create_dummy_launcher_class(test_data_dir: Text,
                                 component_ids: List[Text],
