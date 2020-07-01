@@ -33,7 +33,6 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.types import artifact
