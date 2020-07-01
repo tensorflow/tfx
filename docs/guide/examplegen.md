@@ -83,14 +83,14 @@ example_gen = CsvExampleGen(input=examples, output_config=output)
 
 Notice how the `hash_buckets` were set in this example.
 
-To produce the train/eval split based on a feature in the examples, set the 
+To output the train/eval split based on a feature in the examples, set the 
 `output_config` for ExampleGen component. For example:
 
 ```python
 from  tfx.proto import example_gen_pb2
 
 # Input has a single split 'input_dir/*'.
-# Output 2 splits based on 'user_id': train:eval=3:1.
+# Output 2 splits based on 'user_id' features: train:eval=3:1.
 output = example_gen_pb2.Output(
              split_config=example_gen_pb2.SplitConfig(splits=[
                  example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=3),
