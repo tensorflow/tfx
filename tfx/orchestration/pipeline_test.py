@@ -318,6 +318,31 @@ class PipelineTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config)
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
+  def testPipelineMissingComponent(self):
+    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
+                                                {})
+    component_b = _make_fake_component_instance(
+        name='component_b',
+        output_type=_OutputTypeB,
+        inputs={
+            'a': component_a.outputs['output'],
+        },
+        outputs={})
+    component_c = _make_fake_component_instance(
+        name='component_c',
+        output_type=_OutputTypeC,
+        inputs={
+            'b': component_b.outputs['output'],
+        },
+        outputs={})
+
+    with self.assertRaises(RuntimeError):
+      pipeline.Pipeline(
+          pipeline_name='pipeline',
+          pipeline_root='root',
+          components=[component_a, component_c],
+          metadata_connection_config=self._metadata_connection_config)
+
 
 if __name__ == '__main__':
   tf.test.main()

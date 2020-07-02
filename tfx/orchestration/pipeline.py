@@ -166,6 +166,11 @@ class Pipeline(object):
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)
+        else:
+          raise RuntimeError(
+              'Component %s uses an output from an undeclared component. '
+              'Did you forget to include that component in pipeline?' %
+              (component.id))
 
     self._components = []
     visited = set()
