@@ -44,6 +44,8 @@ from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import telemetry_utils, json_utils
+from google.protobuf import json_format
+import json
 
 
 # downloader_component = container_component.create_container_component(
@@ -149,7 +151,7 @@ def _wrapContainerComponent(
 
   # outputs/parameters fields are ignored as they will come with the serialized component
   return container_component.create_container_component(
-    name=component.get_id(component.instance_name),
+    name=component.get_id(component._instance_name),
     outputs={},
     parameters={},
     image=_TFX_IMAGE,

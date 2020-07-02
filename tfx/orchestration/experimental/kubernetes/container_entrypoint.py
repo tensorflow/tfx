@@ -307,9 +307,8 @@ def main():
   #   password: Text) 
   
   # sample use of in cluster mysql config
-  mysql_config = metadata_store_pb2.MySQLDatabaseConfig()
-  json_format.Parse(args.metadata_config, mysql_config)
-  metadata_config = metadata_store_pb2.ConnectionConfig(mysql_config)
+  metadata_config = metadata_store_pb2.ConnectionConfig()
+  json_format.Parse(args.metadata_config, metadata_config)
 
   driver_args = data_types.DriverArgs(enable_cache=args.enable_cache)
 
