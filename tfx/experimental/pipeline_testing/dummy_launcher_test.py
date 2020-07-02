@@ -25,7 +25,6 @@ import os
 from typing import Any, Dict, List, Text
 
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
 from tfx.experimental.pipeline_testing import dummy_component_launcher
 from tfx.experimental.pipeline_testing import dummy_executor
@@ -105,7 +104,7 @@ class DummyLauncherTest(tf.test.TestCase):
     output_path = self.component.outputs['output'].get()[0].uri
     generated_file = os.path.join(output_path, "result.txt")
     self.assertTrue(tf.io.gfile.exists(generated_file))
-    contents = file_io.read_file_to_string(generated_file)
+    contents = io_utils.read_string_file(generated_file)
     self.assertEqual('custom component', contents)
 
   @mock.patch.object(publisher, 'Publisher')
@@ -136,7 +135,7 @@ class DummyLauncherTest(tf.test.TestCase):
     output_path = self.component.outputs['output'].get()[0].uri
     copied_file = os.path.join(output_path, "recorded.txt")
     self.assertTrue(tf.io.gfile.exists(copied_file))
-    contents = file_io.read_file_to_string(copied_file)
+    contents = io_utils.read_string_file(copied_file)
     self.assertEqual('hello world', contents)
 
   @mock.patch.object(publisher, 'Publisher')
@@ -169,7 +168,7 @@ class DummyLauncherTest(tf.test.TestCase):
 
     output_path = self.component.outputs['output'].get()[0].uri
     self.assertTrue(tf.io.gfile.exists(output_path))
-    contents = file_io.read_file_to_string(output_path)
+    contents = io_utils.read_string_file(output_path)
     self.assertEqual('test', contents)
 
 if __name__ == '__main__':

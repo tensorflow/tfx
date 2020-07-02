@@ -157,6 +157,11 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
   return 'split:%s,num_files:%d,total_bytes:%d,xor_checksum:%d,sum_checksum:%d' % (
       split_name, len(files), total_bytes, xor_checksum, sum_checksum)
 
+def read_string_file(file_name: Text) -> Text:
+  """Reads a string to file."""
+  if not tf.io.gfile.exists(file_name):
+    raise FileNotFoundError("{} does not exist".format(file_name))
+  return file_io.read_file_to_string(file_name)
 
 class SchemaReader(object):
   """Schema reader."""
