@@ -65,3 +65,6 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
                      component.__dict__['EXECUTOR_SPEC'].image)
     self.assertEqual(ref_component.__dict__['EXECUTOR_SPEC'].command,
                      component.__dict__['EXECUTOR_SPEC'].command)
+
+if __name__ == '__main__':
+  tf.test.main()
