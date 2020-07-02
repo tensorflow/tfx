@@ -154,7 +154,10 @@ class _Executor(base_executor.BaseExecutor):
       """Invoke chief oracle, and listen to the open port."""
       logging.info('chief_oracle() starting...')
 
-      # Per specification, KerasTuner's behavior is controlled by env variables.
+      # Per KerasTuner's specification, configuration of chief oracle is set
+      # by environment variables. This only affects the current sub-process
+      # which is single-threaded, but not the main process. As such, mutation
+      # of this otherwise global state is safe.
       os.environ['KERASTUNER_ORACLE_IP'] = '0.0.0.0'
       os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
       os.environ['KERASTUNER_TUNER_ID'] = 'chief'
@@ -198,6 +201,9 @@ class _Executor(base_executor.BaseExecutor):
             input_dict, exec_properties)
 
       # If distributed, both master and worker need to know where the oracle is.
+      # Per KerasTuner's interface, it is configured through env variables.
+      # This only affects the current main process, which is designed to be
+      # single-threaded.
       os.environ['KERASTUNER_ORACLE_IP'] = self._master_addr
       os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
 

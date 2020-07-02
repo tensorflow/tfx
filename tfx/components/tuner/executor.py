@@ -85,12 +85,11 @@ def search(input_dict: Dict[Text, List[types.Artifact]],
 
   tuner_fn_result = tuner_fn(fn_args)
   result = tuner_fn_result.tuner
-  fit_kwargs = tuner_fn_result.fit_kwargs
 
   # TODO(b/156966497): set logger for printing.
   result.search_space_summary()
   logging.info('Start tuning... Tuner ID: %s', result.tuner_id)
-  result.search(**fit_kwargs)
+  result.search(**tuner_fn_result.fit_kwargs)
   logging.info('Finished tuning... Tuner ID: %s', result.tuner_id)
   result.results_summary()
 
