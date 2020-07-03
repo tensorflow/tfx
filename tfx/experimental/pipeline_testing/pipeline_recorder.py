@@ -29,7 +29,9 @@ from tfx.orchestration import metadata
 FLAGS = flags.FLAGS
 
 default_record_dir = os.path.join('examples/chicago_taxi_pipeline/testdata')
-default_metadata_dir = os.path.join('metadata.db')
+default_metadata_dir = os.path.join(os.path.join(os.environ['HOME']),
+                                    'tfx/metadata/chicago_taxi_beam',
+                                    'metadata.db')
 
 flags.DEFINE_string('record_dir', default_record_dir, 'Path to record')
 flags.DEFINE_string('metadata_dir', default_metadata_dir, 'Path to metadata')
@@ -46,7 +48,6 @@ def main(unused_argv):
       execution_dict[execution_run_id].append(execution)
     if run_id is None:
       run_id = max(execution_dict.keys()) # fetch the latest run_id
-      print("run_id", run_id)
 
     events = [
         x for x in m.store.get_events_by_execution_ids(
