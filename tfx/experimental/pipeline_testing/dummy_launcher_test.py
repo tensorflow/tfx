@@ -18,13 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
-from ml_metadata.proto import metadata_store_pb2
 import mock
 import os
 from typing import Any, Dict, List, Text
 
+import absl
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
+
 from tfx import types
 from tfx.experimental.pipeline_testing import dummy_component_launcher
 from tfx.experimental.pipeline_testing import dummy_executor
@@ -43,7 +44,6 @@ class CustomDummyExecutor(dummy_executor.BaseDummyExecutor):
     for artifact_list in output_dict.values():
       for artifact in artifact_list:
         custom_output_path = os.path.join(artifact.uri, "result.txt")
-        tf.io.gfile.makedirs(os.path.dirname(custom_output_path))
         io_utils.write_string_file(custom_output_path, "custom component")
 
 class DummyLauncherTest(tf.test.TestCase):
@@ -113,7 +113,6 @@ class DummyLauncherTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     record_file = os.path.join(self.record_dir, 'output', 'recorded.txt')
-    tf.io.gfile.makedirs(os.path.dirname(record_file))
     io_utils.write_string_file(record_file, "hello world")
     component_ids = ['_FakeComponent.FakeComponent']
 

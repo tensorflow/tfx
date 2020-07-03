@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Type
 
 from tfx import types
 from tfx.components.base import base_executor
@@ -57,7 +57,8 @@ class DummyComponentLauncher(
 def create_dummy_launcher_class(test_data_dir: Text,
                                 component_ids: List[Text],
                                 component_map:
-                                Dict[Text, dummy_executor.BaseDummyExecutor]):
+                                Dict[Text,
+                                     Type[dummy_executor.BaseDummyExecutor]]):
   """Creates a DummyComponentLauncher class
   Args:
     test_data_dir: The directory where pipeline outputs are recorded

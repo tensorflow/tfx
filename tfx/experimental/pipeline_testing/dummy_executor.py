@@ -18,13 +18,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
-from tfx.utils import io_utils
 import os
 from typing import Any, Dict, List, Text, Optional
 
+import absl
+
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.utils import io_utils
 
 class BaseDummyExecutor(base_executor.BaseExecutor):
   """TFX base dummy executor."""
@@ -38,6 +39,7 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
         with the dummy executor
       test_data_dir: The directory to test data
         (pipeline_recorder.py)
+      context: context class for all executors
     """
     super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)

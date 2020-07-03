@@ -158,7 +158,7 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
       split_name, len(files), total_bytes, xor_checksum, sum_checksum)
 
 def read_string_file(file_name: Text) -> Text:
-  """Reads a string to file."""
+  """Reads a string from a file."""
   if not tf.io.gfile.exists(file_name):
     raise FileNotFoundError("{} does not exist".format(file_name))
   return file_io.read_file_to_string(file_name)
