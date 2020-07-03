@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 from absl import app
 from absl import flags
 from collections import defaultdict
@@ -27,16 +28,9 @@ from tfx.orchestration import metadata
 
 FLAGS = flags.FLAGS
 
-default_pipeline_dir = os.path.join(os.environ['HOME'],
-                                    "tfx/pipelines/chicago_taxi_beam/")
-default_record_dir = os.path.join(os.environ['HOME'],
-                                  'tfx/tfx/experimental/pipeline_testing/',
-                                  'examples/chicago_taxi_pipeline/testdata')
-default_metadata_dir = os.path.join(os.environ['HOME'],
-                                    'tfx/tfx/experimental/pipeline_testing/',
-                                    'metadata.db')
+default_record_dir = os.path.join('examples/chicago_taxi_pipeline/testdata')
+default_metadata_dir = os.path.join('metadata.db')
 
-flags.DEFINE_string('pipeline_dir', default_pipeline_dir, 'Path to pipeline')
 flags.DEFINE_string('record_dir', default_record_dir, 'Path to record')
 flags.DEFINE_string('metadata_dir', default_metadata_dir, 'Path to metadata')
 flags.DEFINE_string('run_id', None, 'Pipeline Run Id')
@@ -46,12 +40,13 @@ def main(unused_argv):
   metadata_dir = FLAGS.metadata_dir
   metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
   with metadata.Metadata(metadata_config) as m:
-    if not run_id:
-      execution_dict = defaultdict(list)
-      for execution in m.store.get_executions():
-        execution_run_id = execution.properties['run_id'].string_value
-        execution_dict[execution_run_id].append(execution)
+    execution_dict = defaultdict(list)
+    for execution in m.store.get_executions():
+      execution_run_id = execution.properties['run_id'].string_value
+      execution_dict[execution_run_id].append(execution)
+    if run_id is None:
       run_id = max(execution_dict.keys()) # fetch the latest run_id
+      print("run_id", run_id)
 
     events = [
         x for x in m.store.get_events_by_execution_ids(
@@ -68,6 +63,7 @@ def main(unused_argv):
       dest_dir = os.path.join(FLAGS.record_dir, component_id, name)
       os.makedirs(dest_dir, exist_ok=True)
       copy_tree(src_dir, dest_dir)
+    absl.logging.info("Pipeline Recorded at %s", FLAGS.record_dir)
 
 if __name__ == '__main__':
   app.run(main)
