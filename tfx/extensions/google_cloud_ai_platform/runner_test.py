@@ -79,9 +79,7 @@ class RunnerTest(tf.test.TestCase):
     result['custom_config'] = json_utils.dumps(result['custom_config'])
     return result
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testStartAIPTraining(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpTrainingMocks()
@@ -114,9 +112,7 @@ class RunnerTest(tf.test.TestCase):
     self.assertStartsWith(body['jobId'], 'tfx_')
     self._mock_get.execute.assert_called_with()
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testStartAIPTrainingWithUserContainer(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpTrainingMocks()
@@ -238,9 +234,7 @@ class RunnerTest(tf.test.TestCase):
             self._project_id, self._model_name, self._model_version))
     self._mock_set_default_execute.assert_called_with()
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testDeployModelForAIPPrediction(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
@@ -257,9 +251,7 @@ class RunnerTest(tf.test.TestCase):
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testDeployModelForAIPPredictionError(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
@@ -286,9 +278,7 @@ class RunnerTest(tf.test.TestCase):
         expected_models_create_body=expected_models_create_body,
         expect_set_default=False)
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testDeployModelForAIPPredictionWithCustomRegion(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
@@ -306,9 +296,7 @@ class RunnerTest(tf.test.TestCase):
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.runner.discovery'
-  )
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testDeployModelForAIPPredictionWithCustomRuntime(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()

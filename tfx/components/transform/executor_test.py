@@ -183,7 +183,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:
-    #   gqui third_party/tfx/components/testdata/csv_example_gen/train/data* \
+    #   gqui third_party/py/tfx/components/testdata/csv_example_gen/train/data* \
     #     'select count(*)'
     # )
     # Since the analysis dataset (train) is read twice (once for analysis and

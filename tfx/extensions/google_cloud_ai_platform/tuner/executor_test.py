@@ -22,11 +22,11 @@ import mock
 # TODO(b/160252429): Clearn up lint warining.
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import executor as ai_platform_tuner_executor
 from tfx.proto import tuner_pb2
 from tfx.utils import json_utils
+from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -57,8 +57,8 @@ class ExecutorTest(tf.test.TestCase):
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(
-        'tfx.extensions.google_cloud_ai_platform.tuner.executor.runner'
-    ).start()
+        'tfx.extensions.google_cloud_ai_platform.tuner.executor.runner').start(
+        )
 
   def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
     """Converts self._exec_properties['custom_config'] to string."""

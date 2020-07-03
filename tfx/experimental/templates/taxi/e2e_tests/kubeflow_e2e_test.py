@@ -23,13 +23,12 @@ import urllib.request
 from absl import logging
 import kfp
 import tensorflow as tf
-import yaml
-
-from google.cloud import storage
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import telemetry_utils
+import yaml
+from google.cloud import storage
 
 
 class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):

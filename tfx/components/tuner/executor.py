@@ -24,7 +24,6 @@ from typing import Any, Callable, Dict, List, Text, Optional
 from absl import logging
 from kerastuner.engine import base_tuner
 
-from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import fn_args_utils
@@ -32,6 +31,7 @@ from tfx.components.util import udf_utils
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from google.protobuf import json_format
 
 # Key for best hyperparameters in executor output_dict.
 _BEST_HYPERPARAMETERS_KEY = 'best_hyperparameters'

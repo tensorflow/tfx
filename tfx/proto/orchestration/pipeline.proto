@@ -139,7 +139,7 @@ message PropertyPredicate {
     // The left-hand side element to the logical operator.
     PropertyPredicate lhs = 2;
     // The right-hand side element to the logical operator.
-    PropertyPredicate rhs= 3;
+    PropertyPredicate rhs = 3;
   }
   oneof operator {
     ValueComparator value_comparator = 1;
