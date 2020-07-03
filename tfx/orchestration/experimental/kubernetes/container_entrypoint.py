@@ -323,7 +323,7 @@ def main():
           pipeline_root=args.pipeline_root,
 #          Ignore the run_id. See tfx/orchestration/kubeflow/base_component.py for how the workflow_id is determined
 #          run_id=os.environ['WORKFLOW_ID']),
-      )
+      ),
       driver_args=driver_args,
       metadata_connection=metadata_connection,
       beam_pipeline_args=beam_pipeline_args,
