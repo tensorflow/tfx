@@ -32,6 +32,7 @@
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
 *   Stopped requiring `avro-python3`.
+*   Requires [Bazel](https://bazel.build/) to build TFX source code.
 
 ## Breaking changes
 
