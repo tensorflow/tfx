@@ -325,7 +325,7 @@ def main():
 #          run_id=os.environ['WORKFLOW_ID']),
       ),
       driver_args=driver_args,
-      metadata_connection=metadata_config,
+      metadata_connection=metadata.Metadata(connection_config=metadata_config),
       beam_pipeline_args=beam_pipeline_args,
       additional_pipeline_args=additional_pipeline_args,
       component_config=component_config)
