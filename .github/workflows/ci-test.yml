@@ -1,4 +1,4 @@
-# Github action definition for ci-test with PRs.
+# Github action definitions for ci-test with PRs.
 
 name: tfx-ci-test
 on:
