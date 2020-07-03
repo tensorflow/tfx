@@ -31,7 +31,7 @@ python build_docs.py \
 
 Note:
   If duplicate or spurious docs are generated, consider
-  blacklisting them via the `private_map` argument below. Or
+  denylisting them via the `private_map` argument below. Or
   `api_generator.doc_controls`
 """
 
