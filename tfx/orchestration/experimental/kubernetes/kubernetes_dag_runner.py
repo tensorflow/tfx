@@ -270,7 +270,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         # reload properties
         (wrapped_component_launcher_class,
         wrapped_component_config) = config_utils.find_component_launch_info(
-            self._config, component)
+            self._config, wrapped_component)
         # launch wrapped component
         _LaunchAsContainerComponent(wrapped_component, wrapped_component_launcher_class,
                                     wrapped_component_config, tfx_pipeline)._run_component()
