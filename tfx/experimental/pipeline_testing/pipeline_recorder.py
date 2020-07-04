@@ -28,9 +28,11 @@ from tfx.orchestration import metadata
 
 FLAGS = flags.FLAGS
 
+_pipeline_name = 'chicago_taxi_beam'
+_tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+
 default_record_dir = os.path.join('examples/chicago_taxi_pipeline/testdata')
-default_metadata_dir = os.path.join(os.path.join(os.environ['HOME']),
-                                    'tfx/metadata/chicago_taxi_beam',
+default_metadata_dir = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                                     'metadata.db')
 
 flags.DEFINE_string('record_dir', default_record_dir, 'Path to record')
