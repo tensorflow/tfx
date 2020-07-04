@@ -261,19 +261,24 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
       # check if the component is launchable as a containerComponent. If not, perform an on the fly conversion step. Should we forward I/O with a pre traversal?
       if not kubernetes_component_launcher.KubernetesComponentLauncher.can_launch(component.executor_spec, component_config):
-        component = _wrapContainerComponent(
+        wrapped_component = _wrapContainerComponent(
           component=component,
           component_launcher_class=component_launcher_class,
           component_config=component_config,
           tfx_pipeline=tfx_pipeline
         )
         # reload properties
-        (component_launcher_class,
-        component_config) = config_utils.find_component_launch_info(
+        (wrapped_component_launcher_class,
+        wrapped_component_config) = config_utils.find_component_launch_info(
             self._config, component)
+        # launch wrapped component
+        _LaunchAsContainerComponent(wrapped_component, wrapped_component_launcher_class,
+                                    wrapped_component_config, tfx_pipeline)._run_component()
       
-      # launch component
-      _LaunchAsContainerComponent(component, component_launcher_class,
-                                component_config, tfx_pipeline)._run_component()
+      else:
+        # launch component
+        _LaunchAsContainerComponent(component, component_launcher_class,
+                                    component_config, tfx_pipeline)._run_component()
 
+      # record the ran component. Always record the unwrapped component
       ran_components.add(component)
