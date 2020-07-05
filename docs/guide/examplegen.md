@@ -113,8 +113,8 @@ for details.
 
 ### Splitting Method
 
-When using `hash_buckets` splitting method, instead of the entire record,
-one can use a feature for partitioning the examples. If it's not empty,
+When using `hash_buckets` splitting method, instead of the entire record, one
+can use a feature for partitioning the examples. If a feature is not present,
 ExampleGen will use a fingerprint of that feature as the partition key.
 
 This feature can be used to maintain a stable split w.r.t. certain properties
@@ -130,7 +130,12 @@ For ready-made ExampleGen implementations:
     tf.Example.features.feature.
 *   If it generates tf.SequenceExample, then a "feature" means an entry in
     tf.SequenceExample.context.feature.
-*   Only bytes_list and int64_list features are supported.
+*   Only int64 and bytes features are supported.
+
+In the following cases, ExampleGen throws runtime errors:
+*   Specified feature name does not exist in the example.
+*   Empty feature: `tf.train.Feature()`.
+*   Non supported feature types, e.g., float features.
 
 To output the train/eval split based on a feature in the examples, set the 
 `output_config` for ExampleGen component. For example:
