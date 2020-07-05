@@ -277,6 +277,7 @@ def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('--pipeline_name', type=str, required=True)
   parser.add_argument('--pipeline_root', type=str, required=True)
+  parser.add_argument('--run_id', type=str, required=True)
   parser.add_argument('--metadata_config', type=str, required=True)
   parser.add_argument('--beam_pipeline_args', type=str, required=True)
   parser.add_argument('--additional_pipeline_args', type=str, required=True)
@@ -321,10 +322,8 @@ def main():
       pipeline_info=data_types.PipelineInfo(
           pipeline_name=args.pipeline_name,
           pipeline_root=args.pipeline_root,
-#          Ignore the run_id. See tfx/orchestration/kubeflow/base_component.py for how the workflow_id is determined
-#          run_id=os.environ['WORKFLOW_ID']),
-#         TODO: we will generate a random run_id
-          run_id = 'testtfx00'
+#         Kubeflow uses workflow_id for the run_id. See tfx/orchestration/kubeflow/base_component.py for how the workflow_id is determined
+          run_id = args.run_id
       ),
       driver_args=driver_args,
       metadata_connection=metadata.Metadata(connection_config=metadata_config),

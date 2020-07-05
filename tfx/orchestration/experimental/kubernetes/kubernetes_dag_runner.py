@@ -134,6 +134,8 @@ def _wrapContainerComponent(
     tfx_pipeline.pipeline_info.pipeline_name,
     '--pipeline_root',
     tfx_pipeline.pipeline_info.pipeline_root,
+    '--run_id',
+    tfx_pipeline.pipeline_info.run_id,
     '--metadata_config',
     json_format.MessageToJson(
         message=_getDefaultConnectionConfig(), preserving_proto_field_name=True),
