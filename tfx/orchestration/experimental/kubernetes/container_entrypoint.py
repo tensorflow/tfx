@@ -324,7 +324,7 @@ def main():
 #          Ignore the run_id. See tfx/orchestration/kubeflow/base_component.py for how the workflow_id is determined
 #          run_id=os.environ['WORKFLOW_ID']),
 #         TODO: we will generate a random run_id
-          run_id = 'testtfx'
+          run_id = 'testtfx00'
       ),
       driver_args=driver_args,
       metadata_connection=metadata.Metadata(connection_config=metadata_config),
