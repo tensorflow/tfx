@@ -20,7 +20,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tfx.dsl.component.experimental import placeholders, container_component
-from tfx.extensions.experimental.kfp_compatibility.kfp_container_component import load_kfp_yaml_container_component
+from tfx.extensions.experimental.kfp_compatibility.kfp_container_component import load_kfp_yaml_container_component, _convert_target_fields_to_kv_pair, _get_command_line_argument_type
+from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types.experimental.simple_artifacts import File
 
 class KubeflowContainerComponentTest(tf.test.TestCase):
@@ -49,22 +50,55 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
             placeholders.OutputUriPlaceholder("File"),
             "--arg1", placeholders.InputUriPlaceholder("input1"),
             "--arg2", placeholders.InputValuePlaceholder("input2"),
-            "--arg3", placeholders.OutputUriPlaceholder("output1")
+            "--arg3", placeholders.OutputUriPlaceholder("output1"),
         ],
         {
             "input1": File,
-            "input2": File
+            "input2": File,
         },
         {
-            "output1": File
+            "output1": File,
         },
-        {}
+        {},
     )
     self.assertEqual(type(component), type(ref_component))
-    self.assertEqual(ref_component.__dict__['EXECUTOR_SPEC'].image,
-                     component.__dict__['EXECUTOR_SPEC'].image)
-    self.assertEqual(ref_component.__dict__['EXECUTOR_SPEC'].command,
-                     component.__dict__['EXECUTOR_SPEC'].command)
+    self.assertEqual(ref_component.EXECUTOR_SPEC.image,
+                     component.EXECUTOR_SPEC.image)
+    self.assertEqual(ref_component.EXECUTOR_SPEC.command,
+                     component.EXECUTOR_SPEC.command)
+
+
+  def testConvertTargetFieldsToKvPair(self):
+    test_dict = {
+        'implementation': {
+            'container': {
+                'args': ['arg0'],
+                'command': ['command0'],
+            }
+        }
+    }
+    ref_dict = {
+        'implementation': {
+            'container': {
+                'args': [{
+                    'stringValue': 'arg0',
+                }],
+                'command': [{
+                    'stringValue': 'command0',
+                }],
+            }
+        }
+    }
+    _convert_target_fields_to_kv_pair(test_dict)
+    self.assertEqual(ref_dict, test_dict)
+
+
+  def testGetCommandLineArgumentType(self):
+    command = kfp_component_spec_pb2.CommandlineArgumentTypeWrapper()
+    command.stringValue = 'stringValue'
+    self.assertEqual(_get_command_line_argument_type(command),
+                     'stringValue')
+
 
 if __name__ == '__main__':
   tf.test.main()

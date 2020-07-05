@@ -30,28 +30,31 @@ def load_kfp_yaml_container_component(
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component from a Kubeflow component spec.
 
+  See
+  https://www.kubeflow.org/docs/pipelines/reference/component-spec/
+
+  Example:
+    component = load_kfp_yaml_container_component(
+      "kfp_pipelines_root/components/datasets/Chicago_Taxi_Trips/component.yaml"
+    )
+
   Args:
     component_yaml_path: local file path of a Kubeflow Pipelines component
                          YAML file.
 
   Returns:
     Container component that can be instantiated in a TFX pipeline.
-
-  Example:
-    component = load_kfp_yaml_container_component(
-      "kfp_pipelines_root/components/datasets/Chicago_Taxi_Trips/component.yaml"
-    )
   """
   with open(component_yaml_path) as component_file:
     data = yaml.load(component_file, Loader=yaml.FullLoader)
   _convert_target_fields_to_kv_pair(data)
   component_spec = ParseDict(data, kfp_component_spec_pb2.ComponentSpec())
-  container_impl = component_spec.implementation.container
+  container = component_spec.implementation.container
   name = component_spec.name
-  image = container_impl.image
-  command = (list(map(_convert_command_type, container_impl.command)) +
-             list(map(_convert_command_type, container_impl.args)))
-  # TODO: Support classname to class translation in inputs.type
+  image = container.image
+  command = (list(map(_get_command_line_argument_type, container.command)) +
+             list(map(_get_command_line_argument_type, container.args)))
+  # TODO(ericlege): Support classname to class translation in inputs.type
   inputs = {item.name: File for item in component_spec.inputs}
   outputs = {item.name: File for item in component_spec.outputs}
   parameters = {}
@@ -86,7 +89,7 @@ def _convert_target_fields_to_kv_pair(
           parsed_dict_location[ind] = {"stringValue": value}
 
 
-def _convert_command_type(
+def _get_command_line_argument_type(
     command: kfp_component_spec_pb2.CommandlineArgumentTypeWrapper
 ) -> executor_specs.CommandlineArgumentType:
   """ Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
