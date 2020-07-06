@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for taxi pipeline beam with stub executors and executor validators."""
+"""E2E Tests for taxi pipeline beam with executor verifiers."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,7 +26,7 @@ import tensorflow_model_analysis as tfma
 
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tfx.utils import io_utils
-from tfx.experimental.pipeline_testing import verifier_utils
+from tfx.experimental.pipeline_testing.examples.chicago_taxi_pipeline import taxi_pipeline_verifier_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -60,7 +60,10 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
     model_uri = model_artifact.uri
 
     path = os.path.join(self._record_dir, 'Trainer', 'model')
-    verifier_utils.compare_model_file_sizes(model_uri, path, self._threshold)
+    taxi_pipeline_verifier_utils.compare_model_file_sizes(
+        model_uri,
+        path,
+        self._threshold)
 
   def verify_evaluator(self, output_dict):
     """compares two evaluation proto files"""
@@ -69,9 +72,9 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
     expected_eval_result = tfma.load_eval_result(os.path.join(self._record_dir,
                                                               'Evaluator',
                                                               'evaluation'))
-    verifier_utils.compare_eval_results(eval_result,
-                                        expected_eval_result,
-                                        self._threshold)
+    taxi_pipeline_verifier_utils.compare_eval_results(eval_result,
+                                                      expected_eval_result,
+                                                      self._threshold)
 
   def verify_validator(self, output_dict):
     """compares two validation proto files"""
@@ -98,9 +101,10 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
         beam_pipeline_args=[])
 
     BeamDagRunner().run(taxi_pipeline)
-    component_output_map = verifier_utils.get_component_output_map(
-        taxi_pipeline.metadata_connection_config,
-        taxi_pipeline.pipeline_info)
+    component_output_map = \
+        taxi_pipeline_verifier_utils.get_component_output_map(
+            taxi_pipeline.metadata_connection_config,
+            taxi_pipeline.pipeline_info)
     self.verify_validator(component_output_map['ExampleValidator'])
     self.verify_trainer(component_output_map['Trainer'])
     self.verify_evaluator(component_output_map['Evaluator'])
