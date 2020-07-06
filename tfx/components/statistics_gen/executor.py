@@ -78,6 +78,8 @@ class Executor(base_executor.BaseExecutor):
         - stats_options_json: Optionally, a JSON representation of StatsOptions.
           When a schema is provided as an input, the StatsOptions value should
           not also contain a schema.
+        - exclude_splits: Names of splits where statistics and sample should not
+          be generated.
 
     Raises:
       ValueError when a schema is provided both as an input and as part of the
@@ -107,10 +109,12 @@ class Executor(base_executor.BaseExecutor):
         stats_options.schema = schema
 
     split_uris = []
+    exclude_splits = exec_properties['exclude_splits']
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        uri = os.path.join(artifact.uri, split)
-        split_uris.append((split, uri))
+        if split not in exclude_splits:
+          uri = os.path.join(artifact.uri, split)
+          split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       for split, uri in split_uris:
         absl.logging.info('Generating statistics for split {}'.format(split))

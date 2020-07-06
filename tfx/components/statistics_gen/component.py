@@ -55,6 +55,8 @@ class StatisticsGen(base_component.BaseComponent):
                examples: types.Channel = None,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
+               exclude_splits: Optional[List[Union[
+                   Text, data_types.RuntimeParameter]]] = None,
                output: Optional[types.Channel] = None,
                input_data: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
@@ -71,6 +73,8 @@ class StatisticsGen(base_component.BaseComponent):
         the `schema` channel input. Due to the requirement that stats_options be
         serialized, the slicer functions and custom stats generators are dropped
         and are therefore not usable.
+      exclude_splits: Names of splits where statistics and sample should not
+        be generated.
       output: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
       input_data: Backwards compatibility alias for the `examples` argument.
@@ -97,5 +101,6 @@ class StatisticsGen(base_component.BaseComponent):
         examples=examples,
         schema=schema,
         stats_options_json=stats_options_json,
+        exclude_splits=exclude_splits,
         statistics=output)
     super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)
