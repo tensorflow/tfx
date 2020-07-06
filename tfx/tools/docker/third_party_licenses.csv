@@ -101,7 +101,7 @@ horovod,https://raw.githubusercontent.com/uber/horovod/master/LICENSE,Apache 2.0
 html5lib,https://raw.githubusercontent.com/html5lib/html5lib-python/master/LICENSE,MIT
 httplib2,https://raw.githubusercontent.com/httplib2/httplib2/master/LICENSE,MIT
 ideep4py,https://raw.githubusercontent.com/intel/ideep/master/LICENSE,MIT
-idna,https://raw.githubusercontent.com/kjd/idna/master/LICENSE.rst,BSD-like
+idna,https://raw.githubusercontent.com/kjd/idna/master/LICENSE.md,BSD-like
 importlib-metadata,https://gitlab.com/python-devs/importlib_metadata/raw/master/LICENSE, Apache 2.0
 ipaddress,https://raw.githubusercontent.com/phihag/ipaddress/master/LICENSE,PSF
 ipykernel,https://raw.githubusercontent.com/ipython/ipykernel/master/COPYING.md,3-Clause BSD
