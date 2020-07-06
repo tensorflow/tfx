@@ -114,7 +114,7 @@ for details.
 ### Splitting Method
 
 When using `hash_buckets` splitting method, instead of the entire record, one
-can use a feature for partitioning the examples. If a feature is not present,
+can use a feature for partitioning the examples. If a feature is present,
 ExampleGen will use a fingerprint of that feature as the partition key.
 
 This feature can be used to maintain a stable split w.r.t. certain properties
