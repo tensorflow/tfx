@@ -68,6 +68,8 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
+               exclude_splits: Optional[List[Union[
+                   Text, data_types.RuntimeParameter]]] = None,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
@@ -78,6 +80,8 @@ class ExampleValidator(base_component.BaseComponent):
         should contain at least 'eval' split. Other splits are currently
         ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
+      exclude_splits: Names of splits that the example validator should not
+        validate.
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -95,6 +99,9 @@ class ExampleValidator(base_component.BaseComponent):
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(
-        statistics=statistics, schema=schema, anomalies=anomalies)
+        statistics=statistics,
+        schema=schema,
+        exclude_splits=exclude_splits,
+        anomalies=anomalies)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

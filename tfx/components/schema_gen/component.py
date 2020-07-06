@@ -62,6 +62,8 @@ class SchemaGen(base_component.BaseComponent):
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = False,
+      exclude_splits: Optional[List[Union[Text,
+                                          data_types.RuntimeParameter]]] = None,
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -75,6 +77,8 @@ class SchemaGen(base_component.BaseComponent):
         whether or not to infer the shape of features. If the feature shape is
         not inferred, downstream Tensorflow Transform component using the schema
         will parse input as tf.SparseTensor.
+      exclude_splits: Names of splits that will not be taken into consideration
+        when auto-generating a schema.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -94,5 +98,6 @@ class SchemaGen(base_component.BaseComponent):
     spec = SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
+        exclude_splits=exclude_splits,
         schema=schema)
     super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)
