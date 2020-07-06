@@ -100,7 +100,9 @@ class EvaluatorSpec(ComponentSpec):
 class ExampleValidatorSpec(ComponentSpec):
   """ExampleValidator component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {
+      'exclude_splits': ExecutionParameter(type=List[Text], optional=True),
+  }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
       'schema': ChannelParameter(type=standard_artifacts.Schema),
@@ -230,7 +232,8 @@ class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
   PARAMETERS = {
-      'infer_feature_shape': ExecutionParameter(type=bool, optional=True)
+      'infer_feature_shape': ExecutionParameter(type=bool, optional=True),
+      'exclude_splits': ExecutionParameter(type=List[Text], optional=True),
   }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
@@ -255,6 +258,8 @@ class StatisticsGenSpec(ComponentSpec):
   PARAMETERS = {
       'stats_options_json':
           ExecutionParameter(type=(str, Text), optional=True),
+      'exclude_splits':
+          ExecutionParameter(type=List[Text], optional=True),
   }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
