@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for taxi pipeline beam with dummy executors."""
+"""E2E Tests for taxi pipeline beam with stub executors."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +24,7 @@ from typing import Text
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
-from tfx.experimental.pipeline_testing import dummy_component_launcher
+from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
@@ -70,7 +70,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                     'ExampleValidator', 'Transform', \
                     'Trainer', 'Evaluator', 'Pusher']
 
-    my_launcher = dummy_component_launcher.create_dummy_launcher_class(
+    my_launcher = stub_component_launcher.create_stub_launcher_class(
         record_dir,
         component_ids,
         {})
@@ -81,7 +81,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                 serving_model_dir=self._serving_model_dir,
                 pipeline_root=self._pipeline_root,
                 metadata_path=self._metadata_path,
-                direct_num_workers=1)
+                beam_pipeline_args=[])
 
     BeamDagRunner(config=pipeline_config.PipelineConfig(
         supported_launcher_classes=[
@@ -114,7 +114,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                 serving_model_dir=self._serving_model_dir,
                 pipeline_root=self._pipeline_root,
                 metadata_path=self._metadata_path,
-                direct_num_workers=1))
+                beam_pipeline_args=[]))
 
     # All executions but Evaluator and Pusher are cached.
     # Note that Resolver will always execute.
@@ -138,7 +138,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                 serving_model_dir=self._serving_model_dir,
                 pipeline_root=self._pipeline_root,
                 metadata_path=self._metadata_path,
-                direct_num_workers=1))
+                beam_pipeline_args=[]))
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
