@@ -28,17 +28,21 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
+import tensorflow_addons as tfa
 from bert_tokenizer_utils import SpecialBertTokenizer
 from bert_models import BertForClassification
 
+
 from tfx.components.trainer.executor import TrainerFnArgs
 
-_TRAIN_BATCH_SIZE = 32
-_EVAL_BATCH_SIZE = 32
-_LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
-_MAX_LEN = 256
 _EPOCHS = 1
+_EVAL_BATCH_SIZE = 32
+_FEATURE_KEY_A = 'stringA'
+_FEATURE_KEY_B = 'stringB'
+_LABEL_KEY = 'label'
+_MAX_LEN = 256
+_TRAIN_BATCH_SIZE = 32
 
 
 def _gzip_reader_fn(filenames):
@@ -66,12 +70,11 @@ def preprocessing_fn(inputs):
   Returns:
     Map from string feature key to transformed feature operations.
   """
-  sequence_a = inputs['stringA']
-  sequence_b = inputs['stringB']
-  label = inputs['label']
-  input_word_ids, input_mask, segment_ids = _tokenize(sequence_a, sequence_b)
+  input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY_A],
+    inputs[_FEATURE_KEY_B])
+
   return {
-      'label': label,
+      'label': inputs['label'],
       'input_word_ids': input_word_ids,
       'input_mask': input_mask,
       'segment_ids': segment_ids}
@@ -145,15 +148,19 @@ def run_fn(fn_args: TrainerFnArgs):
       tf_transform_output,
       batch_size=_EVAL_BATCH_SIZE)
 
-  #mirrored_strategy = tf.distribute.MirroredStrategy()
-  # with mirrored_strategy.scope():
-  bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
-  model = BertForClassification(
-      bert_layer,
-      _MAX_LEN,
-      tf.keras.losses.binary_crossentropy,
-      ['accuracy'],
-      3e-5)
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
+    model = BertForClassification(
+        bert_layer,
+        _MAX_LEN,
+    )
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(5e-5),
+        loss=tf.keras.losses.binary_crossentropy,
+        metrics=['accuracy', tfa.metrics.F1Score(1)],
+    )
 
   model.fit(
       train_dataset,

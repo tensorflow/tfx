@@ -144,7 +144,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                           lower_bound={'value': 0.6}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
+                          absolute={'value': -1e-2})))
           ])
       ])
   evaluator = Evaluator(

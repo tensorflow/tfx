@@ -20,16 +20,14 @@ import tensorflow as tf
 def BertForClassification(
         bert_layer,
         max_len,
-        loss,
-        metrics,
-        learning_rate=5e-5,
         fully_connected_layers=None):
-  """Keras model for single sentence classification.
+  """Bert Keras model for classification.
+
   Connect configurable fully connected layers on top of the Bert
   pooled_output.
 
   Args:
-    bert_layer: A tensroflow_hub.KerasLayer intence of Bert layer.
+    bert_layer: A tensorflow_hub.KerasLayer intence of Bert layer.
     max_len: The maximum length of preprocessed tokens.
     hidden_layers: List of configurations for fine-tuning hidden layers
       after the pooled_output. [(#of hidden units, activation)].
@@ -59,9 +57,4 @@ def BertForClassification(
 
   output = keras.layers.Dense(1, activation='sigmoid')(fully_connected)
   model = keras.Model(input_layers, output)
-  model.compile(
-      optimizer=tf.keras.optimizers.Adam(5e-5),
-      loss=loss,
-      metrics=metrics)
-
   return model

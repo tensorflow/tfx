@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""IMDB Sentiment Analysis example using TFX."""
+"""MRPC Classification example using TFX."""
 
 from __future__ import absolute_import
 from __future__ import print_function
@@ -48,7 +48,7 @@ from tfx.utils.dsl_utils import tfrecord_input
 
 _pipeline_name = 'bert_mrpc'
 
-# This example assumes the utility function is in ~/bert
+# This example assumes the utility function is in ~/bert/mrpc
 _bert_mrpc_root = os.path.join(os.environ['HOME'], 'bert', 'mrpc')
 _data_root = os.path.join(_bert_mrpc_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
@@ -61,7 +61,7 @@ _serving_model_dir = os.path.join(
     'serving_model',
     _pipeline_name)
 
-# Directory and data locations.  This example assumes all of the flowers
+# Directory and data locations.  This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
@@ -71,6 +71,9 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
+# TODO: changed direct_num_workers=0 when https://github.com
+# /tensorflow/text/issues/311 is resolved.
+
 _beam_pipeline_args = ['--direct_num_workers=1']
 
 
@@ -139,10 +142,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='BinaryAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.6}),
+                          lower_bound={'value': 0.85}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
+                          absolute={'value': -1e-2})))
           ])
       ])
   evaluator = Evaluator(

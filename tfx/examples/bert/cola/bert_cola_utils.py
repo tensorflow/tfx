@@ -144,16 +144,19 @@ def run_fn(fn_args: TrainerFnArgs):
       tf_transform_output,
       batch_size=_EVAL_BATCH_SIZE)
 
-  #mirrored_strategy = tf.distribute.MirroredStrategy()
-  # with mirrored_strategy.scope():
-  bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
-  model = BertForClassification(
-      bert_layer,
-      _MAX_LEN,
-      tf.keras.losses.binary_crossentropy,
-      [tfa.metrics.MatthewsCorrelationCoefficient(1)],
-      [(128, 'relu'), (64, 'relu')]
-      )
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
+    model = BertForClassification(
+        bert_layer,
+        _MAX_LEN,
+    )
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(5e-5),
+        loss=tf.keras.losses.BinaryCrossentropy,
+        metrics=['accuracy', tfa.metrics.MatthewsCorrelationCoefficient(1)]
+    )
 
   model.fit(
       train_dataset,
