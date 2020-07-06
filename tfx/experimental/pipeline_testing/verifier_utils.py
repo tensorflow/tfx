@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helper utils for verifier"""
-from ml_metadata.proto import metadata_store_pb2
 import os
+import absl
 import tensorflow as tf
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
-import absl
 
 def get_component_output_map(metadata_connection_config, pipeline_info):
   """returns a dictionary of component_id: output"""
@@ -54,6 +55,8 @@ def compare_relative_difference(value, expected_value, threshold):
         absl.logging.warning(
             "Relative difference {} exceeded threshold {}"\
                                         .format(relative_diff, threshold))
+        return False
+  return True
 
 def compare_eval_results(eval_result, expected_eval_result, threshold):
   """comparing eval_results"""
@@ -68,7 +71,9 @@ def compare_eval_results(eval_result, expected_eval_result, threshold):
         print("metric_name", metric_name) # _diff?
         continue
       expected_value = expected_slice_map[slice_item][metric_name]
-      compare_relative_difference(value, expected_value, threshold)
+      if not compare_relative_difference(value, expected_value, threshold):
+        return False
+  return True
 
 def compare_model_file_sizes(model_dir, expected_model_dir, threshold):
   """comparing sizes of saved models"""
@@ -90,6 +95,9 @@ def compare_model_file_sizes(model_dir, expected_model_dir, threshold):
     for leaf_file in leaf_files:
       file_name = os.path.join(dir_name, leaf_file)
       expected_file_name = file_name.replace(model_dir, expected_model_dir)
-      compare_relative_difference(tf.io.gfile.GFile(file_name).size(),
-                                  tf.io.gfile.GFile(expected_file_name).size(),
-                                  threshold)
+      if not compare_relative_difference(
+          tf.io.gfile.GFile(file_name).size(),
+          tf.io.gfile.GFile(expected_file_name).size(),
+          threshold):
+        return False
+  return True

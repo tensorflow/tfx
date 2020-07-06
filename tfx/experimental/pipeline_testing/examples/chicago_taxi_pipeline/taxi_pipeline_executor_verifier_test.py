@@ -19,22 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Text
 
 import absl
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from tensorflow_metadata.proto.v0 import anomalies_pb2
-import tensorflow_model_analysis as tfma
 from tfx.utils import io_utils
 from tfx.experimental.pipeline_testing import verifier_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
-from tfx.experimental.pipeline_testing import stub_component_launcher1
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-from tfx.orchestration.config import pipeline_config
-from tfx.experimental.pipeline_testing import executor_verifier
-from tfx.experimental.pipeline_testing import verifier_utils
 
 class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
 
@@ -56,23 +50,21 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     self._threshold = 0.5
     self._record_dir = os.path.join(os.environ['HOME'],
-                              'tfx/tfx/experimental/pipeline_testing/',
-                              'examples/chicago_taxi_pipeline/testdata1')
+                                    'tfx/tfx/experimental/pipeline_testing/',
+                                    'examples/chicago_taxi_pipeline/testdata1')
 
-  def verifyTrainer(self, output_dict):
+  def verify_trainer(self, output_dict):
     """compares two model files"""
-    absl.logging.info("verifyTrainer")
+    absl.logging.info("verifying Trainer")
     model_artifact = output_dict['model']
     model_uri = model_artifact.uri
 
-    component_id = \
-          model_artifact.custom_properties['producer_component'].string_value
     path = os.path.join(self._record_dir, 'Trainer', 'model')
     verifier_utils.compare_model_file_sizes(model_uri, path, self._threshold)
 
-  def verifyEvaluator(self, output_dict):
+  def verify_evaluator(self, output_dict):
     """compares two evaluation proto files"""
-    print("verifyEvaluator")
+    absl.logging.info("verifying Evaluator")
     eval_result = tfma.load_eval_result(output_dict['evaluation'].uri)
     expected_eval_result = tfma.load_eval_result(os.path.join(self._record_dir,
                                                               'Evaluator',
@@ -81,37 +73,37 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
                                         expected_eval_result,
                                         self._threshold)
 
-  def verifyValidator(self, output_dict):
+  def verify_validator(self, output_dict):
     """compares two validation proto files"""
-    absl.logging.info("verifyValidator")
+    absl.logging.info("verifying Validator")
     anomalies = io_utils.parse_pbtxt_file(
         os.path.join(output_dict['anomalies'].uri, 'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())
     expected_anomalies = io_utils.parse_pbtxt_file(
-        os.path.join(self._record_dir, 'ExampleValidator', 'anomalies', 'anomalies.pbtxt'),
+        os.path.join(self._record_dir,
+                     'ExampleValidator',
+                     'anomalies',
+                     'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())
-    if expected_anomalies.anomaly_info != anomalies.anomaly_info:
-      print('anomalies', anomalies)
-      print("expected_anomalies", expected_anomalies)
-      absl.logging.warning("anomaly info different")
+    self.assertEqual(expected_anomalies.anomaly_info, anomalies.anomaly_info)
 
   def testExecutorVerifier(self):
     taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access, unexpected-keyword-arg
-                pipeline_name=self._pipeline_name,
-                data_root=self._data_root,
-                module_file=self._module_file,
-                serving_model_dir=self._serving_model_dir,
-                pipeline_root=self._pipeline_root,
-                metadata_path=self._metadata_path,
-                beam_pipeline_args=[])
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
 
     BeamDagRunner().run(taxi_pipeline)
     component_output_map = verifier_utils.get_component_output_map(
-                      taxi_pipeline.metadata_connection_config,
-                      taxi_pipeline.pipeline_info)
-    self.verifyValidator(component_output_map['ExampleValidator'])
-    self.verifyTrainer(component_output_map['Trainer'])
-    self.verifyEvaluator(component_output_map['Evaluator'])
+        taxi_pipeline.metadata_connection_config,
+        taxi_pipeline.pipeline_info)
+    self.verify_validator(component_output_map['ExampleValidator'])
+    self.verify_trainer(component_output_map['Trainer'])
+    self.verify_evaluator(component_output_map['Evaluator'])
 
 if __name__ == '__main__':
   tf.test.main()
