@@ -54,11 +54,6 @@ def compare_relative_difference(value, expected_value, threshold):
         absl.logging.warning(
             "Relative difference {} exceeded threshold {}"\
                                         .format(relative_diff, threshold))
-    else:
-      absl.logging.warning(
-          "metric_name {} value {} expected_value {}".format(metric_name,
-                                                             value,
-                                                             expected_value))
 
 def compare_eval_results(eval_result, expected_eval_result, threshold):
   """comparing eval_results"""
