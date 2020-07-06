@@ -43,63 +43,17 @@ from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
-from tfx.utils import telemetry_utils, json_utils
+from tfx.utils import telemetry_utils, json_utils, kube_utils
 from google.protobuf import json_format
 import json
 
 
-# downloader_component = container_component.create_container_component(
-#     name='DownloadFromHttp',
-#     outputs={
-#         'data': standard_artifacts.ExternalArtifact,
-#     },
-#     parameters={
-#         'url': str,
-#     },
-#     # The component code uses gsutil to upload the data to GCS, so the
-#     # container image needs to have gsutil installed and configured.
-#     # Fixing b/150670779 by merging cl/294536017 will lift this limitation.
-#     image='google/cloud-sdk:278.0.0',
-#     command=[
-#         'sh', '-exc',
-#         '''
-#           url="$0"
-#           output_data_uri="$1"/data  # TODO(b/150515270) Remove when fixed.
-#           output_data_path=$(mktemp)
-
-#           # Running the main code
-#           wget "$0" -O "$output_data_path" || curl "$0" > "$output_data_path"
-
-#           # Getting data out of the container
-#           gsutil cp "$output_data_path" "$output_data_uri"
-#         ''',
-#         placeholders.InputValuePlaceholder('url'),
-#         placeholders.OutputUriPlaceholder('data'),
-#     ],
-# )
-
-    # arguments = [
-    #     '--pipeline_name',
-    #     pipeline_name,
-    #     '--pipeline_root',
-    #     pipeline_root,
-    #     '--kubeflow_metadata_config',
-    #     json_format.MessageToJson(
-    #         message=kubeflow_metadata_config, preserving_proto_field_name=True),
-    #     '--beam_pipeline_args',
-    #     json.dumps(pipeline.beam_pipeline_args),
-    #     '--additional_pipeline_args',
-    #     json.dumps(pipeline.additional_pipeline_args),
-    #     '--component_launcher_class_path',
-    #     component_launcher_class_path,
-    #     '--serialized_component',
-    #     serialized_component,
-    #     '--component_config',
-    #     json_utils.dumps(component_config),
-    # ]
-
-_COMMAND = [
+_CONTAINER_COMMAND = [
     'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/container_entrypoint.py'
+]
+
+_DRIVER_COMMAND = [
+    'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/driver_container_entrypoint.py'
 ]
 
 _TFX_IMAGE = "gcr.io/tfx-eric/tfx-dev"
@@ -157,7 +111,7 @@ def _wrapContainerComponent(
     outputs={},
     parameters={},
     image=_TFX_IMAGE,
-    command=_COMMAND + arguments
+    command=_CONTAINER_COMMAND + arguments
   )()
 
 class _LaunchAsContainerComponent():
@@ -241,6 +195,8 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
+    if kube_utils.is_inside_cluster():
+      return self._run_as_kubernetes_job(tfx_pipeline)
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
@@ -284,3 +240,49 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
       # record the ran component. Always record the unwrapped component
       ran_components.add(component)
+
+
+  def _run_as_kubernetes_job(self, tfx_pipeline: pipeline.Pipeline) -> None:
+    """Submits and runs a tfx pipeline from outside the cluster
+
+    Args:
+      tfx_pipeline: Logical pipeline containing pipeline args and components.
+    """
+
+# serialization code
+
+#     import json
+# from tfx.utils import telemetry_utils, json_utils
+# from tfx.orchestration.kubeflow import node_wrapper
+# from tfx.orchestration.kubeflow import utils
+
+# def dump(obj):
+#   for attr in dir(obj):
+#     print("obj.%s = %r" % (attr, getattr(obj, attr)))
+    
+# tfx_pipeline = _create_pipeline(
+#           pipeline_name=_pipeline_name,
+#           pipeline_root=_pipeline_root,
+#           data_root=_data_root,
+#           module_file=_module_file,
+#           serving_model_dir=_serving_model_dir,
+#           metadata_path=_metadata_path,
+#           # 0 means auto-detect based on the number of CPUs available during
+#           # execution time. 
+#           direct_num_workers=0)
+
+# dump(tfx_pipeline)
+# serialzed_components = []
+# for component in tfx_pipeline._components:
+#     serialzed_components.append(utils.replace_placeholder(
+#       json_utils.dumps(node_wrapper.NodeWrapper(component))))
+
+# json.dumps({
+#     'pipeline_name': tfx_pipeline.pipeline_info.pipeline_name,
+# 'pipeline_root': tfx_pipeline.pipeline_info.pipeline_root,
+# 'enable_cache':tfx_pipeline.enable_cache,
+# 'components': serialzed_components,
+# 'metadata_connection_config':json_format.MessageToJson(
+#         message=tfx_pipeline.metadata_connection_config, preserving_proto_field_name=True),
+# 'beam_pipeline_args': tfx_pipeline.beam_pipeline_args,
+# })
