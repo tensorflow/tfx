@@ -33,13 +33,13 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
                component_id: Text,
                test_data_dir: Text,
                context: Optional[base_executor.BaseExecutor.Context] = None):
-    """Initializes a BaseDummyExecutor
+    """Initializes a BaseDummyExecutor.
     Args:
       component_id: component id of a component associated
-        with the dummy executor
+        with the dummy executor.
       test_data_dir: The directory to test data
-        (pipeline_recorder.py)
-      context: context class for all executors
+        (pipeline_recorder.py).
+      context: context class for all executors.
     """
     super(BaseDummyExecutor, self).__init__(context)
     absl.logging.info("Running DummyExecutor, component_id %s", component_id)
@@ -51,7 +51,16 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    """Copies over recorded data to pipeline output uri"""
+    """Copies over recorded data to pipeline output uri.
+
+    Args:
+      input_dict: Input dict from input key to a list of Artifacts.
+      output_dict: Output dict from output key to a list of Artifacts.
+      exec_properties: A dict of execution properties.
+
+    Returns:
+      None
+    """
     for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri

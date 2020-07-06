@@ -62,10 +62,12 @@ def create_dummy_launcher_class(test_data_dir: Text,
   """Creates a DummyComponentLauncher class
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
-      (pipeline_recorder.py)
+      (pipeline_recorder.py).
     component_ids: List of component ids that should be replaced
-      with a dummy executor
-    component_map: Dictionary holding user-defined dummy executor
+      with a dummy executor.
+    component_map: Dictionary holding user-defined dummy executor.
+  Returns:
+    DummyComponentLauncher class holding component_map with dummy executors.
   """
   cls = DummyComponentLauncher
   cls.component_map = dict(component_map)

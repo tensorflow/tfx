@@ -37,6 +37,7 @@ from tfx.types import channel_utils
 from tfx.utils import io_utils
 
 class CustomDummyExecutor(dummy_executor.BaseDummyExecutor):
+  """Example of custom dummy executor."""
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
