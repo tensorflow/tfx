@@ -34,6 +34,7 @@ class BaseDummyExecutor(base_executor.BaseExecutor):
                test_data_dir: Text,
                context: Optional[base_executor.BaseExecutor.Context] = None):
     """Initializes a BaseDummyExecutor.
+
     Args:
       component_id: component id of a component associated
         with the dummy executor.

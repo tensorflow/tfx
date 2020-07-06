@@ -29,6 +29,7 @@ from tfx.orchestration.launcher import in_process_component_launcher
 class DummyComponentLauncher(
     in_process_component_launcher.InProcessComponentLauncher):
   """Responsible for launching a dummy executor.
+
   The executor will be launched in the same process of the rest of the
   component, i.e. its driver and publisher.
   """
@@ -54,12 +55,13 @@ class DummyComponentLauncher(
                                                   executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
 
-def create_dummy_launcher_class(test_data_dir: Text,
-                                component_ids: List[Text],
-                                component_map:
-                                Dict[Text,
-                                     Type[dummy_executor.BaseDummyExecutor]]):
+def create_dummy_launcher_class(
+    test_data_dir: Text,
+    component_ids: List[Text],
+    component_map: Dict[Text, Type[dummy_executor.BaseDummyExecutor]]
+    ) -> Type[DummyComponentLauncher]:
   """Creates a DummyComponentLauncher class
+
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
       (pipeline_recorder.py).
