@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""IMDB Sentiment Analysis example using TFX."""
+"""Cola dataset classification example using TFX."""
 
 from __future__ import absolute_import
 from __future__ import print_function
@@ -61,7 +61,7 @@ _serving_model_dir = os.path.join(
     'serving_model',
     _pipeline_name)
 
-# Directory and data locations.  This example assumes all of the flowers
+# Directory and data locations. This example assumes all of the
 # example code and metadata library is relative to $HOME, but you can store
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
@@ -71,6 +71,8 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
+# TODO: changed direct_num_workers=0 when https://github.com
+# /tensorflow/text/issues/311 is resolved.
 _beam_pipeline_args = ['--direct_num_workers=1']
 
 
