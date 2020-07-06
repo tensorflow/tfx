@@ -27,8 +27,8 @@ import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 
 from tfx import types
-from tfx.experimental.pipeline_testing import dummy_component_launcher
-from tfx.experimental.pipeline_testing import dummy_executor
+from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -36,21 +36,21 @@ from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
 from tfx.utils import io_utils
 
-class CustomDummyExecutor(dummy_executor.BaseDummyExecutor):
-  """Example of custom dummy executor."""
+class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
+  """Example of custom stub executor."""
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    absl.logging.info("Running CustomDummyExecutor")
+    absl.logging.info("Running CustomStubExecutor")
     for artifact_list in output_dict.values():
       for artifact in artifact_list:
         custom_output_path = os.path.join(artifact.uri, "result.txt")
         io_utils.write_string_file(custom_output_path, "custom component")
 
-class DummyLauncherTest(tf.test.TestCase):
+class StubLauncherTest(tf.test.TestCase):
 
   def setUp(self):
-    super(DummyLauncherTest, self).setUp()
+    super(StubLauncherTest, self).setUp()
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -81,19 +81,19 @@ class DummyLauncherTest(tf.test.TestCase):
         pipeline_name='Test', pipeline_root=self.pipeline_root, run_id='123')
 
   @mock.patch.object(publisher, 'Publisher')
-  def testCustomDummyExecutor(self, mock_publisher):
-    # verify whether custom dummy substitution works
+  def testCustomStubExecutor(self, mock_publisher):
+    # verify whether custom stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
     component_map = \
-        {'_FakeComponent.FakeComponent': CustomDummyExecutor}
+        {'_FakeComponent.FakeComponent': CustomStubExecutor}
 
-    MyDummyLauncher = \
-        dummy_component_launcher.create_dummy_launcher_class(
+    MyStubLauncher = \
+        stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
             component_ids=[],
             component_map=component_map)
 
-    launcher = MyDummyLauncher.create(
+    launcher = MyStubLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,
@@ -109,21 +109,21 @@ class DummyLauncherTest(tf.test.TestCase):
     self.assertEqual('custom component', contents)
 
   @mock.patch.object(publisher, 'Publisher')
-  def testDummyExecutor(self, mock_publisher):
-    # verify whether dummy substitution works
+  def testStubExecutor(self, mock_publisher):
+    # verify whether base stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
 
     record_file = os.path.join(self.record_dir, 'output', 'recorded.txt')
     io_utils.write_string_file(record_file, "hello world")
     component_ids = ['_FakeComponent.FakeComponent']
 
-    MyDummyLauncher = \
-        dummy_component_launcher.create_dummy_launcher_class(
+    MyStubLauncher = \
+        stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
             component_ids=component_ids,
             component_map={})
 
-    launcher = MyDummyLauncher.create(
+    launcher = MyStubLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,
@@ -140,19 +140,19 @@ class DummyLauncherTest(tf.test.TestCase):
 
   @mock.patch.object(publisher, 'Publisher')
   def testExecutor(self, mock_publisher):
-    # verify whether original executor can run
+    # verify whether original executors can run
     mock_publisher.return_value.publish_execution.return_value = {}
 
     io_utils.write_string_file(
         os.path.join(self.input_dir, 'result.txt'), 'test')
 
-    MyDummyLauncher = \
-        dummy_component_launcher.create_dummy_launcher_class(
+    MyStubLauncher = \
+        stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
             component_ids=[],
             component_map={})
 
-    launcher = MyDummyLauncher.create(
+    launcher = MyStubLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,

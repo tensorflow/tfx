@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""dummy component launcher which launches python executors and dummy executors in process."""
+"""stub component launcher which launches component executors and stub executors in process."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,12 +23,12 @@ from typing import Any, Dict, List, Text, Type
 
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.experimental.pipeline_testing import dummy_executor
+from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.orchestration.launcher import in_process_component_launcher
 
-class DummyComponentLauncher(
+class StubComponentLauncher(
     in_process_component_launcher.InProcessComponentLauncher):
-  """Responsible for launching a dummy executor.
+  """Responsible for launching a stub executor.
 
   The executor will be launched in the same process of the rest of the
   component, i.e. its driver and publisher.
@@ -41,10 +41,10 @@ class DummyComponentLauncher(
     """Execute underlying component implementation."""
     component_id = self._component_info.component_id
     if component_id not in self.component_map:
-      super(DummyComponentLauncher, self)._run_executor(execution_id,
-                                                        input_dict,
-                                                        output_dict,
-                                                        exec_properties)
+      super(StubComponentLauncher, self)._run_executor(execution_id,
+                                                       input_dict,
+                                                       output_dict,
+                                                       exec_properties)
     else:
       executor_context = base_executor.BaseExecutor.Context(
           beam_pipeline_args=self._beam_pipeline_args,
@@ -55,25 +55,27 @@ class DummyComponentLauncher(
                                                   executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
 
-def create_dummy_launcher_class(
+def create_stub_launcher_class(
     test_data_dir: Text,
     component_ids: List[Text],
-    component_map: Dict[Text, Type[dummy_executor.BaseDummyExecutor]]
-    ) -> Type[DummyComponentLauncher]:
-  """Creates a DummyComponentLauncher class
+    component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+    ) -> Type[StubComponentLauncher]:
+  """Creates a StubComponentLauncher class
 
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
       (pipeline_recorder.py).
     component_ids: List of component ids that should be replaced
-      with a dummy executor.
-    component_map: Dictionary holding user-defined dummy executor.
+      with a BaseStubExecutor.
+    component_map: Dictionary holding user-defined stub executor.
+      These user-defined stub executors must inherit from
+      base_stub_executor.BaseStubExecutor.
   Returns:
-    DummyComponentLauncher class holding component_map with dummy executors.
+    StubComponentLauncher class holding component_map with stub executors.
   """
-  cls = DummyComponentLauncher
+  cls = StubComponentLauncher
   cls.component_map = dict(component_map)
   for component_id in component_ids:
-    cls.component_map[component_id] = dummy_executor.BaseDummyExecutor
+    cls.component_map[component_id] = base_stub_executor.BaseStubExecutor
   cls.test_data_dir = test_data_dir
   return cls

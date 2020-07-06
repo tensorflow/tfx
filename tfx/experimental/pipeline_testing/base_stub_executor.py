@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Base Dummy Executor"""
+"""Base Stub Executor"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -27,23 +27,25 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.utils import io_utils
 
-class BaseDummyExecutor(base_executor.BaseExecutor):
-  """TFX base dummy executor."""
+class BaseStubExecutor(base_executor.BaseExecutor):
+  """TFX base stub executor."""
   def __init__(self,
                component_id: Text,
                test_data_dir: Text,
                context: Optional[base_executor.BaseExecutor.Context] = None):
-    """Initializes a BaseDummyExecutor.
+    """Initializes a BaseStubExecutor.
 
     Args:
       component_id: component id of a component associated
-        with the dummy executor.
+        with the stub executor.
       test_data_dir: The directory to test data
         (pipeline_recorder.py).
       context: context class for all executors.
+    Raises:
+      ValueError: If the recorded pipeline data doesn't exist at test_data_dir.
     """
-    super(BaseDummyExecutor, self).__init__(context)
-    absl.logging.info("Running DummyExecutor, component_id %s", component_id)
+    super(BaseStubExecutor, self).__init__(context)
+    absl.logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._test_data_dir = test_data_dir
     if not os.path.exists(self._test_data_dir):
