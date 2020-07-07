@@ -48,7 +48,8 @@ from tfx.utils.dsl_utils import tfrecord_input
 
 _pipeline_name = 'bert_mrpc'
 
-# This example assumes the utility function is in ~/bert/mrpc
+# This example assumes that MRPC data is stored in ~/bert/mrpc/data and the
+# utility function is in ~/bert/mrpc. Feel free to customize as needed.
 _bert_mrpc_root = os.path.join(os.environ['HOME'], 'bert', 'mrpc')
 _data_root = os.path.join(_bert_mrpc_root, 'data')
 # Python module file to inject customized logic into the TFX components. The

@@ -48,7 +48,8 @@ from tfx.utils.dsl_utils import tfrecord_input
 
 _pipeline_name = 'bert_cola'
 
-# This example assumes the utility function is in ~/bert/cola
+# This example assumes that COLA data is stored in ~/bert/cola/data and the
+# utility function is in ~/bert/cola. Feel free to customize as needed.
 _bert_cola_root = os.path.join(os.environ['HOME'], 'bert', 'cola')
 _data_root = os.path.join(_bert_cola_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
