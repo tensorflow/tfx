@@ -180,35 +180,32 @@ class ExecutorTest(absltest.TestCase):
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-    schema = standard_artifacts.Schema()
-    schema.uri = os.path.join(source_data_dir, 'schema_gen')
-
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
-        executor.SCHEMA_KEY: [schema]
     }
 
     exec_properties = {
-        executor.STATS_OPTIONS_JSON_KEY:
-            tfdv.StatsOptions(label_feature='company',
-                              schema=schema_pb2.Schema()).to_json(),
-        executor.EXCLUDE_SPLITS_KEY:
-            ['train']
+        executor.EXCLUDE_SPLITS_KEY: ['train']
     }
 
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['eval'])
+    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    with self.assertRaises(ValueError):
-      stats_gen_executor.Do(
-          input_dict, output_dict, exec_properties=exec_properties)
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties=exec_properties)
+
+    # Check statistics_gen outputs.
+    self.assertFalse(
+        tf.io.gfile.exists(os.path.join(stats.uri, 'train', 'stats_tfrecord')))
+    self._validate_stats_output(
+        os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
 
 
 if __name__ == '__main__':
