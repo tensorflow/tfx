@@ -23,8 +23,6 @@ from typing import Text
 
 import tensorflow as tf
 
-from tfx.utils import io_utils
-
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
 

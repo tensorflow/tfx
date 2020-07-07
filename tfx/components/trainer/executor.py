@@ -73,7 +73,7 @@ def _serving_model_path(working_dir: Text) -> Text:
 
 
 def _eval_model_path(working_dir: Text) -> Text:
-  """Given model artifact working directory, returns original 
+  """Given model artifact working directory, returns original
   directory for exported model for evaluation purpose."""
   eval_model_dir = path_utils.eval_model_dir(working_dir)
 
@@ -194,7 +194,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
 
   def _CleanServingDir(self, working_dir: Text) -> None:
-    """Copies exported serving model to base directory and deletes 
+    """Copies exported serving model to base directory and deletes
     non-serving model files from serving model directory.
 
     Checks model artifact directory structure to determine a Keras or
@@ -205,7 +205,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     model_export_dir = _serving_model_path(working_dir)
     serving_model_dir = path_utils.serving_model_dir(working_dir)
 
-    if (model_export_dir != serving_model_dir):
+    if model_export_dir != serving_model_dir:
       # Copy Estimator model export to serving model directory
       tempdir = tempfile.mkdtemp()
       io_utils.copy_dir(model_export_dir, tempdir)
@@ -213,16 +213,16 @@ class GenericExecutor(base_executor.BaseExecutor):
       io_utils.delete_dir(tempdir)
 
       absl.logging.info('Serving model directory cleaned: %s.',
-          serving_model_dir)
+                        serving_model_dir)
 
 
   def _CleanEvalDir(self, working_dir: Text) -> None:
-    """Copies eval model to base directory and removes old Estimator 
+    """Copies eval model to base directory and removes old Estimator
     folder structure, if eval model directory exists.
     """
     eval_model_dir = path_utils.eval_model_dir(working_dir)
 
-    if (tf.io.gfile.exists(eval_model_dir)):
+    if tf.io.gfile.exists(eval_model_dir):
       model_export_dir = _eval_model_path(working_dir)
 
       tempdir = tempfile.mkdtemp()
