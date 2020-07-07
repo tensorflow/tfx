@@ -6,6 +6,9 @@
 *   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
 *   Changed Span information as a property of ExampleGen's output artifact.
     Deprecated ExampleGen input (external) artifact.
+*   Added BaseStubExecutor and StubComponentLauncher for TFX Pipeline Test to 
+    `tfx.experimental.pipeline_testing`. 
+*   Added TFX Pipeline Recorder to `tfx.experimental.pipeline_testing`.
 
 ## Bug fixes and other changes
 *   Added Tuner component, which is still work in progress.
