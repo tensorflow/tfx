@@ -24,9 +24,9 @@ import os
 import tensorflow as tf
 from tfx.utils import path_utils
 
-# TODO(jjma): refactor tests into one
+
 class PathUtilsTest(tf.test.TestCase):
-  
+
   def testEstimatorModelPath(self):
     # Create folders based on Estimator based Trainer output model directory,
     # after Executor performs cleaning.
