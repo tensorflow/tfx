@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ from __future__ import print_function
 import argparse
 import json
 import logging
-import os
 import sys
 import textwrap
 from typing import Dict, List, Text, Union
@@ -30,18 +29,8 @@ import absl
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_node
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
-from tfx.orchestration.kubeflow import node_wrapper
-from tfx.orchestration.kubeflow import utils
-from tfx.orchestration.launcher import base_component_launcher
-from tfx.types import artifact
-from tfx.types import channel
-from tfx.utils import import_utils
+from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.utils import json_utils
-from tfx.utils import telemetry_utils
 
 
 
@@ -55,6 +44,25 @@ def main():
 
   # pipeline is serialized via a json format 
   parser.add_argument('--serialized_pipeline', type=str, required=True)
+
+  args = parser.parse_args()
+
+  _tfx_pipeline = json.loads(args.serialized_pipeline)
+  _components = [json_utils.loads(component) for component in _tfx_pipeline.components]
+  _metadata_connection_config = metadata_store_pb2.ConnectionConfig()
+  json_format.Parse(_tfx_pipeline.metadata_connection_config, _metadata_connection_config)
+
+  absl.logging.set_verbosity(absl.logging.INFO)
+  kubernetes_dag_runner.KubernetesDagRunner().run(
+    pipeline.Pipeline(
+        pipeline_name=_tfx_pipeline.pipeline_name,
+        pipeline_root=_tfx_pipeline.pipeline_root,
+        components=_components,
+        enable_cache=_tfx_pipeline.enable_cache
+        metadata_connection_config=_metadata_connection_config,
+        beam_pipeline_args=_tfx_pipeline.beam_pipeline_args,
+    )
+  )
 
 
 if __name__ == '__main__':

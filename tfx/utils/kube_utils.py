@@ -20,7 +20,8 @@ from __future__ import print_function
 
 import enum
 import os
-from typing import Text
+import re
+from typing import List, Text
 
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
@@ -131,14 +132,63 @@ class _KubernetesClientFactory(object):
     if not self._config_loaded:
       self._LoadConfig()
     return k8s_client.CoreV1Api()
+  
+  def MakeBatchV1Api(self) -> k8s_client.BatchV1Api:  # pylint: disable=invalid-name
+    """Make a kubernetes BatchV1Api client."""
+    if not self._config_loaded:
+      self._LoadConfig()
+    return k8s_client.BatchV1Api()
 
 _factory = _KubernetesClientFactory()
 
+def _sanitize_pod_name(pod_name: Text) -> Text:
+  pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
+  pod_name = re.sub(r'^[-]+', '', pod_name)
+  return re.sub(r'[-]+', '-', pod_name)
 
 def make_core_v1_api() -> k8s_client.CoreV1Api:
   """Make a kubernetes CoreV1Api client."""
   return _factory.MakeCoreV1Api()
 
+def make_batch_v1_api() -> k8s_client.BatchV1Api:
+  """Make a kubernetes BatchV1Api client."""
+  return _factory.MakeBatchV1Api()
+
+def make_job_object(
+    name: Text,
+    container_image: Text,
+    command: List[Text],
+    namespace: Text = 'default',
+    container_name: Text = 'jobcontainer',
+  ) -> k8s_client.V1Job:
+  """Make a kubernetes Job object.
+
+  See
+  https://kubernetes.io/docs/concepts/workloads/controllers/job/#writing-a-job-spec
+  """
+  return k8s_client.V1Job(
+      api_version="batch/v1",
+      kind="Job",
+      metadata=k8s_client.V1ObjectMeta(
+        namespace=namespace,
+        name=_sanitize_pod_name(name),
+      ),
+      status=k8s_client.V1JobStatus(),
+      spec=k8s_client.V1JobSpec(
+          template=k8s_client.V1PodTemplateSpec(
+              spec=k8s_client.V1PodSpec(
+                  containers=[
+                      k8s_client.V1Container(
+                          name=container_name, 
+                          image=container_image,
+                          command=command,
+                      ),
+                  ],
+                  restart_policy=RestartPolicy.NEVER.value,
+              ),
+          )
+      ),
+  )
 
 def is_inside_cluster() -> bool:
   """Whether current running environment is inside the kubernetes cluster."""

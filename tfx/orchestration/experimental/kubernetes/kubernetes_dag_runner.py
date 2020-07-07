@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import telemetry_utils, json_utils, kube_utils
 from google.protobuf import json_format
 import json
-
 
 _CONTAINER_COMMAND = [
     'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/container_entrypoint.py'
@@ -195,10 +194,11 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
-    if kube_utils.is_inside_cluster():
-      return self._run_as_kubernetes_job(tfx_pipeline)
+    if not tfx_pipeline.pipeline_info.run_id:
+      tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
+    if not kube_utils.is_inside_cluster():
+      return self._run_as_kubernetes_job(tfx_pipeline)
 
     # TODO(ericlege) kubernetesComponentLauncher wait pod is blocking, so can use multithread to workaround for callback
     ran_components = set()
@@ -248,41 +248,46 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     Args:
       tfx_pipeline: Logical pipeline containing pipeline args and components.
     """
+    _serialized_pipeline = self._serialize_pipeline(tfx_pipeline)
+    arguments = [
+        '--pipeline_name',
+        _serialized_pipeline,
+    ]
+    _api_instance = kube_utils.make_batch_v1_api()
+    _job = kube_utils.make_job_object(
+        name='Job_' + tfx_pipeline.pipeline_info.run_id,
+        container_image=_TFX_IMAGE,
+        command=_DRIVER_COMMAND + arguments,
+      )
+    _api_response = _api_instance.create_namespaced_job("default", _job, pretty=True)
+    absl.logging.info('Submitted Job to Kubernetes: %s', _api_response)
 
-# serialization code
 
-#     import json
-# from tfx.utils import telemetry_utils, json_utils
-# from tfx.orchestration.kubeflow import node_wrapper
-# from tfx.orchestration.kubeflow import utils
-
-# def dump(obj):
-#   for attr in dir(obj):
-#     print("obj.%s = %r" % (attr, getattr(obj, attr)))
+  def _serialize_pipeline(self, tfx_pipeline: pipeline.Pipeline) -> Text:
+    """Serializes a TFX pipeline.
     
-# tfx_pipeline = _create_pipeline(
-#           pipeline_name=_pipeline_name,
-#           pipeline_root=_pipeline_root,
-#           data_root=_data_root,
-#           module_file=_module_file,
-#           serving_model_dir=_serving_model_dir,
-#           metadata_path=_metadata_path,
-#           # 0 means auto-detect based on the number of CPUs available during
-#           # execution time. 
-#           direct_num_workers=0)
+    To be replaced with the "portable core" of the unified TFX orchestrator:
+    https://go/tfx-dsl-ir
+    TODO(ericlege): support this for pipelines with container components
 
-# dump(tfx_pipeline)
-# serialzed_components = []
-# for component in tfx_pipeline._components:
-#     serialzed_components.append(utils.replace_placeholder(
-#       json_utils.dumps(node_wrapper.NodeWrapper(component))))
-
-# json.dumps({
-#     'pipeline_name': tfx_pipeline.pipeline_info.pipeline_name,
-# 'pipeline_root': tfx_pipeline.pipeline_info.pipeline_root,
-# 'enable_cache':tfx_pipeline.enable_cache,
-# 'components': serialzed_components,
-# 'metadata_connection_config':json_format.MessageToJson(
-#         message=tfx_pipeline.metadata_connection_config, preserving_proto_field_name=True),
-# 'beam_pipeline_args': tfx_pipeline.beam_pipeline_args,
-# })
+    Args:
+      tfx_pipeline: Logical pipeline containing pipeline args and components.
+    
+    Returns:
+      Serialized pipeline
+    """
+    serialzed_components = []
+    for component in tfx_pipeline._components:
+      serialzed_components.append(utils.replace_placeholder(
+        json_utils.dumps(node_wrapper.NodeWrapper(component))))
+    return json.dumps({
+      'pipeline_name': tfx_pipeline.pipeline_info.pipeline_name,
+      'pipeline_root': tfx_pipeline.pipeline_info.pipeline_root,
+      'enable_cache':tfx_pipeline.enable_cache,
+      'components': serialzed_components,
+      'metadata_connection_config':json_format.MessageToJson(
+          message=tfx_pipeline.metadata_connection_config,
+          preserving_proto_field_name=True,
+      ),
+      'beam_pipeline_args': tfx_pipeline.beam_pipeline_args,
+    })
