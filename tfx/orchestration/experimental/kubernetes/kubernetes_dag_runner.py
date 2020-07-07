@@ -106,7 +106,7 @@ def _wrapContainerComponent(
 
   # outputs/parameters fields are ignored as they will come with the serialized component
   return container_component.create_container_component(
-    name=component.get_id(component._instance_name),
+    name=component.id,
     outputs={},
     parameters={},
     image=_TFX_IMAGE,
