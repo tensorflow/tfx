@@ -78,6 +78,7 @@ class Pipeline(object):
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
                components: Optional[List[base_node.BaseNode]] = None,
+               sort_components: Optional[bool] = True,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
@@ -91,6 +92,7 @@ class Pipeline(object):
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
       enable_cache: Whether or not cache is enabled for this run.
+      sort_components: Whether or not to sort the components topologically.
       beam_pipeline_args: Pipeline arguments for Beam powered Components.
       **kwargs: Additional kwargs forwarded as pipeline args.
     """
@@ -102,6 +104,7 @@ class Pipeline(object):
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
+    self.sort_components = sort_components
     self.metadata_connection_config = metadata_connection_config
 
     self.beam_pipeline_args = beam_pipeline_args or []
@@ -166,6 +169,11 @@ class Pipeline(object):
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)
+
+    # Allow override to skip components sorting
+    if not self.sort_components:
+      self._components = deduped_components
+      return
 
     self._components = []
     visited = set()

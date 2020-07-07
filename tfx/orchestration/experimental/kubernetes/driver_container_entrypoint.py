@@ -31,6 +31,9 @@ from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
+from tfx.orchestration.config import base_component_config
+from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.config import config_utils
 from tfx.utils import json_utils
 
 
@@ -59,6 +62,7 @@ def main():
         pipeline_name=_tfx_pipeline['pipeline_name'],
         pipeline_root=_tfx_pipeline['pipeline_root'],
         components=_components,
+        sort_components=False,
         enable_cache=_tfx_pipeline['enable_cache'],
         metadata_connection_config=_metadata_connection_config,
         beam_pipeline_args=_tfx_pipeline['beam_pipeline_args'],

@@ -208,7 +208,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       component_id = component.id
 
     # verify that components are in topological order, Pipeline constructor should have automatically sorted them 
-      if component.upstream_nodes:
+      if hasattr(component, 'upstream_nodes') and component.upstream_nodes:
         for upstream_node in component.upstream_nodes:
           assert upstream_node in ran_components, ('Components is not in '
                                                     'topological order')
