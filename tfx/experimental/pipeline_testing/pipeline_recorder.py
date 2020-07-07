@@ -28,21 +28,18 @@ from tfx.orchestration import metadata
 
 FLAGS = flags.FLAGS
 
-_pipeline_name = 'chicago_taxi_beam'
-_tfx_root = os.path.join(os.environ['HOME'], 'tfx')
+flags.DEFINE_string('record_dir', None, 'Path to record')
+flags.DEFINE_string('metadata_dir', None, 'Path to metadata')
+flags.DEFINE_string('run_id', None, 'Pipeline Run Id (default=latest run_id)')
 
-default_record_dir = os.path.join('examples/chicago_taxi_pipeline/testdata')
-default_metadata_dir = os.path.join(_tfx_root, 'metadata', _pipeline_name,
-                                    'metadata.db')
-
-flags.DEFINE_string('record_dir', default_record_dir, 'Path to record')
-flags.DEFINE_string('metadata_dir', default_metadata_dir, 'Path to metadata')
-flags.DEFINE_string('run_id', None, 'Pipeline Run Id')
+flags.mark_flag_as_required('record_dir')
+flags.mark_flag_as_required('metadata_dir')
 
 def main(unused_argv):
   run_id = FLAGS.run_id
   metadata_dir = FLAGS.metadata_dir
   metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
+
   with metadata.Metadata(metadata_config) as m:
     execution_dict = defaultdict(list)
     for execution in m.store.get_executions():
@@ -50,7 +47,9 @@ def main(unused_argv):
       execution_dict[execution_run_id].append(execution)
     if run_id is None:
       run_id = max(execution_dict.keys()) # fetch the latest run_id
-
+    elif run_id not in execution_dict:
+      raise ValueError(
+          "run_id {} is not recorded in the MLMD metadata".format(run_id))
     events = [
         x for x in m.store.get_events_by_execution_ids(
             [e.id for e in execution_dict[run_id]])
