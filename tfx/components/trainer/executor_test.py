@@ -106,7 +106,9 @@ class ExecutorTest(tf.test.TestCase):
         tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
     self.assertTrue(
         tf.io.gfile.exists(
-            path_utils.serving_model_dir(self._model_exports.uri)))
+            os.path.join(
+                path_utils.serving_model_dir(self._model_exports.uri),
+                "saved_model.pb")))
 
   def _verify_no_eval_model_exports(self):
     self.assertFalse(
