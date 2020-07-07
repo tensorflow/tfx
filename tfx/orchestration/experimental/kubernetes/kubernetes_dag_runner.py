@@ -250,7 +250,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     """
     _serialized_pipeline = self._serialize_pipeline(tfx_pipeline)
     arguments = [
-        '--pipeline_name',
+        '--serialized_pipeline',
         _serialized_pipeline,
     ]
     _api_instance = kube_utils.make_batch_v1_api()
