@@ -48,10 +48,10 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
-    self._threshold = 0.5
+    self._threshold = 0.7
     self._record_dir = os.path.join(os.environ['HOME'],
                                     'tfx/tfx/experimental/pipeline_testing/',
-                                    'examples/chicago_taxi_pipeline/testdata1')
+                                    'examples/chicago_taxi_pipeline/testdata')
 
   def verify_trainer(self, output_dict):
     """compares two model files"""
@@ -60,10 +60,10 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
     model_uri = model_artifact.uri
 
     path = os.path.join(self._record_dir, 'Trainer', 'model')
-    taxi_pipeline_verifier_utils.compare_model_file_sizes(
+    self.assertTrue(taxi_pipeline_verifier_utils.compare_model_file_sizes(
         model_uri,
         path,
-        self._threshold)
+        self._threshold))
 
   def verify_evaluator(self, output_dict):
     """compares two evaluation proto files"""
@@ -72,9 +72,10 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
     expected_eval_result = tfma.load_eval_result(os.path.join(self._record_dir,
                                                               'Evaluator',
                                                               'evaluation'))
-    taxi_pipeline_verifier_utils.compare_eval_results(eval_result,
-                                                      expected_eval_result,
-                                                      self._threshold)
+    self.assertTrue(taxi_pipeline_verifier_utils.compare_eval_results(
+        eval_result,
+        expected_eval_result,
+        self._threshold))
 
   def verify_validator(self, output_dict):
     """compares two validation proto files"""

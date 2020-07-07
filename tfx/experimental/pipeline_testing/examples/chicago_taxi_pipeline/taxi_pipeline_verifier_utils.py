@@ -83,9 +83,10 @@ def compare_model_file_sizes(model_dir, expected_model_dir, threshold):
     if leaf_file.startswith('model.ckpt') or leaf_file == 'graph.pbtxt':
       file_name = os.path.join(serving_model_dir, leaf_file)
       expected_file_name = file_name.replace(model_dir, expected_model_dir)
-      compare_relative_difference(tf.io.gfile.GFile(file_name).size(),
+      if not compare_relative_difference(tf.io.gfile.GFile(file_name).size(),
                                   tf.io.gfile.GFile(expected_file_name).size(),
-                                  threshold)
+                                  threshold):
+        return False
 
   eval_model_dir = os.path.join(model_dir, 'eval_model_dir')
   subdirs = tf.io.gfile.listdir(eval_model_dir)
