@@ -31,7 +31,7 @@ class SchemaGenTest(tf.test.TestCase):
   def testConstruct(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
+        ['train', 'eval'])
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel([statistics_artifact]))
     self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
@@ -41,7 +41,7 @@ class SchemaGenTest(tf.test.TestCase):
   def testConstructWithParameter(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
+        ['train', 'eval'])
     infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=bool)
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel([statistics_artifact]),
@@ -51,6 +51,18 @@ class SchemaGenTest(tf.test.TestCase):
     self.assertJsonEqual(
         str(schema_gen.spec.exec_properties['infer_feature_shape']),
         str(infer_shape))
+
+  def testConstructWithExcludeSplits(self):
+    statistics_artifact = standard_artifacts.ExampleStatistics()
+    statistics_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    exclude_splits = ['eval']
+    schema_gen = component.SchemaGen(
+        statistics=channel_utils.as_channel([statistics_artifact]),
+        exclude_splits=exclude_splits)
+    self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
+                     schema_gen.outputs['schema'].type_name)
+    self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
 
 
 if __name__ == '__main__':

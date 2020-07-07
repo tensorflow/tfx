@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, List, Text, Union
+from typing import Optional, List, Text
 
 import absl
 
@@ -25,7 +25,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
-from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 
@@ -69,8 +68,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
-               exclude_splits: Optional[List[Union[
-                   Text, data_types.RuntimeParameter]]] = None,
+               exclude_splits: Optional[List[Text]] = None,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):

@@ -55,6 +55,16 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
 
+  def testConstructWithExcludeSplits(self):
+    examples = standard_artifacts.Examples()
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    exclude_splits = ['train']
+    statistics_gen = component.StatisticsGen(
+        examples=channel_utils.as_channel([examples]),
+        exclude_splits=exclude_splits)
+    self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
+                     statistics_gen.outputs['statistics'].type_name)
+
 
 if __name__ == '__main__':
   tf.test.main()

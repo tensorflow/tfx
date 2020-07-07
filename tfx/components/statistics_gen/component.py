@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, List, Text, Union
+from typing import Optional, List, Text
 
 import absl
 import tensorflow_data_validation as tfdv
@@ -26,7 +26,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
-from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
@@ -56,8 +55,7 @@ class StatisticsGen(base_component.BaseComponent):
                examples: types.Channel = None,
                schema: Optional[types.Channel] = None,
                stats_options: Optional[tfdv.StatsOptions] = None,
-               exclude_splits: Optional[List[Union[
-                   Text, data_types.RuntimeParameter]]] = None,
+               exclude_splits: Optional[List[Text]] = None,
                output: Optional[types.Channel] = None,
                input_data: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
