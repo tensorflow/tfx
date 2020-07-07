@@ -29,6 +29,7 @@ import absl
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.utils import json_utils
 
