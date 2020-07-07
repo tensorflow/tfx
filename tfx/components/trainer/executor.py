@@ -206,7 +206,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     serving_model_dir = path_utils.serving_model_dir(working_dir)
 
     if model_export_dir != serving_model_dir:
-      # Copy Estimator model export to serving model directory
+      # Copy serving model export to base serving model directory
       tempdir = tempfile.mkdtemp()
       io_utils.copy_dir(model_export_dir, tempdir)
       io_utils.copy_dir(tempdir, serving_model_dir)
@@ -223,6 +223,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     eval_model_dir = path_utils.eval_model_dir(working_dir)
 
     if tf.io.gfile.exists(eval_model_dir):
+      # Copy eval model export to base eval model directory
       model_export_dir = _eval_model_path(working_dir)
 
       tempdir = tempfile.mkdtemp()
