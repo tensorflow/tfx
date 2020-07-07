@@ -58,7 +58,7 @@ def main():
         pipeline_name=_tfx_pipeline.pipeline_name,
         pipeline_root=_tfx_pipeline.pipeline_root,
         components=_components,
-        enable_cache=_tfx_pipeline.enable_cache
+        enable_cache=_tfx_pipeline.enable_cache,
         metadata_connection_config=_metadata_connection_config,
         beam_pipeline_args=_tfx_pipeline.beam_pipeline_args,
     )
