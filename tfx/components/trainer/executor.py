@@ -62,7 +62,7 @@ def _is_chief():
 def _serving_model_path(working_dir: Text) -> Text:
   """Given model artifact working directory, returns original path
   for timestamped and named serving model exported."""
-  serving_model_dir = path_utils.serving_model_dir(working_dir)
+  serving_model_dir = os.path.join(working_dir, path_utils.SERVING_MODEL_DIR)
   export_dir = os.path.join(serving_model_dir, 'export')
   if tf.io.gfile.exists(export_dir):
     model_dir = io_utils.get_only_uri_in_dir(export_dir)
@@ -158,7 +158,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     output_path = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_KEY])
-    serving_model_dir = path_utils.serving_model_dir(output_path)
+    serving_model_dir = os.path.join(output_path,
+                                     path_utils.SERVING_MODEL_DIR)
     eval_model_dir = os.path.join(output_path,
                                   path_utils.EVAL_MODEL_DIR)
     model_run_dir = artifact_utils.get_single_uri(
@@ -204,7 +205,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     other files are deleted.
     """
     model_export_dir = _serving_model_path(working_dir)
-    serving_model_dir = path_utils.serving_model_dir(working_dir)
+    serving_model_dir = os.path.join(working_dir,
+                                     path_utils.SERVING_MODEL_DIR)
 
     if model_export_dir != serving_model_dir:
       # Copy serving model export to base serving model directory
