@@ -140,7 +140,7 @@ class Pipeline(object):
 
   @components.setter
   def components(self, components: List[base_node.BaseNode]):
-    deduped_components = set(components)
+    deduped_components = collections.OrderedDict.fromkeys(components)
     producer_map = {}
     instances_per_component_type = collections.defaultdict(set)
 
@@ -172,7 +172,7 @@ class Pipeline(object):
 
     # Allow override to skip components sorting
     if not self.sort_components:
-      self._components = deduped_components
+      self._components = list(deduped_components)
       return
 
     self._components = []
