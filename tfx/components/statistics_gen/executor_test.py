@@ -199,7 +199,8 @@ class ExecutorTest(absltest.TestCase):
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(input_dict, output_dict, exec_properties=exec_properties)
+    stats_gen_executor.Do(
+        input_dict, output_dict, exec_properties=exec_properties)
 
     # Check statistics_gen outputs.
     self.assertFalse(

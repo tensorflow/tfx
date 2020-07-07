@@ -31,7 +31,7 @@ class SchemaGenTest(tf.test.TestCase):
   def testConstruct(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+        ['train'])
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel([statistics_artifact]))
     self.assertEqual(standard_artifacts.Schema.TYPE_NAME,
@@ -41,7 +41,7 @@ class SchemaGenTest(tf.test.TestCase):
   def testConstructWithParameter(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+        ['train'])
     infer_shape = data_types.RuntimeParameter(name='infer-shape', ptype=bool)
     schema_gen = component.SchemaGen(
         statistics=channel_utils.as_channel([statistics_artifact]),

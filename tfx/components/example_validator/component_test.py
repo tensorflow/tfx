@@ -30,7 +30,7 @@ class ExampleValidatorTest(tf.test.TestCase):
   def testConstruct(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
+        ['eval'])
     example_validator = component.ExampleValidator(
         statistics=channel_utils.as_channel([statistics_artifact]),
         schema=channel_utils.as_channel([standard_artifacts.Schema()]))
