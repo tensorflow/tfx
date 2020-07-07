@@ -154,7 +154,7 @@ def run_fn(fn_args: TrainerFnArgs):
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(5e-5),
-        loss=tf.keras.losses.BinaryCrossentropy,
+        loss=tf.keras.losses.binary_crossentropy,
         metrics=['accuracy', tfa.metrics.MatthewsCorrelationCoefficient(1)]
     )
 

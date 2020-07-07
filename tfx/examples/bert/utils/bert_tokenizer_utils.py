@@ -75,6 +75,8 @@ class SpecialBertTokenizer():
       max_len: The number of tokens after padding and truncating. 
       add_cls: Whether to add CLS token at the front of each sequence.
       add_sep: Whether to add SEP token at the end of each sequence. 
+      add_pad: If not add_pad, would return ragged tensor instead of tensors
+        input_mask and segment_id would be none.
 
     Returns:
       word_id: Tokenized sequences [batch_size, max_len].
@@ -86,16 +88,12 @@ class SpecialBertTokenizer():
     tokenizer = text.BertTokenizer(vocab_file_path, token_out_type=tf.int64)
     word_id = tokenizer.tokenize(sequence)
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
-    word_id = word_id.merge_dims(1, 2)[:, :max_len]
-    word_id = word_id.to_tensor(
-        default_value=tf.constant(self._pad_id, dtype=tf.int64))
-
+    word_id = word_id.merge_dims(1, 2)
     if add_cls:
       cls_token = tf.fill(
           [tf.shape(sequence)[0], 1],
           tf.constant(self._cls_id, dtype=tf.int64))
 
-      word_id = word_id[:, :max_len-1]
       word_id = tf.concat([cls_token, word_id], axis=1)
 
     if add_sep:
@@ -106,6 +104,12 @@ class SpecialBertTokenizer():
       word_id = word_id[:, :max_len-1]
       word_id = tf.concat([word_id, sep_token], axis=1)
 
+    if not add_pad:
+      return word_id, None, None    
+
+    word_id = word_id.to_tensor(
+        default_value=tf.constant(self._pad_id, dtype=tf.int64))
+
     word_id = tf.pad(
         word_id,
         [[0, 0], [0, max_len]],
@@ -113,7 +117,7 @@ class SpecialBertTokenizer():
 
     word_id = tf.slice(word_id, [0, 0], [-1, max_len])
 
-    input_mask = tf.cast(word_id != self._pad_id, tf.int64)
+    input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
     segment_id = tf.fill(
         tf.shape(input_mask),
         tf.constant(0, dtype=tf.int64))
@@ -142,28 +146,44 @@ class SpecialBertTokenizer():
       segment_id: Distinguish multiple sequences [batch_size, max_len].
     """
     sentence_len = max_len // 2
-    word_id_a, input_mask_a, segment_id_a = self.tokenize_single_sentence(
+    word_id_a, _, _= self.tokenize_single_sentence(
         sequence_a,
         sentence_len,
         True,
-        True
+        True,
+        False
     )
 
-    word_id_b, input_mask_b, segment_id_b = self.tokenize_single_sentence(
+    word_id_b, _, _ = self.tokenize_single_sentence(
         sequence_b,
         sentence_len,
         False,
-        True
+        True,
+        False
     )
 
     word_id = tf.concat([word_id_a, word_id_b], axis=1)
-    input_mask = tf.concat([input_mask_a, input_mask_b], axis=1)
-    segment_id_b = tf.fill(
-        tf.shape(segment_id_b),
-        tf.constant(1, dtype=tf.int64)
-    )
+    word_id = word_id.to_tensor(
+        default_value=tf.constant(self._pad_id, dtype=tf.int64))
 
-    segment_id = tf.concat([segment_id_a, segment_id_b], axis=1)
+    word_id = tf.pad(
+        word_id,
+        [[0, 0], [0, max_len]],
+        constant_values=tf.constant(self._pad_id, dtype=tf.int64))
+
+    word_id = tf.slice(word_id, [0, 0], [-1, max_len])
+    input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
+    segment_id = tf.cast(word_id_a < 0, tf.int64)
+    segment_id = segment_id.to_tensor(
+        default_value=tf.constant(1, dtype=tf.int64))
+
+    segment_id = tf.pad(
+        segment_id,
+        [[0, 0], [0, max_len]],
+        constant_values=tf.constant(1, dtype=tf.int64))
+
+    segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
+
     return word_id, input_mask, segment_id
 
 
