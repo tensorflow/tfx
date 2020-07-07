@@ -75,7 +75,8 @@ def _serving_model_path(working_dir: Text) -> Text:
 def _eval_model_path(working_dir: Text) -> Text:
   """Given model artifact working directory, returns original
   directory for exported model for evaluation purpose."""
-  eval_model_dir = path_utils.eval_model_dir(working_dir)
+  eval_model_dir = os.path.join(working_dir,
+                                path_utils.EVAL_MODEL_DIR)
 
   if tf.io.gfile.exists(eval_model_dir):
     return io_utils.get_only_uri_in_dir(eval_model_dir)
@@ -158,8 +159,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     output_path = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
-    eval_model_dir = path_utils.eval_model_dir(output_path)
-
+    eval_model_dir = os.path.join(output_path,
+                                  path_utils.EVAL_MODEL_DIR)
     model_run_dir = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_RUN_KEY])
 
@@ -220,8 +221,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     """Copies eval model to base directory and removes old Estimator
     folder structure, if eval model directory exists.
     """
-    eval_model_dir = path_utils.eval_model_dir(working_dir)
-
+    eval_model_dir = os.path.join(working_dir,
+                                  path_utils.EVAL_MODEL_DIR)
     if tf.io.gfile.exists(eval_model_dir):
       # Copy eval model export to base eval model directory
       model_export_dir = _eval_model_path(working_dir)

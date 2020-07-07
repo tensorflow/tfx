@@ -182,8 +182,9 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # There must be only one saved models each for serving and eval.
     model_uri = os.path.join(trainer_output_base_dir, trainer_outputs[0])
+    eval_model_dir = os.path.join(model_uri, path_utils.EVAL_MODEL_DIR)
     self.assertEqual(
-        1, len(tf.io.gfile.listdir(path_utils.eval_model_dir(model_uri))))
+        1, len(tf.io.gfile.listdir(eval_model_dir)))
     self.assertEqual(
         1,
         len(

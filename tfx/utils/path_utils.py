@@ -43,11 +43,6 @@ For generic trainer with Keras, there won't be eval model:
           |-- ...
 """
 
-def eval_model_dir(output_uri: Text) -> Text:
-  """Returns directory for exported model for evaluation purpose."""
-  return os.path.join(output_uri, EVAL_MODEL_DIR)
-
-
 def eval_model_path(output_uri: Text) -> Text:
   """Returns path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
