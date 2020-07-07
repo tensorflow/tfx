@@ -54,7 +54,6 @@ def eval_model_path(output_uri: Text) -> Text:
   """Returns path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
   if tf.io.gfile.exists(model_dir):
-    # return io_utils.get_only_uri_in_dir(model_dir)
     return model_dir
   else:
     # If eval model doesn't exist, use serving model for eval.
@@ -68,11 +67,4 @@ def serving_model_dir(output_uri: Text) -> Text:
 
 def serving_model_path(output_uri: Text) -> Text:
   """Returns path for exported serving model."""
-  # export_dir = os.path.join(serving_model_dir(output_uri), 'export')
-  # if tf.io.gfile.exists(export_dir):
-  #   model_dir = io_utils.get_only_uri_in_dir(export_dir)
-  #   return io_utils.get_only_uri_in_dir(model_dir)
-  # else:
-  #   # If dir doesn't match estimator structure, use serving model root directly.
-  #   return serving_model_dir(output_uri)
   return serving_model_dir(output_uri)
