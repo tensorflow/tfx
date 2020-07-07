@@ -24,16 +24,16 @@ import os
 import tensorflow as tf
 from tfx.utils import path_utils
 
-
+# TODO(jjma): refactor tests into one
 class PathUtilsTest(tf.test.TestCase):
-
+  
   def testEstimatorModelPath(self):
-    # Create folders based on Estimator based Trainer output model directory.
+    # Create folders based on Estimator based Trainer output model directory,
+    # after Executor performs cleaning.
     output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
-    eval_model_path = os.path.join(output_uri, 'eval_model_dir', '123')
+    eval_model_path = os.path.join(output_uri, 'eval_model_dir')
     tf.io.gfile.makedirs(eval_model_path)
-    serving_model_path = os.path.join(output_uri, 'serving_model_dir', 'export',
-                                      'taxi', '123')
+    serving_model_path = os.path.join(output_uri, 'serving_model_dir')
     tf.io.gfile.makedirs(serving_model_path)
     # Test retrieving model folder.
     self.assertEqual(eval_model_path, path_utils.eval_model_path(output_uri))
