@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Union
+from typing import Optional, List, Text, Union
 
 import absl
 

@@ -38,6 +38,7 @@ SCHEMA_KEY = 'schema'
 
 # Keys for exec_properties dict.
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
 # Keys for output_dict
 STATISTICS_KEY = 'statistics'
@@ -109,7 +110,9 @@ class Executor(base_executor.BaseExecutor):
         stats_options.schema = schema
 
     split_uris = []
-    exclude_splits = exec_properties['exclude_splits']
+    exclude_splits = []
+    if EXCLUDE_SPLITS_KEY in exec_properties:
+      exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
         if split not in exclude_splits:

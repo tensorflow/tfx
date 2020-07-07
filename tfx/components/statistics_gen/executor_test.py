@@ -167,6 +167,49 @@ class ExecutorTest(absltest.TestCase):
       stats_gen_executor.Do(
           input_dict, output_dict, exec_properties=exec_properties)
 
+  def testDoWithExcludeSplits(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+    tf.io.gfile.makedirs(output_data_dir)
+
+    # Create input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
+    schema = standard_artifacts.Schema()
+    schema.uri = os.path.join(source_data_dir, 'schema_gen')
+
+    input_dict = {
+        executor.EXAMPLES_KEY: [examples],
+        executor.SCHEMA_KEY: [schema]
+    }
+
+    exec_properties = {
+        executor.STATS_OPTIONS_JSON_KEY:
+            tfdv.StatsOptions(label_feature='company',
+                              schema=schema_pb2.Schema()).to_json(),
+        executor.EXCLUDE_SPLITS_KEY:
+            ['train']
+    }
+
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
+    stats.split_names = artifact_utils.encode_split_names(['eval'])
+    output_dict = {
+        executor.STATISTICS_KEY: [stats],
+    }
+
+    # Run executor.
+    stats_gen_executor = executor.Executor()
+    with self.assertRaises(ValueError):
+      stats_gen_executor.Do(
+          input_dict, output_dict, exec_properties=exec_properties)
+
 
 if __name__ == '__main__':
   absltest.main()
