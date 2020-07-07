@@ -46,7 +46,7 @@ _pipeline_name = 'cifar10_native_keras'
 # This example assumes that CIFAR10 train set data is stored in
 # ~/cifar10/data/train, test set data is stored in ~/cifar10/data/test, and
 # the utility function is in ~/cifar10. Feel free to customize as needed.
-_cifar10_root = os.path.join(os.environ['HOME'], 'cifar10')
+_cifar10_root = os.path.join(os.environ['HOME'], 'cifar10_tf')
 _data_root = os.path.join(_cifar10_root, 'data')
 # Python module files to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -73,8 +73,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the cifar10 image classification pipeline using TFX."""
   input_config = example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='train/*'),
-            example_gen_pb2.Input.Split(name='eval', pattern='test/*')])
+            example_gen_pb2.Input.Split(name='train', pattern='train_whole/*'),
+            example_gen_pb2.Input.Split(name='eval', pattern='test_whole/*')])
 
   examples = external_input(data_root)
 
@@ -108,6 +108,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=156),
+        # train_args=trainer_pb2.TrainArgs(num_steps=50),
+        # eval_args=trainer_pb2.EvalArgs(num_steps=3),
         instance_name=instance_name)
 
   # Uses user-provided Python function that trains a Keras model.

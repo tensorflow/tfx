@@ -30,11 +30,16 @@ import tensorflow_transform as tft
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-# cifar10 dataset has 50000 train records, and 10000 val records
+# cifar10 dataset has 50000 train records, and 10000 test records
 _TRAIN_DATA_SIZE = 50000
 _EVAL_DATA_SIZE = 10000
 _TRAIN_BATCH_SIZE = 64
 _EVAL_BATCH_SIZE = 64
+
+# _TRAIN_DATA_SIZE = 100
+# _EVAL_DATA_SIZE = 100
+# _TRAIN_BATCH_SIZE = 32
+# _EVAL_BATCH_SIZE = 32
 
 IMAGE_KEY = 'image'
 LABEL_KEY = 'label'
@@ -100,27 +105,28 @@ def _freeze_model_by_percentage(model: tf.keras.Model,
     model: The keras model need to be partially frozen
     percentage: the percentage of layers to freeze
   """
-  percentage = max(0.0, percentage)
-  percentage = min(1.0, percentage)
+  if percentage < 0 or percentage > 1:
+    raise Exception("freeze percentage should between 0.0 and 1.0")
+
   num_layers = len(model.layers)
   num_layers_to_freeze = int(num_layers * percentage)
   for idx, layer in enumerate(model.layers):
-    if idx >= num_layers_to_freeze:
-      break
-    layer.trainable = False
+    if idx < num_layers_to_freeze:
+      layer.trainable = False
+    else:
+      layer.trainable = True
 
 def _build_keras_model() -> tf.keras.Model:
   """Creates a MobileNet model pretrained on ImageNet for finetuning
 
+  Args:
+    model: The keras model need to be partially frozen
   Returns:
     A Keras Model.
   """
-  tf.keras.backend.set_image_data_format('channels_last')
   base_model = tf.keras.applications.MobileNet(
       input_shape=(224, 224, 3), include_top=False, weights='imagenet',
       pooling='avg')
-
-  _freeze_model_by_percentage(base_model, 0.9)
 
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
@@ -137,6 +143,23 @@ def _build_keras_model() -> tf.keras.Model:
   model.summary(print_fn=absl.logging.info)
   return model
 
+def _decode_and_preprocess_image(image_string):
+  """Decodes the raw image string and preprocess it
+
+  Args:
+    image_string: The encoded raw image string
+  Returns:
+    The preprocessed image tensor
+  """
+  image = tf.io.decode_png(image_string, channels=3)
+  image = tf.cast(image, tf.float32)
+
+  # The MobileNet we use was trained on ImageNet, which has image size 224 x 224.
+  # We resize CIFAR10 images to match that size
+  image = tf.image.resize(image, [224, 224])
+  image = tf.keras.applications.mobilenet.preprocess_input(image)
+  return image
+
 # TFX Transform will call this function.
 def preprocessing_fn(inputs):
   """tf.transform's callback function for preprocessing inputs.
@@ -149,17 +172,10 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
 
-  image_features = tf.map_fn(lambda x: tf.io.decode_png(x[0], channels=3), inputs[IMAGE_KEY], dtype=tf.uint8)
-  image_features = tf.cast(image_features, tf.float32)
+  image_features = tf.map_fn(lambda x: _decode_and_preprocess_image(x[0]),
+                              inputs[IMAGE_KEY], dtype=tf.float32)
 
-  # The MobileNet we use was trained on ImageNet, which has image size 224 x 224.
-  # We resize CIFAR10 images to match that size
-  image_features = tf.image.resize(image_features, [224, 224])
-
-  image_features = tf.map_fn(tf.keras.applications.mobilenet.preprocess_input,
-                             image_features, dtype=tf.float32)
-
-  outputs[transformed_name(IMAGE_KEY)] = (image_features)
+  outputs[transformed_name(IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
   outputs[transformed_name(LABEL_KEY)] = inputs[LABEL_KEY]
@@ -185,11 +201,40 @@ def run_fn(fn_args: TrainerFnArgs):
     model = _build_keras_model()
 
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
-  epochs = int(fn_args.train_steps / steps_per_epoch)
+  total_epochs = int(fn_args.train_steps / steps_per_epoch)
+  classifier_epochs = int(total_epochs / 2)
+  finetune_epochs = total_epochs - classifier_epochs
+
+  # Freeze the whole MobileNet backbone and train the top classifer only
+  base_model = model.get_layer('mobilenet_1.00_224')
+  _freeze_model_by_percentage(base_model, 1.0)
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
+      metrics=['sparse_categorical_accuracy'])
+  model.summary(print_fn=absl.logging.info)
 
   model.fit(
       train_dataset,
-      epochs=epochs,
+      epochs=classifier_epochs,
+      steps_per_epoch=steps_per_epoch,
+      validation_data=eval_dataset,
+      validation_steps=fn_args.eval_steps
+  )
+
+  # Optional 
+  # Unfreeze the top MobileNet layers and finetune the whole model
+  base_model = model.get_layer('mobilenet_1.00_224')
+  _freeze_model_by_percentage(base_model, 0.9)
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=0.0005),
+      metrics=['sparse_categorical_accuracy'])
+  model.summary(print_fn=absl.logging.info)
+
+  model.fit(
+      train_dataset,
+      epochs=finetune_epochs,
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
       validation_steps=fn_args.eval_steps
