@@ -28,28 +28,22 @@ from tfx.utils import io_utils
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
 
-# TODO(b/127149760): simplify this PPP-esque structure.
-#
-# Directory structure of exported model for estimator based trainer:
-#   |-- <ModelExportPath>
-#       |-- EVAL_MODEL_DIR  <- eval_model_dir
-#           |-- <timestamped model>  <- eval_model_path
-#               |-- saved_model.pb
-#               |-- ...
-#       |-- SERVING_MODEL_DIR  <- serving_model_dir
-#           |-- export
-#               |-- <exporter name>
-#                   |-- <timestamped model>  <- serving_model_path
-#                       |-- saved_model.pb
-#                       |-- ...
-#           |-- ...
-#
-# For generic trainer with Keras, there won't be eval model:
-#   |-- <ModelExportPath>
-#       |-- SERVING_MODEL_DIR  <- serving_model_dir
-#           |-- saved_model.pb
-#           |-- ...
+"""
+Directory structure of exported model for estimator based trainer:
+  |-- <ModelExportPath>
+      |-- EVAL_MODEL_DIR  <- eval_model_dir, eval_model_path
+          |-- saved_model.pb
+          |-- ...
+      |-- SERVING_MODEL_DIR  <- serving_model_dir, serving_model_path
+          |-- saved_model.pb
+          |-- ...
 
+For generic trainer with Keras, there won't be eval model:
+  |-- <ModelExportPath>
+      |-- SERVING_MODEL_DIR  <- serving_model_dir, serving_model_path
+          |-- saved_model.pb
+          |-- ...
+"""
 
 def eval_model_dir(output_uri: Text) -> Text:
   """Returns directory for exported model for evaluation purpose."""

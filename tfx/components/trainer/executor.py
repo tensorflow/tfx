@@ -201,9 +201,6 @@ class GenericExecutor(base_executor.BaseExecutor):
     Estimator model was exported. If Estimator model, exported
     serving model is copied to base serving model directory, and all
     other files are deleted.
-
-    TODO: ADD NOTE ON SHOWING FOLDER STRUCTURE
-
     """
     model_export_dir = _serving_model_path(working_dir)
     serving_model_dir = path_utils.serving_model_dir(working_dir)
@@ -221,10 +218,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
   def _CleanEvalDir(self, working_dir: Text) -> None:
     """Copies eval model to base directory and removes old Estimator 
-    folder structure. If eval model does not exist, a copy of the
-    serving model is copies to the eval directory.
-    
-    TODO: ADD NOTE ON SHOWING FOLDER STRUCTURE
+    folder structure, if eval model directory exists.
     """
     eval_model_dir = path_utils.eval_model_dir(working_dir)
 
@@ -290,6 +284,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
 
+    # Clean model export directories.
     working_dir = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_KEY])
     self._CleanServingDir(working_dir)
@@ -378,10 +373,10 @@ class Executor(GenericExecutor):
           export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-      # TODO(b/158106209): refactor serving_model_dir to only contain model.
-      # Copy model run information to ModelRun artifact
+      # Copy model run information to ModelRun artifact.
       io_utils.copy_dir(fn_args.serving_model_dir, fn_args.model_run_dir)
 
+      # Clean model export directories.
       working_dir = artifact_utils.get_single_uri(
           output_dict[constants.MODEL_KEY])
       self._CleanServingDir(working_dir)
