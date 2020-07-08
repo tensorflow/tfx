@@ -28,7 +28,7 @@
 *   Fixed the name of the usage telemetry when tfx templates are used.
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
-*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
+*   Stopped requiring `avro-python3`.
 
 ## Breaking changes
 
