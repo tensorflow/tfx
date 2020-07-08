@@ -32,16 +32,15 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         'experimental/kfp_compatibility/testdata')
 
-
   def testCreateComponent(self):
     component = load_kfp_yaml_container_component(
         os.path.join(self._testdata_path,
                      'kfp_container_component_test.yaml')
     )
     ref_component = container_component.create_container_component(
-        "Test_Kfp_Container_Component",
-        "image1",
-        [
+        name="Test_Kfp_Container_Component",
+        image="image1",
+        command=[
             "command1",
             "command2",
             "command3",
@@ -52,21 +51,17 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
             "--arg2", placeholders.InputValuePlaceholder("input2"),
             "--arg3", placeholders.OutputUriPlaceholder("output1"),
         ],
-        {
+        inputs={
             "input1": File,
             "input2": File,
         },
-        {
+        outputs={
             "output1": File,
         },
-        {},
+        parameters={},
     )
     self.assertEqual(type(component), type(ref_component))
-    self.assertEqual(ref_component.EXECUTOR_SPEC.image,
-                     component.EXECUTOR_SPEC.image)
-    self.assertEqual(ref_component.EXECUTOR_SPEC.command,
-                     component.EXECUTOR_SPEC.command)
-
+    self.assertEqual(ref_component.EXECUTOR_SPEC, component.EXECUTOR_SPEC)
 
   def testConvertTargetFieldsToKvPair(self):
     test_dict = {
@@ -92,13 +87,11 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
     _convert_target_fields_to_kv_pair(test_dict)
     self.assertEqual(ref_dict, test_dict)
 
-
   def testGetCommandLineArgumentType(self):
     command = kfp_component_spec_pb2.CommandlineArgumentTypeWrapper()
     command.stringValue = 'stringValue'
     self.assertEqual(_get_command_line_argument_type(command),
                      'stringValue')
-
 
 if __name__ == '__main__':
   tf.test.main()

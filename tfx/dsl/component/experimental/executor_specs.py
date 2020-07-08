@@ -90,3 +90,12 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
     self.image = image
     self.command = command
     super(TemplatedExecutorContainerSpec, self).__init__()
+
+  def __eq__(self, other):
+    return (isinstance(other, self.__class__) and
+            self.image == other.image and
+            self.command == other.command
+            )
+
+  def __ne__(self, other):
+    return not self.__eq__(other)

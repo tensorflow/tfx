@@ -25,8 +25,9 @@ from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_sp
 from tfx.types.experimental.simple_artifacts import File
 from typing import Any, Callable, Dict, Text
 
+
 def load_kfp_yaml_container_component(
-    component_yaml_path: Text
+    path: Text
 ) -> Callable[..., base_component.BaseComponent]:
   """Creates a container-based component from a Kubeflow component spec.
 
@@ -39,19 +40,17 @@ def load_kfp_yaml_container_component(
     )
 
   Args:
-    component_yaml_path: local file path of a Kubeflow Pipelines component
+    path: local file path of a Kubeflow Pipelines component
                          YAML file.
 
   Returns:
     Container component that can be instantiated in a TFX pipeline.
   """
-  with open(component_yaml_path) as component_file:
+  with open(path) as component_file:
     data = yaml.load(component_file, Loader=yaml.FullLoader)
   _convert_target_fields_to_kv_pair(data)
   component_spec = ParseDict(data, kfp_component_spec_pb2.ComponentSpec())
   container = component_spec.implementation.container
-  name = component_spec.name
-  image = container.image
   command = (list(map(_get_command_line_argument_type, container.command)) +
              list(map(_get_command_line_argument_type, container.args)))
   # TODO(ericlege): Support classname to class translation in inputs.type
@@ -59,7 +58,12 @@ def load_kfp_yaml_container_component(
   outputs = {item.name: File for item in component_spec.outputs}
   parameters = {}
   return container_component.create_container_component(
-      name, image, command, inputs, outputs, parameters
+      name=component_spec.name,
+      image=container.image,
+      command=command,
+      inputs=inputs,
+      outputs=outputs,
+      parameters=parameters,
     )
 
 
@@ -106,5 +110,6 @@ def _get_command_line_argument_type(
     return placeholders.InputValuePlaceholder(command.inputValue)
   if command.HasField("inputPath"):
     return placeholders.InputUriPlaceholder(command.inputPath)
-  assert command.HasField("outputPath")
-  return placeholders.OutputUriPlaceholder(command.outputPath)
+  if command.HasField("outputPath"):
+    return placeholders.OutputUriPlaceholder(command.outputPath)
+  raise ValueError("Unrecognized command %s" % command)
