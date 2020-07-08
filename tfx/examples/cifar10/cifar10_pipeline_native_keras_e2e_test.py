@@ -74,19 +74,18 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
   def testCIFAR10PipelineNativeKeras(self):
     if not tf.executing_eagerly():
       self.skipTest('The test requires TF2.')
-    BeamDagRunner().run(
-        cifar10_pipeline_native_keras._create_pipeline(
+
+    pipeline = cifar10_pipeline_native_keras._create_pipeline(
             pipeline_name=self._pipeline_name,
             data_root=self._data_root,
             module_file=self._module_file,
-            # module_file_lite=self._module_file_lite,
-            # serving_model_dir=self._serving_model_dir,
             serving_model_dir_lite=self._serving_model_dir_lite,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             direct_num_workers=0
-            # beam_pipeline_args=[]
-            ))
+            )
+
+    BeamDagRunner().run(pipeline)
 
     # self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir_lite))
@@ -103,26 +102,25 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertPipelineExecution()
 
     # Runs pipeline the second time.
-    BeamDagRunner().run(
-        cifar10_pipeline_native_keras._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            # module_file_lite=self._module_file_lite,
-            # serving_model_dir=self._serving_model_dir,
-            serving_model_dir_lite=self._serving_model_dir_lite,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=0
-            # beam_pipeline_args=[]
-            ))
+    BeamDagRunner().run(pipeline)
+
+    # All executions but Evaluator and Pusher are cached.
+    with metadata.Metadata(metadata_config) as m:
+      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      self.assertEqual(artifact_count + 3, len(m.store.get_artifacts()))
+      artifact_count = len(m.store.get_artifacts())
+      self.assertEqual(expected_execution_count * 2,
+                       len(m.store.get_executions()))
+
+    # Runs pipeline the third time.
+    BeamDagRunner().run(pipeline)
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       # Artifact count is unchanged.
-      self.assertLen(m.store.get_artifacts(), artifact_count)
-      self.assertLen(m.store.get_executions(), expected_execution_count * 2)
-
+      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
+      self.assertEqual(expected_execution_count * 3,
+                       len(m.store.get_executions()))
 
 if __name__ == '__main__':
   tf.test.main()
