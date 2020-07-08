@@ -42,9 +42,6 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self._data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._module_file = os.path.join(
         os.path.dirname(__file__), 'cifar10_utils_native_keras.py')
-    # self._module_file_lite = os.path.join(
-    #     os.path.dirname(__file__), 'mnist_utils_native_keras_lite.py')
-    # self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._serving_model_dir_lite = os.path.join(
         self._test_dir, 'serving_model_lite')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
@@ -76,14 +73,13 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
       self.skipTest('The test requires TF2.')
 
     pipeline = cifar10_pipeline_native_keras._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir_lite=self._serving_model_dir_lite,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path,
-            direct_num_workers=0
-            )
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir_lite=self._serving_model_dir_lite,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        direct_num_workers=0)
 
     BeamDagRunner().run(pipeline)
 
