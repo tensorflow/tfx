@@ -39,6 +39,7 @@ from tfx.utils import io_utils
 class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   """Example of custom stub executor.
 
+  This is intended to test whether custom component's Do() is executed.
   At success, this executor would save a file "result.txt" containing
   a string "custom component" in the output artifacts' uri.
   """
