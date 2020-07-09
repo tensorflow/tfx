@@ -64,7 +64,8 @@ def create_stub_launcher_class(
   """Creates a StubComponentLauncher class.
 
   Factory method is used to set the necessary class variables, including
-  stubbed_component_ids and stubbed_component_map.
+  stubbed_component_ids and stubbed_component_map, which holds custom
+  component classes, which users may define differently per component.
 
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
