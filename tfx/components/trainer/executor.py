@@ -96,7 +96,8 @@ class TrainerFnArgs(object):
     return self._data[key]
   
   def get_dict(self):
-    return self._data
+    # Return copy so user cannot change attributes.
+    return self._data.copy()
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -314,9 +315,9 @@ class Executor(GenericExecutor):
     # the working directory. Executor will then copy user models to
     # model artifact directory.
     fn_args_dict = fn_args.get_dict()
-    fn_args_dict['serving_model_dir'] = os.path.join(fn_args_dict['model_run'],
+    fn_args_dict['serving_model_dir'] = os.path.join(fn_args_dict['model_run_dir'],
                                                      path_utils.SERVING_MODEL_DIR)
-    fn_args_dict['eval_model_dir'] = os.path.join(fn_args_dict['model_run'],
+    fn_args_dict['eval_model_dir'] = os.path.join(fn_args_dict['model_run_dir'],
                                                      path_utils.EVAL_MODEL_DIR)
     user_fn_args = TrainerFnArgs(arg_dict=fn_args_dict)
 
