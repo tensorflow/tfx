@@ -60,8 +60,7 @@ def _is_chief():
 
 
 def _serving_model_path(working_dir: Text) -> Text:
-  """Given model artifact working directory, returns original path
-  for timestamped and named serving model exported."""
+  """Returns original path for timestamped and named serving model export."""
   serving_model_dir = os.path.join(working_dir, path_utils.SERVING_MODEL_DIR)
   export_dir = os.path.join(serving_model_dir, 'export')
   if tf.io.gfile.exists(export_dir):
@@ -73,8 +72,7 @@ def _serving_model_path(working_dir: Text) -> Text:
 
 
 def _eval_model_path(working_dir: Text) -> Text:
-  """Given model artifact working directory, returns original
-  directory for exported model for evaluation purpose."""
+  """Returns original directory for exported model for evaluation purpose."""
   eval_model_dir = os.path.join(working_dir,
                                 path_utils.EVAL_MODEL_DIR)
 
@@ -88,14 +86,17 @@ def _eval_model_path(working_dir: Text) -> Text:
 class TrainerFnArgs(object):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
-  def __init__(self, **kwargs):
-    self._data = kwargs
+  def __init__(self, arg_dict=None, **kwargs):
+    self._data = arg_dict if not (arg_dict is None) else kwargs
 
   def __getitem__(self, key):
     return self._data[key]
 
   def __getattr__(self, key):
     return self._data[key]
+  
+  def get_dict(self):
+    return self._data
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -195,46 +196,6 @@ class GenericExecutor(base_executor.BaseExecutor):
         **custom_config)
 
 
-  def _CleanServingDir(self, working_dir: Text) -> None:
-    """Copies exported serving model to base directory and deletes
-    non-serving model files from serving model directory.
-
-    Checks model artifact directory structure to determine a Keras or
-    Estimator model was exported. If Estimator model, exported
-    serving model is copied to base serving model directory, and all
-    other files are deleted.
-    """
-    model_export_dir = _serving_model_path(working_dir)
-    serving_model_dir = os.path.join(working_dir,
-                                     path_utils.SERVING_MODEL_DIR)
-
-    if model_export_dir != serving_model_dir:
-      # Copy serving model export to base serving model directory
-      tempdir = tempfile.mkdtemp()
-      io_utils.copy_dir(model_export_dir, tempdir)
-      io_utils.copy_dir(tempdir, serving_model_dir)
-      io_utils.delete_dir(tempdir)
-
-      absl.logging.info('Serving model directory cleaned: %s.',
-                        serving_model_dir)
-
-
-  def _CleanEvalDir(self, working_dir: Text) -> None:
-    """Copies eval model to base directory and removes old Estimator
-    folder structure, if eval model directory exists.
-    """
-    eval_model_dir = os.path.join(working_dir,
-                                  path_utils.EVAL_MODEL_DIR)
-    if tf.io.gfile.exists(eval_model_dir):
-      # Copy eval model export to base eval model directory
-      model_export_dir = _eval_model_path(working_dir)
-
-      tempdir = tempfile.mkdtemp()
-      io_utils.copy_dir(model_export_dir, tempdir)
-      io_utils.copy_dir(tempdir, eval_model_dir)
-      io_utils.delete_dir(tempdir)
-
-
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
@@ -287,12 +248,6 @@ class GenericExecutor(base_executor.BaseExecutor):
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-
-    # Clean model export directories.
-    working_dir = artifact_utils.get_single_uri(
-        output_dict[constants.MODEL_KEY])
-    self._CleanServingDir(working_dir)
-    self._CleanEvalDir(working_dir)
 
     absl.logging.info(
         'Training complete. Model written to %s. ModelRun written to %s',
@@ -354,9 +309,20 @@ class Executor(GenericExecutor):
     fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
     trainer_fn = udf_utils.get_fn(exec_properties, 'trainer_fn')
 
+    # TODO(b/160795287): Deprecate estimator based executor.
+    # Provide user with a modified fn_args, with model_run given as
+    # the working directory. Executor will then copy user models to
+    # model artifact directory.
+    fn_args_dict = fn_args.get_dict()
+    fn_args_dict['serving_model_dir'] = os.path.join(fn_args_dict['model_run'],
+                                                     path_utils.SERVING_MODEL_DIR)
+    fn_args_dict['eval_model_dir'] = os.path.join(fn_args_dict['model_run'],
+                                                     path_utils.EVAL_MODEL_DIR)
+    user_fn_args = TrainerFnArgs(arg_dict=fn_args_dict)
+
     schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
-    training_spec = trainer_fn(fn_args, schema)
+    training_spec = trainer_fn(user_fn_args, schema)
 
     # Train the model
     absl.logging.info('Training model.')
@@ -374,20 +340,24 @@ class Executor(GenericExecutor):
       absl.logging.info('Exporting eval_savedmodel for TFMA.')
       tfma.export.export_eval_savedmodel(
           estimator=training_spec['estimator'],
-          export_dir_base=fn_args.eval_model_dir,
+          export_dir_base=user_fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-      # Copy model run information to ModelRun artifact.
-      io_utils.copy_dir(fn_args.serving_model_dir, fn_args.model_run_dir)
-
-      # Clean model export directories.
-      working_dir = artifact_utils.get_single_uri(
-          output_dict[constants.MODEL_KEY])
-      self._CleanServingDir(working_dir)
-      self._CleanEvalDir(working_dir)
-
       absl.logging.info('Exported eval_savedmodel to %s.',
-                        fn_args.eval_model_dir)
+                        user_fn_args.eval_model_dir)
+
+      # TODO(b/160795287): Deprecate estimator based executor.
+      # Copy serving model to model artifact directory.
+      serving_source = _serving_model_path(fn_args.model_run_dir)
+      serving_dest = fn_args.serving_model_dir
+      io_utils.copy_dir(serving_source, serving_dest)
+      absl.logging.info('Serving model copied to: %s.', serving_dest)
+
+      # Copy eval model to model artifact directory.
+      eval_source = _eval_model_path(fn_args.model_run_dir)
+      eval_dest = fn_args.eval_model_dir
+      io_utils.copy_dir(eval_source, eval_dest)
+      absl.logging.info('Eval model copied to: %s.', eval_dest)
 
     else:
       absl.logging.info(
