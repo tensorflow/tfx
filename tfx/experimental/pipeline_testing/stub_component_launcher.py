@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""stub component launcher which launches component executors and stub executors in process."""
+"""Stub component launcher which launches component executors and stub executors in process."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -55,17 +55,29 @@ class StubComponentLauncher(
                                                           executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
 
-def create_stub_launcher_class(
+def get_stub_launcher_class(
     test_data_dir: Text,
     stubbed_component_ids: List[Text],
     stubbed_component_map: Dict[Text,
                                 Type[base_stub_executor.BaseStubExecutor]]
     ) -> Type[StubComponentLauncher]:
-  """Creates a StubComponentLauncher class.
+  """Returns a StubComponentLauncher class.
 
-  Factory method is used to set the necessary class variables, including
-  stubbed_component_ids and stubbed_component_map, which holds custom
-  component classes, which users may define differently per component.
+  Factory method returns a StubComponentLauncher class, which then can be
+  supported by the pipeline.
+  For example:
+    PipelineConfig(
+        supported_launcher_classes=[
+            stub_component_launcher.get_stub_launcher_class(
+                test_data_dir,
+                stubbed_component_ids,
+                stubbed_component_map)
+        ],
+    )
+  The method also sets the necessary class variables for the
+  StubComponentLauncher class, including stubbed_component_ids and
+  stubbed_component_map holding custom executor classes, which
+  users may define differently per component.
 
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
