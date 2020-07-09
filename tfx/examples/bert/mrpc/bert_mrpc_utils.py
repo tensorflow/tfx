@@ -41,7 +41,7 @@ _EVAL_BATCH_SIZE = 32
 _FEATURE_KEY_A = 'stringA'
 _FEATURE_KEY_B = 'stringB'
 _LABEL_KEY = 'label'
-_MAX_LEN = 256
+_MAX_LEN = 128 
 _TRAIN_BATCH_SIZE = 32
 
 
@@ -157,9 +157,9 @@ def run_fn(fn_args: TrainerFnArgs):
     )
 
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(5e-5),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy', tfa.metrics.F1Score(1)],
+        optimizer=tf.keras.optimizers.Adam(2e-5),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logist=True),
+        metrics=['accuracy'],
     )
 
   model.fit(

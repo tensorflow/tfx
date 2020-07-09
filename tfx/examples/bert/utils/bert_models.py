@@ -55,6 +55,6 @@ def BertForClassification(
           i, activation=activation
       )(fully_connected)
 
-  output = keras.layers.Dense(1, activation='sigmoid')(fully_connected)
+  output = keras.layers.Dense(2, activation='softmax')(fully_connected)
   model = keras.Model(input_layers, output)
   return model
