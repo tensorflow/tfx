@@ -41,11 +41,6 @@ _EVAL_DATA_SIZE = 10000
 _TRAIN_BATCH_SIZE = 64
 _EVAL_BATCH_SIZE = 64
 
-# _TRAIN_DATA_SIZE = 100
-# _EVAL_DATA_SIZE = 100
-# _TRAIN_BATCH_SIZE = 32
-# _EVAL_BATCH_SIZE = 32
-
 IMAGE_KEY = 'image'
 LABEL_KEY = 'label'
 
@@ -253,7 +248,7 @@ def run_fn(fn_args: TrainerFnArgs):
   model.save(temp_saving_model_dir, save_format='tf', signatures=signatures)
 
   tfrw = rewriter_factory.create_rewriter(
-      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter', #filename='cifar10.tflite',
+      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter',
       enable_experimental_new_converter=True)
   converters.rewrite_saved_model(temp_saving_model_dir,
                                  fn_args.serving_model_dir,

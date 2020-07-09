@@ -113,8 +113,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=156),
-        # train_args=trainer_pb2.TrainArgs(num_steps=50),
-        # eval_args=trainer_pb2.EvalArgs(num_steps=3),
         instance_name=instance_name)
 
   # Uses user-provided Python function that trains a Keras model.
@@ -138,7 +136,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.config.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.1}),
+                          lower_bound={'value': 0.8}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-3})))
