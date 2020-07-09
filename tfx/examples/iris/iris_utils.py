@@ -207,7 +207,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
   # TODO(b/160795287): Deprecate estimator based executor.
-  # Modify fn_args with model_run_dir given as the working directory. 
+  # Modify fn_args with model_run_dir given as the working directory.
   # Executor will then copy user models to model artifact directory.
   fn_args_dict = fn_args.get_dict()
   fn_args_dict['serving_model_dir'] = os.path.join(fn_args.model_run_dir,
@@ -215,7 +215,6 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   fn_args_dict['eval_model_dir'] = os.path.join(fn_args.model_run_dir,
                                                 path_utils.EVAL_MODEL_DIR)
   user_fn_args = executor.TrainerFnArgs(arg_dict=fn_args_dict)
-
   training_spec = trainer_fn(user_fn_args, schema)
 
   # Train the model
@@ -239,14 +238,14 @@ def run_fn(fn_args: executor.TrainerFnArgs):
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving model from model_run to model artifact directory.
-  serving_source = executor._serving_model_path(fn_args.model_run_dir)
+  serving_source = executor.serving_model_path(fn_args.model_run_dir)
   serving_dest = fn_args.serving_model_dir
   io_utils.copy_dir(serving_source, serving_dest)
   absl.logging.info('Serving model copied to: %s.', serving_dest)
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy eval model from model_run to model artifact directory.
-  eval_source = executor._eval_model_path(fn_args.model_run_dir)
+  eval_source = executor.eval_model_path(fn_args.model_run_dir)
   eval_dest = fn_args.eval_model_dir
   io_utils.copy_dir(eval_source, eval_dest)
   absl.logging.info('Eval model copied to: %s.', eval_dest)

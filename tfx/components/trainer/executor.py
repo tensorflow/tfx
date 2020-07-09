@@ -21,7 +21,6 @@ from __future__ import print_function
 import json
 import os
 from typing import Any, Dict, List, Text
-import tempfile
 
 import absl
 import tensorflow as tf
@@ -59,7 +58,7 @@ def _is_chief():
   return task_type == 'chief' or (task_type == 'master' and task_index == 0)
 
 
-def _serving_model_path(working_dir: Text) -> Text:
+def serving_model_path(working_dir: Text) -> Text:
   """Returns original path for timestamped and named serving model export."""
   serving_model_dir = os.path.join(working_dir, path_utils.SERVING_MODEL_DIR)
   export_dir = os.path.join(serving_model_dir, 'export')
@@ -71,7 +70,7 @@ def _serving_model_path(working_dir: Text) -> Text:
     return serving_model_dir
 
 
-def _eval_model_path(working_dir: Text) -> Text:
+def eval_model_path(working_dir: Text) -> Text:
   """Returns original directory for exported model for evaluation purpose."""
   eval_model_dir = os.path.join(working_dir,
                                 path_utils.EVAL_MODEL_DIR)
@@ -80,7 +79,7 @@ def _eval_model_path(working_dir: Text) -> Text:
     return io_utils.get_only_uri_in_dir(eval_model_dir)
   else:
     # If eval model doesn't exist, use serving model for eval.
-    return _serving_model_path(working_dir)
+    return serving_model_path(working_dir)
 
 
 class TrainerFnArgs(object):
@@ -94,7 +93,7 @@ class TrainerFnArgs(object):
 
   def __getattr__(self, key):
     return self._data[key]
-  
+
   def get_dict(self):
     # Return copy so user cannot change attributes.
     return self._data.copy()
@@ -144,7 +143,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     if input_dict.get(constants.BASE_MODEL_KEY):
-      base_model = _serving_model_path(
+      base_model = serving_model_path(
           artifact_utils.get_single_uri(input_dict[constants.BASE_MODEL_KEY]))
     else:
       base_model = None
@@ -310,19 +309,18 @@ class Executor(GenericExecutor):
     fn_args = self._GetFnArgs(input_dict, output_dict, exec_properties)
     trainer_fn = udf_utils.get_fn(exec_properties, 'trainer_fn')
 
+    schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
     # TODO(b/160795287): Deprecate estimator based executor.
     # Provide user with a modified fn_args, with model_run given as
     # the working directory. Executor will then copy user models to
     # model artifact directory.
     fn_args_dict = fn_args.get_dict()
     fn_args_dict['serving_model_dir'] = os.path.join(fn_args.model_run_dir,
-                                                     path_utils.SERVING_MODEL_DIR)
+                                               path_utils.SERVING_MODEL_DIR)
     fn_args_dict['eval_model_dir'] = os.path.join(fn_args.model_run_dir,
                                                   path_utils.EVAL_MODEL_DIR)
     user_fn_args = TrainerFnArgs(arg_dict=fn_args_dict)
-
-    schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
-
     training_spec = trainer_fn(user_fn_args, schema)
 
     # Train the model
@@ -349,13 +347,13 @@ class Executor(GenericExecutor):
 
       # TODO(b/160795287): Deprecate estimator based executor.
       # Copy serving model from model_run to model artifact directory.
-      serving_source = _serving_model_path(fn_args.model_run_dir)
+      serving_source = serving_model_path(fn_args.model_run_dir)
       serving_dest = fn_args.serving_model_dir
       io_utils.copy_dir(serving_source, serving_dest)
       absl.logging.info('Serving model copied to: %s.', serving_dest)
 
       # Copy eval model from model_run to model artifact directory.
-      eval_source = _eval_model_path(fn_args.model_run_dir)
+      eval_source = eval_model_path(fn_args.model_run_dir)
       eval_dest = fn_args.eval_model_dir
       io_utils.copy_dir(eval_source, eval_dest)
       absl.logging.info('Eval model copied to: %s.', eval_dest)
