@@ -27,7 +27,7 @@ def BertForClassification(
   pooled_output.
 
   Args:
-    bert_layer: A tensorflow_hub.KerasLayer intence of Bert layer.
+    bert_layer: A tensorflow_hub.KerasLayer instance of Bert layer.
     max_len: The maximum length of preprocessed tokens.
     hidden_layers: List of configurations for fine-tuning hidden layers
       after the pooled_output. [(#of hidden units, activation)].
