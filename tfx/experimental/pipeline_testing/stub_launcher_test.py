@@ -41,6 +41,9 @@ class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
+    super(CustomStubExecutor, self).Do(input_dict,
+                                       output_dict,
+                                       exec_properties)
     absl.logging.info("Running CustomStubExecutor")
     for artifact_list in output_dict.values():
       for artifact in artifact_list:
@@ -84,14 +87,17 @@ class StubLauncherTest(tf.test.TestCase):
   def testCustomStubExecutor(self, mock_publisher):
     # verify whether custom stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
+
+    record_file = os.path.join(self.record_dir, 'output', 'recorded.txt')
+    io_utils.write_string_file(record_file, "hello world")
     component_map = \
         {'_FakeComponent.FakeComponent': CustomStubExecutor}
 
     MyStubLauncher = \
         stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
-            component_ids=[],
-            component_map=component_map)
+            stubbed_component_ids=[],
+            stubbed_component_map=component_map)
 
     launcher = MyStubLauncher.create(
         component=self.component,
@@ -103,6 +109,13 @@ class StubLauncherTest(tf.test.TestCase):
     launcher.launch()
 
     output_path = self.component.outputs['output'].get()[0].uri
+
+    # Test BaseStubExecutor Do(...)
+    copied_file = os.path.join(output_path, "recorded.txt")
+    self.assertTrue(tf.io.gfile.exists(copied_file))
+    contents = io_utils.read_string_file(copied_file)
+    self.assertEqual('hello world', contents)
+
     generated_file = os.path.join(output_path, "result.txt")
     self.assertTrue(tf.io.gfile.exists(generated_file))
     contents = io_utils.read_string_file(generated_file)
@@ -120,8 +133,8 @@ class StubLauncherTest(tf.test.TestCase):
     MyStubLauncher = \
         stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
-            component_ids=component_ids,
-            component_map={})
+            stubbed_component_ids=component_ids,
+            stubbed_component_map={})
 
     launcher = MyStubLauncher.create(
         component=self.component,
@@ -149,8 +162,8 @@ class StubLauncherTest(tf.test.TestCase):
     MyStubLauncher = \
         stub_component_launcher.create_stub_launcher_class(
             test_data_dir=self.record_dir,
-            component_ids=[],
-            component_map={})
+            stubbed_component_ids=[],
+            stubbed_component_map={})
 
     launcher = MyStubLauncher.create(
         component=self.component,

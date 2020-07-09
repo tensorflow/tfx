@@ -69,5 +69,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
         dest = artifact.uri
         component_id = artifact.producer_component
         src = os.path.join(self._test_data_dir, component_id, output_key)
+        if not os.path.exists(src):
+          raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
         absl.logging.info('Finished copying from %s to %s', src, dest)

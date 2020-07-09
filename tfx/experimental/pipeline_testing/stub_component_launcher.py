@@ -40,7 +40,7 @@ class StubComponentLauncher(
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
     component_id = self._component_info.component_id
-    if component_id not in self.component_map:
+    if component_id not in self.stubbed_component_map:
       super(StubComponentLauncher, self)._run_executor(execution_id,
                                                        input_dict,
                                                        output_dict,
@@ -50,32 +50,37 @@ class StubComponentLauncher(
           beam_pipeline_args=self._beam_pipeline_args,
           tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
           unique_id=str(execution_id))
-      executor = self.component_map[component_id](component_id,
-                                                  self.test_data_dir,
-                                                  executor_context)
+      executor = self.stubbed_component_map[component_id](component_id,
+                                                          self.test_data_dir,
+                                                          executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
 
 def create_stub_launcher_class(
     test_data_dir: Text,
-    component_ids: List[Text],
-    component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+    stubbed_component_ids: List[Text],
+    stubbed_component_map: Dict[Text,
+                                Type[base_stub_executor.BaseStubExecutor]]
     ) -> Type[StubComponentLauncher]:
-  """Creates a StubComponentLauncher class
+  """Creates a StubComponentLauncher class.
+
+  Factory method is used to set the necessary class variables, including
+  stubbed_component_ids and stubbed_component_map.
 
   Args:
     test_data_dir: The directory where pipeline outputs are recorded
       (pipeline_recorder.py).
-    component_ids: List of component ids that should be replaced
+    stubbed_component_ids: List of component ids that should be replaced
       with a BaseStubExecutor.
-    component_map: Dictionary holding user-defined stub executor.
+    stubbed_component_map: Dictionary holding user-defined stub executor.
       These user-defined stub executors must inherit from
       base_stub_executor.BaseStubExecutor.
   Returns:
-    StubComponentLauncher class holding component_map with stub executors.
+    StubComponentLauncher class holding stub executors.
   """
   cls = StubComponentLauncher
-  cls.component_map = dict(component_map)
-  for component_id in component_ids:
-    cls.component_map[component_id] = base_stub_executor.BaseStubExecutor
+  cls.stubbed_component_map = dict(stubbed_component_map)
+  for component_id in stubbed_component_ids:
+    cls.stubbed_component_map[component_id] = \
+                    base_stub_executor.BaseStubExecutor
   cls.test_data_dir = test_data_dir
   return cls
