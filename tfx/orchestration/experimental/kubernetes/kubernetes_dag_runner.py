@@ -55,6 +55,11 @@ _DRIVER_COMMAND = [
 
 _TFX_IMAGE = "gcr.io/tfx-eric/tfx-dev"
 
+def is_inside_cluster() -> bool:
+    """Determines if kubernetes dag runner is executed from within a cluster.
+    Can be pacthed for testing purpose.
+    """
+    return kube_utils.is_inside_cluster()
 
 def get_default_kubernetes_metadata_config(
 ) -> metadata_store_pb2.ConnectionConfig:
@@ -107,7 +112,7 @@ def _wrap_container_component(
       tfx_pipeline.pipeline_info.run_id,
       '--metadata_config',
       json_format.MessageToJson(
-          message=_getDefaultConnectionConfig(), preserving_proto_field_name=True),
+          message=get_default_kubernetes_metadata_config(), preserving_proto_field_name=True),
       '--beam_pipeline_args',
       json.dumps(tfx_pipeline.beam_pipeline_args),
       '--additional_pipeline_args',
@@ -196,7 +201,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     if not tfx_pipeline.pipeline_info.run_id:
       tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    if not kube_utils.is_inside_cluster():
+    if not is_inside_cluster():
       return self._run_as_kubernetes_job(tfx_pipeline)
 
     # TODO(ericlege) support running components in parallel

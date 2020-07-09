@@ -117,9 +117,11 @@ class _FakeComponent(base_component.BaseComponent):
 
 class KubernetesDagRunnerTest(tf.test.TestCase):
 
+
   @mock.patch.multiple(
       kubernetes_dag_runner,
       _LaunchAsContainerComponent=_FakeComponentAsDoFn,
+      is_inside_cluster=lambda :True,
   )
   def testRun(self):
     component_a = _FakeComponent(
