@@ -12,9 +12,10 @@
     *   ImportExampleGen now supports `tf.train.SequenceExample` importing.
     *   base_example_gen_executor now supports `tf.train.SequenceExample` as
         output payload format, which can be utilized by custom ExampleGen.
+*   Added Tuner component and its integration with Google Cloud Platform as
+    the execution and hyperparemeter optimization backend.
 
 ## Bug fixes and other changes
-*   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
 *   Relaxed the rule that output artifact uris must be newly created. This is a
     temporary workaround to make retry work. We will introduce a more
