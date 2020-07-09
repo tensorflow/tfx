@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,18 +21,12 @@ import argparse
 import json
 import logging
 import sys
-import textwrap
-from typing import Dict, List, Text, Union
-
 import absl
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
-from tfx.orchestration.config import base_component_config
-from tfx.orchestration.config import pipeline_config
-from tfx.orchestration.config import config_utils
 from tfx.utils import json_utils
 
 
