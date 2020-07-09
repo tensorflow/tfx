@@ -40,18 +40,30 @@ from tfx.types import artifact_utils
 DEFAULT_FILE_NAME = 'data_tfrecord'
 
 
-def _ExamplePartitionKey(record: tf.train.Example,
-                         split_config: example_gen_pb2.SplitConfig) -> bytes:
-  """Generates key for partition for tf.train.Example."""
+def _GeneratePartitionKey(record: Union[tf.train.Example,
+                                        tf.train.SequenceExample, bytes],
+                          split_config: example_gen_pb2.SplitConfig) -> bytes:
+  """Generates key for partition."""
 
   if not split_config.HasField('partition_feature_name'):
+    if isinstance(record, bytes):
+      return record
     return record.SerializeToString(deterministic=True)
+
+  if isinstance(record, tf.train.Example):
+    features = record.features.feature  # pytype: disable=attribute-error
+  elif isinstance(record, tf.train.SequenceExample):
+    features = record.context.feature  # pytype: disable=attribute-error
+  else:
+    raise RuntimeError('Split by `partition_feature_name` is only supported '
+                       'for FORMAT_TF_EXAMPLE and FORMAT_TF_SEQUENCE_EXAMPLE '
+                       'payload format.')
 
   # Use a feature for partitioning the examples.
   feature_name = split_config.partition_feature_name
-  if feature_name not in record.features.feature:
+  if feature_name not in features:
     raise RuntimeError('Feature name `{}` does not exist.'.format(feature_name))
-  feature = record.features.feature[feature_name]
+  feature = features[feature_name]
   if not feature.HasField('kind'):
     raise RuntimeError('Partition feature does not contain any value.')
   if (not feature.HasField('bytes_list') and
@@ -62,7 +74,7 @@ def _ExamplePartitionKey(record: tf.train.Example,
 
 
 def _PartitionFn(
-    record: Union[tf.train.Example, bytes],
+    record: Union[tf.train.Example, tf.train.SequenceExample, bytes],
     num_partitions: int,
     buckets: List[int],
     split_config: example_gen_pb2.SplitConfig,
@@ -70,15 +82,7 @@ def _PartitionFn(
   """Partition function for the ExampleGen's output splits."""
   assert num_partitions == len(
       buckets), 'Partitions do not match bucket number.'
-
-  if isinstance(record, tf.train.Example):
-    partition_str = _ExamplePartitionKey(record, split_config)
-  elif split_config.HasField('partition_feature_name'):
-    raise RuntimeError('Split by `partition_feature_name` is only supported '
-                       'for FORMAT_TF_EXAMPLE payload format.')
-  else:
-    partition_str = record
-
+  partition_str = _GeneratePartitionKey(record, split_config)
   bucket = int(hashlib.sha256(partition_str).hexdigest(), 16) % buckets[-1]
   # For example, if buckets is [10,50,80], there will be 3 splits:
   #   bucket >=0 && < 10, returns 0
@@ -88,14 +92,17 @@ def _PartitionFn(
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Union[tf.train.Example, bytes])
+@beam.typehints.with_input_types(Union[tf.train.Example,
+                                       tf.train.SequenceExample, bytes])
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteSplit(example_split: beam.pvalue.PCollection,
                 output_split_path: Text) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord."""
 
   def _MaybeSerialize(x):
-    return x.SerializeToString() if isinstance(x, tf.train.Example) else x
+    if isinstance(x, (tf.train.Example, tf.train.SequenceExample)):
+      return x.SerializeToString()
+    return x
 
   return (example_split
           # TODO(jyzhao): make shuffle optional.
@@ -107,28 +114,13 @@ def _WriteSplit(example_split: beam.pvalue.PCollection,
               file_name_suffix='.gz'))
 
 
-@beam.ptransform_fn
-@beam.typehints.with_input_types(beam.Pipeline)
-@beam.typehints.with_output_types(Union[tf.train.Example, bytes])
-def _InputToExampleOrBytes(
-    pipeline: beam.Pipeline,
-    input_to_example: beam.PTransform,
-    exec_properties: Dict[Text, Any],
-    split_pattern: Text,
-) -> beam.pvalue.PCollection:
-  """Converts input into a tf.train.Example, or a bytes (serialized proto)."""
-  return (pipeline
-          | 'InputSourceToExampleOrBytes' >> input_to_example(
-              exec_properties, split_pattern))
-
-
 class BaseExampleGenExecutor(
     with_metaclass(abc.ABCMeta, base_executor.BaseExecutor)):
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data
-  sources to TensorFlow Examples (tf.train.Example), or any other protocol
-  buffer as subclass defines.
+  sources to TensorFlow Examples (tf.train.Example, tf.train.SequenceExample),
+  or any other protocol buffer as subclass defines.
 
   The common configuration (defined in
   https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto#L44.)
@@ -137,12 +129,14 @@ class BaseExampleGenExecutor(
 
   The conversion is done in `GenerateExamplesByBeam` as a Beam pipeline, which
   validates the configuration, reads the external data sources, converts the
-  record in the input source to tf.Example if needed, and splits the examples if
-  the output split config is given. Then the executor's `Do` writes the results
-  in splits to the output path.
+  record in the input source to any supported output payload formats
+  (e.g., tf.Example or tf.SequenceExample) if needed, and splits the examples
+  if the output split config is given. Then the executor's `Do` writes the
+  results in splits to the output path.
 
   For simple custom ExampleGens, the details of transforming input data
-  record(s) to a tf.Example is expected to be given in
+  record(s) to a specific output payload format (e.g., tf.Example or
+  tf.SequenceExample) is expected to be given in
   `GetInputSourceToExamplePTransform`, which returns a Beam PTransform with the
   actual implementation. For complex use cases, such as joining multiple data
   sources and different interpretations of the configurations, the custom
@@ -163,7 +157,9 @@ class BaseExampleGenExecutor(
     Here is an example PTransform:
       @beam.ptransform_fn
       @beam.typehints.with_input_types(beam.Pipeline)
-      @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
+      @beam.typehints.with_output_types(Union[tf.train.Example,
+                                              tf.train.SequenceExample,
+                                              bytes])
       def ExamplePTransform(
           pipeline: beam.Pipeline,
           exec_properties: Dict[Text, Any],
@@ -176,15 +172,15 @@ class BaseExampleGenExecutor(
       pipeline: beam.Pipeline,
       exec_properties: Dict[Text, Any],
   ) -> Dict[Text, beam.pvalue.PCollection]:
-    """Converts input source to TF example splits based on configs.
+    """Converts input source to serialized record splits based on configs.
 
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
-    for converting input split to TF Examples. Overriding this
+    for converting input split to serialized records. Overriding this
     'GenerateExamplesByBeam' method instead if complex logic is need, e.g.,
     custom spliting logic.
 
     Args:
-      pipeline: beam pipeline.
+      pipeline: Beam pipeline.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
@@ -197,7 +193,7 @@ class BaseExampleGenExecutor(
 
     Returns:
       Dict of beam PCollection with split name as key, each PCollection is a
-      single output split that contains serialized TF Examples.
+      single output split that contains serialized records.
     """
     # Get input split information.
     input_config = example_gen_pb2.Input()
@@ -214,7 +210,7 @@ class BaseExampleGenExecutor(
     exec_properties['_beam_pipeline_args'] = self._beam_pipeline_args or []
 
     example_splits = []
-    input_to_example = self.GetInputSourceToExamplePTransform()
+    input_to_record = self.GetInputSourceToExamplePTransform()
     if output_config.split_config.splits:
       # Use output splits, input must have only one split.
       assert len(
@@ -228,10 +224,9 @@ class BaseExampleGenExecutor(
         buckets.append(total_buckets)
       example_splits = (
           pipeline
-          | 'InputToExampleOrBytes' >>
+          | 'InputToRecord' >>
           # pylint: disable=no-value-for-parameter
-          _InputToExampleOrBytes(input_to_example, exec_properties,
-                                 input_config.splits[0].pattern)
+          input_to_record(exec_properties, input_config.splits[0].pattern)
           | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets,
                                           output_config.split_config))
     else:
@@ -239,10 +234,9 @@ class BaseExampleGenExecutor(
       for split in input_config.splits:
         examples = (
             pipeline
-            | 'InputToExampleOrBytes[{}]'.format(split.name) >>
+            | 'InputToRecord[{}]'.format(split.name) >>
             # pylint: disable=no-value-for-parameter
-            _InputToExampleOrBytes(input_to_example, exec_properties,
-                                   split.pattern))
+            input_to_record(exec_properties, split.pattern))
         example_splits.append(examples)
 
     result = {}
@@ -258,22 +252,23 @@ class BaseExampleGenExecutor(
   ) -> None:
     """Take input data source and generates serialized data splits.
 
-    The output is intended to be serialized tf.train.Examples protocol buffer
-    in gzipped TFRecord format, but subclasses can choose to override to write
-    to any serialized records payload into gzipped TFRecord as specified,
-    so long as downstream component can consume it. The format of payload is
-    added to `payload_format` custom property of the output Example artifact.
+    The output is intended to be serialized tf.train.Examples or
+    tf.train.SequenceExamples protocol buffer in gzipped TFRecord format,
+    but subclasses can choose to override to write to any serialized records
+    payload into gzipped TFRecord as specified, so long as downstream
+    component can consume it. The format of payload is added to
+    `payload_format` custom property of the output Example artifact.
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts. Depends on
         detailed example gen implementation.
       output_dict: Output dict from output key to a list of Artifacts.
-        - examples: splits of tf examples.
+        - examples: splits of serialized records.
       exec_properties: A dict of execution properties. Depends on detailed
         example gen implementation.
         - input_base: an external directory containing the data files.
-        - input_config: JSON string of example_gen_pb2.Input instance, providing
-          input configuration.
+        - input_config: JSON string of example_gen_pb2.Input instance,
+          providing input configuration.
         - output_config: JSON string of example_gen_pb2.Output instance,
           providing output configuration.
         - output_data_format: Payload format of generated data in output

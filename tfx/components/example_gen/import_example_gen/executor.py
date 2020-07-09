@@ -41,18 +41,18 @@ def _ImportSerializedRecord(  # pylint: disable=invalid-name
   Note that each input split will be transformed by this function separately.
 
   Args:
-    pipeline: beam pipeline.
+    pipeline: Beam pipeline.
     exec_properties: A dict of execution properties.
-      - input_base: input dir that contains tf example data.
+      - input_base: input dir that contains input data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
   Returns:
-    PCollection of TF examples.
+    PCollection of records (tf.Example, tf.SequenceExample, or bytes).
   """
   input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   input_split_pattern = os.path.join(input_base_uri, split_pattern)
-  logging.info('Reading input TFExample data %s.', input_split_pattern)
+  logging.info('Reading input TFRecord data %s.', input_split_pattern)
 
   # TODO(jyzhao): profile input examples.
   return (pipeline
@@ -69,11 +69,25 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
 
     @beam.ptransform_fn
     @beam.typehints.with_input_types(beam.Pipeline)
-    @beam.typehints.with_output_types(Union[tf.train.Example, bytes])
-    def ImportProtoOrExample(pipeline: beam.Pipeline,
-                             exec_properties: Dict[Text, Any],
-                             split_pattern: Text) -> beam.pvalue.PCollection:
-      """PTransform to import tf.train.Example records or serialized proto."""
+    @beam.typehints.with_output_types(Union[tf.train.Example,
+                                            tf.train.SequenceExample, bytes])
+    def ImportRecord(pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
+                     split_pattern: Text) -> beam.pvalue.PCollection:
+      """PTransform to import records.
+
+      The records are tf.train.Example, tf.train.SequenceExample,
+      or serialized proto.
+
+      Args:
+        pipeline: Beam pipeline.
+        exec_properties: A dict of execution properties.
+          - input_base: input dir that contains input data.
+        split_pattern: Split.pattern in Input config, glob relative file pattern
+          that maps to input files with root directory given by input_base.
+
+      Returns:
+        PCollection of records (tf.Example, tf.SequenceExample, or bytes).
+      """
       output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
 
       serialized_records = (
@@ -82,13 +96,17 @@ class Executor(base_example_gen_executor.BaseExampleGenExecutor):
           | _ImportSerializedRecord(exec_properties, split_pattern))
       if output_payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
         return serialized_records
-
       elif (output_payload_format ==
             example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE):
         return (serialized_records
                 | 'ToTFExample' >> beam.Map(tf.train.Example.FromString))
+      elif (output_payload_format ==
+            example_gen_pb2.PayloadFormat.FORMAT_TF_SEQUENCE_EXAMPLE):
+        return (serialized_records
+                | 'ToTFSequenceExample' >> beam.Map(
+                    tf.train.SequenceExample.FromString))
 
-      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE '
-                       'or FORMAT_PROTO')
+      raise ValueError('output_payload_format must be one of FORMAT_TF_EXAMPLE,'
+                       ' FORMAT_TF_SEQUENCE_EXAMPLE or FORMAT_PROTO')
 
-    return ImportProtoOrExample
+    return ImportRecord

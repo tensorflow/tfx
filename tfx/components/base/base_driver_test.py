@@ -106,8 +106,7 @@ class BaseDriverTest(tf.test.TestCase):
         pipeline_info=self._pipeline_info)
 
   @mock.patch(
-      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
-  )
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(
@@ -142,8 +141,7 @@ class BaseDriverTest(tf.test.TestCase):
                      _STRING_VALUE)
 
   @mock.patch(
-      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts'
-  )
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(
