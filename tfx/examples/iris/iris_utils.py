@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import absl
 import tensorflow as tf
 from tensorflow import keras
@@ -31,6 +32,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor
 from tfx.utils import io_utils
+from tfx.utils import path_utils
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
