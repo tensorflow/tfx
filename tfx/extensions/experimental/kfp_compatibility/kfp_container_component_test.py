@@ -13,14 +13,10 @@
 # limitations under the License.
 """Tests for tfx.extensions.experimental.kfp_compatibility.kfp_container_component."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tensorflow as tf
 from tfx.dsl.component.experimental import placeholders, container_component
-from tfx.extensions.experimental.kfp_compatibility.kfp_container_component import load_kfp_yaml_container_component, _convert_target_fields_to_kv_pair, _get_command_line_argument_type
+from tfx.extensions.experimental.kfp_compatibility import kfp_container_component
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types.experimental.simple_artifacts import File
 
@@ -33,7 +29,7 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
         'experimental/kfp_compatibility/testdata')
 
   def testCreateComponent(self):
-    component = load_kfp_yaml_container_component(
+    component = kfp_container_component.load_kfp_yaml_container_component(
         os.path.join(self._testdata_path,
                      'kfp_container_component_test.yaml')
     )
@@ -84,13 +80,14 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
             }
         }
     }
-    _convert_target_fields_to_kv_pair(test_dict)
+    kfp_container_component.convert_target_fields_to_kv_pair(test_dict)
     self.assertEqual(ref_dict, test_dict)
 
   def testGetCommandLineArgumentType(self):
     command = kfp_component_spec_pb2.CommandlineArgumentTypeWrapper()
     command.stringValue = 'stringValue'
-    self.assertEqual(_get_command_line_argument_type(command),
+    self.assertEqual(kfp_container_component.
+                     get_command_line_argument_type(command),
                      'stringValue')
 
 if __name__ == '__main__':

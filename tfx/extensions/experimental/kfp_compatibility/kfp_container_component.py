@@ -13,12 +13,8 @@
 # limitations under the License.
 """Functions for creating container components from kubeflow components."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import yaml
-from google.protobuf.json_format import ParseDict
+from google.protobuf import json_format
 from tfx.components.base import base_component
 from tfx.dsl.component.experimental import executor_specs, placeholders, container_component
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
@@ -48,11 +44,12 @@ def load_kfp_yaml_container_component(
   """
   with open(path) as component_file:
     data = yaml.load(component_file, Loader=yaml.FullLoader)
-  _convert_target_fields_to_kv_pair(data)
-  component_spec = ParseDict(data, kfp_component_spec_pb2.ComponentSpec())
+  convert_target_fields_to_kv_pair(data)
+  component_spec = json_format.ParseDict(
+      data, kfp_component_spec_pb2.ComponentSpec())
   container = component_spec.implementation.container
-  command = (list(map(_get_command_line_argument_type, container.command)) +
-             list(map(_get_command_line_argument_type, container.args)))
+  command = (list(map(get_command_line_argument_type, container.command)) +
+             list(map(get_command_line_argument_type, container.args)))
   # TODO(ericlege): Support classname to class translation in inputs.type
   inputs = {item.name: File for item in component_spec.inputs}
   outputs = {item.name: File for item in component_spec.outputs}
@@ -67,7 +64,7 @@ def load_kfp_yaml_container_component(
     )
 
 
-def _convert_target_fields_to_kv_pair(
+def convert_target_fields_to_kv_pair(
     parsed_dict: Dict[Text, Any]
 ) -> None:
   """ Converts in place specific string fields to key value pairs of {stringValue: [Text]} for proto3 compatibility.
@@ -93,7 +90,7 @@ def _convert_target_fields_to_kv_pair(
           parsed_dict_location[ind] = {"stringValue": value}
 
 
-def _get_command_line_argument_type(
+def get_command_line_argument_type(
     command: kfp_component_spec_pb2.CommandlineArgumentTypeWrapper
 ) -> executor_specs.CommandlineArgumentType:
   """ Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
