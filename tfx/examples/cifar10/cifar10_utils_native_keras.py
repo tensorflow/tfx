@@ -24,13 +24,18 @@ from __future__ import print_function
 
 from typing import List, Text
 
+import os
 import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
+from tfx.components.trainer.rewriting import converters
+from tfx.components.trainer.rewriting import rewriter
+from tfx.components.trainer.rewriting import rewriter_factory
+
 from tfx.components.trainer.executor import TrainerFnArgs
 
-# cifar10 dataset has 50000 train records, and 10000 test records
+# CIFAR10 dataset has 50000 train records, and 10000 test records
 _TRAIN_DATA_SIZE = 50000
 _EVAL_DATA_SIZE = 10000
 _TRAIN_BATCH_SIZE = 64
@@ -51,22 +56,13 @@ def _gzip_reader_fn(filenames):
   """Small utility returning a record reader that can read gzip'ed files."""
   return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
 
-def _get_serve_tf_examples_fn(model, tf_transform_output):
-  """Returns a function that parses a serialized tf.Example."""
+def _get_serve_tf_examples_fn(model):
+  """Returns a function that feeds the input tensor into the model."""
 
   @tf.function
-  def serve_tf_examples_fn(serialized_tf_examples):
+  def serve_tf_examples_fn(image_tensor):
     """Returns the output to be used in the serving signature."""
-    feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(LABEL_KEY)
-    parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
-
-    transformed_features = tf_transform_output.transform_raw_features(
-        parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(transformed_name(LABEL_KEY), None)
-
-    return model(transformed_features)
+    return model(image_tensor)
 
   return serve_tf_examples_fn
 
@@ -173,7 +169,7 @@ def preprocessing_fn(inputs):
   outputs = {}
 
   image_features = tf.map_fn(lambda x: _decode_and_preprocess_image(x[0]),
-                              inputs[IMAGE_KEY], dtype=tf.float32)
+                             inputs[IMAGE_KEY], dtype=tf.float32)
 
   outputs[transformed_name(IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
@@ -208,6 +204,7 @@ def run_fn(fn_args: TrainerFnArgs):
   # Freeze the whole MobileNet backbone and train the top classifer only
   base_model = model.get_layer('mobilenet_1.00_224')
   _freeze_model_by_percentage(base_model, 1.0)
+  # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
       optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
@@ -222,10 +219,11 @@ def run_fn(fn_args: TrainerFnArgs):
       validation_steps=fn_args.eval_steps
   )
 
-  # Optional 
+  # Optional
   # Unfreeze the top MobileNet layers and finetune the whole model
   base_model = model.get_layer('mobilenet_1.00_224')
   _freeze_model_by_percentage(base_model, 0.9)
+  # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
       optimizer=tf.keras.optimizers.RMSprop(lr=0.0005),
@@ -243,7 +241,24 @@ def run_fn(fn_args: TrainerFnArgs):
   signatures = {
       'serving_default':
           _get_serve_tf_examples_fn(
-              model, tf_transform_output).get_concrete_function(
-                  tf.TensorSpec(shape=[None], dtype=tf.string, name='examples'))
+              model).get_concrete_function(
+                  tf.TensorSpec(
+                      shape=[None, 224, 224, 3],
+                      dtype=tf.float32,
+                      name=transformed_name(IMAGE_KEY)
+                      ))
   }
-  model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)
+
+  temp_saving_model_dir = os.path.join(fn_args.serving_model_dir, 'temp')
+  model.save(temp_saving_model_dir, save_format='tf', signatures=signatures)
+
+  tfrw = rewriter_factory.create_rewriter(
+      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter', #filename='cifar10.tflite',
+      enable_experimental_new_converter=True)
+  converters.rewrite_saved_model(temp_saving_model_dir,
+                                 fn_args.serving_model_dir,
+                                 tfrw,
+                                 rewriter.ModelType.TFLITE_MODEL
+                                 )
+
+  tf.io.gfile.rmtree(temp_saving_model_dir)
