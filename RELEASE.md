@@ -14,6 +14,8 @@
         output payload format, which can be utilized by custom ExampleGen.
 *   Added Tuner component and its integration with Google Cloud Platform as
     the execution and hyperparemeter optimization backend.
+*   Switched Transform component to use the new TFXIO code path. Users may
+    potentially notice large performance improvement.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
