@@ -79,7 +79,7 @@ def main():
           pipeline_root=args.pipeline_root,
 #         Kubeflow uses workflow_id for the run_id. For refernece,
 #         see tfx/orchestration/kubeflow/base_component.py
-          run_id = args.run_id
+          run_id=args.run_id
       ),
       driver_args=driver_args,
       metadata_connection=metadata.Metadata(connection_config=metadata_config),

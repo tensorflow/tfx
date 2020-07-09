@@ -39,10 +39,9 @@ from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.launcher import base_component_launcher
-from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
-from tfx.utils import telemetry_utils, json_utils, kube_utils
+from tfx.utils import json_utils, kube_utils
 from google.protobuf import json_format
 import json
 
@@ -124,11 +123,11 @@ def _wrap_container_component(
   # outputs/parameters fields are not used as they
   # are contained in the serialized component
   return container_component.create_container_component(
-    name=component.id,
-    outputs={},
-    parameters={},
-    image=_TFX_IMAGE,
-    command=_CONTAINER_COMMAND + arguments
+      name=component.id,
+      outputs={},
+      parameters={},
+      image=_TFX_IMAGE,
+      command=_CONTAINER_COMMAND + arguments
   )()
 
 
@@ -211,20 +210,20 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       if hasattr(component, 'upstream_nodes') and component.upstream_nodes:
         for upstream_node in component.upstream_nodes:
           assert upstream_node in ran_components, ('Components is not in '
-                                                    'topological order')
+                                                   'topological order')
 
       (component_launcher_class,
-        component_config) = config_utils.find_component_launch_info(
+       component_config) = config_utils.find_component_launch_info(
             self._config, component)
 
       # Check if the component is launchable as a containerComponent.
       # If not, wrap the component to a containerComponent.
       if not kubernetes_component_launcher.KubernetesComponentLauncher.can_launch(component.executor_spec, component_config):
         wrapped_component = _wrap_container_component(
-          component=component,
-          component_launcher_class=component_launcher_class,
-          component_config=component_config,
-          tfx_pipeline=tfx_pipeline
+            component=component,
+            component_launcher_class=component_launcher_class,
+            component_config=component_config,
+            tfx_pipeline=tfx_pipeline
         )
 
         # reload properties
