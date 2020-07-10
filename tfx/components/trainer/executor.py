@@ -32,6 +32,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import constants
 from tfx.components.trainer import fn_args_utils
+from tfx.components.trainer import dir_utils
 from tfx.components.util import udf_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -62,11 +63,11 @@ class TrainerFnArgs(dict):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
   def __getattr__(self, key):
-    if (key in self):
+    if key in self:
       return self[key]
     else:
       raise AttributeError('No such attribute: ' + key)
-  
+
   def __setattr__(self, key, value):
     self[key] = value
 
@@ -286,7 +287,7 @@ class Executor(GenericExecutor):
     # model artifact directory.
     serving_dest = fn_args.serving_model_dir
     eval_dest = fn_args.eval_model_dir
-    
+
     working_dir = fn_args.model_run_dir
     fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
     fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
@@ -315,18 +316,10 @@ class Executor(GenericExecutor):
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
 
-      # NEXTTODO
-
       # TODO(b/160795287): Deprecate estimator based executor.
-      # Copy serving model from model_run to model artifact directory.
-      serving_source = path_utils.serving_model_working_path(fn_args.model_run_dir)
-      io_utils.copy_dir(serving_source, serving_dest)
-      absl.logging.info('Serving model copied to: %s.', serving_dest)
-
-      # Copy eval model from model_run to model artifact directory.
-      eval_source = path_utils.eval_model_working_path(fn_args.model_run_dir)
-      io_utils.copy_dir(eval_source, eval_dest)
-      absl.logging.info('Eval model copied to: %s.', eval_dest)
+      # Copy serving and eval model from model_run to model artifact directory.
+      dir_utils.copy_model(fn_args.model_run_dir, serving_dest, 'serving')
+      dir_utils.copy_model(fn_args.model_run_dir, eval_dest, 'eval')
 
     else:
       absl.logging.info(

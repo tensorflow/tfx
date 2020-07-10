@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import absl
 import tensorflow as tf
 from tensorflow import keras
@@ -31,6 +30,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor
+from tfx.components.trainer import dir_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
@@ -239,16 +239,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
 
   absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
 
-  # NEXTTODO
-
   # TODO(b/160795287): Deprecate estimator based executor.
-  # Copy serving model from model_run to model artifact directory.
-  serving_source = executor.serving_model_path(fn_args.model_run_dir)
-  io_utils.copy_dir(serving_source, serving_dest)
-  absl.logging.info('Serving model copied to: %s.', serving_dest)
-
-  # TODO(b/160795287): Deprecate estimator based executor.
-  # Copy eval model from model_run to model artifact directory.
-  eval_source = executor.eval_model_path(fn_args.model_run_dir)
-  io_utils.copy_dir(eval_source, eval_dest)
-  absl.logging.info('Eval model copied to: %s.', eval_dest)
+  # Copy serving and eval model from model_run to model artifact directory.
+  dir_utils.copy_model(fn_args.model_run_dir, serving_dest, 'serving')
+  dir_utils.copy_model(fn_args.model_run_dir, eval_dest, 'eval')

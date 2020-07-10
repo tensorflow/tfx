@@ -15,20 +15,21 @@
 """Utility functions for cleaning directory structure"""
 
 import absl
+from typing import Text
 
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 def copy_model(working_dir: Text, dest: Text, tag: Text) -> None:
-    """Copy a specified model from working dir to specified destination."""
-    path_fn = None
-    if tag == 'serving':
-        path_fn = path_utils.serving_model_working_path
-    elif tag == 'eval':
-        path_fn = path_utils.eval_model_working_path
-    else:
-        raise ValueError('Invalid input tag: %s.', tag)
+  """Copy a specified model from working dir to specified destination."""
+  path_fn = None
+  if tag == 'serving':
+    path_fn = path_utils.serving_model_working_path
+  elif tag == 'eval':
+    path_fn = path_utils.eval_model_working_path
+  else:
+    raise ValueError('Invalid input tag: {}.'.format(tag))
 
-    source = path_fn(working_dir)
-    io_utils.copy_dir(source, dest)
-    absl.logging.info('Eval model copied to: %s.', dest)
+  source = path_fn(working_dir)
+  io_utils.copy_dir(source, dest)
+  absl.logging.info('%s model copied to: %s.', tag.capitalize(), dest)
