@@ -20,6 +20,7 @@ from typing import Text
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
+ # TODO(b/160795287): Deprecate estimator based executor.
 def copy_model(working_dir: Text, dest: Text, tag: Text) -> None:
   """Copy a specified model from working dir to specified destination."""
   path_fn = None

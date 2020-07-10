@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import absl
 from typing import Text
 
 import tensorflow as tf
@@ -51,7 +52,7 @@ def eval_model_dir(output_uri: Text) -> Text:
 
 
 def eval_model_path(output_uri: Text) -> Text:
-  """Returns path to exported model for evaluation purpose."""
+  """Returns final path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
   if tf.io.gfile.exists(model_dir):
     return model_dir
@@ -66,15 +67,20 @@ def serving_model_dir(output_uri: Text) -> Text:
 
 
 def serving_model_path(output_uri: Text) -> Text:
-  """Returns path for exported serving model."""
+  """Returns final path for exported serving model."""
   return serving_model_dir(output_uri)
 
 
+# TODO(b/160795287): Deprecate estimator based executor.
 def serving_model_working_path(working_dir: Text) -> Text:
   """Returns original path for timestamped and named serving model export."""
   model_dir = serving_model_dir(working_dir)
   export_dir = os.path.join(model_dir, 'export')
   if tf.io.gfile.exists(export_dir):
+    absl.logging.warning('Support for estimator-based executor and model export' \
+                         ' will be deprecated soon. Please use export structure '\
+                         '"<ModelExportPath>/serving_model_dir/saved_model.pb"')
+    will be deprecated soon. Please have structure")
     model_dir = io_utils.get_only_uri_in_dir(export_dir)
     return io_utils.get_only_uri_in_dir(model_dir)
   else:
@@ -86,6 +92,9 @@ def eval_model_working_path(working_dir: Text) -> Text:
   """Returns original directory for exported model for evaluation purpose."""
   model_dir = eval_model_dir(working_dir)
   if tf.io.gfile.exists(model_dir):
+    absl.logging.warning('Support for estimator-based executor and model export' \
+                         ' will be deprecated soon. Please use export structure '\
+                         '"<ModelExportPath>/eval_model_dir/saved_model.pb"')
     return io_utils.get_only_uri_in_dir(model_dir)
   else:
     # If eval model doesn't exist, use serving model for eval.
