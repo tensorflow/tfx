@@ -58,11 +58,13 @@ class ExecutorTest(absltest.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval', 'test'])
+    examples.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval', 'test'])
 
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval', 'test'])
+    stats.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval', 'test'])
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }

@@ -108,8 +108,8 @@ class ExampleValidator(base_component.BaseComponent):
           split_names.remove(split)
       anomalies_artifact.split_names = split_names
       anomalies = types.Channel(
-        type=standard_artifacts.ExampleAnomalies,
-        artifacts=[anomalies_artifact])
+          type=standard_artifacts.ExampleAnomalies,
+          artifacts=[anomalies_artifact])
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,
