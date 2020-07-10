@@ -109,7 +109,7 @@ class ExecutorTest(absltest.TestCase):
     exec_properties = {
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
-        executor.EXCLUDE_SPLITS_KEY: 
+        executor.EXCLUDE_SPLITS_KEY:
             None
     }
 
@@ -156,7 +156,7 @@ class ExecutorTest(absltest.TestCase):
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company',
                               schema=schema_pb2.Schema()).to_json(),
-        executor.EXCLUDE_SPLITS_KEY: 
+        executor.EXCLUDE_SPLITS_KEY:
             None
     }
 
