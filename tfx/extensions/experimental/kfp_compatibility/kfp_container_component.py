@@ -67,7 +67,7 @@ def load_kfp_yaml_container_component(
 def convert_target_fields_to_kv_pair(
     parsed_dict: Dict[Text, Any]
 ) -> None:
-  """ Converts in place specific string fields to key value pairs of {stringValue: [Text]} for proto3 compatibility.
+  """ Converts in place specific string fields to key value pairs of {constantValue: [Text]} for proto3 compatibility.
 
   Args:
     parsed_dict: dictionary obtained from parsing a Kubeflow component spec.
@@ -87,22 +87,22 @@ def convert_target_fields_to_kv_pair(
     if isinstance(parsed_dict_location, list):
       for ind, value in enumerate(parsed_dict_location):
         if isinstance(value, str):
-          parsed_dict_location[ind] = {"stringValue": value}
+          parsed_dict_location[ind] = {"constantValue": value}
 
 
 def get_command_line_argument_type(
-    command: kfp_component_spec_pb2.CommandlineArgumentTypeWrapper
+    command: kfp_component_spec_pb2.StringOrPlaceholderer
 ) -> executor_specs.CommandlineArgumentType:
   """ Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
 
   Args:
-    command: CommandlineArgumentTypeWrapper which encodes a container command.
+    command: StringOrPlaceholderer which encodes a container command.
 
   Returns:
     command to be passed into create_container_component.
   """
-  if command.HasField("stringValue"):
-    return command.stringValue
+  if command.HasField("constantValue"):
+    return command.constantValue
   if command.HasField("inputValue"):
     return placeholders.InputValuePlaceholder(command.inputValue)
   if command.HasField("inputPath"):

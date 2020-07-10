@@ -72,10 +72,10 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
         'implementation': {
             'container': {
                 'args': [{
-                    'stringValue': 'arg0',
+                    'constantValue': 'arg0',
                 }],
                 'command': [{
-                    'stringValue': 'command0',
+                    'constantValue': 'command0',
                 }],
             }
         }
@@ -84,11 +84,11 @@ class KubeflowContainerComponentTest(tf.test.TestCase):
     self.assertEqual(ref_dict, test_dict)
 
   def testGetCommandLineArgumentType(self):
-    command = kfp_component_spec_pb2.CommandlineArgumentTypeWrapper()
-    command.stringValue = 'stringValue'
+    command = kfp_component_spec_pb2.StringOrPlaceholderer()
+    command.constantValue = 'constantValue'
     self.assertEqual(kfp_container_component.
                      get_command_line_argument_type(command),
-                     'stringValue')
+                     'constantValue')
 
 if __name__ == '__main__':
   tf.test.main()
