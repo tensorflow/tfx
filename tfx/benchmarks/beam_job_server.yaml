@@ -1,0 +1,33 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: beam-job-server
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: beam-job-server
+    spec:
+      containers:
+        - name: beam-job-server
+          image: apachebeam/flink1.8_job_server:2.18.0
+          imagePullPolicy: Always
+          args:
+            - "--flink-master=beam-flink-cluster-jobmanager:8081"
+            - "--artifacts-dir=gs://tfx-keshav-kubeflowpipelines-default"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beam-job-server
+spec:
+  ports:
+    - name: job
+      port: 8099
+      targetPort: 8099
+    - name: artifact
+      port: 8098
+      targetPort: 8098
+  selector:
+    app: beam-job-server

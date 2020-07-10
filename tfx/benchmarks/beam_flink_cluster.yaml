@@ -1,0 +1,18 @@
+apiVersion: flinkoperator.k8s.io/v1beta1
+kind: FlinkCluster
+metadata: {name: beam-flink-cluster}
+spec:
+  flinkProperties: {taskmanager.numberOfTaskSlots: '1'}
+  image: {name: 'flink:1.8.1'}
+  jobManager:
+    resources:
+      limits: {memory: 1Gi}
+  taskManager:
+    replicas: 2
+    resources:
+      limits: {memory: 2Gi}
+    sidecars:
+    - args: [--worker_pool]
+      image: gcr.io/tfx-keshav/image-for-tfx-flink-on-k8s:1.1
+      imagePullPolicy: Always
+      name: beam-worker-pool
