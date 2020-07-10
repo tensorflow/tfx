@@ -23,7 +23,6 @@ from typing import Any, Dict, List, Text
 
 import absl
 import tensorflow_data_validation as tfdv
-
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
@@ -31,6 +30,9 @@ from tfx.utils import io_utils
 
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
+
+# Keys for exec_properties dict.
+EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
 # Key for output schema in executor output_dict.
 SCHEMA_KEY = 'schema'
@@ -59,21 +61,33 @@ class Executor(base_executor.BaseExecutor):
         - output: A list of 'Schema' artifact of size one.
       exec_properties: A dict of execution properties, includes:
         - infer_feature_shape: Whether or not to infer the shape of the feature.
+        - exclude_splits: Names of splits that will not be taken into
+          consideration when auto-generating a schema.
 
     Returns:
       None
     """
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
-    train_stats_uri = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], 'train'))
+    infer_feature_shape = exec_properties['infer_feature_shape']
+    exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
+    absl.logging.info('Infering schema from statistics.')
+    # Only one schema is generated for all splits.
+    schema = None
+    for artifact in input_dict[STATISTICS_KEY]:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        if not exclude_splits or split not in exclude_splits:
+          stats_uri = io_utils.get_only_uri_in_dir(
+              artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
+          if not schema:
+            schema = tfdv.infer_schema(
+                tfdv.load_statistics(stats_uri), infer_feature_shape)
+          else:
+            schema = tfdv.update_schema(schema,
+                                        tfdv.load_statistics(stats_uri),
+                                        infer_feature_shape)
     output_uri = os.path.join(
         artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
-
-    infer_feature_shape = exec_properties['infer_feature_shape']
-    absl.logging.info('Infering schema from statistics.')
-    schema = tfdv.infer_schema(
-        tfdv.load_statistics(train_stats_uri), infer_feature_shape)
     io_utils.write_pbtxt_file(output_uri, schema)
     absl.logging.info('Schema written to %s.' % output_uri)

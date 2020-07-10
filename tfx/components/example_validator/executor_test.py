@@ -46,26 +46,81 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     validation_output = standard_artifacts.ExampleAnomalies()
-    validation_output.uri = os.path.join(output_data_dir, 'output')
+    validation_output.uri = output_data_dir
+    validation_output.split_names = artifact_utils.encode_split_names(
+        ['eval'])
 
     input_dict = {
         executor.STATISTICS_KEY: [eval_stats_artifact],
         executor.SCHEMA_KEY: [schema_artifact],
     }
+
+    exec_properties = {
+        executor.EXCLUDE_SPLITS_KEY: None
+    }
+
     output_dict = {
         executor.ANOMALIES_KEY: [validation_output],
     }
 
-    exec_properties = {}
+    example_validator_executor = executor.Executor()
+    example_validator_executor.Do(input_dict, output_dict, exec_properties)
+    self.assertEqual(['anomalies.pbtxt'],
+                     tf.io.gfile.listdir(os.path.join(validation_output.uri,
+                                                      'eval')))
+    anomalies = io_utils.parse_pbtxt_file(
+        os.path.join(validation_output.uri, 'eval', 'anomalies.pbtxt'),
+        anomalies_pb2.Anomalies())
+    self.assertNotEqual(0, len(anomalies.anomaly_info))
+    # TODO(zhitaoli): Add comparison to expected anomolies.
+
+  def testDoWithExcludedSplits(self):
+    source_data_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    eval_stats_artifact = standard_artifacts.ExampleStatistics()
+    eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    eval_stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+
+    schema_artifact = standard_artifacts.Schema()
+    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
+
+    validation_output = standard_artifacts.ExampleAnomalies()
+    validation_output.uri = output_data_dir
+    validation_output.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+
+    input_dict = {
+        executor.STATISTICS_KEY: [eval_stats_artifact],
+        executor.SCHEMA_KEY: [schema_artifact],
+    }
+
+    exec_properties = {
+        executor.EXCLUDE_SPLITS_KEY: ['train']
+    }
+
+    output_dict = {
+        executor.ANOMALIES_KEY: [validation_output],
+    }
 
     example_validator_executor = executor.Executor()
     example_validator_executor.Do(input_dict, output_dict, exec_properties)
     self.assertEqual(['anomalies.pbtxt'],
-                     tf.io.gfile.listdir(validation_output.uri))
+                     tf.io.gfile.listdir(os.path.join(validation_output.uri,
+                                                      'eval')))
     anomalies = io_utils.parse_pbtxt_file(
-        os.path.join(validation_output.uri, 'anomalies.pbtxt'),
+        os.path.join(validation_output.uri, 'eval', 'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())
     self.assertNotEqual(0, len(anomalies.anomaly_info))
+
+    # Assert 'train' split is excluded.
+    train_file_path = os.path.join(validation_output.uri, 'train', 'anomalies.pbtxt')
+    self.assertFalse(tf.io.gfile.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
 

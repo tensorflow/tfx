@@ -62,7 +62,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = False,
-      exclude_splits: Optional[List[Text]] = None,
+      exclude_splits: Optional[List[Text]] = ['eval'],
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):

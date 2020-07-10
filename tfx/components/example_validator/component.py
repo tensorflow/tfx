@@ -25,6 +25,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 
@@ -68,7 +69,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
-               exclude_splits: Optional[List[Text]] = None,
+               exclude_splits: Optional[List[Text]] = ['train'],
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
@@ -94,9 +95,13 @@ class ExampleValidator(base_component.BaseComponent):
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
+    if not output:
+      anomalies_artifact = standard_artifacts.ExampleAnomalies()
+      anomalies_artifact.split_names = artifact_utils.get_single_instance(
+          list(statistics.get())).split_names
     anomalies = output or types.Channel(
         type=standard_artifacts.ExampleAnomalies,
-        artifacts=[standard_artifacts.ExampleAnomalies()])
+        artifacts=[anomalies_artifact])
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,

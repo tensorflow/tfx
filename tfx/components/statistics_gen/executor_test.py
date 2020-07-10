@@ -67,13 +67,17 @@ class ExecutorTest(absltest.TestCase):
         executor.EXAMPLES_KEY: [examples],
     }
 
+    exec_properties = {
+        executor.EXCLUDE_SPLITS_KEY: None,
+    }
+
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(input_dict, output_dict, exec_properties={})
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
@@ -105,6 +109,8 @@ class ExecutorTest(absltest.TestCase):
     exec_properties = {
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
+        executor.EXCLUDE_SPLITS_KEY: 
+            None
     }
 
     # Create output dict.
@@ -117,8 +123,7 @@ class ExecutorTest(absltest.TestCase):
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(
-        input_dict, output_dict, exec_properties=exec_properties)
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
@@ -151,6 +156,8 @@ class ExecutorTest(absltest.TestCase):
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company',
                               schema=schema_pb2.Schema()).to_json(),
+        executor.EXCLUDE_SPLITS_KEY: 
+            None
     }
 
     # Create output dict.
@@ -164,8 +171,7 @@ class ExecutorTest(absltest.TestCase):
     # Run executor.
     stats_gen_executor = executor.Executor()
     with self.assertRaises(ValueError):
-      stats_gen_executor.Do(
-          input_dict, output_dict, exec_properties=exec_properties)
+      stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
   def testDoWithExcludeSplits(self):
     source_data_dir = os.path.join(
@@ -185,7 +191,7 @@ class ExecutorTest(absltest.TestCase):
     }
 
     exec_properties = {
-        executor.EXCLUDE_SPLITS_KEY: ['train']
+        executor.EXCLUDE_SPLITS_KEY: ['train'],
     }
 
     # Create output dict.
@@ -199,12 +205,13 @@ class ExecutorTest(absltest.TestCase):
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(
-        input_dict, output_dict, exec_properties=exec_properties)
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
-    # Check statistics_gen outputs.
+    # Assert 'train' split is excluded.
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(stats.uri, 'train', 'stats_tfrecord')))
+
+    # Check statistics_gen outputs.
     self._validate_stats_output(
         os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
 
