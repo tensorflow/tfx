@@ -82,22 +82,17 @@ def eval_model_path(working_dir: Text) -> Text:
     return serving_model_path(working_dir)
 
 
-class TrainerFnArgs(object):
+class TrainerFnArgs(dict):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
-  def __init__(self, arg_dict=None, **kwargs):
-    self._data = arg_dict if not (arg_dict is None) else kwargs
-
-  def __getitem__(self, key):
-    return self._data[key]
-
   def __getattr__(self, key):
-    return self._data[key]
-
-  def get_dict(self):
-    # Return copy so user cannot change attributes.
-    return self._data.copy()
-
+    if (key in self):
+      return self[key]
+    else:
+      raise AttributeError('No such attribute: ' + key)
+  
+  def __setattr__(self, key, value):
+    self[key] = value
 
 class GenericExecutor(base_executor.BaseExecutor):
   """Local generic trainer executor for the TFX Trainer component.
@@ -194,7 +189,6 @@ class GenericExecutor(base_executor.BaseExecutor):
         hyperparameters=hyperparameters_config,
         # Additional parameters to pass to trainer function.
         **custom_config)
-
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -315,13 +309,13 @@ class Executor(GenericExecutor):
     # Provide user with a modified fn_args, with model_run given as
     # the working directory. Executor will then copy user models to
     # model artifact directory.
-    fn_args_dict = fn_args.get_dict()
-    fn_args_dict['serving_model_dir'] = os.path.join(fn_args.model_run_dir,
-                                               path_utils.SERVING_MODEL_DIR)
-    fn_args_dict['eval_model_dir'] = os.path.join(fn_args.model_run_dir,
-                                                  path_utils.EVAL_MODEL_DIR)
-    user_fn_args = TrainerFnArgs(arg_dict=fn_args_dict)
-    training_spec = trainer_fn(user_fn_args, schema)
+    serving_dest = fn_args.serving_model_dir
+    eval_dest = fn_args.eval_model_dir
+    fn_args.serving_model_dir = os.path.join(fn_args.model_run_dir,
+                                             path_utils.SERVING_MODEL_DIR)
+    fn_args.eval_model_dir = os.path.join(fn_args.model_run_dir,
+                                          path_utils.EVAL_MODEL_DIR)
+    training_spec = trainer_fn(fn_args, schema)
 
     # Train the model
     absl.logging.info('Training model.')
@@ -339,22 +333,20 @@ class Executor(GenericExecutor):
       absl.logging.info('Exporting eval_savedmodel for TFMA.')
       tfma.export.export_eval_savedmodel(
           estimator=training_spec['estimator'],
-          export_dir_base=user_fn_args.eval_model_dir,
+          export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
       absl.logging.info('Exported eval_savedmodel to %s.',
-                        user_fn_args.eval_model_dir)
+                        fn_args.eval_model_dir)
 
       # TODO(b/160795287): Deprecate estimator based executor.
       # Copy serving model from model_run to model artifact directory.
       serving_source = serving_model_path(fn_args.model_run_dir)
-      serving_dest = fn_args.serving_model_dir
       io_utils.copy_dir(serving_source, serving_dest)
       absl.logging.info('Serving model copied to: %s.', serving_dest)
 
       # Copy eval model from model_run to model artifact directory.
       eval_source = eval_model_path(fn_args.model_run_dir)
-      eval_dest = fn_args.eval_model_dir
       io_utils.copy_dir(eval_source, eval_dest)
       absl.logging.info('Eval model copied to: %s.', eval_dest)
 

@@ -290,7 +290,9 @@ def trainer_fn(trainer_fn_args, schema):
       # nodes if training distributed, in order to avoid race condition.
       keep_checkpoint_max=5)
 
-  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  serving_model_dir = os.path.join(trainer_fn_args.model_run_dir,
+                                   path_utils.SERVING_MODEL_DIR)
+  run_config = run_config.replace(model_dir=serving_model_dir)
   warm_start_from = trainer_fn_args.base_model
 
   estimator = _build_estimator(
@@ -323,16 +325,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   """
   schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
-  # TODO(b/160795287): Deprecate estimator based executor.
-  # Modify fn_args with model_run_dir given as the working directory.
-  # Executor will then copy user models to model artifact directory.
-  fn_args_dict = fn_args.get_dict()
-  fn_args_dict['serving_model_dir'] = os.path.join(fn_args.model_run_dir,
-                                                   path_utils.SERVING_MODEL_DIR)
-  fn_args_dict['eval_model_dir'] = os.path.join(fn_args.model_run_dir,
-                                                path_utils.EVAL_MODEL_DIR)
-  user_fn_args = executor.TrainerFnArgs(arg_dict=fn_args_dict)
-  training_spec = trainer_fn(user_fn_args, schema)
+  training_spec = trainer_fn(fn_args, schema)
 
   # Train the model
   absl.logging.info('Training model.')
@@ -340,30 +333,30 @@ def run_fn(fn_args: executor.TrainerFnArgs):
                                   training_spec['train_spec'],
                                   training_spec['eval_spec'])
   absl.logging.info('Training complete.  Model written to %s',
-                    user_fn_args.serving_model_dir)
+                    fn_args.serving_model_dir)
 
   # Export an eval savedmodel for TFMA
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be
   # exported only by the chief worker.
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
+  eval_model_dir = os.path.join(fn_args.model_run_dir,
+                                path_utils.EVAL_MODEL_DIR)
   tfma.export.export_eval_savedmodel(
       estimator=training_spec['estimator'],
-      export_dir_base=user_fn_args.eval_model_dir,
+      export_dir_base=eval_model_dir,
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
   absl.logging.info('Exported eval_savedmodel to %s.',
-                    user_fn_args.eval_model_dir)
+                    fn_args.eval_model_dir)
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving model from model_run to model artifact directory.
   serving_source = executor.serving_model_path(fn_args.model_run_dir)
-  serving_dest = fn_args.serving_model_dir
   io_utils.copy_dir(serving_source, serving_dest)
   absl.logging.info('Serving model copied to: %s.', serving_dest)
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy eval model from model_run to model artifact directory.
   eval_source = executor.eval_model_path(fn_args.model_run_dir)
-  eval_dest = fn_args.eval_model_dir
   io_utils.copy_dir(eval_source, eval_dest)
   absl.logging.info('Eval model copied to: %s.', eval_dest)
