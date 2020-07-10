@@ -32,15 +32,17 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 
-# Keys for input_dict.
+# Key for examples in executor input_dict.
 EXAMPLES_KEY = 'examples'
+# Key for statistics in executor input_dict.
 SCHEMA_KEY = 'schema'
 
-# Keys for exec_properties dict.
+# Key for stats options json in executor exec_properties dict.
 STATS_OPTIONS_JSON_KEY = 'stats_options_json'
+# Key for exclude splits in executor exec_properties dict.
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
-# Keys for output_dict
+# Key for statistics in executor output_dict.
 STATISTICS_KEY = 'statistics'
 
 # Default file name for stats generated.
@@ -112,12 +114,13 @@ class Executor(base_executor.BaseExecutor):
     exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if not exclude_splits or split not in exclude_splits:
-          uri = os.path.join(artifact.uri, split)
-          split_uris.append((split, uri))
+        if exclude_splits and split in exclude_splits:
+          continue
+        uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+        split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       for split, uri in split_uris:
-        absl.logging.info('Generating statistics for split {}'.format(split))
+        absl.logging.info('Generating statistics for split {}.'.format(split))
         input_uri = io_utils.all_files_pattern(uri)
         input_tfxio = tf_example_record.TFExampleRecord(
             file_pattern=input_uri,

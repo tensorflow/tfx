@@ -31,7 +31,7 @@ from tfx.utils import io_utils
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
 
-# Keys for exec_properties dict.
+# Key for exclude splits in executor exec_properties dict.
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
 # Key for output schema in executor output_dict.
@@ -71,21 +71,25 @@ class Executor(base_executor.BaseExecutor):
     # constants.py.
     infer_feature_shape = exec_properties['infer_feature_shape']
     exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
-    absl.logging.info('Infering schema from statistics.')
     # Only one schema is generated for all splits.
     schema = None
     for artifact in input_dict[STATISTICS_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if not exclude_splits or split not in exclude_splits:
-          stats_uri = io_utils.get_only_uri_in_dir(
-              artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
-          if not schema:
-            schema = tfdv.infer_schema(
-                tfdv.load_statistics(stats_uri), infer_feature_shape)
-          else:
-            schema = tfdv.update_schema(schema,
-                                        tfdv.load_statistics(stats_uri),
-                                        infer_feature_shape)
+        if exclude_splits and split in exclude_splits:
+          continue
+        stats_uri = io_utils.get_only_uri_in_dir(
+            artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
+        if not schema:
+          absl.logging.info('Infering schema from statistics for split '
+                            '{}.'.format(split))
+          schema = tfdv.infer_schema(
+              tfdv.load_statistics(stats_uri), infer_feature_shape)
+        else:
+          absl.logging.info('Updating schema from statistics for split '
+                            '{}.'.format(split))
+          schema = tfdv.update_schema(schema,
+                                      tfdv.load_statistics(stats_uri),
+                                      infer_feature_shape)
     output_uri = os.path.join(
         artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)

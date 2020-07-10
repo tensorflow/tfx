@@ -58,17 +58,17 @@ class ExecutorTest(absltest.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.split_names = artifact_utils.encode_split_names(['train', 'eval', 'test'])
 
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    stats.split_names = artifact_utils.encode_split_names(['train', 'eval', 'test'])
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }
 
     exec_properties = {
-        executor.EXCLUDE_SPLITS_KEY: None,
+        executor.EXCLUDE_SPLITS_KEY: ['test'],
     }
 
     output_dict = {
@@ -84,6 +84,10 @@ class ExecutorTest(absltest.TestCase):
         os.path.join(stats.uri, 'train', 'stats_tfrecord'))
     self._validate_stats_output(
         os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
+
+    # Assert 'test' splits are excluded.
+    self.assertFalse(
+        tf.io.gfile.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
 
   def testDoWithSchemaAndStatsOptions(self):
     source_data_dir = os.path.join(
@@ -172,48 +176,6 @@ class ExecutorTest(absltest.TestCase):
     stats_gen_executor = executor.Executor()
     with self.assertRaises(ValueError):
       stats_gen_executor.Do(input_dict, output_dict, exec_properties)
-
-  def testDoWithExcludeSplits(self):
-    source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-    output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-    tf.io.gfile.makedirs(output_data_dir)
-
-    # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-
-    input_dict = {
-        executor.EXAMPLES_KEY: [examples],
-    }
-
-    exec_properties = {
-        executor.EXCLUDE_SPLITS_KEY: ['train'],
-    }
-
-    # Create output dict.
-    stats = standard_artifacts.ExampleStatistics()
-    stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-
-    output_dict = {
-        executor.STATISTICS_KEY: [stats],
-    }
-
-    # Run executor.
-    stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
-
-    # Assert 'train' split is excluded.
-    self.assertFalse(
-        tf.io.gfile.exists(os.path.join(stats.uri, 'train', 'stats_tfrecord')))
-
-    # Check statistics_gen outputs.
-    self._validate_stats_output(
-        os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
 
 
 if __name__ == '__main__':

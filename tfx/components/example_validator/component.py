@@ -82,7 +82,9 @@ class ExampleValidator(base_component.BaseComponent):
         ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
       exclude_splits: Names of splits that the example validator should not
-        validate.
+        validate. If exclude_splits is None or an empty list, no splits will
+        be excluded. Default behavior is validating the statistics of 'eval'
+        splits.
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -96,11 +98,16 @@ class ExampleValidator(base_component.BaseComponent):
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
+    anomalies = output
     if not output:
       anomalies_artifact = standard_artifacts.ExampleAnomalies()
-      anomalies_artifact.split_names = artifact_utils.get_single_instance(
+      split_names = artifact_utils.get_single_instance(
           list(statistics.get())).split_names
-    anomalies = output or types.Channel(
+      for split in split_names:
+        if exclude_splits and split in exclude_splits:
+          split_names.remove(split)
+      anomalies_artifact.split_names = split_names
+      anomalies = types.Channel(
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[anomalies_artifact])
     spec = ExampleValidatorSpec(

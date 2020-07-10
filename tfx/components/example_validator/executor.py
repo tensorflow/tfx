@@ -37,7 +37,7 @@ STATISTICS_KEY = 'statistics'
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
 
-# Keys for exec_properties dict.
+# Key for exclude splits in executor exec_properties dict.
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
 # Key for anomalies in executor output_dict.
@@ -75,31 +75,31 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
+    exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
     for artifact in input_dict[STATISTICS_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if not exclude_splits or split not in exclude_splits:
-          absl.logging.info(
-              'Validating schema against the computed statistics.')
-          label_inputs = {
-              labels.STATS:
-                  tfdv.load_statistics(
-                      io_utils.get_only_uri_in_dir(
-                          artifact_utils.get_split_uri(
-                              input_dict[STATISTICS_KEY], split))),
-              labels.SCHEMA:
-                  schema
-          }
-          output_uri = artifact_utils.get_split_uri(output_dict[ANOMALIES_KEY],
-                                                    split)
-          label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
-          self._Validate(label_inputs, label_outputs)
-          absl.logging.info(
-              'Validation complete. Anomalies written to {}.'.format(
-                  output_uri))
+        if exclude_splits and split in exclude_splits:
+          continue
+        absl.logging.info('Validating schema against the computed statistics '
+                          'for split {}.'.format(split))
+        label_inputs = {
+            labels.STATS:
+                tfdv.load_statistics(
+                    io_utils.get_only_uri_in_dir(
+                        artifact_utils.get_split_uri(
+                            input_dict[STATISTICS_KEY], split))),
+            labels.SCHEMA:
+                schema
+        }
+        output_uri = artifact_utils.get_split_uri(output_dict[ANOMALIES_KEY],
+                                                  split)
+        label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
+        self._Validate(label_inputs, label_outputs)
+        absl.logging.info('Validation complete for split {}. Anomalies written'
+                          ' to {}.'.format(split, output_uri))
 
   def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
                                                              Any]) -> None:

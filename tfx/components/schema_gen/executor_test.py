@@ -34,7 +34,7 @@ class ExecutorTest(tf.test.TestCase):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
+        ['train', 'eval', 'test'])
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -49,40 +49,7 @@ class ExecutorTest(tf.test.TestCase):
 
     exec_properties = {
         'infer_feature_shape': False,
-        'exclude_splits': None
-    }
-
-    output_dict = {
-        executor.SCHEMA_KEY: [schema_output],
-    }
-
-    schema_gen_executor = executor.Executor()
-    schema_gen_executor.Do(input_dict, output_dict, exec_properties)
-    self.assertNotEqual(0, len(tf.io.gfile.listdir(schema_output.uri)))
-
-  def testDoWithExcludeSplits(self):
-    source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-
-    statistics_artifact = standard_artifacts.ExampleStatistics()
-    statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
-    statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
-
-    output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-
-    schema_output = standard_artifacts.Schema()
-    schema_output.uri = os.path.join(output_data_dir, 'schema_output')
-
-    input_dict = {
-        executor.STATISTICS_KEY: [statistics_artifact],
-    }
-
-    exec_properties = {
-        'infer_feature_shape': False,
-        'exclude_splits': ['eval']
+        'exclude_splits': ['test']
     }
 
     output_dict = {

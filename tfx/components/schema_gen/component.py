@@ -78,7 +78,9 @@ class SchemaGen(base_component.BaseComponent):
         not inferred, downstream Tensorflow Transform component using the schema
         will parse input as tf.SparseTensor.
       exclude_splits: Names of splits that will not be taken into consideration
-        when auto-generating a schema.
+        when auto-generating a schema. If exclude_splits is None or an empty
+        list, no splits will be excluded. Default behavior is generating a
+        schema based on 'eval' splits.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -94,7 +96,6 @@ class SchemaGen(base_component.BaseComponent):
       statistics = stats
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
-
     spec = SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
