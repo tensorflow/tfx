@@ -93,6 +93,8 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
 
+    return delta
+
   def benchmarkPredict(self):
     """Benchmark the predict and aggregate combine stages "manually".
 

@@ -221,6 +221,8 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
         wall_time=delta,
         extras={"num_examples": self._dataset.num_examples()})
 
+    return delta
+
   def benchmarkRunMetaGraphDoFnManualActuation(self):
     """Benchmark RunMetaGraphDoFn "manually".
 

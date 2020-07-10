@@ -123,6 +123,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
 
+    return delta
+
   def benchmarkMiniPipelineBatched(self):
     """Benchmark a batched "mini" TFMA - predict, slice and compute metrics.
 
@@ -170,6 +172,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         extras={
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
+
+    return delta
 
   def _readDatasetIntoExtracts(self):
     """Read the raw dataset and massage examples into Extracts."""

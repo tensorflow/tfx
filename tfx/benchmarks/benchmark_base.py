@@ -27,10 +27,50 @@ flags.DEFINE_string(
     "Beam runner to use - any runner name accepted by "
     "apache_beam.runners.create_runner")
 
+modes = ["default", "local_scaled_execution", "cloud_dataflow", "flink_on_k8s"]
+beam_pipeline_mode = "local_execution"
+num_workers_str = "1"
+temp_location_for_cloud_dataflow = ""
+
+def set_beam_pipeline_mode(beam_pipeline_mode):
+    globals()['beam_pipeline_mode'] = beam_pipeline_mode
+
+def set_num_workers(num_workers):
+    globals()['num_workers_str'] = str(num_workers)
+
+def set_temp_location_for_cloud_dataflow(temp_location_for_cloud_dataflow):
+    globals()['temp_location_for_cloud_dataflow'] = temp_location_for_cloud_dataflow
 
 class BenchmarkBase(test.Benchmark):
 
-  def _create_beam_pipeline(self):
+  def _set_cloud_dataflow_flags(self):
+    self.flags = ['--runner=DataflowRunner',
+                  '--project=tfx-keshav',
+                  '--temp_location=' + temp_location_for_cloud_dataflow,
+                  '--num_workers=' + num_workers_str,
+                  '--max_num_workers=' + num_workers_str,
+                  '--no_pipeline_type_check',
+                  '--setup_file=./setup.py',
+                  '--autoscaling_algorithm=NONE',
+                  '--region=us-central1',
+                  '--experiments=beam_fn_api']
+
+  def _set_flink_on_k8s_operator_flags(self):
+    self.flags = ['--runner=PortableRunner',
+                  '--job_endpoint=localhost:8099',
+                  '--artifact_endpoint=localhost:8098',
+                  '--environment_type=EXTERNAL',
+                  '--environment_config=localhost:50000',
+                  '--parallelism=' + num_workers_str,
+                  '--no_pipeline_type_check']
+
+  def _set_local_scaled_execution_flags(self):
+    self.flags = ['--runner=DirectRunner',
+                  '--direct_num_workers' + num_workers_str,
+                  '--direct_running_mode=multi_processing',
+                  '--no_pipeline_type_check']
+
+  def _create_beam_pipeline_default():
     # FLAGS may not be parsed if the benchmark is instantiated directly by a
     # test framework (e.g. PerfZero creates the class and calls the methods
     # directly)
@@ -38,3 +78,20 @@ class BenchmarkBase(test.Benchmark):
         FLAGS.beam_runner
         if FLAGS.is_parsed() else FLAGS["beam_runner"].default)
     return beam.Pipeline(runner=beam.runners.create_runner(runner_flag))
+
+  def _create_beam_pipeline(self):
+
+    if beam_pipeline_mode == "default":
+        return self._create_beam_pipeline_default()
+
+    elif beam_pipeline_mode == "cloud_dataflow":
+      self._set_cloud_dataflow_flags()
+
+    elif beam_pipeline_mode == "flink_on_k8s":
+      self._set_flink_on_k8s_operator_flags()
+
+    else:
+      self._set_local_scaled_execution_flags()
+
+    pipeline_options = PipelineOptions(flags=self.flags)
+    return beam.Pipeline(options=pipeline_options)
