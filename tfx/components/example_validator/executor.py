@@ -82,13 +82,14 @@ class Executor(base_executor.BaseExecutor):
     for artifact in input_dict[STATISTICS_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
         if not exclude_splits or split not in exclude_splits:
-          absl.logging.info('Validating schema against the computed statistics.')
+          absl.logging.info(
+              'Validating schema against the computed statistics.')
           label_inputs = {
               labels.STATS:
                   tfdv.load_statistics(
                       io_utils.get_only_uri_in_dir(
-                          artifact_utils.get_split_uri(input_dict[STATISTICS_KEY],
-                                                      split))),
+                          artifact_utils.get_split_uri(
+                              input_dict[STATISTICS_KEY], split))),
               labels.SCHEMA:
                   schema
           }
@@ -97,7 +98,8 @@ class Executor(base_executor.BaseExecutor):
           label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
           self._Validate(label_inputs, label_outputs)
           absl.logging.info(
-              'Validation complete. Anomalies written to {}.'.format(output_uri))
+              'Validation complete. Anomalies written to {}.'.format(
+                  output_uri))
 
   def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
                                                              Any]) -> None:

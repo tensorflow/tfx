@@ -69,6 +69,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
+               # pylint: disable=dangerous-default-value
                exclude_splits: Optional[List[Text]] = ['train'],
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,

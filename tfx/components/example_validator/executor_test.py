@@ -119,7 +119,8 @@ class ExecutorTest(tf.test.TestCase):
     self.assertNotEqual(0, len(anomalies.anomaly_info))
 
     # Assert 'train' split is excluded.
-    train_file_path = os.path.join(validation_output.uri, 'train', 'anomalies.pbtxt')
+    train_file_path = os.path.join(
+        validation_output.uri, 'train', 'anomalies.pbtxt')
     self.assertFalse(tf.io.gfile.exists(train_file_path))
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
