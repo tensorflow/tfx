@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 syntax = "proto3";
-// protolint:disable ENUM_FIELD_NAMES_UPPER_SNAKE_CASE
+// protolint:disable FIELD_NAMES_LOWER_SNAKE_CASE
 // protolint:disable PACKAGE_NAME_LOWER_CASE
+// protolint:disable REPEATED_FIELD_NAMES_PLURALIZED
 
 package tfx.extensions.experimental.kfp_compatibility;
 
