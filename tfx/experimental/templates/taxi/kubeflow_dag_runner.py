@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 from absl import logging
 
+from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -70,7 +71,21 @@ def run():
   # pipeline DSL file, instead of using environment vars.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
+  record_dir = os.path.join(os.environ['HOME'], 'testdata')
+
+  component_ids = ['CsvExampleGen', \
+                  'StatisticsGen', 'SchemaGen', \
+                  'ExampleValidator', 'Transform', \
+                  'Trainer', 'Evaluator', 'Pusher']
+
+  my_launcher = stub_component_launcher.create_stub_launcher_class(
+        record_dir,
+        component_ids,
+        {})
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
+      supported_launcher_classes=[
+            my_launcher,
+        ],
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
   pod_labels = kubeflow_dag_runner.get_default_pod_labels()
   pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
