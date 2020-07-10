@@ -217,7 +217,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   working_dir = fn_args.model_run_dir
   fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
   fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
-  
+
   training_spec = trainer_fn(fn_args, schema)
 
   # Train the model
@@ -238,6 +238,8 @@ def run_fn(fn_args: executor.TrainerFnArgs):
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
   absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
+
+  # NEXTTODO
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving model from model_run to model artifact directory.

@@ -23,6 +23,8 @@ from typing import Text
 
 import tensorflow as tf
 
+from tfx.utils import io_utils
+
 EVAL_MODEL_DIR = 'eval_model_dir'
 SERVING_MODEL_DIR = 'serving_model_dir'
 
@@ -66,3 +68,25 @@ def serving_model_dir(output_uri: Text) -> Text:
 def serving_model_path(output_uri: Text) -> Text:
   """Returns path for exported serving model."""
   return serving_model_dir(output_uri)
+
+
+def serving_model_working_path(working_dir: Text) -> Text:
+  """Returns original path for timestamped and named serving model export."""
+  model_dir = serving_model_dir(working_dir)
+  export_dir = os.path.join(model_dir, 'export')
+  if tf.io.gfile.exists(export_dir):
+    model_dir = io_utils.get_only_uri_in_dir(export_dir)
+    return io_utils.get_only_uri_in_dir(model_dir)
+  else:
+    # If dir doesn't match estimator structure, use serving model root directly.
+    return serving_model_dir
+
+
+def eval_model_working_path(working_dir: Text) -> Text:
+  """Returns original directory for exported model for evaluation purpose."""
+  model_dir = eval_model_dir(working_dir)
+  if tf.io.gfile.exists(model_dir):
+    return io_utils.get_only_uri_in_dir(model_dir)
+  else:
+    # If eval model doesn't exist, use serving model for eval.
+    return serving_model_working_path(working_dir)

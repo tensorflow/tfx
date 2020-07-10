@@ -291,7 +291,7 @@ def trainer_fn(trainer_fn_args, schema):
       keep_checkpoint_max=5)
 
   export_dir = path_utils.serving_model_dir(trainer_fn_args.model_run_dir)
-  run_config = run_config.replace(model_dir=serving_model_dir)
+  run_config = run_config.replace(model_dir=export_dir)
   warm_start_from = trainer_fn_args.base_model
 
   estimator = _build_estimator(
@@ -346,14 +346,16 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   absl.logging.info('Exported eval_savedmodel to %s.',
                     fn_args.eval_model_dir)
 
+  # NEXTTODO
+
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving model from model_run to model artifact directory.
-  serving_source = executor.serving_model_path(fn_args.model_run_dir)
-  io_utils.copy_dir(serving_source, serving_dest)
-  absl.logging.info('Serving model copied to: %s.', serving_dest)
+  serving_source = path_utils.serving_model_working_path(fn_args.model_run_dir)
+  io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
+  absl.logging.info('Serving model copied to: %s.', fn_args.serving_model_dir)
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy eval model from model_run to model artifact directory.
-  eval_source = executor.eval_model_path(fn_args.model_run_dir)
-  io_utils.copy_dir(eval_source, eval_dest)
-  absl.logging.info('Eval model copied to: %s.', eval_dest)
+  eval_source = path_utils.eval_model_working_path(fn_args.model_run_dir)
+  io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
+  absl.logging.info('Eval model copied to: %s.', fn_args.eval_model_dir)

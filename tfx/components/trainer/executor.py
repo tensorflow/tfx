@@ -58,28 +58,6 @@ def _is_chief():
   return task_type == 'chief' or (task_type == 'master' and task_index == 0)
 
 
-def serving_model_path(working_dir: Text) -> Text:
-  """Returns original path for timestamped and named serving model export."""
-  serving_model_dir = path_utils.serving_model_dir(working_dir)
-  export_dir = os.path.join(serving_model_dir, 'export')
-  if tf.io.gfile.exists(export_dir):
-    model_dir = io_utils.get_only_uri_in_dir(export_dir)
-    return io_utils.get_only_uri_in_dir(model_dir)
-  else:
-    # If dir doesn't match estimator structure, use serving model root directly.
-    return serving_model_dir
-
-
-def eval_model_path(working_dir: Text) -> Text:
-  """Returns original directory for exported model for evaluation purpose."""
-  eval_model_dir = path_utils.eval_model_dir(working_dir)
-  if tf.io.gfile.exists(eval_model_dir):
-    return io_utils.get_only_uri_in_dir(eval_model_dir)
-  else:
-    # If eval model doesn't exist, use serving model for eval.
-    return serving_model_path(working_dir)
-
-
 class TrainerFnArgs(dict):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
@@ -136,7 +114,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     if input_dict.get(constants.BASE_MODEL_KEY):
-      base_model = serving_model_path(
+      base_model = path_utils.serving_model_working_path(
           artifact_utils.get_single_uri(input_dict[constants.BASE_MODEL_KEY]))
     else:
       base_model = None
@@ -337,14 +315,16 @@ class Executor(GenericExecutor):
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
 
+      # NEXTTODO
+
       # TODO(b/160795287): Deprecate estimator based executor.
       # Copy serving model from model_run to model artifact directory.
-      serving_source = serving_model_path(fn_args.model_run_dir)
+      serving_source = path_utils.serving_model_working_path(fn_args.model_run_dir)
       io_utils.copy_dir(serving_source, serving_dest)
       absl.logging.info('Serving model copied to: %s.', serving_dest)
 
       # Copy eval model from model_run to model artifact directory.
-      eval_source = eval_model_path(fn_args.model_run_dir)
+      eval_source = path_utils.eval_model_working_path(fn_args.model_run_dir)
       io_utils.copy_dir(eval_source, eval_dest)
       absl.logging.info('Eval model copied to: %s.', eval_dest)
 
