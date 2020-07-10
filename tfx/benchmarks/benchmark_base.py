@@ -19,6 +19,7 @@ from __future__ import print_function
 
 from absl import flags
 import apache_beam as beam
+from apache_beam.pipeline import PipelineOptions
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 
 FLAGS = flags.FLAGS
@@ -30,23 +31,25 @@ flags.DEFINE_string(
 modes = ["default", "local_scaled_execution", "cloud_dataflow", "flink_on_k8s"]
 beam_pipeline_mode = "local_execution"
 num_workers_str = "1"
-temp_location_for_cloud_dataflow = ""
+cloud_dataflow_temp_loc = ""
 
-def set_beam_pipeline_mode(beam_pipeline_mode):
-    globals()['beam_pipeline_mode'] = beam_pipeline_mode
+def set_beam_pipeline_mode(mode):
+  assert mode in modes
+  globals()['beam_pipeline_mode'] = mode
 
 def set_num_workers(num_workers):
-    globals()['num_workers_str'] = str(num_workers)
+  globals()['num_workers_str'] = str(num_workers)
 
-def set_temp_location_for_cloud_dataflow(temp_location_for_cloud_dataflow):
-    globals()['temp_location_for_cloud_dataflow'] = temp_location_for_cloud_dataflow
+def set_cloud_dataflow_temp_loc(temp_loc):
+  globals()['cloud_dataflow_temp_loc'] = temp_loc
 
 class BenchmarkBase(test.Benchmark):
+  """Base class for running Beam pipelines on various runners"""
 
   def _set_cloud_dataflow_flags(self):
     self.flags = ['--runner=DataflowRunner',
                   '--project=tfx-keshav',
-                  '--temp_location=' + temp_location_for_cloud_dataflow,
+                  '--temp_location=' + cloud_dataflow_temp_loc,
                   '--num_workers=' + num_workers_str,
                   '--max_num_workers=' + num_workers_str,
                   '--no_pipeline_type_check',
@@ -70,7 +73,7 @@ class BenchmarkBase(test.Benchmark):
                   '--direct_running_mode=multi_processing',
                   '--no_pipeline_type_check']
 
-  def _create_beam_pipeline_default():
+  def _create_beam_pipeline_default(self):
     # FLAGS may not be parsed if the benchmark is instantiated directly by a
     # test framework (e.g. PerfZero creates the class and calls the methods
     # directly)
@@ -82,7 +85,7 @@ class BenchmarkBase(test.Benchmark):
   def _create_beam_pipeline(self):
 
     if beam_pipeline_mode == "default":
-        return self._create_beam_pipeline_default()
+      return self._create_beam_pipeline_default()
 
     elif beam_pipeline_mode == "cloud_dataflow":
       self._set_cloud_dataflow_flags()

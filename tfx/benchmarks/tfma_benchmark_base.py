@@ -52,7 +52,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
     kwargs["extras"]["commit_tfma"] = getattr(tfma, "GIT_COMMIT_ID",
-                                              tfma.__version__)
+                                              tfma.version)
     super(TFMABenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkMiniPipeline(self):

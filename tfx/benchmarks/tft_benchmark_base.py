@@ -194,7 +194,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
     kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID",
-                                             tft.__version__)
+                                             tft.version)
     super(TFTBenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkAnalyzeAndTransformDataset(self):

@@ -1,4 +1,4 @@
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,21 +17,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
-sys.path.append("/home/kshivvy/tfx-benchmarks-PR/tfx/")
+from tfx.benchmarks import beam_pipeline_benchmark_base
 
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
-import beam_pipeline_benchmark_base
 
-class BeamPipelineBenchmarkBaseChicagoTaxi(beam_pipeline_benchmark_base.BeamPipelineBenchmarkBase):
+class BeamPipelineBenchmarkChicagoTaxi(
+    beam_pipeline_benchmark_base.BeamPipelineBenchmarkBase):
 
   def __init__(self, **kwargs):
-    super(BeamPipelineBenchmarkBaseChicagoTaxi, self).__init__(
-        min_num_workers=1, max_num_workers=32,
+    super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
+        min_num_workers=3, max_num_workers=4,
         base_dir="gs://tfx-keshav-example-bucket/datasets",
-        temp_location_for_cloud_dataflow="gs://tfx-keshav-example-bucket/temp",
+        cloud_dataflow_temp_loc="gs://tfx-keshav-example-bucket/temp",
         **kwargs)
 
 
 if __name__ == "__main__":
-  test.main()
+  beam_pipeline_benchmark_chicago_taxi = BeamPipelineBenchmarkChicagoTaxi()
+  beam_pipeline_benchmark_chicago_taxi.benchmarkLocalScaled()
+  beam_pipeline_benchmark_chicago_taxi.benchmarkCloudDataflow()
+  beam_pipeline_benchmark_chicago_taxi.benchmarkFlinkOnK8s()

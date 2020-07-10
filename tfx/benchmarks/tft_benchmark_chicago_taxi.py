@@ -18,16 +18,16 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.benchmarks import tft_benchmark_base
-from tfx.benchmarks.datasets.chicago_taxi import dataset
+from tfx.benchmarks.datasets.chicago_taxi import dataset as chicago_taxi_dataset
 
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 
 
 class TFTBenchmarkChicagoTaxi(tft_benchmark_base.TFTBenchmarkBase):
 
-  def __init__(self, **kwargs):
+  def __init__(self, dataset=chicago_taxi_dataset.get_dataset(), **kwargs):
     super(TFTBenchmarkChicagoTaxi, self).__init__(
-        dataset=dataset.get_dataset(), **kwargs)
+        dataset=dataset, **kwargs)
 
 
 if __name__ == "__main__":

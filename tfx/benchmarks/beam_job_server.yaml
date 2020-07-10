@@ -15,7 +15,7 @@ spec:
           imagePullPolicy: Always
           args:
             - "--flink-master=beam-flink-cluster-jobmanager:8081"
-            - "--artifacts-dir=gs://tfx-keshav-kubeflowpipelines-default"
+            - "--artifacts-dir=path_to_artifacts_directory"
 ---
 apiVersion: v1
 kind: Service

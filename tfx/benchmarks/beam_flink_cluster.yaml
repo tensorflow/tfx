@@ -13,6 +13,6 @@ spec:
       limits: {memory: 2Gi}
     sidecars:
     - args: [--worker_pool]
-      image: gcr.io/tfx-keshav/image-for-tfx-flink-on-k8s:1.1
+      image: path_to_image-for-tfx-flink-on-k8s
       imagePullPolicy: Always
       name: beam-worker-pool
