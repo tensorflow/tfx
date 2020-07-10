@@ -43,9 +43,14 @@ For generic trainer with Keras, there won't be eval model:
           |-- ...
 """
 
+def eval_model_dir(output_uri: Text) -> Text:
+  """Returns directory for exported model for evaluation purpose."""
+  return os.path.join(output_uri, EVAL_MODEL_DIR)
+
+
 def eval_model_path(output_uri: Text) -> Text:
   """Returns path to exported model for evaluation purpose."""
-  model_dir = os.path.join(output_uri, EVAL_MODEL_DIR)
+  model_dir = eval_model_dir(output_uri)
   if tf.io.gfile.exists(model_dir):
     return model_dir
   else:
@@ -53,6 +58,11 @@ def eval_model_path(output_uri: Text) -> Text:
     return serving_model_path(output_uri)
 
 
+def serving_model_dir(output_uri: Text) -> Text:
+  """Returns directory for exported model for serving purpose."""
+  return os.path.join(output_uri, SERVING_MODEL_DIR)
+
+
 def serving_model_path(output_uri: Text) -> Text:
   """Returns path for exported serving model."""
-  return os.path.join(output_uri, SERVING_MODEL_DIR)
+  return serving_model_dir(output_uri)

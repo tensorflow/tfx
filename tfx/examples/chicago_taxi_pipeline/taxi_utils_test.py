@@ -158,11 +158,9 @@ class TaxiUtilsTest(tf.test.TestCase):
     self.assertGreaterEqual(len(tf.io.gfile.listdir(exports[0])), 1)
 
     # Export the eval saved model.
-    eval_model_dir = os.path.join(output_dir,
-                                  path_utils.EVAL_MODEL_DIR)
     eval_savedmodel_path = tfma.export.export_eval_savedmodel(
         estimator=estimator,
-        export_dir_base=eval_model_dir,
+        export_dir_base=path_utils.eval_model_dir(output_dir),
         eval_input_receiver_fn=eval_input_receiver_fn)
     self.assertGreaterEqual(len(tf.io.gfile.listdir(eval_savedmodel_path)), 1)
 

@@ -60,7 +60,7 @@ def _is_chief():
 
 def serving_model_path(working_dir: Text) -> Text:
   """Returns original path for timestamped and named serving model export."""
-  serving_model_dir = os.path.join(working_dir, path_utils.SERVING_MODEL_DIR)
+  serving_model_dir = path_utils.serving_model_dir(working_dir)
   export_dir = os.path.join(serving_model_dir, 'export')
   if tf.io.gfile.exists(export_dir):
     model_dir = io_utils.get_only_uri_in_dir(export_dir)
@@ -72,9 +72,7 @@ def serving_model_path(working_dir: Text) -> Text:
 
 def eval_model_path(working_dir: Text) -> Text:
   """Returns original directory for exported model for evaluation purpose."""
-  eval_model_dir = os.path.join(working_dir,
-                                path_utils.EVAL_MODEL_DIR)
-
+  eval_model_dir = path_utils.eval_model_dir(working_dir)
   if tf.io.gfile.exists(eval_model_dir):
     return io_utils.get_only_uri_in_dir(eval_model_dir)
   else:
@@ -154,10 +152,9 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     output_path = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_KEY])
-    serving_model_dir = os.path.join(output_path,
-                                     path_utils.SERVING_MODEL_DIR)
-    eval_model_dir = os.path.join(output_path,
-                                  path_utils.EVAL_MODEL_DIR)
+    serving_model_dir = path_utils.serving_model_dir(output_path)
+    eval_model_dir = path_utils.eval_model_dir(output_path)
+
     model_run_dir = artifact_utils.get_single_uri(
         output_dict[constants.MODEL_RUN_KEY])
 
@@ -311,10 +308,11 @@ class Executor(GenericExecutor):
     # model artifact directory.
     serving_dest = fn_args.serving_model_dir
     eval_dest = fn_args.eval_model_dir
-    fn_args.serving_model_dir = os.path.join(fn_args.model_run_dir,
-                                             path_utils.SERVING_MODEL_DIR)
-    fn_args.eval_model_dir = os.path.join(fn_args.model_run_dir,
-                                          path_utils.EVAL_MODEL_DIR)
+    
+    working_dir = fn_args.model_run_dir
+    fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
+    fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
+
     training_spec = trainer_fn(fn_args, schema)
 
     # Train the model

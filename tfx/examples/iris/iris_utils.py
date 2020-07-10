@@ -213,10 +213,11 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   # Executor will then copy user models to model artifact directory.
   serving_dest = fn_args.serving_model_dir
   eval_dest = fn_args.eval_model_dir
-  fn_args.serving_model_dir = os.path.join(fn_args.model_run_dir,
-                                            path_utils.SERVING_MODEL_DIR)
-  fn_args.eval_model_dir = os.path.join(fn_args.model_run_dir,
-                                        path_utils.EVAL_MODEL_DIR)
+
+  working_dir = fn_args.model_run_dir
+  fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
+  fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
+  
   training_spec = trainer_fn(fn_args, schema)
 
   # Train the model

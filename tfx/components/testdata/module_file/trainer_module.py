@@ -290,8 +290,7 @@ def trainer_fn(trainer_fn_args, schema):
       # nodes if training distributed, in order to avoid race condition.
       keep_checkpoint_max=5)
 
-  serving_model_dir = os.path.join(trainer_fn_args.model_run_dir,
-                                   path_utils.SERVING_MODEL_DIR)
+  export_dir = path_utils.serving_model_dir(trainer_fn_args.model_run_dir)
   run_config = run_config.replace(model_dir=serving_model_dir)
   warm_start_from = trainer_fn_args.base_model
 
@@ -339,11 +338,9 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be
   # exported only by the chief worker.
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
-  eval_model_dir = os.path.join(fn_args.model_run_dir,
-                                path_utils.EVAL_MODEL_DIR)
   tfma.export.export_eval_savedmodel(
       estimator=training_spec['estimator'],
-      export_dir_base=eval_model_dir,
+      export_dir_base=path_utils.eval_model_dir(fn_args.model_run_dir),
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
   absl.logging.info('Exported eval_savedmodel to %s.',

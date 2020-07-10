@@ -102,20 +102,15 @@ class ExecutorTest(tf.test.TestCase):
     self._generic_trainer_executor = executor.GenericExecutor()
 
   def _verify_model_exports(self):
-    eval_model_dir = os.path.join(self._model_exports.uri,
-                                  path_utils.EVAL_MODEL_DIR)
-    serving_model_dir = os.path.join(self._model_exports.uri,
-                                  path_utils.SERVING_MODEL_DIR)
-
-    self.assertTrue(tf.io.gfile.exists(eval_model_dir))
-    self.assertTrue(tf.io.gfile.exists(serving_model_dir))
+    self.assertTrue(
+        tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
+    self.assertTrue(
+        tf.io.gfile.exists(
+            path_utils.serving_model_dir(self._model_exports.uri)))
 
   def _verify_no_eval_model_exports(self):
-    eval_model_dir = os.path.join(self._model_exports.uri,
-                                  path_utils.EVAL_MODEL_DIR)
-
     self.assertFalse(
-        tf.io.gfile.exists(eval_model_dir))
+        tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
 
   def _verify_model_run_exports(self):
     self.assertTrue(
