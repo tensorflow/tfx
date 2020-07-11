@@ -20,7 +20,7 @@ This guide describes two ways to build a pipeline:
     starting from a template.
 
 If you are new to TFX pipelines,
-[learn more about the core concepts for TFX pipelines](understanding_tfx_pipelines)
+[learn more about the core concepts for TFX pipelines](https://www.tensorflow.org/tfx/guide/understanding_tfx_pipelines)
 before continuing.
 
 ## Overview of TFX pipelines
@@ -366,7 +366,7 @@ without using a template.
       my_pipeline = create_pipeline(
           pipeline_name=PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
-          data_path=DATA_PATH
+          data_path=DATA_PATH,
           enable_cache=ENABLE_CACHE,
           metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
           )
