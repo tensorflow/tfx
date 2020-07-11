@@ -44,6 +44,26 @@ For generic trainer with Keras, there won't be eval model:
       |-- SERVING_MODEL_DIR  <- serving_model_dir, serving_model_path
           |-- saved_model.pb
           |-- ...
+
+TODO(b/160795287): Deprecate estimator based executor.
+
+Support for estimator-based executor and model export will be
+deprecated soon. The following estimator working directory 
+structure is still supported for backwards compatibility:
+
+Directory structure of exported model for estimator based trainer:
+  |-- <ModelExportPath>
+      |-- EVAL_MODEL_DIR  <- eval_model_dir
+          |-- <timestamped model>  <- eval_model_path
+              |-- saved_model.pb
+              |-- ...
+      |-- SERVING_MODEL_DIR  <- serving_model_dir
+          |-- export
+              |-- <exporter name>
+                  |-- <timestamped model>  <- serving_model_path
+                      |-- saved_model.pb
+                      |-- ...
+          |-- ...
 """
 
 def eval_model_dir(output_uri: Text) -> Text:
@@ -55,7 +75,14 @@ def eval_model_path(output_uri: Text) -> Text:
   """Returns final path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
   if tf.io.gfile.exists(model_dir):
-    return model_dir
+    try:
+      # TODO(b/160795287): Deprecate estimator based executor. 
+      absl.logging.warning('Support for estimator-based executor and model export'
+                           ' will be deprecated soon. Please use export structure '
+                           '<ModelExportPath>/eval_model_dir/saved_model.pb"')
+      return io_utils.get_only_uri_in_dir(model_dir)
+    except:
+      return model_dir
   else:
     # If eval model doesn't exist, use serving model for eval.
     return serving_model_path(output_uri)
@@ -67,18 +94,13 @@ def serving_model_dir(output_uri: Text) -> Text:
 
 
 def serving_model_path(output_uri: Text) -> Text:
-  """Returns final path for exported serving model."""
-  return serving_model_dir(output_uri)
-
-
-# TODO(b/160795287): Deprecate estimator based executor.
-def serving_model_working_path(working_dir: Text) -> Text:
-  """Returns original path for timestamped and named serving model export."""
-  model_dir = serving_model_dir(working_dir)
+  """Returns path for exported serving model."""
+  model_dir = serving_model_dir(output_uri)
   export_dir = os.path.join(model_dir, 'export')
   if tf.io.gfile.exists(export_dir):
-    absl.logging.warning('Support for estimator-based executor and model export' \
-                         ' will be deprecated soon. Please use export structure ' \
+    # TODO(b/160795287): Deprecate estimator based executor. 
+    absl.logging.warning('Support for estimator-based executor and model export'
+                         ' will be deprecated soon. Please use export structure '
                          '<ModelExportPath>/serving_model_dir/saved_model.pb"')
     model_dir = io_utils.get_only_uri_in_dir(export_dir)
     return io_utils.get_only_uri_in_dir(model_dir)
@@ -88,11 +110,17 @@ def serving_model_working_path(working_dir: Text) -> Text:
 
 
 # TODO(b/160795287): Deprecate estimator based executor.
-def eval_model_working_path(working_dir: Text) -> Text:
-  """Returns original directory for exported model for evaluation purpose."""
-  model_dir = eval_model_dir(working_dir)
-  if tf.io.gfile.exists(model_dir):
-    return io_utils.get_only_uri_in_dir(model_dir)
+def copy_model(working_dir: Text, dest: Text, tag: Text) -> None:
+  """Copy a specified model from working dir to specified destination."""
+  path_fn = None
+  if tag == 'serving':
+    path_fn = serving_model_path
+  elif tag == 'eval':
+    path_fn = eval_model_path
   else:
-    # If eval model doesn't exist, use serving model for eval.
-    return serving_model_working_path(working_dir)
+    raise ValueError('Invalid input tag: {}.'.format(tag))
+
+  source = path_fn(working_dir)
+  io_utils.copy_dir(source, dest)
+  absl.logging.info('%s model copied to: %s.', tag.capitalize(), dest)
+

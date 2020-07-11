@@ -32,7 +32,6 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import constants
 from tfx.components.trainer import fn_args_utils
-from tfx.components.trainer import dir_utils
 from tfx.components.util import udf_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -115,7 +114,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     # TODO(ruoyu): Make this a dict of tag -> uri instead of list.
     if input_dict.get(constants.BASE_MODEL_KEY):
-      base_model = path_utils.serving_model_working_path(
+      base_model = path_utils.serving_model_path(
           artifact_utils.get_single_uri(input_dict[constants.BASE_MODEL_KEY]))
     else:
       base_model = None
@@ -318,8 +317,8 @@ class Executor(GenericExecutor):
 
       # TODO(b/160795287): Deprecate estimator based executor.
       # Copy serving and eval model from model_run to model artifact directory.
-      dir_utils.copy_model(fn_args.model_run_dir, serving_dest, 'serving')
-      dir_utils.copy_model(fn_args.model_run_dir, eval_dest, 'eval')
+      path_utils.copy_model(fn_args.model_run_dir, serving_dest, 'serving')
+      path_utils.copy_model(fn_args.model_run_dir, eval_dest, 'eval')
 
     else:
       absl.logging.info(

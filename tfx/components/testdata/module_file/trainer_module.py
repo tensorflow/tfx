@@ -33,7 +33,6 @@ from tensorflow_transform.tf_metadata import schema_utils
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor
-from tfx.components.trainer import dir_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 
@@ -334,7 +333,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   absl.logging.info('Training complete.  Model written to %s',
                     fn_args.serving_model_dir)
 
-  # Export an eval savedmodel for TFMA
+  # Export an eval savedmodel for TFMAgit 
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be
   # exported only by the chief worker.
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
@@ -348,7 +347,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving and eval model from model_run to model artifact directory.
-  dir_utils.copy_model(fn_args.model_run_dir,
-                       fn_args.serving_model_dir, 'serving')
-  dir_utils.copy_model(fn_args.model_run_dir,
-                       fn_args.eval_model_dir, 'eval')
+  path_utils.copy_model(fn_args.model_run_dir,
+                        fn_args.serving_model_dir, 'serving')
+  path_utils.copy_model(fn_args.model_run_dir,
+                        fn_args.eval_model_dir, 'eval')
