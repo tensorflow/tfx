@@ -263,5 +263,4 @@ def run_fn(fn_args: TrainerFnArgs):
                                             dtype=tf.string,
                                             name='examples')),
   }
-  absl.logging.warning(fn_args.serving_model_dir)
   model.save(fn_args.serving_model_dir, save_format='tf', signatures=signatures)

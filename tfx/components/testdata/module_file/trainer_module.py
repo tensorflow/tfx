@@ -330,8 +330,6 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   tf.estimator.train_and_evaluate(training_spec['estimator'],
                                   training_spec['train_spec'],
                                   training_spec['eval_spec'])
-  absl.logging.info('Training complete.  Model written to %s',
-                    fn_args.serving_model_dir)
 
   # Export an eval savedmodel for TFMA
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be

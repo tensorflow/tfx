@@ -315,15 +315,10 @@ class Executor(GenericExecutor):
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
 
-      # TODO(b/160795287): Deprecate estimator based executor.
-      # Copy serving and eval model from model_run to model artifact directory.
       path_utils.copy_model(fn_args.model_run_dir, serving_dest, 'serving')
       path_utils.copy_model(fn_args.model_run_dir, eval_dest, 'eval')
 
     else:
-      absl.logging.info(
-          'eval_savedmodel export for TFMA is skipped because '
-          'this is not the chief worker.')
       absl.logging.info(
           'model export for TFMA is skipped because this is '
           'not the chief worker.')

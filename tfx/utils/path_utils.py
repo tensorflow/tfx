@@ -74,16 +74,16 @@ def eval_model_dir(output_uri: Text) -> Text:
 def eval_model_path(output_uri: Text) -> Text:
   """Returns final path to exported model for evaluation purpose."""
   model_dir = eval_model_dir(output_uri)
-  if tf.io.gfile.exists(model_dir):
-    try:
-      # TODO(b/160795287): Deprecate estimator based executor.
-      absl.logging.warning('Support for estimator-based executor and model'
-                           ' export will be deprecated soon. Please use'
-                           ' export structure '
-                           '<ModelExportPath>/eval_model_dir/saved_model.pb"')
-      return io_utils.get_only_uri_in_dir(model_dir)
-    except RuntimeError:
-      return model_dir
+  model_file = os.path.join(model_dir, "saved_model.pb")
+  if tf.io.gfile.exists(model_file):
+    return model_dir
+  elif tf.io.gfile.exists(model_dir):
+    # TODO(b/160795287): Deprecate estimator based executor.
+    absl.logging.warning('Support for estimator-based executor and model'
+                         ' export will be deprecated soon. Please use'
+                         ' export structure '
+                         '<ModelExportPath>/eval_model_dir/saved_model.pb"')
+    return io_utils.get_only_uri_in_dir(model_dir)
   else:
     # If eval model doesn't exist, use serving model for eval.
     return serving_model_path(output_uri)
