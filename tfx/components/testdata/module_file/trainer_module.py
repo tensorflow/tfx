@@ -333,7 +333,7 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   absl.logging.info('Training complete.  Model written to %s',
                     fn_args.serving_model_dir)
 
-  # Export an eval savedmodel for TFMAgit 
+  # Export an eval savedmodel for TFMA
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be
   # exported only by the chief worker.
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
@@ -342,12 +342,14 @@ def run_fn(fn_args: executor.TrainerFnArgs):
       export_dir_base=path_utils.eval_model_dir(fn_args.model_run_dir),
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-  absl.logging.info('Exported eval_savedmodel to %s.',
-                    fn_args.eval_model_dir)
-
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving and eval model from model_run to model artifact directory.
   path_utils.copy_model(fn_args.model_run_dir,
                         fn_args.serving_model_dir, 'serving')
   path_utils.copy_model(fn_args.model_run_dir,
                         fn_args.eval_model_dir, 'eval')
+
+  absl.logging.info('Training complete. Model written to %s',
+                    fn_args.serving_model_dir)
+  absl.logging.info('Exported eval_savedmodel to %s.',
+                    fn_args.eval_model_dir)
