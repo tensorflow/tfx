@@ -85,7 +85,7 @@ class Executor(base_executor.BaseExecutor):
           continue
 
         absl.logging.info('Validating schema against the computed statistics '
-                          'for split %s.' % split)
+                          'for split %s.', split)
         label_inputs = {
             labels.STATS:
                 tfdv.load_statistics(
@@ -100,7 +100,7 @@ class Executor(base_executor.BaseExecutor):
         label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
         self._Validate(label_inputs, label_outputs)
         absl.logging.info('Validation complete for split %s. Anomalies written'
-                          ' to %s.' % (split, output_uri))
+                          ' to %s.', (split, output_uri))
 
   def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
                                                              Any]) -> None:

@@ -79,7 +79,7 @@ class Executor(base_executor.BaseExecutor):
           continue
 
         absl.logging.info('Processing schema from statistics for split '
-                          '%s.' % split)
+                          '%s.', split)
         stats_uri = io_utils.get_only_uri_in_dir(
             artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
         if not schema:
@@ -93,4 +93,4 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
-    absl.logging.info('Schema written to %s.' % output_uri)
+    absl.logging.info('Schema written to %s.', output_uri)
