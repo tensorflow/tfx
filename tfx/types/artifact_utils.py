@@ -99,7 +99,7 @@ def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
     if split in split_names:
       matching_artifacts.append(artifact)
   return [os.path.join(artifact.uri, split) for artifact in matching_artifacts]
-  
+
 
 def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   """Get the uri of Artifact with matching split from given list.

@@ -83,7 +83,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
                      artifact_utils.get_split_uris(artifacts, 'train'))
     self.assertEqual(['/tmp1/eval', '/tmp2/eval'],
                      artifact_utils.get_split_uris(artifacts, 'eval'))
-  
+
   def testArtifactTypeRoundTrip(self):
     mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()
     self.assertIs(standard_artifacts.Examples,

@@ -59,12 +59,12 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        working_dir: Text = None) -> FnArgs:
   """Get common args of training and tuning."""
   train_files = [
-      io_utils.all_files_pattern(uri) for uri in 
+      io_utils.all_files_pattern(uri) for uri in
           artifact_utils.get_split_uris(input_dict[constants.EXAMPLES_KEY],
                                         'train')
   ]
   eval_files = [
-      io_utils.all_files_pattern(uri) for uri in 
+      io_utils.all_files_pattern(uri) for uri in
           artifact_utils.get_split_uris(input_dict[constants.EXAMPLES_KEY],
                                         'eval')
   ]
