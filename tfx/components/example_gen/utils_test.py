@@ -314,6 +314,44 @@ class UtilsTest(tf.test.TestCase):
     _, span, _ = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
     self.assertEqual(span, '02')
+  
+  def testVersionMatches(self):
+    # Test align of version number.
+    ver1_split1 = os.path.join(self._input_base_path, 'version01', 'split1',
+                               'data')
+    io_utils.write_string_file(ver1_split1, 'testing11')
+    ver1_split2 = os.path.join(self._input_base_path, 'version01', 'split2',
+                               'data')
+    io_utils.write_string_file(ver1_split2, 'testing12')
+    ver2_split1 = os.path.join(self._input_base_path, 'version02', 'split1',
+                               'data')
+    io_utils.write_string_file(ver2_split1, 'testing21')
+
+    splits = [
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='version{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='version{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegexp(
+        ValueError, 'Latest version should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits)
+
+    # Test if latest version is selected when version aligns for each split.
+    ver2_split2 = os.path.join(self._input_base_path, 'version02', 'split2',
+                               'data')
+    io_utils.write_string_file(ver2_split2, 'testing22')
+
+    splits = [
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='version{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='version{VERSION}/split2/*')
+    ]
+    _, _, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(version, '02')
 
 
 if __name__ == '__main__':

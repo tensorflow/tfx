@@ -339,6 +339,7 @@ def calculate_splits_fingerprint_span_and_version(
         raise ValueError(
             'Latest version should be the same for each split: %s != %s' %
             (select_version, latest_version))
+      split.pattern = split.pattern.replace(VERSION_SPEC, select_version)
     if select_version is None:
       select_version = '0'
 
