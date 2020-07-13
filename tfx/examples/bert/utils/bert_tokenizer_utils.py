@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Preprocess using tensorflow_text BertTokenizer"""
+"""Prepressing using tensorflow_text BertTokenizer"""
 
 import tensorflow as tf
 import tensorflow_text as text
@@ -24,7 +24,7 @@ _PAD = '[PAD]'
 _SEP = '[SEP]'
 
 class SpecialBertTokenizer():
-  """Bert Tokenizer built on top of tensorflow_text.BertTokenizer"""
+  """ Bert Tokenizer built ontop of tensorflow_text.BertTokenizer"""
 
   def __init__(self, model_link):
     self._model_link = model_link
@@ -185,3 +185,6 @@ class SpecialBertTokenizer():
     segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
 
     return word_id, input_mask, segment_id
+
+
+    

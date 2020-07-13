@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include mrpc pipeline functions and necessary utils."""
+""" Python source file include mrpc pipeline functions and necessary utils."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -158,7 +158,7 @@ def run_fn(fn_args: TrainerFnArgs):
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(2e-5),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logist=True),
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
         metrics=['accuracy'],
     )
 

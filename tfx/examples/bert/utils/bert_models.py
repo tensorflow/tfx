@@ -27,7 +27,7 @@ def BertForClassification(
   pooled_output.
 
   Args:
-    bert_layer: A tensorflow_hub.KerasLayer instance of Bert layer.
+    bert_layer: A tensorflow_hub.KerasLayer intence of Bert layer.
     max_len: The maximum length of preprocessed tokens.
     hidden_layers: List of configurations for fine-tuning hidden layers
       after the pooled_output. [(#of hidden units, activation)].
@@ -54,7 +54,8 @@ def BertForClassification(
       fully_connected = keras.layers.Dense(
           i, activation=activation
       )(fully_connected)
-
-  output = keras.layers.Dense(2, activation='softmax')(fully_connected)
+  
+  fully_connected = keras.layers.Dropout(0.1)(fully_connected)
+  output = keras.layers.Dense(2)(fully_connected)
   model = keras.Model(input_layers, output)
   return model

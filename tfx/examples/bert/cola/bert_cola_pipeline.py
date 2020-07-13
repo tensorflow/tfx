@@ -48,7 +48,7 @@ from tfx.utils.dsl_utils import tfrecord_input
 
 _pipeline_name = 'bert_cola'
 
-# This example assumes that MNIST data is stored in ~/bert/cola/data and the
+# This example assumes that COLA data is stored in ~/bert/cola/data and the
 # utility function is in ~/bert/cola. Feel free to customize as needed.
 _bert_cola_root = os.path.join(os.environ['HOME'], 'bert', 'cola')
 _data_root = os.path.join(_bert_cola_root, 'data')
@@ -81,7 +81,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      module_file: Text, serving_model_dir: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
-  """Implements BERT classication on Cola dataset pipeline with TFX."""
+  """Implements the Bert classication on Cola dataset pipline with TFX."""
   output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
       splits=[
           example_gen_pb2.SplitConfig.Split(
@@ -92,7 +92,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
               hash_buckets=1)]))
 
   examples = tfrecord_input(data_root)
-  # Brings data into the pipeline
+  # Brings data in to the pipline
   example_gen = ImportExampleGen(input=examples, output_config=output)
 
   # Computes statistics over data for visualization and example validation.
