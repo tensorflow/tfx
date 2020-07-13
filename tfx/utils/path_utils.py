@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import absl
-from typing import Text, Callable
+from typing import Text
 
 import tensorflow as tf
 

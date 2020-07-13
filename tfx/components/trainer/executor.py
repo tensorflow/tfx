@@ -327,4 +327,4 @@ class Executor(GenericExecutor):
 
     else:
       absl.logging.info(
-          'model export is skipped because this is not the chief worker.')
+          'Model export is skipped because this is not the chief worker.')
