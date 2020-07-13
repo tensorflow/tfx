@@ -245,6 +245,8 @@ class UtilsTest(tf.test.TestCase):
                                  'Cannot not find matching for split'):
       utils.calculate_splits_fingerprint_and_span(self._input_base_path, splits)
 
+  # add version no matching test
+
   def testSpanWrongFormat(self):
     wrong_span = os.path.join(self._input_base_path, 'spanx', 'split1', 'data')
     io_utils.write_string_file(wrong_span, 'testing_wrong_span')
@@ -289,6 +291,7 @@ class UtilsTest(tf.test.TestCase):
         self._input_base_path, splits)
     self.assertEqual(span, '02')
 
+  # add test version matches
 
 if __name__ == '__main__':
   tf.test.main()

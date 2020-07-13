@@ -280,14 +280,14 @@ def _retrieve_latest_version_from_span(uri: Text,
                           VERSION_SPEC)
 
 
-def calculate_splits_fingerprint_and_span(
+def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Optional[Text]]:
+) -> Tuple[Text, Optional[Text], Optional[Text]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder, attempts to find an identical value
   across splits that results in all splits having the most recently updated
-  files.
+  files. 
 
   Args:
     input_base_uri: The base path from which files will be searched
@@ -303,9 +303,11 @@ def calculate_splits_fingerprint_and_span(
 
   split_fingerprints = []
   select_span = None
+  select_version = None
   # Calculate the fingerprint of files under input_base_uri.
   for split in splits:
     logging.info('select span = %s', select_span)
+    # Find most recent span
     if SPAN_SPEC in split.pattern:
       latest_span = _retrieve_latest_span(input_base_uri, split)
       logging.info('latest span = %s', latest_span)
@@ -318,9 +320,25 @@ def calculate_splits_fingerprint_and_span(
       split.pattern = split.pattern.replace(SPAN_SPEC, select_span)
     if select_span is None:
       select_span = '0'
+
+    # Given previous span, find most recent version
+    if VERSION_SPEC in split.pattern:
+      latest_version = _retrieve_latest_version_from_span(input_base_uri,
+                                                          split,
+                                                          select_span)
+      logging.info('latest version = %s', latest_version)
+      if select_version is None:
+        select_version = latest_version
+      if select_version != latest_version:
+        raise ValueError(
+            'Latest version should be the same for each split: %s != %s' %
+            (select_version, latest_version))
+    if select_version is None:
+      select_version = '0'
+
     # Calculate fingerprint
     pattern = os.path.join(input_base_uri, split.pattern)
     split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
     split_fingerprints.append(split_fingerprint)
   fingerprint = '\n'.join(split_fingerprints)
-  return fingerprint, select_span
+  return fingerprint, select_span, select_version
