@@ -15,7 +15,7 @@
 
 import os
 import tensorflow as tf
-from tfx.dsl.component.experimental import placeholders, container_component
+from tfx.dsl.component.experimental import container_component, placeholders
 from tfx.extensions.experimental.kfp_compatibility import kfp_container_component
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types.experimental.simple_artifacts import File

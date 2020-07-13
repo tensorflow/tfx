@@ -13,13 +13,13 @@
 # limitations under the License.
 """Functions for creating container components from kubeflow components."""
 
-import yaml
-from google.protobuf import json_format
+from typing import Any, Callable, Dict, Text
+
 from tfx.components.base import base_component
-from tfx.dsl.component.experimental import executor_specs, placeholders, container_component
+from tfx.dsl.component.experimental import container_component, executor_specs, placeholders
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types.experimental.simple_artifacts import File
-from typing import Any, Callable, Dict, Text
+import yaml
 
 
 def load_kfp_yaml_container_component(
@@ -67,7 +67,7 @@ def load_kfp_yaml_container_component(
 def convert_target_fields_to_kv_pair(
     parsed_dict: Dict[Text, Any]
 ) -> None:
-  """ Converts in place specific string fields to key value pairs of {constantValue: [Text]} for proto3 compatibility.
+  """Converts in place specific string fields to key value pairs of {constantValue: [Text]} for proto3 compatibility.
 
   Args:
     parsed_dict: dictionary obtained from parsing a Kubeflow component spec.
@@ -93,7 +93,7 @@ def convert_target_fields_to_kv_pair(
 def get_command_line_argument_type(
     command: kfp_component_spec_pb2.StringOrPlaceholderer
 ) -> executor_specs.CommandlineArgumentType:
-  """ Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
+  """Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
 
   Args:
     command: StringOrPlaceholderer which encodes a container command.
