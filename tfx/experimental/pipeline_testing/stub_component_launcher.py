@@ -67,14 +67,16 @@ def get_stub_launcher_class(
   supported by the pipeline.
   For example:
     class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
+    class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
 
     PipelineConfig(
         supported_launcher_classes=[
             stub_component_launcher.get_stub_launcher_class(
                 test_data_dir,
                 stubbed_component_ids = ['CsvExampleGen'],
-                stubbed_component_map = {'Pusher':
-                                          MyPusherStubExecutor})
+                stubbed_component_map = {
+                    'Transform': MyTransformStubExecutor,
+                    'Pusher': MyPusherStubExecutor})
         ],
     )
   The method also sets the necessary class variables for the
