@@ -79,7 +79,7 @@ class Executor(base_executor.BaseExecutor):
           continue
 
         absl.logging.info('Processing schema from statistics for split '
-                           '%s.' % split)
+                          '%s.' % split)
         stats_uri = io_utils.get_only_uri_in_dir(
             artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
         if not schema:

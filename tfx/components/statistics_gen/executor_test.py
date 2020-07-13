@@ -87,7 +87,7 @@ class ExecutorTest(absltest.TestCase):
     self._validate_stats_output(
         os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
 
-    # Assert 'test' splits are excluded.
+    # Assert 'test' split is excluded.
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
 
