@@ -153,55 +153,55 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(
         'string_value',
         instance.mlmd_artifact.custom_properties['string_key'].string_value)
-    
+
     self.assertEqual(
-'Artifact(artifact: id: 1\n\
-type_id: 2\n\
-uri: "/tmp/uri2"\n\
-custom_properties {\n\
-  key: "int_key"\n\
-  value {\n\
-    int_value: 20\n\
-  }\n\
-}\n\
-custom_properties {\n\
-  key: "state"\n\
-  value {\n\
-    string_value: "deleted"\n\
-  }\n\
-}\n\
-custom_properties {\n\
-  key: "string_key"\n\
-  value {\n\
-    string_value: "string_value"\n\
-  }\n\
-}\n\
-, artifact_type: name: "MyTypeName"\n\
-properties {\n\
-  key: "float1"\n\
-  value: DOUBLE\n\
-}\n\
-properties {\n\
-  key: "float2"\n\
-  value: DOUBLE\n\
-}\n\
-properties {\n\
-  key: "int1"\n\
-  value: INT\n\
-}\n\
-properties {\n\
-  key: "int2"\n\
-  value: INT\n\
-}\n\
-properties {\n\
-  key: "string1"\n\
-  value: STRING\n\
-}\n\
-properties {\n\
-  key: "string2"\n\
-  value: STRING\n\
-}\n\
-)', str(instance))
+        'Artifact(artifact: id: 1\n'
+        'type_id: 2\n'
+        'uri: "/tmp/uri2"\n'
+        'custom_properties {\n'
+        '  key: "int_key"\n'
+        '  value {\n'
+        '    int_value: 20\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "state"\n'
+        '  value {\n'
+        '    string_value: "deleted"\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "string_key"\n'
+        '  value {\n'
+        '    string_value: "string_value"\n'
+        '  }\n'
+        '}\n'
+        ', artifact_type: name: "MyTypeName"\n'
+        'properties {\n'
+        '  key: "float1"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "float2"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int1"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int2"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string1"\n'
+        '  value: STRING\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string2"\n'
+        '  value: STRING\n'
+        '}\n'
+        ')', str(instance))
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
