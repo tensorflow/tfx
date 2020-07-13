@@ -62,8 +62,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = False,
-      # pylint: disable=dangerous-default-value
-      exclude_splits: Optional[List[Text]] = ['eval'],
+      exclude_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -78,9 +77,8 @@ class SchemaGen(base_component.BaseComponent):
         not inferred, downstream Tensorflow Transform component using the schema
         will parse input as tf.SparseTensor.
       exclude_splits: Names of splits that will not be taken into consideration
-        when auto-generating a schema. If exclude_splits is None or an empty
-        list, no splits will be excluded. Default behavior is generating a
-        schema based on 'eval' splits.
+        when auto-generating a schema. If exclude_splits is an empty list, no
+        splits will be excluded. Default behavior is excluding the 'eval' split.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -94,6 +92,8 @@ class SchemaGen(base_component.BaseComponent):
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
+    if exclude_splits is None:
+      exclude_splits = ['eval']
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(

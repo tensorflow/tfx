@@ -77,16 +77,15 @@ class Executor(base_executor.BaseExecutor):
       for split in artifact_utils.decode_split_names(artifact.split_names):
         if exclude_splits and split in exclude_splits:
           continue
+
+        absl.logging.info('Processing schema from statistics for split '
+                           '%s.' % split)
         stats_uri = io_utils.get_only_uri_in_dir(
             artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
         if not schema:
-          absl.logging.info('Infering schema from statistics for split '
-                            '{}.'.format(split))
           schema = tfdv.infer_schema(
               tfdv.load_statistics(stats_uri), infer_feature_shape)
         else:
-          absl.logging.info('Updating schema from statistics for split '
-                            '{}.'.format(split))
           schema = tfdv.update_schema(schema,
                                       tfdv.load_statistics(stats_uri),
                                       infer_feature_shape)

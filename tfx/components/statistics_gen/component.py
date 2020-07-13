@@ -74,8 +74,7 @@ class StatisticsGen(base_component.BaseComponent):
         and are therefore not usable.
       exclude_splits: Names of splits where statistics and sample should not
         be generated. If exclude_splits is None or an empty list, no splits
-        will be excluded. Default behavior is perform stats generation on all
-        splits.
+        will be excluded. Default behavior is excluding no splits.
       output: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
       input_data: Backwards compatibility alias for the `examples` argument.

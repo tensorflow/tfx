@@ -116,11 +116,12 @@ class Executor(base_executor.BaseExecutor):
       for split in artifact_utils.decode_split_names(artifact.split_names):
         if exclude_splits and split in exclude_splits:
           continue
+
         uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
         split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       for split, uri in split_uris:
-        absl.logging.info('Generating statistics for split {}.'.format(split))
+        absl.logging.info('Generating statistics for split %s.' % split)
         input_uri = io_utils.all_files_pattern(uri)
         input_tfxio = tf_example_record.TFExampleRecord(
             file_pattern=input_uri,
@@ -128,12 +129,11 @@ class Executor(base_executor.BaseExecutor):
         output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
-        data = p | 'TFXIORead[{}]'.format(split) >> input_tfxio.BeamSource()
+        data = p | 'TFXIORead[%s]' % split >> input_tfxio.BeamSource()
         _ = (
             data
-            | 'GenerateStatistics[{}]'.format(split) >>
+            | 'GenerateStatistics[{%s}]' % split >>
             stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput[{}]'.format(split) >>
+            | 'WriteStatsOutput[{%s}]' % split >>
             stats_api.WriteStatisticsToTFRecord(output_path))
-        absl.logging.info('Statistics for split {} written to {}.'.format(
-            split, output_uri))
+        absl.logging.info('Statistics for split %s written to %s.' % (split, output_uri))
