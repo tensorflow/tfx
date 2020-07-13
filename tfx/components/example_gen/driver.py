@@ -55,12 +55,14 @@ class Driver(base_driver.BaseDriver):
     logging.debug('Processing input %s.', input_base)
 
     # Note that this function updates the input_config.splits.pattern.
-    fingerprint, select_span = utils.calculate_splits_fingerprint_and_span(
-        input_base, input_config.splits)
+    fingerprint, select_span, select_version = utils.calculate_splits_fingerprint_span_and_version(
+                                                            input_base,
+                                                            input_config.splits)
 
     exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)
     exec_properties[utils.SPAN_PROPERTY_NAME] = select_span
+    exec_properties[utils.VERSION_PROPERTY_NAME] = select_version
     exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint
 
     return exec_properties
@@ -90,6 +92,9 @@ class Driver(base_driver.BaseDriver):
         exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
     example_artifact.set_string_custom_property(
         utils.SPAN_PROPERTY_NAME, exec_properties[utils.SPAN_PROPERTY_NAME])
+    example_artifact.set_string_custom_property(
+        utils.VERSION_PROPERTY_NAME, 
+        exec_properties[utils.VERSION_PROPERTY_NAME])
 
     base_driver.prepare_output_paths(example_artifact)
 

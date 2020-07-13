@@ -57,23 +57,25 @@ class DriverTest(tf.test.TestCase):
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='s1', pattern='span{SPAN}/split1/*'),
+                        name='s1',
+                        pattern='span{SPAN}/version{VERSION}/split1/*'),
                     example_gen_pb2.Input.Split(
-                        name='s2', pattern='span{SPAN}/split2/*')
+                        name='s2',
+                        pattern='span{SPAN}/version{VERSION}/split2/*')
                 ]),
                 preserving_proto_field_name=True),
     }
 
     # Test align of span number.
-    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
-                                'data')
-    io_utils.write_string_file(span1_split1, 'testing11')
-    span1_split2 = os.path.join(self._input_base_path, 'span01', 'split2',
-                                'data')
-    io_utils.write_string_file(span1_split2, 'testing12')
-    span2_split1 = os.path.join(self._input_base_path, 'span02', 'split1',
-                                'data')
-    io_utils.write_string_file(span2_split1, 'testing21')
+    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'version01',
+                                'split1', 'data')
+    io_utils.write_string_file(span1_v1_split1, 'testing11')
+    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'version01',
+                                'split2', 'data')
+    io_utils.write_string_file(span1_v1_split2, 'testing12')
+    span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'version01',
+                                'split1', 'data')
+    io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
@@ -81,13 +83,14 @@ class DriverTest(tf.test.TestCase):
                                                        None, None)
 
     # Test if latest span is selected when span aligns for each split.
-    span2_split2 = os.path.join(self._input_base_path, 'span02', 'split2',
-                                'data')
-    io_utils.write_string_file(span2_split2, 'testing22')
+    span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'version01',
+                                'split2', 'data')
+    io_utils.write_string_file(span2_v1_split2, 'testing22')
 
     self._example_gen_driver.resolve_exec_properties(self._exec_properties,
                                                      None, None)
     self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], '02')
+    self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], '01')
     self.assertRegex(
         self._exec_properties[utils.FINGERPRINT_PROPERTY_NAME],
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
@@ -100,11 +103,11 @@ class DriverTest(tf.test.TestCase):
         """
         splits {
           name: "s1"
-          pattern: "span02/split1/*"
+          pattern: "span02/version01/split1/*"
         }
         splits {
           name: "s2"
-          pattern: "span02/split2/*"
+          pattern: "span02/version01/split2/*"
         }""", updated_input_config)
 
   def testPrepareOutputArtifacts(self):
@@ -112,6 +115,7 @@ class DriverTest(tf.test.TestCase):
     output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
     exec_properties = {
         utils.SPAN_PROPERTY_NAME: '02',
+        utils.VERSION_PROPERTY_NAME: '01',
         utils.FINGERPRINT_PROPERTY_NAME: 'fp'
     }
 
@@ -131,6 +135,8 @@ class DriverTest(tf.test.TestCase):
         'fp')
     self.assertEqual(
         examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '02')
+    self.assertEqual(
+        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '01')
 
 
 if __name__ == '__main__':
