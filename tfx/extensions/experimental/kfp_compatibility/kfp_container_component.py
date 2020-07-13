@@ -21,6 +21,7 @@ from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_sp
 from tfx.types.experimental.simple_artifacts import File
 import yaml
 
+from google.protobuf import json_format
 
 def load_kfp_yaml_container_component(
     path: Text
