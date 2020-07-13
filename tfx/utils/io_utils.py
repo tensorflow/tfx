@@ -160,7 +160,11 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
 def read_string_file(file_name: Text) -> Text:
   """Reads a string from a file."""
   if not tf.io.gfile.exists(file_name):
-    raise FileNotFoundError("{} does not exist".format(file_name))
+    msg = "{} does not exist".format(file_name)
+    if six.PY2:
+      raise OSError(msg)
+    else:
+      raise FileNotFoundError(msg)  # pylint: disable=undefined-variable
   return file_io.read_file_to_string(file_name)
 
 class SchemaReader(object):

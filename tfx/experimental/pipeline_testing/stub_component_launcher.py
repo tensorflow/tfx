@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,12 +66,15 @@ def get_stub_launcher_class(
   Factory method returns a StubComponentLauncher class, which then can be
   supported by the pipeline.
   For example:
+    class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
+
     PipelineConfig(
         supported_launcher_classes=[
             stub_component_launcher.get_stub_launcher_class(
                 test_data_dir,
-                stubbed_component_ids,
-                stubbed_component_map)
+                stubbed_component_ids = ['CsvExampleGen'],
+                stubbed_component_map = {'Pusher':
+                                          MyPusherStubExecutor})
         ],
     )
   The method also sets the necessary class variables for the

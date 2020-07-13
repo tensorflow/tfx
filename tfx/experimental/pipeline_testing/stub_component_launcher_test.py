@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,10 +52,10 @@ class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
         custom_output_path = os.path.join(artifact.uri, "result.txt")
         io_utils.write_string_file(custom_output_path, "custom component")
 
-class StubLauncherTest(tf.test.TestCase):
+class StubComponentLauncherTest(tf.test.TestCase):
 
   def setUp(self):
-    super(StubLauncherTest, self).setUp()
+    super(StubComponentLauncherTest, self).setUp()
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
