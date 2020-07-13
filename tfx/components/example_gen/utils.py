@@ -215,7 +215,7 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
 
 def _property_search(split: example_gen_pb2.Input.Split, 
                      split_glob_pattern: Text, split_regex_pattern: Text,
-                     spec: Text) -> Text:
+                     property_name: Text, property_spec: Text) -> Text:
   """Search for most recently updated property with glob and regex patterns."""
   if re.compile(split_regex_pattern).groups != 1:
     raise ValueError('Regex should have only one group')
@@ -229,8 +229,8 @@ def _property_search(split: example_gen_pb2.Input.Split,
     try:
       property = int(result.group(1))
     except ValueError:
-      raise ValueError('Cannot not find span number from %s based on %s' %
-                       (file_path, split_regex_pattern))
+      raise ValueError('Cannot not find %s number from %s based on %s' %
+                       (property_name, file_path, split_regex_pattern))
     if latest_property is None or property >= int(latest_property):
       # Uses str instead of int because of zero padding digits.
       latest_property = result.group(1)
@@ -257,7 +257,7 @@ def _retrieve_latest_span(uri: Text,
                split_regex_pattern)
 
   return _property_search(split, split_glob_pattern, split_regex_pattern,
-                          SPAN_SPEC)
+                          SPAN_PROPERTY_NAME, SPAN_SPEC)
 
 
 def _retrieve_latest_version_from_span(uri: Text,
@@ -268,7 +268,7 @@ def _retrieve_latest_version_from_span(uri: Text,
   if split_pattern.count(VERSION_SPEC) != 1:
     raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
   
-  split_pattern = split_pattern.replace(SPAN_SPEC, span)
+  split_glob_pattern = split_pattern.replace(SPAN_SPEC, span)
   split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, span)
@@ -277,7 +277,7 @@ def _retrieve_latest_version_from_span(uri: Text,
                split_regex_pattern)
   
   return _property_search(split, split_glob_pattern, split_regex_pattern,
-                          VERSION_SPEC)
+                          VERSION_PROPERTY_NAME, VERSION_SPEC)
 
 
 def calculate_splits_fingerprint_span_and_version(
@@ -287,7 +287,11 @@ def calculate_splits_fingerprint_span_and_version(
 
   If a pattern has the {SPAN} placeholder, attempts to find an identical value
   across splits that results in all splits having the most recently updated
-  files. 
+  files.
+
+  If a pattern has the {VERSION} placeholder, attempts to, after finding span,
+  attempts to find an identical value accross splits that results in all splits
+  having the most recently updated files.
 
   Args:
     input_base_uri: The base path from which files will be searched
@@ -296,9 +300,11 @@ def calculate_splits_fingerprint_span_and_version(
       Span number.
 
   Returns:
-    A Tuple of [fingerprint, select_span], where select_span is either
-    the value matched with the {SPAN} placeholder, or None if the placeholder
-    wasn't specified.
+    A Tuple of [fingerprint, select_span, select_version], where select_span 
+    is either the value matched with the {SPAN} placeholder, or None if the 
+    placeholder wasn't specified, and where select_version is either the 
+    value matched with the {Version} placeholder, or None if the placeholder
+    wasn't specified
   """
 
   split_fingerprints = []
