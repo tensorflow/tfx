@@ -74,7 +74,8 @@ class StatisticsGen(base_component.BaseComponent):
         and are therefore not usable.
       exclude_splits: Names of splits where statistics and sample should not
         be generated. If exclude_splits is an empty list, no splits will be
-        excluded. Default behavior is excluding no splits.
+        excluded. Default behavior (when exclude_splits is set to None) is
+        excluding no splits.
       output: `ExampleStatisticsPath` channel for statistics of each split
         provided in the input examples.
       input_data: Backwards compatibility alias for the `examples` argument.
@@ -88,14 +89,18 @@ class StatisticsGen(base_component.BaseComponent):
           'been renamed to "examples" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       examples = input_data
+    if exclude_splits is None:
+      exclude_splits = []
+      absl.logging.info('Excluding no splits when exclude_splits is unset.')
     if not output:
       statistics_artifact = standard_artifacts.ExampleStatistics()
-      split_names = artifact_utils.get_single_instance(
-          list(examples.get())).split_names
-      for split in split_names:
-        if exclude_splits and split in exclude_splits:
-          split_names.remove(split)
-      statistics_artifact.split_names = split_names
+      examples_split_names = artifact_utils.decode_split_names(
+          artifact_utils.get_single_instance(
+              list(examples.get())).split_names)
+      split_names = [split for split in examples_split_names if
+                     split not in exclude_splits]
+      statistics_artifact.split_names = artifact_utils.encode_split_names(
+          split_names)
       output = types.Channel(
           type=standard_artifacts.ExampleStatistics,
           artifacts=[statistics_artifact])

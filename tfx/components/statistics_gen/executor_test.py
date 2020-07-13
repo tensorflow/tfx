@@ -64,7 +64,7 @@ class ExecutorTest(absltest.TestCase):
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
     stats.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval', 'test'])
+        ['train', 'eval'])
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }
@@ -116,7 +116,7 @@ class ExecutorTest(absltest.TestCase):
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
         executor.EXCLUDE_SPLITS_KEY:
-            None
+            []
     }
 
     # Create output dict.
@@ -163,7 +163,7 @@ class ExecutorTest(absltest.TestCase):
             tfdv.StatsOptions(label_feature='company',
                               schema=schema_pb2.Schema()).to_json(),
         executor.EXCLUDE_SPLITS_KEY:
-            None
+            []
     }
 
     # Create output dict.

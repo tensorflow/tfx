@@ -38,6 +38,9 @@ class ExampleValidatorTest(tf.test.TestCase):
         exclude_splits=exclude_splits)
     self.assertEqual(standard_artifacts.ExampleAnomalies.TYPE_NAME,
                      example_validator.outputs['anomalies'].type_name)
+    self.assertEqual(['eval'], artifact_utils.decode_split_names(
+        artifact_utils.get_single_instance(
+            list(example_validator.outputs['anomalies'].get())).split_names))
     self.assertEqual(example_validator.spec.exec_properties['exclude_splits'],
                      ['train'])
 
