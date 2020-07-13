@@ -50,6 +50,10 @@ FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
+# Key for the `version` custom property of output examples artifact.
+VERSION_PROPERTY_NAME = 'version'
+# Version spec used in split pattern.
+VERSION_SPEC = '{VERSION}'
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -209,6 +213,33 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   regex_pattern = regex_pattern.replace(')', '\\)')
   return regex_pattern
 
+def _property_search(split: example_gen_pb2.Input.Split, 
+                     split_glob_pattern: Text, split_regex_pattern: Text,
+                     spec: Text) -> Text:
+  """Search for most recently updated property with glob and regex patterns."""
+  if re.compile(split_regex_pattern).groups != 1:
+    raise ValueError('Regex should have only one group')
+
+  files = tf.io.gfile.glob(split_glob_pattern)
+  latest_property = None
+  for file_path in files:
+    result = re.search(split_regex_pattern, file_path)
+    if result is None:
+      raise ValueError('Glob pattern does not match regex pattern')
+    try:
+      property = int(result.group(1))
+    except ValueError:
+      raise ValueError('Cannot not find span number from %s based on %s' %
+                       (file_path, split_regex_pattern))
+    if latest_property is None or property >= int(latest_property):
+      # Uses str instead of int because of zero padding digits.
+      latest_property = result.group(1)
+
+  if latest_property is None:
+    raise ValueError('Cannot not find matching for split %s based on %s' %
+                     (split.name, split.pattern))
+  return latest_property
+
 
 def _retrieve_latest_span(uri: Text,
                           split: example_gen_pb2.Input.Split) -> Text:
@@ -216,34 +247,37 @@ def _retrieve_latest_span(uri: Text,
   split_pattern = os.path.join(uri, split.pattern)
   if split_pattern.count(SPAN_SPEC) != 1:
     raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
-
+  
   split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
+  split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, '(.*)')
+  split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '.*')
   logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
-  if re.compile(split_regex_pattern).groups != 1:
-    raise ValueError('Regex should have only one group')
 
-  files = tf.io.gfile.glob(split_glob_pattern)
-  latest_span = None
-  for file_path in files:
-    result = re.search(split_regex_pattern, file_path)
-    if result is None:
-      raise ValueError('Glob pattern does not match regex pattern')
-    try:
-      span = int(result.group(1))
-    except ValueError:
-      raise ValueError('Cannot not find span number from %s based on %s' %
-                       (file_path, split_regex_pattern))
-    if latest_span is None or span >= int(latest_span):
-      # Uses str instead of int because of zero padding digits.
-      latest_span = result.group(1)
+  return _property_search(split, split_glob_pattern, split_regex_pattern,
+                          SPAN_SPEC)
 
-  if latest_span is None:
-    raise ValueError('Cannot not find matching for split %s based on %s' %
-                     (split.name, split.pattern))
-  return latest_span
+
+def _retrieve_latest_version_from_span(uri: Text,
+                                       split: example_gen_pb2.Input.Split,
+                                       span: Text) -> Text:
+  """Retrieves the most recent version for a span a given split pattern."""
+  split_pattern = os.path.join(uri, split.pattern)
+  if split_pattern.count(VERSION_SPEC) != 1:
+    raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
+  
+  split_pattern = split_pattern.replace(SPAN_SPEC, span)
+  split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
+  split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, span)
+  split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '(.*)')
+  logging.info('Regex pattern for split %s: %s', split.name,
+               split_regex_pattern)
+  
+  return _property_search(split, split_glob_pattern, split_regex_pattern,
+                          VERSION_SPEC)
 
 
 def calculate_splits_fingerprint_and_span(
