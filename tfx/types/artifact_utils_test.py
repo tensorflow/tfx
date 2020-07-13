@@ -70,7 +70,7 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertEqual('/tmp/eval',
                      artifact_utils.get_split_uri(artifacts, 'eval'))
 
-   def testGetFromSplitsMultipleArtifacts(self):
+  def testGetFromSplitsMultipleArtifacts(self):
     """Test split retrieval utility on a multiple list of split Artifacts"""
     artifacts = [standard_artifacts.Examples(), standard_artifacts.Examples()]
     artifacts[0].uri = '/tmp1'
