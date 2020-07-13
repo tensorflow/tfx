@@ -129,12 +129,12 @@ class Executor(base_executor.BaseExecutor):
         output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
-        data = p | 'TFXIORead[%s]', split >> input_tfxio.BeamSource()
+        data = p | 'TFXIORead[%s]' % split >> input_tfxio.BeamSource()
         _ = (
             data
-            | 'GenerateStatistics[{%s}]', split >>
+            | 'GenerateStatistics[{%s}]' % split >>
             stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput[{%s}]', split >>
+            | 'WriteStatsOutput[{%s}]' % split >>
             stats_api.WriteStatisticsToTFRecord(output_path))
-        absl.logging.info('Statistics for split %s written to %s.', (split,
-            output_uri))
+        absl.logging.info('Statistics for split %s written to %s.', split,
+            output_uri)
