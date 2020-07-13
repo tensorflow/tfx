@@ -342,10 +342,13 @@ def run_fn(fn_args: executor.TrainerFnArgs):
 
   # TODO(b/160795287): Deprecate estimator based executor.
   # Copy serving and eval model from model_run to model artifact directory.
-  path_utils.copy_model(fn_args.model_run_dir,
-                        fn_args.serving_model_dir, 'serving')
-  path_utils.copy_model(fn_args.model_run_dir,
-                        fn_args.eval_model_dir, 'eval')
+  serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
+  absl.logging.info('Serving model copied to: %s.', fn_args.serving_model_dir)
+
+  eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
+  absl.logging.info('Eval model copied to: %s.', fn_args.eval_model_dir)
 
   absl.logging.info('Training complete. Model written to %s',
                     fn_args.serving_model_dir)

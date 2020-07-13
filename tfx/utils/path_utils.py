@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import absl
-from typing import Text
+from typing import Text, Callable
 
 import tensorflow as tf
 
@@ -108,19 +108,3 @@ def serving_model_path(output_uri: Text) -> Text:
   else:
     # If dir doesn't match estimator structure, use serving model root directly.
     return model_dir
-
-
-# TODO(b/160795287): Deprecate estimator based executor.
-def copy_model(working_dir: Text, dest: Text, tag: Text) -> None:
-  """Copy a specified model from working dir to specified destination."""
-  path_fn = None
-  if tag == 'serving':
-    path_fn = serving_model_path
-  elif tag == 'eval':
-    path_fn = eval_model_path
-  else:
-    raise ValueError('Invalid input tag: {}.'.format(tag))
-
-  source = path_fn(working_dir)
-  io_utils.copy_dir(source, dest)
-  absl.logging.info('%s model copied to: %s.', tag.capitalize(), dest)
