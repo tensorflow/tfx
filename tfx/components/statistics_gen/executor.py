@@ -137,4 +137,4 @@ class Executor(base_executor.BaseExecutor):
             | 'WriteStatsOutput[{%s}]' % split >>
             stats_api.WriteStatisticsToTFRecord(output_path))
         absl.logging.info('Statistics for split %s written to %s.', split,
-            output_uri)
+                          output_uri)

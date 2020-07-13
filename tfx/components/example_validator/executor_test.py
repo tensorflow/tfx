@@ -68,17 +68,16 @@ class ExecutorTest(tf.test.TestCase):
 
     # Check example_validator outputs.
     train_anomalies_path = os.path.join(validation_output.uri, 'train',
-        'anomalies.pbtxt')
-    self.assertTrue(tf.io.gfile.exists(train_anomalies_path))
-    train_anomalies = io_utils.parse_pbtxt_file(train_anomalies_path,
-        anomalies_pb2.Anomalies())
-    self.assertEqual(0, len(train_anomalies.anomaly_info))
-
+                                        'anomalies.pbtxt')
     eval_anomalies_path = os.path.join(validation_output.uri, 'eval',
-        'anomalies.pbtxt')
+                                       'anomalies.pbtxt')
+    self.assertTrue(tf.io.gfile.exists(train_anomalies_path))
     self.assertTrue(tf.io.gfile.exists(eval_anomalies_path))
+    train_anomalies = io_utils.parse_pbtxt_file(train_anomalies_path,
+                                                anomalies_pb2.Anomalies())
     eval_anomalies = io_utils.parse_pbtxt_file(eval_anomalies_path,
-        anomalies_pb2.Anomalies())
+                                               anomalies_pb2.Anomalies())
+    self.assertEqual(0, len(train_anomalies.anomaly_info))
     self.assertNotEqual(0, len(eval_anomalies.anomaly_info))
 
     # Assert 'test' split is excluded.
