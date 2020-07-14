@@ -78,15 +78,15 @@ class ExecutorTest(tf.test.TestCase):
         constants.MODEL_RUN_KEY: [self._model_run_exports]
     }
 
-    # Create exec properties skeleton.
+    # Create exec properties skeleton with custom splits.
     self._exec_properties = {
         'train_args':
             json_format.MessageToJson(
-                trainer_pb2.TrainArgs(num_steps=1000),
+                trainer_pb2.TrainArgs(splits='train', num_steps=1000),
                 preserving_proto_field_name=True),
         'eval_args':
             json_format.MessageToJson(
-                trainer_pb2.EvalArgs(num_steps=500),
+                trainer_pb2.EvalArgs(splits='eval', num_steps=500),
                 preserving_proto_field_name=True),
         'warm_starting':
             False,

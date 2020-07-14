@@ -40,8 +40,8 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.hyperparameters = channel_utils.as_channel(
         [standard_artifacts.HyperParameters()])
-    self.train_args = trainer_pb2.TrainArgs(num_steps=100)
-    self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
+    self.train_args = trainer_pb2.TrainArgs(splits='train', num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(splits='eval', num_steps=50)
 
   def _verify_outputs(self, trainer):
     self.assertEqual(standard_artifacts.Model.TYPE_NAME,

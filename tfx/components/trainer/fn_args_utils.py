@@ -58,17 +58,6 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text, Any],
                        working_dir: Text = None) -> FnArgs:
   """Get common args of training and tuning."""
-  train_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       'train'))
-  ]
-  eval_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       'eval'))
-  ]
-
   if input_dict.get(constants.TRANSFORM_GRAPH_KEY):
     transform_graph_path = artifact_utils.get_single_uri(
         input_dict[constants.TRANSFORM_GRAPH_KEY])
@@ -85,6 +74,24 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   eval_args = trainer_pb2.EvalArgs()
   json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
   json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
+
+  # Default behavior (when train_args.splits and eval_args.splits are not set)
+  # is train on ‘train’ splits and evaluate on ‘eval’ splits.
+  if not train_args.splits:
+    train_args.splits = 'train'
+  if not eval_args.splits:
+    eval_args.splits = 'eval'
+
+  train_files = [
+      io_utils.all_files_pattern(
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                       train_args.splits))
+  ]
+  eval_files = [
+      io_utils.all_files_pattern(
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                       eval_args.splits))
+  ]
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default
