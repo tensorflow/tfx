@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,55 +18,69 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
+from collections import defaultdict
+import os
+
+from absl import logging
 from absl import app
 from absl import flags
-from collections import defaultdict
-from distutils.dir_util import copy_tree
 from ml_metadata.proto import metadata_store_pb2
-import os
+
 from tfx.orchestration import metadata
+from tfx.utils import io_utils
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('record_dir', None, 'Path to record')
-flags.DEFINE_string('metadata_dir', None, 'Path to metadata')
-flags.DEFINE_string('run_id', None, 'Pipeline Run Id (default=latest run_id)')
+flags.DEFINE_string('output_dir', None, 'Path to record the pipeline outputs.')
+flags.DEFINE_string('metadata_db_uri', None, 'Path to metadata db.')
+flags.DEFINE_string('run_id', None, 'Pipeline Run Id (default=latest run_id).')
 
-flags.mark_flag_as_required('record_dir')
-flags.mark_flag_as_required('metadata_dir')
+flags.mark_flag_as_required('output_dir')
+flags.mark_flag_as_required('metadata_db_uri')
 
-def main(unused_argv):
-  run_id = FLAGS.run_id
-  metadata_dir = FLAGS.metadata_dir
-  metadata_config = metadata.sqlite_metadata_connection_config(metadata_dir)
+def get_paths(metadata_connection, execution_dict, output_dir, run_id):
+  events = [
+      x for x in metadata_connection.store.get_events_by_execution_ids(
+          [e.id for e in execution_dict[run_id]])
+      if x.type == metadata_store_pb2.Event.OUTPUT
+  ]
+  unique_artifact_ids = list({x.artifact_id for x in events})
 
-  with metadata.Metadata(metadata_config) as m:
-    execution_dict = defaultdict(list)
-    for execution in m.store.get_executions():
-      execution_run_id = execution.properties['run_id'].string_value
-      execution_dict[execution_run_id].append(execution)
+  src_uris = []
+  dest_uris = []
+  for artifact in metadata_connection.store.get_artifacts_by_id(unique_artifact_ids):
+    src_uris.append(artifact.uri)
+    component_id = \
+        artifact.custom_properties['producer_component'].string_value
+    name = artifact.custom_properties['name'].string_value
+    dest_uris.append(os.path.join(output_dir, component_id, name))
+  return zip(src_uris, dest_uris)
+
+def get_execution_dict(metadata_connection):
+  execution_dict = defaultdict(list)
+  for execution in metadata_connection.store.get_executions():
+    execution_run_id = execution.properties['run_id'].string_value
+    execution_dict[execution_run_id].append(execution)
+  return execution_dict
+
+def record_pipeline(output_dir, metadata_db_uri, run_id):
+  metadata_config = metadata.sqlite_metadata_connection_config(metadata_db_uri)
+  with metadata.Metadata(metadata_config) as metadata_connection:
+    execution_dict = get_execution_dict(metadata_connection)
     if run_id is None:
       run_id = max(execution_dict.keys()) # fetch the latest run_id
     elif run_id not in execution_dict:
       raise ValueError(
           "run_id {} is not recorded in the MLMD metadata".format(run_id))
-    events = [
-        x for x in m.store.get_events_by_execution_ids(
-            [e.id for e in execution_dict[run_id]])
-        if x.type == metadata_store_pb2.Event.OUTPUT
-    ]
-    unique_artifact_ids = list({x.artifact_id for x in events})
+    for src_uri, dest_uri in get_paths(metadata_connection, execution_dict, output_dir, run_id):
+      if not os.path.exists(src_uri):
+        raise FileNotFoundError("{} does not exist".format(src_uri))
+      os.makedirs(dest_uri, exist_ok=True)
+      io_utils.copy_dir(src_uri, dest_uri)
+    logging.info("Pipeline Recorded at %s", output_dir)
 
-    for artifact in m.store.get_artifacts_by_id(unique_artifact_ids):
-      src_dir = artifact.uri
-      component_id = \
-          artifact.custom_properties['producer_component'].string_value
-      name = artifact.custom_properties['name'].string_value
-      dest_dir = os.path.join(FLAGS.record_dir, component_id, name)
-      os.makedirs(dest_dir, exist_ok=True)
-      copy_tree(src_dir, dest_dir)
-    absl.logging.info("Pipeline Recorded at %s", FLAGS.record_dir)
+def main(unused_argv):
+  record_pipeline(FLAGS.output_dir, FLAGS.metadata_db_uri, FLAGS.run_id)
 
 if __name__ == '__main__':
   app.run(main)
