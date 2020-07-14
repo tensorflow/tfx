@@ -41,7 +41,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # This example assumes that the taxi data and taxi utility function are stored in
     # ~/tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline.
     # Feel free to customize this as needed.
-    taxi_root = os.path.dirname(__file__)
+    taxi_root = os.path.join(os.environ['HOME'], "tfx/tfx/examples/chicago_taxi_pipeline")
+    # taxi_root = os.path.dirname(__file__)
     self._data_root = os.path.join(taxi_root, 'data', 'simple')
     self._module_file = os.path.join(taxi_root, 'taxi_utils.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
@@ -57,7 +58,6 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     Execution outputs are saved in <component.id>/<key>/<execution.id>
     """
     component_path = os.path.join(self._pipeline_root, component)
-    print("component_path", component_path)
     self.assertTrue(tf.io.gfile.exists(component_path))
     outputs = tf.io.gfile.listdir(component_path)
     for output in outputs:
@@ -110,7 +110,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # All executions but Evaluator and Pusher are cached.
     # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator and Pusher.
+      # Artifact count is increased by 3 caused by Evaluator 
+      # (blessing and evaluation) and Pusher.
       self.assertLen(m.store.get_artifacts(), artifact_count + 3)
       artifact_count = len(m.store.get_artifacts())
       self.assertLen(m.store.get_executions(),
