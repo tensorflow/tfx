@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,19 +16,32 @@
 import os
 import absl
 import tensorflow as tf
+from typing import Dict, List, Text, Optional
 
+from tensorflow_model_analysis.view import SlicedMetrics
+from tensorflow_model_analysis.view import view_types
 from ml_metadata.proto import metadata_store_pb2
+
+from tfx import types
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
-def get_component_output_map(metadata_connection_config, pipeline_info):
-  """returns a dictionary of component_id: output"""
+def get_component_output_map(
+    metadata_connection_config:
+        Optional[metadata_store_pb2.ConnectionConfig],
+    pipeline_info: data_types.PipelineInfo
+    ) -> Dict[Text, Dict[Text, List[types.Artifact]]]:
+  """Returns a dictionary of component_id: output.
+  Args:
+    # TODO
+  Returns:
+  """
   output_map = {}
   with metadata.Metadata(metadata_connection_config) as m:
     context = m.get_pipeline_run_context(pipeline_info)
     for execution in m.store.get_executions_by_context(context.id):
       component_id = execution.properties['component_id'].string_value
-      # output_config = execution.properties['output_config'].string_value
       output_dict = {}
       for event in m.store.get_events_by_execution_ids([execution.id]):
         if event.type == metadata_store_pb2.Event.OUTPUT:
@@ -39,15 +53,19 @@ def get_component_output_map(metadata_connection_config, pipeline_info):
       output_map[component_id] = output_dict
   return output_map
 
-def _group_metric_by_slice(eval_result_metric):
+def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
+                          ) -> Dict[Text, Dict[Text, float]]:
+  """Returns slice map."""
   slice_map = {}
   for metric in eval_result_metric:
     slice_map[metric[0]] = {k: v['doubleValue'] \
                               for k, v in metric[1][''][''].items()}
   return slice_map
 
-def compare_relative_difference(value, expected_value, threshold):
-  """comparing relative difference to threshold"""
+def compare_relative_difference(value: float,
+                                expected_value: float,
+                                threshold: float) -> bool:
+  """comparing relative difference to threshold."""
   if value != expected_value:
     if expected_value:
       relative_diff = abs(value - expected_value)/abs(expected_value)
@@ -58,8 +76,10 @@ def compare_relative_difference(value, expected_value, threshold):
         return False
   return True
 
-def compare_eval_results(eval_result, expected_eval_result, threshold):
-  """comparing eval_results"""
+def compare_eval_results(eval_result: view_types.EvalResult,
+                         expected_eval_result: view_types.EvalResult,
+                         threshold: float) -> bool:
+  """Comparing eval_results."""
   eval_slicing_metrics = eval_result.slicing_metrics
   expected_slicing_metrics = expected_eval_result.slicing_metrics
   slice_map = _group_metric_by_slice(eval_slicing_metrics)
@@ -68,24 +88,27 @@ def compare_eval_results(eval_result, expected_eval_result, threshold):
     for metric_name, value in metric_dict.items():
       if (slice_item not in expected_slice_map) \
           or metric_name not in expected_slice_map[slice_item]:
-        print("metric_name", metric_name) # _diff?
+        print("metric_name", metric_name)
         continue
       expected_value = expected_slice_map[slice_item][metric_name]
       if not compare_relative_difference(value, expected_value, threshold):
         return False
   return True
 
-def compare_model_file_sizes(model_dir, expected_model_dir, threshold):
-  """comparing sizes of saved models"""
+def compare_model_file_sizes(model_dir: Text,
+                             expected_model_dir: Text,
+                             threshold: float) -> bool:
+  """Comparing sizes of saved models."""
   serving_model_dir = os.path.join(model_dir, 'serving_model_dir')
 
   for leaf_file in tf.io.gfile.listdir(serving_model_dir):
     if leaf_file.startswith('model.ckpt') or leaf_file == 'graph.pbtxt':
       file_name = os.path.join(serving_model_dir, leaf_file)
       expected_file_name = file_name.replace(model_dir, expected_model_dir)
-      if not compare_relative_difference(tf.io.gfile.GFile(file_name).size(),
-                                  tf.io.gfile.GFile(expected_file_name).size(),
-                                  threshold):
+      if not compare_relative_difference(
+          tf.io.gfile.GFile(file_name).size(),
+          tf.io.gfile.GFile(expected_file_name).size(),
+          threshold):
         return False
 
   eval_model_dir = os.path.join(model_dir, 'eval_model_dir')

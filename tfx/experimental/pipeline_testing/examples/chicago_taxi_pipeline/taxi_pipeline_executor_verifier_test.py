@@ -21,10 +21,12 @@ from __future__ import print_function
 import os
 
 import absl
+from typing import Dict, List, Text
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-
 from tensorflow_metadata.proto.v0 import anomalies_pb2
+
+from tfx import types
 from tfx.utils import io_utils
 from tfx.experimental.pipeline_testing.examples.chicago_taxi_pipeline import taxi_pipeline_verifier_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
@@ -53,7 +55,7 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
                                     'tfx/tfx/experimental/pipeline_testing/',
                                     'examples/chicago_taxi_pipeline/testdata')
 
-  def verify_trainer(self, output_dict):
+  def verify_trainer(self, output_dict: Dict[Text, List[types.Artifact]]):
     """compares two model files"""
     absl.logging.info("verifying Trainer")
     model_artifact = output_dict['model']
@@ -65,7 +67,7 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
         path,
         self._threshold))
 
-  def verify_evaluator(self, output_dict):
+  def verify_evaluator(self, output_dict: Dict[Text, List[types.Artifact]]):
     """compares two evaluation proto files"""
     absl.logging.info("verifying Evaluator")
     eval_result = tfma.load_eval_result(output_dict['evaluation'].uri)
@@ -77,7 +79,7 @@ class TaxiPipelineExecutorVerifierTest(tf.test.TestCase):
         expected_eval_result,
         self._threshold))
 
-  def verify_validator(self, output_dict):
+  def verify_validator(self, output_dict: Dict[Text, List[types.Artifact]]):
     """compares two validation proto files"""
     absl.logging.info("verifying Validator")
     anomalies = io_utils.parse_pbtxt_file(
