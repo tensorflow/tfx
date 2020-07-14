@@ -85,8 +85,26 @@ Each test can just be invoked with `python`. To invoke all unit tests:
 find . -name '*_test.py' | grep -v e2e | xargs -I {} python {}
 ```
 
-By default, only unit tests are executed. Tests marked as `end_to_end` will be
-skipped.
+## Runing pylint
+
+All new / changed code should pass [pylint](https://www.pylint.org/) linter.
+Use pylint to check lint errors before sending a pull request. TFX has a
+dedicated [pylintrc](https://github.com/tensorflow/tfx/blob/master/pylintrc).
+
+```shell
+pylint --rcfile <path_to_pylintrc> some_python.py
+```
+
+If your working directory is root of the tfx repository, you can omit `--rcfile`
+flag. pylintrc in current directory will be used by default.
+
+There are some existing issues especially with the lint tools. Googlers don't
+use external tools like pylint, and the lint rules are a little bit
+different. As a result, some existing code doesn't follow lint rule specified
+in `pylintrc` configuration file. So keep in mind that there might be existing
+issues, and you don't need to fix lint errors in existing code. But don't let
+them grow.
+
 
 # Check Pending Changes
 Each change being worked on internally will have a pending PR, which will be

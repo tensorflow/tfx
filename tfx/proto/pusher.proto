@@ -52,4 +52,3 @@ enum Versioning {
   // model is the same.
   UNIX_TIMESTAMP = 1;
 }
-

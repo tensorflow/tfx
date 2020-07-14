@@ -1,4 +1,4 @@
-# Github action definition for ci-test with PRs.
+# Github action definitions for ci-test with PRs.
 
 name: tfx-ci-test
 on:
@@ -19,11 +19,11 @@ jobs:
     - name: Select files to check
       run: |
         # Filter out non-python files.
-        cat $HOME/files_added.txt $HOME/files_modified.txt | tr ' ' '\n' | grep '\.py$' > py_files.txt || true
+        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.py$' > py_files.txt || true
         # Filter out non-test python files and e2e or integration tests.
         cat py_files.txt | grep '_test\.py$' | grep -v _e2e_ | grep -v integration | grep -v 'examples/' > py_test_files.txt || true
         # Select proto files.
-        cat $HOME/files_added.txt $HOME/files_modified.txt | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
+        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v1

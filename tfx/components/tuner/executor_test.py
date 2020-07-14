@@ -21,6 +21,7 @@ from __future__ import print_function
 import json
 import os
 from kerastuner import HyperParameters
+# TODO(b/160252429): Clearn up lint warining.
 import tensorflow as tf
 
 from google.protobuf import json_format
@@ -116,8 +117,9 @@ class ExecutorTest(tf.test.TestCase):
 
   def testTuneArgs(self):
     with self.assertRaises(ValueError):
-      self._exec_properties['tune_args'] = tuner_pb2.TuneArgs(
-          num_parallel_trials=3)
+      self._exec_properties['tune_args'] = json_format.MessageToJson(
+          tuner_pb2.TuneArgs(num_parallel_trials=3),
+          preserving_proto_field_name=True)
 
       tuner = executor.Executor(self._context)
       tuner.Do(

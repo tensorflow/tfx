@@ -37,7 +37,9 @@ EVAL_ARGS_KEY = 'eval_args'
 CUSTOM_CONFIG_KEY = 'custom_config'
 
 # Key for output model in executor output_dict.
-OUTPUT_MODEL_KEY = 'model'
+MODEL_KEY = 'model'
+# Key for log output in executor output_dict
+MODEL_RUN_KEY = 'model_run'
 
 # The name of environment variable to indicate distributed training cluster.
 TF_CONFIG_ENV = 'TF_CONFIG'
