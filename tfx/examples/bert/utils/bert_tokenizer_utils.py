@@ -185,3 +185,4 @@ class SpecialBertTokenizer():
     segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
 
     return word_id, input_mask, segment_id
+
