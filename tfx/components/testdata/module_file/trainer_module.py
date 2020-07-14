@@ -344,11 +344,9 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   # Copy serving and eval model from model_run to model artifact directory.
   serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
   io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
-  absl.logging.info('Serving model copied to: %s.', fn_args.serving_model_dir)
 
   eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
   io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
-  absl.logging.info('Eval model copied to: %s.', fn_args.eval_model_dir)
 
   absl.logging.info('Training complete. Model written to %s',
                     fn_args.serving_model_dir)
