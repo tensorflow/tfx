@@ -104,6 +104,8 @@ class ExampleValidatorSpec(ComponentSpec):
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
       'schema': ChannelParameter(type=standard_artifacts.Schema),
+      'training_statistics':
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
   }
   OUTPUTS = {
       'anomalies': ChannelParameter(type=standard_artifacts.ExampleAnomalies),

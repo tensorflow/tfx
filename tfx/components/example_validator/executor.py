@@ -36,6 +36,8 @@ from tfx.utils import io_utils
 STATISTICS_KEY = 'statistics'
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
+# Key for training_statistics in executor input_dict.
+TRAINING_STATISTICS_KEY = 'training_statistics'
 
 # Key for anomalies in executor output_dict.
 ANOMALIES_KEY = 'anomalies'
@@ -112,13 +114,18 @@ class Executor(base_executor.BaseExecutor):
           validation.
         - (Optional) labels.EXTERNAL_CONFIG_VERSION: the version number of
           external config file.
+        - (Optional) labels.TRAINING_STATISTICS: Training statistics to detect
+          skew against
       outputs: A dictionary of labeled output values, including:
           - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
     """
     schema = value_utils.GetSoleValue(inputs, labels.SCHEMA)
     stats = value_utils.GetSoleValue(inputs, labels.STATS)
+    serving_statistics = value_utils.GetSoleValue(
+        inputs, labels.TRAINING_STATISTICS, strict=False)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
-    anomalies = tfdv.validate_statistics(stats, schema)
+    anomalies = tfdv.validate_statistics(
+        stats, schema, serving_statistics=serving_statistics)
     io_utils.write_pbtxt_file(
         os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies)

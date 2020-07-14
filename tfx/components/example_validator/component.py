@@ -70,7 +70,8 @@ class ExampleValidator(base_component.BaseComponent):
                schema: types.Channel = None,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
-               instance_name: Optional[Text] = None):
+               instance_name: Optional[Text] = None,
+               training_statistics: Optional[types.Channel] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -84,6 +85,9 @@ class ExampleValidator(base_component.BaseComponent):
         ExampleValidator. Required only if multiple ExampleValidator components
         are declared in the same pipeline.  Either `stats` or `statistics` must
         be present in the arguments.
+      training_statistics: Optional Channel of type
+        `standard_artifacts.ExampleStatistics` used for training-serving
+        skew detection
     """
     if stats:
       absl.logging.warning(
@@ -95,6 +99,7 @@ class ExampleValidator(base_component.BaseComponent):
         type=standard_artifacts.ExampleAnomalies,
         artifacts=[standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(
-        statistics=statistics, schema=schema, anomalies=anomalies)
+        statistics=statistics, schema=schema, anomalies=anomalies,
+        training_statistics=training_statistics)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

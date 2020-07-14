@@ -29,45 +29,72 @@ from tfx.utils import io_utils
 
 class ExecutorTest(tf.test.TestCase):
 
-  def testDo(self):
-    source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+  def setUp(self):
+    super(ExecutorTest, self).setUp()
+    self.source_data_dir = os.path.join(
+        "../", os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    eval_stats_artifact = standard_artifacts.ExampleStatistics()
-    eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
-    eval_stats_artifact.split_names = artifact_utils.encode_split_names(
+    self.eval_stats_artifact = standard_artifacts.ExampleStatistics()
+    self.eval_stats_artifact.uri = os.path.join(
+        self.source_data_dir, 'statistics_gen')
+    self.eval_stats_artifact.split_names = artifact_utils.encode_split_names(
         ['eval'])
 
-    schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
+    self.schema_artifact = standard_artifacts.Schema()
+    self.schema_artifact.uri = os.path.join(self.source_data_dir, 'schema_gen')
 
-    output_data_dir = os.path.join(
+    self.output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    validation_output = standard_artifacts.ExampleAnomalies()
-    validation_output.uri = os.path.join(output_data_dir, 'output')
+    self.validation_output = standard_artifacts.ExampleAnomalies()
+    self.validation_output.uri = os.path.join(self.output_data_dir, 'output')
 
-    input_dict = {
-        executor.STATISTICS_KEY: [eval_stats_artifact],
-        executor.SCHEMA_KEY: [schema_artifact],
-    }
-    output_dict = {
-        executor.ANOMALIES_KEY: [validation_output],
-    }
-
-    exec_properties = {}
-
+  def _do(self):
     example_validator_executor = executor.Executor()
-    example_validator_executor.Do(input_dict, output_dict, exec_properties)
-    self.assertEqual(['anomalies.pbtxt'],
-                     tf.io.gfile.listdir(validation_output.uri))
+    example_validator_executor.Do(
+        self.input_dict, self.output_dict, self.exec_properties)
+    self.assertEqual(
+        ['anomalies.pbtxt'],
+        tf.io.gfile.listdir(self.validation_output.uri))
     anomalies = io_utils.parse_pbtxt_file(
-        os.path.join(validation_output.uri, 'anomalies.pbtxt'),
+        os.path.join(self.validation_output.uri, 'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())
     self.assertNotEqual(0, len(anomalies.anomaly_info))
+
+  def testDo(self):
+    self.input_dict = {
+        executor.STATISTICS_KEY: [self.eval_stats_artifact],
+        executor.SCHEMA_KEY: [self.schema_artifact],
+    }
+    self.output_dict = {
+        executor.ANOMALIES_KEY: [self.validation_output],
+    }
+
+    self.exec_properties = {}
+
+    self._do()
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
+  def testDoSkewDetection(self):
+    training_statistics = standard_artifacts.ExampleStatistics()
+    training_statistics.uri = os.path.join(
+        self.source_data_dir, 'trainer/current')
+    training_statistics.split_names = artifact_utils.encode_split_names(
+        ['eval_model_dir'])
+
+    self.input_dict = {
+        executor.STATISTICS_KEY: [self.eval_stats_artifact],
+        executor.SCHEMA_KEY: [self.schema_artifact],
+        executor.TRAINING_STATISTICS_KEY: [training_statistics],
+    }
+    self.output_dict = {
+        executor.ANOMALIES_KEY: [self.validation_output],
+    }
+
+    self.exec_properties = {}
+
+    self._do()
 
 if __name__ == '__main__':
   tf.test.main()
