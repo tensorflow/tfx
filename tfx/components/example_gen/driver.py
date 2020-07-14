@@ -55,7 +55,7 @@ class Driver(base_driver.BaseDriver):
     logging.debug('Processing input %s.', input_base)
 
     # Note that this function updates the input_config.splits.pattern.
-    fp, span, version = utils.calculate_splits_fingerprint_span_and_version(
+    fp, span, version = utils.calculate_splits_fp_span_and_version(
                                 input_base,
                                 input_config.splits)
 
