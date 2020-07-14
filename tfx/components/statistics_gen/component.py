@@ -91,7 +91,7 @@ class StatisticsGen(base_component.BaseComponent):
       examples = input_data
     if exclude_splits is None:
       exclude_splits = []
-      absl.logging.info('Excluding no splits when exclude_splits is unset.')
+      absl.logging.info('Excluding no splits when exclude_splits is not set.')
     if not output:
       statistics_artifact = standard_artifacts.ExampleStatistics()
       examples_split_names = artifact_utils.decode_split_names(

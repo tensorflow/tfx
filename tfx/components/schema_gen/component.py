@@ -79,7 +79,7 @@ class SchemaGen(base_component.BaseComponent):
       exclude_splits: Names of splits that will not be taken into consideration
         when auto-generating a schema. If exclude_splits is an empty list, no
         splits will be excluded. Default behavior (when exclude_splits is set
-        to None)  is excluding the 'eval' split.
+        to None) is excluding the 'eval' split.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -95,7 +95,8 @@ class SchemaGen(base_component.BaseComponent):
       statistics = stats
     if exclude_splits is None:
       exclude_splits = ['eval']
-      absl.logging.info('Excluding the eval split when exclude_splits is unset.')
+      absl.logging.info('Excluding the eval split when exclude_splits is not '
+                        'set.')
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(

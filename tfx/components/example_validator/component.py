@@ -100,7 +100,8 @@ class ExampleValidator(base_component.BaseComponent):
       statistics = stats
     if exclude_splits is None:
       exclude_splits = ['train']
-      absl.logging.info('Excluding the train split when exclude_splits is unset.')
+      absl.logging.info('Excluding the train split when exclude_splits is not '
+                        'set.')
     anomalies = output
     if not anomalies:
       anomalies_artifact = standard_artifacts.ExampleAnomalies()
