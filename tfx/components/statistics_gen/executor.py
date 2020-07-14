@@ -94,8 +94,8 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     stats_options = options.StatsOptions()
-    if exec_properties.get(STATS_OPTIONS_JSON_KEY):
-      stats_options_json = exec_properties[STATS_OPTIONS_JSON_KEY]
+    stats_options_json = exec_properties.get(STATS_OPTIONS_JSON_KEY)
+    if stats_options_json is not None:
       # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
       # json_utils
       stats_options = options.StatsOptions.from_json(stats_options_json)
@@ -111,10 +111,10 @@ class Executor(base_executor.BaseExecutor):
         stats_options.schema = schema
 
     split_uris = []
-    exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
+    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if exclude_splits and split in exclude_splits:
+        if split in exclude_splits:
           continue
 
         uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)

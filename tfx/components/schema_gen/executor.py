@@ -31,6 +31,8 @@ from tfx.utils import io_utils
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
 
+# Key for infer feature shape in executor exec_properties dict.
+INFER_FEATURE_SHAPE_KEY = 'infer_feature_shape'
 # Key for exclude splits in executor exec_properties dict.
 EXCLUDE_SPLITS_KEY = 'exclude_splits'
 
@@ -69,13 +71,13 @@ class Executor(base_executor.BaseExecutor):
     """
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
-    infer_feature_shape = exec_properties['infer_feature_shape']
-    exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
+    infer_feature_shape = exec_properties.get(INFER_FEATURE_SHAPE_KEY)
+    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
     # Only one schema is generated for all splits.
     schema = None
     for artifact in input_dict[STATISTICS_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if exclude_splits and split in exclude_splits:
+        if split in exclude_splits:
           continue
 
         absl.logging.info('Processing schema from statistics for split '

@@ -75,13 +75,13 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    exclude_splits = exec_properties[EXCLUDE_SPLITS_KEY]
+    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
     for artifact in input_dict[STATISTICS_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        if exclude_splits and split in exclude_splits:
+        if split in exclude_splits:
           continue
 
         absl.logging.info('Validating schema against the computed statistics '
