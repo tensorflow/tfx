@@ -49,12 +49,12 @@ class ExecutorTest(tf.test.TestCase):
     # Create input dict.
     e1 = standard_artifacts.Examples()
     e1.uri = os.path.join(self._source_data_dir,
-                                'transform/transformed_examples')
+                          'transform/transformed_examples')
     e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
     e2 = standard_artifacts.Examples()
     e2.uri = os.path.join(self._source_data_dir,
-                                'transform/transformed_examples')
+                          'transform/transformed_examples')
     e2.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
     self._single_artifact = [e1]
@@ -63,7 +63,7 @@ class ExecutorTest(tf.test.TestCase):
     transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
                                         'transform/transform_graph')
-    
+  
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen')
     previous_model = standard_artifacts.Model()
@@ -133,7 +133,6 @@ class ExecutorTest(tf.test.TestCase):
         exec_properties=self._exec_properties)
 
   def testGenericExecutor(self):
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
     self._exec_properties['module_file'] = self._module_file
     self._do(self._generic_trainer_executor)
     self._verify_model_exports()
@@ -142,7 +141,6 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoChief(self, mock_is_chief):
     mock_is_chief.return_value = True
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
@@ -151,21 +149,18 @@ class ExecutorTest(tf.test.TestCase):
   @mock.patch('tfx.components.trainer.executor._is_chief')
   def testDoNonChief(self, mock_is_chief):
     mock_is_chief.return_value = False
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_no_eval_model_exports()
     self._verify_model_run_exports()
 
   def testDoWithModuleFile(self):
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
     self._verify_model_run_exports()
 
   def testDoWithTrainerFn(self):
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
     self._exec_properties['trainer_fn'] = self._trainer_fn
     self._do(self._trainer_executor)
     self._verify_model_exports()
@@ -182,8 +177,6 @@ class ExecutorTest(tf.test.TestCase):
       self._do(self._trainer_executor)
 
   def testDoWithHyperParameters(self):
-    self._input_dict[constants.EXAMPLES_KEY] = self._single_artifact
-
     hp_artifact = standard_artifacts.HyperParameters()
     hp_artifact.uri = os.path.join(self._output_data_dir, 'hyperparameters/')
 
