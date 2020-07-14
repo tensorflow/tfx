@@ -241,43 +241,56 @@ def _property_search(split: example_gen_pb2.Input.Split,
   return latest_property
 
 
-def _retrieve_latest_span(uri: Text,
-                          split: example_gen_pb2.Input.Split) -> Text:
-  """Retrieves the most recently updated span matching a given split pattern."""
+def _retrieve_latest_span_version(uri: Text,
+                                      split: example_gen_pb2.Input.Split
+                                      ) -> Tuple[Text, Text]:
+  """Retrieves the most recent span and version for a given split pattern"""
   split_pattern = os.path.join(uri, split.pattern)
-  if split_pattern.count(SPAN_SPEC) != 1:
-    raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
+  
+  latest_span = '0'
+  latest_version = '0'
 
-  split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
-  split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
-  split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, '(.*)')
-  split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '.*')
-  logging.info('Regex pattern for split %s: %s', split.name,
-               split_regex_pattern)
+  if SPAN_SPEC in split.pattern:
+    if split.pattern.count(SPAN_SPEC) != 1:
+      raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
+    
+    split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
+    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+    logging.info('Span glob pattern for split %s: %s', split.name, 
+                 split_glob_pattern)
+    split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, 
+                                                                '(.*)')
+    split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '.*')
+    logging.info('Span regex pattern for split %s: %s', split.name,
+                split_regex_pattern)
 
-  return _property_search(split, split_glob_pattern, split_regex_pattern,
-                          SPAN_PROPERTY_NAME, SPAN_SPEC)
+    latest_span = _property_search(split, split_glob_pattern, 
+                                   split_regex_pattern, SPAN_PROPERTY_NAME,
+                                   SPAN_SPEC)
 
+  if VERSION_SPEC in split.pattern:
+    if split.pattern.count(VERSION_SPEC) != 1:
+      raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
 
-def _retrieve_latest_version_from_span(uri: Text,
-                                       split: example_gen_pb2.Input.Split,
-                                       span: Text) -> Text:
-  """Retrieves the most recent version for a span a given split pattern."""
-  split_pattern = os.path.join(uri, split.pattern)
-  if split_pattern.count(VERSION_SPEC) != 1:
-    raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
+    split_glob_pattern = split_pattern.replace(SPAN_SPEC, latest_span)
+    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+    logging.info('Version glob pattern for split %s: %s', split.name, 
+                 split_glob_pattern)
+    split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, 
+                                                                latest_span)
+    split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '(.*)')
+    logging.info('Version regex pattern for split %s: %s', split.name,
+                split_regex_pattern)
+    
+    latest_version = _property_search(split, split_glob_pattern, 
+                                      split_regex_pattern, 
+                                      VERSION_PROPERTY_NAME,
+                                      VERSION_SPEC)
 
-  split_glob_pattern = split_pattern.replace(SPAN_SPEC, span)
-  split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
-  split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, span)
-  split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '(.*)')
-  logging.info('Regex pattern for split %s: %s', split.name,
-               split_regex_pattern)
+  split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+  split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
-  return _property_search(split, split_glob_pattern, split_regex_pattern,
-                          VERSION_PROPERTY_NAME, VERSION_SPEC)
+  return latest_span, latest_version
 
 
 def calculate_splits_fp_span_and_version(
@@ -301,9 +314,9 @@ def calculate_splits_fp_span_and_version(
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
-    is either the value matched with the {SPAN} placeholder, or None if the
+    is either the value matched with the {SPAN} placeholder, or '0' if the
     placeholder wasn't specified, and where select_version is either the
-    value matched with the {Version} placeholder, or None if the placeholder
+    value matched with the {VERSION} placeholder, or '0' if the placeholder
     wasn't specified.
   """
 
@@ -312,38 +325,24 @@ def calculate_splits_fp_span_and_version(
   select_version = None
   # Calculate the fingerprint of files under input_base_uri.
   for split in splits:
-    logging.info('select span = %s', select_span)
-    # Find most recent span
-    if SPAN_SPEC in split.pattern:
-      latest_span = _retrieve_latest_span(input_base_uri, split)
-      logging.info('latest span = %s', latest_span)
-      if select_span is None:
-        select_span = latest_span
-      if select_span != latest_span:
-        raise ValueError(
-            'Latest span should be the same for each split: %s != %s' %
-            (select_span, latest_span))
-      split.pattern = split.pattern.replace(SPAN_SPEC, select_span)
-    if select_span is None:
-      select_span = '0'
+    logging.info('select span and version = (%s, %s)', select_span, 
+                  select_version)
+    # Find most recent span and version for this split.
+    latest_span, latest_version = _retrieve_latest_span_version(input_base_uri,
+                                                                split)
+    logging.info('latest span and version = (%s, %s)', latest_span, 
+                  latest_version)
+    if select_span == None and select_version == None:
+      select_span = latest_span
+      select_version = latest_version
 
-    # Given previous span, find most recent version
-    if VERSION_SPEC in split.pattern:
-      latest_version = _retrieve_latest_version_from_span(input_base_uri,
-                                                          split,
-                                                          select_span)
-      logging.info('latest version = %s', latest_version)
-      if select_version is None:
-        select_version = latest_version
-      if select_version != latest_version:
-        raise ValueError(
-            'Latest version should be the same for each split: %s != %s' %
-            (select_version, latest_version))
-      split.pattern = split.pattern.replace(VERSION_SPEC, select_version)
-    if select_version is None:
-      select_version = '0'
+    # Check if latest span and version are the same over all splits.
+    if select_span != latest_span:
+      raise ValueError('Latest span should be the same for each split.')
+    if select_version != latest_version:
+      raise ValueError('Latest version should be the same for each split.')
 
-    # Calculate fingerprint
+    # Calculate fingerprint.
     pattern = os.path.join(input_base_uri, split.pattern)
     split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
     split_fingerprints.append(split_fingerprint)
