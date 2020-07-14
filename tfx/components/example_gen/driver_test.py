@@ -68,13 +68,13 @@ class DriverTest(tf.test.TestCase):
 
     # Test align of span number.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                'split1', 'data')
+                                   'split1', 'data')
     io_utils.write_string_file(span1_v1_split1, 'testing11')
     span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                'split2', 'data')
+                                   'split2', 'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
     span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'version01',
-                                'split1', 'data')
+                                   'split1', 'data')
     io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     with self.assertRaisesRegexp(
