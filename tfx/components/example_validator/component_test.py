@@ -31,17 +31,17 @@ class ExampleValidatorTest(tf.test.TestCase):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval'])
-    exclude_splits = ['train']
+    exclude_splits = ['eval']
     example_validator = component.ExampleValidator(
         statistics=channel_utils.as_channel([statistics_artifact]),
         schema=channel_utils.as_channel([standard_artifacts.Schema()]),
         exclude_splits=exclude_splits)
     self.assertEqual(standard_artifacts.ExampleAnomalies.TYPE_NAME,
                      example_validator.outputs['anomalies'].type_name)
-    self.assertEqual('["eval"]', artifact_utils.get_single_instance(
+    self.assertEqual('["train"]', artifact_utils.get_single_instance(
         list(example_validator.outputs['anomalies'].get())).split_names)
     self.assertEqual(example_validator.spec.exec_properties['exclude_splits'],
-                     ['train'])
+                     ['eval'])
 
 
 if __name__ == '__main__':

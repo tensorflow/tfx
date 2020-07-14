@@ -81,9 +81,8 @@ class ExampleValidator(base_component.BaseComponent):
         ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
       exclude_splits: Names of splits that the example validator should not
-        validate. If exclude_splits is an empty list, no splits will be
-        excluded. Default behavior (when exclude_splits is set to None) is
-        excluding no splits.
+        validate. Default behavior (when exclude_splits is set to None)
+        is excluding no splits.
       output: Output `Schema` channel for schema result.
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
