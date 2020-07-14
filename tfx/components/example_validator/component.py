@@ -83,7 +83,7 @@ class ExampleValidator(base_component.BaseComponent):
       exclude_splits: Names of splits that the example validator should not
         validate. If exclude_splits is an empty list, no splits will be
         excluded. Default behavior (when exclude_splits is set to None) is
-        excluding the 'train' split.
+        excluding no splits.
       output: Output `Schema` channel for schema result.
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
@@ -99,9 +99,8 @@ class ExampleValidator(base_component.BaseComponent):
           'usage as support for this argument will be removed soon.')
       statistics = stats
     if exclude_splits is None:
-      exclude_splits = ['train']
-      absl.logging.info('Excluding the train split when exclude_splits is not '
-                        'set.')
+      exclude_splits = []
+      absl.logging.info('Excluding no splits when exclude_splits is not set.')
     anomalies = output
     if not anomalies:
       anomalies_artifact = standard_artifacts.ExampleAnomalies()
