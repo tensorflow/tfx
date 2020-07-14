@@ -69,8 +69,8 @@ class ComponentTest(tf.test.TestCase):
         transformed_examples=self.examples,
         transform_graph=self.transform_output,
         schema=self.schema,
-        train_args=dict(num_steps=n_steps),
-        eval_args=dict(num_steps=n_steps))
+        train_args=dict(splits='train', num_steps=n_steps),
+        eval_args=dict(splits='eval', num_steps=n_steps))
     self._verify_outputs(trainer)
     self.assertJsonEqual(
         str(module_file), str(trainer.spec.exec_properties['module_file']))

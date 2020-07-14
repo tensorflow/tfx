@@ -71,11 +71,11 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties = {
         'train_args':
             json_format.MessageToJson(
-                trainer_pb2.TrainArgs(num_steps=100),
+                trainer_pb2.TrainArgs(splits='train', num_steps=100),
                 preserving_proto_field_name=True),
         'eval_args':
             json_format.MessageToJson(
-                trainer_pb2.EvalArgs(num_steps=50),
+                trainer_pb2.EvalArgs(splits='train', num_steps=50),
                 preserving_proto_field_name=True),
     }
 
