@@ -18,17 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import List, Text
 import os
 import sys
-_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
-sys.path.append(_bert_utils_root)
-
-from typing import List, Text
-
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
-import tensorflow_addons as tfa
+
+_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
+sys.path.append(_bert_utils_root)
 from bert_tokenizer_utils import SpecialBertTokenizer
 from bert_models import BertForClassification
 
@@ -41,7 +39,7 @@ _EVAL_BATCH_SIZE = 32
 _FEATURE_KEY_A = 'stringA'
 _FEATURE_KEY_B = 'stringB'
 _LABEL_KEY = 'label'
-_MAX_LEN = 128 
+_MAX_LEN = 128
 _TRAIN_BATCH_SIZE = 32
 
 
@@ -71,7 +69,7 @@ def preprocessing_fn(inputs):
     Map from string feature key to transformed feature operations.
   """
   input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY_A],
-    inputs[_FEATURE_KEY_B])
+                                                      inputs[_FEATURE_KEY_B])
 
   return {
       'label': inputs['label'],

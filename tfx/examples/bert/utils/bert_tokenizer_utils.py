@@ -33,7 +33,7 @@ class SpecialBertTokenizer():
   def _find_special_tokens(self):
     """Find the special token ID's for [CLS] [PAD] [SEP]
 
-    Since each Bert model is trained on different vocaburary, it's important 
+    Since each Bert model is trained on different vocaburary, it's important
     to find the special token index pertaining to that model.
     Since in Transform, tensorflow_hub.KerasLayer loads a symbolic tensor, turn
     on eager mode to get the actual vocab_file location.
@@ -54,9 +54,9 @@ class SpecialBertTokenizer():
           self._cls_id = i
         elif line == _SEP:
           self._sep_id = i
-        if (self._pad_id is not None and 
-          self._cls_id is not None and 
-          self._sep_id is not None):
+        if (self._pad_id is not None and
+            self._cls_id is not None and
+            self._sep_id is not None):
           break
 
   def tokenize_single_sentence(
@@ -72,9 +72,9 @@ class SpecialBertTokenizer():
 
     Args:
       sequence: Tensor of shape [batch_size, 1].
-      max_len: The number of tokens after padding and truncating. 
+      max_len: The number of tokens after padding and truncating.
       add_cls: Whether to add CLS token at the front of each sequence.
-      add_sep: Whether to add SEP token at the end of each sequence. 
+      add_sep: Whether to add SEP token at the end of each sequence.
       add_pad: If not add_pad, would return ragged tensor instead of tensors
         input_mask and segment_id would be none.
 
@@ -94,7 +94,7 @@ class SpecialBertTokenizer():
           [tf.shape(sequence)[0], 1],
           tf.constant(self._cls_id, dtype=tf.int64))
 
-      word_id = tf.concat([cls_token, word_id], axis=1)
+      word_id = tf.concat([cls_token, word_id], 1)
 
     if add_sep:
       sep_token = tf.fill(
@@ -102,10 +102,10 @@ class SpecialBertTokenizer():
           tf.constant(self._sep_id, dtype=tf.int64))
 
       word_id = word_id[:, :max_len-1]
-      word_id = tf.concat([word_id, sep_token], axis=1)
+      word_id = tf.concat([word_id, sep_token], 1)
 
     if not add_pad:
-      return word_id, None, None    
+      return word_id, None, None
 
     word_id = word_id.to_tensor(
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
@@ -139,14 +139,14 @@ class SpecialBertTokenizer():
       sequence_a: [batch_size, 1]
       sequence_b: [batch_size, 1]
       max_len: The length of the concatenated tokenized sentences.
-    
+
     Returns:
       word_id: Tokenized sequences [batch_size, max_len].
       input_mask: Mask padded tokens [batch_size, max_len].
       segment_id: Distinguish multiple sequences [batch_size, max_len].
     """
     sentence_len = max_len // 2
-    word_id_a, _, _= self.tokenize_single_sentence(
+    word_id_a, _, _ = self.tokenize_single_sentence(
         sequence_a,
         sentence_len,
         True,
@@ -162,7 +162,7 @@ class SpecialBertTokenizer():
         False
     )
 
-    word_id = tf.concat([word_id_a, word_id_b], axis=1)
+    word_id = tf.concat([word_id_a, word_id_b], 1)
     word_id = word_id.to_tensor(
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
 
@@ -185,6 +185,3 @@ class SpecialBertTokenizer():
     segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
 
     return word_id, input_mask, segment_id
-
-
-    

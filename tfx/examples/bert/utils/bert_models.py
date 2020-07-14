@@ -54,7 +54,7 @@ def BertForClassification(
       fully_connected = keras.layers.Dense(
           i, activation=activation
       )(fully_connected)
-  
+
   fully_connected = keras.layers.Dropout(0.1)(fully_connected)
   output = keras.layers.Dense(2)(fully_connected)
   model = keras.Model(input_layers, output)
