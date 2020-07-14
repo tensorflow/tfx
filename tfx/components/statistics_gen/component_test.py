@@ -37,9 +37,8 @@ class ComponentTest(tf.test.TestCase):
         exclude_splits=exclude_splits)
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
-    self.assertEqual(['train'], artifact_utils.decode_split_names(
-        artifact_utils.get_single_instance(
-            list(statistics_gen.outputs['statistics'].get())).split_names))
+    self.assertEqual('["train"]', artifact_utils.get_single_instance(
+        list(statistics_gen.outputs['statistics'].get())).split_names)
     self.assertEqual(statistics_gen.spec.exec_properties['exclude_splits'],
                      ['eval'])
 
