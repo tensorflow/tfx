@@ -33,6 +33,7 @@
     thread safe.
 *   Stopped requiring `avro-python3`.
 
+
 ## Breaking changes
 
 ### For pipeline authors
