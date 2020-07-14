@@ -32,7 +32,7 @@ class ExecutorTest(tf.test.TestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
     self.source_data_dir = os.path.join(
-        "../", os.path.dirname(os.path.dirname(__file__)), 'testdata')
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
     self.eval_stats_artifact = standard_artifacts.ExampleStatistics()
     self.eval_stats_artifact.uri = os.path.join(
