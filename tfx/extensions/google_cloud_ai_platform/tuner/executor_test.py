@@ -131,8 +131,6 @@ class ExecutorTest(tf.test.TestCase):
         },
         mock.ANY)
 
-  # TODO(b/143900133): Add test coverage to _Executor class.
-
 
 if __name__ == '__main__':
   tf.test.main()

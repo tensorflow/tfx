@@ -71,6 +71,7 @@ accelerate community innovation and collaboration.
         and custom container.
     *   Created a new TFJS rewriter.
     *   Created a new infra validation component.
+    *   Created a new Tuner component for hyper parameter tuning.
     *   Introduced artifact types for primitive values and generic type.
 *   Q1 2020
     *   Released support for native Keras in TFX.

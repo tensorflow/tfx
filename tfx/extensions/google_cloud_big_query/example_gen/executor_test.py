@@ -31,11 +31,9 @@ from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
-_test_project = 'test-project'
-
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -48,7 +46,7 @@ def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pyl
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery2(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
       'i2': [2, 3],
@@ -88,9 +86,7 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
-              exec_properties={
-                  '_beam_pipeline_args': ['--project=' + _test_project],
-              },
+              exec_properties={'_beam_pipeline_args': []},
               split_pattern='SELECT i, i2, b, f, f2, s, s2 FROM `fake`'))
 
       feature = {}
