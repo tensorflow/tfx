@@ -83,14 +83,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the Bert classication on mrpc dataset pipline with TFX."""
-  input = example_gen_pb2.Input(splits=[
-                example_gen_pb2.Input.Split(name='train', pattern='train/*'),
-                example_gen_pb2.Input.Split(name='eval', pattern='validation/*')
-            ])
+  input_config = example_gen_pb2.Input(splits=[
+      example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+      example_gen_pb2.Input.Split(name='eval', pattern='validation/*')
+  ])
 
   examples = external_input(data_root)
   # Brings data in to the pipline
-  example_gen = CsvExampleGen(input=examples, input_config=input)
+  example_gen = CsvExampleGen(input=examples, input_config=input_config)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])

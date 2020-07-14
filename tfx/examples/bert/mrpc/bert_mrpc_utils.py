@@ -37,8 +37,8 @@ from bert_models import BertForClassification
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
 _EPOCHS = 1
 _EVAL_BATCH_SIZE = 32
-_FEATURE_KEY_A = 'stringA'
-_FEATURE_KEY_B = 'stringB'
+_FEATURE_KEY_A = 'sentence1'
+_FEATURE_KEY_B = 'sentence2'
 _LABEL_KEY = 'label'
 _MAX_LEN = 128
 _TRAIN_BATCH_SIZE = 32
