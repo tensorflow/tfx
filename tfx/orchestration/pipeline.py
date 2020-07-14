@@ -132,7 +132,7 @@ class Pipeline(object):
 
   @property
   def components(self):
-    """A list of logical components that are deduped and topological sorted."""
+    """A deterministic list of logical components that are deduped and topologically sorted."""
     return self._components
 
   @components.setter
@@ -175,6 +175,7 @@ class Pipeline(object):
     # Sorts component in topological order.
     while current_layer:
       next_layer = []
+      # Within each layer, components are sorted according to component ids.
       for component in sorted(current_layer, key=lambda c: c.id):
         self._components.append(component)
         visited.add(component)

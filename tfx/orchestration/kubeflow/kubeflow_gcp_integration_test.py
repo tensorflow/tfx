@@ -33,10 +33,12 @@ from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.proto import evaluator_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.utils import path_utils
 
@@ -100,6 +102,20 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         reimport=True,
         custom_properties={'blessed': 1})
 
+    ### Test data and modules for native Keras trainer and tuner.
+    self._iris_tuner_module = os.path.join(self._MODULE_ROOT, 'tuner_module.py')
+    self.iris_examples_importer = ImporterNode(
+        instance_name='iris_examples',
+        source_uri=os.path.join(self._testdata_root, 'iris', 'data'),
+        artifact_type=standard_artifacts.Examples,
+        reimport=True,
+        properties={'split_names': '["train", "eval"]'})
+    self.iris_schema_importer = ImporterNode(
+        instance_name='iris_schema',
+        source_uri=os.path.join(self._testdata_root, 'iris', 'schema'),
+        artifact_type=standard_artifacts.Schema,
+        reimport=True)
+
   def testCsvExampleGenOnDataflowRunner(self):
     """CsvExampleGen-only test pipeline on DataflowRunner invocation."""
     pipeline_name = 'kubeflow-csv-example-gen-dataflow-test-{}'.format(
@@ -148,7 +164,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     ])
     self._compile_and_run_pipeline(pipeline)
 
-  def getCaipTrainingArgs(self, pipeline_name):
+  def _getCaipTrainingArgs(self, pipeline_name):
     """Training args for Google CAIP Training."""
     return {
         'project': self._GCP_PROJECT_ID,
@@ -159,9 +175,9 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
         },
     }
 
-  def getCaipTrainingArgsForDistributed(self, pipeline_name):
+  def _getCaipTrainingArgsForDistributed(self, pipeline_name):
     """Training args to test that distributed training is behaves properly."""
-    args = self.getCaipTrainingArgs(pipeline_name)
+    args = self._getCaipTrainingArgs(pipeline_name)
     args.update({
         'scaleTier': 'CUSTOM',
         'masterType': 'large_model',
@@ -172,7 +188,7 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
     })
     return args
 
-  def assertNumberOfTrainerOutputIsOne(self, pipeline_name):
+  def _assertNumberOfTrainerOutputIsOne(self, pipeline_name):
     """Make sure the number of trainer executions and output models."""
     # There must be only one execution of Trainer.
     trainer_output_base_dir = os.path.join(
@@ -211,11 +227,11 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
             eval_args=trainer_pb2.EvalArgs(num_steps=5),
             custom_config={
                 ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                    self.getCaipTrainingArgsForDistributed(pipeline_name)
+                    self._getCaipTrainingArgsForDistributed(pipeline_name)
             })
     ])
     self._compile_and_run_pipeline(pipeline)
-    self.assertNumberOfTrainerOutputIsOne(pipeline_name)
+    self._assertNumberOfTrainerOutputIsOne(pipeline_name)
 
   def testAIPlatformGenericTrainerPipeline(self):
     """Trainer-only pipeline on AI Platform Training with GenericTrainer."""
@@ -237,17 +253,50 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
             eval_args=trainer_pb2.EvalArgs(num_steps=5),
             custom_config={
                 ai_platform_trainer_executor.TRAINING_ARGS_KEY:
-                    self.getCaipTrainingArgs(pipeline_name)
+                    self._getCaipTrainingArgs(pipeline_name)
             })
     ])
     self._compile_and_run_pipeline(pipeline)
-    self.assertNumberOfTrainerOutputIsOne(pipeline_name)
+    self._assertNumberOfTrainerOutputIsOne(pipeline_name)
   # TODO(b/150661783): Add tests using distributed training with a generic
   #  trainer.
   # TODO(b/150576271): Add Trainer tests using Keras models.
 
-  # TODO(muchida): Identify more model types to ensure models trained in TF 2
-  # works with CAIP prediction service.
+  def _assertHyperparametersAreWritten(self, pipeline_name):
+    """Make sure the tuner execution and hyperpearameters output."""
+    # There must be only one execution of Tuner.
+    tuner_output_base_dir = os.path.join(
+        self._pipeline_root(pipeline_name), 'Tuner', 'best_hyperparameters')
+    tuner_outputs = tf.io.gfile.listdir(tuner_output_base_dir)
+    self.assertEqual(1, len(tuner_outputs))
+
+    # There must be only one best hyperparameters.
+    best_hyperparameters_uri = os.path.join(tuner_output_base_dir,
+                                            tuner_outputs[0])
+    self.assertTrue(tf.io.gfile.exists(best_hyperparameters_uri))
+
+  def testAIPlatformDistributedTunerPipeline(self):
+    """Tuner-only pipeline for distributed Tuner flock on AIP Training."""
+    pipeline_name = 'kubeflow-aip-dist-tuner-test-{}'.format(
+        test_utils.random_id())
+    pipeline = self._create_pipeline(pipeline_name, [
+        self.iris_examples_importer, self.iris_schema_importer,
+        ai_platform_tuner_component.Tuner(
+            examples=self.iris_examples_importer.outputs['result'],
+            module_file=self._iris_tuner_module,
+            schema=self.iris_schema_importer.outputs['result'],
+            train_args=trainer_pb2.TrainArgs(num_steps=10),
+            eval_args=trainer_pb2.EvalArgs(num_steps=5),
+            # 3 worker parallel tuning.
+            tune_args=tuner_pb2.TuneArgs(num_parallel_trials=3),
+            custom_config={
+                ai_platform_trainer_executor.TRAINING_ARGS_KEY:
+                    self._getCaipTrainingArgs(pipeline_name)
+            })
+    ])
+    self._compile_and_run_pipeline(pipeline)
+    self._assertHyperparametersAreWritten(pipeline_name)
+
   def testAIPlatformPusherPipeline(self):
     """Pusher-only test pipeline to AI Platform Prediction."""
     pipeline_name_base = 'kubeflow-aip-pusher-test-{}'.format(
