@@ -71,11 +71,11 @@ class ExecutorTest(tf.test.TestCase):
     self._exec_properties = {
         'train_args':
             json_format.MessageToJson(
-                trainer_pb2.TrainArgs(splits='train', num_steps=100),
+                trainer_pb2.TrainArgs(num_steps=100),
                 preserving_proto_field_name=True),
         'eval_args':
             json_format.MessageToJson(
-                trainer_pb2.EvalArgs(splits='train', num_steps=50),
+                trainer_pb2.EvalArgs(num_steps=50),
                 preserving_proto_field_name=True),
     }
 
@@ -126,6 +126,24 @@ class ExecutorTest(tf.test.TestCase):
           input_dict=self._input_dict,
           output_dict=self._output_dict,
           exec_properties=self._exec_properties)
+
+  def testDoWithCustomSplits(self):
+    # Update exec properties skeleton with custom splits.
+    self._exec_properties['train_args'] = json_format.MessageToJson(
+        trainer_pb2.TrainArgs(splits=['train'], num_steps=1000),
+        preserving_proto_field_name=True)
+    self._exec_properties['eval_args'] = json_format.MessageToJson(
+        trainer_pb2.EvalArgs(splits=['eval'], num_steps=500),
+        preserving_proto_field_name=True)
+    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
+                                                        'module_file',
+                                                        'tuner_module.py')
+
+    tuner = executor.Executor(self._context)
+    tuner.Do(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties)
 
 
 if __name__ == '__main__':

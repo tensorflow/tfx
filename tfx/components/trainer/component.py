@@ -81,8 +81,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(splits='train', num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(splits='eval', num_steps=5000))
+      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
   ```
 
   ## Example 2: Training through a cloud provider
@@ -94,8 +94,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(splits='train', num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(splits='eval', num_steps=5000))
+      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
   ```
   """
 

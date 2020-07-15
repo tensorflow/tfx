@@ -34,8 +34,8 @@ class TunerTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.transform_graph = channel_utils.as_channel(
         [standard_artifacts.TransformGraph()])
-    self.train_args = trainer_pb2.TrainArgs(splits='train', num_steps=100)
-    self.eval_args = trainer_pb2.EvalArgs(splits='eval', num_steps=50)
+    self.train_args = trainer_pb2.TrainArgs(num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
     self.tune_args = tuner_pb2.TuneArgs(num_parallel_trials=3)
 
   def _verify_output(self, tuner):
@@ -80,6 +80,18 @@ class TunerTest(tf.test.TestCase):
           eval_args=self.eval_args,
           module_file='/path/to/module/file',
           tuner_fn='path.to.tuner_fn')
+
+  def testConstructWithCustomSplits(self):
+    self.train_args = trainer_pb2.TrainArgs(splits=['train'], num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(splits=['eval'], num_steps=50)
+    tuner = component.Tuner(
+        examples=self.examples,
+        schema=self.schema,
+        train_args=self.train_args,
+        eval_args=self.eval_args,
+        tune_args=self.tune_args,
+        module_file='/path/to/module/file')
+    self._verify_output(tuner)
 
 
 if __name__ == '__main__':

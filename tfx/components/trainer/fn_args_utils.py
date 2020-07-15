@@ -72,26 +72,30 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
 
   train_args = trainer_pb2.TrainArgs()
   eval_args = trainer_pb2.EvalArgs()
-  json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
-  json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
 
   # Default behavior (when train_args.splits and eval_args.splits are not set)
   # is train on ‘train’ splits and evaluate on ‘eval’ splits.
   if not train_args.splits:
-    train_args.splits = 'train'
+    train_args.splits.append('train')
   if not eval_args.splits:
-    eval_args.splits = 'eval'
+    eval_args.splits.append('eval')
 
-  train_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       train_args.splits))
-  ]
-  eval_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       eval_args.splits))
-  ]
+  json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
+  json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
+
+  train_files = []
+  for train_split in train_args.splits:
+    train_file = io_utils.all_files_pattern(
+        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                     train_split))
+    train_files.append(train_file)
+
+  eval_files = []
+  for eval_split in eval_args.splits:
+    eval_file = io_utils.all_files_pattern(
+        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                     eval_split))
+    eval_files.append(eval_file)
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default

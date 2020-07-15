@@ -78,15 +78,15 @@ class ExecutorTest(tf.test.TestCase):
         constants.MODEL_RUN_KEY: [self._model_run_exports]
     }
 
-    # Create exec properties skeleton with custom splits.
+    # Create exec properties skeleton.
     self._exec_properties = {
         'train_args':
             json_format.MessageToJson(
-                trainer_pb2.TrainArgs(splits='train', num_steps=1000),
+                trainer_pb2.TrainArgs(num_steps=1000),
                 preserving_proto_field_name=True),
         'eval_args':
             json_format.MessageToJson(
-                trainer_pb2.EvalArgs(splits='eval', num_steps=500),
+                trainer_pb2.EvalArgs(num_steps=500),
                 preserving_proto_field_name=True),
         'warm_starting':
             False,
@@ -181,6 +181,19 @@ class ExecutorTest(tf.test.TestCase):
 
     self._input_dict[constants.HYPERPARAMETERS_KEY] = [hp_artifact]
 
+    self._exec_properties['module_file'] = self._module_file
+    self._do(self._trainer_executor)
+    self._verify_model_exports()
+    self._verify_model_run_exports()
+
+  def testDoWithCustomSplits(self):
+    # Update exec properties skeleton with custom splits.
+    self._exec_properties['train_args'] = json_format.MessageToJson(
+        trainer_pb2.TrainArgs(splits=['train'], num_steps=1000),
+        preserving_proto_field_name=True)
+    self._exec_properties['eval_args'] = json_format.MessageToJson(
+        trainer_pb2.EvalArgs(splits=['eval'], num_steps=500),
+        preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)
     self._verify_model_exports()
