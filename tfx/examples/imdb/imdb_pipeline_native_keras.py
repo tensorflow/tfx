@@ -118,7 +118,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=900),
+      train_args=trainer_pb2.TrainArgs(num_steps=500),
       eval_args=trainer_pb2.EvalArgs(num_steps=200))
 
   # Get the latest blessed model for model validation.
@@ -141,7 +141,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                       value_threshold=tfma.GenericValueThreshold(
                           # Increase this threshold when training on complete
                           # dataset.
-                          lower_bound={'value': 0.1}),
+                          lower_bound={'value': 0.5}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-2})))

@@ -670,6 +670,8 @@ class Executor(base_executor.BaseExecutor):
         return ({d.dataset_key: d for d in self._analyze_data_list}, None)
 
       if self._input_cache_dir is not None:
+        absl.logging.info('Reading the following analysis cache entry keys: %s',
+                          cache_entry_keys)
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(

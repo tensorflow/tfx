@@ -103,7 +103,11 @@ def resolve_container_command_line(
     if isinstance(cmd_arg, str):
       return cmd_arg
     elif isinstance(cmd_arg, placeholders.InputValuePlaceholder):
-      return exec_properties[cmd_arg.input_name]
+      if cmd_arg.input_name in exec_properties:
+        return exec_properties[cmd_arg.input_name]
+      else:
+        artifact = input_dict[cmd_arg.input_name][0]
+        return str(artifact.value)
     elif isinstance(cmd_arg, placeholders.InputUriPlaceholder):
       return input_dict[cmd_arg.input_name][0].uri
     elif isinstance(cmd_arg, placeholders.OutputUriPlaceholder):

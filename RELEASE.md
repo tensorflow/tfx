@@ -16,6 +16,7 @@
     the execution and hyperparemeter optimization backend.
 *   Switched Transform component to use the new TFXIO code path. Users may
     potentially notice large performance improvement.
+*   Added support for primitive artifacts to InputValuePlaceholder.
 *   Added BaseStubExecutor and StubComponentLauncher for TFX Pipeline Test to 
     `tfx.experimental.pipeline_testing`. 
 *   Added TFX Pipeline Recorder to `tfx.experimental.pipeline_testing`.
@@ -31,7 +32,6 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
-*   Fixed the name of the usage telemetry when tfx templates are used.
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
 *   Stopped requiring `avro-python3`.
@@ -60,6 +60,28 @@
 *   Changed GetInputSourceToExamplePTransform interface by removing input_dict.
     This is a breaking change, custom ExampleGens need to follow the interface
     change.
+
+### For component authors
+
+## Documentation updates
+
+## Deprecations
+
+# Version 0.22.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Depends on `tensorflow-data-validation>=0.22.2,<0.23.0`.
+*   Depends on `tensorflow-model-analysis>=0.22.2,<0.23.0`.
+*   Depends on `tfx-bsl>=0.22.1,<0.23.0`.
+*   Depends on `ml-metadata>=0.22.1,<0.23.0`.
+
+## Breaking changes
+
+### For pipeline authors
 
 ### For component authors
 
