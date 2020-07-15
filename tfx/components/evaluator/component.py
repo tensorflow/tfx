@@ -83,6 +83,7 @@ class Evaluator(base_component.BaseComponent):
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
+      example_path_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
@@ -108,8 +109,11 @@ class Evaluator(base_component.BaseComponent):
       fairness_indicator_thresholds: Optional list of float (or
         RuntimeParameter) threshold values for use with TFMA fairness
           indicators. Experimental functionality: this interface and
-          functionality may change at any time. TODO(b/142653905): add a link to
-          additional documentation for TFMA fairness indicators here.
+          functionality may change at any time. TODO(b/142653905): add a link
+          to additional documentation for TFMA fairness indicators here.
+      examples_path_splits: Names of splits on which the metrics are computed.
+        Default behavior (when examples_path_splits is set to None) is 
+        computing metrics on the 'eval' splits.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
@@ -142,6 +146,11 @@ class Evaluator(base_component.BaseComponent):
       absl.logging.warning('feature_slicing_spec is deprecated, please use '
                            'eval_config instead.')
 
+    if not examples_path_splits:
+      examples_path_splits = ['eval']
+      absl.logging.info("Computing metrics on the 'eval' splits when "
+                        "examples_path_splits is not set.")
+
     blessing = blessing or types.Channel(
         type=standard_artifacts.ModelBlessing,
         artifacts=[standard_artifacts.ModelBlessing()])
@@ -155,6 +164,7 @@ class Evaluator(base_component.BaseComponent):
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
+        example_path_splits=example_path_splits,
         evaluation=evaluation,
         eval_config=eval_config,
         blessing=blessing,

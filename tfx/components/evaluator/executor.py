@@ -82,6 +82,9 @@ class Executor(base_executor.BaseExecutor):
         - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
           instance, providing the way to slice the data. Deprecated, use
           eval_config.slicing_specs instead.
+        - examples_path_splits: Names of splits on which the metrics are computed.
+          Default behavior (when examples_path_splits is set to None) is 
+          computing metrics on the 'eval' splits.
 
     Returns:
       None
