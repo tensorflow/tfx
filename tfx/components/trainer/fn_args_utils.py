@@ -21,7 +21,7 @@ from __future__ import print_function
 from typing import Any, Dict, List, Text, NamedTuple
 
 from google.protobuf import json_format
-import absl
+
 from tfx import types
 from tfx.components.trainer import constants
 from tfx.proto import trainer_pb2
@@ -75,8 +75,8 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
   json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
 
-  # Default behavior is train on ‘train’ splits (when train_args splits are
-  # not set) and evaluate on 'eval' splits (when eval_args splits are not set).
+  # Default behavior is train on ‘train’ splits (when splits is empty in train
+  # args) and evaluate on 'eval' splits (when splits is empty in eval args).
   if not train_args.splits:
     train_args.splits.append('train')
   if not eval_args.splits:
