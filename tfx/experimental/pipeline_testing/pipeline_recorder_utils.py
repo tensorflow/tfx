@@ -104,8 +104,7 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Text, run_id: Text
     absl.logging.info("Pipeline Recorded at %s", output_dir)
 
 def record_kfp_pipeline(
-    connection_config: Union[metadata_store_pb2.ConnectionConfig,
-                             metadata_store_pb2.MetadataStoreClientConfig],
+    connection_config: metadata_store_pb2.MetadataStoreClientConfig,
     run_id: Text, output_dir: Text) -> None:
   """Record KFP pipeline run with run_id to output_dir.
 
