@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import absl
 from typing import Text
 import tensorflow as tf
 from google.protobuf import json_format
@@ -189,10 +188,10 @@ class ComponentTest(tf.test.TestCase):
         eval_args=self.eval_args)
     self._verify_outputs(trainer)
     self.assertEqual(['train'], json_format.Parse(
-        trainer.spec.exec_properties['train_args'], 
+        trainer.spec.exec_properties['train_args'],
         trainer_pb2.TrainArgs()).splits)
     self.assertEqual(['eval'], json_format.Parse(
-        trainer.spec.exec_properties['eval_args'], 
+        trainer.spec.exec_properties['eval_args'],
         trainer_pb2.EvalArgs()).splits)
 
 
