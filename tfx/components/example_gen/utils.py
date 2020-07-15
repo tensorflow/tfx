@@ -295,7 +295,7 @@ def _retrieve_latest_span_version(uri: Text,
 
 def calculate_splits_fp_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Optional[Text], Optional[Text]]:
+) -> Tuple[Text, Text, Text]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder, attempts to find an identical
