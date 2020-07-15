@@ -178,8 +178,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
-        - examples: Examples used for training, support custom splits. If not
-           specified, include 'train' and 'eval' splits by default.
+        - examples: Examples used for training, must include 'train' and 'eval'
+          if custom splits is not specified in train_args and eval_args.
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
@@ -248,8 +248,8 @@ class Executor(GenericExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
-        - examples: Examples used for training, support custom splits. If not
-           specified, include 'train' and 'eval' splits by default.
+        - examples: Examples used for training, must include 'train' and 'eval'
+          if custom splits is not specified in train_args and eval_args.
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.

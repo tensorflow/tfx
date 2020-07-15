@@ -145,6 +145,8 @@ class ExecutorTest(tf.test.TestCase):
         output_dict=self._output_dict,
         exec_properties=self._exec_properties)
 
+    self._verify_output()
+
 
 if __name__ == '__main__':
   tf.test.main()
