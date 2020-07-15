@@ -18,13 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Text
 
 import apache_beam as beam
+from apache_beam.io.gcp.bigquery import ReadFromBigQuery
 import tensorflow as tf
 
-from google.cloud import bigquery
 from tfx.components.example_gen import base_example_gen_executor
+from tfx.utils import telemetry_utils
+from google.cloud import bigquery
 
 
 class _BigQueryConverter(object):
@@ -75,14 +77,12 @@ class _BigQueryConverter(object):
 def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
     pipeline: beam.Pipeline,
     query: Text,
-    project: Optional[Text],
     use_bigquery_source: bool = False) -> beam.pvalue.PCollection:
   """Read from BigQuery.
 
   Args:
     pipeline: beam pipeline.
     query: a BigQuery sql string.
-    project: The ID of the project running this job.
     use_bigquery_source: Whether to use BigQuerySource instead of experimental
       `ReadFromBigQuery` PTransform.
 
@@ -95,15 +95,12 @@ def _ReadFromBigQueryImpl(  # pylint: disable=invalid-name
     return (pipeline
             | 'ReadFromBigQuerySource' >> beam.io.Read(
                 beam.io.BigQuerySource(query=query, use_standard_sql=True)))
-  # TODO(b/155441037): Change this to top level import after Beam version is
-  # upgraded to 2.22.
-  try:
-    from apache_beam.io.gcp.bigquery import ReadFromBigQuery  # pylint: disable=import-outside-toplevel,g-import-not-at-top
-  except ImportError:
-    from apache_beam.io.gcp.bigquery import _ReadFromBigQuery as ReadFromBigQuery  # pylint: disable=import-outside-toplevel,g-import-not-at-top
+
   return (pipeline
           | 'ReadFromBigQuery' >> ReadFromBigQuery(
-              query=query, use_standard_sql=True, project=project))
+              query=query,
+              use_standard_sql=True,
+              bigquery_job_labels=telemetry_utils.get_labels_dict()))
 
 
 @beam.ptransform_fn
@@ -127,11 +124,10 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
 
   # TODO(b/155441037): Clean up the usage of `runner` flag
   # once ReadFromBigQuery performance on dataflow runner is on par
-  # with BigQuerySource, and clean up `project` once beam is upgraded to 2.22.
+  # with BigQuerySource.
   beam_pipeline_args = exec_properties['_beam_pipeline_args']
   pipeline_options = beam.options.pipeline_options.PipelineOptions(
       beam_pipeline_args)
-  project = pipeline_options.get_all_options().get('project')
   use_dataflow_runner = pipeline_options.get_all_options().get('runner') in [
       'dataflow', 'DataflowRunner'
   ]
@@ -139,7 +135,6 @@ def _BigQueryToExample(  # pylint: disable=invalid-name
   return (pipeline
           | 'QueryTable' >> _ReadFromBigQueryImpl(  # pylint: disable=no-value-for-parameter
               query=split_pattern,
-              project=project,
               use_bigquery_source=use_dataflow_runner)
           | 'ToTFExample' >> beam.Map(converter.RowToExample))
 

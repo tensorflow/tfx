@@ -12,9 +12,13 @@
     *   ImportExampleGen now supports `tf.train.SequenceExample` importing.
     *   base_example_gen_executor now supports `tf.train.SequenceExample` as
         output payload format, which can be utilized by custom ExampleGen.
+*   Added Tuner component and its integration with Google Cloud Platform as
+    the execution and hyperparemeter optimization backend.
+*   Switched Transform component to use the new TFXIO code path. Users may
+    potentially notice large performance improvement.
+*   Added support for primitive artifacts to InputValuePlaceholder.
 
 ## Bug fixes and other changes
-*   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
 *   Relaxed the rule that output artifact uris must be newly created. This is a
     temporary workaround to make retry work. We will introduce a more
@@ -25,10 +29,9 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
-*   Fixed the name of the usage telemetry when tfx templates are used.
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
-*   Depends on `avro-python3>=1.8.1,<1.9.2` for Python3.5 + MacOS.
+*   Stopped requiring `avro-python3`.
 
 ## Breaking changes
 
@@ -54,6 +57,28 @@
 *   Changed GetInputSourceToExamplePTransform interface by removing input_dict.
     This is a breaking change, custom ExampleGens need to follow the interface
     change.
+
+### For component authors
+
+## Documentation updates
+
+## Deprecations
+
+# Version 0.22.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Depends on `tensorflow-data-validation>=0.22.2,<0.23.0`.
+*   Depends on `tensorflow-model-analysis>=0.22.2,<0.23.0`.
+*   Depends on `tfx-bsl>=0.22.1,<0.23.0`.
+*   Depends on `ml-metadata>=0.22.1,<0.23.0`.
+
+## Breaking changes
+
+### For pipeline authors
 
 ### For component authors
 

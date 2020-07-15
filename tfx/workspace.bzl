@@ -28,7 +28,7 @@ def tf_extended_workspace():
     # Fetch MLMD repo from GitHub.
     git_repository(
         name = "com_github_google_ml_metadata",
-        tag = "v0.21.2",
+        tag = "v0.22.1",
         remote = "https://github.com/google/ml-metadata.git",
     )
     # LINT.ThenChange(//tfx/dependencies.py)
