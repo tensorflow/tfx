@@ -34,8 +34,11 @@ def get_component_output_map(
     ) -> Dict[Text, Dict[Text, List[types.Artifact]]]:
   """Returns a dictionary of component_id: output.
   Args:
-    # TODO
+    metadata_connection_config:
+    pipeline_info: pipeline info of 
+
   Returns:
+    a dictionary of component_id: output.
   """
   output_map = {}
   with metadata.Metadata(metadata_connection_config) as m:
@@ -55,7 +58,13 @@ def get_component_output_map(
 
 def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
                           ) -> Dict[Text, Dict[Text, float]]:
-  """Returns slice map."""
+  """Returns a slice map.
+  Args:
+    eval_result_metric: list of sliced metrics.
+
+  Returns:
+    a slice map that holds a dictionary of metric and value for slices
+  """
   slice_map = {}
   for metric in eval_result_metric:
     slice_map[metric[0]] = {k: v['doubleValue'] \
@@ -65,7 +74,16 @@ def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
 def compare_relative_difference(value: float,
                                 expected_value: float,
                                 threshold: float) -> bool:
-  """comparing relative difference to threshold."""
+  """Compares relative difference between value and expected_value to 
+    a threshold.
+  Args:
+    value:
+    expected_value:
+    threshold:
+
+  Returns:
+    a boolean whether 
+  """
   if value != expected_value:
     if expected_value:
       relative_diff = abs(value - expected_value)/abs(expected_value)
@@ -79,7 +97,15 @@ def compare_relative_difference(value: float,
 def compare_eval_results(eval_result: view_types.EvalResult,
                          expected_eval_result: view_types.EvalResult,
                          threshold: float) -> bool:
-  """Comparing eval_results."""
+  """Compares two EvalResult.
+  Args:
+    eval_result:
+    expected_eval_result:
+    threshold:
+
+  Returns:
+    boolean whether the eval result values are similar within a threshold.
+  """
   eval_slicing_metrics = eval_result.slicing_metrics
   expected_slicing_metrics = expected_eval_result.slicing_metrics
   slice_map = _group_metric_by_slice(eval_slicing_metrics)
@@ -98,7 +124,16 @@ def compare_eval_results(eval_result: view_types.EvalResult,
 def compare_model_file_sizes(model_dir: Text,
                              expected_model_dir: Text,
                              threshold: float) -> bool:
-  """Comparing sizes of saved models."""
+  """Comparing sizes of output and recorded model.
+  
+  Args:
+    model_dir: directory to model
+    expected_model_dir: directory to saved model
+    threshold: a float between 0 and 1
+
+  Returns:
+    returns whether the sizes of models are within the threshold
+  """
   serving_model_dir = os.path.join(model_dir, 'serving_model_dir')
 
   for leaf_file in tf.io.gfile.listdir(serving_model_dir):
