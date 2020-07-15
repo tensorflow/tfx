@@ -285,8 +285,8 @@ class Artifact(json_utils.Jsonable):
     self._artifact.type_id = artifact_type.id
 
   def __repr__(self):
-    return 'Artifact(type_name: {}, uri: {}, id: {})'.format(
-        self._artifact_type.name, self.uri, str(self.id))
+    return 'Artifact(artifact: {}, artifact_type: {})'.format(
+        str(self._artifact), str(self._artifact_type))
 
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
