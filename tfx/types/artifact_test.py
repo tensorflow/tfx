@@ -27,10 +27,11 @@ from typing import Text
 import absl
 import mock
 import tensorflow as tf
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
 from tfx.utils import json_utils
+
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 
 
 class _MyArtifact(artifact.Artifact):
@@ -154,8 +155,54 @@ class ArtifactTest(tf.test.TestCase):
         'string_value',
         instance.mlmd_artifact.custom_properties['string_key'].string_value)
 
-    self.assertEqual('Artifact(type_name: MyTypeName, uri: /tmp/uri2, id: 1)',
-                     str(instance))
+    self.assertEqual(
+        'Artifact(artifact: id: 1\n'
+        'type_id: 2\n'
+        'uri: "/tmp/uri2"\n'
+        'custom_properties {\n'
+        '  key: "int_key"\n'
+        '  value {\n'
+        '    int_value: 20\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "state"\n'
+        '  value {\n'
+        '    string_value: "deleted"\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "string_key"\n'
+        '  value {\n'
+        '    string_value: "string_value"\n'
+        '  }\n'
+        '}\n'
+        ', artifact_type: name: "MyTypeName"\n'
+        'properties {\n'
+        '  key: "float1"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "float2"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int1"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int2"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string1"\n'
+        '  value: STRING\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string2"\n'
+        '  value: STRING\n'
+        '}\n'
+        ')', str(instance))
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
