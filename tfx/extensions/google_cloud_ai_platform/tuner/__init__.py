@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,31 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.transform.executor.
-
-With the TFXIO code path being exercised.
-"""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import os
-
-import tensorflow as tf
-
-from tfx.components.transform import executor_test
-
-
-class ExecutorWithTFXIOTest(executor_test.ExecutorTest):
-
-  def _use_tfxio(self):
-    return True
-
-  def _get_source_data_dir(self):
-    return os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-
-
-if __name__ == '__main__':
-  tf.test.main()

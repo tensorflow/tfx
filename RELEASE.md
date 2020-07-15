@@ -6,12 +6,21 @@
 *   Added the ConcatPlaceholder to tfx.dsl.component.experimental.placeholders.
 *   Changed Span information as a property of ExampleGen's output artifact.
     Deprecated ExampleGen input (external) artifact.
+*   Added ModelRun artifact for Trainer for storing training related files,
+    e.g., Tensorboard logs.
+*   Added support for `tf.train.SequenceExample` in ExampleGen:
+    *   ImportExampleGen now supports `tf.train.SequenceExample` importing.
+    *   base_example_gen_executor now supports `tf.train.SequenceExample` as
+        output payload format, which can be utilized by custom ExampleGen.
+*   Added Tuner component and its integration with Google Cloud Platform as
+    the execution and hyperparemeter optimization backend.
+*   Switched Transform component to use the new TFXIO code path. Users may
+    potentially notice large performance improvement.
 *   Added BaseStubExecutor and StubComponentLauncher for TFX Pipeline Test to 
     `tfx.experimental.pipeline_testing`. 
 *   Added TFX Pipeline Recorder to `tfx.experimental.pipeline_testing`.
 
 ## Bug fixes and other changes
-*   Added Tuner component, which is still work in progress.
 *   Added Tuner component to Iris e2e example.
 *   Relaxed the rule that output artifact uris must be newly created. This is a
     temporary workaround to make retry work. We will introduce a more
@@ -22,6 +31,10 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Used thread local storage for `label_utils.scoped_labels()` to make it
+    thread safe.
+*   Stopped requiring `avro-python3`.
 
 ## Breaking changes
 
@@ -99,6 +112,7 @@
 *   Depends on `tensorflow-transform>=0.22.0,<0.23.0`.
 *   Depends on `tfx-bsl>=0.22.0,<0.23.0`.
 *   Depends on `ml-metadata>=0.22.0,<0.23.0`.
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
 *   Fixed a bug in `io_utils.copy_dir` which prevent it to work correctly for
     nested sub-directories.
 

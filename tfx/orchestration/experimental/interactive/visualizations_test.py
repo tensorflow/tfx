@@ -37,9 +37,8 @@ class VisualizationsTest(tf.test.TestCase):
     del builtins.__dict__['__IPYTHON__']
     super(VisualizationsTest, self).tearDown()
 
-  @mock.patch(
-      'tfx.orchestration.experimental.interactive.'
-      'visualizations.get_registry')
+  @mock.patch('tfx.orchestration.experimental.interactive.'
+              'visualizations.get_registry')
   def testVisualizationRegistrationAndUsage(self, *unused_mocks):
     registry = visualizations.ArtifactVisualizationRegistry()
     visualizations.get_registry = mock.MagicMock(return_value=registry)

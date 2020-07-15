@@ -203,9 +203,8 @@ class InteractiveContextTest(tf.test.TestCase):
                            export_filepath=export_filepath,
                            runner_type='foobar')
 
-  @mock.patch(
-      'tfx.orchestration.experimental.interactive.'
-      'standard_visualizations.ExampleAnomaliesVisualization.display')
+  @mock.patch('tfx.orchestration.experimental.interactive.'
+              'standard_visualizations.ExampleAnomaliesVisualization.display')
   def testShow(self, *unused_mocks):
     context = interactive_context.InteractiveContext()
     mock_object = mock.MagicMock()

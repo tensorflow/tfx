@@ -23,13 +23,12 @@ import urllib.request
 from absl import logging
 import kfp
 import tensorflow as tf
-import yaml
-
-from google.cloud import storage
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import telemetry_utils
+import yaml
+from google.cloud import storage
 
 
 class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
@@ -93,9 +92,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
   def _cleanup_kfp(self):
     self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
-    # self._cleanup_with_retry(self._delete_pipeline)
+    self._cleanup_with_retry(self._delete_caip_model)
+    self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
-    # self._cleanup_with_retry(self._delete_runs)
+    self._cleanup_with_retry(self._delete_runs)
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
@@ -103,6 +103,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         experiment_name=self._pipeline_name).id
     response = self._kfp_client.list_runs(experiment_id=experiment_id)
     return response.runs
+
+  def _delete_caip_model(self):
+    model_name = self._pipeline_name.replace('-', '_')
+    kubeflow_test_utils.delete_ai_platform_model(model_name)
 
   def _delete_runs(self):
     for run in self._get_kfp_runs():

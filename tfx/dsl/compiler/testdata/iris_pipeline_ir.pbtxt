@@ -2,7 +2,7 @@
 # proto-message: Pipeline
 #
 # This file contains the IR of an adapted Iris example pipeline
-# third_party/tfx/examples/iris/iris_pipeline_beam.py
+# tfx/examples/iris/iris_pipeline_beam.py
 
 pipeline_info {
   id: "iris"
@@ -613,6 +613,16 @@ nodes {
           artifact_spec {
             type {
               name: "Model"
+            }
+          }
+        }
+      }
+      outputs {
+        key: "model_run"
+        value {
+          artifact_spec {
+            type {
+              name: "ModelRun"
             }
           }
         }

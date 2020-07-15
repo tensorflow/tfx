@@ -1,5 +1,5 @@
 ### TFX OSS roadmap
-This highlights the main OSS efforts for the TFX team in 2019 and H1 2020. If
+This highlights the main OSS efforts for the TFX team in 2019 and H2 2020. If
 you're interested in contributing in one of these areas,
 [contributions](https://github.com/tensorflow/tfx/blob/master/CONTRIBUTING.md)
 are always welcome, especially in areas that extend TFX into infrastructure
@@ -7,8 +7,8 @@ currently not widely in use at Google.
 
 #### _Vision_
 *   Democratize access to machine learning (ML) best practices, tools, and code.
-*   Enable users to easily run production ML pipelines on public clouds, on
-premises, and in heterogeneous computing environments.
+*   Enable users to easily run production ML pipelines locally, on public
+    clouds, on premises, and in heterogeneous computing environments.
 
 #### _Goals_
 *   Help enterprises realize large-scale production ML capabilities similar to
@@ -19,7 +19,7 @@ challenges.
 want TFX to help researchers and engineers both realize and contribute to that
 innovation.  Likewise, we want TFX to be interoperable with other ML efforts in
 the open source community.
-*   Usability: We want the journey to deploy a model in production to be as
+*   Usability: We want the experience to deploy a model in production to be as
 frictionless as possible throughout the entire journey -- from the initial
 efforts building a model to the final touches of deploying in production.
 
@@ -30,54 +30,65 @@ efforts building a model to the final touches of deploying in production.
 *   Participate in and extend support for other OSS efforts, initially:
 [Apache Beam](https://beam.apache.org/),
 [ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd),
-[Kubeflow](https://www.kubeflow.org/),
 [Tensorboard](https://www.tensorflow.org/guide/summaries_and_tensorboard), and
 [TensorFlow 2.0](https://www.tensorflow.org/versions/r2.0/api_docs/).
-*   Align ML framework support with Kubeflow pipelines.
-*   Extend portability across additional cluster computing frameworks,
-orchestrators, and data representations.
+*   Make TFX more ML framework neutral to enable wider usage.
+*   Extend portability across additional cluster computing frameworks and data
+representations.
 
 ##### Performance
 *   Better distributed training support
 ([DistributionStrategy](https://www.tensorflow.org/guide/distribute_strategy)).
+*   Support for more performant file storage formats than TFRecords.
 *   Better telemetry for users to understand the behavior of components in a
 TFX pipeline.
 
 ##### Usability
-*   Complete the support for tensorflow 2.x functionaties, including
-    tf.distribute and Keras without Estimator.
+*   Support more distributed strategies in TensorFlow 2.x.
 *   Improving the testing capabilities for OSS developers.
-*   Increased interoperability with Kubeflow Pipelines, with a focus on
-    providing more flexibility from unified DSL and converging on pipeline
-    presentation and orchestration semantics.
+*   Reach feature parity and make it easy to move ML focused pipelines from
+    Kubeflow pipelines (KFP) to TFX DSL. Also share the same pipeline
+    intermediate representation for both platforms to guarantee semantics and
+    data model consistency.
 *   Support for training on continuously arriving data and more advanced
     orchestration semantics.
+*   Create examples and templates for more ML verticals.
 
 ##### Education
-*   New template in TFX OSS to ease creation of TFX pipelines.
-*   More pipeline code examples, including DIY orchestrators and custom
-components.
 *   Work with [ML Metadata](https://www.tensorflow.org/tfx/guide/mlmd) to
     publish standard ontology types and show case them through TFX.
 
 ##### Innovation and collaboration
-*   Support mobile and edge devices by integrating with tf.lite.
+*   Further enhance integration with tf.Lite to better support mobile and edge
+devices.
 *   Formalize Special Interest Groups (SIGs) for specific aspects of TFX to
 accelerate community innovation and collaboration.
 *   Early access to new features.
 
 #### History
+*   Q2 2020
+    *   Custom component authoring was made easier by supporting python function
+        and custom container.
+    *   Created a new TFJS rewriter.
+    *   Created a new infra validation component.
+    *   Introduced artifact types for primitive values and generic type.
 *   Q1 2020
+    *   Released support for native Keras in TFX.
+    *   Released initial integration with tf.Lite.
+    *   New template to create pipelines in TFX for on-premise and cloud.
     *   New ComponentSpec and standard artifact types published.
     *   Allow pipelines to be parameterized with `RuntimeParameters`.
     *   Enabled warm-starting for estimator based trainers.
 *   Q4 2019
-    *   Added limited support for TF.Keras through `tf.keras.estimator.model_to_estimator()`.
+    *   Added limited support for TF.Keras through
+        `tf.keras.estimator.model_to_estimator()`.
 *   Q3 2019
     *   Support for local orchestrator through Apache Beam.
     *   Experimental support for interactive development on Jupyter notebook.
     *   Experimental support for TFX CLI released.
-    *   Multiple public [RFCs](https://github.com/tensorflow/community/tree/master/rfcs) published to the tensorflow/community project.
+    *   Started to publish public [RFCs](
+        https://github.com/tensorflow/community/tree/master/rfcs)
+        to the tensorflow/community project. This will be an ongoing effort.
 *   Q2 2019
     *   Support for Python3.
     *   Support for Apache Spark and Apache Flink runners (with examples).

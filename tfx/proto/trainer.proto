@@ -17,7 +17,6 @@ package tfx.components.trainer;
 
 // Args specific to training.
 message TrainArgs {
-
   // The number of steps to train on.
   int32 num_steps = 2;
 
@@ -26,7 +25,6 @@ message TrainArgs {
 
 // Args specific to eval.
 message EvalArgs {
-
   // The number of evaluation steps to take.
   int32 num_steps = 2;
 

@@ -130,9 +130,12 @@ class GenericExecutor(base_executor.BaseExecutor):
       hyperparameters_config = None
 
     output_path = artifact_utils.get_single_uri(
-        output_dict[constants.OUTPUT_MODEL_KEY])
+        output_dict[constants.MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
+
+    model_run_dir = artifact_utils.get_single_uri(
+        output_dict[constants.MODEL_RUN_KEY])
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
@@ -148,6 +151,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=fn_args.eval_files,
+        # A single uri for the output directory of model training related files.
+        model_run_dir=model_run_dir,
         # A single uri for schema file.
         schema_file=fn_args.schema_path,
         # Number of train steps.
@@ -168,7 +173,8 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     The Trainer Executor invokes a run_fn callback function provided by
     the user via the module_file parameter. In this function, user defines the
-    model and train it, then save the model to the provided location.
+    model and trains it, then saves the model and training related files
+    (e.g, Tensorboard logs) to the provided locations.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
@@ -177,7 +183,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -211,8 +218,10 @@ class GenericExecutor(base_executor.BaseExecutor):
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-    absl.logging.info('Training complete. Model written to %s',
-                      fn_args.serving_model_dir)
+
+    absl.logging.info(
+        'Training complete. Model written to %s. ModelRun written to %s',
+        fn_args.serving_model_dir, fn_args.model_run_dir)
 
 
 class Executor(GenericExecutor):
@@ -244,7 +253,8 @@ class Executor(GenericExecutor):
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -278,8 +288,10 @@ class Executor(GenericExecutor):
     tf.estimator.train_and_evaluate(training_spec['estimator'],
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
-    absl.logging.info('Training complete.  Model written to %s',
-                      fn_args.serving_model_dir)
+
+    absl.logging.info(
+        'Training complete. Model written to %s. ModelRun written to %s',
+        fn_args.serving_model_dir, fn_args.model_run_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
@@ -289,6 +301,10 @@ class Executor(GenericExecutor):
           estimator=training_spec['estimator'],
           export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+      # TODO(b/158106209): refactor serving_model_dir to only contain model.
+      # Copy model run information to ModelRun artifact
+      io_utils.copy_dir(fn_args.serving_model_dir, fn_args.model_run_dir)
 
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
