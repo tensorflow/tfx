@@ -123,8 +123,6 @@ def record_kfp_pipeline(
               FLAGS.run_id))
     for src_uri, dest_uri in \
           get_paths(metadata_connection, execution_dict, output_dir, run_id):
-      if not os.path.exists(src_uri):
-        raise FileNotFoundError("{} does not exist".format(src_uri))
       src_uri = src_uri + '/*'
       os.makedirs(dest_uri, exist_ok=True)
       subprocess.run(['gsutil', 'cp', '-r', src_uri, dest_uri], check=True)
