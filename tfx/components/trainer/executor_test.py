@@ -23,6 +23,7 @@ import os
 
 # Standard Imports
 import mock
+import copy
 import tensorflow as tf
 
 from google.protobuf import json_format
@@ -52,9 +53,7 @@ class ExecutorTest(tf.test.TestCase):
                           'transform/transformed_examples')
     e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
-    e2 = standard_artifacts.Examples()
-    e2.uri = e1.uri
-    e2.split_names = e1.split_names
+    e2 = copy.deepcopy(e1)
 
     self._single_artifact = [e1]
     self._multiple_artifacts = [e1, e2]
