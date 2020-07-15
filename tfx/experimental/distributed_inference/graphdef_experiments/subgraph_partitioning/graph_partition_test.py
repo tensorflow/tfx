@@ -37,24 +37,24 @@ op_to_outputs = {'main': ['AddN_1'],
                  'remote_op_a': ['embedding_lookup/Identity'],
                 }
 op_to_graph_def = graph_partition.get_op_to_graph_def(op_to_filename)
-op_to_execution_bundles = graph_partition.partition_all_graphs(op_to_graph_def, op_to_outputs)
+op_to_execution_specs = graph_partition.partition_all_graphs(op_to_graph_def, op_to_outputs)
 
 
 class PartitionTest(tf.test.TestCase):
 
     def testOpNames(self):
         op_keys = set(op_to_outputs.keys())
-        op_current_keys = set(op_to_execution_bundles.keys())
+        op_current_keys = set(op_to_execution_specs.keys())
         self.assertEqual(op_keys, op_current_keys)
     
     
     def testSubgraphImportValidity(self):
-        for op, execution_bundles in op_to_execution_bundles.items():
-            for execution_bundle in execution_bundles:
-                if not execution_bundle['is_remote_op']:
+        for op, execution_specs in op_to_execution_specs.items():
+            for execution_spec in execution_specs:
+                if not execution_spec['is_remote_op']:
                     graph = tf.Graph()
                     with graph.as_default():
-                        tf.import_graph_def(execution_bundle['subgraph'])
+                        tf.import_graph_def(execution_spec['subgraph'])
     
     
     def _get_node_names_from_subgraph(self, subgraph):
@@ -62,29 +62,29 @@ class PartitionTest(tf.test.TestCase):
         return node_names
         
                         
-    def testSubgraphBundles(self):
-        for op, execution_bundles in op_to_execution_bundles.items():
-            for bundle in execution_bundles:
-                if not bundle['is_remote_op']:
-                    all_nodes = self._get_node_names_from_subgraph(bundle['subgraph'])
+    def testSubgraphspecs(self):
+        for op, execution_specs in op_to_execution_specs.items():
+            for spec in execution_specs:
+                if not spec['is_remote_op']:
+                    all_nodes = self._get_node_names_from_subgraph(spec['subgraph'])
                     
-                    self.assertTrue(bundle['outputs'].issubset(bundle['body_nodes']))
-                    self.assertEqual(all_nodes, bundle['body_nodes'].union(bundle['inputs']))
+                    self.assertTrue(spec['outputs'].issubset(spec['body_nodes']))
+                    self.assertEqual(all_nodes, spec['body_nodes'].union(spec['inputs']))
                     
-                    for input_name in bundle['inputs']:
-                        self.assertNotIn(input_name, bundle['body_nodes'])
+                    for input_name in spec['inputs']:
+                        self.assertNotIn(input_name, spec['body_nodes'])
                         
-                    for node_from_other_layer in bundle['nodes_from_other_layers']:
-                        self.assertNotIn(node_from_other_layer, bundle['body_nodes'])
+                    for node_from_other_layer in spec['nodes_from_other_layers']:
+                        self.assertNotIn(node_from_other_layer, spec['body_nodes'])
                     
 
-    def testRemoteOpBundles(self):
-        for op, execution_bundles in op_to_execution_bundles.items():
-            for bundle in execution_bundles:
-                if bundle['is_remote_op']:
-                    self.assertIsNone(bundle['subgraph'])
-                    self.assertLen(bundle['outputs'], 1)
-                    self.assertLen(bundle['body_nodes'], 1)
+    def testRemoteOpspecs(self):
+        for op, execution_specs in op_to_execution_specs.items():
+            for spec in execution_specs:
+                if spec['is_remote_op']:
+                    self.assertIsNone(spec['subgraph'])
+                    self.assertLen(spec['outputs'], 1)
+                    self.assertLen(spec['body_nodes'], 1)
     
     
 if __name__ == '__main__':
