@@ -56,8 +56,8 @@ class Driver(base_driver.BaseDriver):
 
     # Note that this function updates the input_config.splits.pattern.
     fp, span, version = utils.calculate_splits_fp_span_and_version(
-                                input_base,
-                                input_config.splits)
+        input_base,
+        input_config.splits)
 
     exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)

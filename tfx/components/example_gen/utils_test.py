@@ -245,17 +245,19 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot not find matching for split'):
       utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
+                                                 splits)
 
   def testVersionNoMatching(self):
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='version{VERSION}/split2/*')
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='version{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='version{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot not find matching for split'):
       utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
+                                                 splits)
 
   def testSpanWrongFormat(self):
     wrong_span = os.path.join(self._input_base_path, 'spanx', 'split1', 'data')
@@ -267,66 +269,72 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot not find span number'):
       utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
+                                                 splits)
 
   def testVersionWrongFormat(self):
-    wrong_span = os.path.join(self._input_base_path, 'versionx', 'split1', 'data')
+    wrong_span = os.path.join(self._input_base_path, 'versionx', 'split1',
+                              'data')
     io_utils.write_string_file(wrong_span, 'testing_wrong_version')
 
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='version{VERSION}/split2/*')
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='version{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='version{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot not find version number'):
-      utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
+      utils.calculate_splits_fp_span_and_version(self._input_base_path, splits)
 
   def testCalculateSplitsFpSpanAndVersion(self):
     # Test align of span and version numbers.
-    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01', 'split1',
-                                'data')
+    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',
+                                   'split1', 'data')
     io_utils.write_string_file(span1_v1_split1, 'testing11')
-    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'ver01', 'split2',
-                                'data')
+    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'ver01',
+                                   'split2', 'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
-    span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'ver01', 'split1',
-                                'data')
+    span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'ver01',
+                                   'split1', 'data')
     io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     # Test if error raised when span does not align.
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
-      utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
+      utils.calculate_splits_fp_span_and_version(self._input_base_path, splits)
 
-    span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'ver01', 'split2',
-                                'data')
+    span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'ver01',
+                                   'split2', 'data')
     io_utils.write_string_file(span2_v1_split2, 'testing22')
-    span2_v2_split1 = os.path.join(self._input_base_path, 'span02', 'ver02', 'split1',
-                                'data')
+    span2_v2_split1 = os.path.join(self._input_base_path, 'span02', 'ver02',
+                                   'split1', 'data')
     io_utils.write_string_file(span2_v2_split1, 'testing21')
 
     # Test if error raised when span aligns but version does not.
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
-      utils.calculate_splits_fp_span_and_version(self._input_base_path,
-                                                          splits)
-    span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02', 'split2',
-                                'data')
+      utils.calculate_splits_fp_span_and_version(self._input_base_path, splits)
+    span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02',
+                                   'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
 
     # Test if latest span is selected when span aligns for each split.
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
+        example_gen_pb2.Input.Split(name='s1',
+                                    pattern='span{SPAN}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+                                    pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
     _, span, version = utils.calculate_splits_fp_span_and_version(
         self._input_base_path, splits)

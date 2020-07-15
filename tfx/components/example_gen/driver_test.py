@@ -81,26 +81,26 @@ class DriverTest(tf.test.TestCase):
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
       self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                       None, None)                               
+                                                       None, None)
 
     span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'version01',
-                                'split2', 'data')
+                                   'split2', 'data')
     io_utils.write_string_file(span2_v1_split2, 'testing22')
     span2_v2_split1 = os.path.join(self._input_base_path, 'span02', 'version02',
-                                'split1', 'data')
+                                   'split1', 'data')
     io_utils.write_string_file(span2_v2_split1, 'testing21')
 
     # Check that error raised when span matches, but version does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
       self._example_gen_driver.resolve_exec_properties(self._exec_properties,
-                                                       None, None)     
+                                                       None, None)
 
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'version02',
-                                'split2', 'data')
+                                   'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
 
-    # Test if latest span and version selected when span and version aligns 
+    # Test if latest span and version selected when span and version aligns
     # for each split.
     self._example_gen_driver.resolve_exec_properties(self._exec_properties,
                                                      None, None)
@@ -113,7 +113,7 @@ class DriverTest(tf.test.TestCase):
     updated_input_config = example_gen_pb2.Input()
     json_format.Parse(self._exec_properties[utils.INPUT_CONFIG_KEY],
                       updated_input_config)
-    
+
     # Check if latest span is selected.
     self.assertProtoEquals(
         """
