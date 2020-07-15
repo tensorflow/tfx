@@ -38,8 +38,29 @@ _WORKING_DIRECTORY = '/tmp'
 class Executor(base_executor.BaseExecutor):
   """Tuner executor that launches parallel tuning flock on Cloud AI Platform.
 
-  This executor starts a AI Platform Training job with a flock of workers, where
-  each worker independently executes Tuner's search loop on the single machine.
+  This executor starts a Cloud AI Platform (CAIP) Training job with a flock of
+  workers, where each worker independently executes Tuner's search loop on
+  the single machine.
+
+  Per KerasTuner's design, distributed Tuner's identity is controlled by the
+  environment variable (KERASTUNER_TUNER_ID) to each workers in the CAIP
+  training job. Those environment variables are configured in each worker of
+  CAIP training job's worker flock.
+
+  In addition, some implementation of KerasTuner requires a separate process
+  to centrally manage the state of tuning (called as 'chief oracle') which is
+  consulted by all workers according as another set of environment variables
+  (KERASTUNER_ORACLE_IP and KERASTUNER_ORACLE_PORT).
+
+  In summary, distributed tuning flock by Cloud AI Platform Job is structured
+  as follows.
+
+  Executor.Do() -> launch _Executor.Do() on a possibly multi-worker CAIP job ->
+
+    -+> master -> _search() (-> create a subprocess -> run the chief oracle.)
+     |                       +> trigger a single tuner.search()
+     +> worker -> _search()  -> trigger a single tuner.search()
+     +> worker -> _search()  -> trigger a single tuner.search()
   """
 
   # TODO(b/160013376): Refactor common parts with Trainer Executor.
@@ -102,8 +123,10 @@ class Executor(base_executor.BaseExecutor):
 
 def _need_chief_oracle(exec_properties: Dict[Text, Any]) -> bool:
   """Returns True if the Tuner instance requires a chief oracle."""
-  # TODO(b/143900133): Add support to CloudTuner that does not require chief
-  #                    oracle process for distributed tuning.
+  # TODO(b/160902662): Skip chief oracle for CloudTuner that does not require
+  #                    chief oracle for distributed tuning (it is a no-op,
+  #                    because it simply forwards  to the AI Platform Optimizer
+  #                    service).
   del exec_properties
   return True
 
@@ -162,7 +185,7 @@ class _Executor(base_executor.BaseExecutor):
       os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
       os.environ['KERASTUNER_TUNER_ID'] = 'chief'
 
-      logging.info('Binding oracle chief server at: %s:%s',
+      logging.info('Binding chief oracle server at: %s:%s',
                    os.environ['KERASTUNER_ORACLE_IP'],
                    os.environ['KERASTUNER_ORACLE_PORT'])
 
@@ -203,7 +226,8 @@ class _Executor(base_executor.BaseExecutor):
       # If distributed, both master and worker need to know where the oracle is.
       # Per KerasTuner's interface, it is configured through env variables.
       # This only affects the current main process, which is designed to be
-      # single-threaded.
+      # single-threaded. As such, mutation of this otherwise global state is
+      # safe.
       os.environ['KERASTUNER_ORACLE_IP'] = self._master_addr
       os.environ['KERASTUNER_ORACLE_PORT'] = self._master_port
 
@@ -212,9 +236,12 @@ class _Executor(base_executor.BaseExecutor):
                    os.environ['KERASTUNER_ORACLE_PORT'])
 
     # Conduct tuner search loop, regardless of master or worker.
+    # There is only one Tuner instance in the current process, as such,
+    # controllling the id of the Tuner instance via environment variable
+    # is safe.
+    os.environ['KERASTUNER_TUNER_ID'] = self._tuner_id
     logging.info('Setting KERASTUNER_TUNER_ID with %s',
                  os.environ['KERASTUNER_TUNER_ID'])
-    os.environ['KERASTUNER_TUNER_ID'] = self._tuner_id
 
     return tuner_executor.search(input_dict, exec_properties,
                                  _WORKING_DIRECTORY)
