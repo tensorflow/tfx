@@ -29,6 +29,7 @@ flags.DEFINE_string('output_dir', None, 'Path to record the pipeline outputs.')
 flags.DEFINE_string('metadata_db_uri', None, 'Path to metadata db.')
 flags.DEFINE_integer('host', None, 'Local port number.')
 flags.DEFINE_integer('port', None, 'Local port number.')
+flags.DEFINE_string('pipeline_name', None, 'Name of the pipeline.')
 flags.DEFINE_string('run_id', None, 'Pipeline Run Id (default=latest run_id).')
 
 flags.mark_flag_as_required('output_dir')
@@ -38,6 +39,7 @@ def main(unused_argv):
                                           FLAGS.metadata_db_uri,
                                           FLAGS.host,
                                           FLAGS.port,
+                                          FLAGS.pipeline_name,
                                           FLAGS.run_id)
 
 if __name__ == '__main__':

@@ -75,7 +75,9 @@ def get_execution_dict(metadata_connection: metadata.Metadata
     execution_dict[execution_run_id].append(execution)
   return execution_dict
 
-def get_latest_executions(metadata_connection: metadata.Metadata):
+def get_latest_executions(metadata_connection: metadata.Metadata,
+                          pipeline_name: Text
+                          ) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
@@ -85,23 +87,23 @@ def get_latest_executions(metadata_connection: metadata.Metadata):
   """
   latest_context_id = None
   latest_updated_time = float('-inf')
-  tmp = []
-  for context in metadata_connection.store.get_contexts():
-    print("contextid", context.id)
-    tmp.append(context.last_update_time_since_epoch)
-    if latest_updated_time < context.last_update_time_since_epoch:
-      latest_updated_time = context.last_update_time_since_epoch
-      latest_context_id = context.id
-  print(latest_updated_time)
-  print("tmp", tmp)
-  print("latest_context_id", latest_context_id)
-  return metadata_connection.store.get_executions_by_context(
-            21)
+
+  for pipeline_run_context in \
+      metadata_connection.store.get_contexts_by_type(
+          metadata._CONTEXT_TYPE_PIPELINE_RUN):  # pylint: disable=protected-access
+    if pipeline_name != \
+          pipeline_run_context.properties['pipeline_name'].string_value:
+      continue
+    if latest_updated_time < pipeline_run_context.last_update_time_since_epoch:
+      latest_updated_time = pipeline_run_context.last_update_time_since_epoch
+      latest_context_id = pipeline_run_context.id
+  return metadata_connection.store.get_executions_by_context(latest_context_id)
 
 def record_pipeline(output_dir: Text,
                     metadata_db_uri: Text,
                     host: Text,
                     port: int,
+                    pipeline_name: Text,
                     run_id: Text) -> None:
   """Record pipeline run with run_id to output_dir. For the beam pipeline,
   metadata_db_uri is required. For KFP, host and port should be specified.
@@ -131,11 +133,10 @@ def record_pipeline(output_dir: Text,
     execution_dict = get_execution_dict(metadata_connection)
     if run_id is None:
       # fetch executions of the most recently updated execution context
-      executions = get_latest_executions(metadata_connection)
+      executions = get_latest_executions(metadata_connection,
+                                         pipeline_name)
     elif run_id in execution_dict:
       executions = execution_dict[run_id]
-    # for e in execution_dict[max(execution_dict)]:
-    #   print('context', [c.id for c in metadata_connection.store.get_contexts_by_execution(e.id)])
     else:
       raise ValueError(
           "run_id {} is not recorded in the MLMD metadata".format(run_id))
