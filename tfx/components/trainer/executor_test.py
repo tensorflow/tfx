@@ -53,9 +53,8 @@ class ExecutorTest(tf.test.TestCase):
     e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
 
     e2 = standard_artifacts.Examples()
-    e2.uri = os.path.join(self._source_data_dir,
-                          'transform/transformed_examples')
-    e2.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    e2.uri = e1.uri
+    e2.split_names = e1.split_names
 
     self._single_artifact = [e1]
     self._multiple_artifacts = [e1, e2]
