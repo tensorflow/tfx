@@ -89,7 +89,8 @@ class Trainer(base_component.BaseComponent):
   ```
   # Train using Google Cloud AI Platform.
   trainer = Trainer(
-      executor_class=ai_platform_trainer_executor.Executor,
+      custom_executor_spec=executor_spec.ExecutorClassSpec(
+          ai_platform_trainer_executor.Executor),
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
@@ -197,9 +198,8 @@ class Trainer(base_component.BaseComponent):
             is not supplied.
     """
     if [bool(module_file), bool(run_fn), bool(trainer_fn)].count(True) != 1:
-      raise ValueError(
-          "Exactly one of 'module_file', 'trainer_fn', or 'run_fn' must be supplied."
-      )
+      raise ValueError("Exactly one of 'module_file', 'trainer_fn', "
+                       "or 'run_fn' must be supplied.")
 
     if bool(examples) == bool(transformed_examples):
       raise ValueError(
