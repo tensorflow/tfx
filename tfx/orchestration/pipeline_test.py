@@ -129,14 +129,21 @@ class PipelineTest(tf.test.TestCase):
                                   tempfile.mkstemp(prefix='cli_tmp_')[1])
     self._tmp_dir = os.path.join(tmp_dir, self._testMethodName,
                                  tempfile.mkdtemp(prefix='cli_tmp_')[1])
+    # Back up the environmental variable.
     self._original_tmp_value = os.environ.get(
-        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
+        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
         os.path.join(self._tmp_dir, 'metadata'))
 
   def tearDown(self):
     super(PipelineTest, self).tearDown()
-    os.environ['TFX_TMP_DIR'] = self._original_tmp_value
+    # Restore the environmental variable. None means it was unset.
+    if self._original_tmp_value is None:
+      if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
+        del os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH']
+    else:
+      os.environ[
+          'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._original_tmp_value
 
   def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
