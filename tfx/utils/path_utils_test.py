@@ -23,6 +23,7 @@ import os
 
 import tensorflow as tf
 from tfx.utils import path_utils
+from tfx.utils import io_utils
 
 
 class PathUtilsTest(tf.test.TestCase):
@@ -32,9 +33,12 @@ class PathUtilsTest(tf.test.TestCase):
     # after Executor performs cleaning.
     output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
     eval_model_path = path_utils.eval_model_dir(output_uri)
-    tf.io.gfile.makedirs(eval_model_path)
+    eval_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(eval_model, 'testing')
     serving_model_path = path_utils.serving_model_dir(output_uri)
-    tf.io.gfile.makedirs(serving_model_path)
+    serving_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+
     # Test retrieving model folder.
     self.assertEqual(eval_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
@@ -44,7 +48,9 @@ class PathUtilsTest(tf.test.TestCase):
     # Create folders based on Keras based Trainer output model directory.
     output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
     serving_model_path = path_utils.serving_model_dir(output_uri)
-    tf.io.gfile.makedirs(serving_model_path)
+    serving_model = os.path.join(serving_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+    
     # Test retrieving model folder.
     self.assertEqual(serving_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
