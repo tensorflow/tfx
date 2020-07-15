@@ -366,7 +366,7 @@ without using a template.
       my_pipeline = create_pipeline(
           pipeline_name=PIPELINE_NAME,
           pipeline_root=PIPELINE_ROOT,
-          data_path=DATA_PATH
+          data_path=DATA_PATH,
           enable_cache=ENABLE_CACHE,
           metadata_connection_config=metadata.sqlite_metadata_connection_config(METADATA_PATH)
           )
