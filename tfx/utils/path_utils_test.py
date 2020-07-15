@@ -50,7 +50,7 @@ class PathUtilsTest(tf.test.TestCase):
     serving_model_path = path_utils.serving_model_dir(output_uri)
     serving_model = os.path.join(serving_model_path, 'saved_model.pb')
     io_utils.write_string_file(serving_model, 'testing')
-    
+
     # Test retrieving model folder.
     self.assertEqual(serving_model_path, path_utils.eval_model_path(output_uri))
     self.assertEqual(serving_model_path,
