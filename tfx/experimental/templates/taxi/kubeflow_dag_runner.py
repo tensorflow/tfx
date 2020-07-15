@@ -71,21 +71,31 @@ def run():
   # pipeline DSL file, instead of using environment vars.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
-  record_dir = os.path.join(os.environ['HOME'], 'testdata')
+  # Specify the recorded pipeline path on GCS.
+  recorded_pipeline_dir = ""
 
+  # TODO: Customize the following list with component ids of components to
+  # replace their executors with BaseStubExecutor.
   component_ids = ['CsvExampleGen', \
                   'StatisticsGen', 'SchemaGen', \
                   'ExampleValidator', 'Transform', \
                   'Trainer', 'Evaluator', 'Pusher']
+  # TODO: You can also replace component executors with custom stub executors
+  # by setting the component_map as {component_id: CustomStubExecutor},
+  # where the CustomStubExecutor would replace executor of component_id.
+  # CustomStubExecutor must inherit base_stub_executor.BaseStubExecutor.
+  component_map = {}
 
-  my_launcher = stub_component_launcher.create_stub_launcher_class(
-        record_dir,
-        component_ids,
-        {})
+  my_stub_launcher = stub_component_launcher.get_stub_launcher_class(
+        test_data_dir=recorded_pipeline_dir,
+        stubbed_component_ids=component_ids,
+        stubbed_component_map=component_map)
+
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-      supported_launcher_classes=[
-            my_launcher,
-        ],
+      # TODO: (Optional) Uncomment below to use mock executors.
+      # supported_launcher_classes=[
+      #       my_stub_launcher,
+      #   ],
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
   pod_labels = kubeflow_dag_runner.get_default_pod_labels()
   pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})
