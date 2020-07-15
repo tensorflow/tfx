@@ -19,7 +19,9 @@ package tfx.components.tuner;
 message TuneArgs {
   // Number of trials to run in parallel. Each trial will be trained and
   // evaluated by separate worker jobs.
-  // Note parallel trials are not supported in default in-process tuning.
+  // Note that support for parallel trials execution is subject to component
+  // implementation. It is not supported by the in-process Tuner component,
+  // but Google Cloud AI Platform extension Tuner has support for it.
   int32 num_parallel_trials = 1;
 
   reserved 2, 3, 4;

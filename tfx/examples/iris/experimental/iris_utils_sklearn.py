@@ -23,11 +23,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import pickle
 from typing import Text, Tuple
 
 import absl
 import numpy as np
-from sklearn.externals import joblib
 from sklearn.neural_network import MLPClassifier
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -158,6 +158,6 @@ def run_fn(fn_args: TrainerFnArgs):
 
   # TODO(humichael): Export TFT graph for serving once a solution for serving is
   # determined.
-  model_path = os.path.join(fn_args.serving_model_dir, 'model.joblib')
+  model_path = os.path.join(fn_args.serving_model_dir, 'model.pkl')
   with tf.io.gfile.GFile(model_path, 'wb+') as f:
-    joblib.dump(model, f)
+    pickle.dump(model, f)

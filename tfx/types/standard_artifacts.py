@@ -200,6 +200,5 @@ class TransformGraph(Artifact):
   TYPE_NAME = 'TransformGraph'
 
 
-# Still WIP and subject to change.
 class HyperParameters(Artifact):
   TYPE_NAME = 'HyperParameters'
