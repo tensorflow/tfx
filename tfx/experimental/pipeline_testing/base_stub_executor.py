@@ -22,6 +22,7 @@ import os
 from typing import Any, Dict, List, Text, Optional
 
 from absl import logging
+import tensorflow as tf
 
 from tfx import types
 from tfx.components.base import base_executor
