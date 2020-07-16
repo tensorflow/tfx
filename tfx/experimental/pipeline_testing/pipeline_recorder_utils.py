@@ -131,16 +131,17 @@ def record_pipeline(output_dir: Text,
                      "For beam pipeline, metadata_db_uri is required.")
 
   with metadata.Metadata(metadata_config) as metadata_connection:
-    execution_dict = get_execution_dict(metadata_connection)
     if run_id is None:
       # fetch executions of the most recently updated execution context
       executions = get_latest_executions(metadata_connection,
                                          pipeline_name)
-    elif run_id in execution_dict:
-      executions = execution_dict[run_id]
     else:
-      raise ValueError(
-          "run_id {} is not recorded in the MLMD metadata".format(run_id))
+      execution_dict = get_execution_dict(metadata_connection)
+      if run_id in execution_dict:
+        executions = execution_dict[run_id]
+      else:
+        raise ValueError(
+            "run_id {} is not recorded in the MLMD metadata".format(run_id))
     for src_uri, dest_uri in \
           get_paths(metadata_connection, executions, output_dir):
       if not tf.io.gfile.exists(src_uri):
