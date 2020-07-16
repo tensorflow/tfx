@@ -16,68 +16,103 @@
 
 from __future__ import print_function
 
-from distutils import spawn
-import glob
 import os
 import subprocess
-import sys
 
+import setuptools
 from setuptools import find_packages
 from setuptools import setup
+from setuptools.command import develop
+# pylint: disable=g-bad-import-order
+# It is recommended to import setuptools prior to importing distutils to avoid
+# using legacy behavior from distutils.
+# https://setuptools.readthedocs.io/en/latest/history.html#v48-0-0
+from distutils import spawn
+from distutils.command import build
+# pylint: enable=g-bad-import-order
 
 from tfx import dependencies
 from tfx import version
 from tfx.tools import resolve_deps
 
 
-# Find the Protocol Compiler.
-if 'PROTOC' in os.environ and os.path.exists(os.environ['PROTOC']):
-  protoc = os.environ['PROTOC']
-elif os.path.exists('../src/protoc'):
-  protoc = '../src/protoc'
-elif os.path.exists('../src/protoc.exe'):
-  protoc = '../src/protoc.exe'
-elif os.path.exists('../vsprojects/Debug/protoc.exe'):
-  protoc = '../vsprojects/Debug/protoc.exe'
-elif os.path.exists('../vsprojects/Release/protoc.exe'):
-  protoc = '../vsprojects/Release/protoc.exe'
-else:
-  protoc = spawn.find_executable('protoc')
+class _BuildCommand(build.build):
+  """Build everything that is needed to install.
+
+  This overrides the original distutils "build" command to to run gen_proto
+  command before any sub_commands.
+
+  build command is also invoked from bdist_wheel and install command, therefore
+  this implementation covers the following commands:
+    - pip install . (which invokes bdist_wheel)
+    - python setup.py install (which invokes install command)
+    - python setup.py bdist_wheel (which invokes bdist_wheel command)
+  """
+
+  def _should_generate_proto(self):
+    """Predicate method for running GenProto command or not."""
+    return True
+
+  # Add "gen_proto" command as the first sub_command of "build". Each
+  # sub_command of "build" (e.g. "build_py", "build_ext", etc.) is executed
+  # sequentially when running a "build" command, if the second item in the tuple
+  # (predicate method) is evaluated to true.
+  sub_commands = [
+      ('gen_proto', _should_generate_proto),
+  ] + build.build.sub_commands
 
 
-def generate_proto(source):
-  """Invokes the Protocol Compiler to generate a _pb2.py."""
+class _DevelopCommand(develop.develop):
+  """Developmental install.
 
-  output = source.replace('.proto', '_pb2.py')
+  https://setuptools.readthedocs.io/en/latest/setuptools.html#development-mode
+  Unlike normal package installation where distribution is copied to the
+  site-packages folder, developmental install creates a symbolic link to the
+  source code directory, so that your local code change is immediately visible
+  in runtime without re-installation.
 
-  if (not os.path.exists(output) or
-      (os.path.exists(source) and
-       os.path.getmtime(source) > os.path.getmtime(output))):
-    print('Generating %s...' % output)
+  This is a setuptools-only (i.e. not included in distutils) command that is
+  also used in pip's editable install (pip install -e). Originally it only
+  invokes build_py and install_lib command, but we override it to run gen_proto
+  command in advance.
 
-    if not os.path.exists(source):
-      sys.stderr.write('Cannot find required file: %s\n' % source)
-      sys.exit(-1)
+  This implementation covers the following commands:
+    - pip install -e . (developmental install)
+    - python setup.py develop (which is invoked from developmental install)
+  """
 
-    if protoc is None:
-      sys.stderr.write(
-          'protoc is not installed nor found in ../src.  Please compile it '
-          'or install the binary package.\n')
-      sys.exit(-1)
-
-    protoc_command = [protoc, '-I.', '--python_out=.', source]
-    if subprocess.call(protoc_command) != 0:
-      sys.exit(-1)
+  def run(self):
+    self.run_command('gen_proto')
+    # Run super().initialize_options. Command is an old-style class (i.e.
+    # doesn't inherit object) and super() fails in python 2.
+    develop.develop.run(self)
 
 
-_PROTO_FILE_PATTERNS = [
-    'tfx/proto/*.proto',
-    'tfx/orchestration/kubeflow/proto/*.proto',
-]
+class _GenProtoCommand(setuptools.Command):
+  """Generate proto stub files in python.
 
-for file_pattern in _PROTO_FILE_PATTERNS:
-  for proto_file in glob.glob(file_pattern):
-    generate_proto(proto_file)
+  Running this command will populate foo_pb2.py file next to your foo.proto
+  file.
+  """
+
+  def initialize_options(self):
+    pass
+
+  def finalize_options(self):
+    self._bazel_cmd = spawn.find_executable('bazel')
+    if not self._bazel_cmd:
+      raise RuntimeError(
+          'Could not find "bazel" binary. Please visit '
+          'https://docs.bazel.build/versions/master/install.html for '
+          'installation instruction.')
+
+  def run(self):
+    subprocess.check_call(
+        [self._bazel_cmd, 'run', '//tfx/build:gen_proto'],
+        # Bazel should be invoked in a directory containing bazel WORKSPACE
+        # file, which is the root directory.
+        cwd=os.path.dirname(os.path.realpath(__file__)),)
+
 
 # Get the long description from the README file.
 with open('README.md') as fp:
@@ -128,6 +163,9 @@ setup(
         'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
     ],
     cmdclass={
+        'build': _BuildCommand,
+        'develop': _DevelopCommand,
+        'gen_proto': _GenProtoCommand,
         'resolve_deps': resolve_deps.ResolveDepsCommand,
     },
     python_requires='>=3.5,<4',
