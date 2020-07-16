@@ -106,8 +106,8 @@ def record_pipeline(output_dir: Text,
   Args:
     output_dir: Directory path to which pipeline outputs are recorded.
     metadata_db_uri: Uri to metadata db.
-    host: The name or network address of the instance of MySQL to connect to.
-    port: The port MySQL is using to listen for connections.
+    host: The host to connect to gRPC server.
+    port: The port to connect to gRPC server.
     run_id: Pipeline execution run_id.
 
   Raises:
