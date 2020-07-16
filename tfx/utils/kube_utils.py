@@ -50,7 +50,7 @@ class PodPhase(enum.Enum):
 
   @property
   def is_done(self):
-    return self == self.SUCCEEDED or self == self.FAILED
+    return self in (self.SUCCEEDED, self.FAILED)
 
 
 class RestartPolicy(enum.Enum):
@@ -131,12 +131,6 @@ class _KubernetesClientFactory(object):
     if not self._config_loaded:
       self._LoadConfig()
     return k8s_client.CoreV1Api()
-  
-  def MakeAppsV1Api(self) -> k8s_client.AppsV1Api:  # pylint: disable=invalid-name
-    """Make a kubernetes AppsV1Api client."""
-    if not self._config_loaded:
-      self._LoadConfig()
-    return k8s_client.AppsV1Api()
 
   def MakeExtensionsV1beta1Api(self) -> k8s_client.ExtensionsV1beta1Api:  # pylint: disable=invalid-name
     """Make a kubernetes ExtensionsV1beta1Api client."""
@@ -150,11 +144,6 @@ _factory = _KubernetesClientFactory()
 def make_core_v1_api() -> k8s_client.CoreV1Api:
   """Make a kubernetes CoreV1Api client."""
   return _factory.MakeCoreV1Api()
-
-
-def make_apps_v1_api() -> k8s_client.AppsV1Api:
-  """Make a kubernetes AppsV1Api client."""
-  return _factory.MakeAppsV1Api()
 
 
 def make_externsions_v1_beta1_api() -> k8s_client.ExtensionsV1beta1Api:

@@ -1,5 +1,4 @@
-# Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_ai_platform.pusher.executor."""
+"""Tests for tfx.extensions.google_cloud_kubernetes.pusher.executor."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import copy
-import os
-from typing import Any, Dict, Text
-# Standard Imports
 import mock
+import os
 import tensorflow as tf
+from typing import Any, Dict, Text
 
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_kubernetes.pusher import executor
