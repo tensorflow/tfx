@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ def preprocessing_fn(inputs):
     inputs: map from feature keys to raw not-yet-transformed features.
 
   Returns:
-    Map from string feature key to transformed feature operations.
+    Map from string feature key to transformed feature Tensors.
   """
   input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY_A],
                                                       inputs[_FEATURE_KEY_B])

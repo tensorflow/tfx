@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ def preprocessing_fn(inputs):
     inputs: map from feature keys to raw not-yet-transformed features.
 
   Returns:
-    Map from string feature key to transformed feature operations.
+    Map from string feature key to transformed feature Tensors operations.
   """
   feature = inputs['feature']
   label = inputs['label']
@@ -84,7 +84,8 @@ def _input_fn(file_pattern: List[Text],
   """Generates features and label for tuning/training.
 
   Args:
-    file_pattern: List of paths or patterns of input tfrecord files.
+    file_pattern: List of paths or patterns of materialized transformed input
+      tfrecord files.
     tf_transform_output: A TFTransformOutput.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch

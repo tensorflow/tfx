@@ -88,7 +88,7 @@ class SpecialBertTokenizer():
     tokenizer = text.BertTokenizer(vocab_file_path, token_out_type=tf.int64)
     word_id = tokenizer.tokenize(sequence)
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
-    word_id = word_id.merge_dims(1, 2)
+    word_id = word_id.merge_dims(-2, -1)
     if add_cls:
       cls_token = tf.fill(
           [tf.shape(sequence)[0], 1],
@@ -108,14 +108,16 @@ class SpecialBertTokenizer():
       return word_id, None, None
 
     word_id = word_id.to_tensor(
+        shape=[-1, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
-
+    '''
     word_id = tf.pad(
         word_id,
         [[0, 0], [0, max_len]],
         constant_values=tf.constant(self._pad_id, dtype=tf.int64))
 
     word_id = tf.slice(word_id, [0, 0], [-1, max_len])
+    '''
 
     input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
     segment_id = tf.fill(
@@ -164,24 +166,27 @@ class SpecialBertTokenizer():
 
     word_id = tf.concat([word_id_a, word_id_b], 1)
     word_id = word_id.to_tensor(
+        shape=[-1, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
-
+    '''
     word_id = tf.pad(
         word_id,
         [[0, 0], [0, max_len]],
         constant_values=tf.constant(self._pad_id, dtype=tf.int64))
 
     word_id = tf.slice(word_id, [0, 0], [-1, max_len])
+    '''
     input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
     segment_id = tf.cast(word_id_a < 0, tf.int64)
     segment_id = segment_id.to_tensor(
+        shape=[-1, max_len],
         default_value=tf.constant(1, dtype=tf.int64))
-
+    '''
     segment_id = tf.pad(
         segment_id,
         [[0, 0], [0, max_len]],
         constant_values=tf.constant(1, dtype=tf.int64))
 
     segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
-
+    '''
     return word_id, input_mask, segment_id
