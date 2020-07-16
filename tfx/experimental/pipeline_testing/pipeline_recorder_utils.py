@@ -84,19 +84,13 @@ def get_latest_executions(metadata_connection: metadata.Metadata,
   Returns:
     A dictionary that holds executions for pipeline run_id
   """
-  latest_context_id = None
-  latest_updated_time = float('-inf')
-
-  for pipeline_run_context in \
-      metadata_connection.store.get_contexts_by_type(
-          metadata._CONTEXT_TYPE_PIPELINE_RUN):  # pylint: disable=protected-access
-    if pipeline_name != \
-          pipeline_run_context.properties['pipeline_name'].string_value:
-      continue
-    if latest_updated_time < pipeline_run_context.last_update_time_since_epoch:
-      latest_updated_time = pipeline_run_context.last_update_time_since_epoch
-      latest_context_id = pipeline_run_context.id
-  return metadata_connection.store.get_executions_by_context(latest_context_id)
+  pipeline_run_contexts = [
+      c for c in metadata_connection.store.get_contexts_by_type(
+          metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
+      if c.properties['pipeline_name'].string_value == pipeline_name
+  ]
+  latest_context = max(pipeline_run_contexts, key=lambda c: c.last_update_time_since_epoch)
+  return metadata_connection.store.get_executions_by_context(latest_context.id)
 
 def record_pipeline(output_dir: Text,
                     metadata_db_uri: Optional[Text],
