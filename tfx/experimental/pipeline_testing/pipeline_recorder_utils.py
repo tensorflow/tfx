@@ -23,8 +23,8 @@ import os
 
 import absl
 from ml_metadata.proto import metadata_store_pb2
-from typing import Dict, List, Text
 import tensorflow as tf
+from typing import Dict, List, Text
 
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
