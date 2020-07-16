@@ -61,18 +61,33 @@ to end tests (filename ends with `_e2e_test.py`): some of this also runs with
 external environments.
 
 ## Testing local change
-To test local change, you will need to install code into virtualenv in editable
-mode:
+
+To test local change, first you have to install
+[Bazel](https://docs.bazel.build/versions/master/install.html), which powers the
+protobuf stub code generation. Check whether Bazel is installed and executable:
+
+```shell
+bazel --version
+```
+
+After installing Bazel, you can install TFX source code in a virtual
+environment in editable (`-e`) mode, which will pick up your local changes
+immediately without re-installing every time.
 
 ```shell
 pushd <your_source_dir>
 pip install -e .[all]   # the [all] suffix includes additional packages for test
 ```
 
-Note that you have to have protocol buffer compiler `protoc` installed in order
-to be able to install the requirements. Download the latest version
-[here](https://github.com/protocolbuffers/protobuf/releases) and follow the
-instructions in the readme.
+If you have a local change in `.proto` files, you should re-generate the
+protobuf stub code before using it with the following command. (This is
+automatically invoked once when you first install `tfx` in editable mode, but
+further stub generation requires manual invocation of the following command.)
+
+```shell
+# In the tfx root directory
+bazel run //tfx/build:gen_proto
+```
 
 ## Running Unit Tests
 

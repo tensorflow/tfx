@@ -41,7 +41,6 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) bazel run tfx:build_pip_package
 RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools

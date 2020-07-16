@@ -87,10 +87,10 @@ class ExecutorClassSpec(ExecutorSpec):
     executor_class = import_utils.import_class_by_path(executor_class_path)
     return ExecutorClassSpec(executor_class)
 
-  def encode(self):
-    executor_spec_pb = pipeline_pb2.ExecutorSpec()
-    executor_spec_pb.python_class_executor_spec.class_path = self.class_path
-    return executor_spec_pb
+  def encode(self) -> pipeline_pb2.ExecutorSpec:
+    result = pipeline_pb2.ExecutorSpec()
+    result.python_class_executor_spec.class_path = self.class_path
+    return result
 
 
 class ExecutorContainerSpec(ExecutorSpec):
