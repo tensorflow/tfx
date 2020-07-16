@@ -50,8 +50,8 @@ class StubComponentLauncher(
 
     component_id = self._component_info.component_id
     self.stubbed_component_map = {}
-    for component_id in component_ids:
-        self.stubbed_component_map[component_id] = base_stub_executor.BaseStubExecutor
+    for c_id in component_ids:
+        self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
 
     if component_id not in self.stubbed_component_map:
       super(StubComponentLauncher,
