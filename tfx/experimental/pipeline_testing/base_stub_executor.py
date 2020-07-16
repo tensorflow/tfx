@@ -50,7 +50,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
     logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._test_data_dir = test_data_dir
-    if not os.path.exists(self._test_data_dir):
+    if not tf.io.gfile.exists(self._test_data_dir):
       raise ValueError("Must record pipeline in {}".format(self._test_data_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
