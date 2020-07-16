@@ -5,7 +5,8 @@ A library for graph partitioning testing.
 """
 
 import graph_partition
-import tensorflow as tf        
+import tensorflow as tf    
+import os    
         
         
 class RelationTest(tf.test.TestCase):
@@ -27,15 +28,18 @@ class RelationTest(tf.test.TestCase):
         self.assertTrue(relations.check_if_finished())
         self.assertTrue(relations.check_if_finished())
     
-    
-op_to_filename = {'main': './complex_graphdefs/main_graph.pb',
-                  'remote_op_a': './complex_graphdefs/graph_a.pb',
-                  'remote_op_b': './complex_graphdefs/graph_b.pb',
+def _get_path(folder_name, file_name):
+    return os.path.join(os.path.join(os.path.dirname(__file__), folder_name), file_name)
+
+op_to_filename = {'main': _get_path('complex_graphdefs', 'main_graph.pb'),
+                  'remote_op_a': _get_path('complex_graphdefs', 'graph_a.pb'),
+                  'remote_op_b': _get_path('complex_graphdefs', 'graph_b.pb'),
                 }
 op_to_outputs = {'main': ['AddN_1'],
                  'remote_op_b': ['Add_1'],
                  'remote_op_a': ['embedding_lookup/Identity'],
                 }
+
 op_to_graph_def = graph_partition.get_op_to_graph_def(op_to_filename)
 op_to_execution_specs = graph_partition.partition_all_graphs(op_to_graph_def, op_to_outputs)
 
