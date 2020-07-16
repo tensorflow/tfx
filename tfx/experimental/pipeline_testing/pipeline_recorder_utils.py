@@ -24,20 +24,20 @@ import os
 import absl
 from ml_metadata.proto import metadata_store_pb2
 import tensorflow as tf
-from typing import Dict, List, Text
+from typing import Dict, Iterator, List, Optional, Text, Tuple
 
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
 def get_paths(metadata_connection: metadata.Metadata,
               executions: Dict[Text, List[metadata_store_pb2.Execution]],
-              output_dir: Text):
+              output_dir: Text) -> Iterator[Tuple]:
   """Returns a zipped list of source artifact uris and destination uris.
   Destination uris are stored in output_dir.
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
-    executions:
-    output_dir: Uri to metadata db.
+    executions: List of pipeline executions.
+    output_dir: Directory path to which pipeline outputs are recorded.
 
   Returns:
     Zip of src_uris and dest_uris.
@@ -49,16 +49,14 @@ def get_paths(metadata_connection: metadata.Metadata,
   ]
   unique_artifact_ids = list({x.artifact_id for x in events})
 
-  src_uris = []
-  dest_uris = []
   for artifact in \
         metadata_connection.store.get_artifacts_by_id(unique_artifact_ids):
-    src_uris.append(artifact.uri)
+    src_uri = artifact.uri
     component_id = \
         artifact.custom_properties['producer_component'].string_value
     name = artifact.custom_properties['name'].string_value
-    dest_uris.append(os.path.join(output_dir, component_id, name))
-  return zip(src_uris, dest_uris)
+    dest_uri = os.path.join(output_dir, component_id, name)
+    yield (src_uri, dest_uri)
 
 def get_execution_dict(metadata_connection: metadata.Metadata
                       ) -> Dict[Text, List[metadata_store_pb2.Execution]]:
@@ -101,23 +99,25 @@ def get_latest_executions(metadata_connection: metadata.Metadata,
   return metadata_connection.store.get_executions_by_context(latest_context_id)
 
 def record_pipeline(output_dir: Text,
-                    metadata_db_uri: Text,
-                    host: Text,
-                    port: int,
-                    pipeline_name: Text,
-                    run_id: Text) -> None:
+                    metadata_db_uri: Optional[Text],
+                    host: Optional[Text],
+                    port: Optional[int],
+                    pipeline_name: Optional[Text],
+                    run_id: Optional[Text]) -> None:
   """Record pipeline run with run_id to output_dir. For the beam pipeline,
   metadata_db_uri is required. For KFP, host and port should be specified.
 
   Args:
-    output_dir: Directory to record pipeline outputs to.
+    output_dir: Directory path to which pipeline outputs are recorded.
     metadata_db_uri: Uri to metadata db.
     host: The name or network address of the instance of MySQL to connect to.
     port: The port MySQL is using to listen for connections.
     run_id: Pipeline execution run_id.
 
   Raises:
-    ValueError if metadata_db_uri is None or host and/or port is None.
+    ValueError: In case of invalid arguments:
+      - metadata_db_uri is None or host and/or port is None.
+      - run_id is None and pipeline_name is None
   """
   if host is not None and port is not None:
     metadata_config = metadata_store_pb2.MetadataStoreClientConfig()
@@ -132,6 +132,9 @@ def record_pipeline(output_dir: Text,
 
   with metadata.Metadata(metadata_config) as metadata_connection:
     if run_id is None:
+      if pipeline_name is None:
+        raise ValueError("If the run_id is not specified,"\
+                         " pipeline_name should be specified")
       # fetch executions of the most recently updated execution context
       executions = get_latest_executions(metadata_connection,
                                          pipeline_name)

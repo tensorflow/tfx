@@ -17,9 +17,8 @@
 *   Switched Transform component to use the new TFXIO code path. Users may
     potentially notice large performance improvement.
 *   Added support for primitive artifacts to InputValuePlaceholder.
-*   Added BaseStubExecutor and StubComponentLauncher for TFX Pipeline Test to 
-    `tfx.experimental.pipeline_testing`. 
-*   Added TFX Pipeline Recorder to `tfx.experimental.pipeline_testing`.
+*   Added experimental BaseStubExecutor and StubComponentLauncher to test TFX pipelines. 
+*   Added experimental TFX Pipeline Recorder to record output artifacts of the pipeline.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
