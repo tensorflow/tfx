@@ -35,16 +35,16 @@ Then, create sub-folders for different dataset splits and move different splits 
 cd cifar10/data
 mkdir train_whole
 mkdir test_whole
-mv ciar10/3.0.2/cifar10-train.tfrecord-00000-of-00001 train_whole/
-mv ciar10/3.0.2/cifar10-test.tfrecord-00000-of-00001 test_whole/
+mv cifar10/3.0.2/cifar10-train.tfrecord-00000-of-00001 train_whole/
+mv cifar10/3.0.2/cifar10-test.tfrecord-00000-of-00001 test_whole/
 ```
 ### Train the model
 Execute the pipeline python file :
 ```
 python ~/cifar10/cifar_pipeline_native_keras.py
 ```
-The trained model can be found at `~/cifar10/serving_model_lite`
-Change the name of the trained model to make it more informative. We renamed it to `cifar10.tflite`
+The trained model is located at `~/cifar10/serving_model_lite/tflite`
+
 ### Add MetaData to the trained model
 To use our trained model with MLKit, we need to add metadata to our model specifying the input's normalization strategy and output's label map. To do so, we need to 
 first create a folder to store the final model with metadata:

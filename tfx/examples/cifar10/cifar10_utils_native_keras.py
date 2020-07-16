@@ -43,6 +43,7 @@ _EVAL_BATCH_SIZE = 64
 
 IMAGE_KEY = 'image'
 LABEL_KEY = 'label'
+SPLIT_KEY = 'is_train'
 
 def transformed_name(key):
   return key + '_xf'
@@ -79,13 +80,16 @@ def _input_fn(file_pattern: List[Text],
   transformed_feature_spec = (
       tf_transform_output.transformed_feature_spec().copy())
 
+  raw_feature_spec = (tf_transform_output.raw_feature_spec().copy())
   dataset = tf.data.experimental.make_batched_features_dataset(
       file_pattern=file_pattern,
       batch_size=batch_size,
-      features=transformed_feature_spec,
+      features=raw_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=transformed_name(LABEL_KEY))
+      label_key=LABEL_KEY)
 
+  transform_layer = tf_transform_output.transform_features_layer()
+  dataset = dataset.map(lambda x, y: (transform_layer(x), y))
   return dataset
 
 def _freeze_model_by_percentage(model: tf.keras.Model,
@@ -115,10 +119,18 @@ def _build_keras_model() -> tf.keras.Model:
   Returns:
     A Keras Model.
   """
+  # We create a MobileNet model with weights pre-trained on ImageNet.
+  # We remove the top classification layer of the MobileNet, 
+  # which was used for classifying ImageNet objects. We will add our own classification 
+  # layer for CIFAR10 later.
+  # We use average pooling at the last convolution layer to get a 1D vector for classifcation, 
+  # which is consistent with the origin MobileNet setup
   base_model = tf.keras.applications.MobileNet(
       input_shape=(224, 224, 3), include_top=False, weights='imagenet',
       pooling='avg')
 
+  # We add a Dropout layer at the top of MobileNet backbone we just created to prevent 
+  # overfiting, and then a Dense layer to classifying CIFAR10 objects
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
           input_shape=(224, 224, 3), name=transformed_name(IMAGE_KEY)),
@@ -127,11 +139,6 @@ def _build_keras_model() -> tf.keras.Model:
       tf.keras.layers.Dense(10, activation='softmax')
   ])
 
-  model.compile(
-      loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
-      metrics=['sparse_categorical_accuracy'])
-  model.summary(print_fn=absl.logging.info)
   return model
 
 def _decode_and_preprocess_image(image_string):
@@ -151,6 +158,16 @@ def _decode_and_preprocess_image(image_string):
   image = tf.keras.applications.mobilenet.preprocess_input(image)
   return image
 
+def _augment_image(image_feature):
+  image_feature = tf.image.random_flip_left_right(image_feature)
+  image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
+  image_feature = tf.image.random_crop(image_feature, (224,224, 3))
+  return image_feature
+
+def _data_augmentation(split, image_feature):
+  image_feature = tf.cond(tf.equal(split, 1), lambda: _augment_image(image_feature), lambda: image_feature)
+  return split, image_feature
+
 # TFX Transform will call this function.
 def preprocessing_fn(inputs):
   """tf.transform's callback function for preprocessing inputs.
@@ -165,6 +182,8 @@ def preprocessing_fn(inputs):
 
   image_features = tf.map_fn(lambda x: _decode_and_preprocess_image(x[0]),
                              inputs[IMAGE_KEY], dtype=tf.float32)
+
+  _, image_features = tf.map_fn(lambda x: _data_augmentation(x[0], x[1]), (inputs[SPLIT_KEY], image_features))
 
   outputs[transformed_name(IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
@@ -181,7 +200,6 @@ def run_fn(fn_args: TrainerFnArgs):
     fn_args: Holds args used to train the model as name/value pairs.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
-
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
                             _TRAIN_BATCH_SIZE)
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
@@ -196,42 +214,44 @@ def run_fn(fn_args: TrainerFnArgs):
   classifier_epochs = int(total_epochs / 2)
   finetune_epochs = total_epochs - classifier_epochs
 
-  # Freeze the whole MobileNet backbone and train the top classifer only
-  base_model = model.get_layer('mobilenet_1.00_224')
-  _freeze_model_by_percentage(base_model, 1.0)
-  # We need to recompile the model because layer properties have changed
-  model.compile(
-      loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
-      metrics=['sparse_categorical_accuracy'])
-  model.summary(print_fn=absl.logging.info)
+  # absl.logging.info('Start training the top classifier')
+  # # Freeze the whole MobileNet backbone and train the top classifer only
+  # base_model = model.get_layer('mobilenet_1.00_224')
+  # _freeze_model_by_percentage(base_model, 1.0)
+  # # We need to recompile the model because layer properties have changed
+  # model.compile(
+  #     loss='sparse_categorical_crossentropy',
+  #     optimizer=tf.keras.optimizers.RMSprop(lr=0.0015),
+  #     metrics=['sparse_categorical_accuracy'])
+  # model.summary(print_fn=absl.logging.info)
 
-  model.fit(
-      train_dataset,
-      epochs=classifier_epochs,
-      steps_per_epoch=steps_per_epoch,
-      validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps
-  )
+  # model.fit(
+  #     train_dataset,
+  #     epochs=classifier_epochs,
+  #     steps_per_epoch=steps_per_epoch,
+  #     validation_data=eval_dataset,
+  #     validation_steps=fn_args.eval_steps
+  # )
 
-  # Optional
-  # Unfreeze the top MobileNet layers and finetune the whole model
-  base_model = model.get_layer('mobilenet_1.00_224')
-  _freeze_model_by_percentage(base_model, 0.9)
-  # We need to recompile the model because layer properties have changed
-  model.compile(
-      loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=0.0005),
-      metrics=['sparse_categorical_accuracy'])
-  model.summary(print_fn=absl.logging.info)
+  # # The fine-tuning is optional
+  # absl.logging.info('Start fine-tuning the model')
+  # # Unfreeze the top MobileNet layers and finetune the whole model
+  # base_model = model.get_layer('mobilenet_1.00_224')
+  # _freeze_model_by_percentage(base_model, 0.9)
+  # # We need to recompile the model because layer properties have changed
+  # model.compile(
+  #     loss='sparse_categorical_crossentropy',
+  #     optimizer=tf.keras.optimizers.RMSprop(lr=0.0005),
+  #     metrics=['sparse_categorical_accuracy'])
+  # model.summary(print_fn=absl.logging.info)
 
-  model.fit(
-      train_dataset,
-      epochs=finetune_epochs,
-      steps_per_epoch=steps_per_epoch,
-      validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps
-  )
+  # model.fit(
+  #     train_dataset,
+  #     epochs=finetune_epochs,
+  #     steps_per_epoch=steps_per_epoch,
+  #     validation_data=eval_dataset,
+  #     validation_steps=fn_args.eval_steps
+  # )
 
   signatures = {
       'serving_default':

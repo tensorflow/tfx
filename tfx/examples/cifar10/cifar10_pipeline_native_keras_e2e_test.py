@@ -24,7 +24,6 @@ from typing import Text
 
 import tensorflow as tf
 
-# from tfx.examples.mnist import mnist_pipeline_native_keras
 import cifar10_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -83,7 +82,6 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
     BeamDagRunner().run(pipeline)
 
-    # self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir_lite))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     metadata_config = metadata.sqlite_metadata_connection_config(

@@ -78,8 +78,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the CIFAR10 image classification pipeline using TFX."""
   input_config = example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='train_whole/*'),
-            example_gen_pb2.Input.Split(name='eval', pattern='test_whole/*')])
+            example_gen_pb2.Input.Split(name='train', pattern='train_with_split/*'),
+            example_gen_pb2.Input.Split(name='eval', pattern='test_with_split/*')])
 
   examples = external_input(data_root)
 
@@ -98,7 +98,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
-  # Performs transformations and feature engineering in training and serving.
+  # Performs .ations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
@@ -108,7 +108,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     return Trainer(
         module_file=module_file,
         custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-        examples=transform.outputs['transformed_examples'],
+        examples=example_gen.outputs['examples'],
         transform_graph=transform.outputs['transform_graph'],
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
@@ -136,7 +136,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.config.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.8}),
+                          lower_bound={'value': 0.1}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-3})))
@@ -144,8 +144,10 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       ])
 
   # Uses TFMA to compute the evaluation statistics over features of a model.
-  # Here we take the output of Transform for evaluation because our saved serving model
-  # takes float32 as input instead of encoded image strings.
+  # We evaluate using the materialized examples that are output by Transform because
+  # the operations currently performed within Transform are not compatible with TFLite.
+  # Note that for deployment, the same logic that is performed within Transform
+  # must be reproduced client-side.
   evaluator = Evaluator(
       examples=transform.outputs['transformed_examples'],
       model=trainer.outputs['model'],
