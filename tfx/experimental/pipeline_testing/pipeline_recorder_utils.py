@@ -33,7 +33,8 @@ def get_paths(metadata_connection: metadata.Metadata,
               executions: Dict[Text, List[metadata_store_pb2.Execution]],
               output_dir: Text) -> Iterator[Tuple]:
   """Returns a zipped list of source artifact uris and destination uris.
-  Destination uris are stored in output_dir.
+  Destination uris are stored in the output_dir.
+
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
     executions: List of pipeline executions.
@@ -78,6 +79,7 @@ def get_latest_executions(metadata_connection: metadata.Metadata,
                           pipeline_name: Text
                           ) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
+
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
 
@@ -111,7 +113,7 @@ def record_pipeline(output_dir: Text,
   Raises:
     ValueError: In case of invalid arguments:
       - metadata_db_uri is None or host and/or port is None.
-      - run_id is None and pipeline_name is None
+      - run_id is None and pipeline_name is None.
   """
   if host is not None and port is not None:
     metadata_config = metadata_store_pb2.MetadataStoreClientConfig()
@@ -129,7 +131,7 @@ def record_pipeline(output_dir: Text,
       if pipeline_name is None:
         raise ValueError("If the run_id is not specified,"\
                          " pipeline_name should be specified")
-      # fetch executions of the most recently updated execution context
+      # fetch executions of the most recently updated execution context.
       executions = get_latest_executions(metadata_connection,
                                          pipeline_name)
     else:
