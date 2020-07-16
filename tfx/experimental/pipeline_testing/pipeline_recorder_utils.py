@@ -24,6 +24,7 @@ import os
 import absl
 from ml_metadata.proto import metadata_store_pb2
 from typing import Dict, List, Text
+import tensorflow as tf
 
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
@@ -142,7 +143,7 @@ def record_pipeline(output_dir: Text,
           "run_id {} is not recorded in the MLMD metadata".format(run_id))
     for src_uri, dest_uri in \
           get_paths(metadata_connection, executions, output_dir):
-      if not os.path.exists(src_uri):
+      if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError("{} does not exist".format(src_uri))
       os.makedirs(dest_uri, exist_ok=True)
       io_utils.copy_dir(src_uri, dest_uri)
