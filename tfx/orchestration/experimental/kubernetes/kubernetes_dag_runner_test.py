@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.orchestration.beam.beam_dag_runner."""
+"""Tests for tfx.orchestration.kubernetes.kubernetes_dag_runner."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,7 +25,6 @@ from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
-from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.types.component_spec import ChannelParameter
 
@@ -53,9 +51,10 @@ class _ArtifactTypeE(types.Artifact):
   TYPE_NAME = 'ArtifactTypeE'
 
 
-class _FakeComponentAsDoFn(beam_dag_runner._ComponentAsDoFn):
+class _FakeLaunchAsContainerComponent(
+    kubernetes_dag_runner.LaunchAsContainerComponent):
 
-  def _run_component(self):
+  def run_component(self):
     _executed_components.append(self._component_id)
 
 
@@ -120,8 +119,8 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
 
   @mock.patch.multiple(
       kubernetes_dag_runner,
-      _LaunchAsContainerComponent=_FakeComponentAsDoFn,
-      is_inside_cluster=lambda :True,
+      LaunchAsContainerComponent=_FakeLaunchAsContainerComponent,
+      is_inside_cluster=lambda: True,
   )
   def testRun(self):
     component_a = _FakeComponent(

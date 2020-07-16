@@ -39,27 +39,30 @@ def main():
 
   parser = argparse.ArgumentParser()
 
-  # pipeline is serialized via a json format 
+  # pipeline is serialized via a json format
   parser.add_argument('--serialized_pipeline', type=str, required=True)
 
   args = parser.parse_args()
 
   tfx_pipeline = json.loads(args.serialized_pipeline)
-  components = [json_utils.loads(component) for component in tfx_pipeline['components']]
+  components = [
+      json_utils.loads(component) for component in tfx_pipeline['components']
+    ]
   metadata_connection_config = metadata_store_pb2.ConnectionConfig()
-  json_format.Parse(tfx_pipeline['metadata_connection_config'], metadata_connection_config)
+  json_format.Parse(tfx_pipeline['metadata_connection_config'],
+                    metadata_connection_config)
 
   absl.logging.set_verbosity(absl.logging.INFO)
   kubernetes_dag_runner.KubernetesDagRunner().run(
-    pipeline.Pipeline(
-        pipeline_name=tfx_pipeline['pipeline_name'],
-        pipeline_root=tfx_pipeline['pipeline_root'],
-        components=components,
-        sort_components=False,
-        enable_cache=tfx_pipeline['enable_cache'],
-        metadata_connection_config=metadata_connection_config,
-        beam_pipeline_args=tfx_pipeline['beam_pipeline_args'],
-    )
+      pipeline.Pipeline(
+          pipeline_name=tfx_pipeline['pipeline_name'],
+          pipeline_root=tfx_pipeline['pipeline_root'],
+          components=components,
+          sort_components=False,
+          enable_cache=tfx_pipeline['enable_cache'],
+          metadata_connection_config=metadata_connection_config,
+          beam_pipeline_args=tfx_pipeline['beam_pipeline_args'],
+      )
   )
 
 
