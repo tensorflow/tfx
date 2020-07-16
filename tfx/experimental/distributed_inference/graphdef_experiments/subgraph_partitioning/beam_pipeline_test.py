@@ -12,6 +12,7 @@ import apache_beam as beam
 from apache_beam.testing import test_pipeline
 from apache_beam.testing import util
 import numpy as np
+import os
 
 # Since we're using PyFunc to mimic the behavior of a remote op, we need
 # to import it so that we can run the original model. If we don't, 
@@ -20,10 +21,13 @@ import create_complex_graph
 
 
 # Some info
-op_to_filename = {'main': './complex_graphdefs/main_graph.pb',
-                  'remote_op_a': './complex_graphdefs/graph_a.pb',
-                  'remote_op_b': './complex_graphdefs/graph_b.pb',
-                  }
+def _get_path(folder_name, file_name):
+    return os.path.join(os.path.join(os.path.dirname(__file__), folder_name), file_name)
+
+op_to_filename = {'main': _get_path('complex_graphdefs', 'main_graph.pb'),
+                  'remote_op_a': _get_path('complex_graphdefs', 'graph_a.pb'),
+                  'remote_op_b': _get_path('complex_graphdefs', 'graph_b.pb'),
+                 }
 op_to_outputs = {'main': ['AddN_1'],
                 'remote_op_b': ['Add_1'],
                 'remote_op_a': ['embedding_lookup/Identity'],
