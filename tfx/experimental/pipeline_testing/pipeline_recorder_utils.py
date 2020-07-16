@@ -111,7 +111,7 @@ def record_pipeline(output_dir: Text,
     run_id: Pipeline execution run_id.
 
   Raises:
-    ValueError: In case of invalid arguments:
+    ValueError: In cases of invalid arguments:
       - metadata_db_uri is None or host and/or port is None.
       - run_id is None and pipeline_name is None.
   """
