@@ -43,16 +43,7 @@ class StubComponentLauncher(
                     output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
-    if os.environ['RECORD_DIR']:
-      self.test_data_dir = os.environ['RECORD_DIR']
-    if os.environ['COMPONENT_IDS']:
-      component_ids = os.environ['COMPONENT_IDS'].split(",")
-
     component_id = self._component_info.component_id
-    self.stubbed_component_map = {}
-    for c_id in component_ids:
-        self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
-
     if component_id not in self.stubbed_component_map:
       super(StubComponentLauncher,
             self)._run_executor(execution_id, input_dict, output_dict,
