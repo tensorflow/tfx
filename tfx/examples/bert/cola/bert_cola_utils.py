@@ -104,7 +104,7 @@ def _input_fn(file_pattern: List[Text],
       reader=_gzip_reader_fn,
       label_key=_LABEL_KEY)
 
-  return dataset
+  return dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
 
 def _get_serve_tf_examples_fn(model, tf_transform_output):
@@ -157,8 +157,8 @@ def run_fn(fn_args: TrainerFnArgs):
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(5e-5),
-        loss=tf.keras.losses.binary_crossentropy,
-        metrics=['accuracy', tfa.metrics.MatthewsCorrelationCoefficient(1)]
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy', tfa.metrics.MatthewsCorrelationCoefficient(2)]
     )
 
   model.fit(

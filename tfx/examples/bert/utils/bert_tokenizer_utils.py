@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ class SpecialBertTokenizer():
     with eager_mode():
       model = hub.KerasLayer(self._model_link)
       vocab = model.resolved_object.vocab_file.asset_path.numpy()
+      self._do_lower_case = model.resolved_object.do_lower_case.numpy()
       f = open(vocab, 'r')
       self._sep_id = None
       self._cls_id = None
@@ -85,7 +86,10 @@ class SpecialBertTokenizer():
     """
     model = hub.KerasLayer(self._model_link)
     vocab_file_path = model.resolved_object.vocab_file.asset_path
-    tokenizer = text.BertTokenizer(vocab_file_path, token_out_type=tf.int64)
+    tokenizer = text.BertTokenizer(
+        vocab_file_path,
+        lower_case=self._do_lower_case,
+        token_out_type=tf.int64)
     word_id = tokenizer.tokenize(sequence)
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
     word_id = word_id.merge_dims(-2, -1)
@@ -108,16 +112,8 @@ class SpecialBertTokenizer():
       return word_id, None, None
 
     word_id = word_id.to_tensor(
-        shape=[-1, max_len],
+        shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
-    '''
-    word_id = tf.pad(
-        word_id,
-        [[0, 0], [0, max_len]],
-        constant_values=tf.constant(self._pad_id, dtype=tf.int64))
-
-    word_id = tf.slice(word_id, [0, 0], [-1, max_len])
-    '''
 
     input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
     segment_id = tf.fill(
@@ -166,27 +162,12 @@ class SpecialBertTokenizer():
 
     word_id = tf.concat([word_id_a, word_id_b], 1)
     word_id = word_id.to_tensor(
-        shape=[-1, max_len],
+        shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
-    '''
-    word_id = tf.pad(
-        word_id,
-        [[0, 0], [0, max_len]],
-        constant_values=tf.constant(self._pad_id, dtype=tf.int64))
 
-    word_id = tf.slice(word_id, [0, 0], [-1, max_len])
-    '''
     input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
     segment_id = tf.cast(word_id_a < 0, tf.int64)
     segment_id = segment_id.to_tensor(
-        shape=[-1, max_len],
+        shape=[None, max_len],
         default_value=tf.constant(1, dtype=tf.int64))
-    '''
-    segment_id = tf.pad(
-        segment_id,
-        [[0, 0], [0, max_len]],
-        constant_values=tf.constant(1, dtype=tf.int64))
-
-    segment_id = tf.slice(segment_id, [0, 0], [-1, max_len])
-    '''
     return word_id, input_mask, segment_id
