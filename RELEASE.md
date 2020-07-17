@@ -11,11 +11,16 @@
 *   Depends on `ml-metadata>=0.22.1,<0.23.0`.
 
 ## Breaking changes
+N/A
 
 ### For pipeline authors
+N/A
 
 ### For component authors
+N/A
 
 ## Documentation updates
+N/A
 
 ## Deprecations
+N/A
