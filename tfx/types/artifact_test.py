@@ -347,6 +347,35 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.string1, '111')
     self.assertEqual(rehydrated.string2, '222')
 
+  def testCopyFrom(self):
+    original = _MyArtifact()
+    original.id = 1
+    original.uri = '/my/path'
+    original.int1 = 111
+    original.string1 = '111'
+    original.set_string_custom_property('my_custom_property', 'aaa')
+
+    copied = _MyArtifact()
+    copied.id = 2
+    copied.uri = '/some/other/path'
+    copied.int1 = 333
+    original.set_string_custom_property('my_custom_property', 'bbb')
+    copied.copy_from(original)
+
+    # id should not be overridden.
+    self.assertEqual(copied.id, 2)
+    self.assertEqual(original.uri, copied.uri)
+    self.assertEqual(original.int1, copied.int1)
+    self.assertEqual(original.string1, copied.string1)
+    self.assertEqual(original.get_string_custom_property('my_custom_property'),
+                     copied.get_string_custom_property('my_custom_property'))
+
+  def testCopyFromDifferentArtifactType(self):
+    artifact1 = _MyArtifact()
+    artifact2 = _MyArtifact2()
+    with self.assertRaises(AssertionError):
+      artifact2.copy_from(artifact1)
+
 
 class ValueArtifactTest(tf.test.TestCase):
   """Tests for ValueArtifact."""
