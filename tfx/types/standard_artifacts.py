@@ -200,3 +200,8 @@ class TransformGraph(Artifact):
 
 class HyperParameters(Artifact):
   TYPE_NAME = 'HyperParameters'
+
+
+# WIP and subject to change.
+class DataView(Artifact):
+  TYPE_NAME = 'DataView'

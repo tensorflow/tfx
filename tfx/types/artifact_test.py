@@ -27,10 +27,11 @@ from typing import Text
 import absl
 import mock
 import tensorflow as tf
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact
 from tfx.utils import json_utils
+
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 
 
 class _MyArtifact(artifact.Artifact):
@@ -154,8 +155,54 @@ class ArtifactTest(tf.test.TestCase):
         'string_value',
         instance.mlmd_artifact.custom_properties['string_key'].string_value)
 
-    self.assertEqual('Artifact(type_name: MyTypeName, uri: /tmp/uri2, id: 1)',
-                     str(instance))
+    self.assertEqual(
+        'Artifact(artifact: id: 1\n'
+        'type_id: 2\n'
+        'uri: "/tmp/uri2"\n'
+        'custom_properties {\n'
+        '  key: "int_key"\n'
+        '  value {\n'
+        '    int_value: 20\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "state"\n'
+        '  value {\n'
+        '    string_value: "deleted"\n'
+        '  }\n'
+        '}\n'
+        'custom_properties {\n'
+        '  key: "string_key"\n'
+        '  value {\n'
+        '    string_value: "string_value"\n'
+        '  }\n'
+        '}\n'
+        ', artifact_type: name: "MyTypeName"\n'
+        'properties {\n'
+        '  key: "float1"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "float2"\n'
+        '  value: DOUBLE\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int1"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "int2"\n'
+        '  value: INT\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string1"\n'
+        '  value: STRING\n'
+        '}\n'
+        'properties {\n'
+        '  key: "string2"\n'
+        '  value: STRING\n'
+        '}\n'
+        ')', str(instance))
 
     # Test json serialization.
     json_dict = json_utils.dumps(instance)
@@ -299,6 +346,35 @@ class ArtifactTest(tf.test.TestCase):
     self.assertEqual(rehydrated.int2, 222)
     self.assertEqual(rehydrated.string1, '111')
     self.assertEqual(rehydrated.string2, '222')
+
+  def testCopyFrom(self):
+    original = _MyArtifact()
+    original.id = 1
+    original.uri = '/my/path'
+    original.int1 = 111
+    original.string1 = '111'
+    original.set_string_custom_property('my_custom_property', 'aaa')
+
+    copied = _MyArtifact()
+    copied.id = 2
+    copied.uri = '/some/other/path'
+    copied.int1 = 333
+    original.set_string_custom_property('my_custom_property', 'bbb')
+    copied.copy_from(original)
+
+    # id should not be overridden.
+    self.assertEqual(copied.id, 2)
+    self.assertEqual(original.uri, copied.uri)
+    self.assertEqual(original.int1, copied.int1)
+    self.assertEqual(original.string1, copied.string1)
+    self.assertEqual(original.get_string_custom_property('my_custom_property'),
+                     copied.get_string_custom_property('my_custom_property'))
+
+  def testCopyFromDifferentArtifactType(self):
+    artifact1 = _MyArtifact()
+    artifact2 = _MyArtifact2()
+    with self.assertRaises(AssertionError):
+      artifact2.copy_from(artifact1)
 
 
 class ValueArtifactTest(tf.test.TestCase):
