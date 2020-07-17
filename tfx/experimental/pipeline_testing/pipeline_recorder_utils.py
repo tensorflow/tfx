@@ -21,7 +21,7 @@ from __future__ import print_function
 from collections import defaultdict
 import os
 
-import absl
+from absl import logging
 from ml_metadata.proto import metadata_store_pb2
 import tensorflow as tf
 from typing import Dict, Iterator, List, Optional, Text, Tuple
@@ -32,8 +32,8 @@ from tfx.utils import io_utils
 def get_paths(metadata_connection: metadata.Metadata,
               executions: Dict[Text, List[metadata_store_pb2.Execution]],
               output_dir: Text) -> Iterator[Tuple]:
-  """Returns a zipped list of source artifact uris and destination uris.
-  Destination uris are stored in the output_dir.
+  """Returns a iterable of tuple containing source artifact uris and
+  destination uris, which are stored in the output_dir.
 
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
@@ -106,8 +106,9 @@ def record_pipeline(output_dir: Text,
   Args:
     output_dir: Directory path to which pipeline outputs are recorded.
     metadata_db_uri: Uri to metadata db.
-    host: The host to connect to gRPC server.
-    port: The port to connect to gRPC server.
+    host: Hostname of the metadata grpc server
+    port: Port number of the metadata grpc server.
+    pipeline_name: Pipeline name, which is required if run_id isn't specified.
     run_id: Pipeline execution run_id.
 
   Raises:
@@ -145,6 +146,5 @@ def record_pipeline(output_dir: Text,
           get_paths(metadata_connection, executions, output_dir):
       if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError("{} does not exist".format(src_uri))
-      os.makedirs(dest_uri, exist_ok=True)
       io_utils.copy_dir(src_uri, dest_uri)
-    absl.logging.info("Pipeline Recorded at %s", output_dir)
+    logging.info("Pipeline Recorded at %s", output_dir)
