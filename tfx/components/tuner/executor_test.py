@@ -21,17 +21,16 @@ from __future__ import print_function
 import json
 import os
 from kerastuner import HyperParameters
-# TODO(b/160252429): Clearn up lint warining.
 import tensorflow as tf
 
-from google.protobuf import json_format
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
 from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
 class ExecutorTest(tf.test.TestCase):

@@ -58,17 +58,17 @@ def _is_chief():
   return task_type == 'chief' or (task_type == 'master' and task_index == 0)
 
 
-class TrainerFnArgs(object):
+class TrainerFnArgs(dict):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
-  def __init__(self, **kwargs):
-    self._data = kwargs
-
-  def __getitem__(self, key):
-    return self._data[key]
-
   def __getattr__(self, key):
-    return self._data[key]
+    if key in self:
+      return self[key]
+    else:
+      raise AttributeError('No such attribute: ' + key)
+
+  def __setattr__(self, key, value):
+    self[key] = value
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -281,6 +281,17 @@ class Executor(GenericExecutor):
 
     schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
+    # TODO(b/160795287): Deprecate estimator based executor.
+    # Provide user with a modified fn_args, with model_run given as
+    # the working directory. Executor will then copy user models to
+    # model artifact directory.
+    serving_dest = fn_args.serving_model_dir
+    eval_dest = fn_args.eval_model_dir
+
+    working_dir = fn_args.model_run_dir
+    fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
+    fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
+
     training_spec = trainer_fn(fn_args, schema)
 
     # Train the model
@@ -302,14 +313,19 @@ class Executor(GenericExecutor):
           export_dir_base=fn_args.eval_model_dir,
           eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-      # TODO(b/158106209): refactor serving_model_dir to only contain model.
-      # Copy model run information to ModelRun artifact
-      io_utils.copy_dir(fn_args.serving_model_dir, fn_args.model_run_dir)
-
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
+
+      # TODO(b/160795287): Deprecate estimator based executor.
+      # Copy serving and eval model from model_run to model artifact directory.
+      serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+      io_utils.copy_dir(serving_source, serving_dest)
+      absl.logging.info('Serving model copied to: %s.', serving_dest)
+
+      eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+      io_utils.copy_dir(eval_source, eval_dest)
+      absl.logging.info('Eval model copied to: %s.', eval_dest)
+
     else:
       absl.logging.info(
-          'eval_savedmodel export for TFMA is skipped because '
-          'this is not the chief worker.'
-      )
+          'Model export is skipped because this is not the chief worker.')
