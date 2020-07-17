@@ -83,7 +83,7 @@ class Evaluator(base_component.BaseComponent):
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
-      example_path_splits: Optional[List[Text]] = None,
+      examples_path_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
@@ -164,7 +164,7 @@ class Evaluator(base_component.BaseComponent):
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
-        example_path_splits=example_path_splits,
+        examples_path_splits=examples_path_splits,
         evaluation=evaluation,
         eval_config=eval_config,
         blessing=blessing,

@@ -36,7 +36,8 @@ class ComponentTest(tf.test.TestCase):
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model=channel_utils.as_channel([model_exports]))
+        model=channel_utils.as_channel([model_exports]),
+        examples_path_splits=['eval'])
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
     self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,

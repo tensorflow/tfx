@@ -75,6 +75,8 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.BLESSING_KEY: [blessing_output],
     }
 
+    exec_properties['examples_path_splits'] = ['eval']
+
     # Run executor.
     evaluator = executor.Executor()
     evaluator.Do(input_dict, output_dict, exec_properties)
@@ -140,6 +142,8 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
       absl.logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
+
+    exec_properties['examples_path_splits'] = ['eval']
 
     # Run executor.
     evaluator = executor.Executor()
@@ -285,6 +289,8 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.EVALUATION_KEY: [eval_output],
         constants.BLESSING_KEY: [blessing_output],
     }
+
+    exec_properties['examples_path_splits'] = ['eval']
 
     # Run executor.
     evaluator = executor.Executor()

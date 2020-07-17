@@ -120,6 +120,8 @@ class Executor(base_executor.BaseExecutor):
               thresholds=fairness_indicator_thresholds),
       ]
 
+    examples_path_splits = exec_properties.get('examples_path_splits')
+
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
 
@@ -179,9 +181,13 @@ class Executor(base_executor.BaseExecutor):
           eval_saved_model_path=model_path,
           add_metrics_callbacks=add_metrics_callbacks))
 
-    file_pattern = io_utils.all_files_pattern(
-        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], 'eval')
-    )
+    file_patterns = []
+    for split in examples_path_splits:
+      file_pattern = io_utils.all_files_pattern(
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], split)
+      )
+      file_patterns.append(file_pattern)
+
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
     if constants.SCHEMA_KEY in input_dict:
@@ -191,23 +197,28 @@ class Executor(base_executor.BaseExecutor):
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
+      examples_list = []
       # pylint: disable=expression-not-assigned
       if _USE_TFXIO:
         tensor_adapter_config = None
         if tfma.is_batched_input(eval_shared_model, eval_config):
-          tfxio = tf_example_record.TFExampleRecord(
-              file_pattern=file_pattern,
-              schema=schema,
-              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-          if schema is not None:
-            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                arrow_schema=tfxio.ArrowSchema(),
-                tensor_representations=tfxio.TensorRepresentations())
-          data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
+          for file_pattern in file_patterns:
+            tfxio = tf_example_record.TFExampleRecord(
+                file_pattern=file_pattern,
+                schema=schema,
+                raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+            if schema is not None:
+              tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+                  arrow_schema=tfxio.ArrowSchema(),
+                  tensor_representations=tfxio.TensorRepresentations())
+            data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
+            examples_list.append(data)
         else:
-          data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-              file_pattern=file_pattern)
-        (data
+          for file_pattern in file_patterns:
+            data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
+                file_pattern=file_pattern)
+            examples_list.append(data)
+        (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(
              eval_shared_model=models[0] if len(models) == 1 else models,
@@ -216,9 +227,11 @@ class Executor(base_executor.BaseExecutor):
              slice_spec=slice_spec,
              tensor_adapter_config=tensor_adapter_config))
       else:
-        data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-            file_pattern=file_pattern)
-        (data
+        for file_pattern in file_patterns:
+          data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
+              file_pattern=file_pattern)
+          examples_list.append(data)
+        (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(
              eval_shared_model=models[0] if len(models) == 1 else models,
