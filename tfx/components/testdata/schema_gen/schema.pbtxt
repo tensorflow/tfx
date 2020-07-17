@@ -89,6 +89,7 @@ feature {
   presence {
     min_count: 1
   }
+  lifecycle_stage: DEPRECATED
 }
 feature {
   name: "pickup_community_area"
@@ -217,6 +218,7 @@ string_domain {
   value: "No Charge"
   value: "Pcard"
   value: "Unknown"
+  value: "Prcard"
 }
 string_domain {
   name: "company"
@@ -273,5 +275,12 @@ string_domain {
   value: "Northwest Management LLC"
   value: "Taxi Affiliation Services"
   value: "Top Cab Affiliation"
+  value: "3094 - 24059 G.L.B. Cab Co"
+  value: "3319 - CD Cab Co"
+  value: "4053 - 40193 Adwar H. Nikola"
+  value: "4197 - Royal Star"
+  value: "5006 - Salifu Bawa"
+  value: "5724 - KYVI Cab Inc"
+  value: "585 - 88805 Valley Cab Co"
+  value: "6743 - Luhak Corp"
 }
-# generate_legacy_feature_spec: false

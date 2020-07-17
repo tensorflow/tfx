@@ -95,7 +95,7 @@ class Executor(base_executor.BaseExecutor):
 
     stats_options = options.StatsOptions()
     stats_options_json = exec_properties.get(STATS_OPTIONS_JSON_KEY)
-    if stats_options_json is not None:
+    if stats_options_json:
       # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
       # json_utils
       stats_options = options.StatsOptions.from_json(stats_options_json)

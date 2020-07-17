@@ -78,7 +78,7 @@ class ExecutorTest(tf.test.TestCase):
     eval_anomalies = io_utils.parse_pbtxt_file(eval_anomalies_path,
                                                anomalies_pb2.Anomalies())
     self.assertEqual(0, len(train_anomalies.anomaly_info))
-    self.assertNotEqual(0, len(eval_anomalies.anomaly_info))
+    self.assertEqual(0, len(eval_anomalies.anomaly_info))
 
     # Assert 'test' split is excluded.
     train_file_path = os.path.join(
