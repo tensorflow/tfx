@@ -31,7 +31,7 @@ class TaxiPipelineKubernetesTest(tf.test.TestCase):
         self._testMethodName)
 
   def testTaxiPipelineCheckDagConstruction(self):
-    logical_pipeline = taxi_pipeline_kubernetes._create_pipeline(
+    logical_pipeline = taxi_pipeline_kubernetes.create_pipeline(
         pipeline_name='Test',
         pipeline_root=self._test_dir,
         data_root=self._test_dir,

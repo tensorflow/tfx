@@ -19,35 +19,38 @@ from __future__ import print_function
 
 import absl
 
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as pipeline_module
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.orchestration.test_pipelines.download_grep_print_pipeline import create_pipeline_component_instances
-from tfx.utils import telemetry_utils
 
 _pipeline_name = 'download_grep_print_pipeline'
-_pipeline_root = "gs://tfx-eric-default"
+_pipeline_root = "gs://my-bucket"
+
 absl.logging.set_verbosity(absl.logging.INFO)
 
 
-def _create_pipeline() -> pipeline.Pipeline:
+def _create_pipeline() -> pipeline_module.Pipeline:
 
-    pipeline_name = _pipeline_name
-    pipeline_root = _pipeline_root
+  pipeline_name = _pipeline_name
+  pipeline_root = _pipeline_root
 
-    components = create_pipeline_component_instances("www.google.com", "google")
+  text_url = 'https://raw.githubusercontent.com/karpathy/char-rnn/370cbcd/data/tinyshakespeare/input.txt'
+  pattern = 'art thou'
+  components = create_pipeline_component_instances(text_url, pattern)
 
-    metadata_connection_config = kubernetes_dag_runner.get_default_kubernetes_metadata_config()
+  config = kubernetes_dag_runner.get_default_kubernetes_metadata_config()
 
-    return pipeline.Pipeline(
-        pipeline_name=pipeline_name,
-        pipeline_root=pipeline_root,
-        components=components,
-        metadata_connection_config=metadata_connection_config,
-        enable_cache=False,
-    ) 
+  return pipeline_module.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=components,
+      metadata_connection_config=config,
+      enable_cache=False,
+  )
+
 
 if __name__ == '__main__':
-    # first, create a tfx pipiline
-    _pipeline = _create_pipeline()
-    # use kubernetes dag runner to run the pipeline
-    kubernetes_dag_runner.KubernetesDagRunner().run(tfx_pipeline=_pipeline)
+  # first, create a tfx pipiline
+  pipeline = _create_pipeline()
+  # use kubernetes dag runner to run the pipeline
+  kubernetes_dag_runner.KubernetesDagRunner().run(pipeline=pipeline)

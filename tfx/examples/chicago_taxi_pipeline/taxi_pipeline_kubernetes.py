@@ -24,7 +24,6 @@ from typing import Text
 import absl
 import tensorflow_model_analysis as tfma
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -35,7 +34,6 @@ from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.proto import pusher_pb2
@@ -45,11 +43,13 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
+
 _pipeline_name = 'chicago_taxi_beam'
 # This example assumes that the taxi data is stored in a google cloud storage bucket
-# named tfx-taxi under tfx-template/data and the taxi utility function 
+# named tfx-taxi under tfx-template/data and the taxi utility function
 # is in the local tfx-src path.  Feel free to customize this as needed.
-_taxi_root = os.path.join('/', 'tfx-src', 'tfx', 'examples', 'chicago_taxi_pipeline')
+_taxi_root = os.path.join('/', 'tfx-src', 'tfx', 'examples',
+                          'chicago_taxi_pipeline')
 _data_root = 'gs://tfx-taxi/tfx-template/data'
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -66,9 +66,9 @@ _pipeline_root = 'gs://tfx-taxi/tfx-template/pipelines/'+ _pipeline_name
 _serving_model_dir = os.path.join(_tfx_root, 'serving_model', _pipeline_name)
 
 
-def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text, serving_model_dir: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
+def create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
+                    module_file: Text, serving_model_dir: Text,
+                    direct_num_workers: int) -> pipeline.Pipeline:
   """Implements the chicago taxi pipeline with TFX."""
   examples = external_input(data_root)
 
@@ -146,6 +146,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           filesystem=pusher_pb2.PushDestination.Filesystem(
               base_directory=serving_model_dir)))
 
+  config = kubernetes_dag_runner.get_default_kubernetes_metadata_config()
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
@@ -161,7 +162,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           pusher,
       ],
       enable_cache=False,
-      metadata_connection_config=kubernetes_dag_runner.get_default_kubernetes_metadata_config(),
+      metadata_connection_config=config,
       # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers])
 
@@ -170,12 +171,12 @@ if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
 
   kubernetes_dag_runner.KubernetesDagRunner().run(
-      _create_pipeline(
+      create_pipeline(
           pipeline_name=_pipeline_name,
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
           serving_model_dir=_serving_model_dir,
           # 0 means auto-detect based on the number of CPUs available during
-          # execution time. 
+          # execution time.
           direct_num_workers=0))

@@ -51,7 +51,7 @@ class PodPhase(enum.Enum):
 
   @property
   def is_done(self):
-    return self == self.SUCCEEDED or self == self.FAILED
+    return self in (self.SUCCEEDED, self.FAILED)
 
 
 class RestartPolicy(enum.Enum):
@@ -132,7 +132,7 @@ class _KubernetesClientFactory(object):
     if not self._config_loaded:
       self._LoadConfig()
     return k8s_client.CoreV1Api()
-  
+
   def MakeBatchV1Api(self) -> k8s_client.BatchV1Api:  # pylint: disable=invalid-name
     """Make a kubernetes BatchV1Api client."""
     if not self._config_loaded:
@@ -160,7 +160,7 @@ def make_job_object(
     command: List[Text],
     namespace: Text = 'default',
     container_name: Text = 'jobcontainer',
-  ) -> k8s_client.V1Job:
+) -> k8s_client.V1Job:
   """Make a kubernetes Job object.
 
   See
@@ -170,8 +170,8 @@ def make_job_object(
       api_version="batch/v1",
       kind="Job",
       metadata=k8s_client.V1ObjectMeta(
-        namespace=namespace,
-        name=_sanitize_pod_name(name),
+          namespace=namespace,
+          name=_sanitize_pod_name(name),
       ),
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
@@ -179,7 +179,7 @@ def make_job_object(
               spec=k8s_client.V1PodSpec(
                   containers=[
                       k8s_client.V1Container(
-                          name=container_name, 
+                          name=container_name,
                           image=container_image,
                           command=command,
                       ),
