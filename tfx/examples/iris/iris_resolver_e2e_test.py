@@ -189,27 +189,28 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     # Get example artifact ids.
     example_ids = [e.id for e in store.get_artifacts_by_type('Examples')]
 
-    # Get example resolver execution information.
+    # Get latest example resolver execution information.
     all_resolvers = store.get_executions_by_type(
         'tfx.components.common_nodes.resolver_node.ResolverNode')
-    example_resolver_exec = [e for e in all_resolvers 
+    resolver_exec = [e for e in all_resolvers 
         if e.properties['component_id'] == metadata_store_pb2.Value(
             string_value='ResolverNode.latest_examples_resolver')][0]
 
-    # Check if examples are referenced in output events to ResolverNode.
-    resolver_events = store.get_events_by_execution_ids(
-        [example_resolver_exec.id])
-    self.assertEquals(self._window_size,
+    # Check if window size is exactly equal to number of examples
+    # appearing in output events from example resolver.
+    resolver_events = store.get_events_by_execution_ids([resolver_exec.id])
+    self.assertEqual(self._window_size,
         len([e for e in resolver_events if e.artifact_id in example_ids and
                 e.type == metadata_store_pb2.Event.Type.OUTPUT]))
     
-    # Get trainer execution information.
+    # Get trainer component execution information.
     trainer_exec = store.get_executions_by_type(
         'tfx.components.trainer.component.Trainer')[0]
 
-    # Check if examples are referenced in input events to Trainer execution.
+    # Check if window size is exactly equal to number of examples
+    # appearing in input events to Trainer.
     train_events = store.get_events_by_execution_ids([trainer_exec.id])
-    self.assertEquals(self._window_size,
+    self.assertEqual(self._window_size,
         len([e for e in train_events if e.artifact_id in example_ids and
                 e.type == metadata_store_pb2.Event.Type.INPUT]))
 
