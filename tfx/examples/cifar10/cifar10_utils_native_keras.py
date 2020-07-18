@@ -1,0 +1,291 @@
+# Lint as: python2, python3
+# Copyright 2019 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Python source file includes CIFAR10 utils for Keras model.
+
+The utilities in this file are used to build a model with native Keras.
+This module file will be used in Transform and generic Trainer.
+"""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from typing import List, Text
+
+import os
+import absl
+import tensorflow as tf
+import tensorflow_transform as tft
+
+from tfx.components.trainer.rewriting import converters
+from tfx.components.trainer.rewriting import rewriter
+from tfx.components.trainer.rewriting import rewriter_factory
+
+from tfx.components.trainer.executor import TrainerFnArgs
+
+# When training on the whole dataset use following numbers instead
+# _TRAIN_DATA_SIZE = 50000
+# _EVAL_DATA_SIZE = 10000
+# _TRAIN_BATCH_SIZE = 64
+# _EVAL_BATCH_SIZE = 64
+
+_TRAIN_DATA_SIZE = 100
+_EVAL_DATA_SIZE = 100
+_TRAIN_BATCH_SIZE = 32
+_EVAL_BATCH_SIZE = 32
+
+IMAGE_KEY = 'image'
+LABEL_KEY = 'label'
+SPLIT_KEY = 'is_train'
+
+def transformed_name(key):
+  return key + '_xf'
+
+def _gzip_reader_fn(filenames):
+  """Small utility returning a record reader that can read gzip'ed files."""
+  return tf.data.TFRecordDataset(filenames, compression_type='GZIP')
+
+def _get_serve_image_fn(model):
+  """Returns a function that feeds the input tensor into the model."""
+
+  @tf.function
+  def serve_image_fn(image_tensor):
+    """Returns the output to be used in the serving signature."""
+    return model(image_tensor)
+
+  return serve_image_fn
+
+def _input_fn(file_pattern: List[Text],
+              tf_transform_output: tft.TFTransformOutput,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
+
+  Args:
+    file_pattern: List of paths or patterns of input tfrecord files.
+    tf_transform_output: A TFTransformOutput.
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
+
+  Returns:
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
+  """
+  # Create a dataset of raw examples
+  raw_feature_spec = (tf_transform_output.raw_feature_spec().copy())
+  dataset = tf.data.experimental.make_batched_features_dataset(
+      file_pattern=file_pattern,
+      batch_size=batch_size,
+      features=raw_feature_spec,
+      reader=_gzip_reader_fn,
+      label_key=LABEL_KEY)
+
+  # Apply transform layer on the fly (required by data augmentation)
+  transform_layer = tf_transform_output.transform_features_layer()
+  dataset = dataset.map(lambda x, y: (transform_layer(x), y))
+
+  return dataset
+
+def _freeze_model_by_percentage(model: tf.keras.Model,
+                                percentage: float):
+  """Freeze part of the model based on specified percentage
+
+  Args:
+    model: The keras model need to be partially frozen
+    percentage: the percentage of layers to freeze
+  """
+  if percentage < 0 or percentage > 1:
+    raise Exception("freeze percentage should between 0.0 and 1.0")
+
+  num_layers = len(model.layers)
+  num_layers_to_freeze = int(num_layers * percentage)
+  for idx, layer in enumerate(model.layers):
+    if idx < num_layers_to_freeze:
+      layer.trainable = False
+    else:
+      layer.trainable = True
+
+def _build_keras_model() -> tf.keras.Model:
+  """Creates a Image classification model with MobileNet as backbone
+
+  Returns:
+    The image classifcation Keras Model and the backbone MobileNet model
+  """
+  # We create a MobileNet model with weights pre-trained on ImageNet.
+  # We remove the top classification layer of the MobileNet, which was
+  # used for classifying ImageNet objects. We will add our own classification
+  # layer for CIFAR10 later. We use average pooling at the last convolution
+  # layer to get a 1D vector for classifcation, which is consistent with the
+  # origin MobileNet setup
+  base_model = tf.keras.applications.MobileNet(
+      input_shape=(224, 224, 3), include_top=False, weights='imagenet',
+      pooling='avg')
+
+  # We add a Dropout layer at the top of MobileNet backbone we just created to prevent
+  # overfiting, and then a Dense layer to classifying CIFAR10 objects
+  model = tf.keras.Sequential([
+      tf.keras.layers.InputLayer(
+          input_shape=(224, 224, 3), name=transformed_name(IMAGE_KEY)),
+      base_model,
+      tf.keras.layers.Dropout(0.3),
+      tf.keras.layers.Dense(10, activation='softmax')
+  ])
+
+  return model, base_model
+
+def _augment_image(image_feature):
+  """Perform data augmentation on image features.
+
+  Args:
+    image_feature: The image feature.
+
+  Returns:
+    Augmented image feature.
+  """
+  image_feature = tf.image.random_flip_left_right(image_feature)
+  image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
+  image_feature = tf.image.random_crop(image_feature, (224, 224, 3))
+  return image_feature
+
+def _data_augmentation(is_train, image_feature):
+  """Perform data augmentation on data.
+
+  Args:
+    is_train: Whether the data comes from train set.
+    image_feature: The image feature.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  image_feature = tf.cond(tf.equal(is_train, 1), lambda: _augment_image(image_feature),
+                          lambda: image_feature)
+  return is_train, image_feature
+
+# TFX Transform will call this function.
+def preprocessing_fn(inputs):
+  """tf.transform's callback function for preprocessing inputs.
+
+  Args:
+    inputs: map from feature keys to raw not-yet-transformed features.
+
+  Returns:
+    Map from string feature key to transformed feature operations.
+  """
+  outputs = {}
+
+  image_features = tf.map_fn(lambda x: tf.io.decode_png(x[0], channels=3),
+                             inputs[IMAGE_KEY], dtype=tf.uint8)
+  image_features = tf.cast(image_features, tf.float32)
+  image_features = tf.image.resize(image_features, [224, 224])
+  image_features = tf.keras.applications.mobilenet. \
+                         preprocess_input(image_features)
+
+  # Map function has to return a tuple when input is a tuple
+  # we are only interested in the augmented features
+  _, image_features = tf.map_fn(lambda x: _data_augmentation(x[0], x[1]),
+                                (inputs[SPLIT_KEY], image_features))
+
+  outputs[transformed_name(IMAGE_KEY)] = image_features
+  # TODO(b/157064428): Support label transformation for Keras.
+  # Do not apply label transformation as it will result in wrong evaluation.
+  outputs[transformed_name(LABEL_KEY)] = inputs[LABEL_KEY]
+
+  return outputs
+
+# TFX Trainer will call this function.
+def run_fn(fn_args: TrainerFnArgs):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
+                            _TRAIN_BATCH_SIZE)
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
+                           _EVAL_BATCH_SIZE)
+
+  mirrored_strategy = tf.distribute.MirroredStrategy()
+  with mirrored_strategy.scope():
+    model, base_model = _build_keras_model()
+
+  # Our training regime has two phases: we first freeze the backbone and train
+  # the newly added classifier only, then unfreeze part of the backbone and
+  # fine-tune with classifier jointly.
+  steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
+  total_epochs = int(fn_args.train_steps / steps_per_epoch)
+  classifier_epochs = int(total_epochs / 2)
+  finetune_epochs = total_epochs - classifier_epochs
+
+  absl.logging.info('Start training the top classifier')
+  # Freeze the whole MobileNet backbone and train the top classifer only
+  _freeze_model_by_percentage(base_model, 1.0)
+  # We need to recompile the model because layer properties have changed
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=3e-4),
+      metrics=['sparse_categorical_accuracy'])
+  model.summary(print_fn=absl.logging.info)
+
+  model.fit(
+      train_dataset,
+      epochs=classifier_epochs,
+      steps_per_epoch=steps_per_epoch,
+      validation_data=eval_dataset,
+      validation_steps=fn_args.eval_steps
+  )
+
+  absl.logging.info('Start fine-tuning the model')
+  # Unfreeze the top MobileNet layers and do joint fine-tuning
+  _freeze_model_by_percentage(base_model, 0.9)
+  # We need to recompile the model because layer properties have changed
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=5e-5),
+      metrics=['sparse_categorical_accuracy'])
+  model.summary(print_fn=absl.logging.info)
+
+  model.fit(
+      train_dataset,
+      epochs=finetune_epochs,
+      steps_per_epoch=steps_per_epoch,
+      validation_data=eval_dataset,
+      validation_steps=fn_args.eval_steps
+  )
+
+  # Save the trained model in TFLite format for serving
+  signatures = {
+      'serving_default':
+          _get_serve_image_fn(
+              model).get_concrete_function(
+                  tf.TensorSpec(
+                      shape=[None, 224, 224, 3],
+                      dtype=tf.float32,
+                      name=transformed_name(IMAGE_KEY)
+                      ))
+  }
+
+  temp_saving_model_dir = os.path.join(fn_args.serving_model_dir, 'temp')
+  model.save(temp_saving_model_dir, save_format='tf', signatures=signatures)
+
+  tfrw = rewriter_factory.create_rewriter(
+      rewriter_factory.TFLITE_REWRITER, name='tflite_rewriter',
+      enable_experimental_new_converter=True)
+  converters.rewrite_saved_model(temp_saving_model_dir,
+                                 fn_args.serving_model_dir,
+                                 tfrw,
+                                 rewriter.ModelType.TFLITE_MODEL)
+
+  tf.io.gfile.rmtree(temp_saving_model_dir)
+  # TODO: incorporate metadata writer into the pipeline
