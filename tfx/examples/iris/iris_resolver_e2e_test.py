@@ -180,7 +180,7 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(path_utils.serving_model_path(working_dir)))
     
-    # Query MLMD to see if resolver_node worked properly.
+    # Query MLMD to see if trainer and resolver_node worked properly.
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.filename_uri = self._metadata_path
     connection_config.sqlite.connection_mode = metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
@@ -200,7 +200,8 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     resolver_events = store.get_events_by_execution_ids(
         [example_resolver_exec.id])
     self.assertEquals(self._window_size,
-        len([e for e in resolver_events if e.artifact_id in example_ids]))
+        len([e for e in resolver_events if e.artifact_id in example_ids and
+                e.type == metadata_store_pb2.Event.Type.OUTPUT]))
     
     # Get trainer execution information.
     trainer_exec = store.get_executions_by_type(
@@ -209,8 +210,8 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     # Check if examples are referenced in input events to Trainer execution.
     train_events = store.get_events_by_execution_ids([trainer_exec.id])
     self.assertEquals(self._window_size,
-        len([e for e in train_events if e.artifact_id in example_ids]))
-
+        len([e for e in train_events if e.artifact_id in example_ids and
+                e.type == metadata_store_pb2.Event.Type.INPUT]))
 
 
 if __name__ == '__main__':
