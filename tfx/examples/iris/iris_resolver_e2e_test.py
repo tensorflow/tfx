@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Iris flowers example using TFX."""
+"""Testing the ResolverNode multiple artifact output with Trainer."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import os
 from typing import List, Text
+
+import tensorflow as tf
 
 from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
@@ -127,8 +129,6 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-    # self._test_dir = os.path.join(os.path.dirname(__file__), 'TEST')
-
     self._pipeline_name = 'resolver_test'
     self._init_data_root = os.path.join(os.path.dirname(__file__), 'data')
     self._data_root = os.path.join(self._test_dir, 'data')
@@ -137,7 +137,7 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name)
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
-    self._window_size = 2
+    self._window_size = 3
 
   def testIrisPipelineResolver(self):
     example_gen_pipeline = _create_example_pipeline(
@@ -158,11 +158,11 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     # Generate two example artifacts.
     for i in range(self._window_size):
       io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
-                         os.path.join(self._data_root, 'span' + str(i+1),
+                         os.path.join(self._data_root, 'span{}'.format(i), 
                                       'iris.csv'))
       BeamDagRunner().run(example_gen_pipeline)
 
-    # Train on example artifacts, which are pulled using ResolverNode.
+    # Train on multiple example artifacts, which are pulled using ResolverNode.
     BeamDagRunner().run(trainer_pipeline)
 
     # Test Trainer output.
