@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import List, Text
+from typing import List, Text, Optional
 
 import tensorflow as tf
 
@@ -56,12 +56,10 @@ def _create_example_pipeline(pipeline_name: Text, pipeline_root: Text,
   input_config = example_gen_pb2.Input(splits=[
       example_gen_pb2.Input.Split(name='single_split',
                                   pattern='span{SPAN}/*')])
-  example_gen = CsvExampleGen(input_base=data_root,
-                              input_config=input_config)
+  example_gen = CsvExampleGen(input_base=data_root, input_config=input_config)
 
   # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(
-      examples=example_gen.outputs['examples'])
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
   schema_gen = SchemaGen(
@@ -120,6 +118,55 @@ def _create_trainer_pipeline(pipeline_name: Text, pipeline_root: Text,
           metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
+def _create_full_pipeline(pipeline_name: Text, pipeline_root: Text,
+                          data_root: Text, module_file: Text,
+                          metadata_path: Text, window_size: int, 
+                          beam_pipeline_args: List[Text],
+                          ) -> pipeline.Pipeline:
+  """Full pipeline to train based on, testing Resolver/ExampleGen dependency"""
+  # Brings data into the pipeline or otherwise joins/converts training data.
+  input_config = example_gen_pb2.Input(splits=[
+      example_gen_pb2.Input.Split(name='single_split',
+                                  pattern='span{SPAN}/*')])
+  example_gen = CsvExampleGen(input_base=data_root, input_config=input_config)
+
+  # Computes statistics over data for visualization and example validation.
+  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
+
+  # Generates schema based on statistics files.
+  schema_gen = SchemaGen(
+      statistics=statistics_gen.outputs['statistics'], infer_feature_shape=True)
+
+  # Resolve latest two example artifacts into one channel for trainer.
+  latest_examples_resolver = ResolverNode(
+      instance_name='latest_examples_resolver',
+      resolver_class=latest_artifacts_resolver.LatestArtifactsResolver,
+      resolver_configs={'desired_num_of_artifacts': window_size},
+      latest_n_examples=example_gen.outputs['examples'])
+
+  # Uses user-provided Python function that implements a model using TF-Learn.
+  trainer = Trainer(
+      module_file=module_file,
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+      examples=latest_examples_resolver.outputs['latest_n_examples'],
+      schema=schema_gen.outputs['schema'],
+      train_args=trainer_pb2.TrainArgs(num_steps=2000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=5))
+
+  return pipeline.Pipeline(
+      pipeline_name=pipeline_name,
+      pipeline_root=pipeline_root,
+      components=[
+          example_gen,
+          statistics_gen,
+          schema_gen,
+          latest_examples_resolver,
+          trainer
+      ],
+      enable_cache=True,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          metadata_path),
+      beam_pipeline_args=beam_pipeline_args)
 
 class IrisResolverEndToEndTest(tf.test.TestCase):
 
@@ -139,32 +186,7 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     self._window_size = 3
 
-  def testIrisPipelineResolver(self):
-    example_gen_pipeline = _create_example_pipeline(
-        pipeline_name=self._pipeline_name,
-        pipeline_root=self._pipeline_root,
-        data_root=self._data_root,
-        metadata_path=self._metadata_path,
-        beam_pipeline_args=[])
-
-    trainer_pipeline = _create_trainer_pipeline(
-        pipeline_name=self._pipeline_name,
-        pipeline_root=self._pipeline_root,
-        module_file=self._module_file,
-        metadata_path=self._metadata_path,
-        window_size=self._window_size,
-        beam_pipeline_args=[])
-
-    # Generate two example artifacts.
-    for i in range(self._window_size):
-      io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
-                         os.path.join(self._data_root, 'span{}'.format(i), 
-                                      'iris.csv'))
-      BeamDagRunner().run(example_gen_pipeline)
-
-    # Train on multiple example artifacts, which are pulled using ResolverNode.
-    BeamDagRunner().run(trainer_pipeline)
-
+  def _testOutputs(self):
     # Test Trainer output.
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     trainer_dir = os.path.join(self._pipeline_root, 'Trainer', 'model')
@@ -209,6 +231,67 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
                           example_ids and
                           e.type == metadata_store_pb2.Event.Type.INPUT]))
 
+  def testIrisPipelineResolver(self):
+    """Test with ResolverNode having no ExampleGen dependency."""
+    example_gen_pipeline = _create_example_pipeline(
+        pipeline_name=self._pipeline_name,
+        pipeline_root=self._pipeline_root,
+        data_root=self._data_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
+
+    trainer_pipeline = _create_trainer_pipeline(
+        pipeline_name=self._pipeline_name,
+        pipeline_root=self._pipeline_root,
+        module_file=self._module_file,
+        metadata_path=self._metadata_path,
+        window_size=self._window_size,
+        beam_pipeline_args=[])
+
+    # Generate two example artifacts.
+    for i in range(self._window_size):
+      io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
+                         os.path.join(self._data_root, 'span{}'.format(i), 
+                                      'iris.csv'))
+      BeamDagRunner().run(example_gen_pipeline)
+
+    # Train on multiple example artifacts, which are pulled using ResolverNode.
+    BeamDagRunner().run(trainer_pipeline)
+    self._testOutputs()
+
+  def testIrisPipelineResolverWithDependency(self):
+    """Test with ResolverNode having ExampleGen dependency."""
+    example_gen_pipeline = _create_example_pipeline(
+        pipeline_name=self._pipeline_name,
+        pipeline_root=self._pipeline_root,
+        data_root=self._data_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
+
+    full_pipeline = _create_full_pipeline(
+        pipeline_name=self._pipeline_name,
+        pipeline_root=self._pipeline_root,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        metadata_path=self._metadata_path,
+        window_size=self._window_size,
+        beam_pipeline_args=[])
+
+    # Generate two example artifacts.
+    for i in range(self._window_size-1):
+      io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
+                         os.path.join(self._data_root, 'span{}'.format(i), 
+                                      'iris.csv'))
+      BeamDagRunner().run(example_gen_pipeline)
+
+    # Train on multiple example artifacts, which are pulled using ResolverNode.
+    io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
+                       os.path.join(self._data_root, 
+                                    'span{}'.format(self._window_size-1), 
+                                    'iris.csv'))
+    BeamDagRunner().run(full_pipeline)
+    self._testOutputs()
+    
 
 if __name__ == '__main__':
   tf.test.main()

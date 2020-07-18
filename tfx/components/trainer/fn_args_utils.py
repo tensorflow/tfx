@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
+
 from typing import Any, Dict, List, Text, NamedTuple
 
 from google.protobuf import json_format
@@ -57,7 +59,7 @@ FnArgs.__new__.__defaults__ = (None,) * len(FnArgs._fields)
 def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text, Any],
                        working_dir: Text = None) -> FnArgs:
-  """Get common args of training and tuning."""
+  """Get common args of training and tuning.""" 
   train_files = [
       io_utils.all_files_pattern(uri) for uri in
       artifact_utils.get_split_uris(input_dict[constants.EXAMPLES_KEY],
