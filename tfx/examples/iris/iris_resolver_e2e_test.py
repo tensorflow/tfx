@@ -21,10 +21,6 @@ from __future__ import print_function
 import os
 from typing import List, Text
 
-import absl
-import tensorflow as tf
-import tensorflow_model_analysis as tfma
-
 from ml_metadata.metadata_store import metadata_store
 from ml_metadata.proto import metadata_store_pb2
 
@@ -41,14 +37,12 @@ from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.types.standard_artifacts import Schema
 from tfx.types.standard_artifacts import Examples
-from tfx.types.standard_artifacts import ExampleStatistics
 from tfx.types.channel import Channel
 from tfx.proto import example_gen_pb2
 from tfx.proto import trainer_pb2
 
 from tfx.utils import path_utils
 from tfx.utils import io_utils
-from tfx.utils.dsl_utils import external_input
 
 
 def _create_example_pipeline(pipeline_name: Text, pipeline_root: Text,
@@ -56,11 +50,9 @@ def _create_example_pipeline(pipeline_name: Text, pipeline_root: Text,
                              beam_pipeline_args: List[Text]
                              ) -> pipeline.Pipeline:
   """Simple pipeline to ingest data into Examples artifacts."""
-  components = []
-
   # Brings data into the pipeline or otherwise joins/converts training data.
   input_config = example_gen_pb2.Input(splits=[
-      example_gen_pb2.Input.Split(name='single_split', 
+      example_gen_pb2.Input.Split(name='single_split',
                                   pattern='span{SPAN}/*')])
   example_gen = CsvExampleGen(input_base=data_root,
                               input_config=input_config)
@@ -154,7 +146,7 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
         data_root=self._data_root,
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
-    
+
     trainer_pipeline = _create_trainer_pipeline(
         pipeline_name=self._pipeline_name,
         pipeline_root=self._pipeline_root,
@@ -165,10 +157,10 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
 
     # Generate two example artifacts.
     for i in range(self._window_size):
-        io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
-                           os.path.join(self._data_root, 'span' + str(i+1),
-                           'iris.csv'))
-        BeamDagRunner().run(example_gen_pipeline)
+      io_utils.copy_file(os.path.join(self._init_data_root, 'iris.csv'),
+                         os.path.join(self._data_root, 'span' + str(i+1),
+                                      'iris.csv'))
+      BeamDagRunner().run(example_gen_pipeline)
 
     # Train on example artifacts, which are pulled using ResolverNode.
     BeamDagRunner().run(trainer_pipeline)
@@ -179,11 +171,12 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     working_dir = io_utils.get_only_uri_in_dir(trainer_dir)
     self.assertTrue(
         tf.io.gfile.exists(path_utils.serving_model_path(working_dir)))
-    
+
     # Query MLMD to see if trainer and resolver_node worked properly.
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.filename_uri = self._metadata_path
-    connection_config.sqlite.connection_mode = metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+    connection_config.sqlite.connection_mode = \
+        metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
     store = metadata_store.MetadataStore(connection_config)
 
     # Get example artifact ids.
@@ -192,17 +185,18 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     # Get latest example resolver execution information.
     all_resolvers = store.get_executions_by_type(
         'tfx.components.common_nodes.resolver_node.ResolverNode')
-    resolver_exec = [e for e in all_resolvers 
-        if e.properties['component_id'] == metadata_store_pb2.Value(
-            string_value='ResolverNode.latest_examples_resolver')][0]
+    resolve_exec = [e for e in all_resolvers
+                    if e.properties['component_id'] == metadata_store_pb2.Value(
+                    string_value='ResolverNode.latest_examples_resolver')][0]
 
     # Check if window size is exactly equal to number of examples
     # appearing in output events from example resolver.
-    resolver_events = store.get_events_by_execution_ids([resolver_exec.id])
+    resolve_events = store.get_events_by_execution_ids([resolve_exec.id])
     self.assertEqual(self._window_size,
-        len([e for e in resolver_events if e.artifact_id in example_ids and
-                e.type == metadata_store_pb2.Event.Type.OUTPUT]))
-    
+                     len([e for e in resolve_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.OUTPUT]))
+
     # Get trainer component execution information.
     trainer_exec = store.get_executions_by_type(
         'tfx.components.trainer.component.Trainer')[0]
@@ -211,8 +205,9 @@ class IrisResolverEndToEndTest(tf.test.TestCase):
     # appearing in input events to Trainer.
     train_events = store.get_events_by_execution_ids([trainer_exec.id])
     self.assertEqual(self._window_size,
-        len([e for e in train_events if e.artifact_id in example_ids and
-                e.type == metadata_store_pb2.Event.Type.INPUT]))
+                     len([e for e in train_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.INPUT]))
 
 
 if __name__ == '__main__':
