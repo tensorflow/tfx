@@ -297,11 +297,11 @@ class RunnerTest(tf.test.TestCase):
         expected_models_create_body=expected_models_create_body)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithCustomRegionsList(self, mock_discovery):
+  def testDeployModelForAIPPWithCustomRegionsList(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
 
-    self._ai_platform_serving_args['regions'] = ['custom-region','other-custom-region']
+    self._ai_platform_serving_args['regions'] = ['custom-region', 'other-reg']
     runner.deploy_model_for_aip_prediction(self._serving_path,
                                            self._model_version,
                                            self._ai_platform_serving_args,
@@ -309,17 +309,17 @@ class RunnerTest(tf.test.TestCase):
 
     expected_models_create_body = {
         'name': self._model_name,
-        'regions': ['custom-region','other-custom-region'],
+        'regions': ['custom-region','other-reg'],
     }
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithCustomRegionsString(self, mock_discovery):
+  def testDeployModelForAIPPWithCustomRegionsString(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
 
-    self._ai_platform_serving_args['regions'] = "custom-region, other-custom-region"
+    self._ai_platform_serving_args['regions'] = "custom-region, other-region"
     runner.deploy_model_for_aip_prediction(self._serving_path,
                                            self._model_version,
                                            self._ai_platform_serving_args,
@@ -327,7 +327,7 @@ class RunnerTest(tf.test.TestCase):
 
     expected_models_create_body = {
         'name': self._model_name,
-        'regions': ['custom-region','other-custom-region'],
+        'regions': ['custom-region', 'other-region'],
     }
     self._assertDeployModelMockCalls(
         expected_models_create_body=expected_models_create_body)
@@ -358,10 +358,10 @@ class RunnerTest(tf.test.TestCase):
         expected_versions_create_body=expected_versions_create_body)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithRegionalEndpoint(self, mock_discovery):
+  def testDeployModelForAIPPWithRegionalEndpoint(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
-    
+
     self._ai_platform_serving_args['runtime_version'] = '1.23.45'
     self._ai_platform_serving_args['use_regional_endpoint'] = True
     self._ai_platform_serving_args['machine_type'] = 'foo-machine'
@@ -373,12 +373,11 @@ class RunnerTest(tf.test.TestCase):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
       labels = telemetry_utils.get_labels_dict()
-    
+
     expected_models_create_body = {
         'name': self._model_name,
         'regions': ['foo-region'],
     }
-    
     expected_versions_create_body = {
         'name': self._model_version,
         'deployment_uri': self._serving_path,
@@ -392,10 +391,10 @@ class RunnerTest(tf.test.TestCase):
         expected_models_create_body=expected_models_create_body)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
-  def testDeployModelForAIPPredictionWithRegionalEndpointDefaults(self, mock_discovery):
+  def testDeployModelForAIPPWithRegionalEndpointDefaults(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
-    
+
     self._ai_platform_serving_args['runtime_version'] = '1.23.45'
     self._ai_platform_serving_args['use_regional_endpoint'] = True
     runner.deploy_model_for_aip_prediction(self._serving_path,
@@ -405,12 +404,11 @@ class RunnerTest(tf.test.TestCase):
     with telemetry_utils.scoped_labels(
         {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
       labels = telemetry_utils.get_labels_dict()
-    
+
     expected_models_create_body = {
         'name': self._model_name,
         'regions': ['us-central1'],
     }
-    
     expected_versions_create_body = {
         'name': self._model_version,
         'deployment_uri': self._serving_path,

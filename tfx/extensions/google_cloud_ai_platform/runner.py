@@ -257,36 +257,40 @@ def deploy_model_for_aip_prediction(
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
   regions = ai_platform_serving_args.get('regions', [])
-  use_regional_endpoint = ai_platform_serving_args.get('use_regional_endpoint',False)
-  machine_type = ai_platform_serving_args.get('machine_type','n1-standard-2')
+  use_regional_endpoint = ai_platform_serving_args.get(
+      'use_regional_endpoint', False)
+  machine_type = ai_platform_serving_args.get('machine_type', 'n1-standard-2')
   default_runtime_version = _get_tf_runtime_version(tf.__version__)
   runtime_version = ai_platform_serving_args.get('runtime_version',
                                                  default_runtime_version)
   python_version = _get_caip_python_version(runtime_version)
   
   api = discovery.build('ml', 'v1')
-  
-  # Insure regions was passed as a list and not a string. The API passes a list of str
+  # Insure regions was passed as a list and not a string.
+  # The API passes a list of str
   if isinstance(regions, str):
     if ',' in regions:
-      regions = regions.replace(" ","").split(',')
+      regions = regions.replace(" ", "").split(',')
     else:
       regions = [regions]
-  
+
   # Support regional endpoints in order to support VPC Service Controls
   if use_regional_endpoint:
     if len(regions) == 0:
-      logging.warning('Regional endpoints requires a region to be specified. Defaulting to us-central1.')
+      logging.warning('Regional endpoints requires a region to be specified.\
+        Defaulting to us-central1.')
       regions = ["us-central1"]
     if len(regions) > 1:
       # Regional endpoints requries requests to go to a specific endpoint
-      logging.warning('More than one specified region not supported with regional endpoints. Using first region in regions list.')
+      logging.warning('More than one specified region not supported with \
+        regional endpoints. Using first region in regions list.')
 
     endpoint = 'https://{region}-ml.googleapis.com'.format(region=regions[0])
     client_options = ClientOptions(api_endpoint=endpoint)
     api = discovery.build('ml', 'v1', client_options=client_options)
-    logging.info('Using regional endpoint: {endpoint}'.format(endpoint=endpoint))
-    
+    logging.info('Using regional endpoint: {endpoint}'
+                 .format(endpoint=endpoint))
+
   body = {'name': model_name, 'regions': regions}
   parent = 'projects/{}'.format(project_id)
   try:
