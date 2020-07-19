@@ -33,15 +33,16 @@ def _get_paths(metadata_connection: metadata.Metadata,
                executions: Dict[Text, List[metadata_store_pb2.Execution]],
                output_dir: Text) -> Iterator[Tuple]:
   """Returns a iterable of tuple containing source artifact uris and
-  destination uris, which are located in the output_dir.
+  destination uris, which are located in the output_dir. The source
+  artifact uris are retrieved using execution ids.
 
   Args:
-    metadata_connection: A class for metadata I/O to metadata db.
-    executions: List of pipeline executions.
+    metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
+    executions: List of pipeline executions of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
 
   Returns:
-    Iterator over tuple of source uri and destination uri.
+    Iterator over tuples of source uri and destination uri.
   """
   events = [
       x for x in metadata_connection.store.get_events_by_execution_ids(
@@ -61,13 +62,13 @@ def _get_paths(metadata_connection: metadata.Metadata,
 
 def _get_execution_dict(metadata_connection: metadata.Metadata
                        ) -> Dict[Text, List[metadata_store_pb2.Execution]]:
-  """Returns dictionary mapping holding executions for run_id.
+  """Returns a dictionary holding list of executions for all run_id in MLMD.
 
   Args:
-    metadata_connection: A class for metadata I/O to metadata db.
+    metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
 
   Returns:
-    A dictionary that holds executions for pipeline run_id
+    A dictionary that holds list of executions for a run_id.
   """
   execution_dict = defaultdict(list)
   for execution in metadata_connection.store.get_executions():
@@ -81,10 +82,11 @@ def _get_latest_executions(metadata_connection: metadata.Metadata,
   """Fetches executions associated with the latest context.
 
   Args:
-    metadata_connection: A class for metadata I/O to metadata db.
+    metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
+    pipeline_name: Name of the pipeline to rerieve the latest executions for.
 
   Returns:
-    A dictionary that holds list of executions for a run_id
+    List of executions for the latest run of a pipeline with the given pipeline_name.
   """
   pipeline_run_contexts = [
       c for c in metadata_connection.store.get_contexts_by_type(
