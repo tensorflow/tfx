@@ -297,6 +297,42 @@ class RunnerTest(tf.test.TestCase):
         expected_models_create_body=expected_models_create_body)
 
   @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeployModelForAIPPredictionWithCustomRegionsList(self, mock_discovery):
+    mock_discovery.build.return_value = self._mock_api_client
+    self._setUpPredictionMocks()
+
+    self._ai_platform_serving_args['regions'] = ['custom-region','other-custom-region']
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._executor_class_path)
+
+    expected_models_create_body = {
+        'name': self._model_name,
+        'regions': ['custom-region','other-custom-region'],
+    }
+    self._assertDeployModelMockCalls(
+        expected_models_create_body=expected_models_create_body)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeployModelForAIPPredictionWithCustomRegionsString(self, mock_discovery):
+    mock_discovery.build.return_value = self._mock_api_client
+    self._setUpPredictionMocks()
+
+    self._ai_platform_serving_args['regions'] = "custom-region, other-custom-region"
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._executor_class_path)
+
+    expected_models_create_body = {
+        'name': self._model_name,
+        'regions': ['custom-region','other-custom-region'],
+    }
+    self._assertDeployModelMockCalls(
+        expected_models_create_body=expected_models_create_body)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
   def testDeployModelForAIPPredictionWithCustomRuntime(self, mock_discovery):
     mock_discovery.build.return_value = self._mock_api_client
     self._setUpPredictionMocks()
@@ -320,6 +356,73 @@ class RunnerTest(tf.test.TestCase):
     }
     self._assertDeployModelMockCalls(
         expected_versions_create_body=expected_versions_create_body)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeployModelForAIPPredictionWithRegionalEndpoint(self, mock_discovery):
+    mock_discovery.build.return_value = self._mock_api_client
+    self._setUpPredictionMocks()
+    
+    self._ai_platform_serving_args['runtime_version'] = '1.23.45'
+    self._ai_platform_serving_args['use_regional_endpoint'] = True
+    self._ai_platform_serving_args['machine_type'] = 'foo-machine'
+    self._ai_platform_serving_args['regions'] = ['foo-region']
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._executor_class_path)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
+      labels = telemetry_utils.get_labels_dict()
+    
+    expected_models_create_body = {
+        'name': self._model_name,
+        'regions': ['foo-region'],
+    }
+    
+    expected_versions_create_body = {
+        'name': self._model_version,
+        'deployment_uri': self._serving_path,
+        'runtime_version': '1.23.45',
+        'python_version': runner._get_caip_python_version('1.23.45'),
+        'labels': labels,
+        'machine_type': 'foo-machine',
+    }
+    self._assertDeployModelMockCalls(
+        expected_versions_create_body=expected_versions_create_body,
+        expected_models_create_body=expected_models_create_body)
+
+  @mock.patch('tfx.extensions.google_cloud_ai_platform.runner.discovery')
+  def testDeployModelForAIPPredictionWithRegionalEndpointDefaults(self, mock_discovery):
+    mock_discovery.build.return_value = self._mock_api_client
+    self._setUpPredictionMocks()
+    
+    self._ai_platform_serving_args['runtime_version'] = '1.23.45'
+    self._ai_platform_serving_args['use_regional_endpoint'] = True
+    runner.deploy_model_for_aip_prediction(self._serving_path,
+                                           self._model_version,
+                                           self._ai_platform_serving_args,
+                                           self._executor_class_path)
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_EXECUTOR: self._executor_class_path}):
+      labels = telemetry_utils.get_labels_dict()
+    
+    expected_models_create_body = {
+        'name': self._model_name,
+        'regions': ['us-central1'],
+    }
+    
+    expected_versions_create_body = {
+        'name': self._model_version,
+        'deployment_uri': self._serving_path,
+        'runtime_version': '1.23.45',
+        'python_version': runner._get_caip_python_version('1.23.45'),
+        'labels': labels,
+        'machine_type': 'n1-standard-2',
+    }
+    self._assertDeployModelMockCalls(
+        expected_versions_create_body=expected_versions_create_body,
+        expected_models_create_body=expected_models_create_body)
+
 
   def testGetTensorflowRuntime(self):
     self.assertEqual('1.14', runner._get_tf_runtime_version('1.14'))
