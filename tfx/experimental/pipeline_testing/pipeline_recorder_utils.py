@@ -29,9 +29,9 @@ from typing import Dict, Iterator, List, Optional, Text, Tuple
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
-def get_paths(metadata_connection: metadata.Metadata,
-              executions: Dict[Text, List[metadata_store_pb2.Execution]],
-              output_dir: Text) -> Iterator[Tuple]:
+def _get_paths(metadata_connection: metadata.Metadata,
+               executions: Dict[Text, List[metadata_store_pb2.Execution]],
+               output_dir: Text) -> Iterator[Tuple]:
   """Returns a iterable of tuple containing source artifact uris and
   destination uris, which are stored in the output_dir.
 
@@ -59,8 +59,8 @@ def get_paths(metadata_connection: metadata.Metadata,
     dest_uri = os.path.join(output_dir, component_id, name)
     yield (src_uri, dest_uri)
 
-def get_execution_dict(metadata_connection: metadata.Metadata
-                      ) -> Dict[Text, List[metadata_store_pb2.Execution]]:
+def _get_execution_dict(metadata_connection: metadata.Metadata
+                       ) -> Dict[Text, List[metadata_store_pb2.Execution]]:
   """Returns dictionary mapping holding executions for run_id.
 
   Args:
@@ -75,9 +75,9 @@ def get_execution_dict(metadata_connection: metadata.Metadata
     execution_dict[execution_run_id].append(execution)
   return execution_dict
 
-def get_latest_executions(metadata_connection: metadata.Metadata,
-                          pipeline_name: Text
-                          ) -> List[metadata_store_pb2.Execution]:
+def _get_latest_executions(metadata_connection: metadata.Metadata,
+                           pipeline_name: Text
+                           ) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
 
   Args:
@@ -133,17 +133,17 @@ def record_pipeline(output_dir: Text,
         raise ValueError("If the run_id is not specified,"\
                          " pipeline_name should be specified")
       # fetch executions of the most recently updated execution context.
-      executions = get_latest_executions(metadata_connection,
-                                         pipeline_name)
+      executions = _get_latest_executions(metadata_connection,
+                                          pipeline_name)
     else:
-      execution_dict = get_execution_dict(metadata_connection)
+      execution_dict = _get_execution_dict(metadata_connection)
       if run_id in execution_dict:
         executions = execution_dict[run_id]
       else:
         raise ValueError(
             "run_id {} is not recorded in the MLMD metadata".format(run_id))
     for src_uri, dest_uri in \
-          get_paths(metadata_connection, executions, output_dir):
+          _get_paths(metadata_connection, executions, output_dir):
       if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError("{} does not exist".format(src_uri))
       io_utils.copy_dir(src_uri, dest_uri)
