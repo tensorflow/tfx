@@ -86,7 +86,8 @@ def _get_latest_executions(metadata_connection: metadata.Metadata,
     pipeline_name: Name of the pipeline to rerieve the latest executions for.
 
   Returns:
-    List of executions for the latest run of a pipeline with the given pipeline_name.
+    List of executions for the latest run of a pipeline with the given
+    pipeline_name.
   """
   pipeline_run_contexts = [
       c for c in metadata_connection.store.get_contexts_by_type(
