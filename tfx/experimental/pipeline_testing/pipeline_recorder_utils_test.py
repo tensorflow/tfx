@@ -21,34 +21,41 @@ from __future__ import print_function
 import os
 import mock
 import random
-
 import tensorflow as tf
-# from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.utils import io_utils
 
 class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   def setUp(self):
+    super(PipelineRecorderUtilsTest, self).setUp()
     self._base_dir = os.path.join(self.get_temp_dir(), 'base_dir')
     self.src_uri = os.path.join(self._base_dir, 'input')
     self.dest_uri = os.path.join(self._base_dir, 'output')
     tf.io.gfile.makedirs(self.src_uri)
     tf.io.gfile.makedirs(self.dest_uri)
+
+    # Writing a string to test.txt file in src_uri
     self.content = "pipeline recorded"
     io_utils.write_string_file(os.path.join(self.src_uri, 'test.txt'),
                                self.content)
+
+    # Placeholders for record_pipeline(...) arguments
     self.metadata_db_uri = 'metadata_db_uri'
     self.host = 'localhost'
     self.port = random.randint(9000, 10000)
     self.pipeline_name = 'pipeline_name'
     self.run_id = 'run_id'
+
+    # Return values for mocked get_paths(...)
     self.paths = [[self.src_uri, self.dest_uri]]
+    # Return values for mocked get_execution_dict(...)
     self.execution_dict = {self.run_id: []}
-    super(PipelineRecorderUtilsTest, self).setUp()
 
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
   def testRecordLatestKfpPipeline(self, mock_get_latest_executions):
+    # Tests recording KFP pipeline outputs for the latest execution.
     with mock.patch.object(pipeline_recorder_utils, '_get_paths', \
                            return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(output_dir=self._base_dir,
@@ -65,6 +72,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           os.path.join(self.dest_uri, files[0])), self.content)
 
   def testRecordKfpPipelineRunId(self):
+    # Tests recording KFP pipeline outputs given a run_id.
     with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict', \
                            return_value=self.execution_dict
                            ) as mock_get_execution_dict,\
@@ -78,6 +86,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
                                               run_id=self.run_id)
       mock_get_execution_dict.assert_called()
       mock_get_paths.assert_called()
+
+      # Verifying that test.txt has been copied from src_uri to dest_uri
       files = tf.io.gfile.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
@@ -86,6 +96,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
   def testRecordLatestBeamPipeline(self, mock_get_latest_executions):
+    # Tests recording Beam pipeline outputs for the latest execution.
     with mock.patch.object(pipeline_recorder_utils, '_get_paths', \
                            return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(
@@ -97,6 +108,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           run_id=None)
       mock_get_latest_executions.assert_called()
       mock_get_paths.assert_called()
+
+      # Verifying that test.txt has been copied from src_uri to dest_uri
       files = tf.io.gfile.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(
@@ -104,6 +117,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
               os.path.join(self.dest_uri, files[0])), self.content)
 
   def testRecordBeamPipelineRunId(self):
+    # Tests recording Beam pipeline outputs given a run_id.
     with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict', \
                            return_value=self.execution_dict
                            ) as mock_get_execution_dict,\
@@ -119,6 +133,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           run_id=self.run_id)
       mock_get_execution_dict.assert_called()
       mock_get_paths.assert_called()
+
+      # Verifying that test.txt has been copied from src_uri to dest_uri
       files = tf.io.gfile.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(

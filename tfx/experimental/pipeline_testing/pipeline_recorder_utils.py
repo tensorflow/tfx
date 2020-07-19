@@ -33,15 +33,15 @@ def _get_paths(metadata_connection: metadata.Metadata,
                executions: Dict[Text, List[metadata_store_pb2.Execution]],
                output_dir: Text) -> Iterator[Tuple]:
   """Returns a iterable of tuple containing source artifact uris and
-  destination uris, which are stored in the output_dir.
+  destination uris, which are located in the output_dir.
 
   Args:
     metadata_connection: A class for metadata I/O to metadata db.
     executions: List of pipeline executions.
-    output_dir: Directory path to which pipeline outputs are recorded.
+    output_dir: Directory path where the pipeline outputs should be recorded.
 
   Returns:
-    Zip of src_uris and dest_uris.
+    Iterator over tuple of source uri and destination uri.
   """
   events = [
       x for x in metadata_connection.store.get_events_by_execution_ids(
@@ -84,7 +84,7 @@ def _get_latest_executions(metadata_connection: metadata.Metadata,
     metadata_connection: A class for metadata I/O to metadata db.
 
   Returns:
-    A dictionary that holds executions for pipeline run_id
+    A dictionary that holds list of executions for a run_id
   """
   pipeline_run_contexts = [
       c for c in metadata_connection.store.get_contexts_by_type(
@@ -102,9 +102,11 @@ def record_pipeline(output_dir: Text,
                     run_id: Optional[Text]) -> None:
   """Record pipeline run with run_id to output_dir. For the beam pipeline,
   metadata_db_uri is required. For KFP, host and port should be specified.
+  If run_id is not specified, then pipeline_name ought to be specified in
+  order to fetch the latest execution for the specified pipeline.
 
   Args:
-    output_dir: Directory path to which pipeline outputs are recorded.
+    output_dir: Directory path where the pipeline outputs should be recorded.
     metadata_db_uri: Uri to metadata db.
     host: Hostname of the metadata grpc server
     port: Port number of the metadata grpc server.
