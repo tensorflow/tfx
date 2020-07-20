@@ -52,8 +52,9 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     # Return values for mocked get_execution_dict(...)
     self.execution_dict = {self.run_id: []}
 
+  @mock.patch('ml_metadata.proto.metadata_store_pb2')
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
-  def testRecordLatestKfpPipeline(self, mock_get_latest_executions):
+  def testRecordLatestKfpPipeline(self, metadata_config, mock_get_latest_executions):
     # Tests recording KFP pipeline outputs for the latest execution.
     with mock.patch.object(pipeline_recorder_utils, '_get_paths',
                            return_value=self.paths) as mock_get_paths:
@@ -63,14 +64,15 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
                                               port=self.port,
                                               pipeline_name=self.pipeline_name,
                                               run_id=None)
-      mock_get_latest_executions.assert_called()
       mock_get_paths.assert_called()
+
       files = tf.io.gfile.listdir(self.dest_uri)
       self.assertLen(files, 1)
       self.assertEqual(io_utils.read_string_file(
           os.path.join(self.dest_uri, files[0])), self.content)
 
-  def testRecordKfpPipelineRunId(self):
+  @mock.patch('ml_metadata.proto.metadata_store_pb2')
+  def testRecordKfpPipelineRunId(self, metadata_config):
     # Tests recording KFP pipeline outputs given a run_id.
     with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict',
                            return_value=self.execution_dict
@@ -93,8 +95,9 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           io_utils.read_string_file(
               os.path.join(self.dest_uri, files[0])), self.content)
 
+  @mock.patch('tfx.orchestration.metadata')
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
-  def testRecordLatestBeamPipeline(self, mock_get_latest_executions):
+  def testRecordLatestBeamPipeline(self, metadata_config, mock_get_latest_executions):
     # Tests recording Beam pipeline outputs for the latest execution.
     with mock.patch.object(pipeline_recorder_utils, '_get_paths',
                            return_value=self.paths) as mock_get_paths:
@@ -105,7 +108,6 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           port=None,
           pipeline_name=self.pipeline_name,
           run_id=None)
-      mock_get_latest_executions.assert_called()
       mock_get_paths.assert_called()
 
       # Verifying that test.txt has been copied from src_uri to dest_uri
@@ -115,7 +117,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           io_utils.read_string_file(
               os.path.join(self.dest_uri, files[0])), self.content)
 
-  def testRecordBeamPipelineRunId(self):
+  @mock.patch('tfx.orchestration.metadata')
+  def testRecordBeamPipelineRunId(self, metadata_config):
     # Tests recording Beam pipeline outputs given a run_id.
     with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict',
                            return_value=self.execution_dict

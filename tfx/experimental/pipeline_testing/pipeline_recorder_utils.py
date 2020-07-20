@@ -32,7 +32,7 @@ from tfx.utils import io_utils
 def _get_paths(metadata_connection: metadata.Metadata,
                execution_ids: List[int],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:
-  """Returns an iterable of tuple with source and destination artifact uris.
+  """Yields tuple with source and destination artifact uris.
 
   The destination artifact uris are located in the output_dir. The source
   artifact uris are retrieved using execution ids.
