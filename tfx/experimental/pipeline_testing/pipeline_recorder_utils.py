@@ -56,9 +56,9 @@ def _get_paths(metadata_connection: metadata.Metadata,
   for artifact in metadata_connection.store.get_artifacts_by_id(
       unique_artifact_ids):
     src_uri = artifact.uri
-    component_id = \
-        artifact.custom_properties['producer_component'].string_value
-    name = artifact.custom_properties['name'].string_value
+    artifact_properties = artifact.custom_properties
+    component_id = artifact_properties['producer_component'].string_value
+    name = artifact_properties['name'].string_value
     dest_uri = os.path.join(output_dir, component_id, name)
     yield (src_uri, dest_uri)
 
