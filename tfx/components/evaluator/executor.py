@@ -36,6 +36,7 @@ from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx.utils import json_utils
 
 
 # TODO(pachristopher): After TFMA is released, make TFXIO as the default path.
@@ -82,9 +83,9 @@ class Executor(base_executor.BaseExecutor):
         - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
           instance, providing the way to slice the data. Deprecated, use
           eval_config.slicing_specs instead.
-        - examples_path_splits: Names of splits on which the metrics are computed.
-          Default behavior (when examples_path_splits is set to None) is 
-          computing metrics on the 'eval' splits.
+        - examples_path_splits: JSON-serialized list of names of splits on which
+          the metrics are computed. Default behavior (when examples_path_splits
+          is set to None) is computing metrics on the 'eval' splits.
 
     Returns:
       None
@@ -120,7 +121,13 @@ class Executor(base_executor.BaseExecutor):
               thresholds=fairness_indicator_thresholds),
       ]
 
-    examples_path_splits = exec_properties.get('examples_path_splits')
+    # Load and deserialize exclude splits from execution properties.
+    examples_path_splits = json_utils.loads(
+        exec_properties.get(constants.EXAMPLES_PATH_SPLITS_KEY)) or []
+    if not isinstance(examples_path_splits, list):
+      raise ValueError('examples_path_splits in execution properties needs to '
+                       'be a list. Got %s instead.' % type(
+                           examples_path_splits))
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])

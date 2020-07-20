@@ -73,7 +73,7 @@ class EvaluatorSpec(ComponentSpec):
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
       'examples_path_splits':
-          ExecutionParameter(type=List[Text], optional=True),
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':

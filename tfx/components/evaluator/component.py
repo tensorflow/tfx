@@ -30,6 +30,7 @@ from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import EvaluatorSpec
+from tfx.utils import json_utils
 
 
 class Evaluator(base_component.BaseComponent):
@@ -164,7 +165,7 @@ class Evaluator(base_component.BaseComponent):
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
-        examples_path_splits=examples_path_splits,
+        examples_path_splits=json_utils.dumps(examples_path_splits),
         evaluation=evaluation,
         eval_config=eval_config,
         blessing=blessing,

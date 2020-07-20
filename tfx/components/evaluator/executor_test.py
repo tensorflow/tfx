@@ -28,6 +28,7 @@ from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
@@ -75,7 +76,9 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.BLESSING_KEY: [blessing_output],
     }
 
-    exec_properties['examples_path_splits'] = ['eval']
+    # List needs to be serialized before being passed into Do function.
+    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
+        ['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
@@ -143,7 +146,9 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
 
-    exec_properties['examples_path_splits'] = ['eval']
+    # List needs to be serialized before being passed into Do function.
+    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
+        ['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
@@ -290,7 +295,9 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.BLESSING_KEY: [blessing_output],
     }
 
-    exec_properties['examples_path_splits'] = ['eval']
+    # List needs to be serialized before being passed into Do function.
+    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
+        ['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
