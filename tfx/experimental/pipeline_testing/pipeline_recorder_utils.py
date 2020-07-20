@@ -53,8 +53,8 @@ def _get_paths(metadata_connection: metadata.Metadata,
   ]
   unique_artifact_ids = list({x.artifact_id for x in output_events})
 
-  for artifact in \
-        metadata_connection.store.get_artifacts_by_id(unique_artifact_ids):
+  for artifact in metadata_connection.store.get_artifacts_by_id(
+      unique_artifact_ids):
     src_uri = artifact.uri
     component_id = \
         artifact.custom_properties['producer_component'].string_value
@@ -153,8 +153,9 @@ def record_pipeline(output_dir: Text,
         raise ValueError(
             "run_id {} is not recorded in the MLMD metadata".format(run_id))
     execution_ids = [e.id for e in executions]
-    for src_uri, dest_uri in \
-          _get_paths(metadata_connection, execution_ids, output_dir):
+    for src_uri, dest_uri in _get_paths(metadata_connection,
+                                        execution_ids,
+                                        output_dir):
       if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError("{} does not exist".format(src_uri))
       io_utils.copy_dir(src_uri, dest_uri)
