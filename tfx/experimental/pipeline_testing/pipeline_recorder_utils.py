@@ -24,32 +24,33 @@ import os
 from absl import logging
 from ml_metadata.proto import metadata_store_pb2
 import tensorflow as tf
-from typing import Iterator, List, Mapping, Optional, Text, Tuple
+from typing import Iterable, List, Mapping, Optional, Text, Tuple
 
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
 def _get_paths(metadata_connection: metadata.Metadata,
-               executions: List[metadata_store_pb2.Execution],
-               output_dir: Text) -> Iterator[Tuple]:
-  """Returns a iterable of tuple containing source artifact uris and
+               execution_ids: List[int],
+               output_dir: Text) -> Iterable[Tuple[Text, Text]]:
+  """Returns an iterable of tuple containing source artifact uris and
   destination uris, which are located in the output_dir. The source
   artifact uris are retrieved using execution ids.
 
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
-    executions: List of pipeline executions of a pipeline run.
+    execution_ids: List of execution ids of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
 
   Returns:
-    Iterator over tuples of source uri and destination uri.
+    Iterable over tuples of source uri and destination uri.
   """
-  events = [
-      x for x in metadata_connection.store.get_events_by_execution_ids(
-          [e.id for e in executions])
+  events = metadata_connection.store.get_events_by_execution_ids(
+      execution_ids)
+  output_events = [
+      x for x in events
       if x.type == metadata_store_pb2.Event.OUTPUT
   ]
-  unique_artifact_ids = list({x.artifact_id for x in events})
+  unique_artifact_ids = list({x.artifact_id for x in output_events})
 
   for artifact in \
         metadata_connection.store.get_artifacts_by_id(unique_artifact_ids):
@@ -147,8 +148,9 @@ def record_pipeline(output_dir: Text,
       else:
         raise ValueError(
             "run_id {} is not recorded in the MLMD metadata".format(run_id))
+    execution_ids = [e.id for e in executions]
     for src_uri, dest_uri in \
-          _get_paths(metadata_connection, executions, output_dir):
+          _get_paths(metadata_connection, execution_ids, output_dir):
       if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError("{} does not exist".format(src_uri))
       io_utils.copy_dir(src_uri, dest_uri)
