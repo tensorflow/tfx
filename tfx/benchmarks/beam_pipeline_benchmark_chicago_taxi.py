@@ -17,19 +17,28 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tfx.benchmarks import beam_pipeline_benchmark_base
+import beam_pipeline_benchmark_base
 
+import os
 
 class BeamPipelineBenchmarkChicagoTaxi(
     beam_pipeline_benchmark_base.BeamPipelineBenchmarkBase):
+  """Runs Beam pipeline benchmarks on various runners"""
 
   def __init__(self, **kwargs):
-    super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
-        min_num_workers=3, max_num_workers=4,
-        base_dir="gs://tfx-keshav-example-bucket/datasets",
-        cloud_dataflow_temp_loc="gs://tfx-keshav-example-bucket/temp",
-        **kwargs)
 
+    base_dir = os.environ['BASE_DIR']
+    cloud_dataflow_temp_loc = os.environ['CLOUD_DATAFLOW_TEMP_LOC']
+    big_shuffle_input_file = os.environ['BIG_SHUFFLE_INPUT_FILE']
+    big_shuffle_output_file = os.environ['BIG_SHUFFLE_OUTPUT_FILE']
+
+    super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
+        min_num_workers=1, max_num_workers=32,
+        base_dir=base_dir,
+        cloud_dataflow_temp_loc=cloud_dataflow_temp_loc,
+        big_shuffle_input_file=big_shuffle_input_file,
+        big_shuffle_output_file=big_shuffle_output_file,
+        **kwargs)
 
 if __name__ == "__main__":
   beam_pipeline_benchmark_chicago_taxi = BeamPipelineBenchmarkChicagoTaxi()

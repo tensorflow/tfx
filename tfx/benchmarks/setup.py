@@ -11,12 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""setup.py file required for Cloud Dataflow Beam runners."""
 import setuptools
 
 REQUIRED_PACKAGES = ["tfx==0.21.0",
                      "tensorflow-transform==0.21.2",
                      "tensorflow-model-analysis==0.21.4",
-                     "apache-beam==2.18.0"]
+                     "google-cloud-storage==1.29.0",
+                     "apache-beam==2.22.0"]
+
+# REQUIRED_PACKAGES = ["tfx==0.21.0",
+#                      "tensorflow-transform==0.21.2",
+#                      "tensorflow-model-analysis==0.21.4",
+#                      "apache-beam==2.18.0"]
 
 setuptools.setup(
     name='cloud_dataflow_pipeline',
