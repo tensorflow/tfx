@@ -85,7 +85,7 @@ class Executor(base_executor.BaseExecutor):
           eval_config.slicing_specs instead.
         - examples_path_splits: JSON-serialized list of names of splits on which
           the metrics are computed. Default behavior (when examples_path_splits
-          is set to None) is computing metrics on the 'eval' splits.
+          is set to None) is computing metrics on the 'eval' split.
 
     Returns:
       None
@@ -120,14 +120,6 @@ class Executor(base_executor.BaseExecutor):
           tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
               thresholds=fairness_indicator_thresholds),
       ]
-
-    # Load and deserialize exclude splits from execution properties.
-    examples_path_splits = json_utils.loads(
-        exec_properties.get(constants.EXAMPLES_PATH_SPLITS_KEY)) or []
-    if not isinstance(examples_path_splits, list):
-      raise ValueError('examples_path_splits in execution properties needs to '
-                       'be a list. Got %s instead.' % type(
-                           examples_path_splits))
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
@@ -188,11 +180,19 @@ class Executor(base_executor.BaseExecutor):
           eval_saved_model_path=model_path,
           add_metrics_callbacks=add_metrics_callbacks))
 
+    # Load and deserialize examples path splits from execution properties.
+    examples_path_splits = json_utils.loads(
+        exec_properties.get(constants.EXAMPLES_PATH_SPLITS_KEY)) or []
+    if not isinstance(examples_path_splits, list):
+      raise ValueError('examples_path_splits in execution properties needs to '
+                       'be a list. Got %s instead.' % type(
+                           examples_path_splits))
+
     file_patterns = []
     for split in examples_path_splits:
       file_pattern = io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], 
-          split))
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                       split))
       file_patterns.append(file_pattern)
 
     eval_shared_model = models[0] if len(models) == 1 else models

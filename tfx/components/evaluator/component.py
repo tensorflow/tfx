@@ -114,7 +114,7 @@ class Evaluator(base_component.BaseComponent):
           to additional documentation for TFMA fairness indicators here.
       examples_path_splits: Names of splits on which the metrics are computed.
         Default behavior (when examples_path_splits is set to None) is
-        computing metrics on the 'eval' splits.
+        computing metrics on the 'eval' split.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
@@ -149,7 +149,7 @@ class Evaluator(base_component.BaseComponent):
 
     if not examples_path_splits:
       examples_path_splits = ['eval']
-      absl.logging.info("Computing metrics on the 'eval' splits when "
+      absl.logging.info("Computing metrics on the 'eval' split when "
                         "examples_path_splits is not set.")
 
     blessing = blessing or types.Channel(
