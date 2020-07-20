@@ -79,7 +79,7 @@ class Executor(base_executor.BaseExecutor):
     # Load and deserialize exclude splits from execution properties.
     exclude_splits = json_utils.loads(
         exec_properties.get(EXCLUDE_SPLITS_KEY)) or []
-    if not isinstance(exclude_splits, List):
+    if not isinstance(exclude_splits, list):
       raise ValueError('exclude_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(exclude_splits))
 
