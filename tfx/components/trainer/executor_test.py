@@ -187,12 +187,24 @@ class ExecutorTest(tf.test.TestCase):
     self._verify_model_run_exports()
 
   def testDoWithCustomSplits(self):
+    # Update input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(self._source_data_dir,
+                                'transform/transformed_examples')
+    io_utils.copy_dir(os.path.join(examples.uri, 'train'),
+                      os.path.join(examples.uri, 'training'))
+    io_utils.copy_dir(os.path.join(examples.uri, 'eval'),
+                      os.path.join(examples.uri, 'evaluating'))
+    examples.split_names = artifact_utils.encode_split_names(['training',
+                                                              'evaluating'])
+    self._input_dict[constants.EXAMPLES_KEY] = [examples]
+
     # Update exec properties skeleton with custom splits.
     self._exec_properties['train_args'] = json_format.MessageToJson(
-        trainer_pb2.TrainArgs(splits=['train'], num_steps=1000),
+        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000),
         preserving_proto_field_name=True)
     self._exec_properties['eval_args'] = json_format.MessageToJson(
-        trainer_pb2.EvalArgs(splits=['eval'], num_steps=500),
+        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)

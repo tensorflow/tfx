@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Text, NamedTuple
 
 from google.protobuf import json_format
 
+import absl
 from tfx import types
 from tfx.components.trainer import constants
 from tfx.proto import trainer_pb2
@@ -75,12 +76,16 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
   json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
 
-  # Default behavior is train on ‘train’ splits (when splits is empty in train
-  # args) and evaluate on 'eval' splits (when splits is empty in eval args).
+  # Default behavior is train on ‘train’ split (when splits is empty in train
+  # args) and evaluate on 'eval' split (when splits is empty in eval args).
   if not train_args.splits:
     train_args.splits.append('train')
+    absl.logging.info("Train on the 'train' split when train_args.splits is "
+                      "not set.")
   if not eval_args.splits:
     eval_args.splits.append('eval')
+    absl.logging.info("Evaluate on the 'eval' split when eval_args.splits is "
+                      "not set.")
 
   train_files = []
   for train_split in train_args.splits:

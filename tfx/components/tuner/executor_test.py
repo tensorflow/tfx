@@ -32,6 +32,7 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import io_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -128,12 +129,23 @@ class ExecutorTest(tf.test.TestCase):
           exec_properties=self._exec_properties)
 
   def testDoWithCustomSplits(self):
+    # Update input dict.
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(self._testdata_dir, 'iris', 'data')
+    io_utils.copy_dir(os.path.join(examples.uri, 'train'),
+                      os.path.join(examples.uri, 'training'))
+    io_utils.copy_dir(os.path.join(examples.uri, 'eval'),
+                      os.path.join(examples.uri, 'evaluating'))
+    examples.split_names = artifact_utils.encode_split_names(['training',
+                                                              'evaluating'])
+    self._input_dict['examples'] = [examples]
+
     # Update exec properties skeleton with custom splits.
     self._exec_properties['train_args'] = json_format.MessageToJson(
-        trainer_pb2.TrainArgs(splits=['train'], num_steps=1000),
+        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000),
         preserving_proto_field_name=True)
     self._exec_properties['eval_args'] = json_format.MessageToJson(
-        trainer_pb2.EvalArgs(splits=['eval'], num_steps=500),
+        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
                                                         'module_file',
