@@ -113,7 +113,7 @@ class Evaluator(base_component.BaseComponent):
           functionality may change at any time. TODO(b/142653905): add a link
           to additional documentation for TFMA fairness indicators here.
       examples_path_splits: Names of splits on which the metrics are computed.
-        Default behavior (when examples_path_splits is set to None) is 
+        Default behavior (when examples_path_splits is set to None) is
         computing metrics on the 'eval' splits.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model` argument.

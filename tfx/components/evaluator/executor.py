@@ -115,7 +115,7 @@ class Executor(base_executor.BaseExecutor):
     if fairness_indicator_thresholds:
       # Need to import the following module so that the fairness indicator
       # post-export metric is registered.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable, import-outside-toplevel, unused-import
       add_metrics_callbacks = [
           tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
               thresholds=fairness_indicator_thresholds),
@@ -191,8 +191,8 @@ class Executor(base_executor.BaseExecutor):
     file_patterns = []
     for split in examples_path_splits:
       file_pattern = io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], split)
-      )
+          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], 
+          split))
       file_patterns.append(file_pattern)
 
     eval_shared_model = models[0] if len(models) == 1 else models
