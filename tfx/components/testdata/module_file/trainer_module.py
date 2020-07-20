@@ -25,7 +25,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -35,6 +34,7 @@ from tensorflow_transform.tf_metadata import schema_utils
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor
 from tfx.utils import io_utils
+from tfx.utils import path_utils
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -289,7 +289,8 @@ def trainer_fn(trainer_fn_args, schema):
       # nodes if training distributed, in order to avoid race condition.
       keep_checkpoint_max=5)
 
-  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  export_dir = path_utils.serving_model_dir(trainer_fn_args.model_run_dir)
+  run_config = run_config.replace(model_dir=export_dir)
   warm_start_from = trainer_fn_args.base_model
 
   estimator = _build_estimator(
@@ -329,8 +330,6 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   tf.estimator.train_and_evaluate(training_spec['estimator'],
                                   training_spec['train_spec'],
                                   training_spec['eval_spec'])
-  absl.logging.info('Training complete.  Model written to %s',
-                    fn_args.serving_model_dir)
 
   # Export an eval savedmodel for TFMA
   # NOTE: When trained in distributed training cluster, eval_savedmodel must be
@@ -338,11 +337,17 @@ def run_fn(fn_args: executor.TrainerFnArgs):
   absl.logging.info('Exporting eval_savedmodel for TFMA.')
   tfma.export.export_eval_savedmodel(
       estimator=training_spec['estimator'],
-      export_dir_base=fn_args.eval_model_dir,
+      export_dir_base=path_utils.eval_model_dir(fn_args.model_run_dir),
       eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
 
-  # Simulate writing a log to the path given by fn_args
-  io_utils.write_string_file(
-      os.path.join(fn_args.model_run_dir, 'fake_log.txt'), '')
+  # TODO(b/160795287): Deprecate estimator based executor.
+  # Copy serving and eval model from model_run to model artifact directory.
+  serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
 
+  eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
+
+  absl.logging.info('Training complete. Model written to %s',
+                    fn_args.serving_model_dir)
   absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
