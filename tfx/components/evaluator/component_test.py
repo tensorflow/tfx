@@ -37,11 +37,12 @@ class ComponentTest(tf.test.TestCase):
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
         model=channel_utils.as_channel([model_exports]),
-        examples_path_splits=['eval'])
+        example_splits=None)
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
     self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      evaluator.outputs['blessing'].type_name)
+    self.assertEqual('["eval"]', evaluator.exec_properties['example_splits'])
 
   def testConstructWithBaselineModel(self):
     examples = standard_artifacts.Examples()

@@ -83,9 +83,9 @@ class Executor(base_executor.BaseExecutor):
         - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
           instance, providing the way to slice the data. Deprecated, use
           eval_config.slicing_specs instead.
-        - examples_path_splits: JSON-serialized list of names of splits on which
-          the metrics are computed. Default behavior (when examples_path_splits
-          is set to None) is computing metrics on the 'eval' split.
+        - example_splits: JSON-serialized list of names of splits on which the
+          metrics are computed. Default behavior (when example_splits is set to
+          None) is computing metrics on the 'eval' split.
 
     Returns:
       None
@@ -181,19 +181,11 @@ class Executor(base_executor.BaseExecutor):
           add_metrics_callbacks=add_metrics_callbacks))
 
     # Load and deserialize examples path splits from execution properties.
-    examples_path_splits = json_utils.loads(
-        exec_properties.get(constants.EXAMPLES_PATH_SPLITS_KEY)) or []
-    if not isinstance(examples_path_splits, list):
-      raise ValueError('examples_path_splits in execution properties needs to '
-                       'be a list. Got %s instead.' % type(
-                           examples_path_splits))
-
-    file_patterns = []
-    for split in examples_path_splits:
-      file_pattern = io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       split))
-      file_patterns.append(file_pattern)
+    example_splits = json_utils.loads(
+        exec_properties.get(constants.EXAMPLE_SPLITS_KEY, 'null')) or []
+    if not isinstance(example_splits, list):
+      raise ValueError('example_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(example_splits))
 
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
@@ -205,25 +197,34 @@ class Executor(base_executor.BaseExecutor):
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
       examples_list = []
+      for split in example_splits:
+        file_pattern = io_utils.all_files_pattern(
+            artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                         split))
+        data = (pipeline
+                | 'ReadFromTFRecord[%s]' % split >>
+                beam.io.ReadFromTFRecord(file_pattern=file_pattern))
+        examples_list.append(data)
       # pylint: disable=expression-not-assigned
       if _USE_TFXIO:
         tensor_adapter_config = None
         if tfma.is_batched_input(eval_shared_model, eval_config):
-          for file_pattern in file_patterns:
+          if schema is not None:
+            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+                arrow_schema=tfxio.ArrowSchema(),
+                tensor_representations=tfxio.TensorRepresentations())
+          examples_list = []
+          for split in example_splits:
+            file_pattern = io_utils.all_files_pattern(
+                artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                             split))
             tfxio = tf_example_record.TFExampleRecord(
                 file_pattern=file_pattern,
                 schema=schema,
                 raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-            if schema is not None:
-              tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                  arrow_schema=tfxio.ArrowSchema(),
-                  tensor_representations=tfxio.TensorRepresentations())
-            data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
-            examples_list.append(data)
-        else:
-          for file_pattern in file_patterns:
-            data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-                file_pattern=file_pattern)
+            data = (pipeline
+                    | 'ReadFromTFRecordToArrow[%s]' % split >>
+                    tfxio.BeamSource())
             examples_list.append(data)
         (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
@@ -234,10 +235,6 @@ class Executor(base_executor.BaseExecutor):
              slice_spec=slice_spec,
              tensor_adapter_config=tensor_adapter_config))
       else:
-        for file_pattern in file_patterns:
-          data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-              file_pattern=file_pattern)
-          examples_list.append(data)
         (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(

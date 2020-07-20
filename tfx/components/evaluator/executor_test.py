@@ -77,8 +77,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     }
 
     # List needs to be serialized before being passed into Do function.
-    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
-        ['eval'])
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
@@ -147,8 +146,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
           'is not installed.')
 
     # List needs to be serialized before being passed into Do function.
-    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
-        ['eval'])
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
@@ -296,8 +294,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     }
 
     # List needs to be serialized before being passed into Do function.
-    exec_properties[constants.EXAMPLES_PATH_SPLITS_KEY] = json_utils.dumps(
-        ['eval'])
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(['eval'])
 
     # Run executor.
     evaluator = executor.Executor()
