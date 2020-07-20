@@ -169,15 +169,15 @@ class Trainer(base_component.BaseComponent):
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance or a dict, containing args
-        used for training. Current only splits and num_steps are available. If
+        used for training. Currently only splits and num_steps are available. If
         it's provided as a dict and any field is a RuntimeParameter, it should
         have the same field names as a TrainArgs proto message. Default
-        behavior (when splits is empty) is train on ‘train’ splits.
+        behavior (when splits is empty) is train on ‘train’ split.
       eval_args: A trainer_pb2.EvalArgs instance or a dict, containing args
-        used for evaluation. Current only splits and num_steps are available.
+        used for evaluation. Currently only splits and num_steps are available.
         If it's provided as a dict and any field is a RuntimeParameter, it
         should have the same field names as a EvalArgs proto message. Default
-        behavior (when splits is empty) is evaluate on ‘eval’ splits.
+        behavior (when splits is empty) is evaluate on ‘eval’ split.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
