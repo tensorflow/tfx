@@ -19,7 +19,6 @@ import os
 
 from typing import Any, Dict, Text
 import mock
-# TODO(b/160252429): Clearn up lint warining.
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor

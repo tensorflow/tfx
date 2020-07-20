@@ -474,6 +474,19 @@ class Artifact(json_utils.Jsonable):
     """Get a custom property of int type."""
     return self._artifact.custom_properties[key].int_value
 
+  def copy_from(self, other: 'Artifact'):
+    """Set uri, properties and custom properties from a given Artifact."""
+    assert self.type is other.type, (
+        'Unable to set properties from an artifact of different type: {} vs {}'
+        .format(self.type_name, other.type_name))
+    self.uri = other.uri
+
+    self._artifact.properties.clear()
+    self._artifact.properties.MergeFrom(other._artifact.properties)  # pylint: disable=protected-access
+    self._artifact.custom_properties.clear()
+    self._artifact.custom_properties.MergeFrom(
+        other._artifact.custom_properties)  # pylint: disable=protected-access
+
 
 class ValueArtifact(Artifact):
   """Artifacts of small scalar-values that can be easily loaded into memory."""
