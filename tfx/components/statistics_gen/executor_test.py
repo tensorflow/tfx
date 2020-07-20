@@ -28,6 +28,7 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -70,7 +71,8 @@ class ExecutorTest(absltest.TestCase):
     }
 
     exec_properties = {
-        executor.EXCLUDE_SPLITS_KEY: ['test'],
+        # List needs to be serialized before being passed into Do function.
+        executor.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test']),
     }
 
     output_dict = {
@@ -116,7 +118,7 @@ class ExecutorTest(absltest.TestCase):
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
         executor.EXCLUDE_SPLITS_KEY:
-            []
+            json_utils.dumps([])
     }
 
     # Create output dict.
@@ -163,7 +165,7 @@ class ExecutorTest(absltest.TestCase):
             tfdv.StatsOptions(label_feature='company',
                               schema=schema_pb2.Schema()).to_json(),
         executor.EXCLUDE_SPLITS_KEY:
-            []
+            json_utils.dumps([])
     }
 
     # Create output dict.

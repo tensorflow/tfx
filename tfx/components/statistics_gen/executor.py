@@ -30,6 +30,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 
 # Key for examples in executor input_dict.
@@ -81,8 +82,8 @@ class Executor(base_executor.BaseExecutor):
         - stats_options_json: Optionally, a JSON representation of StatsOptions.
           When a schema is provided as an input, the StatsOptions value should
           not also contain a schema.
-        - exclude_splits: Names of splits where statistics and sample should not
-          be generated.
+        - exclude_splits: JSON-serialized list of names of splits where
+          statistics and sample should not be generated.
 
     Raises:
       ValueError when a schema is provided both as an input and as part of the
@@ -110,8 +111,14 @@ class Executor(base_executor.BaseExecutor):
                 artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
         stats_options.schema = schema
 
+    # Load and deserialize exclude splits from execution properties.
+    exclude_splits = json_utils.loads(
+        exec_properties.get(EXCLUDE_SPLITS_KEY)) or []
+    if not isinstance(exclude_splits, List):
+      raise ValueError('exclude_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(exclude_splits))
+
     split_uris = []
-    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
         if split in exclude_splits:

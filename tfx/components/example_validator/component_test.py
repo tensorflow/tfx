@@ -41,7 +41,7 @@ class ExampleValidatorTest(tf.test.TestCase):
     self.assertEqual('["train"]', artifact_utils.get_single_instance(
         list(example_validator.outputs['anomalies'].get())).split_names)
     self.assertEqual(example_validator.spec.exec_properties['exclude_splits'],
-                     ['eval'])
+                     '["eval"]')
 
 
 if __name__ == '__main__':

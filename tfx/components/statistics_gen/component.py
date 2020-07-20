@@ -29,6 +29,7 @@ from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
+from tfx.utils import json_utils
 
 
 class StatisticsGen(base_component.BaseComponent):
@@ -109,6 +110,6 @@ class StatisticsGen(base_component.BaseComponent):
         examples=examples,
         schema=schema,
         stats_options_json=stats_options_json,
-        exclude_splits=exclude_splits,
+        exclude_splits=json_utils.dumps(exclude_splits),
         statistics=output)
     super(StatisticsGen, self).__init__(spec=spec, instance_name=instance_name)

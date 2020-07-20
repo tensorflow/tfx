@@ -28,6 +28,7 @@ from tfx.components.schema_gen import executor
 from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import SchemaGenSpec
+from tfx.utils import json_utils
 
 
 class SchemaGen(base_component.BaseComponent):
@@ -100,6 +101,6 @@ class SchemaGen(base_component.BaseComponent):
     spec = SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
-        exclude_splits=exclude_splits,
+        exclude_splits=json_utils.dumps(exclude_splits),
         schema=schema)
     super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)

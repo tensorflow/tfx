@@ -30,6 +30,7 @@ from tfx.components.example_validator import labels
 from tfx.components.util import value_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 
 # Key for statistics in executor input_dict.
@@ -67,15 +68,21 @@ class Executor(base_executor.BaseExecutor):
         - output: A list of 'ExampleValidationPath' artifact of size one. It
           will include a single pbtxt file which contains all anomalies found.
       exec_properties: A dict of execution properties.
-        - exclude_splits: Names of splits that the example validator should not
-          validate.
+        - exclude_splits: JSON-serialized list of names of splits that the
+          example validator should not validate.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
+    # Load and deserialize exclude splits from execution properties.
+    exclude_splits = json_utils.loads(
+        exec_properties.get(EXCLUDE_SPLITS_KEY)) or []
+    if not isinstance(exclude_splits, List):
+      raise ValueError('exclude_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(exclude_splits))
+
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))

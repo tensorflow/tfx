@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx.components.schema_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -48,8 +49,9 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     exec_properties = {
-        'infer_feature_shape': False,
-        'exclude_splits': ['test']
+        executor.INFER_FEATURE_SHAPE_KEY: False,
+        # List needs to be serialized before being passed into Do function.
+        executor.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test'])
     }
 
     output_dict = {

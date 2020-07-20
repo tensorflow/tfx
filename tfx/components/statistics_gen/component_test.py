@@ -40,7 +40,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual('["train"]', artifact_utils.get_single_instance(
         list(statistics_gen.outputs['statistics'].get())).split_names)
     self.assertEqual(statistics_gen.spec.exec_properties['exclude_splits'],
-                     ['eval'])
+                     '["eval"]')
 
   def testConstructWithSchemaAndStatsOptions(self):
     examples = standard_artifacts.Examples()

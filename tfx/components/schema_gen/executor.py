@@ -27,6 +27,8 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
+
 
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
@@ -72,7 +74,14 @@ class Executor(base_executor.BaseExecutor):
     # TODO(zhitaoli): Move constants between this file and component.py to a
     # constants.py.
     infer_feature_shape = exec_properties.get(INFER_FEATURE_SHAPE_KEY)
-    exclude_splits = exec_properties.get(EXCLUDE_SPLITS_KEY)
+
+    # Load and deserialize exclude splits from execution properties.
+    exclude_splits = json_utils.loads(
+        exec_properties.get(EXCLUDE_SPLITS_KEY)) or []
+    if not isinstance(exclude_splits, List):
+      raise ValueError('exclude_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(exclude_splits))
+
     # Only one schema is generated for all splits.
     schema = None
     for artifact in input_dict[STATISTICS_KEY]:

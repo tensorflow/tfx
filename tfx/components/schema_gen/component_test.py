@@ -40,7 +40,7 @@ class SchemaGenTest(tf.test.TestCase):
                      schema_gen.outputs['schema'].type_name)
     self.assertFalse(schema_gen.spec.exec_properties['infer_feature_shape'])
     self.assertEqual(schema_gen.spec.exec_properties['exclude_splits'],
-                     ['eval'])
+                     '["eval"]')
 
   def testConstructWithParameter(self):
     statistics_artifact = standard_artifacts.ExampleStatistics()

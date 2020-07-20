@@ -25,6 +25,7 @@ from tfx.components.example_validator import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -56,7 +57,8 @@ class ExecutorTest(tf.test.TestCase):
     }
 
     exec_properties = {
-        executor.EXCLUDE_SPLITS_KEY: ['test']
+        # List needs to be serialized before being passed into Do function.
+        executor.EXCLUDE_SPLITS_KEY: json_utils.dumps(['test'])
     }
 
     output_dict = {

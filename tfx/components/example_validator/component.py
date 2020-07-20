@@ -28,6 +28,7 @@ from tfx.components.example_validator import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
+from tfx.utils import json_utils
 
 
 class ExampleValidator(base_component.BaseComponent):
@@ -115,7 +116,7 @@ class ExampleValidator(base_component.BaseComponent):
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,
-        exclude_splits=exclude_splits,
+        exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)
