@@ -49,7 +49,9 @@ _DRIVER_COMMAND = [
     'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/driver_container_entrypoint.py'
 ]
 
-_TFX_IMAGE = "gcr.io/tfx-eric/tfx-dev"
+_WRAPPER_SUFFIX = 'Wrapper'
+
+_TFX_IMAGE = 'gcr.io/tfx-eric/tfx-dev'
 
 def is_inside_cluster() -> bool:
   """Determines if kubernetes dag runner is executed from within a cluster.
@@ -123,10 +125,11 @@ def _wrap_container_component(
       json_utils.dumps(component_config),
   ]
 
-  # outputs/parameters fields are not used as they
-  # are contained in the serialized component
+  # Outputs/Parameters fields are not used as they are contained in
+  # the serialized component. We add a suffix to the component id
+  # to avoid MLMD conflict when registering this component.
   return container_component.create_container_component(
-      name=component.id,
+      name=component.id + _WRAPPER_SUFFIX,
       outputs={},
       parameters={},
       image=_TFX_IMAGE,
