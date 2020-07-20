@@ -109,7 +109,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # needed.
     custom_config = json_utils.loads(
         exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null')) or {}
-    if not isinstance(custom_config, Dict):
+    if not isinstance(custom_config, dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict. Got %s instead.' % type(custom_config))
 

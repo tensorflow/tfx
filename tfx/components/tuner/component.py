@@ -87,8 +87,8 @@ class Tuner(base_component.BaseComponent):
         training. Currently only splits and num_steps are available. Default
         behavior (when splits is empty) is train on 'train' split.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
-        Currently only splits and num_steps are available. Default behavior (when
-        splits is empty) is evaluate on ‘eval’ split.
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is evaluate on ‘eval’ split.
       tune_args: A tuner_pb2.TuneArgs instance, containing args used for tuning.
         Currently only num_parallel_trials is available.
       custom_config: A dict which contains addtional training job parameters

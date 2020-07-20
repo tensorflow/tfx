@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
-from google.protobuf import json_format
 from tfx.components.base import executor_spec
 from tfx.components.trainer import component
 from tfx.components.trainer import executor
