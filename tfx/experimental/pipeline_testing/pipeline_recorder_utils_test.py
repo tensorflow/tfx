@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 import mock
-import random
 import tensorflow as tf
 
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
@@ -44,7 +43,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     # Placeholders for record_pipeline(...) arguments
     self.metadata_db_uri = 'metadata_db_uri'
     self.host = 'localhost'
-    self.port = random.randint(9000, 10000)
+    self.port = 1234
     self.pipeline_name = 'pipeline_name'
     self.run_id = 'run_id'
 
@@ -56,7 +55,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
   def testRecordLatestKfpPipeline(self, mock_get_latest_executions):
     # Tests recording KFP pipeline outputs for the latest execution.
-    with mock.patch.object(pipeline_recorder_utils, '_get_paths', \
+    with mock.patch.object(pipeline_recorder_utils, '_get_paths',
                            return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(output_dir=self._base_dir,
                                               metadata_db_uri=None,
@@ -73,10 +72,10 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   def testRecordKfpPipelineRunId(self):
     # Tests recording KFP pipeline outputs given a run_id.
-    with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict', \
+    with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict',
                            return_value=self.execution_dict
                            ) as mock_get_execution_dict,\
-        mock.patch.object(pipeline_recorder_utils, '_get_paths', \
+        mock.patch.object(pipeline_recorder_utils, '_get_paths',
                           return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(output_dir=self._base_dir,
                                               metadata_db_uri=None,
@@ -97,7 +96,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
   def testRecordLatestBeamPipeline(self, mock_get_latest_executions):
     # Tests recording Beam pipeline outputs for the latest execution.
-    with mock.patch.object(pipeline_recorder_utils, '_get_paths', \
+    with mock.patch.object(pipeline_recorder_utils, '_get_paths',
                            return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(
           output_dir=self._base_dir,
@@ -118,10 +117,10 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
 
   def testRecordBeamPipelineRunId(self):
     # Tests recording Beam pipeline outputs given a run_id.
-    with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict', \
+    with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict',
                            return_value=self.execution_dict
                            ) as mock_get_execution_dict,\
-        mock.patch.object(pipeline_recorder_utils, '_get_paths', \
+        mock.patch.object(pipeline_recorder_utils, '_get_paths',
                           return_value=self.paths
                           ) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(

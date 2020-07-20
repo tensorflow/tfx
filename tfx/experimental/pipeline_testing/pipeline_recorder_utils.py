@@ -24,13 +24,13 @@ import os
 from absl import logging
 from ml_metadata.proto import metadata_store_pb2
 import tensorflow as tf
-from typing import Dict, Iterator, List, Optional, Text, Tuple
+from typing import Iterator, List, Mapping, Optional, Text, Tuple
 
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
 def _get_paths(metadata_connection: metadata.Metadata,
-               executions: Dict[Text, List[metadata_store_pb2.Execution]],
+               executions: List[metadata_store_pb2.Execution],
                output_dir: Text) -> Iterator[Tuple]:
   """Returns a iterable of tuple containing source artifact uris and
   destination uris, which are located in the output_dir. The source
@@ -61,7 +61,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
     yield (src_uri, dest_uri)
 
 def _get_execution_dict(metadata_connection: metadata.Metadata
-                       ) -> Dict[Text, List[metadata_store_pb2.Execution]]:
+                       ) -> Mapping[Text, List[metadata_store_pb2.Execution]]:
   """Returns a dictionary holding list of executions for all run_id in MLMD.
 
   Args:
@@ -94,7 +94,8 @@ def _get_latest_executions(metadata_connection: metadata.Metadata,
           metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
       if c.properties['pipeline_name'].string_value == pipeline_name
   ]
-  latest_context = max(pipeline_run_contexts, key=lambda c: c.last_update_time_since_epoch)
+  latest_context = max(pipeline_run_contexts,
+                       key=lambda c: c.last_update_time_since_epoch)
   return metadata_connection.store.get_executions_by_context(latest_context.id)
 
 def record_pipeline(output_dir: Text,
@@ -122,9 +123,8 @@ def record_pipeline(output_dir: Text,
       - run_id is None and pipeline_name is None.
   """
   if host is not None and port is not None:
-    metadata_config = metadata_store_pb2.MetadataStoreClientConfig()
-    metadata_config.host = host
-    metadata_config.port = port
+    metadata_config = metadata_store_pb2.MetadataStoreClientConfig(
+        host=host, port=port)
   elif metadata_db_uri is not None:
     metadata_config = metadata.sqlite_metadata_connection_config(
         metadata_db_uri)
