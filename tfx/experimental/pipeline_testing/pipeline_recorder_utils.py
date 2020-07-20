@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from collections import defaultdict
+import collections
 import os
 
 from absl import logging
@@ -32,8 +32,9 @@ from tfx.utils import io_utils
 def _get_paths(metadata_connection: metadata.Metadata,
                execution_ids: List[int],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:
-  """Returns an iterable of tuple containing source artifact uris and
-  destination uris, which are located in the output_dir. The source
+  """Returns an iterable of tuple with source and destination artifact uris.
+
+  The destination artifact uris are located in the output_dir. The source
   artifact uris are retrieved using execution ids.
 
   Args:
@@ -41,7 +42,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
     execution_ids: List of execution ids of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
 
-  Returns:
+  Yields:
     Iterable over tuples of source uri and destination uri.
   """
   events = metadata_connection.store.get_events_by_execution_ids(
@@ -71,7 +72,7 @@ def _get_execution_dict(metadata_connection: metadata.Metadata
   Returns:
     A dictionary that holds list of executions for a run_id.
   """
-  execution_dict = defaultdict(list)
+  execution_dict = collections.defaultdict(list)
   for execution in metadata_connection.store.get_executions():
     execution_run_id = execution.properties['run_id'].string_value
     execution_dict[execution_run_id].append(execution)
@@ -105,10 +106,12 @@ def record_pipeline(output_dir: Text,
                     port: Optional[int],
                     pipeline_name: Optional[Text],
                     run_id: Optional[Text]) -> None:
-  """Record pipeline run with run_id to output_dir. For the beam pipeline,
-  metadata_db_uri is required. For KFP, host and port should be specified.
-  If run_id is not specified, then pipeline_name ought to be specified in
-  order to fetch the latest execution for the specified pipeline.
+  """Record pipeline run with run_id to output_dir.
+
+  For the beam pipeline, metadata_db_uri is required. For KFP pipeline,
+  host and port should be specified. If run_id is not specified, then
+  pipeline_name ought to be specified in order to fetch the latest execution
+  for the specified pipeline.
 
   Args:
     output_dir: Directory path where the pipeline outputs should be recorded.
@@ -122,6 +125,7 @@ def record_pipeline(output_dir: Text,
     ValueError: In cases of invalid arguments:
       - metadata_db_uri is None or host and/or port is None.
       - run_id is None and pipeline_name is None.
+    FileNotFoundError: if the source artifact uri does not already exist.
   """
   if host is not None and port is not None:
     metadata_config = metadata_store_pb2.MetadataStoreClientConfig(
@@ -130,8 +134,8 @@ def record_pipeline(output_dir: Text,
     metadata_config = metadata.sqlite_metadata_connection_config(
         metadata_db_uri)
   else:
-    raise ValueError("For KFP, host and port are required. "\
-                     "For beam pipeline, metadata_db_uri is required.")
+    raise ValueError('For KFP, host and port are required. '
+                     'For beam pipeline, metadata_db_uri is required.')
 
   with metadata.Metadata(metadata_config) as metadata_connection:
     if run_id is None:

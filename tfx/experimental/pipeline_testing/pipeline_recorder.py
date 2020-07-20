@@ -33,7 +33,7 @@ flags.DEFINE_string('host', None, 'Hostname of the metadata grpc server.')
 flags.DEFINE_integer('port', None, 'Port number of the metadata grpc server.')
 # If run_id is not specified, pipeline_name must be specified.
 flags.DEFINE_string('pipeline_name', None, 'Name of the pipeline.')
-flags.DEFINE_string('run_id', None, 'Pipeline Run Id'\
+flags.DEFINE_string('run_id', None, 'Pipeline Run Id'
                     '(default=latest run, must specify pipeline_name).')
 
 flags.mark_flag_as_required('output_dir')
