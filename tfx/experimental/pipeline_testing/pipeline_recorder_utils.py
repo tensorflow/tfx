@@ -140,8 +140,8 @@ def record_pipeline(output_dir: Text,
   with metadata.Metadata(metadata_config) as metadata_connection:
     if run_id is None:
       if pipeline_name is None:
-        raise ValueError("If the run_id is not specified,"\
-                         " pipeline_name should be specified")
+        raise ValueError('If the run_id is not specified,'
+                         ' pipeline_name should be specified')
       # fetch executions of the most recently updated execution context.
       executions = _get_latest_executions(metadata_connection,
                                           pipeline_name)
