@@ -156,8 +156,9 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
 
     kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
     self.assertEqual(_executed_components, [
-        '_FakeComponent.a', '_FakeComponent.b', '_FakeComponent.c',
-        '_FakeComponent.d', '_FakeComponent.e'
+        '_FakeComponent.aWrapper', '_FakeComponent.bWrapper',
+        '_FakeComponent.cWrapper', '_FakeComponent.dWrapper',
+        '_FakeComponent.eWrapper'
     ])
 
 
