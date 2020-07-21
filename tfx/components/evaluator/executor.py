@@ -115,7 +115,7 @@ class Executor(base_executor.BaseExecutor):
     if fairness_indicator_thresholds:
       # Need to import the following module so that the fairness indicator
       # post-export metric is registered.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable, import-outside-toplevel, unused-import
+      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=import-outside-toplevel, unused-import
       add_metrics_callbacks = [
           tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
               thresholds=fairness_indicator_thresholds),
@@ -196,36 +196,26 @@ class Executor(base_executor.BaseExecutor):
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
-      examples_list = []
-      for split in example_splits:
-        file_pattern = io_utils.all_files_pattern(
-            artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                         split))
-        data = (pipeline
-                | 'ReadFromTFRecord[%s]' % split >>
-                beam.io.ReadFromTFRecord(file_pattern=file_pattern))
-        examples_list.append(data)
       # pylint: disable=expression-not-assigned
-      if _USE_TFXIO:
+      if _USE_TFXIO and tfma.is_batched_input(eval_shared_model, eval_config):
+        examples_list = []
+        for split in example_splits:
+          file_pattern = io_utils.all_files_pattern(
+              artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                            split))
+          tfxio = tf_example_record.TFExampleRecord(
+              file_pattern=file_pattern,
+              schema=schema,
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+          data = (pipeline
+                  | 'ReadFromTFRecordToArrow[%s]' % split >>
+                  tfxio.BeamSource())
+          examples_list.append(data)
         tensor_adapter_config = None
-        if tfma.is_batched_input(eval_shared_model, eval_config):
-          if schema is not None:
-            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                arrow_schema=tfxio.ArrowSchema(),
-                tensor_representations=tfxio.TensorRepresentations())
-          examples_list = []
-          for split in example_splits:
-            file_pattern = io_utils.all_files_pattern(
-                artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                             split))
-            tfxio = tf_example_record.TFExampleRecord(
-                file_pattern=file_pattern,
-                schema=schema,
-                raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-            data = (pipeline
-                    | 'ReadFromTFRecordToArrow[%s]' % split >>
-                    tfxio.BeamSource())
-            examples_list.append(data)
+        if schema is not None:
+          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+              arrow_schema=tfxio.ArrowSchema(),
+              tensor_representations=tfxio.TensorRepresentations())
         (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(
@@ -235,6 +225,15 @@ class Executor(base_executor.BaseExecutor):
              slice_spec=slice_spec,
              tensor_adapter_config=tensor_adapter_config))
       else:
+        examples_list = []
+        for split in example_splits:
+          file_pattern = io_utils.all_files_pattern(
+              artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                           split))
+          data = (pipeline
+                  | 'ReadFromTFRecord[%s]' % split >>
+                  beam.io.ReadFromTFRecord(file_pattern=file_pattern))
+          examples_list.append(data)
         (examples_list | 'FlattenExamples' >> beam.Flatten()
          | 'ExtractEvaluateAndWriteResults' >>
          tfma.ExtractEvaluateAndWriteResults(
