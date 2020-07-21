@@ -48,7 +48,6 @@ _EVAL_BATCH_SIZE = 32
 
 IMAGE_KEY = 'image'
 LABEL_KEY = 'label'
-SPLIT_KEY = 'is_train'
 
 def transformed_name(key):
   return key + '_xf'
