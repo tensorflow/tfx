@@ -59,14 +59,14 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     """Recursively comparing contents of two directories."""
 
     dir_cmp = filecmp.dircmp(dir1, dir2)
-    self.assertEqual(len(dir_cmp.left_only), 0)
-    self.assertEqual(len(dir_cmp.right_only), 0)
-    self.assertEqual(len(dir_cmp.funny_files), 0)
+    self.assertEmpty(dir_cmp.left_only)
+    self.assertEmpty(dir_cmp.right_only)
+    self.assertEmpty(dir_cmp.funny_files)
 
     _, mismatch, errors = filecmp.cmpfiles(
         dir1, dir2, dir_cmp.common_files, shallow=False)
-    self.assertEqual(len(mismatch), 0)
-    self.assertEqual(len(errors), 0)
+    self.assertEmpty(mismatch)
+    self.assertEmpty(errors)
 
     for common_dir in dir_cmp.common_dirs:
       new_dir1 = os.path.join(dir1, common_dir)
@@ -75,7 +75,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def testTaxiPipelineBeam(self):
     # Runs the pipeline and record to self._output_dir
-    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access, unexpected-keyword-arg
+    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
