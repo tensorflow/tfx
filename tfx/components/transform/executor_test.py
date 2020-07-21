@@ -124,7 +124,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     if check_cache:
       self.assertNotEqual(0,
-          len(tf.io.gfile.listdir(self._output_cache_artifact.uri)))git add
+          len(tf.io.gfile.listdir(self._output_cache_artifact.uri)))
 
   def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
     pipelines = []
@@ -226,7 +226,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
 
     self._verify_transform_outputs()
-    
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
   def testDoWithCacheDisabledTooManyStages(self):
