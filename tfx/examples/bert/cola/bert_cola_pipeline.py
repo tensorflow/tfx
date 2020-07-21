@@ -23,7 +23,7 @@ from typing import List, Text
 import absl
 import tensorflow_model_analysis as tfma
 
-from tfx.components.example_gen.import_example_gen.component import ImportExampleGen
+from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -44,7 +44,7 @@ from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import tfrecord_input
+from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'bert_cola'
 
@@ -72,8 +72,6 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
-# TODO: changed direct_num_workers=0 when https://github.com
-# /tensorflow/text/issues/311 is resolved.
 _beam_pipeline_args = ['--direct_num_workers=0']
 
 
@@ -82,18 +80,14 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      metadata_path: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the Bert classication on Cola dataset pipline with TFX."""
-  output = example_gen_pb2.Output(split_config=example_gen_pb2.SplitConfig(
-      splits=[
-          example_gen_pb2.SplitConfig.Split(
-              name='train',
-              hash_buckets=9),
-          example_gen_pb2.SplitConfig.Split(
-              name='eval',
-              hash_buckets=1)]))
+  input_config = example_gen_pb2.Input(splits=[
+      example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+      example_gen_pb2.Input.Split(name='eval', pattern='validation/*')
+  ])
 
   examples = tfrecord_input(data_root)
   # Brings data in to the pipline
-  example_gen = ImportExampleGen(input=examples, output_config=output)
+  example_gen = CsvExampleGen(input=examples, input_config=input_config)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -157,7 +151,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
-  _ = Pusher(
+  pusher = Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
@@ -171,9 +165,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       example_validator,
       transform,
       trainer,
-      # model_resolver,
-      # evaluator,
-      # pusher,
+      model_resolver,
+      evaluator,
+      pusher,
   ]
 
   return pipeline.Pipeline(

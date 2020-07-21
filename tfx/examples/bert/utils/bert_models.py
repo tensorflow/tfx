@@ -17,10 +17,12 @@
 import tensorflow.keras as keras
 import tensorflow as tf
 
-def BertForClassification(
+def build_bert_classifier(
         bert_layer,
         max_len,
-        fully_connected_layers=None):
+        num_classes,
+        drop_out_rate=0.1,
+        activation='linear'):
   """Bert Keras model for classification.
 
   Connect configurable fully connected layers on top of the Bert
@@ -29,8 +31,12 @@ def BertForClassification(
   Args:
     bert_layer: A tensorflow_hub.KerasLayer intence of Bert layer.
     max_len: The maximum length of preprocessed tokens.
-    hidden_layers: List of configurations for fine-tuning hidden layers
-      after the pooled_output. [(#of hidden units, activation)].
+    num_classes: Number of unique classes in the labels. Determines the output
+      shape of the classification layer.
+    drop_out_rate: Dropout rate to be used for the classification layer.
+    activation: The activation function used for the classification layer.
+      Default to linear because use from_logits in the loss function ensures
+      numerical stability.
 
   Returns:
     A Keras model.
@@ -47,15 +53,68 @@ def BertForClassification(
           name=name) for name in input_layer_names]
 
   pooled_output, _ = bert_layer(input_layers)
-
-  fully_connected = pooled_output
-  if fully_connected_layers is not None:
-    for (i, activation) in fully_connected_layers:
-      fully_connected = keras.layers.Dense(
-          i, activation=activation
-      )(fully_connected)
-
-  fully_connected = keras.layers.Dropout(0.1)(fully_connected)
-  output = keras.layers.Dense(2)(fully_connected)
+  fully_connected = keras.layers.Dropout(drop_out_rate)(pooled_output)
+  output = keras.layers.Dense(num_classes)(fully_connected)
   model = keras.Model(input_layers, output)
   return model
+
+def compile_bert_classifier(
+        model,
+	      loss=tf.keras.losses.SparseCategorialCrossEntropy(from_logits=True),
+	      learning_rate=2e-5,
+        metrics=['accuracy']):
+    """Compile the bert classifier using suggested parameters.
+
+    Args:
+      model: A keras model. Most likely the output of build_bert_classifier.
+      loss: tf.keras.losses. The suggested loss function here expects the lables
+        to be sparseCategorial i.e 0, 1, 2. If the labels are one-hot encoding,
+        should consider using tf.keras.losses.CategoricalCrossentropy. Output of
+        the model is expected to be dim=num_classes.
+      learning_rate: Suggested learning rate to be used in
+        tf.keras.optimizer.Adam. The three suggested learning_rates for
+        fine-tuning are [2e-5, 3e-5,5e-5].
+      metrics: An array of strings or tf.keras.metrics.
+
+    Returns:
+      None.
+    """
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate),
+        loss=loss,
+        metrics=metrics
+    )
+
+def build_and_compile_bert_classifier(
+        bert_layer,
+        max_len,
+        num_classes,
+        learning_rate=5e-5,
+        metrics=['accuracy']):
+    """Build and compile keras bert classification model.
+
+    Apart from the necessary inputs, use default/suggested parameters in build
+    and compile bert classifier functions.
+
+    Args:
+      bert_layer: A tensorflow_hub.KerasLayer intence of Bert layer.
+      max_len: The maximum length of preprocessed tokens.
+      num_classes: Number of unique classes in the labels. Determines the output
+        shape of the classification layer.
+      learning_rate: Suggested learning rate to be used in
+        tf.keras.optimizer.Adam. The three suggested learning_rates for
+        fine-tuning are [2e-5, 3e-5,5e-5]
+      metrics: An array of strings or tf.keras.metrics.
+      
+    Returns:
+        A compile keras Bert Classification model.
+    """
+    model = build_bert_classifier(
+        bert_model, 
+        max_len,
+        num_classes)
+
+    compile_bert_classifier(model)
+    return model
+      
+

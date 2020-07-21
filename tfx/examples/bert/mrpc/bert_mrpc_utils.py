@@ -31,7 +31,7 @@ sys.path.append(_bert_utils_root)
 
 # pylint: disable=wrong-import-position
 from bert_tokenizer_utils import SpecialBertTokenizer
-from bert_models import BertForClassification
+from bert_models import build_and_compile_bert_classifier
 # pylint: enable=wrong-import-position
 
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
@@ -150,15 +150,11 @@ def run_fn(fn_args: TrainerFnArgs):
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
     bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
-    model = BertForClassification(
-        bert_layer,
-        _MAX_LEN,
-    )
-
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(2e-5),
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=['accuracy'],
+    model = build_and_compile_bert_classifier(
+      bert_layer,
+      _MAX_LEN,
+      2,
+      2e-5
     )
 
   model.fit(
