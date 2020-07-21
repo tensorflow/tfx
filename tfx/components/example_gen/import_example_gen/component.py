@@ -49,8 +49,7 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
                                                                Any]]] = None,
       output_config: Optional[Union[example_gen_pb2.Output, Dict[Text,
                                                                  Any]]] = None,
-      payload_format: Optional[type(
-          example_gen_pb2.PayloadFormat)] = example_gen_pb2.FORMAT_TF_EXAMPLE,  # pylint: disable=bad-whitespace
+      payload_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct an ImportExampleGen component.
@@ -70,8 +69,9 @@ class ImportExampleGen(component.FileBasedExampleGen):  # pylint: disable=protec
         size 2:1. If any field is provided as a RuntimeParameter,
         output_config should be constructed as a dict with the same field names
         as Output proto message.
-      payload_format: Payload format of input data. Note that payload format of
-        output data is the same as input.
+      payload_format: Payload format of input data. Should be one of
+        example_gen_pb2.PayloadFormat enum. Note that payload format of output
+        data is the same as input.
       example_artifacts: Optional channel of 'ExamplesPath' for output train and
         eval examples.
       instance_name: Optional unique instance name. Necessary if multiple

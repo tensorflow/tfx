@@ -89,17 +89,19 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
 
   train_files = []
   for train_split in train_args.splits:
-    train_file = io_utils.all_files_pattern(
-        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                     train_split))
-    train_files.append(train_file)
+    train_files.extend([
+        io_utils.all_files_pattern(uri) for uri in
+        artifact_utils.get_split_uris(
+            input_dict[constants.EXAMPLES_KEY], train_split)
+    ])
 
   eval_files = []
   for eval_split in eval_args.splits:
-    eval_file = io_utils.all_files_pattern(
-        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                     eval_split))
-    eval_files.append(eval_file)
+    eval_files.extend([
+        io_utils.all_files_pattern(uri) for uri in
+        artifact_utils.get_split_uris(
+            input_dict[constants.EXAMPLES_KEY], eval_split)
+    ])
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default
