@@ -75,6 +75,8 @@ class Transform(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
+      cache_input_path: Optional[types.Channel] = None,
+      cache_output_path: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
     """Construct a Transform component.
 
@@ -103,6 +105,11 @@ class Transform(base_component.BaseComponent):
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
+      cache_input_path: Optional input 'TransformCache' channel containing
+        cached information from previous Transform runs.
+      cache_output_path: Optional output 'TransformCache' channel for cache
+        output of Transform component to be used in later Transform runs.
+      cache_output_path: O
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
@@ -125,6 +132,9 @@ class Transform(base_component.BaseComponent):
     transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
+    cache_output_path = cache_output_path or types.Channel(
+        type=standard_artifacts.TransformCache,
+        artifacts=[standard_artifacts.TransformCache()])
     if not transformed_examples:
       example_artifact = standard_artifacts.Examples()
       example_artifact.split_names = artifact_utils.encode_split_names(
@@ -137,5 +147,7 @@ class Transform(base_component.BaseComponent):
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
         transform_graph=transform_graph,
-        transformed_examples=transformed_examples)
+        transformed_examples=transformed_examples,
+        cache_input_path=cache_input_path,
+        cache_output_path=cache_output_path)
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)
