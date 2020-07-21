@@ -109,7 +109,6 @@ class Transform(base_component.BaseComponent):
         cached information from previous Transform runs.
       cache_output_path: Optional output 'TransformCache' channel for cache
         output of Transform component to be used in later Transform runs.
-      cache_output_path: O
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
