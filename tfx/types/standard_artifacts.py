@@ -101,6 +101,10 @@ class Schema(Artifact):
   TYPE_NAME = 'Schema'
 
 
+class TransformCache(Artifact):
+  TYPE_NAME = 'TransformCache'
+
+
 class Bytes(ValueArtifact):
   """Artifacts representing raw bytes."""
   TYPE_NAME = 'Bytes'
