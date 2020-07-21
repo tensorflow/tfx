@@ -196,13 +196,14 @@ class Executor(base_executor.BaseExecutor):
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
+      examples_list = []
+      tensor_adapter_config = None
       # pylint: disable=expression-not-assigned
       if _USE_TFXIO and tfma.is_batched_input(eval_shared_model, eval_config):
-        examples_list = []
         for split in example_splits:
           file_pattern = io_utils.all_files_pattern(
               artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                            split))
+                                           split))
           tfxio = tf_example_record.TFExampleRecord(
               file_pattern=file_pattern,
               schema=schema,
@@ -211,21 +212,11 @@ class Executor(base_executor.BaseExecutor):
                   | 'ReadFromTFRecordToArrow[%s]' % split >>
                   tfxio.BeamSource())
           examples_list.append(data)
-        tensor_adapter_config = None
         if schema is not None:
           tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
               arrow_schema=tfxio.ArrowSchema(),
               tensor_representations=tfxio.TensorRepresentations())
-        (examples_list | 'FlattenExamples' >> beam.Flatten()
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec,
-             tensor_adapter_config=tensor_adapter_config))
       else:
-        examples_list = []
         for split in example_splits:
           file_pattern = io_utils.all_files_pattern(
               artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
@@ -234,13 +225,14 @@ class Executor(base_executor.BaseExecutor):
                   | 'ReadFromTFRecord[%s]' % split >>
                   beam.io.ReadFromTFRecord(file_pattern=file_pattern))
           examples_list.append(data)
-        (examples_list | 'FlattenExamples' >> beam.Flatten()
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec))
+      (examples_list | 'FlattenExamples' >> beam.Flatten()
+       | 'ExtractEvaluateAndWriteResults' >>
+       tfma.ExtractEvaluateAndWriteResults(
+           eval_shared_model=models[0] if len(models) == 1 else models,
+           eval_config=eval_config,
+           output_path=output_uri,
+           slice_spec=slice_spec,
+           tensor_adapter_config=tensor_adapter_config))
     absl.logging.info(
         'Evaluation complete. Results written to {}.'.format(output_uri))
 
