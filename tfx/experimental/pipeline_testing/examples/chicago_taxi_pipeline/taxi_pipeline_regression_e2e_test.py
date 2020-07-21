@@ -110,22 +110,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     # Run pipeline with stub executors second time.
     BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
 
-    # All executions but Evaluator and Pusher are cached.
-    # Note that Resolver will always execute.
+    # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
       self.assertLen(m.store.get_artifacts(), artifact_count)
       artifact_count = len(m.store.get_artifacts())
       self.assertLen(m.store.get_executions(),
                      len(taxi_pipeline.components) * 2)
-
-    # Runs pipeline with stub executors for the third time.
-    BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
-    # Asserts cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertLen(m.store.get_artifacts(), artifact_count)
-      self.assertLen(m.store.get_executions(),
-                     len(taxi_pipeline.components) * 3)
 
 if __name__ == '__main__':
   tf.test.main()
