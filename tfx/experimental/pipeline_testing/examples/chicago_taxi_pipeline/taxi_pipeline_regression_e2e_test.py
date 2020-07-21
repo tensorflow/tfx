@@ -121,6 +121,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
+
+    # Verify that recorded files are successfully copied to the output uris.
     with metadata.Metadata(metadata_config) as m:
       artifacts = m.store.get_artifacts()
       artifact_count = len(artifacts)
