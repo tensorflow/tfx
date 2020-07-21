@@ -29,6 +29,7 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import io_utils
 from google.protobuf import json_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
@@ -125,6 +126,39 @@ class ExecutorTest(tf.test.TestCase):
           input_dict=self._input_dict,
           output_dict=self._output_dict,
           exec_properties=self._exec_properties)
+
+  def testDoWithCustomSplits(self):
+    # Update input dict.
+    io_utils.copy_dir(
+        os.path.join(self._testdata_dir, 'iris/data/train'),
+        os.path.join(self._output_data_dir, 'data/training'))
+    io_utils.copy_dir(
+        os.path.join(self._testdata_dir, 'iris/data/eval'),
+        os.path.join(self._output_data_dir, 'data/evaluating'))
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(self._output_data_dir, 'data')
+    examples.split_names = artifact_utils.encode_split_names(
+        ['training', 'evaluating'])
+    self._input_dict['examples'] = [examples]
+
+    # Update exec properties skeleton with custom splits.
+    self._exec_properties['train_args'] = json_format.MessageToJson(
+        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000),
+        preserving_proto_field_name=True)
+    self._exec_properties['eval_args'] = json_format.MessageToJson(
+        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500),
+        preserving_proto_field_name=True)
+    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
+                                                        'module_file',
+                                                        'tuner_module.py')
+
+    tuner = executor.Executor(self._context)
+    tuner.Do(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties)
+
+    self._verify_output()
 
 
 if __name__ == '__main__':
