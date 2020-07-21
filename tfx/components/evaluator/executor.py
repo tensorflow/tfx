@@ -180,19 +180,19 @@ class Executor(base_executor.BaseExecutor):
           eval_saved_model_path=model_path,
           add_metrics_callbacks=add_metrics_callbacks))
 
-    # Load and deserialize examples path splits from execution properties.
-    example_splits = json_utils.loads(
-        exec_properties.get(constants.EXAMPLE_SPLITS_KEY, 'null')) or []
-    if not isinstance(example_splits, list):
-      raise ValueError('example_splits in execution properties needs to be a '
-                       'list. Got %s instead.' % type(example_splits))
-
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
     if constants.SCHEMA_KEY in input_dict:
       schema = io_utils.SchemaReader().read(
           io_utils.get_only_uri_in_dir(
               artifact_utils.get_single_uri(input_dict[constants.SCHEMA_KEY])))
+
+    # Load and deserialize example splits from execution properties.
+    example_splits = json_utils.loads(
+        exec_properties.get(constants.EXAMPLE_SPLITS_KEY, 'null')) or []
+    if not isinstance(example_splits, list):
+      raise ValueError('example_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(example_splits))
 
     absl.logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
@@ -225,6 +225,7 @@ class Executor(base_executor.BaseExecutor):
                   | 'ReadFromTFRecord[%s]' % split >>
                   beam.io.ReadFromTFRecord(file_pattern=file_pattern))
           examples_list.append(data)
+
       (examples_list | 'FlattenExamples' >> beam.Flatten()
        | 'ExtractEvaluateAndWriteResults' >>
        tfma.ExtractEvaluateAndWriteResults(
