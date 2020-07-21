@@ -19,6 +19,7 @@
     potentially notice large performance improvement.
 *   Added support for primitive artifacts to InputValuePlaceholder.
 *   Supported multiple artifacts for Trainer's input example Channel.
+*   Supported split configuration for Trainer and Tuner.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
