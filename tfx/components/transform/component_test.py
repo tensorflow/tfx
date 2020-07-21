@@ -43,6 +43,8 @@ class ComponentTest(tf.test.TestCase):
                      transform.outputs['transform_graph'].type_name)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      transform.outputs['transformed_examples'].type_name)
+    self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
+                     transform.outputs['cache_output_path'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
