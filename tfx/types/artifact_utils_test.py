@@ -70,6 +70,20 @@ class ArtifactUtilsTest(tf.test.TestCase):
     self.assertEqual('/tmp/eval',
                      artifact_utils.get_split_uri(artifacts, 'eval'))
 
+  def testGetFromSplitsMultipleArtifacts(self):
+    """Test split retrieval utility on a multiple list of split Artifacts."""
+    artifacts = [standard_artifacts.Examples(), standard_artifacts.Examples()]
+    artifacts[0].uri = '/tmp1'
+    artifacts[0].split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    artifacts[1].uri = '/tmp2'
+    artifacts[1].split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    self.assertEqual(['/tmp1/train', '/tmp2/train'],
+                     artifact_utils.get_split_uris(artifacts, 'train'))
+    self.assertEqual(['/tmp1/eval', '/tmp2/eval'],
+                     artifact_utils.get_split_uris(artifacts, 'eval'))
+
   def testArtifactTypeRoundTrip(self):
     mlmd_artifact_type = standard_artifacts.Examples._get_artifact_type()
     self.assertIs(standard_artifacts.Examples,

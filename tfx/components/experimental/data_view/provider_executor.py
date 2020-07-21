@@ -41,14 +41,15 @@ class TfGraphDataViewProviderExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    del input_dict
-    if _MODULE_FILE_KEY in exec_properties:
-      create_decoder_func = import_utils.import_func_from_source(
-          exec_properties.get(_MODULE_FILE_KEY),
-          exec_properties.get(_CREATE_DECODER_FUNC_KEY))
-    else:
+    self._log_startup(input_dict, output_dict, exec_properties)
+    module_file = exec_properties.get(_MODULE_FILE_KEY)
+    if module_file is None:
       create_decoder_func = udf_utils.get_fn(
           exec_properties, _CREATE_DECODER_FUNC_KEY)
+    else:
+      create_decoder_func = import_utils.import_func_from_source(
+          module_file,
+          exec_properties.get(_CREATE_DECODER_FUNC_KEY))
     tf_graph_record_decoder.save_decoder(
         create_decoder_func(),
         value_utils.GetSoleValue(output_dict, _DATA_VIEW_KEY).uri)
