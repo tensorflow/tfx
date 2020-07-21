@@ -69,6 +69,7 @@ def _get_serve_image_fn(model):
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
+              is_train: bool,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
@@ -82,18 +83,18 @@ def _input_fn(file_pattern: List[Text],
     A dataset that contains (features, indices) tuple where features is a
       dictionary of Tensors, and indices is a single Tensor of label indices.
   """
-  # Create a dataset of raw examples
-  raw_feature_spec = (tf_transform_output.raw_feature_spec().copy())
+  transformed_feature_spec = (
+      tf_transform_output.transformed_feature_spec().copy())
   dataset = tf.data.experimental.make_batched_features_dataset(
       file_pattern=file_pattern,
       batch_size=batch_size,
-      features=raw_feature_spec,
+      features=transformed_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=LABEL_KEY)
+      label_key=transformed_name(LABEL_KEY))
 
-  # Apply transform layer on the fly (required by data augmentation)
-  transform_layer = tf_transform_output.transform_features_layer()
-  dataset = dataset.map(lambda x, y: (transform_layer(x), y))
+  # Apply data augmentation
+  if is_train:
+    dataset = dataset.map(lambda x, y: (_data_augmentation(x), y))
 
   return dataset
 
@@ -144,33 +145,22 @@ def _build_keras_model() -> tf.keras.Model:
 
   return model, base_model
 
-def _augment_image(image_feature):
-  """Perform data augmentation on image features.
+def _data_augmentation(feature_dict):
+  """Perform data augmentation on batches of data.
 
   Args:
-    image_feature: The image feature.
+    feature_dict: a dict containing features of samples
 
   Returns:
-    Augmented image feature.
+    The feature dict with augmented features
   """
+  image_feature = feature_dict[transformed_name(IMAGE_KEY)]
+  batch_size = tf.shape(image_feature)[0]
   image_feature = tf.image.random_flip_left_right(image_feature)
   image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
-  image_feature = tf.image.random_crop(image_feature, (224, 224, 3))
-  return image_feature
-
-def _data_augmentation(is_train, image_feature):
-  """Perform data augmentation on data.
-
-  Args:
-    is_train: Whether the data comes from train set.
-    image_feature: The image feature.
-
-  Returns:
-    Map from string feature key to transformed feature operations.
-  """
-  image_feature = tf.cond(tf.equal(is_train, 1), lambda: _augment_image(image_feature),
-                          lambda: image_feature)
-  return is_train, image_feature
+  image_feature = tf.image.random_crop(image_feature, (batch_size, 224, 224, 3))
+  feature_dict[transformed_name(IMAGE_KEY)] = image_feature
+  return feature_dict
 
 # TFX Transform will call this function.
 def preprocessing_fn(inputs):
@@ -184,17 +174,13 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
 
+  # tf.io.decode_png function cannot be applied on a batch of data
   image_features = tf.map_fn(lambda x: tf.io.decode_png(x[0], channels=3),
                              inputs[IMAGE_KEY], dtype=tf.uint8)
   image_features = tf.cast(image_features, tf.float32)
   image_features = tf.image.resize(image_features, [224, 224])
   image_features = tf.keras.applications.mobilenet. \
                          preprocess_input(image_features)
-
-  # Map function has to return a tuple when input is a tuple
-  # we are only interested in the augmented features
-  _, image_features = tf.map_fn(lambda x: _data_augmentation(x[0], x[1]),
-                                (inputs[SPLIT_KEY], image_features))
 
   outputs[transformed_name(IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
@@ -211,9 +197,9 @@ def run_fn(fn_args: TrainerFnArgs):
     fn_args: Holds args used to train the model as name/value pairs.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, True,
                             _TRAIN_BATCH_SIZE)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, False,
                            _EVAL_BATCH_SIZE)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()

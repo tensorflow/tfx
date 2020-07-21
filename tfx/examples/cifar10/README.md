@@ -38,10 +38,8 @@ Then, create sub-folders for different dataset splits and move different splits 
 cd cifar10/data
 mkdir train_whole
 mkdir test_whole
-```
-Next, add dataset split information as an extra feature to the dataset (required by data augmentation step in the pipeline)
-```
-python split_info_writer.py
+mv cifar10/3.0.2/cifar10-train.tfrecord-00000-of-00001 train_whole
+mv cifar10/3.0.2/cifar10-test.tfrecord-00000-of-00001 test_whole
 ```
 You'll find the final dataset under `train_whole` and `test_whole` folders.
 Finally, clean up the data folder.
@@ -64,7 +62,7 @@ mkdir ~/cifar10/exported
 Then, specify model's input and output information in _MODEL_INFO inside the `metadate_writer.py` script. In our case, it is 
 ```
 _MODEL_INFO = ModelSpecificInfo(
-    name="MobileNetV1 image classifier on cifar 10",
+    name="MobileNetV1 image classifier on CIFAR-10",
     version="v1",
     image_width=224,
     image_height=224,

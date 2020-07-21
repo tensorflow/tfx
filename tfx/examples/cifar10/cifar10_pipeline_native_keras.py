@@ -51,7 +51,7 @@ _pipeline_name = 'cifar10_native_keras'
 # This example assumes that CIFAR10 train set data is stored in
 # ~/cifar10/data/train, test set data is stored in ~/cifar10/data/test, and
 # the utility function is in ~/cifar10. Feel free to customize as needed.
-_cifar10_root = os.path.join(os.environ['HOME'], 'cifar10_new')
+_cifar10_root = os.path.join(os.environ['HOME'], 'cifar10')
 _data_root = os.path.join(_cifar10_root, 'data')
 # Python module files to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -112,7 +112,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
     return Trainer(
         module_file=module_file,
         custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-        examples=example_gen.outputs['examples'],
+        examples=transform.outputs['transformed_examples'],
         transform_graph=transform.outputs['transform_graph'],
         schema=schema_gen.outputs['schema'],
         train_args=trainer_pb2.TrainArgs(num_steps=72),

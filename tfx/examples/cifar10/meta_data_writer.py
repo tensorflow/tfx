@@ -69,7 +69,7 @@ ModelSpecificInfo = collections.namedtuple('ModelSpecificInfo', [
     'num_classes'])
 
 _MODEL_INFO = ModelSpecificInfo(
-    name="MobileNetV1 image classifier on cifar 10",
+    name="MobileNetV1 image classifier on CIFAR-10",
     version="v1",
     image_width=224,
     image_height=224,
