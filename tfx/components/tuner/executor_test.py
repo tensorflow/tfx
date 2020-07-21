@@ -129,12 +129,12 @@ class ExecutorTest(tf.test.TestCase):
 
   def testDoWithCustomSplits(self):
     # Update input dict.
+    io_utils.copy_dir(os.path.join(self._testdata_dir, 'iris/data/train'),
+                      os.path.join(self._output_data_dir, 'data/training'))
+    io_utils.copy_dir(os.path.join(self._testdata_dir, 'iris/data/eval'),
+                      os.path.join(self._output_data_dir, 'data/evaluating'))
     examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(self._testdata_dir, 'iris', 'data')
-    io_utils.copy_dir(os.path.join(examples.uri, 'train'),
-                      os.path.join(examples.uri, 'training'))
-    io_utils.copy_dir(os.path.join(examples.uri, 'eval'),
-                      os.path.join(examples.uri, 'evaluating'))
+    examples.uri = os.path.join(self._output_data_dir, 'data')
     examples.split_names = artifact_utils.encode_split_names(['training',
                                                               'evaluating'])
     self._input_dict['examples'] = [examples]
