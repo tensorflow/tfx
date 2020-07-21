@@ -111,11 +111,11 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         test_data_dir=self._output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
-    my_pipeline_config = pipeline_config.PipelineConfig(
+    stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
             stub_launcher,
         ])
-    BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
+    BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
