@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Text
 
 import tensorflow as tf
 
@@ -47,24 +46,34 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
+    # Metadata path for recording successful pipeline run.
+    self._metadata_db_uri = os.path.join(self._test_dir, 'tfx', 'record',
+                                         'metadata.db')
+    # Metadata path for stub pipeline runs.
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
     self._output_dir = os.path.join(self._test_dir, 'testdata')
 
-  def assertExecutedOnce(self, component: Text) -> None:
-    """Check the component is executed exactly once.
-    Pipeline root is <test_dir>/tfx/pipelines/beam_test/
-    Execution outputs are saved in <component.id>/<key>/<execution.id>
-    """
-    component_path = os.path.join(self._pipeline_root, component)
-    self.assertTrue(tf.io.gfile.exists(component_path))
-    outputs = tf.io.gfile.listdir(component_path)
-    for output in outputs:
-      execution = tf.io.gfile.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
-
   def testTaxiPipelineBeam(self):
-    # Runs the pipeline first time and record to self._output_dir
+    # Runs the pipeline and record to self._output_dir
+    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access, unexpected-keyword-arg
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_db_uri,
+        beam_pipeline_args=[])
+    BeamDagRunner().run(record_taxi_pipeline)
+    pipeline_recorder_utils.record_pipeline(
+        output_dir=self._output_dir,
+        metadata_db_uri=self._metadata_db_uri,
+        host=None,
+        port=None,
+        pipeline_name=self._pipeline_name,
+        run_id=None)
+
+    # Run pipeline with stub executors first time.
     taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access, unexpected-keyword-arg
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
@@ -73,29 +82,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
+
     model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    self._component_ids = [component.id \
-                     for component in taxi_pipeline.components\
-                     if component.id != model_resolver_id]
+    self._component_ids = [component.id
+                           for component in taxi_pipeline.components
+                           if component.id != model_resolver_id]
 
-    BeamDagRunner().run(taxi_pipeline)
-    pipeline_recorder_utils.record_pipeline(self._output_dir,
-                                            self._metadata_path,
-                                            None)
-
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    metadata_config = metadata.sqlite_metadata_connection_config(
-        self._metadata_path)
-    with metadata.Metadata(metadata_config) as m:
-      artifact_count = len(m.store.get_artifacts())
-      execution_count = len(m.store.get_executions())
-      self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertLen(taxi_pipeline.components, execution_count)
-
-    for component_id in self._component_ids:
-      self.assertExecutedOnce(component_id)
-
-    # Run pipeline second time with stub executors
     my_launcher = stub_component_launcher.get_stub_launcher_class(
         test_data_dir=self._output_dir,
         stubbed_component_ids=self._component_ids,
@@ -106,17 +98,27 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         ])
     BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
 
+    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    metadata_config = metadata.sqlite_metadata_connection_config(
+        self._metadata_path)
+    with metadata.Metadata(metadata_config) as m:
+      artifact_count = len(m.store.get_artifacts())
+      execution_count = len(m.store.get_executions())
+      self.assertGreaterEqual(artifact_count, execution_count)
+      self.assertLen(taxi_pipeline.components, execution_count)
+
+    # Run pipeline with stub executors second time.
+    BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
+
     # All executions but Evaluator and Pusher are cached.
     # Note that Resolver will always execute.
     with metadata.Metadata(metadata_config) as m:
-      # Artifact count is increased by 3 caused by Evaluator
-      # (blessing and evaluation) and Pusher.
-      self.assertLen(m.store.get_artifacts(), artifact_count + 3)
+      self.assertLen(m.store.get_artifacts(), artifact_count)
       artifact_count = len(m.store.get_artifacts())
       self.assertLen(m.store.get_executions(),
                      len(taxi_pipeline.components) * 2)
 
-    # Runs pipeline for the third time.
+    # Runs pipeline with stub executors for the third time.
     BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
