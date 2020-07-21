@@ -40,8 +40,8 @@ class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
     This method will be used by DSL compiler to generate the corresponding IR.
     """
-    # TODO(b/158712976): Serialize ExecutorContainerSpec.
-    # TODO(b/161286496): Serialize BorgExecutorSpec.
+    # TODO(b/158712976, b/161286496): Serialize executor specs for different
+    # platforms.
     raise NotImplementedError
 
 

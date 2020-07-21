@@ -84,6 +84,24 @@ def get_single_uri(artifact_list: List[Artifact]) -> Text:
   return get_single_instance(artifact_list).uri
 
 
+def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
+  """Get the uris of Artifacts with matching split from given list.
+
+  Args:
+    artifact_list: A list of Artifact objects.
+    split: Name of split.
+
+  Returns:
+    A list of uris of Artifact object in artifact_list with matching split.
+  """
+  matching_artifacts = []
+  for artifact in artifact_list:
+    split_names = decode_split_names(artifact.split_names)
+    if split in split_names:
+      matching_artifacts.append(artifact)
+  return [os.path.join(artifact.uri, split) for artifact in matching_artifacts]
+
+
 def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   """Get the uri of Artifact with matching split from given list.
 
@@ -97,16 +115,12 @@ def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:
   Raises:
     ValueError: If number with matching split in artifact_list is not one.
   """
-  matching_artifacts = []
-  for artifact in artifact_list:
-    split_names = decode_split_names(artifact.split_names)
-    if split in split_names:
-      matching_artifacts.append(artifact)
-  if len(matching_artifacts) != 1:
+  artifact_split_uris = get_split_uris(artifact_list, split)
+  if len(artifact_split_uris) != 1:
     raise ValueError(
         ('Expected exactly one artifact with split %r, but found matching '
-         'artifacts %s.') % (split, matching_artifacts))
-  return os.path.join(matching_artifacts[0].uri, split)
+         'artifacts %s.') % (split, artifact_split_uris))
+  return artifact_split_uris[0]
 
 
 def encode_split_names(splits: List[Text]) -> Text:
