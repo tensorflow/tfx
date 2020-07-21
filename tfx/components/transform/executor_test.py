@@ -27,20 +27,13 @@ from tensorflow_transform.beam import tft_unit
 from tfx import types
 from tfx.components.testdata.module_file import transform_module
 from tfx.components.transform import executor
+from tfx.components.transform import labels
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
-
-
-class _InputCache(types.Artifact):
-  TYPE_NAME = 'InputCache'
-
-
-class _OutputCache(types.Artifact):
-  TYPE_NAME = 'OutputCache'
 
 
 # TODO(b/122478841): Add more detailed tests.
@@ -81,11 +74,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
         ['train', 'eval'])
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
+    self._output_cache_artifact = standard_artifacts.TransformCache()
+    self._output_cache_artifact.uri = os.path.join(self._output_data_dir,
+                                                   'CACHE')
 
     self._output_dict = {
         executor.TRANSFORM_GRAPH_KEY: [self._transformed_output],
         executor.TRANSFORMED_EXAMPLES_KEY: [self._transformed_examples],
         executor.TEMP_PATH_KEY: [temp_path_output],
+        labels.CACHE_OUTPUT_PATH_LABEL: [self._output_cache_artifact],
     }
 
     # Create exec properties skeleton.
@@ -109,7 +106,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Executor for test.
     self._transform_executor = executor.Executor()
 
-  def _verify_transform_outputs(self):
+  def _verify_transform_outputs(self, check_cache=True):
     self.assertNotEqual(
         0,
         len(
@@ -124,6 +121,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
+
+    if check_cache:
+      self.assertNotEqual(0,
+          len(tf.io.gfile.listdir(self._output_cache_artifact.uri)))git add
 
   def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
     pipelines = []
@@ -206,49 +207,34 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def testDoWithCache(self):
 
     # First run that creates cache.
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
-
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
-
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
-    self.assertNotEqual(0,
-                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
 
     # Second run from cache.
     self._output_data_dir = self._get_output_data_dir('2nd_run')
-    input_cache_artifact = _InputCache()
-    input_cache_artifact.uri = output_cache_artifact.uri
-
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
+    input_cache_artifact = standard_artifacts.TransformCache()
+    input_cache_artifact.uri = self._output_cache_artifact.uri
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
 
-    self._input_dict['cache_input_path'] = [input_cache_artifact]
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
+    self._input_dict[labels.CACHE_INPUT_PATH_LABEL] = [input_cache_artifact]
 
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
 
     self._verify_transform_outputs()
-    self.assertNotEqual(0,
-                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
+    
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
   def testDoWithCacheDisabledTooManyStages(self):
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
-    self._verify_transform_outputs()
-    self.assertFalse(tf.io.gfile.exists(output_cache_artifact.uri))
+    self._verify_transform_outputs(check_cache=False)
+    self.assertFalse(tf.io.gfile.exists(self._output_cache_artifact.uri))
 
 
 if __name__ == '__main__':
