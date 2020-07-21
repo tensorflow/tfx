@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,17 +84,17 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         beam_pipeline_args=[])
 
     model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    self._component_ids = [component.id
-                           for component in taxi_pipeline.components
-                           if component.id != model_resolver_id]
+    stubbed_component_ids = [component.id
+                             for component in taxi_pipeline.components
+                             if component.id != model_resolver_id]
 
-    my_launcher = stub_component_launcher.get_stub_launcher_class(
+    stub_launcher = stub_component_launcher.get_stub_launcher_class(
         test_data_dir=self._output_dir,
-        stubbed_component_ids=self._component_ids,
+        stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
     my_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            my_launcher,
+            stub_launcher,
         ])
     BeamDagRunner(config=my_pipeline_config).run(taxi_pipeline)
 
