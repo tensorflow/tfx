@@ -64,7 +64,7 @@ def compile_bert_classifier(
     model,
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     learning_rate=2e-5,
-    metrics=['accuracy']):
+    metrics=None):
   """Compile the bert classifier using suggested parameters.
 
   Args:
@@ -76,11 +76,15 @@ def compile_bert_classifier(
     learning_rate: Suggested learning rate to be used in
       tf.keras.optimizer.Adam. The three suggested learning_rates for
       fine-tuning are [2e-5, 3e-5,5e-5].
-    metrics: An array of strings or tf.keras.metrics.
+    metrics: Default None will use ['accuracy']. An array of strings or
+      tf.keras.metrics.
 
   Returns:
     None.
   """
+  if metrics is None:
+      metrics = ['accuracy']
+
   model.compile(
       optimizer=tf.keras.optimizers.Adam(learning_rate),
       loss=loss,
@@ -92,7 +96,7 @@ def build_and_compile_bert_classifier(
     max_len,
     num_classes,
     learning_rate=5e-5,
-    metrics=['accuracy']):
+    metrics=None):
   """Build and compile keras bert classification model.
 
   Apart from the necessary inputs, use default/suggested parameters in build
@@ -106,11 +110,15 @@ def build_and_compile_bert_classifier(
     learning_rate: Suggested learning rate to be used in
       tf.keras.optimizer.Adam. The three suggested learning_rates for
       fine-tuning are [2e-5, 3e-5,5e-5]
-    metrics: An array of strings or tf.keras.metrics.
+    metrics: Default None will use ['accuracy']. An array of strings or
+      tf.keras.metrics.
 
   Returns:
       A compile keras Bert Classification model.
   """
+  if metrics is None:
+      metrics = ['accuracy']
+
   model = build_bert_classifier(
       bert_layer,
       max_len,

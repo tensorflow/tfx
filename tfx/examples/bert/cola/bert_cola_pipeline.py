@@ -86,7 +86,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   ])
 
   examples = external_input(data_root)
-  # Brings data in to the pipline
+  # Brings data into the pipline
   example_gen = CsvExampleGen(input=examples, input_config=input_config)
 
   # Computes statistics over data for visualization and example validation.
