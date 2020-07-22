@@ -115,8 +115,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=720),
-      eval_args=trainer_pb2.EvalArgs(num_steps=72))
+      train_args=trainer_pb2.TrainArgs(num_steps=1),
+      eval_args=trainer_pb2.EvalArgs(num_steps=1))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
