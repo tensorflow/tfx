@@ -37,6 +37,7 @@ from bert_models import build_and_compile_bert_classifier
 
 _TRAIN_BATCH_SIZE = 32
 _EVAL_BATCH_SIZE = 32
+_FEATURE_KEY = 'sentence'
 _LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
 _MAX_LEN = 256
@@ -67,11 +68,9 @@ def preprocessing_fn(inputs):
   Returns:
     Map from string feature key to transformed feature Tensors operations.
   """
-  feature = inputs['feature']
-  label = inputs['label']
-  input_word_ids, input_mask, segment_ids = _tokenize(feature)
+  input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY])
   return {
-      'label': label,
+      'label': inputs[_LABEL_KEY],
       'input_word_ids': input_word_ids,
       'input_mask': input_mask,
       'segment_ids': segment_ids}
