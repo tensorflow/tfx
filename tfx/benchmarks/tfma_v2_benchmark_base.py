@@ -24,6 +24,7 @@ import time
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
@@ -135,7 +136,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     tfx_io = test_util.InMemoryTFExampleRecord(
         schema=benchmark_utils.read_schema(
             "../examples/chicago_taxi_pipeline/data/user_provided_schema/schema.pbtxt"),
-        raw_record_column_name='__raw_record__')
+        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
     raw_data = (
         pipeline
         | "Examples" >> beam.Create(
