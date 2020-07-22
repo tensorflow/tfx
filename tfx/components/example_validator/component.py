@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, List, Text
 
-from absl import logging
+import absl
 
 from tfx import types
 from tfx.components.base import base_component
