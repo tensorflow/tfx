@@ -77,8 +77,8 @@ class BeamPipelineBenchmarkBase():
 
     self._dataset = dataset.get_dataset(base_dir=base_dir)
 
-    self.min_file_size = 1e5 # 1 MB
-    self.max_file_size = 1e6 # 1 GB
+    self.min_file_size = 1e6 # 1 MB
+    self.max_file_size = 1e9 # 1 GB
 
     self._big_shuffle_input_file = big_shuffle_input_file
     self._big_shuffle_output_file = big_shuffle_output_file
