@@ -29,6 +29,12 @@ import absl
 import tensorflow as tf
 import tensorflow_transform as tft
 
+import flatbuffers
+# pylint: disable=g-direct-tensorflow-import
+from tflite_support import metadata as _metadata
+from tflite_support import metadata_schema_py_generated as _metadata_fb
+# pylint: enable=g-direct-tensorflow-import
+
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
@@ -188,6 +194,57 @@ def preprocessing_fn(inputs):
 
   return outputs
 
+def _write_metadata(model_path: str,
+                    label_map_path: str,
+                    mean: list,
+                    std: list):
+  """ Add TFLite metadata to the model
+
+  Args:
+    model_path: The path of the TFLite model
+    label_map_path: The path of the label map file
+    mean: The mean value used to normalize input image tensor
+    std: The standard deviation used to normalize input image tensor
+  """
+
+  model_meta = _metadata_fb.ModelMetadataT()
+
+  # Creates input normalization info.
+  input_meta = _metadata_fb.TensorMetadataT()
+  input_normalization = _metadata_fb.ProcessUnitT()
+  input_normalization.optionsType = (
+      _metadata_fb.ProcessUnitOptions.NormalizationOptions)
+  input_normalization.options = _metadata_fb.NormalizationOptionsT()
+  input_normalization.options.mean = mean
+  input_normalization.options.std = std
+  input_meta.processUnits = [input_normalization]
+
+  # Creates output label map info.
+  output_meta = _metadata_fb.TensorMetadataT()
+  label_file = _metadata_fb.AssociatedFileT()
+  label_file.name = os.path.basename(label_map_path)
+  label_file.type = _metadata_fb.AssociatedFileType.TENSOR_AXIS_LABELS
+  output_meta.associatedFiles = [label_file]
+
+  # Creates subgraph info.
+  subgraph = _metadata_fb.SubGraphMetadataT()
+  subgraph.inputTensorMetadata = [input_meta]
+  subgraph.outputTensorMetadata = [output_meta]
+  model_meta.subgraphMetadata = [subgraph]
+
+  b = flatbuffers.Builder(0)
+  b.Finish(
+      model_meta.Pack(b),
+      _metadata.MetadataPopulator.METADATA_FILE_IDENTIFIER)
+  metadata_buf = b.Output()
+
+  # Populates metadata and label file to the model file.
+  populator = _metadata.MetadataPopulator.with_model_file(model_path)
+  populator.load_metadata_buffer(metadata_buf)
+  populator.load_associated_files([label_map_path])
+  populator.populate()
+
+
 # TFX Trainer will call this function.
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
@@ -271,6 +328,11 @@ def run_fn(fn_args: TrainerFnArgs):
                                  fn_args.serving_model_dir,
                                  tfrw,
                                  rewriter.ModelType.TFLITE_MODEL)
+  tflite_model_path = os.path.join(fn_args.serving_model_dir, 'tflite')
+  _write_metadata(model_path=tflite_model_path,
+                  label_map_path='cifar10/data/labels.txt',
+                  mean=[127.5],
+                  std=[127.5])
 
   tf.io.gfile.rmtree(temp_saving_model_dir)
   # TODO: incorporate metadata writer into the pipeline
