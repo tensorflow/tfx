@@ -19,10 +19,9 @@ The current implementation targets two goals:
 
 Definition:
   1. "op" refers to a graph name.
-      In our example: op = {'main', 'remote_op_b', 'remote_op_a'}.
-
-  2. "execution_specs" refers to a structure passed to the beam pipeline.
-     It is a list, where we need to execute spec 1 before later specs.
+  2. "execution_specs" refers to a list of execution specs.
+     An execution spec contains enough information to execute
+       a partitioned subgraph.
 
   <--closer to inputs                   closer to outputs-->
       --------------------------------------------------
@@ -35,9 +34,9 @@ Definition:
              / ---------------- \
                |   Subgraph   |
                ----------------
-               |    Inputs    |
+               |  Input_names |
                ----------------
-               |   Outputs    |
+               | Output_names |
                ----------------
                | is_remote_op |
                ----------------
@@ -51,6 +50,8 @@ Key Assumptions/Limitations for this implementation:
 
 import tensorflow as tf
 from tensorflow.core.framework import graph_pb2
+
+from execution_spec import ExecutionSpec
 
 
 def get_op_to_graph_def(op_to_filepath):
@@ -69,45 +70,35 @@ def _get_graph_def(filepath):
   return graph_def
 
 
-def partition_all_graphs(op_to_graph_def, op_to_outputs):
-  """Partition all the graph_defs.
+def partition_all_graphs(op_to_graph_def, op_to_output_names):
+  """Partition all the graphs.
 
-  In our example, we have three graphs: 'main', 'remote_op_a', 'remote_op_b'.
   Here, we partition each graph given its graph_def and output names.'
 
   Args:
     op_to_graph_def: {a graph name: a GraphDef proto}
-    op_to_outputs: {a graph name: a list of output node names}
+    op_to_output_names: {a graph name: a list of output name}
 
   Returns:
-    op_to_execution_specs: {a graph name: a list of execution specs}
-      each execution spec is a dict which comprises:
-        {'subgraph': a GraphDef,
-         'inputs': a set of input node names,
-         'outputs': a set of output node names,
-         'is_remote_op': a Boolean}
+    {graph name: a list of execution specs}
   """
   op_to_execution_specs = {}
   for op in op_to_graph_def:
     execution_specs = _partition_one_graph(op_to_graph_def[op],
-                                           op_to_outputs[op])
+                                           op_to_output_names[op])
     op_to_execution_specs[op] = execution_specs
   return op_to_execution_specs
 
 
-def _partition_one_graph(graph_def, outputs):
+def _partition_one_graph(graph_def, output_names):
   """Partition a graph_def.
 
   Args:
     graph_def: a GraphDef proto
-    outputs: a set of output node names
+    output_names: a list of output node names
 
   Returns:
-    execution_specs: a list of specs, each spec is a dict that contains:
-      {'subgraph': a GraphDef,
-       'inputs': a set of input node names,
-       'outputs': a set of output node names,
-       'is_remote_op': a Boolean}
+    A list of execution spec.
   """
   graph = _get_graph(graph_def)
   node_name_to_node_def = _get_node_name_to_node_def(graph_def)
@@ -122,7 +113,7 @@ def _partition_one_graph(graph_def, outputs):
                                          node_name_to_node_def,
                                          node_name_to_input_names,
                                          remote_op_relations,
-                                         outputs)
+                                         output_names)
   return execution_specs
 
 
@@ -154,7 +145,7 @@ def _get_remote_op_relations(graph_def,
     node_name_to_input_names: {node name: a list of node input names}
 
   Returns:
-    remote_op_relations: {remote op: a list of remote op children}
+    {remote op: a list of remote op children}
   """
   remote_op_relations = {}
 
@@ -171,7 +162,16 @@ def _get_remote_op_relations(graph_def,
 def _get_remote_op_children(remote_op_name,
                             node_name_to_node_def,
                             node_name_to_input_names):
-  """Find the remote op children for a remote op."""
+  """Find the remote op children for a remote op.
+
+  Args:
+    remote_op_name: the name of the parent remote op
+    node_name_to_node_def: {node name: a NodeDef proto}
+    node_name_to_input_names: {node name: a list of node input names}
+
+  Returns:
+    A list of remote op children.
+  """
   queue = [remote_op_name]
   visited = set([remote_op_name])
   remote_op_children = []
@@ -221,16 +221,12 @@ def _get_execution_specs(graph_def,
     graph_outputs: {graph name: a list of output node names}
 
   Returns:
-    execution_specs: a list of specs, each spec is a dict that includes:
-                     {'subgraph': a GraphDef,
-                      'inputs': a set of input node names,
-                      'outputs': a set of output node names,
-                      'is_remote_op': a Boolean}
+    A list of execution spec.
   """
   execution_specs = []
   previous_layers_visited = set([])
-  order = Relations(remote_op_relations)
 
+  order = Relations(remote_op_relations)
   while not order.check_if_finished():
     remote_ops_one_layer = order.get_next_layer()
 
@@ -254,7 +250,7 @@ def _get_execution_specs(graph_def,
                                                       node_name_to_node_def)
       execution_specs.append(subgraph_spec)
       previous_layers_visited = previous_layers_visited.union(
-          subgraph_spec['body_nodes'])
+          subgraph_spec.body_node_names)
 
     # Handle one remote op layer
     remote_op_specs = _partition_one_remote_op_layer(remote_ops_one_layer,
@@ -276,7 +272,7 @@ def _get_execution_specs(graph_def,
                                                   node_name_to_node_def)
   execution_specs.append(subgraph_spec)
   previous_layers_visited = previous_layers_visited.union(
-      subgraph_spec['body_nodes'])
+      subgraph_spec.body_node_names)
 
   return execution_specs
 
@@ -319,21 +315,12 @@ def _partition_one_subgraph_layer(previous_layers_visited,
     previous_layers_visited: a set of nodes
     graph_def: a GraphDef proto
     graph: a tf.Graph
-    output_names: a list of output names
+    output_names: a set of output names
     node_name_to_node_def: {node name: a NodeDef proto}
     node_name_to_input_names: {node name: a list of node input names}
 
   Returns:
-    An execution spec, which stores:
-    {'subgraph': a graph_def,
-     'inputs': a set of node names,
-     'outputs': a set of node names,
-     'is_remote_op': a boolean status,
-     'body_nodes': a set of node names,
-     'nodes_from_other_layers': a set of node names from the previous layers}
-
-    Here, body_nodes and nodes_from_other_layers only serve to handle input
-      nodes from the previously visited subgraph layers.
+    An execution spec.
   """
   subgraph = graph_pb2.GraphDef()
   subgraph.versions.CopyFrom(graph_def.versions)
@@ -368,48 +355,45 @@ def _partition_one_subgraph_layer(previous_layers_visited,
         current_layer_visited.add(current_node_name)
         queue.extend(node_name_to_input_names[current_node_name])
 
-  return {'subgraph': subgraph,
-          'inputs': _get_inputs_from_subgraph(subgraph),
-          'outputs': set(output_names),
-          'is_remote_op': False,
-          'body_nodes': _get_regular_nodes_from_subgraph(subgraph),
-          'nodes_from_other_layers': nodes_from_other_layers}
+  return ExecutionSpec(
+      subgraph=subgraph,
+      input_names=_get_input_names_from_subgraph(subgraph),
+      output_names=set(output_names),
+      is_remote_op=False,
+      body_node_names=_get_body_node_names_from_subgraph(subgraph),
+      nodes_from_other_layers=nodes_from_other_layers)
 
 
 def _handle_nodes_from_other_layers(current_spec,
                                     execution_specs,
                                     graph,
                                     node_name_to_node_def):
-  """Handle nodes that are from other layers.
-
-  Add it to other layer's output, add it to current layer's input,
-    and add a placeholder node to current layer.
-  """
-  for node_name in current_spec['nodes_from_other_layers']:
+  """Handle nodes that are from other layers."""
+  for node_name in current_spec.nodes_from_other_layers:
     for previous_spec in execution_specs:
 
-      if node_name in previous_spec['body_nodes']:
-        previous_spec['outputs'].add(node_name)
-        current_spec['inputs'].add(node_name)
+      if node_name in previous_spec.body_node_names:
+        previous_spec.output_names.add(node_name)
+        current_spec.input_names.add(node_name)
 
         node = node_name_to_node_def[node_name]
         placeholder = _create_placeholder_node_from_existing_node(node, graph)
-        current_spec['subgraph'].node.append(placeholder)
+        current_spec.subgraph.node.append(placeholder)
 
   return current_spec
 
 
 def _partition_one_remote_op_layer(remote_op_names, node_name_to_input_names):
-  """Construct spec for remote ops"""
+  """Construct execution spec for remote ops."""
   list_of_specs = []
   for remote_op_name in remote_op_names:
-    spec = {
-        'subgraph': None,
-        'inputs': set(node_name_to_input_names[remote_op_name]),
-        'outputs': set([remote_op_name]),
-        'is_remote_op': True,
-        'body_nodes': set([remote_op_name]),
-        'nodes_from_other_layers': None}
+    spec = ExecutionSpec(
+        subgraph=None,
+        input_names=set(node_name_to_input_names[remote_op_name]),
+        output_names=set([remote_op_name]),
+        is_remote_op=True,
+        body_node_names=set([remote_op_name]),
+        nodes_from_other_layers=set([]))
     list_of_specs.append(spec)
 
   return list_of_specs
@@ -430,16 +414,16 @@ def _create_placeholder_node_from_existing_node(node, graph):
                                   name=node.name)
 
 
-def _get_inputs_from_subgraph(subgraph):
-  inputs = {node.name for node in subgraph.node
-            if _is_placeholder_op(node)}
-  return inputs
+def _get_input_names_from_subgraph(subgraph):
+  input_names = {node.name for node in subgraph.node
+                 if _is_placeholder_op(node)}
+  return input_names
 
 
-def _get_regular_nodes_from_subgraph(subgraph):
-  regular_nodes = {node.name for node in subgraph.node
-                   if not _is_placeholder_op(node)}
-  return regular_nodes
+def _get_body_node_names_from_subgraph(subgraph):
+  body_node_names = {node.name for node in subgraph.node
+                     if not _is_placeholder_op(node)}
+  return body_node_names
 
 
 class Relations:

@@ -119,15 +119,21 @@ with main_graph.as_default():
                           tf.cast(left_upper_floormod, dtype=tf.float32)])
 
 
-def save_as_graphdefs():
-  tf.io.write_graph(graph_a.as_graph_def(), './complex_graphdefs',
-                    'graph_a.pb', as_text=False)
-  tf.io.write_graph(graph_b.as_graph_def(), './complex_graphdefs',
-                    'graph_b.pb', as_text=False)
-  tf.io.write_graph(main_graph.as_graph_def(), './complex_graphdefs',
-                    'main_graph.pb', as_text=False)
+def save_examples_as_graphdefs(directory_path):
+  tf.io.write_graph(graph_a.as_graph_def(),
+                    directory_path,
+                    'graph_a.pb',
+                    as_text=False)
+  tf.io.write_graph(graph_b.as_graph_def(),
+                    directory_path,
+                    'graph_b.pb',
+                    as_text=False)
+  tf.io.write_graph(main_graph.as_graph_def(),
+                    directory_path,
+                    'main_graph.pb',
+                    as_text=False)
 
 
 if __name__ == "__main__":
-  save_as_graphdefs()
+  save_examples_as_graphdefs('./complex_graphdefs')
   
