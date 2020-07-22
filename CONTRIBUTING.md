@@ -86,7 +86,7 @@ further stub generation requires manual invocation of the following command.)
 
 ```shell
 # In the tfx root directory
-bazel run //tfx/build:gen_proto
+bazel run //build:gen_proto
 ```
 
 ## Running Unit Tests

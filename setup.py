@@ -108,7 +108,7 @@ class _GenProtoCommand(setuptools.Command):
 
   def run(self):
     subprocess.check_call(
-        [self._bazel_cmd, 'run', '//tfx/build:gen_proto'],
+        [self._bazel_cmd, 'run', '//build:gen_proto'],
         # Bazel should be invoked in a directory containing bazel WORKSPACE
         # file, which is the root directory.
         cwd=os.path.dirname(os.path.realpath(__file__)),)
