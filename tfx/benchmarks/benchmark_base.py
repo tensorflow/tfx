@@ -21,6 +21,7 @@ from absl import flags
 import apache_beam as beam
 from apache_beam.pipeline import PipelineOptions
 from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
+from tfx.benchmarks import mode_config
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -28,36 +29,21 @@ flags.DEFINE_string(
     "Beam runner to use - any runner name accepted by "
     "apache_beam.runners.create_runner")
 
-DEFAULT_MODE = "default"
-LOCAL_SCALED_EXECUTION_MODE = "local_scaled_execution"
-CLOUD_DATAFLOW_MODE = "cloud_dataflow"
-FLINK_ON_K8S_MODE = "flink_on_k8s"
-modes = [DEFAULT_MODE, LOCAL_SCALED_EXECUTION_MODE, CLOUD_DATAFLOW_MODE,
-         FLINK_ON_K8S_MODE]
-
-beam_pipeline_mode = DEFAULT_MODE
-num_workers_str = "1"
-cloud_dataflow_temp_loc = ""
-
-def set_beam_pipeline_mode(mode):
-  assert mode in modes
-  globals()["beam_pipeline_mode"] = mode
-
-def set_num_workers(num_workers):
-  globals()["num_workers_str"] = str(num_workers)
-
-def set_cloud_dataflow_temp_loc(temp_loc):
-  globals()["cloud_dataflow_temp_loc"] = temp_loc
-
 class BenchmarkBase(test.Benchmark):
   """Base class for running Beam pipelines on various runners"""
+
+  def __init__(self):
+    super(BenchmarkBase, self).__init__()
+    self.beam_pipeline_mode = mode_config.DEFAULT_MODE
+    self.num_workers = 1
+    self.cloud_dataflow_temp_loc = None
 
   def _set_cloud_dataflow_flags(self):
     self.flags = ["--runner=DataflowRunner",
                   "--project=tfx-keshav",
-                  "--temp_location=" + cloud_dataflow_temp_loc,
-                  "--num_workers=" + num_workers_str,
-                  "--max_num_workers=" + num_workers_str,
+                  "--temp_location=" + self.cloud_dataflow_temp_loc,
+                  "--num_workers=%d" % self.num_workers,
+                  "--max_num_workers=" + self.num_workers,
                   "--no_pipeline_type_check",
                   "--setup_file=./setup.py",
                   "--autoscaling_algorithm=NONE",
@@ -69,14 +55,24 @@ class BenchmarkBase(test.Benchmark):
                   "--artifact_endpoint=localhost:8098",
                   "--environment_type=EXTERNAL",
                   "--environment_config=localhost:50000",
-                  "--parallelism=" + num_workers_str,
+                  "--parallelism=%d" % self.num_workers,
                   "--no_pipeline_type_check"]
 
   def _set_local_scaled_execution_flags(self):
     self.flags = ["--runner=DirectRunner",
-                  "--direct_num_workers" + num_workers_str,
+                  "--direct_num_workers%d" % self.num_workers,
                   "--direct_running_mode=multi_processing",
                   "--no_pipeline_type_check"]
+
+  def set_beam_pipeline_mode(self, beam_pipeline_mode):
+    assert beam_pipeline_mode in mode_config.modes
+    self.beam_pipeline_mode = beam_pipeline_mode
+
+  def set_num_workers(self, num_workers):
+    self.num_workers = num_workers
+
+  def set_cloud_dataflow_temp_loc(self, cloud_dataflow_temp_loc):
+    self.cloud_dataflow_temp_loc = cloud_dataflow_temp_loc
 
   def _create_beam_pipeline_default(self):
     # FLAGS may not be parsed if the benchmark is instantiated directly by a
@@ -88,13 +84,13 @@ class BenchmarkBase(test.Benchmark):
     return beam.Pipeline(runner=beam.runners.create_runner(runner_flag))
 
   def _create_beam_pipeline(self):
-    if beam_pipeline_mode == LOCAL_SCALED_EXECUTION_MODE:
+    if self.beam_pipeline_mode == mode_config.LOCAL_SCALED_EXECUTION_MODE:
       self._set_local_scaled_execution_flags()
 
-    elif beam_pipeline_mode == CLOUD_DATAFLOW_MODE:
+    elif self.beam_pipeline_mode == mode_config.CLOUD_DATAFLOW_MODE:
       self._set_cloud_dataflow_flags()
 
-    elif beam_pipeline_mode == FLINK_ON_K8S_MODE:
+    elif self.beam_pipeline_mode == mode_config.FLINK_ON_K8S_MODE:
       self._set_flink_on_k8s_operator_flags()
 
     else:

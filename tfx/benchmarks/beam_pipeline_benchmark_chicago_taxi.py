@@ -18,8 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import beam_pipeline_benchmark_base
-
 import os
+
 
 class BeamPipelineBenchmarkChicagoTaxi(
     beam_pipeline_benchmark_base.BeamPipelineBenchmarkBase):
@@ -33,7 +33,7 @@ class BeamPipelineBenchmarkChicagoTaxi(
     big_shuffle_output_file = os.environ['BIG_SHUFFLE_OUTPUT_FILE']
 
     super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
-        min_num_workers=1, max_num_workers=32,
+        min_num_workers=3, max_num_workers=4,
         base_dir=base_dir,
         cloud_dataflow_temp_loc=cloud_dataflow_temp_loc,
         big_shuffle_input_file=big_shuffle_input_file,
