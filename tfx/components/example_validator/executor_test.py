@@ -42,7 +42,7 @@ class ExecutorTest(tf.test.TestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
     self.source_data_dir = os.path.join(
-        "../", os.path.dirname(os.path.dirname(__file__)), 'testdata')
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
