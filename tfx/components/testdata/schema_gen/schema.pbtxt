@@ -284,3 +284,4 @@ string_domain {
   value: "585 - 88805 Valley Cab Co"
   value: "6743 - Luhak Corp"
 }
+# generate_legacy_feature_spec: false

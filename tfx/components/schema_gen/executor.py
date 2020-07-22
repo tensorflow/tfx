@@ -104,4 +104,6 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
+    io_utils.write_pbtxt_file(os.path.join(os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata'),_DEFAULT_FILE_NAME), schema)
     absl.logging.info('Schema written to %s.', output_uri)

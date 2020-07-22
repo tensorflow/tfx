@@ -31,6 +31,24 @@ from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenE
 from tfx.utils import io_utils
 
 
+def _int_handler(cell):
+  value_list = []
+  if cell:
+    value_list.append(int(cell))
+  return tf.train.Feature(int64_list=tf.train.Int64List(value=value_list))
+
+def _float_handler(cell):
+  value_list = []
+  if cell:
+    value_list.append(float(cell))
+  return tf.train.Feature(float_list=tf.train.FloatList(value=value_list))
+
+def _bytes_handler(cell):
+  value_list = []
+  if cell:
+    value_list.append(cell)
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=value_list))
+
 @beam.typehints.with_input_types(List[csv_decoder.CSVCell],
                                  List[csv_decoder.ColumnInfo])
 @beam.typehints.with_output_types(tf.train.Example)
@@ -45,14 +63,11 @@ class _ParsedCsvToTfExample(beam.DoFn):
     for column_info in column_infos:
       # pylint: disable=g-long-lambda
       if column_info.type == csv_decoder.ColumnType.INT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            int64_list=tf.train.Int64List(value=[int(csv_cell)]))
+        handler_fn = _int_handler
       elif column_info.type == csv_decoder.ColumnType.FLOAT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            float_list=tf.train.FloatList(value=[float(csv_cell)]))
+        handler_fn = _float_handler
       elif column_info.type == csv_decoder.ColumnType.STRING:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[csv_cell]))
+        handler_fn = _bytes_handler
       else:
         handler_fn = None
       column_handlers.append((column_info.name, handler_fn))
@@ -75,9 +90,6 @@ class _ParsedCsvToTfExample(beam.DoFn):
     feature = {}
     for csv_cell, (column_name, handler_fn) in zip(csv_cells,
                                                    self._column_handlers):
-      if not csv_cell:
-        feature[column_name] = tf.train.Feature()
-        continue
       if not handler_fn:
         raise ValueError(
             'Internal error: failed to infer type of column %s while it'
