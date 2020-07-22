@@ -31,11 +31,12 @@ from tfx.components.util import value_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
-
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
+
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
+
 # Key for training_statistics in executor input_dict.
 TRAINING_STATISTICS_KEY = 'training_statistics'
 
@@ -71,7 +72,6 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-
     absl.logging.info('Validating schema against the computed statistics.')
     label_inputs = {
         labels.STATS:
@@ -84,6 +84,13 @@ class Executor(base_executor.BaseExecutor):
                 io_utils.get_only_uri_in_dir(
                     artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
     }
+
+    if labels.TRAINING_STATISTICS in input_dict.keys():
+      label_inputs[labels.TRAINING_STATISTICS] = tfdv.load_statistics(
+          io_utils.get_only_uri_in_dir(
+              artifact_utils.get_single_uri(
+                  input_dict[TRAINING_STATISTICS_KEY])))
+
     output_uri = artifact_utils.get_single_uri(output_dict[ANOMALIES_KEY])
     label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
     self._Validate(label_inputs, label_outputs)

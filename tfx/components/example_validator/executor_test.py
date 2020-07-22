@@ -19,12 +19,22 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import shutil
+import tempfile
 import tensorflow as tf
+import pandas as pd
+
 from tensorflow_metadata.proto.v0 import anomalies_pb2
+from tfx import components
 from tfx.components.example_validator import executor
+from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from tfx.utils.dsl_utils import external_input
+from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx.orchestration import pipeline
+from tfx.orchestration import metadata
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -32,7 +42,11 @@ class ExecutorTest(tf.test.TestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
     self.source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+        "../", os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    output_data_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
 
     self.eval_stats_artifact = standard_artifacts.ExampleStatistics()
     self.eval_stats_artifact.uri = os.path.join(
@@ -43,17 +57,12 @@ class ExecutorTest(tf.test.TestCase):
     self.schema_artifact = standard_artifacts.Schema()
     self.schema_artifact.uri = os.path.join(self.source_data_dir, 'schema_gen')
 
-    self.output_data_dir = os.path.join(
-        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-        self._testMethodName)
-
     self.validation_output = standard_artifacts.ExampleAnomalies()
-    self.validation_output.uri = os.path.join(self.output_data_dir, 'output')
+    self.validation_output.uri = os.path.join(output_data_dir, 'output')
 
-  def _do(self):
+  def _test_do(self, input_dict, output_dict, exec_properties):
     example_validator_executor = executor.Executor()
-    example_validator_executor.Do(
-        self.input_dict, self.output_dict, self.exec_properties)
+    example_validator_executor.Do(input_dict, output_dict, exec_properties)
     self.assertEqual(
         ['anomalies.pbtxt'],
         tf.io.gfile.listdir(self.validation_output.uri))
@@ -61,40 +70,99 @@ class ExecutorTest(tf.test.TestCase):
         os.path.join(self.validation_output.uri, 'anomalies.pbtxt'),
         anomalies_pb2.Anomalies())
     self.assertNotEqual(0, len(anomalies.anomaly_info))
+    return anomalies
 
   def testDo(self):
-    self.input_dict = {
+    input_dict = {
         executor.STATISTICS_KEY: [self.eval_stats_artifact],
         executor.SCHEMA_KEY: [self.schema_artifact],
     }
-    self.output_dict = {
+    output_dict = {
         executor.ANOMALIES_KEY: [self.validation_output],
     }
 
-    self.exec_properties = {}
+    exec_properties = {}
 
-    self._do()
+    self._test_do(input_dict, output_dict, exec_properties)
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
   def testDoSkewDetection(self):
-    training_statistics = standard_artifacts.ExampleStatistics()
-    training_statistics.uri = os.path.join(
-        self.source_data_dir, 'trainer/current')
-    training_statistics.split_names = artifact_utils.encode_split_names(
-        ['eval_model_dir'])
+    # Read in the Chicago Taxi data.csv and intentionally skew it to keep only Cash trips
+    original_csv_path = os.path.join(self.source_data_dir,
+                                     'external/csv/data.csv')
+    skewed_data = pd.read_csv(original_csv_path)
+    skewed_data = skewed_data.loc[skewed_data['payment_type'] == 'Cash']
 
-    self.input_dict = {
+    # Write the skewed df to .csv
+    tmp_dir = tempfile.mkdtemp()
+    skewed_dir = os.path.join(tmp_dir, 'skewed')
+    os.mkdir(skewed_dir)
+    skewed_path = os.path.join(skewed_dir, 'skewed_data.csv')
+    skewed_data.to_csv(skewed_path)
+
+    # TFX pipeline components to generate a schema and tfrecords file for the skewed data
+    examples = external_input(skewed_dir)
+    example_gen = CsvExampleGen(input=examples)
+    statistics_gen = components.StatisticsGen(
+        examples=example_gen.outputs['examples'])
+    schema_gen = components.SchemaGen(
+        statistics=statistics_gen.outputs['statistics'],
+        infer_feature_shape=False)
+
+    p = pipeline.Pipeline(
+        pipeline_name='skewed_chicago_taxi_beam',
+        pipeline_root=tmp_dir,
+        components=[example_gen, statistics_gen, schema_gen],
+        metadata_connection_config=metadata.sqlite_metadata_connection_config(
+            os.path.join(tmp_dir, 'metadata.db')))
+
+    BeamDagRunner().run(p)
+
+    # Construct the skewed statsitics artifact from pipeline outputs
+    component_dir = os.path.join(tmp_dir, 'StatisticsGen/statistics')
+    component_num = os.listdir(component_dir)[0]
+    skewed_statistics = standard_artifacts.ExampleStatistics()
+    skewed_statistics.uri = os.path.join(component_dir, component_num, 'eval')
+
+    # Set a skew comparator for the 'payment_type' feature
+    tmp_schema_pbtxt_dir = os.path.join(tmp_dir, 'SkewedSchemaGen')
+    os.mkdir(tmp_schema_pbtxt_dir)
+    tmp_schema_pbtxt_path = os.path.join(tmp_schema_pbtxt_dir, 'schema.pbtxt')
+    original_schema_pbtxt_path = os.path.join(self.schema_artifact.uri,
+                                              'schema.pbtxt')
+    shutil.copy2(original_schema_pbtxt_path, tmp_schema_pbtxt_path)
+
+    f = open(tmp_schema_pbtxt_path, "r")
+    contents = f.readlines()
+    f.close()
+
+    skew_comparator_str = '  skew_comparator: { infinity_norm: { threshold: .1} }'
+    contents.insert(12, skew_comparator_str)
+
+    f = open(tmp_schema_pbtxt_path, "w")
+    contents = "".join(contents)
+    f.write(contents)
+    f.close()
+
+    self.schema_artifact.uri = tmp_schema_pbtxt_dir
+
+    input_dict = {
         executor.STATISTICS_KEY: [self.eval_stats_artifact],
         executor.SCHEMA_KEY: [self.schema_artifact],
-        executor.TRAINING_STATISTICS_KEY: [training_statistics],
+        executor.TRAINING_STATISTICS_KEY: [skewed_statistics],
     }
-    self.output_dict = {
+
+    output_dict = {
         executor.ANOMALIES_KEY: [self.validation_output],
     }
 
-    self.exec_properties = {}
+    exec_properties = {}
 
-    self._do()
+    # Generate anomalies and test that tfdv detected the skew
+    anomalies = self._test_do(input_dict, output_dict, exec_properties)
+    assert 'COMPARATOR_L_INFTY_HIGH' in str(anomalies.anomaly_info)
+
+    shutil.rmtree(tmp_dir)
 
 if __name__ == '__main__':
   tf.test.main()
