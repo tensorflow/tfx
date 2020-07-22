@@ -9,7 +9,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/  # build/ contains required files for building tfx packages.
 develop-eggs/
 dist/
 downloads/

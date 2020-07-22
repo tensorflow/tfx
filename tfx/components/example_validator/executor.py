@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import tensorflow_data_validation as tfdv
 
 from tfx import types
