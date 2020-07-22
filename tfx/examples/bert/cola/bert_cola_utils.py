@@ -25,7 +25,6 @@ from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
-import tensorflow_addons as tfa
 from tfx.components.trainer.executor import TrainerFnArgs
 
 _bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
@@ -151,9 +150,9 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
     model = build_and_compile_bert_classifier(
-      bert_layer,
-      _MAX_LEN,
-      2
+        bert_layer,
+        _MAX_LEN,
+        2
     )
 
   model.fit(

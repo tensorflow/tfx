@@ -151,10 +151,10 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     bert_layer = hub.KerasLayer(_BERT_LINK, trainable=True)
     model = build_and_compile_bert_classifier(
-      bert_layer,
-      _MAX_LEN,
-      2,
-      2e-5
+        bert_layer,
+        _MAX_LEN,
+        2,
+        2e-5
     )
 
   model.fit(
