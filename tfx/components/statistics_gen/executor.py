@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx_bsl.tfxio import tf_example_record
@@ -128,7 +128,7 @@ class Executor(base_executor.BaseExecutor):
         split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       for split, uri in split_uris:
-        absl.logging.info('Generating statistics for split %s.', split)
+        logging.info('Generating statistics for split %s.', split)
         input_uri = io_utils.all_files_pattern(uri)
         input_tfxio = tf_example_record.TFExampleRecord(
             file_pattern=input_uri,
@@ -143,5 +143,5 @@ class Executor(base_executor.BaseExecutor):
             stats_api.GenerateStatistics(stats_options)
             | 'WriteStatsOutput[%s]' % split >>
             stats_api.WriteStatisticsToTFRecord(output_path))
-        absl.logging.info('Statistics for split %s written to %s.', split,
-                          output_uri)
+        logging.info('Statistics for split %s written to %s.', split, 
+                     output_uri)

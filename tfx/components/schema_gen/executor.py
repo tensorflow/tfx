@@ -21,8 +21,9 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import tensorflow_data_validation as tfdv
+
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.types import artifact_utils
@@ -89,8 +90,7 @@ class Executor(base_executor.BaseExecutor):
         if split in exclude_splits:
           continue
 
-        absl.logging.info('Processing schema from statistics for split '
-                          '%s.', split)
+        logging.info('Processing schema from statistics for split %s.', split)
         stats_uri = io_utils.get_only_uri_in_dir(
             artifact_utils.get_split_uri(input_dict[STATISTICS_KEY], split))
         if not schema:
@@ -104,4 +104,4 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(output_dict[SCHEMA_KEY]),
         _DEFAULT_FILE_NAME)
     io_utils.write_pbtxt_file(output_uri, schema)
-    absl.logging.info('Schema written to %s.', output_uri)
+    logging.info('Schema written to %s.', output_uri)

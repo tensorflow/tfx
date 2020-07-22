@@ -31,18 +31,24 @@ from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenE
 from tfx.utils import io_utils
 
 
+@beam.typehints.with_input_types(csv_decoder.ColumnInfo)
+@beam.typehints.with_output_types(tf.train.Feature)
 def _int_handler(cell):
   value_list = []
   if cell:
     value_list.append(int(cell))
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value_list))
 
+@beam.typehints.with_input_types(csv_decoder.ColumnInfo)
+@beam.typehints.with_output_types(tf.train.Feature)
 def _float_handler(cell):
   value_list = []
   if cell:
     value_list.append(float(cell))
   return tf.train.Feature(float_list=tf.train.FloatList(value=value_list))
 
+@beam.typehints.with_input_types(csv_decoder.ColumnInfo)
+@beam.typehints.with_output_types(tf.train.Feature)
 def _bytes_handler(cell):
   value_list = []
   if cell:

@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, List, Text
 
-import absl
+from absl import logging
 import tensorflow_data_validation as tfdv
 
 from tfx import types
@@ -84,14 +84,14 @@ class StatisticsGen(base_component.BaseComponent):
         declared in the same pipeline.
     """
     if input_data:
-      absl.logging.warning(
+      logging.warning(
           'The "input_data" argument to the StatisticsGen component has '
           'been renamed to "examples" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       examples = input_data
     if exclude_splits is None:
       exclude_splits = []
-      absl.logging.info('Excluding no splits when exclude_splits is not set.')
+      logging.info('Excluding no splits when exclude_splits is not set.')
     if not output:
       statistics_artifact = standard_artifacts.ExampleStatistics()
       examples_split_names = artifact_utils.decode_split_names(

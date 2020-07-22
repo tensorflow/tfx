@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import tensorflow_data_validation as tfdv
 
 from tfx import types
@@ -91,8 +91,8 @@ class Executor(base_executor.BaseExecutor):
         if split in exclude_splits:
           continue
 
-        absl.logging.info('Validating schema against the computed statistics '
-                          'for split %s.', split)
+        logging.info('Validating schema against the computed statistics for '
+                     'split %s.', split)
         label_inputs = {
             labels.STATS:
                 tfdv.load_statistics(
@@ -106,8 +106,8 @@ class Executor(base_executor.BaseExecutor):
                                                   split)
         label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
         self._Validate(label_inputs, label_outputs)
-        absl.logging.info('Validation complete for split %s. Anomalies written'
-                          ' to %s.', split, output_uri)
+        logging.info('Validation complete for split %s. Anomalies written to '
+                     '%s.', split, output_uri)
 
   def _Validate(self, inputs: Dict[Text, Any], outputs: Dict[Text,
                                                              Any]) -> None:

@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, List, Text, Union
 
-import absl
+from absl import logging
 
 from tfx import types
 from tfx.components.base import base_component
@@ -88,14 +88,14 @@ class SchemaGen(base_component.BaseComponent):
         the input arguments.
     """
     if stats:
-      absl.logging.warning(
+      logging.warning(
           'The "stats" argument to the SchemaGen component has '
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
     if exclude_splits is None:
       exclude_splits = []
-      absl.logging.info('Excluding no splits when exclude_splits is not set.')
+      logging.info('Excluding no splits when exclude_splits is not set.')
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(

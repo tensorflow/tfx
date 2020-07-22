@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from typing import Optional, List, Text
 
-import absl
+from absl import logging
 
 from tfx import types
 from tfx.components.base import base_component
@@ -99,7 +99,7 @@ class ExampleValidator(base_component.BaseComponent):
       statistics = stats
     if exclude_splits is None:
       exclude_splits = []
-      absl.logging.info('Excluding no splits when exclude_splits is not set.')
+      logging.info('Excluding no splits when exclude_splits is not set.')
     anomalies = output
     if not anomalies:
       anomalies_artifact = standard_artifacts.ExampleAnomalies()
