@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.mnist.mnist_pipeline_native_keras."""
+"""E2E Tests for tfx.examples.cifar10.cifar10_pipeline_native_keras."""
 
 
 from __future__ import absolute_import
@@ -55,22 +55,19 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
     outputs = tf.io.gfile.listdir(component_path)
     for output in outputs:
       execution = tf.io.gfile.listdir(os.path.join(component_path, output))
-      self.assertLen(execution, 1)
+      self.assertLen(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('ImportExampleGen')
-    self.assertExecutedOnce('Evaluator.cifar10')
+    self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('Pusher.cifar10')
+    self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
-    self.assertExecutedOnce('Trainer.cifar10')
+    self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
   def testCIFAR10PipelineNativeKeras(self):
-    if not tf.executing_eagerly():
-      self.skipTest('The test requires TF2.')
-
     pipeline = cifar10_pipeline_native_keras._create_pipeline(
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
@@ -78,15 +75,15 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
         serving_model_dir_lite=self._serving_model_dir_lite,
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
-        direct_num_workers=0)
+        beam_pipeline_args=[])
 
     BeamDagRunner().run(pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir_lite))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+    expected_execution_count = 9 # 8 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
-    expected_execution_count = 9 # 8 components + 1 resolver
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
@@ -117,4 +114,5 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
                        len(m.store.get_executions()))
 
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

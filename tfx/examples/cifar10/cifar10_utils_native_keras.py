@@ -22,9 +22,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
-
 import os
+from typing import List, Text
 import absl
 import tensorflow as tf
 import tensorflow_transform as tft
@@ -52,14 +51,14 @@ _EVAL_DATA_SIZE = 100
 _TRAIN_BATCH_SIZE = 32
 _EVAL_BATCH_SIZE = 32
 
-IMAGE_KEY = 'image'
-LABEL_KEY = 'label'
+_IMAGE_KEY = 'image'
+_LABEL_KEY = 'label'
 
-CLASSIFIER_LEARNING_RATE = 3e-4
-FINETUNE_LEARNING_RATE = 5e-5
+_CLASSIFIER_LEARNING_RATE = 3e-4
+_FINETUNE_LEARNING_RATE = 5e-5
 
-TFLITE_MODEL_NAME = 'tflite'
-LABEL_MAP_FILE_PATH = 'cifar10/data/labels.txt'
+_TFLITE_MODEL_NAME = 'tflite'
+_LABEL_MAP_FILE_PATH = 'cifar10/data/labels.txt'
 
 def transformed_name(key):
   return key + '_xf'
@@ -78,6 +77,23 @@ def _get_serve_image_fn(model):
 
   return serve_image_fn
 
+def _data_augmentation(feature_dict):
+  """Perform data augmentation on batches of data.
+
+  Args:
+    feature_dict: a dict containing features of samples
+
+  Returns:
+    The feature dict with augmented features
+  """
+  image_feature = feature_dict[transformed_name(_IMAGE_KEY)]
+  batch_size = tf.shape(image_feature)[0]
+  image_feature = tf.image.random_flip_left_right(image_feature)
+  image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
+  image_feature = tf.image.random_crop(image_feature, (batch_size, 224, 224, 3))
+  feature_dict[transformed_name(_IMAGE_KEY)] = image_feature
+  return feature_dict
+
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
               is_train: bool,
@@ -87,6 +103,7 @@ def _input_fn(file_pattern: List[Text],
   Args:
     file_pattern: List of paths or patterns of input tfrecord files.
     tf_transform_output: A TFTransformOutput.
+    is_train: Whether the input dataset is train split or not.
     batch_size: representing the number of consecutive elements of returned
       dataset to combine in a single batch
 
@@ -101,7 +118,7 @@ def _input_fn(file_pattern: List[Text],
       batch_size=batch_size,
       features=transformed_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=transformed_name(LABEL_KEY))
+      label_key=transformed_name(_LABEL_KEY))
 
   # Apply data augmentation
   if is_train:
@@ -118,7 +135,7 @@ def _freeze_model_by_percentage(model: tf.keras.Model,
     percentage: the percentage of layers to freeze
   """
   if percentage < 0 or percentage > 1:
-    raise Exception("freeze percentage should between 0.0 and 1.0")
+    raise Exception("Freeze percentage should between 0.0 and 1.0")
 
   num_layers = len(model.layers)
   num_layers_to_freeze = int(num_layers * percentage)
@@ -129,7 +146,7 @@ def _freeze_model_by_percentage(model: tf.keras.Model,
       layer.trainable = True
 
 def _build_keras_model() -> tf.keras.Model:
-  """Creates a Image classification model with MobileNet as backbone
+  """Creates a Image classification model with MobileNet backbone
 
   Returns:
     The image classifcation Keras Model and the backbone MobileNet model
@@ -148,30 +165,13 @@ def _build_keras_model() -> tf.keras.Model:
   # overfiting, and then a Dense layer to classifying CIFAR10 objects
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
-          input_shape=(224, 224, 3), name=transformed_name(IMAGE_KEY)),
+          input_shape=(224, 224, 3), name=transformed_name(_IMAGE_KEY)),
       base_model,
-      tf.keras.layers.Dropout(0.3),
+      tf.keras.layers.Dropout(0.1),
       tf.keras.layers.Dense(10, activation='softmax')
   ])
 
   return model, base_model
-
-def _data_augmentation(feature_dict):
-  """Perform data augmentation on batches of data.
-
-  Args:
-    feature_dict: a dict containing features of samples
-
-  Returns:
-    The feature dict with augmented features
-  """
-  image_feature = feature_dict[transformed_name(IMAGE_KEY)]
-  batch_size = tf.shape(image_feature)[0]
-  image_feature = tf.image.random_flip_left_right(image_feature)
-  image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
-  image_feature = tf.image.random_crop(image_feature, (batch_size, 224, 224, 3))
-  feature_dict[transformed_name(IMAGE_KEY)] = image_feature
-  return feature_dict
 
 # TFX Transform will call this function.
 def preprocessing_fn(inputs):
@@ -185,18 +185,19 @@ def preprocessing_fn(inputs):
   """
   outputs = {}
 
-  # tf.io.decode_png function cannot be applied on a batch of data
+  # tf.io.decode_png function cannot be applied on a batch of data.
+  # We have to use tf.map_fn
   image_features = tf.map_fn(lambda x: tf.io.decode_png(x[0], channels=3),
-                             inputs[IMAGE_KEY], dtype=tf.uint8)
+                             inputs[_IMAGE_KEY], dtype=tf.uint8)
   image_features = tf.cast(image_features, tf.float32)
   image_features = tf.image.resize(image_features, [224, 224])
   image_features = tf.keras.applications.mobilenet.preprocess_input(
       image_features)
 
-  outputs[transformed_name(IMAGE_KEY)] = image_features
+  outputs[transformed_name(_IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[transformed_name(LABEL_KEY)] = inputs[LABEL_KEY]
+  outputs[transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
 
   return outputs
 
@@ -259,10 +260,11 @@ def run_fn(fn_args: TrainerFnArgs):
     fn_args: Holds args used to train the model as name/value pairs.
   """
   tf_transform_output = tft.TFTransformOutput(fn_args.transform_output)
-  train_dataset = _input_fn(fn_args.train_files, tf_transform_output, True,
-                            _TRAIN_BATCH_SIZE)
-  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output, False,
-                           _EVAL_BATCH_SIZE)
+
+  train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
+                            is_train=True, batch_size=_TRAIN_BATCH_SIZE)
+  eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
+                           is_train=False, batch_size=_EVAL_BATCH_SIZE)
 
   mirrored_strategy = tf.distribute.MirroredStrategy()
   with mirrored_strategy.scope():
@@ -283,7 +285,7 @@ def run_fn(fn_args: TrainerFnArgs):
   # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=CLASSIFIER_LEARNING_RATE),
+      optimizer=tf.keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -301,7 +303,7 @@ def run_fn(fn_args: TrainerFnArgs):
   # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=FINETUNE_LEARNING_RATE),
+      optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -313,7 +315,7 @@ def run_fn(fn_args: TrainerFnArgs):
       validation_steps=fn_args.eval_steps
   )
 
-  # Save the trained model in TFLite format for serving
+  # Prepare the TFLite model used for serving in MLKit
   signatures = {
       'serving_default':
           _get_serve_image_fn(
@@ -321,7 +323,7 @@ def run_fn(fn_args: TrainerFnArgs):
                   tf.TensorSpec(
                       shape=[None, 224, 224, 3],
                       dtype=tf.float32,
-                      name=transformed_name(IMAGE_KEY)
+                      name=transformed_name(_IMAGE_KEY)
                       ))
   }
 
@@ -337,13 +339,13 @@ def run_fn(fn_args: TrainerFnArgs):
                                  rewriter.ModelType.TFLITE_MODEL)
 
   # Add necessary TFLite metadata to the model in order to use it within MLKit
-  # TODO: Handle label map file path more properly, currently hard-coded
-  tflite_model_path = os.path.join(fn_args.serving_model_dir, TFLITE_MODEL_NAME)
-  # TODO: Extend the TFLite rewriter to be able to add TFLite metadata to the model
+  # TODO(@dzats): Handle label map file path more properly, currently hard-coded
+  tflite_model_path = os.path.join(fn_args.serving_model_dir,
+                                   _TFLITE_MODEL_NAME)
+  # TODO(@dzats): Extend the TFLite rewriter to be able to add TFLite metadata to the model
   _write_metadata(model_path=tflite_model_path,
-                  label_map_path=LABEL_MAP_FILE_PATH,
+                  label_map_path=_LABEL_MAP_FILE_PATH,
                   mean=[127.5],
                   std=[127.5])
 
   tf.io.gfile.rmtree(temp_saving_model_dir)
-  # TODO: incorporate metadata writer into the pipeline

@@ -21,9 +21,10 @@ The trained model can be pluged into MLKit for object detection.
 
 from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import os
-from typing import Text
+from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -61,7 +62,6 @@ _data_root = os.path.join(_cifar10_root, 'data')
 # Python module files to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
 _module_file = os.path.join(_cifar10_root, 'cifar10_utils_native_keras.py')
-
 # Path which can be listened to by the model server. Pusher will output the
 # trained model here.
 _serving_model_dir_lite = os.path.join(_cifar10_root, 'serving_model_lite',
@@ -76,12 +76,20 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
+# Pipeline arguments for Beam powered Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text,
-                     serving_model_dir_lite: Text,
+                     module_file: Text, serving_model_dir_lite: Text,
                      metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
+                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the CIFAR10 image classification pipeline using TFX."""
+  # This is needed for datasets with pre-defined splits
   input_config = example_gen_pb2.Input(splits=[
       example_gen_pb2.Input.Split(name='train', pattern='train/*'),
       example_gen_pb2.Input.Split(name='eval', pattern='test/*')])
@@ -109,21 +117,21 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # When traning on the whole dataset, use 20000 for train steps,
-  # 156 for val steps
-  def _create_trainer(module_file, instance_name):
-    return Trainer(
-        module_file=module_file,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-        examples=transform.outputs['transformed_examples'],
-        transform_graph=transform.outputs['transform_graph'],
-        schema=schema_gen.outputs['schema'],
-        train_args=trainer_pb2.TrainArgs(num_steps=72),
-        eval_args=trainer_pb2.EvalArgs(num_steps=3),
-        instance_name=instance_name)
-
-  # Uses user-provided Python function that trains a Keras model.
-  trainer = _create_trainer(module_file, 'cifar10')
+  # Uses user-provided Python function that trains a model.
+  # When traning on the whole dataset, use 20000 for train steps, 156 for eval steps.
+  # 20000 train steps correspond to 25 epochs on the whole train set, and 156 eval
+  # steps correspond to 1 epoch on the whole test set. The configuration below is for
+  # training on the dataset we provided in the data folder, which has 100 train and
+  # 100 test samples. The 78 train steps correspond to 25 epochs on this tiny train set,
+  # and 3 eval steps corresopnd to 1 epoch on this tiny test set.
+  trainer = Trainer(
+      module_file=module_file,
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+      examples=transform.outputs['transformed_examples'],
+      transform_graph=transform.outputs['transform_graph'],
+      schema=schema_gen.outputs['schema'],
+      train_args=trainer_pb2.TrainArgs(num_steps=78),
+      eval_args=trainer_pb2.EvalArgs(num_steps=3))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -141,7 +149,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           tfma.MetricsSpec(metrics=[
               tfma.MetricConfig(
                   class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.config.MetricThreshold(
+                  threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
                           lower_bound={'value': 0.3}),
                       change_threshold=tfma.GenericChangeThreshold(
@@ -159,8 +167,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       model=trainer.outputs['model'],
       baseline_model=model_resolver.outputs['model'],
-      eval_config=eval_config,
-      instance_name='cifar10')
+      eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -169,30 +176,31 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir_lite)),
-      instance_name='cifar10')
+              base_directory=serving_model_dir_lite)))
+
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      model_resolver,
+      evaluator,
+      pusher
+  ]
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          model_resolver,
-          evaluator,
-          pusher,
-      ],
+      components=components,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-  )
+      beam_pipeline_args=beam_pipeline_args)
 
+# To run this pipeline from the python CLI:
+#   $python cifar_pipeline_native_keras.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   BeamDagRunner().run(
@@ -203,6 +211,4 @@ if __name__ == '__main__':
           module_file=_module_file,
           serving_model_dir_lite=_serving_model_dir_lite,
           metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0))
+          beam_pipeline_args=_beam_pipeline_args))
