@@ -55,6 +55,12 @@ _EVAL_BATCH_SIZE = 32
 IMAGE_KEY = 'image'
 LABEL_KEY = 'label'
 
+CLASSIFIER_LEARNING_RATE = 3e-4
+FINETUNE_LEARNING_RATE = 5e-5
+
+TFLITE_MODEL_NAME = 'tflite'
+LABEL_MAP_FILE_PATH = 'cifar10/data/labels.txt'
+
 def transformed_name(key):
   return key + '_xf'
 
@@ -184,8 +190,8 @@ def preprocessing_fn(inputs):
                              inputs[IMAGE_KEY], dtype=tf.uint8)
   image_features = tf.cast(image_features, tf.float32)
   image_features = tf.image.resize(image_features, [224, 224])
-  image_features = tf.keras.applications.mobilenet. \
-                         preprocess_input(image_features)
+  image_features = tf.keras.applications.mobilenet.preprocess_input(
+      image_features)
 
   outputs[transformed_name(IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
@@ -198,7 +204,7 @@ def _write_metadata(model_path: str,
                     label_map_path: str,
                     mean: list,
                     std: list):
-  """ Add TFLite metadata to the model
+  """Add normalization option and label map TFLite metadata to the model
 
   Args:
     model_path: The path of the TFLite model
@@ -264,7 +270,8 @@ def run_fn(fn_args: TrainerFnArgs):
 
   # Our training regime has two phases: we first freeze the backbone and train
   # the newly added classifier only, then unfreeze part of the backbone and
-  # fine-tune with classifier jointly.
+  # fine-tune with classifier jointly. We evenly share the total number of
+  # train_steps between the two phases.
   steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
   total_epochs = int(fn_args.train_steps / steps_per_epoch)
   classifier_epochs = int(total_epochs / 2)
@@ -276,7 +283,7 @@ def run_fn(fn_args: TrainerFnArgs):
   # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=3e-4),
+      optimizer=tf.keras.optimizers.RMSprop(lr=CLASSIFIER_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -294,7 +301,7 @@ def run_fn(fn_args: TrainerFnArgs):
   # We need to recompile the model because layer properties have changed
   model.compile(
       loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=5e-5),
+      optimizer=tf.keras.optimizers.RMSprop(lr=FINETUNE_LEARNING_RATE),
       metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
@@ -328,9 +335,13 @@ def run_fn(fn_args: TrainerFnArgs):
                                  fn_args.serving_model_dir,
                                  tfrw,
                                  rewriter.ModelType.TFLITE_MODEL)
-  tflite_model_path = os.path.join(fn_args.serving_model_dir, 'tflite')
+
+  # Add necessary TFLite metadata to the model in order to use it within MLKit
+  # TODO: Handle label map file path more properly, currently hard-coded
+  tflite_model_path = os.path.join(fn_args.serving_model_dir, TFLITE_MODEL_NAME)
+  # TODO: Extend the TFLite rewriter to be able to add TFLite metadata to the model
   _write_metadata(model_path=tflite_model_path,
-                  label_map_path='cifar10/data/labels.txt',
+                  label_map_path=LABEL_MAP_FILE_PATH,
                   mean=[127.5],
                   std=[127.5])
 

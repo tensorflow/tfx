@@ -12,7 +12,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CIFAR10 image classification with transfer learning example using TFX."""
+"""CIFAR10 image classification example using TFX.
+
+This example demonstrates how to do data augmentation, transfer learning,
+and inserting TFLite metadata with TFX.
+The trained model can be pluged into MLKit for object detection.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -98,14 +103,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       statistics=statistics_gen.outputs['statistics'],
       schema=schema_gen.outputs['schema'])
 
-  # Performs .ations and feature engineering in training and serving.
+  # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  # We take the raw examples as the input to the trainer,
-  # as data augmentation needs to be applied on the fly.
   # When traning on the whole dataset, use 20000 for train steps,
   # 156 for val steps
   def _create_trainer(module_file, instance_name):
