@@ -72,7 +72,7 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
-_beam_pipeline_args = ['--direct_num_workers=0']
+_beam_pipeline_args = ['--direct_num_workers=1']
 
 
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,

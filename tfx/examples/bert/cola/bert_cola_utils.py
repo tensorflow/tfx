@@ -35,8 +35,8 @@ from bert_tokenizer_utils import SpecialBertTokenizer
 from bert_models import build_and_compile_bert_classifier
 # pylint: enable=wrong-import-position
 
-_TRAIN_BATCH_SIZE = 32
-_EVAL_BATCH_SIZE = 32
+_TRAIN_BATCH_SIZE = 16
+_EVAL_BATCH_SIZE = 16
 _FEATURE_KEY = 'sentence'
 _LABEL_KEY = "label"
 _BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"

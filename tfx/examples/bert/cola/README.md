@@ -15,8 +15,8 @@
 # The configurations that were found reasonable are listed below:
 # bert_cola_pipeline_native_keras.py:
 #    tfma.GenericValueThreshold(lower_bound={'value':0.80}
-#    trainer_pb2.TrainArgs(num_steps=800)
-#    trainer_pb2.EvalArgs(num_steps=32)
+#    trainer_pb2.TrainArgs(num_steps=1600)
+#    trainer_pb2.EvalArgs(num_steps=72)
 # bert_cola_utils_native_keras.py:
 #    _TRAIN_BATCH_SIZE=32
 #    _EVAL_BATCH_SIZE=32
