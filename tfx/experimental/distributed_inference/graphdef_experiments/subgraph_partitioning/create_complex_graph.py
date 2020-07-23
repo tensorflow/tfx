@@ -86,13 +86,13 @@ main_graph = tf.Graph()
 with main_graph.as_default():
   ids1 = tf.compat.v1.placeholder(dtype=tf.int32, name='ids1')
   ids2 = tf.compat.v1.placeholder(dtype=tf.int32, name='ids2')
-  casted_ids1 = tf.cast(ids1, dtype=tf.float32)
-  casted_ids2 = tf.cast(ids2, dtype=tf.float32)
+  casted_ids1 = tf.cast(ids1, tf.float32)
+  casted_ids2 = tf.cast(ids2, tf.float32)
 
   remote_a0 = remote_op_a(ids1)
   remote_b0 = remote_op_b(ids1, ids2)
 
-  left_upper_concat = tf.concat([remote_a0, remote_b0], axis=0)
+  left_upper_concat = tf.concat([remote_a0, remote_b0], 0)
   left_upper_sum = tf.reduce_mean(left_upper_concat)
 
   right_upper_sum = tf.reduce_mean(remote_b0)
@@ -116,7 +116,7 @@ with main_graph.as_default():
 
   main_result = tf.add_n([left_lower_sum, right_lower_div,
                           right_lower_sum, right_upper_sum,
-                          tf.cast(left_upper_floormod, dtype=tf.float32)])
+                          tf.cast(left_upper_floormod, tf.float32)])
 
 
 def save_examples_as_graphdefs(directory_path):
