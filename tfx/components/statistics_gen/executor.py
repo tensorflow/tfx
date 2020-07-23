@@ -24,10 +24,10 @@ from typing import Any, Dict, List, Text
 import absl
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
-from tfx_bsl.tfxio import tf_example_record
 
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.util import tfxio_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
@@ -106,22 +106,21 @@ class Executor(base_executor.BaseExecutor):
                 artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
         stats_options.schema = schema
 
-    split_uris = []
+    split_and_tfxio = []
     for artifact in input_dict[EXAMPLES_KEY]:
+      tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+          examples=artifact, telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
       for split in artifact_utils.decode_split_names(artifact.split_names):
         uri = os.path.join(artifact.uri, split)
-        split_uris.append((split, uri))
+        split_and_tfxio.append(
+            (split, tfxio_factory(io_utils.all_files_pattern(uri))))
     with self._make_beam_pipeline() as p:
-      for split, uri in split_uris:
+      for split, tfxio in split_and_tfxio:
         absl.logging.info('Generating statistics for split {}'.format(split))
-        input_uri = io_utils.all_files_pattern(uri)
-        input_tfxio = tf_example_record.TFExampleRecord(
-            file_pattern=input_uri,
-            telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
         output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
-        data = p | 'TFXIORead[{}]'.format(split) >> input_tfxio.BeamSource()
+        data = p | 'TFXIORead[{}]'.format(split) >> tfxio.BeamSource()
         _ = (
             data
             | 'GenerateStatistics[{}]'.format(split) >>
