@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import absl
+from absl import logging
+from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from google.protobuf import json_format
@@ -31,7 +32,7 @@ from tfx.types import standard_artifacts
 from tfx.utils import json_utils
 
 
-class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
+class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
   @absl.testing.parameterized.named_parameters(('evaluation_w_eval_config', {
       'eval_config':
@@ -92,7 +93,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
-  @absl.testing.parameterized.named_parameters(('legacy_feature_slicing', {
+  @parameterized.named_parameters(('legacy_feature_slicing', {
       'feature_slicing_spec':
           json_format.MessageToJson(
               evaluator_pb2.FeatureSlicingSpec(specs=[
@@ -141,7 +142,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
           0.1, 0.3, 0.5, 0.7, 0.9
       ]
     except ImportError:
-      absl.logging.warning(
+      logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
 
@@ -161,7 +162,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
-  @absl.testing.parameterized.named_parameters(
+  @parameterized.named_parameters(
       (
           'eval_config_w_validation',
           {

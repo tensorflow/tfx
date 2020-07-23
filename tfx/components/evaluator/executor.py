@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants as tfma_constants
@@ -85,7 +85,7 @@ class Executor(base_executor.BaseExecutor):
           eval_config.slicing_specs instead.
         - example_splits: JSON-serialized list of names of splits on which the
           metrics are computed. Default behavior (when example_splits is set to
-          None) is computing metrics on the 'eval' split.
+          None) is using the 'eval' split.
 
     Returns:
       None
@@ -156,7 +156,7 @@ class Executor(base_executor.BaseExecutor):
           model_path = path_utils.eval_model_path(model_uri)
         else:
           model_path = path_utils.serving_model_path(model_uri)
-        absl.logging.info('Using {} as {} model.'.format(
+        logging.info('Using {} as {} model.'.format(
             model_path, model_spec.name))
         models.append(tfma.default_eval_shared_model(
             model_name=model_spec.name,
@@ -175,7 +175,7 @@ class Executor(base_executor.BaseExecutor):
           feature_slicing_spec)
       model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])
       model_path = path_utils.eval_model_path(model_uri)
-      absl.logging.info('Using {} for model eval.'.format(model_path))
+      logging.info('Using {} for model eval.'.format(model_path))
       models.append(tfma.default_eval_shared_model(
           eval_saved_model_path=model_path,
           add_metrics_callbacks=add_metrics_callbacks))
@@ -194,7 +194,7 @@ class Executor(base_executor.BaseExecutor):
       raise ValueError('example_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(example_splits))
 
-    absl.logging.info('Evaluating model.')
+    logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
       examples_list = []
       tensor_adapter_config = None
@@ -204,6 +204,8 @@ class Executor(base_executor.BaseExecutor):
           file_pattern = io_utils.all_files_pattern(
               artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
                                            split))
+          # TODO(b/161935932): refactor after TFExampleRecord supports multiple
+          # file patterns.
           tfxio = tf_example_record.TFExampleRecord(
               file_pattern=file_pattern,
               schema=schema,
@@ -234,12 +236,12 @@ class Executor(base_executor.BaseExecutor):
            output_path=output_uri,
            slice_spec=slice_spec,
            tensor_adapter_config=tensor_adapter_config))
-    absl.logging.info(
+    logging.info(
         'Evaluation complete. Results written to {}.'.format(output_uri))
 
     if not run_validation:
       # TODO(jinhuang): delete the BLESSING_KEY from output_dict when supported.
-      absl.logging.info('No threshold configured, will not validate model.')
+      logging.info('No threshold configured, will not validate model.')
       return
     # Set up blessing artifact
     blessing = artifact_utils.get_single_instance(
@@ -261,7 +263,7 @@ class Executor(base_executor.BaseExecutor):
       blessing.set_string_custom_property(
           'component_id', exec_properties['current_component_id'])
     # Check validation result and write BLESSED file accordingly.
-    absl.logging.info('Checking validation results.')
+    logging.info('Checking validation results.')
     validation_result = tfma.load_validation_result(output_uri)
     if validation_result.validation_ok:
       io_utils.write_string_file(
@@ -273,5 +275,5 @@ class Executor(base_executor.BaseExecutor):
           os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
       blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
                                        constants.NOT_BLESSED_VALUE)
-    absl.logging.info('Blessing result {} written to {}.'.format(
+    logging.info('Blessing result {} written to {}.'.format(
         validation_result.validation_ok, blessing.uri))

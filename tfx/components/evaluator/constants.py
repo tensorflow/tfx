@@ -24,7 +24,7 @@ BASELINE_MODEL_KEY = 'baseline_model'
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
 
-# Key for examples path splits in executor exec_properties dict.
+# Key for example splits in executor exec_properties dict.
 EXAMPLE_SPLITS_KEY = 'example_splits'
 
 # Key for model blessing in executor output_dict.
