@@ -31,19 +31,19 @@ from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenE
 from tfx.utils import io_utils
 
 
-def _int_handler(cell: bytes) -> tf.train.Feature:
+def _int_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
   value_list = []
   if cell:
     value_list.append(int(cell))
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value_list))
 
-def _float_handler(cell: bytes) -> tf.train.Feature:
+def _float_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
   value_list = []
   if cell:
     value_list.append(float(cell))
   return tf.train.Feature(float_list=tf.train.FloatList(value=value_list))
 
-def _bytes_handler(cell: bytes) -> tf.train.Feature:
+def _bytes_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
   value_list = []
   if cell:
     value_list.append(cell)
@@ -76,8 +76,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
     self._column_handlers = column_handlers
 
   def process(
-      #pylint: disable=arguments-differ
-      self, csv_cells: List[csv_decoder.CSVCell],
+      self, csv_cells: List[csv_decoder.CSVCell], #pylint: disable=arguments-differ
       column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]:
     if not self._column_handlers:
       self._process_column_infos(column_infos)
