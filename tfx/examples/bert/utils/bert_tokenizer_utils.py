@@ -44,22 +44,24 @@ class BertPreprocessor():
       model = hub.KerasLayer(self._model_link)
       vocab = model.resolved_object.vocab_file.asset_path.numpy()
       self._do_lower_case = model.resolved_object.do_lower_case.numpy()
-      f = open(vocab, 'r')
-      self._sep_id = None
-      self._cls_id = None
-      self._pad_id = None
-      lines = f.read().split('\n')
-      for i, line in enumerate(lines):
-        if line == _PAD:
-          self._pad_id = i
-        elif line == _CLS:
-          self._cls_id = i
-        elif line == _SEP:
-          self._sep_id = i
-        if (self._pad_id is not None and
-            self._cls_id is not None and
-            self._sep_id is not None):
-          break
+      with tf.io.gfile.GFile(vocab, 'r') as f:
+        self._sep_id = None
+        self._cls_id = None
+        self._pad_id = None
+        lines = f.read().split('\n')
+        for i, line in enumerate(lines):
+          if line == _PAD:
+            self._pad_id = i
+          elif line == _CLS:
+            self._cls_id = i
+          elif line == _SEP:
+            self._sep_id = i
+          if (self._pad_id is not None and
+              self._cls_id is not None and
+              self._sep_id is not None):
+            return
+        raise ValueError('Vocabulary file does not contain the required\
+            special tokens')
 
   def tokenize_single_sentence(
       self,
@@ -78,49 +80,49 @@ class BertPreprocessor():
       add_cls: Whether to add CLS token at the front of each sequence.
       add_sep: Whether to add SEP token at the end of each sequence.
       add_pad: If not add_pad, would return ragged tensor instead of tensors
-        input_mask and segment_id would be none.
+        input_mask and segment_ids would be none.
 
     Returns:
-      word_id: Tokenized sequences [batch_size, max_len].
+      word_ids: Tokenized sequences [batch_size, max_len].
       input_mask: Mask padded tokens [batch_size, max_len].
-      segment_id: Distinguish multiple sequences [batch_size, max_len].
+      segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
     vocab_file_path = self._model.resolved_object.vocab_file.asset_path
     tokenizer = text.BertTokenizer(
         vocab_file_path,
         lower_case=self._do_lower_case,
         token_out_type=tf.int64)
-    word_id = tokenizer.tokenize(sequence)
+    word_ids = tokenizer.tokenize(sequence)
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
-    word_id = word_id.merge_dims(-2, -1)
+    word_ids = word_ids.merge_dims(-2, -1)
     if add_cls:
       cls_token = tf.fill(
           [tf.shape(sequence)[0], 1],
           tf.constant(self._cls_id, dtype=tf.int64))
 
-      word_id = tf.concat([cls_token, word_id], 1)
+      word_ids = tf.concat([cls_token, word_ids], 1)
 
     if add_sep:
       sep_token = tf.fill(
           [tf.shape(sequence)[0], 1],
           tf.constant(self._sep_id, dtype=tf.int64))
 
-      word_id = word_id[:, :max_len-1]
-      word_id = tf.concat([word_id, sep_token], 1)
+      word_ids = word_ids[:, :max_len-1]
+      word_ids = tf.concat([word_ids, sep_token], 1)
 
     if not add_pad:
-      return word_id, None, None
+      return word_ids, None, None
 
-    word_id = word_id.to_tensor(
+    word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
 
-    input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
-    segment_id = tf.fill(
+    input_mask = tf.cast(tf.not_equal(word_ids, self._pad_id), tf.int64)
+    segment_ids = tf.fill(
         tf.shape(input_mask),
         tf.constant(0, dtype=tf.int64))
 
-    return word_id, input_mask, segment_id
+    return word_ids, input_mask, segment_ids
 
   def tokenize_sentence_pair(
       self,
@@ -139,9 +141,9 @@ class BertPreprocessor():
       max_len: The length of the concatenated tokenized sentences.
 
     Returns:
-      word_id: Tokenized sequences [batch_size, max_len].
+      word_ids: Tokenized sequences [batch_size, max_len].
       input_mask: Mask padded tokens [batch_size, max_len].
-      segment_id: Distinguish multiple sequences [batch_size, max_len].
+      segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
     sentence_len = max_len // 2
     word_id_a, _, _ = self.tokenize_single_sentence(
@@ -160,14 +162,15 @@ class BertPreprocessor():
         False
     )
 
-    word_id = tf.concat([word_id_a, word_id_b], 1)
-    word_id = word_id.to_tensor(
+    word_ids = tf.concat([word_id_a, word_id_b], 1)
+    word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
 
-    input_mask = tf.cast(tf.not_equal(word_id, self._pad_id), tf.int64)
-    segment_id = tf.cast(word_id_a < 0, tf.int64)
-    segment_id = segment_id.to_tensor(
+    input_mask = tf.cast(tf.not_equal(word_ids, self._pad_id), tf.int64)
+    # Fill a ragged tensor of zero with word_id_a's shape
+    segment_ids = tf.cast(word_id_a < 0, tf.int64)
+    segment_ids = segment_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(1, dtype=tf.int64))
-    return word_id, input_mask, segment_id
+    return word_ids, input_mask, segment_ids
