@@ -126,7 +126,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Bazel generated files
-bazel-*
+# pb2.py files
 **/*_pb2.py
 # LINT.ThenChange(.dockerignore)
