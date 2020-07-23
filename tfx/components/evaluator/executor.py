@@ -102,13 +102,13 @@ class Executor(base_executor.BaseExecutor):
       raise ValueError('EVALUATION_KEY is missing from output dict.')
     if len(input_dict[constants.MODEL_KEY]) > 1:
       raise ValueError(
-          'There can be only one candidate model, there are {}.'.format(
-              len(input_dict[constants.MODEL_KEY])))
+          'There can be only one candidate model, there are %d.' %
+          (len(input_dict[constants.MODEL_KEY])))
     if constants.BASELINE_MODEL_KEY in input_dict and len(
         input_dict[constants.BASELINE_MODEL_KEY]) > 1:
       raise ValueError(
-          'There can be only one baseline model, there are {}.'.format(
-              len(input_dict[constants.BASELINE_MODEL_KEY])))
+          'There can be only one baseline model, there are %d.' %
+          (len(input_dict[constants.BASELINE_MODEL_KEY])))
 
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -143,8 +143,8 @@ class Executor(base_executor.BaseExecutor):
           eval_config.metrics_specs))
       if len(eval_config.model_specs) > 2:
         raise ValueError(
-            """Cannot support more than two models. There are {} models in this
-             eval_config.""".format(len(eval_config.model_specs)))
+            """Cannot support more than two models. There are %d models in this
+             eval_config.""" % (len(eval_config.model_specs)))
       # Extract model artifacts.
       for model_spec in eval_config.model_specs:
         if model_spec.is_baseline:
@@ -157,8 +157,7 @@ class Executor(base_executor.BaseExecutor):
           model_path = path_utils.eval_model_path(model_uri)
         else:
           model_path = path_utils.serving_model_path(model_uri)
-        logging.info('Using {} as {} model.'.format(
-            model_path, model_spec.name))
+        logging.info('Using %s as %s model.', model_path, model_spec.name)
         models.append(tfma.default_eval_shared_model(
             model_name=model_spec.name,
             eval_saved_model_path=model_path,
@@ -176,7 +175,7 @@ class Executor(base_executor.BaseExecutor):
           feature_slicing_spec)
       model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])
       model_path = path_utils.eval_model_path(model_uri)
-      logging.info('Using {} for model eval.'.format(model_path))
+      logging.info('Using %s for model eval.', model_path)
       models.append(tfma.default_eval_shared_model(
           eval_saved_model_path=model_path,
           add_metrics_callbacks=add_metrics_callbacks))
@@ -207,10 +206,12 @@ class Executor(base_executor.BaseExecutor):
                                            split))
           # TODO(b/161935932): refactor after TFExampleRecord supports multiple
           # file patterns.
-          tfxio = tf_example_record.TFExampleRecord(
-              file_pattern=file_pattern,
+          tfxio = tfxio_utils.get_tfxio_factory_from_artifact(
+              examples=input_dict[constants.EXAMPLES_KEY][0],
+              telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
-              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)(
+                  file_pattern)
           data = (pipeline
                   | 'ReadFromTFRecordToArrow[%s]' % split >>
                   tfxio.BeamSource())
@@ -238,7 +239,7 @@ class Executor(base_executor.BaseExecutor):
            slice_spec=slice_spec,
            tensor_adapter_config=tensor_adapter_config))
     logging.info(
-        'Evaluation complete. Results written to {}.'.format(output_uri))
+        'Evaluation complete. Results written to %s.', output_uri)
 
     if not run_validation:
       # TODO(jinhuang): delete the BLESSING_KEY from output_dict when supported.
@@ -276,5 +277,5 @@ class Executor(base_executor.BaseExecutor):
           os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
       blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
                                        constants.NOT_BLESSED_VALUE)
-    logging.info('Blessing result {} written to {}.'.format(
-        validation_result.validation_ok, blessing.uri))
+    logging.info('Blessing result %s written to %s.',
+                 validation_result.validation_ok, blessing.uri)
