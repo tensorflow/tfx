@@ -23,18 +23,19 @@ _CLS = '[CLS]'
 _PAD = '[PAD]'
 _SEP = '[SEP]'
 
-class SpecialBertTokenizer():
+class BertPreprocessor():
   """ Bert Tokenizer built ontop of tensorflow_text.BertTokenizer"""
 
   def __init__(self, model_link):
     self._model_link = model_link
+    self._model = hub.KerasLayer(model_link)
     self._find_special_tokens()
 
   def _find_special_tokens(self):
     """Find the special token ID's for [CLS] [PAD] [SEP]
 
-    Since each Bert model is trained on different vocaburary, it's important
-    to find the special token index pertaining to that model.
+    Since each Bert model is trained on different vocabulary, it's important
+    to find the special token indices pertaining to that model.
     Since in Transform, tensorflow_hub.KerasLayer loads a symbolic tensor, turn
     on eager mode to get the actual vocab_file location.
     """
@@ -84,8 +85,7 @@ class SpecialBertTokenizer():
       input_mask: Mask padded tokens [batch_size, max_len].
       segment_id: Distinguish multiple sequences [batch_size, max_len].
     """
-    model = hub.KerasLayer(self._model_link)
-    vocab_file_path = model.resolved_object.vocab_file.asset_path
+    vocab_file_path = self._model.resolved_object.vocab_file.asset_path
     tokenizer = text.BertTokenizer(
         vocab_file_path,
         lower_case=self._do_lower_case,

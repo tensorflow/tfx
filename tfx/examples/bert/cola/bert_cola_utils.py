@@ -31,15 +31,15 @@ _bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
 sys.path.append(_bert_utils_root)
 
 # pylint: disable=wrong-import-position
-from bert_tokenizer_utils import SpecialBertTokenizer
+from bert_tokenizer_utils import BertPreprocessor
 from bert_models import build_and_compile_bert_classifier
 # pylint: enable=wrong-import-position
 
 _TRAIN_BATCH_SIZE = 16
 _EVAL_BATCH_SIZE = 16
 _FEATURE_KEY = 'sentence'
-_LABEL_KEY = "label"
-_BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
+_LABEL_KEY = 'label'
+_BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _MAX_LEN = 256
 _EPOCHS = 1
 
@@ -53,8 +53,8 @@ def _gzip_reader_fn(filenames):
 
 def _tokenize(feature):
   """Tokenize the two sentences and insert appropriate tokens"""
-  tokenizer = SpecialBertTokenizer(_BERT_LINK)
-  return tokenizer.tokenize_single_sentence(
+  processor = BertPreprocessor(_BERT_LINK)
+  return processor.tokenize_single_sentence(
       tf.reshape(feature, [-1]),
       max_len=_MAX_LEN)
 
@@ -125,8 +125,6 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   return serve_tf_examples_fn
 
 # TFX Trainer will call this function.
-
-
 def run_fn(fn_args: TrainerFnArgs):
   """Train the model based on given args.
 

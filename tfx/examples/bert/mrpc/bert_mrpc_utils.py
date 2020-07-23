@@ -30,11 +30,11 @@ _bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
 sys.path.append(_bert_utils_root)
 
 # pylint: disable=wrong-import-position
-from bert_tokenizer_utils import SpecialBertTokenizer
+from bert_tokenizer_utils import BertPreprocessor
 from bert_models import build_and_compile_bert_classifier
 # pylint: enable=wrong-import-position
 
-_BERT_LINK = "https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2"
+_BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _EPOCHS = 1
 _EVAL_BATCH_SIZE = 32
 _FEATURE_KEY_A = 'sentence1'
@@ -53,8 +53,8 @@ def _gzip_reader_fn(filenames):
 
 def _tokenize(sequence_a, sequence_b):
   """Tokenize the two sentences and insert appropriate tokens"""
-  tokenizer = SpecialBertTokenizer(_BERT_LINK)
-  return tokenizer.tokenize_sentence_pair(
+  processor = BertPreprocessor(_BERT_LINK)
+  return processor.tokenize_sentence_pair(
       tf.reshape(sequence_a, [-1]),
       tf.reshape(sequence_b, [-1]),
       _MAX_LEN)

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Cola dataset classification example using TFX."""
+"""BERT Single Sentence Classification example on CoLA using TFX."""
 
 from __future__ import absolute_import
 from __future__ import print_function
@@ -72,6 +72,8 @@ _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
 # Pipeline arguments for Beam powered Components.
+# TODO: Release 0.23 for both tfma and tft address the issue with multi-worker.
+# Note: Careful with increasing num_workers as it might cause OOM error.
 _beam_pipeline_args = ['--direct_num_workers=1']
 
 
@@ -115,7 +117,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=1),
+      # Adjust these steps when training on the full dataset.
+      train_args=trainer_pb2.TrainArgs(num_steps=2),
       eval_args=trainer_pb2.EvalArgs(num_steps=1))
 
   # Get the latest blessed model for model validation.
@@ -136,7 +139,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='BinaryAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.1}),
+                          # Adjust the threshold when training on the
+                          # full dataset.
+                          lower_bound={'value': 0.5}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-2})))
