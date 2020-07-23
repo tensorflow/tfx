@@ -83,7 +83,7 @@ def compile_bert_classifier(
     None.
   """
   if metrics is None:
-      metrics = ['accuracy']
+    metrics = ['accuracy']
 
   model.compile(
       optimizer=tf.keras.optimizers.Adam(learning_rate),
@@ -117,7 +117,7 @@ def build_and_compile_bert_classifier(
       A compile keras Bert Classification model.
   """
   if metrics is None:
-      metrics = ['accuracy']
+    metrics = ['accuracy']
 
   model = build_bert_classifier(
       bert_layer,
