@@ -28,7 +28,7 @@ from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 
 
-class BigQueryExampleGen(component.QueryBasedExampleGen):  # pylint: disable=protected-access
+class BigQueryExampleGen(component.QueryBasedExampleGen):
   """Official TFX BigQueryExampleGen component.
 
   The BigQuery examplegen component takes a query, and generates train

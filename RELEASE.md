@@ -20,6 +20,11 @@
 *   Added support for primitive artifacts to InputValuePlaceholder.
 *   Supported multiple artifacts for Trainer's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
+*   Component authors now can create a TFXIO instance to get access to the
+    data through `tfx.components.util.tfxio_utils`. As TFX is going to
+    support more data payload formats and data container formats, using
+    `tfxio_utils` is encouraged to avoid dealing directly with each combination.
+    TFXIO is the interface of [Standardized TFX Inputs](https://github.com/tensorflow/community/blob/master/rfcs/20191017-tfx-standardized-inputs.md).
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
