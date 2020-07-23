@@ -217,6 +217,7 @@ class Executor(base_executor.BaseExecutor):
                   tfxio.BeamSource())
           examples_list.append(data)
         if schema is not None:
+          # tensor_adapter_config will be the same for each tfxio.
           tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
               arrow_schema=tfxio.ArrowSchema(),
               tensor_representations=tfxio.TensorRepresentations())
