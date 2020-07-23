@@ -27,6 +27,7 @@ sh_binary(
         "//tfx/proto:infra_validator_pb2.py",
         "//tfx/proto:pusher_pb2.py",
         "//tfx/proto:trainer_pb2.py",
+        "//tfx/proto:transform_pb2.py",
         "//tfx/proto:tuner_pb2.py",
         "//tfx/proto/orchestration:execution_result_pb2.py",
         "//tfx/proto/orchestration:executor_invocation_pb2.py",

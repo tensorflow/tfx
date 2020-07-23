@@ -19,13 +19,14 @@ from __future__ import print_function
 
 from typing import Optional, Text, Union
 
-import absl
+from absl import logging
 
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.orchestration import data_types
+from tfx.proto import transform_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
@@ -72,6 +73,7 @@ class Transform(base_component.BaseComponent):
       module_file: Optional[Union[Text, data_types.RuntimeParameter]] = None,
       preprocessing_fn: Optional[Union[Text,
                                        data_types.RuntimeParameter]] = None,
+      splits_config: transform_pb2.SplitsConfig = None,
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
@@ -97,6 +99,10 @@ class Transform(base_component.BaseComponent):
         'preprocessing_fn'. See 'module_file' for expected signature of the
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
         supplied.
+      splits_config: A transform_pb2.SplitsConfig instance, providing splits
+        that should be analyzed and splits that should be transformed. If it is
+        not set, analyze the 'train' split and transform both 'train' and 'eval'
+        splits.
       transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;
@@ -112,7 +118,7 @@ class Transform(base_component.BaseComponent):
         is supplied.
     """
     if input_data:
-      absl.logging.warning(
+      logging.warning(
           'The "input_data" argument to the Transform component has '
           'been renamed to "examples" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
@@ -136,6 +142,7 @@ class Transform(base_component.BaseComponent):
         schema=schema,
         module_file=module_file,
         preprocessing_fn=preprocessing_fn,
+        splits_config=splits_config,
         transform_graph=transform_graph,
         transformed_examples=transformed_examples)
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)

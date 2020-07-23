@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
-import absl
+from absl import logging
 import apache_beam as beam
 import pyarrow as pa
 import tensorflow as tf
@@ -41,6 +41,7 @@ from tfx.components.base import base_executor
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import value_utils
+from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -288,25 +289,45 @@ class Executor(base_executor.BaseExecutor):
           'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
           implements 'preprocessing_fn'.
+        - splits_config: A transform_pb2.SplitsConfig instance, providing splits
+          that should be analyzed and splits that should be transformed. If it
+          is not set, analyze the 'train' split and transform both 'train' and
+          'eval' splits.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    train_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                  'train')
-    eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                 'eval')
+
+    splits_config = exec_properties.get('splits_config', None)
+    if splits_config:
+      analyze_splits = splits_config.analyze
+      transform_splits = splits_config.transform
+    else:
+      analyze_splits = ['train']
+      transform_splits = ['train', 'eval']
+
+    analyze = []
+    for split in analyze_splits:
+      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+      analyze.append(io_utils.all_files_pattern(data_uri))
+
+    transform = []
+    transform_output_paths = []
+    for split in transform_splits:
+      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+      transform.append(io_utils.all_files_pattern(data_uri))
+      transformed_output = artifact_utils.get_split_uri(
+          output_dict[TRANSFORMED_EXAMPLES_KEY], split)
+      transform_output_paths.append(os.path.join(
+          transformed_output, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
+
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
-    transformed_train_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
-    transformed_eval_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
-    absl.logging.debug('Using temp path %s for tft.beam', temp_path)
+    logging.debug('Using temp path %s for tft.beam', temp_path)
 
     def _GetCachePath(label, params_dict):
       if label not in params_dict:
@@ -322,13 +343,11 @@ class Executor(base_executor.BaseExecutor):
         labels.EXAMPLES_DATA_FORMAT_LABEL:
             labels.FORMAT_TF_EXAMPLE,
         labels.ANALYZE_DATA_PATHS_LABEL:
-            io_utils.all_files_pattern(train_data_uri),
+            analyze,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
             labels.FORMAT_TFRECORD,
-        labels.TRANSFORM_DATA_PATHS_LABEL: [
-            io_utils.all_files_pattern(train_data_uri),
-            io_utils.all_files_pattern(eval_data_uri)
-        ],
+        labels.TRANSFORM_DATA_PATHS_LABEL: 
+            transform,
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [
             labels.FORMAT_TFRECORD, labels.FORMAT_TFRECORD
         ],
@@ -343,12 +362,7 @@ class Executor(base_executor.BaseExecutor):
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: [
-            os.path.join(transformed_train_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-            os.path.join(transformed_eval_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-        ],
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: transform_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
     cache_output = _GetCachePath('cache_output_path', output_dict)
@@ -356,8 +370,7 @@ class Executor(base_executor.BaseExecutor):
       label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
     self.Transform(label_inputs, label_outputs, status_file)
-    absl.logging.debug('Cleaning up temp path %s on executor success',
-                       temp_path)
+    logging.debug('Cleaning up temp path %s on executor success', temp_path)
     io_utils.delete_dir(temp_path)
 
   @staticmethod
@@ -661,17 +674,17 @@ class Executor(base_executor.BaseExecutor):
       # analyzers * analysis_paths * 10.
       if (len(cache_entry_keys) * len(dataset_keys_list) * 10 >
           _MAX_ESTIMATED_STAGES_COUNT):
-        absl.logging.warning(
+        logging.warning(
             'Disabling cache because otherwise the number of stages might be '
-            'too high ({} analyzers, {} analysis paths)'.format(
-                len(cache_entry_keys), len(dataset_keys_list)))
+            'too high (%d analyzers, %d analysis paths)',
+                len(cache_entry_keys), len(dataset_keys_list))
         # Returning None as the input cache here disables both input and output
         # cache.
         return ({d.dataset_key: d for d in self._analyze_data_list}, None)
 
       if self._input_cache_dir is not None:
-        absl.logging.info('Reading the following analysis cache entry keys: %s',
-                          cache_entry_keys)
+        logging.info('Reading the following analysis cache entry keys: %s',
+                     cache_entry_keys)
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
@@ -779,9 +792,9 @@ class Executor(base_executor.BaseExecutor):
     """
     del status_file  # unused
 
-    absl.logging.debug(
+    logging.debug(
         'Inputs to executor.Transform function: {}'.format(inputs))
-    absl.logging.debug(
+    logging.debug(
         'Outputs to executor.Transform function: {}'.format(outputs))
 
     compute_statistics = value_utils.GetSoleValue(
@@ -814,13 +827,13 @@ class Executor(base_executor.BaseExecutor):
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
 
-    absl.logging.debug('Analyze data patterns: %s',
-                       list(enumerate(analyze_data_paths)))
-    absl.logging.debug('Transform data patterns: %s',
-                       list(enumerate(transform_data_paths)))
-    absl.logging.debug('Transform materialization output paths: %s',
-                       list(enumerate(materialize_output_paths)))
-    absl.logging.debug('Transform output path: %s', transform_output_path)
+    logging.debug('Analyze data patterns: %s',
+                  list(enumerate(analyze_data_paths)))
+    logging.debug('Transform data patterns: %s',
+                  list(enumerate(transform_data_paths)))
+    logging.debug('Transform materialization output paths: %s',
+                  list(enumerate(materialize_output_paths)))
+    logging.debug('Transform output path: %s', transform_output_path)
 
     if len(analyze_data_paths) != len(analyze_paths_file_formats):
       raise ValueError(
@@ -863,12 +876,12 @@ class Executor(base_executor.BaseExecutor):
 
     if not compute_statistics and not materialize_output_paths:
       if analyze_input_columns:
-        absl.logging.warning(
+        logging.warning(
             'Not using the in-place Transform because the following features '
             'require analyzing: {}'.format(
                 tuple(c for c in analyze_input_columns)))
       else:
-        absl.logging.warning(
+        logging.warning(
             'Using the in-place Transform since compute_statistics=False, '
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
@@ -969,7 +982,7 @@ class Executor(base_executor.BaseExecutor):
                 self._GetCacheSource()))
 
         if input_cache:
-          absl.logging.debug('Analyzing data with cache.')
+          logging.debug('Analyzing data with cache.')
 
         full_analyze_dataset_keys_list = [
             dataset.dataset_key for dataset in analyze_data_list
@@ -979,7 +992,7 @@ class Executor(base_executor.BaseExecutor):
         # materialization.
         if materialization_format is None and not compute_statistics:
           if None in new_analyze_data_dict.values():
-            absl.logging.debug(
+            logging.debug(
                 'Not reading the following datasets due to cache: %s', [
                     dataset.file_pattern
                     for dataset in analyze_data_list
@@ -1022,7 +1035,7 @@ class Executor(base_executor.BaseExecutor):
 
         if output_cache_dir is not None and cache_output is not None:
           tf.io.gfile.makedirs(output_cache_dir)
-          absl.logging.debug('Using existing cache in: %s', input_cache_dir)
+          logging.debug('Using existing cache in: %s', input_cache_dir)
           if input_cache_dir is not None:
             # Only copy cache that is relevant to this iteration. This is
             # assuming that this pipeline operates on rolling ranges, so those
@@ -1182,7 +1195,7 @@ class Executor(base_executor.BaseExecutor):
       Status of the execution.
     """
 
-    absl.logging.debug('Processing an in-place transform')
+    logging.debug('Processing an in-place transform')
 
     raw_metadata_dir = os.path.join(transform_output_path,
                                     tft.TFTransformOutput.RAW_METADATA_DIR)

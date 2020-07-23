@@ -22,6 +22,7 @@ from typing import Text
 import tensorflow as tf
 from tfx.components.transform import component
 from tfx.orchestration import data_types
+from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -91,6 +92,18 @@ class ComponentTest(tf.test.TestCase):
           module_file='/path/to/preprocessing.py',
           preprocessing_fn='path.to.my_preprocessing_fn',
       )
+
+  def testConstructWithSplitsConfig(self):
+    splits_config = transform_pb2.SplitsConfig(analyze=['train'],
+                                               transform=['eval'])
+    module_file = '/path/to/preprocessing.py'
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        module_file=module_file,
+        splits_config=splits_config,
+    )
+    self._verify_outputs(transform)
 
 
 if __name__ == '__main__':
