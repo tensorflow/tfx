@@ -56,6 +56,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
   """A beam.DoFn to convert a parsed CSV line to a tf.Example."""
 
   def __init__(self):
+    super().__init__()
     self._column_handlers = None
 
   def _process_column_infos(self, column_infos: List[csv_decoder.ColumnInfo]):
@@ -76,7 +77,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
 
   def process(
       self, csv_cells: List[csv_decoder.CSVCell],
-      column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]:
+      column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]: #pylint: disable=arguments-differ
     if not self._column_handlers:
       self._process_column_infos(column_infos)
 
