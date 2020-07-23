@@ -46,12 +46,12 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-
+import os
 _pipeline_name = 'imdb_native_keras'
 
 # This example assumes that IMDB review data is stored in ~/imdb/data and the
 # utility function is in ~/imdb. Feel free to customize as needed.
-_imdb_root = os.path.join(os.environ['HOME'], 'imdb')
+_imdb_root = os.path.join(os.path.dirname(__file__))
 _data_root = os.path.join(_imdb_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
@@ -181,7 +181,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       components=components,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      enable_cache=True,
+      enable_cache=False,
       beam_pipeline_args=beam_pipeline_args)
 
 

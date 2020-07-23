@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utils for verifier"""
+"""Helper utils for executor verifier."""
+
 import os
 import absl
 import tensorflow as tf
@@ -160,3 +161,116 @@ def compare_model_file_sizes(model_dir: Text,
           threshold):
         return False
   return True
+
+def verify_example_gen(self):
+  self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
+  self.assertTrue(
+      tf.io.gfile.exists(
+          os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
+
+def verify_statistics_gen(self):
+  for record_dir.
+
+def verify_schema_gen(self):
+  tf.io.gfile.exists()
+
+def verify_validator(self):
+  self.assertEqual(['anomalies.pbtxt'],
+                   tf.io.gfile.listdir(validation_output.uri))
+  anomalies = io_utils.parse_pbtxt_file(
+      os.path.join(validation_output.uri, 'anomalies.pbtxt'),
+      anomalies_pb2.Anomalies())
+  self.assertNotEqual(0, len(anomalies.anomaly_info))
+
+def verify_trainer(self, output_dict: Dict[Text, List[types.Artifact]]):
+  # compares two model files
+
+
+  # Check example gen outputs.
+  self.assertTrue(tf.io.gfile.exists(self._train_output_file))
+  self.assertTrue(tf.io.gfile.exists(self._eval_output_file))
+
+
+  self._verify_model_exports()
+  self._verify_model_run_exports()
+
+  self._verify_no_eval_model_exports()
+  self._verify_model_run_exports()
+
+  # eval_model_dir exists but not model_run
+
+  gdef1 = gpb.GraphDef()
+
+  with open("/Users/sujipark/tfx/pipelines/chicago_taxi_beam/Trainer/model/7/serving_model_dir/graph.pbtxt", 'r') as fh:
+      graph_str = fh.read()
+
+  pbtf.Parse(graph_str, gdef1)
+
+  gdef2 = gpb.GraphDef()
+
+  with open('/Users/sujipark/tfx/testtest/Trainer/model/serving_model_dir/graph.pbtxt',  'r') as fh:
+      graph_str = fh.read()
+
+
+  pbtf.Parse(graph_str, gdef2)
+  [n.name for n in gdef2.node] == [n.name for n in gdef1.node]
+
+  x= tf.saved_model.load("/Users/sujipark/tfx/imdb_testdata/Trainer/model/serving_model_dir")
+  y= tf.saved_model.load("/Users/sujipark/tfx/pipelines/imdb_native_keras/Trainer/model/26/serving_model_dir")
+  [v.name for v in x.variables] == [v.name for v in y.variables]
+
+  absl.logging.info("verifying Trainer")
+  model_artifact = output_dict['model']
+  model_uri = model_artifact.uri
+
+  path = os.path.join(self._record_dir, 'Trainer', 'model')
+  self.assertTrue(taxi_pipeline_verifier_utils.compare_model_file_sizes(
+      model_uri,
+      path,
+      self._threshold))
+
+def verify_evaluator(self, output_dict: Dict[Text, List[types.Artifact]]):
+  # compares two evaluation proto files.
+  absl.logging.info("verifying Evaluator")
+  eval_result = tfma.load_eval_result(output_dict['evaluation'].uri)
+  expected_eval_result = tfma.load_eval_result(os.path.join(self._record_dir,
+                                                            'Evaluator',
+                                                            'evaluation'))
+  self.assertTrue(taxi_pipeline_verifier_utils.compare_eval_results(
+      eval_result,
+      expected_eval_result,
+      self._threshold))
+
+def verify_validator(self, output_dict: Dict[Text, List[types.Artifact]]):
+  # compares two validation proto files
+  absl.logging.info("verifying Validator")
+  anomalies = io_utils.parse_pbtxt_file(
+      os.path.join(output_dict['anomalies'].uri, 'anomalies.pbtxt'),
+      anomalies_pb2.Anomalies())
+  expected_anomalies = io_utils.parse_pbtxt_file(
+      os.path.join(self._record_dir,
+                   'ExampleValidator',
+                   'anomalies',
+                   'anomalies.pbtxt'),
+      anomalies_pb2.Anomalies())
+  self.assertEqual(expected_anomalies.anomaly_info, anomalies.anomaly_info)
+
+def verify_pusher(self):
+  
+  pass
+
+def _verify_model_exports(self):
+  self.assertTrue(
+      tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
+  self.assertTrue(
+      tf.io.gfile.exists(
+          path_utils.serving_model_dir(self._model_exports.uri)))
+
+def _verify_no_eval_model_exports(self):
+  self.assertFalse(
+      tf.io.gfile.exists(path_utils.eval_model_dir(self._model_exports.uri)))
+
+def _verify_model_run_exports(self):
+  self.assertTrue(
+      tf.io.gfile.exists(os.path.dirname(self._model_run_exports.uri)))
+
