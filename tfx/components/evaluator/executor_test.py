@@ -34,7 +34,7 @@ from tfx.utils import json_utils
 
 class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
-  @absl.testing.parameterized.named_parameters(('evaluation_w_eval_config', {
+  @parameterized.named_parameters(('evaluation_w_eval_config', {
       'eval_config':
           json_format.MessageToJson(
               tfma.EvalConfig(slicing_specs=[
@@ -77,8 +77,9 @@ class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
         constants.BLESSING_KEY: [blessing_output],
     }
 
-    # List needs to be serialized before being passed into Do function.
-    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(['eval'])
+    # Test multiple splits.
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(['train',
+                                                                      'eval'])
 
     # Run executor.
     evaluator = executor.Executor()

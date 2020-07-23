@@ -141,8 +141,7 @@ class FileBasedExampleGen(base_component.BaseComponent):
                                                                  Any]]] = None,
       custom_config: Optional[Union[example_gen_pb2.CustomConfig,
                                     Dict[Text, Any]]] = None,
-      output_data_format: Optional[type(
-          example_gen_pb2.PayloadFormat)] = example_gen_pb2.FORMAT_TF_EXAMPLE,  # pylint: disable=bad-whitespace
+      output_data_format: Optional[int] = example_gen_pb2.FORMAT_TF_EXAMPLE,
       example_artifacts: Optional[types.Channel] = None,
       custom_executor_spec: Optional[executor_spec.ExecutorSpec] = None,
       instance_name: Optional[Text] = None):

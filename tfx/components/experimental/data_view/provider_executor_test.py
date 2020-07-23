@@ -45,7 +45,7 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     input_dict = {}
     output = standard_artifacts.DataView()
     output.uri = os.path.join(self._output_data_dir, 'output_data_view')
-    output_dict = {'data_view': output}
+    output_dict = {'data_view': [output]}
     exec_properties = {
         'module_file':
             os.path.join(self._source_data_dir,
@@ -63,8 +63,9 @@ class DataViewProviderExecutorTest(tf.test.TestCase):
     input_dict = {}
     output = standard_artifacts.DataView()
     output.uri = os.path.join(self._output_data_dir, 'output_data_view')
-    output_dict = {'data_view': output}
+    output_dict = {'data_view': [output]}
     exec_properties = {
+        'module_file': None,
         'create_decoder_func':
             '%s.%s' % (data_view_module.create_simple_decoder.__module__,
                        data_view_module.create_simple_decoder.__name__),

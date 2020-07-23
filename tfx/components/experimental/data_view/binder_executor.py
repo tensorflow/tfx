@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.experimental.data_view import constants
 from tfx.types import artifact_utils
 
 
@@ -37,7 +38,7 @@ class DataViewBinderExecutor(base_executor.BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
-    del exec_properties
+    self._log_startup(input_dict, output_dict, exec_properties)
 
     data_view_artifact = artifact_utils.get_single_instance(
         input_dict.get(_DATA_VIEW_KEY))
@@ -50,6 +51,6 @@ class DataViewBinderExecutor(base_executor.BaseExecutor):
     # input, with the following additional custom properties added.
     output_examples_artifact.copy_from(input_examples_artifact)
     output_examples_artifact.set_int_custom_property(
-        DATA_VIEW_ID_PROPERTY_KEY, data_view_artifact.id)
+        constants.DATA_VIEW_ID_PROPERTY_KEY, data_view_artifact.id)
     output_examples_artifact.set_string_custom_property(
-        DATA_VIEW_URI_PROPERTY_KEY, data_view_artifact.uri)
+        constants.DATA_VIEW_URI_PROPERTY_KEY, data_view_artifact.uri)
