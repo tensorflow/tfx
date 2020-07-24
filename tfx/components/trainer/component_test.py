@@ -20,7 +20,9 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
+from tfx.components.base import executor_spec
 from tfx.components.trainer import component
+from tfx.components.trainer import executor
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import channel_utils
@@ -36,12 +38,16 @@ class ComponentTest(tf.test.TestCase):
     self.transform_output = channel_utils.as_channel(
         [standard_artifacts.TransformGraph()])
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
-    self.train_args = trainer_pb2.TrainArgs(num_steps=100)
-    self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
+    self.hyperparameters = channel_utils.as_channel(
+        [standard_artifacts.HyperParameters()])
+    self.train_args = trainer_pb2.TrainArgs(splits=['train'], num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(splits=['eval'], num_steps=50)
 
   def _verify_outputs(self, trainer):
     self.assertEqual(standard_artifacts.Model.TYPE_NAME,
                      trainer.outputs['model'].type_name)
+    self.assertEqual(standard_artifacts.ModelRun.TYPE_NAME,
+                     trainer.outputs['model_run'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'
@@ -63,8 +69,8 @@ class ComponentTest(tf.test.TestCase):
         transformed_examples=self.examples,
         transform_graph=self.transform_output,
         schema=self.schema,
-        train_args=dict(num_steps=n_steps),
-        eval_args=dict(num_steps=n_steps))
+        train_args=dict(splits=['train'], num_steps=n_steps),
+        eval_args=dict(splits=['eval'], num_steps=n_steps))
     self._verify_outputs(trainer)
     self.assertJsonEqual(
         str(module_file), str(trainer.spec.exec_properties['module_file']))
@@ -80,6 +86,20 @@ class ComponentTest(tf.test.TestCase):
         eval_args=self.eval_args)
     self._verify_outputs(trainer)
     self.assertEqual(trainer_fn, trainer.spec.exec_properties['trainer_fn'])
+
+  def testConstructFromRunFn(self):
+    run_fn = 'path.to.my_run_fn'
+    trainer = component.Trainer(
+        run_fn=run_fn,
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
+            executor.GenericExecutor),
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        train_args=self.train_args,
+        eval_args=self.eval_args)
+    self._verify_outputs(trainer)
+    self.assertEqual(run_fn, trainer.spec.exec_properties['run_fn'])
 
   def testConstructWithoutTransformOutput(self):
     module_file = '/path/to/module/file'
@@ -130,6 +150,29 @@ class ComponentTest(tf.test.TestCase):
           schema=self.schema,
           train_args=self.train_args,
           eval_args=self.eval_args)
+
+    with self.assertRaises(ValueError):
+      _ = component.Trainer(
+          module_file='/path/to/module/file',
+          run_fn='path.to.my_run_fn',
+          examples=self.examples,
+          transform_graph=self.transform_output,
+          schema=self.schema,
+          train_args=self.train_args,
+          eval_args=self.eval_args)
+
+  def testConstructWithHParams(self):
+    trainer = component.Trainer(
+        trainer_fn='path.to.my_trainer_fn',
+        transformed_examples=self.examples,
+        transform_graph=self.transform_output,
+        schema=self.schema,
+        hyperparameters=self.hyperparameters,
+        train_args=self.train_args,
+        eval_args=self.eval_args)
+    self._verify_outputs(trainer)
+    self.assertEqual(standard_artifacts.HyperParameters.TYPE_NAME,
+                     trainer.inputs['hyperparameters'].type_name)
 
 
 if __name__ == '__main__':

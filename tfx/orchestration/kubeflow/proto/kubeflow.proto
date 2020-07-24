@@ -27,15 +27,26 @@ message ConfigValue {
   }
 }
 
+// Message to specify the gRPC server configuration.
+message KubeflowGrpcMetadataConfig {
+  // ML Metadata gRPC service host in the cluster.
+  ConfigValue grpc_service_host = 1;
+  // ML Metadata gRPC service port in the cluster.
+  ConfigValue grpc_service_port = 2;
+}
+
+// Message to specify Metadata configuration.
 message KubeflowMetadataConfig {
-  // The MySQL service host in the cluster that is backing Kubeflow Metadata.
-  ConfigValue mysql_db_service_host = 1;
-  // The MySQL service port in the cluster that is backing Kubeflow Metadata.
-  ConfigValue mysql_db_service_port = 2;
-  // The MySQL database name to use.
-  ConfigValue mysql_db_name = 3;
-  // The MySQL database username to use.
-  ConfigValue mysql_db_user = 4;
-  // The MySQL database password.
-  ConfigValue mysql_db_password = 5;
+  // Following mysql connection configuration fields will be deprecated soon in
+  // favor of oneof connection_config.
+
+  ConfigValue mysql_db_service_host = 1 [deprecated = true];
+  ConfigValue mysql_db_service_port = 2 [deprecated = true];
+  ConfigValue mysql_db_name = 3 [deprecated = true];
+  ConfigValue mysql_db_user = 4 [deprecated = true];
+  ConfigValue mysql_db_password = 5 [deprecated = true];
+
+  oneof connection_config {
+    KubeflowGrpcMetadataConfig grpc_config = 7;
+  }
 }

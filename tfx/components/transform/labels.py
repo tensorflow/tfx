@@ -24,7 +24,6 @@ TRANSFORM_PATHS_FILE_FORMATS_LABEL = 'transform_paths_file_formats'
 COMPUTE_STATISTICS_LABEL = 'compute_statistics'
 MODULE_FILE = 'module_file'
 PREPROCESSING_FN = 'preprocessing_fn'
-TFT_STATISTICS_USE_TFDV_LABEL = 'tft_statistics_use_tfdv'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'

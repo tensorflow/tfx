@@ -95,32 +95,32 @@ def _create_pipeline():
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
 
   # Generates schema based on statistics files.
-  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+  schema_gen = SchemaGen(statistics=statistics_gen.outputs['statistics'])
 
   # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
+  example_validator = ExampleValidator(
       statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
+      schema=schema_gen.outputs['schema'])
 
   # Performs transformations and feature engineering in training and serving.
   transform = Transform(
       examples=example_gen.outputs['examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       preprocessing_fn=_taxi_transformer_func)
 
   # Uses user-provided Python function that implements a model using TF-Learn.
   trainer = Trainer(
       trainer_fn=_taxi_trainer_func,
       examples=transform.outputs['transformed_examples'],
-      schema=infer_schema.outputs['schema'],
+      schema=schema_gen.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
 
   # Uses TFMA to compute a evaluation statistics over features of a model.
-  model_analyzer = Evaluator(
+  evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
-      model_exports=trainer.outputs['model'],
+      model=trainer.outputs['model'],
       feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
           evaluator_pb2.SingleSlicingSpec(
               column_for_slicing=['trip_start_hour'])
@@ -145,7 +145,7 @@ def _create_pipeline():
       slack_channel_id=_slack_channel_id,
       timeout_sec=3600,
   )
- # Checks whether the model passed the validation steps and pushes the model
+  # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
   pusher = Pusher(
       model=trainer.outputs['model'],
@@ -158,8 +158,8 @@ def _create_pipeline():
       pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
       components=[
-          example_gen, statistics_gen, infer_schema, validate_stats, transform,
-          trainer, model_analyzer, model_validator, slack_validator, pusher
+          example_gen, statistics_gen, schema_gen, example_validator, transform,
+          trainer, evaluator, model_validator, slack_validator, pusher
       ],
       enable_cache=True,
   )

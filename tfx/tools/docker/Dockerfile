@@ -12,47 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:16.04
+FROM gcr.io/tfx-oss-public/tfx_base:latest
+# Change to following base image if docker hub is preferred.
+# FROM tensorflow/tfx_base:latest
+
 LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 
-# Need additional ppa since python 3.6 and protobuf 3
-# are not part of Ubuntu 16.04 by default.
-RUN apt-get update -y && \
-  apt-get install --no-install-recommends -y -q software-properties-common && \
-  add-apt-repository ppa:deadsnakes/ppa && \
-  add-apt-repository ppa:maarten-fonville/protobuf && \
-  apt-get update -y && \
-  apt-get install --no-install-recommends -y -q \
-  build-essential \
-  ca-certificates \
-  libsnappy-dev \
-  protobuf-compiler \
-  libprotobuf-dev \
-  python3.6-dev \
-  python3-pip \
-  python3-setuptools \
-  python3-virtualenv \
-  python3-wheel \
-  wget \
-  unzip \
-  git && \
-  add-apt-repository -r ppa:deadsnakes/ppa && \
-  add-apt-repository -r ppa:maarten-fonville/protobuf && \
-  apt-get autoclean && \
-  apt-get autoremove --purge && \
-  update-alternatives --install /usr/bin/python python /usr/bin/python3.6 1
-
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
+RUN python3.6 -m pip install --upgrade pip && \
+  python3.6 -m virtualenv --python=/usr/bin/python3.6 $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # TODO(zhitaoli): Remove pinned version of tensorflow and related packages here
 # once we switch default tensorflow version in released image to TF 2.x.
 # TODO(jxzheng): investigate why setuptools need to be re-installed
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install \
+# TODO(b/151392812): Remove `google-api-python-client` and `google-apitools`
+#                    when patching is not needed any more.
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install \
   "kubernetes>=10.0.1,<11" \
   "tensorflow>=1.15,<3" \
   "tensorflow-serving-api>=1.15,<3" \
+  "google-api-python-client==1.8.0" \
+  "google-apitools==0.5.30" \
   "setuptools==41.4.0"
 
 # docker build command should be run under root directory of github checkout.
@@ -60,16 +41,18 @@ ENV TFX_SRC_DIR=/tfx-src
 ADD . ${TFX_SRC_DIR}
 WORKDIR ${TFX_SRC_DIR}
 
-
-RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3 -m pip install -e .
+RUN CFLAGS=$(/usr/bin/python3.6-config --cflags) python3.6 -m pip install -e .
 
 # Patch http.py in googleapiclient and base_api.py in apitools
 # to use our own UserAgent.
+# TODO(b/151392812): Remove this when other telemetries become available.
 RUN patch /opt/venv/lib/python3.6/site-packages/googleapiclient/http.py \
   /tfx-src/tfx/tools/docker/patches/http.patch && \
   patch /opt/venv/lib/python3.6/site-packages/apitools/base/py/base_api.py \
   /tfx-src/tfx/tools/docker/patches/base_api.patch
 
+# TODO(zhitaoli): Ensure that license dependency is an exact match instead of
+# subset check.
 ARG gather_third_party_licenses=true
 RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
   /tfx-src/tfx/tools/docker/license.sh \

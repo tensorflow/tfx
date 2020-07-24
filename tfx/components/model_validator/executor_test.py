@@ -21,7 +21,9 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 
+from tfx.components.model_validator import constants
 from tfx.components.model_validator import executor
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -37,22 +39,20 @@ class ExecutorTest(tf.test.TestCase):
     self.component_id = 'test_component'
 
     # Create input dict.
-    eval_examples = standard_artifacts.Examples(split='eval')
-    eval_examples.uri = os.path.join(self._source_data_dir,
-                                     'csv_example_gen/eval/')
+    eval_examples = standard_artifacts.Examples()
+    eval_examples.split_names = artifact_utils.encode_split_names(['eval'])
+    eval_examples.uri = os.path.join(self._source_data_dir, 'csv_example_gen')
     model = standard_artifacts.Model()
-    model.uri = os.path.join(self._source_data_dir, 'trainer/current/')
+    model.uri = os.path.join(self._source_data_dir, 'trainer/current')
     self._input_dict = {
-        'examples': [eval_examples],
-        'model': [model],
+        constants.EXAMPLES_KEY: [eval_examples],
+        constants.MODEL_KEY: [model],
     }
 
     # Create output dict.
     self._blessing = standard_artifacts.ModelBlessing()
     self._blessing.uri = os.path.join(output_data_dir, 'blessing')
-    self._output_dict = {
-        'blessing': [self._blessing]
-    }
+    self._output_dict = {constants.BLESSING_KEY: [self._blessing]}
 
     # Create context
     self._tmp_dir = os.path.join(output_data_dir, '.temp')
@@ -62,12 +62,9 @@ class ExecutorTest(tf.test.TestCase):
   def testDoWithBlessedModel(self):
     # Create exe properties.
     exec_properties = {
-        'blessed_model':
-            os.path.join(self._source_data_dir, 'trainer/blessed/'),
-        'blessed_model_id':
-            123,
-        'component_id':
-            self.component_id,
+        'blessed_model': os.path.join(self._source_data_dir, 'trainer/blessed'),
+        'blessed_model_id': 123,
+        'current_component_id': self.component_id,
     }
 
     # Run executor.
@@ -77,14 +74,15 @@ class ExecutorTest(tf.test.TestCase):
     # Check model validator outputs.
     self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(
+            os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
   def testDoWithoutBlessedModel(self):
     # Create exe properties.
     exec_properties = {
         'blessed_model': None,
         'blessed_model_id': None,
-        'component_id': self.component_id,
+        'current_component_id': self.component_id,
     }
 
     # Run executor.
@@ -94,7 +92,8 @@ class ExecutorTest(tf.test.TestCase):
     # Check model validator outputs.
     self.assertTrue(tf.io.gfile.exists(os.path.join(self._tmp_dir)))
     self.assertTrue(
-        tf.io.gfile.exists(os.path.join(self._blessing.uri, 'BLESSED')))
+        tf.io.gfile.exists(
+            os.path.join(self._blessing.uri, constants.BLESSED_FILE_NAME)))
 
 
 if __name__ == '__main__':

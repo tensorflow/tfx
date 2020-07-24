@@ -22,28 +22,39 @@ import os
 # Standard Imports
 
 import tensorflow as tf
+from tfx.utils import io_utils
 from tfx.utils import path_utils
 
 
 class PathUtilsTest(tf.test.TestCase):
 
-  def setUp(self):
-    super(PathUtilsTest, self).setUp()
-    # Create folders based on current Trainer output model directory.
-    self._output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
-    self._eval_model_path = os.path.join(self._output_uri, 'eval_model_dir',
-                                         'MODEL')
-    tf.io.gfile.makedirs(self._eval_model_path)
-    self._serving_model_path = os.path.join(
-        self._output_uri, 'serving_model_dir', 'export', 'taxi', 'MODEL')
-    tf.io.gfile.makedirs(self._serving_model_path)
+  def testEstimatorModelPath(self):
+    # Create folders based on Estimator based Trainer output model directory,
+    # after Executor performs cleaning.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    eval_model_path = path_utils.eval_model_dir(output_uri)
+    eval_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(eval_model, 'testing')
+    serving_model_path = path_utils.serving_model_dir(output_uri)
+    serving_model = os.path.join(eval_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
 
-  def testModelPath(self):
     # Test retrieving model folder.
-    self.assertEqual(self._eval_model_path,
-                     path_utils.eval_model_path(self._output_uri))
-    self.assertEqual(self._serving_model_path,
-                     path_utils.serving_model_path(self._output_uri))
+    self.assertEqual(eval_model_path, path_utils.eval_model_path(output_uri))
+    self.assertEqual(serving_model_path,
+                     path_utils.serving_model_path(output_uri))
+
+  def testKerasModelPath(self):
+    # Create folders based on Keras based Trainer output model directory.
+    output_uri = os.path.join(self.get_temp_dir(), 'model_dir')
+    serving_model_path = path_utils.serving_model_dir(output_uri)
+    serving_model = os.path.join(serving_model_path, 'saved_model.pb')
+    io_utils.write_string_file(serving_model, 'testing')
+
+    # Test retrieving model folder.
+    self.assertEqual(serving_model_path, path_utils.eval_model_path(output_uri))
+    self.assertEqual(serving_model_path,
+                     path_utils.serving_model_path(output_uri))
 
 
 if __name__ == '__main__':

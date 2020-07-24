@@ -21,7 +21,7 @@ labelled for the features you would like to slice by. If you don't have the
 exact slice features for your fairness concerns, you may explore trying to find
 an evaluation set that does, or considering proxy features within your feature
 set that may highlight outcome disparities. For additional guidance, see
-[here](bit.ly/fairness-indicators-guidance).
+[here](/tfx/fairness_indicators/guidance).
 
 ### Model
 
@@ -31,7 +31,7 @@ model, please see the “Model-Agnostic TFMA” section below.
 
 After your Estimator is trained, you will need to export a saved model for
 evaluation purposes. To learn more, see the
-[TFMA guide](https://www.tensorflow.org/tfx/model_analysis/get_started).
+[TFMA guide](/tfx/model_analysis/get_started).
 
 ### Configuring Slices
 
@@ -104,7 +104,7 @@ eval_result = tfma.load_eval_result(output_path=tfma_eval_result_path)
 ```python
 from tensorflow_model_analysis.addons.fairness.view import widget_view
 
-widget_view.render_fairness_indicator(eval_result)
+widget_view.render_fairness_indicator(eval_result=eval_result)
 ```
 
 ![Fairness Indicators](images/fairnessIndicators.png)
@@ -126,6 +126,28 @@ Tips for using Fairness Indicators:
 *   **Explore the data points of a slice in depth** using the
     [What-If Tool](https://pair-code.github.io/what-if-tool/). See
     [here](https://github.com/tensorflow/fairness-indicators/) for an example.
+
+#### Rendering Fairness Indicators for Multiple Models
+
+Fairness Indicators can also be used to compare models. Instead of passing in a
+single eval_result, pass in a multi_eval_results object, which is a dictionary
+mapping two model names to eval_result objects.
+
+```python
+from tensorflow_model_analysis.addons.fairness.view import widget_view
+
+eval_result1 = tfma.load_eval_result(...)
+eval_result2 = tfma.load_eval_result(...)
+multi_eval_results = {"MyFirstModel": eval_result1, "MySecondModel": eval_result2}
+
+widget_view.render_fairness_indicator(multi_eval_results=multi_eval_results)
+```
+
+![Fairness Indicators - Model Comparison](images/fairnessIndicatorsCompare.png)
+
+Model comparison can be used alongside threshold comparison. For example, you
+can compare two models at two sets of thresholds to find the optimal combination
+for your fairness metrics.
 
 ## Model Agnostic Evaluation
 

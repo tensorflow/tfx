@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Text
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from tfx.components.evaluator import component
 from tfx.orchestration import data_types
@@ -35,36 +36,49 @@ class ComponentTest(tf.test.TestCase):
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model_exports=channel_utils.as_channel([model_exports]))
+        model=channel_utils.as_channel([model_exports]))
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
+                     evaluator.outputs['blessing'].type_name)
+
+  def testConstructWithBaselineModel(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    baseline_model = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        baseline_model=channel_utils.as_channel([baseline_model]))
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
 
   def testConstructWithSliceSpec(self):
     examples = standard_artifacts.Examples()
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model_exports=channel_utils.as_channel([model_exports]),
+        model=channel_utils.as_channel([model_exports]),
         feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
             evaluator_pb2.SingleSlicingSpec(
                 column_for_slicing=['trip_start_hour'])
         ]))
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+                     evaluator.outputs['evaluation'].type_name)
 
   def testConstructWithFairnessThresholds(self):
     examples = standard_artifacts.Examples()
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model_exports=channel_utils.as_channel([model_exports]),
+        model=channel_utils.as_channel([model_exports]),
         feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
             evaluator_pb2.SingleSlicingSpec(
                 column_for_slicing=['trip_start_hour'])
         ]),
         fairness_indicator_thresholds=[0.1, 0.3, 0.5, 0.9])
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+                     evaluator.outputs['evaluation'].type_name)
 
   def testConstructWithParameter(self):
     column_name = data_types.RuntimeParameter(name='column-name', ptype=Text)
@@ -73,11 +87,24 @@ class ComponentTest(tf.test.TestCase):
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model_exports=channel_utils.as_channel([model_exports]),
+        model=channel_utils.as_channel([model_exports]),
         feature_slicing_spec={'specs': [{
             'column_for_slicing': [column_name]
         }]},
         fairness_indicator_thresholds=[threshold])
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+
+  def testConstructWithEvalConfig(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    schema = standard_artifacts.Schema()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model_exports=channel_utils.as_channel([model_exports]),
+        eval_config=tfma.EvalConfig(
+            slicing_specs=[tfma.SlicingSpec(feature_keys=['trip_start_hour'])]),
+        schema=channel_utils.as_channel([schema]),)
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['output'].type_name)
 

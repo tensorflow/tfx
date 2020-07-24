@@ -21,12 +21,12 @@ TFX tools can both help find data bugs, and help with feature engineering.
 
 ## TensorFlow Data Validation
 
-*   [Overview](#tfdv-overview)
-*   [Schema Based Example Validation](#tfdv-schema-based-example-validation)
-*   [Training-Serving Skew Detection](#tfdv-training-serving-skew-detection)
-*   [Drift Detection](#tfdv-drift-detection)
+*   [Overview](#overview)
+*   [Schema Based Example Validation](#schema_based_example_validation)
+*   [Training-Serving Skew Detection](#skewdetect)
+*   [Drift Detection](#drift_detection)
 
-### Overview {#tfdv-overview}
+### Overview
 
 TensorFlow Data Validation identifies anomalies in training and serving data,
 and can automatically create a schema by examining the data. The component can
@@ -40,11 +40,11 @@ be configured to detect different classes of anomalies in the data. It can
 
 We document each of these functionalities independently:
 
-*   [Schema Based Example Validation](#tfdv-schema-based-example-validation)
-*   [Training-Serving Skew Detection](#tfdv-training-serving-skew-detection)
-*   [Drift Detection](#tfdv-drift-detection)
+*   [Schema Based Example Validation](#schema_based_example_validation)
+*   [Training-Serving Skew Detection](#skewdetect)
+*   [Drift Detection](#drift_detection)
 
-### Schema Based Example Validation {#tfdv-schema-based-example-validation}
+### Schema Based Example Validation
 
 TensorFlow Data Validation identifies any anomalies in the input data by
 comparing data statistics against a schema. The schema codifies properties
@@ -109,8 +109,7 @@ expected to be missing from serving. This can be expressed by:
 ##### Schema Generation
 
 The input data schema is specified as an instance of the TensorFlow
-[Schema](
-https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto).
+[Schema](https://github.com/tensorflow/metadata/blob/master/tensorflow_metadata/proto/v0/schema.proto).
 
 Instead of constructing a schema manually from scratch, a developer can rely on
 TensorFlow Data Validation's automatic schema construction. Specifically,
@@ -138,7 +137,7 @@ _Note: The auto-generated schema is best-effort and only tries to infer basic
 properties of the data. It is expected that users review and modify it as
 needed._
 
-### Training-Serving Skew Detection {#tfdv-training-serving-skew-detection}
+### Training-Serving Skew Detection<a name="skewdetect"></a>
 
 #### Overview
 
@@ -259,12 +258,13 @@ loss.
 Currently, TensorFlow Data Validation supports schema skew, feature skew and
 distribution skew detection.
 
-### Drift Detection {#tfdv-drift-detection}
+### Drift Detection
 
 Drift detection is supported for categorical features and between consecutive
 spans of data (i.e., between span N and span N+1), such as between different
-days of training data. We express drift in terms of [L-infinity
-distance](https://en.wikipedia.org/wiki/Chebyshev_distance), and you can set the
+days of training data. We express drift in terms of
+[L-infinity distance](https://en.wikipedia.org/wiki/Chebyshev_distance),
+and you can set the
 threshold distance so that you receive warnings when the drift is higher than is
 acceptable. Setting the correct distance is typically an iterative process
 requiring domain knowledge and experimentation.
@@ -313,8 +313,7 @@ values, and as a cumulative distribution graph if there are more than 20 unique
 values. So for string data, uniform distributions can appear as either flat bar
 graphs like the one above or straight lines like the one below:
 
-![Line graph: cumulative distribution of uniform
-data](images/uniform_cumulative.png)
+![Line graph: cumulative distribution of uniform data](images/uniform_cumulative.png)
 
 ##### Bugs That Can Produce Uniformly Distributed Data
 
@@ -349,8 +348,7 @@ value lists don't have the expected number of elements:
     row in the screenshot below shows a feature that has some zero-length value
     lists:
 
-    ![Facets Overview display with feature with zero-length feature value
-    lists](images/zero_length.png)
+![Facets Overview display with feature with zero-length feature value lists](images/zero_length.png)
 
 #### Large Differences in Scale Between Features
 

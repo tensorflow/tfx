@@ -65,6 +65,9 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
   # component's existing executor class definition "EXECUTOR_CLASS = MyExecutor"
   # should be replaced with "EXECUTOR_SPEC = ExecutorClassSpec(MyExecutor).
   EXECUTOR_SPEC = abc_utils.abstract_property()
+  # Subclasses will usually use the default driver class, but may override this
+  # property as well.
+  DRIVER_CLASS = base_driver.BaseDriver
 
   def __init__(
       self,
@@ -81,15 +84,19 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
         component in the pipeline. Required if two instances of the same
         component is used in the pipeline.
     """
-    super(BaseComponent, self).__init__(instance_name)
+    executor_spec_obj = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
+    driver_class = self.__class__.DRIVER_CLASS
+    super(BaseComponent, self).__init__(
+        instance_name=instance_name,
+        executor_spec=executor_spec_obj,
+        driver_class=driver_class,
+    )
     self.spec = spec
     if custom_executor_spec:
       if not isinstance(custom_executor_spec, executor_spec.ExecutorSpec):
         raise TypeError(
             ('Custom executor spec override %s for %s should be an instance of '
              'ExecutorSpec') % (custom_executor_spec, self.__class__))
-    self.executor_spec = (custom_executor_spec or self.__class__.EXECUTOR_SPEC)
-    self.driver_class = self.__class__.DRIVER_CLASS
     self._validate_component_class()
     self._validate_spec(spec)
 
@@ -130,14 +137,6 @@ class BaseComponent(with_metaclass(abc.ABCMeta, base_node.BaseNode)):
             'component_id: %s, inputs: %s, outputs: %s)') % (
                 self.__class__.__name__, self.spec, self.executor_spec,
                 self.driver_class, self.id, self.inputs, self.outputs)
-
-  def to_json_dict(self) -> Dict[Text, Any]:
-    return {
-        _DRIVER_CLASS_KEY: self.driver_class,
-        _EXECUTOR_SPEC_KEY: self.executor_spec,
-        _INSTANCE_NAME_KEY: self._instance_name,
-        _SPEC_KEY: self.spec
-    }
 
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access

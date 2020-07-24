@@ -23,6 +23,7 @@ import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.dsl.experimental import latest_artifacts_resolver
+from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
 
@@ -33,26 +34,48 @@ class LatestArtifactsResolverTest(tf.test.TestCase):
     super(LatestArtifactsResolverTest, self).setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
+    self._pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
+    self._component_info = data_types.ComponentInfo(
+        component_type='a.b.c',
+        component_id='my_component',
+        pipeline_info=self._pipeline_info)
 
-  def testArtifact(self):
+  def testGetLatestArtifact(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
-      # Publish multiple artifacts.
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
       artifact_one = standard_artifacts.Examples()
       artifact_one.uri = 'uri_one'
       m.publish_artifacts([artifact_one])
       artifact_two = standard_artifacts.Examples()
       artifact_two.uri = 'uri_two'
-      m.publish_artifacts([artifact_two])
+      m.register_execution(
+          exec_properties={},
+          pipeline_info=self._pipeline_info,
+          component_info=self._component_info,
+          contexts=contexts)
+      m.publish_execution(
+          component_info=self._component_info,
+          output_artifacts={'key': [artifact_one, artifact_two]})
+      expected_artifact = max(artifact_one, artifact_two, key=lambda a: a.id)
 
       resolver = latest_artifacts_resolver.LatestArtifactsResolver()
       resolve_result = resolver.resolve(
-          m, {'input': types.Channel(type_name=artifact_one.type_name)})
+          pipeline_info=self._pipeline_info,
+          metadata_handler=m,
+          source_channels={
+              'input':
+                  types.Channel(
+                      type=artifact_one.type,
+                      producer_component_id=self._component_info.component_id,
+                      output_key='key')
+          })
 
       self.assertTrue(resolve_result.has_complete_result)
       self.assertEqual([
           artifact.uri
           for artifact in resolve_result.per_key_resolve_result['input']
-      ], ['uri_two'])
+      ], [expected_artifact.uri])
       self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
 

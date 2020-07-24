@@ -27,10 +27,12 @@ import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.orchestration.experimental.interactive import visualizations
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
 class ExampleAnomaliesVisualization(visualizations.ArtifactVisualization):
+  """Visualization for standard_artifacts.ExampleAnomalies."""
 
   ARTIFACT_TYPE = standard_artifacts.ExampleAnomalies
 
@@ -41,16 +43,22 @@ class ExampleAnomaliesVisualization(visualizations.ArtifactVisualization):
 
 
 class ExampleStatisticsVisualization(visualizations.ArtifactVisualization):
+  """Visualization for standard_artifacts.Statistics."""
 
   ARTIFACT_TYPE = standard_artifacts.ExampleStatistics
 
   def display(self, artifact: types.Artifact):
-    stats_path = os.path.join(artifact.uri, 'stats_tfrecord')
-    stats = tfdv.load_statistics(stats_path)
-    tfdv.visualize_statistics(stats)
+    from IPython.core.display import display  # pylint: disable=g-import-not-at-top
+    from IPython.core.display import HTML  # pylint: disable=g-import-not-at-top
+    for split in artifact_utils.decode_split_names(artifact.split_names):
+      display(HTML('<div><b>%r split:</b></div><br/><br/>' % split))
+      stats_path = os.path.join(artifact.uri, split, 'stats_tfrecord')
+      stats = tfdv.load_statistics(stats_path)
+      tfdv.visualize_statistics(stats)
 
 
 class ModelEvaluationVisualization(visualizations.ArtifactVisualization):
+  """Visualization for standard_artifacts.ModelEvaluation."""
 
   ARTIFACT_TYPE = standard_artifacts.ModelEvaluation
 
@@ -62,6 +70,7 @@ class ModelEvaluationVisualization(visualizations.ArtifactVisualization):
 
 
 class SchemaVisualization(visualizations.ArtifactVisualization):
+  """Visualization for standard_artifacts.Schema."""
 
   ARTIFACT_TYPE = standard_artifacts.Schema
 

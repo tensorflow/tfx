@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Any, Dict, Optional, Text
+from typing import Any, Dict, Optional, Text, Type
 
 from six import with_metaclass
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
-from tfx.components.base import executor_spec
+from tfx.components.base import executor_spec as executor_spec_module
 from tfx.types import node_common
 from tfx.utils import json_utils
 
@@ -37,27 +37,66 @@ def _abstract_property() -> Any:
 
 
 class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
-  """Base class for a node in TFX pipeline.
+  """Base class for a node in TFX pipeline."""
 
-  Attributes:
-    EXECUTOR_SPEC: an instance of executor_spec.ExecutorSpec which describes how
-      to execute this node (optional, defaults to an empty executor indicates
-      no-op.
-    DRIVER_CLASS: a subclass of base_driver.BaseDriver as a custom driver for
-      this node (optional, defaults to base_driver.BaseDriver).
-  """
+  @classmethod
+  def get_id(cls, instance_name: Optional[Text] = None):
+    """Gets the id of a node.
 
-  EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.EmptyExecutor)
-  # Subclasses will usually use the default driver class, but may override this
-  # property as well.
-  DRIVER_CLASS = base_driver.BaseDriver
+    This can be used during pipeline authoring time. For example:
+    from tfx.components import Trainer
 
-  def __init__(self, instance_name: Optional[Text] = None):
+    resolver = ResolverNode(..., model=Channel(
+        type=Model, producer_component_id=Trainer.get_id('my_trainer')))
+
+    Args:
+      instance_name: (Optional) instance name of a node. If given, the instance
+        name will be taken into consideration when generating the id.
+
+    Returns:
+      an id for the node.
+    """
+    node_class_name = cls.__name__
+    if instance_name:
+      return '{}.{}'.format(node_class_name, instance_name)
+    else:
+      return node_class_name
+
+  def __init__(
+      self,
+      instance_name: Optional[Text] = None,
+      executor_spec: Optional[executor_spec_module.ExecutorSpec] = None,
+      driver_class: Optional[Type[base_driver.BaseDriver]] = None,
+  ):
+    """Initialize a node.
+
+    Args:
+      instance_name: Optional unique identifying name for this instance of node
+        in the pipeline. Required if two instances of the same node are used in
+        the pipeline.
+      executor_spec: Optional instance of executor_spec.ExecutorSpec which
+        describes how to execute this node (optional, defaults to an empty
+        executor indicates no-op.
+      driver_class: Optional subclass of base_driver.BaseDriver as a custom
+        driver for this node (optional, defaults to base_driver.BaseDriver).
+        Nodes usually use the default driver class, but may override it.
+    """
+    if executor_spec is None:
+      executor_spec = executor_spec_module.ExecutorClassSpec(
+          base_executor.EmptyExecutor)
+    if driver_class is None:
+      driver_class = base_driver.BaseDriver
     self._instance_name = instance_name
-    self.executor_spec = self.__class__.EXECUTOR_SPEC
-    self.driver_class = self.__class__.DRIVER_CLASS
+    self.executor_spec = executor_spec
+    self.driver_class = driver_class
     self._upstream_nodes = set()
     self._downstream_nodes = set()
+
+  def to_json_dict(self) -> Dict[Text, Any]:
+    """Convert from an object to a JSON serializable dictionary."""
+    return dict((k, v)
+                for k, v in self.__dict__.items()
+                if k not in ['_upstream_nodes', '_downstream_nodes'])
 
   @property
   def type(self) -> Text:
@@ -112,11 +151,47 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     return self._upstream_nodes
 
   def add_upstream_node(self, upstream_node):
+    """Experimental: Add another component that must run before this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+    It is symmetric with `add_downstream_node`.
+
+    Args:
+      upstream_node: a component that must run before this node.
+    """
     self._upstream_nodes.add(upstream_node)
+    if self not in upstream_node.downstream_nodes:
+      upstream_node.add_downstream_node(self)
 
   @property
   def downstream_nodes(self):
     return self._downstream_nodes
 
   def add_downstream_node(self, downstream_node):
+    """Experimental: Add another component that must run after this one.
+
+    This method enables task-based dependencies by enforcing execution order for
+    synchronous pipelines on supported platforms. Currently, the supported
+    platforms are Airflow, Beam, and Kubeflow Pipelines.
+
+    Note that this API call should be considered experimental, and may not work
+    with asynchronous pipelines, sub-pipelines and pipelines with conditional
+    nodes. We also recommend relying on data for capturing dependencies where
+    possible to ensure data lineage is fully captured within MLMD.
+
+    It is symmetric with `add_upstream_node`.
+
+    Args:
+      downstream_node: a component that must run after this node.
+    """
     self._downstream_nodes.add(downstream_node)
+    if self not in downstream_node.upstream_nodes:
+      downstream_node.add_upstream_node(self)

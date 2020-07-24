@@ -9,7 +9,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/  # build/ contains required files for building tfx package.
 develop-eggs/
 dist/
 downloads/
@@ -126,9 +126,13 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# pb2.py files
+# Bazel generated files
+bazel-*
 **/*_pb2.py
 # LINT.ThenChange(.gitignore)
+
+# Github integration settings
+.github
 
 # .dockerignore and Dockerfile themselves are not needed by docker build.
 .dockerignore

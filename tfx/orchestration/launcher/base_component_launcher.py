@@ -24,7 +24,6 @@ from typing import Any, Dict, List, Optional, Text
 import absl
 from six import with_metaclass
 
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
@@ -42,7 +41,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       component: base_node.BaseNode,
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
-      metadata_connection_config: metadata_store_pb2.ConnectionConfig,
+      metadata_connection: metadata.Metadata,
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
@@ -56,8 +55,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         properties.
       driver_args: An instance of data_types.DriverArgs that holds component
         specific driver args.
-      metadata_connection_config: ML metadata connection config.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      metadata_connection: ML metadata connection. The connection is expected to
+        not be opened when given to this object.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
       component_config: Optional component specific config to instrument
         launcher on how to launch a component.
@@ -68,7 +68,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     """
     self._pipeline_info = pipeline_info
     self._component_info = data_types.ComponentInfo(
-        component_type=component.type, component_id=component.id)
+        component_type=component.type,
+        component_id=component.id,
+        pipeline_info=self._pipeline_info)
     self._driver_args = driver_args
 
     self._driver_class = component.driver_class
@@ -78,7 +80,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     self._output_dict = component.outputs.get_all()
     self._exec_properties = component.exec_properties
 
-    self._metadata_connection_config = metadata_connection_config
+    self._metadata_connection = metadata_connection
     self._beam_pipeline_args = beam_pipeline_args
 
     self._additional_pipeline_args = additional_pipeline_args
@@ -100,11 +102,11 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       component: base_node.BaseNode,
       pipeline_info: data_types.PipelineInfo,
       driver_args: data_types.DriverArgs,
-      metadata_connection_config: metadata_store_pb2.ConnectionConfig,
+      metadata_connection: metadata.Metadata,
       beam_pipeline_args: List[Text],
       additional_pipeline_args: Dict[Text, Any],
       component_config: Optional[
-          base_component_config.BaseComponentConfig] = None
+          base_component_config.BaseComponentConfig] = None,
   ) -> 'BaseComponentLauncher':
     """Initialize a ComponentLauncher directly from a BaseComponent instance.
 
@@ -118,8 +120,9 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         properties.
       driver_args: An instance of data_types.DriverArgs that holds component
         specific driver args.
-      metadata_connection_config: ML metadata connection config.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      metadata_connection: ML metadata connection. The connection is expected to
+        not be opened when given to this object.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
       component_config: Optional component specific config to instrument
         launcher on how to launch a component.
@@ -131,10 +134,10 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=metadata_connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
-        component_config=component_config)
+        component_config=component_config)  # pytype: disable=not-instantiable
 
   @classmethod
   @abc.abstractmethod
@@ -151,7 +154,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
       exec_properties: Dict[Text, Any]) -> data_types.ExecutionDecision:
     """Prepare inputs, outputs and execution properties for actual execution."""
 
-    with metadata.Metadata(self._metadata_connection_config) as m:
+    with self._metadata_connection as m:
       driver = self._driver_class(metadata_handler=m)
 
       execution_decision = driver.pre_execution(
@@ -173,18 +176,14 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
     """Execute underlying component implementation."""
     raise NotImplementedError
 
-  def _run_publisher(self, use_cached_results: bool, execution_id: int,
-                     input_dict: Dict[Text, List[types.Artifact]],
-                     output_dict: Dict[Text, List[types.Artifact]]) -> None:
+  def _run_publisher(self, output_dict: Dict[Text,
+                                             List[types.Artifact]]) -> None:
     """Publish execution result to ml metadata."""
 
-    with metadata.Metadata(self._metadata_connection_config) as m:
+    with self._metadata_connection as m:
       p = publisher.Publisher(metadata_handler=m)
       p.publish_execution(
-          execution_id=execution_id,
-          input_dict=input_dict,
-          output_dict=output_dict,
-          use_cached_results=use_cached_results)
+          component_info=self._component_info, output_artifacts=output_dict)
 
   def launch(self) -> data_types.ExecutionInfo:
     """Execute the component, includes driver, executor and publisher.
@@ -207,10 +206,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
 
     absl.logging.info('Running publisher for %s',
                       self._component_info.component_id)
-    self._run_publisher(execution_decision.use_cached_results,
-                        execution_decision.execution_id,
-                        execution_decision.input_dict,
-                        execution_decision.output_dict)
+    self._run_publisher(output_dict=execution_decision.output_dict)
 
     return data_types.ExecutionInfo(
         input_dict=execution_decision.input_dict,

@@ -374,34 +374,23 @@ class ChannelParameter(_ComponentParameter):
 
   def __init__(
       self,
-      type_name: Optional[Text] = None,
       type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
       optional: Optional[bool] = False):
-    # TODO(b/138664975): either deprecate or remove string-based artifact type
-    # definition before 0.14.0 release.
-    if bool(type_name) == bool(type):
+    if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
-          'Exactly one of "type" or "type_name" must be passed to the '
-          'constructor of Channel.')
-    if type:
-      if not issubclass(type, Artifact):  # pytype: disable=wrong-arg-types
-        raise ValueError(
-            'Argument "type" of Channel constructor must be a subclass of'
-            'tfx.types.Artifact.')
-      type_name = type.TYPE_NAME  # pytype: disable=attribute-error
-    self.type_name = type_name
+          'Argument "type" of Channel constructor must be a subclass of'
+          'tfx.types.Artifact.')
+    self.type = type
     self.optional = optional
 
   def __repr__(self):
-    return 'ChannelParameter(type_name: %s)' % (self.type_name,)
+    return 'ChannelParameter(type: %s)' % (self.type,)
 
   def __eq__(self, other):
     return (isinstance(other.__class__, self.__class__) and
-            other.type_name == self.type_name and
-            other.optional == self.optional)
+            other.type == self.type and other.optional == self.optional)
 
   def type_check(self, arg_name: Text, value: Channel):
-    if not isinstance(value, Channel) or value.type_name != self.type_name:
-      raise TypeError(
-          'Argument %s should be a Channel of type_name %r (got %s).' %
-          (arg_name, self.type_name, value))
+    if not isinstance(value, Channel) or value.type != self.type:
+      raise TypeError('Argument %s should be a Channel of type %r (got %s).' %
+                      (arg_name, self.type, value))

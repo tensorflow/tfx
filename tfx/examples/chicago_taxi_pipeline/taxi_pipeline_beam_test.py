@@ -20,21 +20,24 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
+import tensorflow_model_analysis as tfma
 
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ModelValidator
 from tfx.components import Pusher
+from tfx.components import ResolverNode
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
-from tfx.proto import evaluator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
-from tfx.utils.dsl_utils import external_input
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 
 
 class TaxiPipelineBeamTest(tf.test.TestCase):
@@ -53,32 +56,29 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir,
-        direct_num_workers=1)
+        beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
 
   def testTaxiPipelineNewStyleCompatibility(self):
-    examples = external_input('/tmp/fake/path')
-    example_gen = CsvExampleGen(input=examples)
-    self.assertIs(example_gen.inputs['input'],
-                  example_gen.inputs['input_base'])
+    example_gen = CsvExampleGen(input_base='/tmp/fake/path')
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
     self.assertIs(statistics_gen.inputs['examples'],
                   statistics_gen.inputs['input_data'])
-    infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-    self.assertIs(infer_schema.inputs['statistics'],
-                  infer_schema.inputs['stats'])
-    self.assertIs(infer_schema.outputs['schema'],
-                  infer_schema.outputs['output'])
-    validate_examples = ExampleValidator(
+    schema_gen = SchemaGen(statistics=statistics_gen.outputs['statistics'])
+    self.assertIs(schema_gen.inputs['statistics'],
+                  schema_gen.inputs['stats'])
+    self.assertIs(schema_gen.outputs['schema'],
+                  schema_gen.outputs['output'])
+    example_validator = ExampleValidator(
         statistics=statistics_gen.outputs['statistics'],
-        schema=infer_schema.outputs['schema'])
-    self.assertIs(validate_examples.inputs['statistics'],
-                  validate_examples.inputs['stats'])
-    self.assertIs(validate_examples.outputs['anomalies'],
-                  validate_examples.outputs['output'])
+        schema=schema_gen.outputs['schema'])
+    self.assertIs(example_validator.inputs['statistics'],
+                  example_validator.inputs['stats'])
+    self.assertIs(example_validator.outputs['anomalies'],
+                  example_validator.outputs['output'])
     transform = Transform(
         examples=example_gen.outputs['examples'],
-        schema=infer_schema.outputs['schema'],
+        schema=schema_gen.outputs['schema'],
         module_file='/tmp/fake/module/file')
     self.assertIs(transform.inputs['examples'],
                   transform.inputs['input_data'])
@@ -87,7 +87,7 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
     trainer = Trainer(
         module_file='/tmp/fake/module/file',
         transformed_examples=transform.outputs['transformed_examples'],
-        schema=infer_schema.outputs['schema'],
+        schema=schema_gen.outputs['schema'],
         transform_graph=transform.outputs['transform_graph'],
         train_args=trainer_pb2.TrainArgs(num_steps=10000),
         eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -95,23 +95,41 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
                   trainer.inputs['transform_output'])
     self.assertIs(trainer.outputs['model'],
                   trainer.outputs['output'])
+    model_resolver = ResolverNode(
+        instance_name='latest_blessed_model_resolver',
+        resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+        model=Channel(type=Model),
+        model_blessing=Channel(type=ModelBlessing))
+    eval_config = tfma.EvalConfig(
+        model_specs=[tfma.ModelSpec(signature_name='eval')],
+        slicing_specs=[
+            tfma.SlicingSpec(),
+            tfma.SlicingSpec(feature_keys=['trip_start_hour'])
+        ],
+        metrics_specs=[
+            tfma.MetricsSpec(
+                thresholds={
+                    'accuracy':
+                        tfma.config.MetricThreshold(
+                            value_threshold=tfma.GenericValueThreshold(
+                                lower_bound={'value': 0.6}),
+                            change_threshold=tfma.GenericChangeThreshold(
+                                direction=tfma.MetricDirection.HIGHER_IS_BETTER,
+                                absolute={'value': -1e-10}))
+                })
+        ])
     evaluator = Evaluator(
         examples=example_gen.outputs['examples'],
         model=trainer.outputs['model'],
-        feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-            evaluator_pb2.SingleSlicingSpec(
-                column_for_slicing=['trip_start_hour'])
-        ]))
+        baseline_model=model_resolver.outputs['model'],
+        eval_config=eval_config)
     self.assertIs(evaluator.inputs['model'],
                   evaluator.inputs['model_exports'])
     self.assertIs(evaluator.outputs['evaluation'],
                   evaluator.outputs['output'])
-    model_validator = ModelValidator(
-        examples=example_gen.outputs['examples'],
-        model=trainer.outputs['model'])
     pusher = Pusher(
         model=trainer.outputs['output'],
-        model_blessing=model_validator.outputs['blessing'],
+        model_blessing=evaluator.outputs['blessing'],
         push_destination=pusher_pb2.PushDestination(
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='/fake/serving/dir')))

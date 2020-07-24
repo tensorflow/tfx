@@ -18,11 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 import tensorflow as tf
 from tfx import types
-from tfx.orchestration import metadata
+from tfx.orchestration import data_types
 from tfx.orchestration import publisher
+
+
+class _InputType(types.Artifact):
+  TYPE_NAME = 'InputType'
+
+
+class _OutputType(types.Artifact):
+  TYPE_NAME = 'OutputType'
 
 
 class PublisherTest(tf.test.TestCase):
@@ -31,39 +38,27 @@ class PublisherTest(tf.test.TestCase):
     super(PublisherTest, self).setUp()
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
     self._mock_metadata.publish_execution = tf.compat.v1.test.mock.Mock()
-    self._input_dict = {
-        'input_data': [types.Artifact(type_name='InputType')],
-    }
     self._output_dict = {
-        'output_data': [types.Artifact(type_name='OutputType')],
+        'output_data': [_OutputType()],
     }
-    self._execution_id = 100
+    self._exec_properties = {'k': 'v'}
+    self._pipeline_info = data_types.PipelineInfo(
+        pipeline_name='my_pipeline', pipeline_root='/tmp', run_id='my_run_id')
+    self._component_info = data_types.ComponentInfo(
+        component_type='a.b.c',
+        component_id='my_component',
+        pipeline_info=self._pipeline_info)
 
   def testPrepareExecutionComplete(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    output_dict = copy.deepcopy(self._output_dict)
-
     p = publisher.Publisher(metadata_handler=self._mock_metadata)
     p.publish_execution(
-        self._execution_id, input_dict, output_dict, use_cached_results=False)
+        component_info=self._component_info,
+        output_artifacts=self._output_dict,
+        exec_properties=self._exec_properties)
     self._mock_metadata.publish_execution.assert_called_with(
-        execution_id=self._execution_id,
-        input_dict=input_dict,
-        output_dict=output_dict,
-        state=metadata.EXECUTION_STATE_COMPLETE)
-
-  def testPrepareExecutionCached(self):
-    input_dict = copy.deepcopy(self._input_dict)
-    output_dict = copy.deepcopy(self._output_dict)
-
-    p = publisher.Publisher(metadata_handler=self._mock_metadata)
-    p.publish_execution(
-        self._execution_id, input_dict, output_dict, use_cached_results=True)
-    self._mock_metadata.publish_execution.assert_called_with(
-        execution_id=self._execution_id,
-        input_dict=input_dict,
-        output_dict=output_dict,
-        state=metadata.EXECUTION_STATE_CACHED)
+        component_info=self._component_info,
+        output_artifacts=self._output_dict,
+        exec_properties=self._exec_properties)
 
 
 if __name__ == '__main__':

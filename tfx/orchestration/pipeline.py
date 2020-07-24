@@ -24,10 +24,10 @@ import json
 import os
 from typing import List, Optional, Text
 
-import absl
+from absl import logging
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -46,7 +46,7 @@ _PIPELINE_ROOT = 'pipeline-root'
 #
 # pusher = Pusher(
 #     model_export=trainer.outputs['model'],
-#     model_blessing=model_validator.outputs['blessing'],
+#     model_blessing=evaluator.outputs['blessing'],
 #     push_destination=pusher_pb2.PushDestination(
 #         filesystem=pusher_pb2.PushDestination.Filesystem(
 #             base_directory=os.path.join(
@@ -58,19 +58,18 @@ class Pipeline(object):
   """Logical TFX pipeline object.
 
   Attributes:
-    pipeline_args: kwargs used to create real pipeline implementation. This is
+    pipeline_args: Kwargs used to create real pipeline implementation. This is
       forwarded to PipelineRunners instead of consumed in this class. This
       should include:
       - pipeline_name: Required. The unique name of this pipeline.
       - pipeline_root: Required. The root of the pipeline outputs.
-    components: logical components of this pipeline.
+    components: Logical components of this pipeline.
     pipeline_info: An instance of data_types.PipelineInfo that contains basic
       properties of the pipeline.
-    enable_cache: whether or not cache is enabled for this run.
-    metadata_connection_config: the config to connect to ML metadata.
-    beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-      Executor will use beam DirectRunner as Default.
-    additional_pipeline_args: other pipeline args.
+    enable_cache: Whether or not cache is enabled for this run.
+    metadata_connection_config: The config to connect to ML metadata.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components.
+    additional_pipeline_args: Other pipeline args.
   """
 
   def __init__(self,
@@ -78,23 +77,22 @@ class Pipeline(object):
                pipeline_root: Text,
                metadata_connection_config: Optional[
                    metadata_store_pb2.ConnectionConfig] = None,
-               components: Optional[List[base_component.BaseComponent]] = None,
+               components: Optional[List[base_node.BaseNode]] = None,
                enable_cache: Optional[bool] = False,
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
     """Initialize pipeline.
 
     Args:
-      pipeline_name: name of the pipeline;
-      pipeline_root: path to root directory of the pipeline;
-      metadata_connection_config: the config to connect to ML metadata.
-      components: a list of components in the pipeline (optional only for
+      pipeline_name: Name of the pipeline;
+      pipeline_root: Path to root directory of the pipeline;
+      metadata_connection_config: The config to connect to ML metadata.
+      components: A list of components in the pipeline (optional only for
         backward compatible purpose to be used with deprecated
         PipelineDecorator).
-      enable_cache: whether or not cache is enabled for this run.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
-        Executor will use beam DirectRunner as Default.
-      **kwargs: additional kwargs forwarded as pipeline args.
+      enable_cache: Whether or not cache is enabled for this run.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
+      **kwargs: Additional kwargs forwarded as pipeline args.
     """
     if len(pipeline_name) > MAX_PIPELINE_NAME_LENGTH:
       raise ValueError('pipeline name %s exceeds maximum allowed lenght' %
@@ -113,7 +111,7 @@ class Pipeline(object):
 
     # TODO(jyzhao): deprecate beam_pipeline_args of additional_pipeline_args.
     if 'beam_pipeline_args' in self.additional_pipeline_args:
-      absl.logging.warning(
+      logging.warning(
           'Please use the top level beam_pipeline_args instead of the one in additional_pipeline_args.'
       )
       self.beam_pipeline_args = self.additional_pipeline_args[
@@ -134,11 +132,11 @@ class Pipeline(object):
 
   @property
   def components(self):
-    """A list of logical components that are deduped and topological sorted."""
+    """A deterministic list of logical components that are deduped and topologically sorted."""
     return self._components
 
   @components.setter
-  def components(self, components: List[base_component.BaseComponent]):
+  def components(self, components: List[base_node.BaseNode]):
     deduped_components = set(components)
     producer_map = {}
     instances_per_component_type = collections.defaultdict(set)
@@ -150,11 +148,13 @@ class Pipeline(object):
         raise RuntimeError('Duplicated component_id %s for component type %s' %
                            (component.id, component.type))
       instances_per_component_type[component.type].add(component.id)
-      for key, output_channel in component.outputs.get_all().items():
+      for key, output_channel in component.outputs.items():
         assert not producer_map.get(
             output_channel), '{} produced more than once'.format(output_channel)
         producer_map[output_channel] = component
-        # Fill in detailed artifact properties.
+        output_channel.producer_component_id = component.id
+        output_channel.output_key = key
+        # TODO(ruoyu): Remove after switching to context-based resolution.
         for artifact in output_channel.get():
           artifact.name = key
           artifact.pipeline_name = self.pipeline_info.pipeline_name
@@ -162,7 +162,7 @@ class Pipeline(object):
 
     # Connects nodes based on producer map.
     for component in deduped_components:
-      for i in component.inputs.get_all().values():
+      for i in component.inputs.values():
         if producer_map.get(i):
           component.add_upstream_node(producer_map[i])
           producer_map[i].add_downstream_node(component)
@@ -175,7 +175,8 @@ class Pipeline(object):
     # Sorts component in topological order.
     while current_layer:
       next_layer = []
-      for component in current_layer:
+      # Within each layer, components are sorted according to component ids.
+      for component in sorted(current_layer, key=lambda c: c.id):
         self._components.append(component)
         visited.add(component)
         for downstream_node in component.downstream_nodes:

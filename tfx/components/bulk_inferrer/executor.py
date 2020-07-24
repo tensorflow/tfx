@@ -18,24 +18,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import importlib
 import os
 from typing import Any, Dict, List, Mapping, Text
 
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
-from tfx_bsl.beam import run_inference
-from tfx_bsl.proto import model_spec_pb2
 
 from google.protobuf import json_format
 from tensorflow_serving.apis import prediction_log_pb2
+from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import model_utils
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-from tfx.utils import types
 
 
 _PREDICTION_LOGS_DIR_NAME = 'prediction_logs'
@@ -94,11 +93,13 @@ class Executor(base_executor.BaseExecutor):
     example_uris = {}
     if data_spec.example_splits:
       for example in input_dict['examples']:
-        if example.split in data_spec.example_splits:
-          example_uris[example.split] = example.uri
+        for split in artifact_utils.decode_split_names(example.split_names):
+          if split in data_spec.example_splits:
+            example_uris[split] = os.path.join(example.uri, split)
     else:
       for example in input_dict['examples']:
-        example_uris[example.split] = example.uri
+        for split in artifact_utils.decode_split_names(example.split_names):
+          example_uris[split] = os.path.join(example.uri, split)
     model_spec = bulk_inferrer_pb2.ModelSpec()
     json_format.Parse(exec_properties['model_spec'], model_spec)
     output_path = os.path.join(output.uri, _PREDICTION_LOGS_DIR_NAME)
@@ -123,11 +124,22 @@ class Executor(base_executor.BaseExecutor):
       None
     """
 
+    try:
+      from tfx_bsl.public.beam import run_inference
+      from tfx_bsl.public.proto import model_spec_pb2
+    except ImportError:
+      # TODO(b/151468119): Remove this branch after next release.
+      run_inference = importlib.import_module('tfx_bsl.beam.run_inference')
+      model_spec_pb2 = importlib.import_module('tfx_bsl.proto.model_spec_pb2')
     saved_model_spec = model_spec_pb2.SavedModelSpec(
         model_path=model_path,
         tag=model_spec.tag,
         signature_name=model_spec.model_signature_name)
-    inference_endpoint = model_spec_pb2.InferenceEndpoint()
+    # TODO(b/151468119): Remove this branch after next release.
+    if getattr(model_spec_pb2, 'InferenceEndpoint', False):
+      inference_endpoint = getattr(model_spec_pb2, 'InferenceEndpoint')()
+    else:
+      inference_endpoint = model_spec_pb2.InferenceSpecType()
     inference_endpoint.saved_model_spec.CopyFrom(saved_model_spec)
     with self._make_beam_pipeline() as pipeline:
       data_list = []

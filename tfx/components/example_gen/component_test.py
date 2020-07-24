@@ -27,7 +27,7 @@ from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
-from tfx.types import channel_utils
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 
@@ -37,7 +37,7 @@ class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
     pass
 
 
-class TestQueryBasedExampleGenComponent(component._QueryBasedExampleGen):
+class TestQueryBasedExampleGenComponent(component.QueryBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
 
@@ -57,15 +57,14 @@ class TestFileBasedExampleGenComponent(component.FileBasedExampleGen):
 
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(TestExampleGenExecutor)
 
-  def __init__(
-      self,
-      input,  # pylint: disable=redefined-builtin
-      input_config=None,
-      output_config=None,
-      example_artifacts=None,
-      instance_name=None):
+  def __init__(self,
+               input_base,
+               input_config=None,
+               output_config=None,
+               example_artifacts=None,
+               instance_name=None):
     super(TestFileBasedExampleGenComponent, self).__init__(
-        input=input,
+        input_base=input_base,
         input_config=input_config,
         output_config=output_config,
         example_artifacts=example_artifacts,
@@ -85,39 +84,41 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual(1, len(artifact_collection))
+    self.assertEqual(['train', 'eval'],
+                     artifact_utils.decode_split_names(
+                         artifact_collection[0].split_names))
 
   def testConstructSubclassFileBased(self):
-    input_base = standard_artifacts.ExternalArtifact()
-    example_gen = TestFileBasedExampleGenComponent(
-        input=channel_utils.as_channel([input_base]))
-    self.assertIn('input_base', example_gen.inputs.get_all())
+    example_gen = TestFileBasedExampleGenComponent(input_base='path')
+    self.assertIn('input_base', example_gen.exec_properties)
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual(1, len(artifact_collection))
+    self.assertEqual(['train', 'eval'],
+                     artifact_utils.decode_split_names(
+                         artifact_collection[0].split_names))
 
   def testConstructCustomExecutor(self):
-    input_base = standard_artifacts.ExternalArtifact()
     example_gen = component.FileBasedExampleGen(
-        input=channel_utils.as_channel([input_base]),
+        input_base='path',
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
+    self.assertEqual(1, len(artifact_collection))
+    self.assertEqual(['train', 'eval'],
+                     artifact_utils.decode_split_names(
+                         artifact_collection[0].split_names))
 
   def testConstructWithOutputConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
-        input=channel_utils.as_channel([input_base]),
+        input_base='path',
         output_config=example_gen_pb2.Output(
             split_config=example_gen_pb2.SplitConfig(splits=[
                 example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
@@ -127,14 +128,14 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
+    self.assertEqual(1, len(artifact_collection))
+    self.assertEqual(['train', 'eval', 'test'],
+                     artifact_utils.decode_split_names(
+                         artifact_collection[0].split_names))
 
   def testConstructWithInputConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
     example_gen = TestFileBasedExampleGenComponent(
-        input=channel_utils.as_channel([input_base]),
+        input_base='path',
         input_config=example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='train', pattern='train/*'),
             example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
@@ -143,15 +144,15 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
-    self.assertEqual('train', artifact_collection[0].split)
-    self.assertEqual('eval', artifact_collection[1].split)
-    self.assertEqual('test', artifact_collection[2].split)
+    self.assertEqual(1, len(artifact_collection))
+    self.assertEqual(['train', 'eval', 'test'],
+                     artifact_utils.decode_split_names(
+                         artifact_collection[0].split_names))
 
   def testConstructWithCustomConfig(self):
-    input_base = standard_artifacts.ExternalArtifact()
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())
     example_gen = component.FileBasedExampleGen(
-        input=channel_utils.as_channel([input_base]),
+        input_base='path',
         custom_config=custom_config,
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))

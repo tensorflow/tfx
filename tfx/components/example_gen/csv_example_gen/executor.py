@@ -21,14 +21,13 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, Iterable, List, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf
 from tfx_bsl.coders import csv_decoder
 
-from tfx import types
-from tfx.components.example_gen import base_example_gen_executor
-from tfx.types import artifact_utils
+from tfx.components.example_gen import utils
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
 from tfx.utils import io_utils
 
 
@@ -81,8 +80,8 @@ class _ParsedCsvToTfExample(beam.DoFn):
         continue
       if not handler_fn:
         raise ValueError(
-            'Internal error: failed to infer type of column {} while it'
-            'had at least some values {}'.format(column_name, csv_cell))
+            'Internal error: failed to infer type of column %s while it'
+            'had at least some values %s' % (column_name, csv_cell))
       feature[column_name] = handler_fn(csv_cell)
     yield tf.train.Example(features=tf.train.Features(feature=feature))
 
@@ -91,9 +90,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read CSV files and transform to TF examples.
 
@@ -101,10 +98,8 @@ def _CsvToExample(  # pylint: disable=invalid-name
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
-      - input_base: input dir that contains csv data. csv files must have header
-        line.
     exec_properties: A dict of execution properties.
+      - input_base: input dir that contains CSV data. CSV must have header line.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
@@ -114,10 +109,9 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Raises:
     RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
+  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   csv_pattern = os.path.join(input_base_uri, split_pattern)
-  absl.logging.info(
-      'Processing input csv data {} to TFExample.'.format(csv_pattern))
+  logging.info('Processing input csv data %s to TFExample.', csv_pattern)
 
   csv_files = tf.io.gfile.glob(csv_pattern)
   if not csv_files:
@@ -125,8 +119,8 @@ def _CsvToExample(  # pylint: disable=invalid-name
         'Split pattern {} does not match any files.'.format(csv_pattern))
 
   column_names = io_utils.load_csv_column_names(csv_files[0])
-  for csv_files in csv_files[1:]:
-    if io_utils.load_csv_column_names(csv_files) != column_names:
+  for csv_file in csv_files[1:]:
+    if io_utils.load_csv_column_names(csv_file) != column_names:
       raise RuntimeError(
           'Files in same split {} have different header.'.format(csv_pattern))
 
@@ -135,6 +129,11 @@ def _CsvToExample(  # pylint: disable=invalid-name
       | 'ReadFromText' >> beam.io.ReadFromText(
           file_pattern=csv_pattern, skip_header_lines=1)
       | 'ParseCSVLine' >> beam.ParDo(csv_decoder.ParseCSVLine(delimiter=',')))
+  # TODO(b/155997704) clean this up once tfx_bsl makes a release.
+  if getattr(csv_decoder, 'PARSE_CSV_LINE_YIELDS_RAW_RECORDS', False):
+    # parsed_csv_lines is the following tuple (parsed_lines, raw_records)
+    # we only want the parsed_lines.
+    parsed_csv_lines |= 'ExtractParsedCSVLines' >> beam.Keys()
   column_infos = beam.pvalue.AsSingleton(
       parsed_csv_lines
       | 'InferColumnTypes' >> beam.CombineGlobally(
@@ -144,7 +143,7 @@ def _CsvToExample(  # pylint: disable=invalid-name
           | 'ToTFExample' >> beam.ParDo(_ParsedCsvToTfExample(), column_infos))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """Generic TFX CSV example gen executor."""
 
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:

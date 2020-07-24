@@ -34,6 +34,14 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 
 
+class _InputArtifact(types.Artifact):
+  TYPE_NAME = 'InputArtifact'
+
+
+class _OutputArtifact(types.Artifact):
+  TYPE_NAME = 'OutputArtifact'
+
+
 class _FakeDriver(base_driver.BaseDriver):
   """Fake driver for testing purpose only."""
 
@@ -48,10 +56,17 @@ class _FakeDriver(base_driver.BaseDriver):
   ) -> data_types.ExecutionDecision:
     input_artifacts = channel_utils.unwrap_channel_dict(input_dict)
     output_artifacts = channel_utils.unwrap_channel_dict(output_dict)
-    tf.io.gfile.makedirs(pipeline_info.pipeline_root)
-    artifact_utils.get_single_instance(
-        output_artifacts['output']).uri = os.path.join(
-            pipeline_info.pipeline_root, 'output')
+
+    # Generating missing output artifact URIs
+    for name, artifacts in output_artifacts.items():
+      for idx, artifact in enumerate(artifacts):
+        if not artifact.uri:
+          suffix = str(idx + 1) if idx > 0 else ''
+          artifact.uri = os.path.join(
+              pipeline_info.pipeline_root, 'artifacts', name + suffix, 'data',
+          )
+          tf.io.gfile.makedirs(os.path.dirname(artifact.uri))
+
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
                                         exec_properties, 123, False)
 
@@ -70,8 +85,8 @@ class _FakeExecutor(base_executor.BaseExecutor):
 class _FakeComponentSpec(types.ComponentSpec):
   """Fake component spec for testing purpose only."""
   PARAMETERS = {}
-  INPUTS = {'input': component_spec.ChannelParameter(type_name='InputPath')}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='OutputPath')}
+  INPUTS = {'input': component_spec.ChannelParameter(type=_InputArtifact)}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_OutputArtifact)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -86,7 +101,7 @@ class _FakeComponent(base_component.BaseComponent):
                output_channel: Optional[types.Channel] = None,
                custom_executor_spec: executor_spec.ExecutorSpec = None):
     output_channel = output_channel or types.Channel(
-        type_name='OutputPath', artifacts=[types.Artifact('OutputPath')])
+        type=_OutputArtifact, artifacts=[_OutputArtifact()])
     spec = _FakeComponentSpec(input=input_channel, output=output_channel)
     super(_FakeComponent, self).__init__(
         spec=spec,

@@ -22,6 +22,7 @@ from typing import Text
 import tensorflow as tf
 from tfx.components.transform import component
 from tfx.orchestration import data_types
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -30,10 +31,10 @@ class ComponentTest(tf.test.TestCase):
 
   def setUp(self):
     super(ComponentTest, self).setUp()
-    self.input_data = channel_utils.as_channel([
-        standard_artifacts.Examples(split='train'),
-        standard_artifacts.Examples(split='eval'),
-    ])
+    examples_artifact = standard_artifacts.Examples()
+    examples_artifact.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval'])
+    self.examples = channel_utils.as_channel([examples_artifact])
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
@@ -46,7 +47,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
-        examples=self.input_data,
+        examples=self.examples,
         schema=self.schema,
         module_file=module_file,
     )
@@ -56,7 +57,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructWithParameter(self):
     module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
     transform = component.Transform(
-        examples=self.input_data,
+        examples=self.examples,
         schema=self.schema,
         module_file=module_file,
     )
@@ -67,7 +68,7 @@ class ComponentTest(tf.test.TestCase):
   def testConstructFromPreprocessingFn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     transform = component.Transform(
-        examples=self.input_data,
+        examples=self.examples,
         schema=self.schema,
         preprocessing_fn=preprocessing_fn,
     )
@@ -78,14 +79,14 @@ class ComponentTest(tf.test.TestCase):
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
-          examples=self.input_data,
+          examples=self.examples,
           schema=self.schema,
       )
 
   def testConstructDuplicateUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
-          examples=self.input_data,
+          examples=self.examples,
           schema=self.schema,
           module_file='/path/to/preprocessing.py',
           preprocessing_fn='path.to.my_preprocessing_fn',

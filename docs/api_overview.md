@@ -21,3 +21,7 @@
 
 *   [Client API (REST)](serving/api_rest/)
 *   [Server API (C++)](serving/api_docs/cc/)
+
+## ML Metadata
+
+*   [ML Metadata](ml_metadata/api_docs/python/mlmd)

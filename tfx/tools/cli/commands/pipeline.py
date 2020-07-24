@@ -39,15 +39,21 @@ def pipeline_group() -> None:
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
+    '--pipeline_path',
+    '--pipeline-path',
+    required=True,
+    type=str,
+    help='Path to Python DSL.')
 @click.option(
     '--package_path',
+    '--package-path',
     default=None,
     type=str,
     help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
 )
 @click.option(
     '--build_target_image',
+    '--build-target-image',
     default=None,
     type=str,
     help='Target container image path. The target image will be built by this '
@@ -61,6 +67,7 @@ def pipeline_group() -> None:
 )
 @click.option(
     '--build_base_image',
+    '--build-base-image',
     default=None,
     type=str,
     help='Container image path to be used as the base image. If not specified, '
@@ -68,6 +75,7 @@ def pipeline_group() -> None:
 )
 @click.option(
     '--skaffold_cmd',
+    '--skaffold-cmd',
     default=None,
     type=str,
     help='Skaffold program command.')
@@ -78,6 +86,7 @@ def pipeline_group() -> None:
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -113,13 +122,24 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_path', required=True, type=str, help='Path to Python DSL file')
+    '--pipeline_path',
+    '--pipeline-path',
+    required=True,
+    type=str,
+    help='Path to Python DSL file')
 @click.option(
     '--package_path',
+    '--package-path',
     type=str,
     default=None,
     help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
 )
+@click.option(
+    '--skaffold_cmd',
+    '--skaffold-cmd',
+    default=None,
+    type=str,
+    help='Skaffold program command.')
 @click.option(
     '--endpoint',
     default=None,
@@ -127,6 +147,7 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -137,13 +158,15 @@ def create_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     type=str,
     help='Kubernetes namespace to connect to the KFP API.')
 def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
-                    package_path: Text, endpoint: Text, iap_client_id: Text,
+                    package_path: Text, skaffold_cmd: Text,
+                    endpoint: Text, iap_client_id: Text,
                     namespace: Text) -> None:
   """Command definition to update a pipeline."""
   click.echo('Updating pipeline')
   ctx.flags_dict[labels.ENGINE_FLAG] = engine
   ctx.flags_dict[labels.PIPELINE_DSL_PATH] = pipeline_path
   ctx.flags_dict[labels.PIPELINE_PACKAGE_PATH] = package_path
+  ctx.flags_dict[labels.SKAFFOLD_CMD] = skaffold_cmd
   ctx.flags_dict[labels.ENDPOINT] = endpoint
   ctx.flags_dict[labels.IAP_CLIENT_ID] = iap_client_id
   ctx.flags_dict[labels.NAMESPACE] = namespace
@@ -155,7 +178,11 @@ def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 @click.option(
     '--endpoint',
     default=None,
@@ -163,6 +190,7 @@ def update_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -196,6 +224,7 @@ def delete_pipeline(ctx: Context, engine: Text, pipeline_name: Text,
     help='Endpoint of the KFP API service to connect.')
 @click.option(
     '--iap_client_id',
+    '--iap-client-id',
     default=None,
     type=str,
     help='Client ID for IAP protected endpoint.')
@@ -221,9 +250,14 @@ def list_pipelines(ctx: Context, engine: Text, endpoint: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_path', required=True, type=str, help='Path to Python DSL.')
+    '--pipeline_path',
+    '--pipeline-path',
+    required=True,
+    type=str,
+    help='Path to Python DSL.')
 @click.option(
     '--package_path',
+    '--package-path',
     default=None,
     type=str,
     help='Path to the pipeline output workflow file. When unset, it will try to find the workflow file, "<pipeline_name>.tar.gz" in the current directory.'
@@ -243,7 +277,11 @@ def compile_pipeline(ctx: Context, engine: Text, pipeline_path: Text,
 @click.option(
     '--engine', default='auto', type=str, help='Orchestrator for pipelines')
 @click.option(
-    '--pipeline_name', required=True, type=str, help='Name of the pipeline')
+    '--pipeline_name',
+    '--pipeline-name',
+    required=True,
+    type=str,
+    help='Name of the pipeline')
 def get_schema(ctx: Context, engine: Text, pipeline_name: Text) -> None:
   """Command definition to infer latest schema."""
   click.echo('Getting latest schema.')

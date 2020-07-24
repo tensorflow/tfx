@@ -23,13 +23,12 @@ import json
 import os
 import sys
 import tarfile
-import tempfile
+import unittest
 import mock
 import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import kubeflow_handler
-from tfx.utils import io_utils
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -55,6 +54,12 @@ def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
   return 0
 
 
+class _MockDefaultVersion(object):
+
+  def __init__(self, _id):
+    self.id = _id
+
+
 class _MockUploadResponse(object):
   """Mock upload response object."""
 
@@ -64,6 +69,7 @@ class _MockUploadResponse(object):
     self.namespace = config['namespace']
     self.id = config['id']
     self.name = config['name']
+    self.default_version = _MockDefaultVersion(config['pipeline_version_id'])
 
 
 class _MockClientClass(object):
@@ -75,18 +81,16 @@ class _MockClientClass(object):
         'client_id': client_id,
         'namespace': namespace,
         'id': 'fake_pipeline_id',
+        'pipeline_version_id': 'fake_pipeline_version_id',
         'name': 'fake_pipeline_name'
     }  # pylint: disable=invalid-name, unused-variable
-    self._output_dir = os.path.join(tempfile.gettempdir(), 'output_dir')
     self._pipelines_api = _MockPipelineApi()
     self._experiment_api = _MockExperimentApi()
     self._run_api = _MockRunApi()
+    self.pipeline_uploads = _MockPipielineUploadApi(
+        self.config['pipeline_version_id'])
 
   def upload_pipeline(self, pipeline_package_path, pipeline_name):  # pylint: disable=invalid-name, unused-argument
-    io_utils.copy_file(
-        pipeline_package_path,
-        os.path.join(self._output_dir, os.path.basename(pipeline_package_path)),
-        overwrite=True)
     return _MockUploadResponse(self.config)
 
   def create_experiment(self, name):
@@ -95,7 +99,12 @@ class _MockClientClass(object):
   def get_experiment(self, experiment_id=None, experiment_name=None):  # pylint: disable=unused-argument
     return self._experiment_api.get_experiment(experiment_id)
 
-  def run_pipeline(self, experiment_id, job_name, pipeline_id=None):  # pylint: disable=unused-argument
+  def run_pipeline(self,
+                   experiment_id,
+                   job_name,
+                   pipeline_id=None,
+                   version_id=None):
+    del experiment_id, job_name, pipeline_id, version_id
     return self._pipelines_api.run_pipeline()
 
   def list_pipelines(self):
@@ -106,6 +115,9 @@ class _MockClientClass(object):
 
   def get_run(self, run_id):
     return self._run_api.get_run(run_id)
+
+  def _get_url_prefix(self):
+    return 'http://' + self.config['host']
 
 
 class _MockPipelineApi(object):
@@ -121,6 +133,16 @@ class _MockPipelineApi(object):
 
   def run_pipeline(self):
     return _MockRunResponse('run_id', 'Running', datetime.datetime.now())
+
+
+class _MockPipielineUploadApi(object):
+
+  def __init__(self, _id):
+    self.id = _id
+
+  def upload_pipeline_version(self, uploadfile, name, pipelineid):
+    del uploadfile, name, pipelineid
+    return _MockDefaultVersion(self.id)
 
 
 class _MockExperimentResponse(object):
@@ -173,6 +195,19 @@ class _MockRunApi(object):
     return _Runs([run_1, run_2])
 
 
+def _check_kfp_environment() -> bool:
+  required_environments = [
+      'KFP_E2E_BASE_CONTAINER_IMAGE', 'KFP_E2E_SRC', 'KFP_E2E_GCP_PROJECT_ID',
+      'KFP_E2E_GCP_REGION', 'KFP_E2E_BUCKET_NAME', 'KFP_E2E_TEST_DATA_ROOT'
+  ]
+  for name in required_environments:
+    if os.environ.get(name) is None:
+      return False
+  return True
+
+
+@unittest.skipUnless(_check_kfp_environment(),
+                     'Required environment variables not set')
 class KubeflowHandlerTest(tf.test.TestCase):
 
   def setUp(self):
@@ -209,7 +244,6 @@ class KubeflowHandlerTest(tf.test.TestCase):
     os.environ['HOME'] = self._original_home_value
     os.environ['KUBEFLOW_HOME'] = self._original_kubeflow_home_value
 
-  # TODO(b/140954873): Change the following test after Kubeflow e2e test.
   @mock.patch('kfp.Client', _MockClientClass)
   def testCheckPipelinePackagePathDefaultPath(self):
     flags_dict = {
@@ -313,34 +347,23 @@ class KubeflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_kubeflow_1.py')
-    flags_dict_1 = {
+    pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+                                 'test_pipeline_kubeflow_1.py')
+    flags_dict = {
         labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: pipeline_path_1,
+        labels.PIPELINE_DSL_PATH: pipeline_path,
         labels.ENDPOINT: self.endpoint,
         labels.IAP_CLIENT_ID: self.iap_client_id,
         labels.NAMESPACE: self.namespace,
         labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
     }
-    handler = kubeflow_handler.KubeflowHandler(flags_dict_1)
+    handler = kubeflow_handler.KubeflowHandler(flags_dict)
     handler.create_pipeline()
+    handler_pipeline_path = os.path.join(
+        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME])
+    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
 
     # Update test_pipeline and run update_pipeline
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_kubeflow_2.py')
-    flags_dict_2 = {
-        labels.ENGINE_FLAG: self.engine,
-        labels.PIPELINE_DSL_PATH: pipeline_path_2,
-        labels.ENDPOINT: self.endpoint,
-        labels.IAP_CLIENT_ID: self.iap_client_id,
-        labels.NAMESPACE: self.namespace,
-        labels.PIPELINE_PACKAGE_PATH: self.pipeline_package_path
-    }
-    handler = kubeflow_handler.KubeflowHandler(flags_dict_2)
-    handler_pipeline_path = os.path.join(
-        handler._handler_home_dir, self.pipeline_args[labels.PIPELINE_NAME], '')
-    self.assertTrue(tf.io.gfile.exists(handler_pipeline_path))
     handler.update_pipeline()
     self.assertTrue(
         tf.io.gfile.exists(
@@ -464,7 +487,7 @@ class KubeflowHandlerTest(tf.test.TestCase):
 
     # Successful pipeline run.
     # Create fake schema in pipeline root.
-    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'output', '3')
+    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'schema', '3')
     tf.io.gfile.makedirs(schema_path)
     with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
       f.write('SCHEMA')

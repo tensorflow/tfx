@@ -19,25 +19,21 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf
 
-from tfx import types
-from tfx.components.example_gen import base_example_gen_executor
-from tfx.components.example_gen.utils import dict_to_example
-from tfx.types import artifact_utils
+from tfx.components.example_gen import utils
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _AvroToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read Avro files and transform to TF examples.
 
@@ -45,26 +41,24 @@ def _AvroToExample(  # pylint: disable=invalid-name
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
-      - input_base: input dir that contains Avro data.
     exec_properties: A dict of execution properties.
+      - input_base: input dir that contains Avro data.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
   Returns:
     PCollection of TF examples.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict['input_base'])
+  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   avro_pattern = os.path.join(input_base_uri, split_pattern)
-  absl.logging.info(
-      'Processing input avro data {} to TFExample.'.format(avro_pattern))
+  logging.info('Processing input avro data %s to TFExample.', avro_pattern)
 
   return (pipeline
           | 'ReadFromAvro' >> beam.io.ReadFromAvro(avro_pattern)
-          | 'ToTFExample' >> beam.Map(dict_to_example))
+          | 'ToTFExample' >> beam.Map(utils.dict_to_example))
 
 
-class Executor(base_example_gen_executor.BaseExampleGenExecutor):
+class Executor(BaseExampleGenExecutor):
   """TFX example gen executor for processing avro format.
 
   Data type conversion:

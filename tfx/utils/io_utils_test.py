@@ -60,14 +60,24 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertEqual(7, f.tell())
 
   def testCopyDir(self):
-    old_path = os.path.join(self._base_dir, 'old', 'path')
-    new_path = os.path.join(self._base_dir, 'new', 'path')
-    io_utils.write_string_file(old_path, 'testing')
-    io_utils.copy_dir(os.path.dirname(old_path), os.path.dirname(new_path))
-    self.assertTrue(file_io.file_exists(new_path))
-    f = file_io.FileIO(new_path, mode='r')
-    self.assertEqual('testing', f.read())
-    self.assertEqual(7, f.tell())
+    old_path = os.path.join(self._base_dir, 'old')
+    old_path_file1 = os.path.join(old_path, 'file1')
+    old_path_file2 = os.path.join(old_path, 'dir', 'dir2', 'file2')
+    new_path = os.path.join(self._base_dir, 'new')
+    new_path_file1 = os.path.join(new_path, 'file1')
+    new_path_file2 = os.path.join(new_path, 'dir', 'dir2', 'file2')
+
+    io_utils.write_string_file(old_path_file1, 'testing')
+    io_utils.write_string_file(old_path_file2, 'testing2')
+    io_utils.copy_dir(old_path, new_path)
+
+    self.assertTrue(file_io.file_exists(new_path_file1))
+    f = file_io.FileIO(new_path_file1, mode='r')
+    self.assertEqual('testing', f.readline())
+
+    self.assertTrue(file_io.file_exists(new_path_file2))
+    f = file_io.FileIO(new_path_file2, mode='r')
+    self.assertEqual('testing2', f.readline())
 
   def testGetOnlyFileInDir(self):
     file_path = os.path.join(self._base_dir, 'file', 'path')
@@ -91,7 +101,7 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertFalse(tf.io.gfile.exists(file_path))
 
   def testAllFilesPattern(self):
-    self.assertEqual('model*', io_utils.all_files_pattern('model'))
+    self.assertEqual('model/*', io_utils.all_files_pattern('model'))
 
   def testLoadCsvColumnNames(self):
     source_data_dir = os.path.join(os.path.dirname(__file__), 'testdata')
@@ -111,6 +121,13 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertEqual(
         'split:split,num_files:2,total_bytes:15,xor_checksum:2,sum_checksum:4',
         fingerprint)
+
+  def testReadWriteString(self):
+    file_path = os.path.join(self._base_dir, 'test_file')
+    content = 'testing read/write'
+    io_utils.write_string_file(file_path, content)
+    read_content = io_utils.read_string_file(file_path)
+    self.assertEqual(content, read_content)
 
 
 if __name__ == '__main__':

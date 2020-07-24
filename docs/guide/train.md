@@ -7,12 +7,29 @@ aware of, including the choice of a modeling API.
 [ExampleGen](examplegen.md)
 * Emits: Trained model in SavedModel format
 
-Note: TFX supports both TensorFlow 1.x and 2.0. However, Trainer does not
-currently support the Keras Model API. Use
-[estimators](https://www.tensorflow.org/guide/estimator) or
-[create an estimator from a Keras model](https://www.tensorflow.org/tutorials/estimator/keras_model_to_estimator)
-with
-[model_to_estimator](https://www.tensorflow.org/api_docs/python/tf/keras/estimator/model_to_estimator).
+<aside class="note" id="tf2-support"><b>Note:</b> TFX supports nearly all of
+  TensorFlow 2.X, with minor exceptions. TFX also fully supports TensorFlow
+  1.15.
+
+<ul>
+  <li>New TFX pipelines should use TensorFlow 2.x with Keras models via the
+    <a href="https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-generic-trainer.md">Generic Trainer</a>.</li>
+  <li>Full support for TensorFlow 2.X, including improved support for
+    tf.distribute, will be added incrementally in upcoming releases.</li>
+  <li>Previous TFX pipelines can continue to use TensorFlow 1.15. To switch them
+    to TensorFlow 2.X, see the
+    <a href="https://www.tensorflow.org/guide/migrate">TensorFlow migration guide</a>.</li>
+</ul>
+
+To keep up to date on TFX releases, see the
+<a href="https://github.com/tensorflow/tfx/blob/master/ROADMAP.md">TFX OSS
+Roadmap</a>, read
+<a href="https://blog.tensorflow.org/search?label=TFX&max-results=20">the TFX
+blog</a> and subscribe to the
+<a href="https://services.google.com/fb/forms/tensorflow/">TensorFlow
+newsletter</a>.
+
+</aside>
 
 Your model's input layer should consume from the SavedModel that was created by
 a [Transform](transform.md) component, and the layers of the Transform model should

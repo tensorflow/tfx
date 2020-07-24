@@ -1,25 +1,28 @@
 # Chicago Taxi Example
 
-The Chicago Taxi example demonstrates the end-to-end workflow and steps of how
-to analyze, validate and transform data, train a model, analyze and serve it. It
-uses the following [TFX](https://www.tensorflow.org/tfx) components:
+The Chicago Taxi example demonstrates the end-to-end workflow and the steps
+required to analyze, validate, and transform data, train a model, analyze its
+performance, and serve it. This example uses the following
+[TFX](https://www.tensorflow.org/tfx) components:
 
 * [ExampleGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/examplegen.md)
   ingests and splits the input dataset.
 * [StatisticsGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/statsgen.md)
   calculates statistics for the dataset.
 * [SchemaGen](https://github.com/tensorflow/tfx/blob/master/docs/guide/schemagen.md)
-  SchemaGen examines the statistics and creates a data schema.
+  examines the statistics and creates a data schema.
 * [ExampleValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/exampleval.md)
   looks for anomalies and missing values in the dataset.
 * [Transform](https://github.com/tensorflow/tfx/blob/master/docs/guide/transform.md)
   performs feature engineering on the dataset.
 * [Trainer](https://github.com/tensorflow/tfx/blob/master/docs/guide/trainer.md)
   trains the model using TensorFlow [Estimators](https://www.tensorflow.org/guide/estimators)
+  or [Keras](https://www.tensorflow.org/guide/keras).
 * [Evaluator](https://github.com/tensorflow/tfx/blob/master/docs/guide/evaluator.md)
   performs deep analysis of the training results.
-* [ModelValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/modelval.md)
-  ensures that the model is "good enough" to be pushed to production.
+* [InfraValidator](https://github.com/tensorflow/tfx/blob/master/docs/guide/infra_validator.md)
+  checks the model is actually servable from the infrastructure, and prevents
+  bad model from being pushed.
 * [Pusher](https://github.com/tensorflow/tfx/blob/master/docs/guide/pusher.md)
   deploys the model to a serving infrastructure.
 * [BulkInferrer](https://github.com/tensorflow/tfx/blob/master/docs/guide/bulk_inferrer.md)
@@ -92,16 +95,9 @@ export TFX_DIR=~/tfx
 
 Next, install the dependencies required by the Chicago Taxi example:
 
-<!--- bring back once requirements.txt file is available
 <pre class="devsite-terminal devsite-click-to-copy">
-pip install -r requirements.txt
-</pre>
--->
-
-<pre class="devsite-terminal devsite-click-to-copy">
-pip install tensorflow==1.14.0
-pip install apache-airflow==1.10.5
-pip install tfx==0.14.0
+pip install apache-airflow==1.10.9
+pip install tfx==0.21.0
 </pre>
 
 Next, initialize Airflow
@@ -227,6 +223,24 @@ as above local example with local directory changing to `gs://YOUR_BUCKET`.
 
 For more information, see [TensorFlow Serving](https://www.tensorflow.org/serving).
 
+# Chicago Taxi Beam Orchestrator Example
+
+Instead of using Airflow as orchestrator, [beam example](https://github.com/tensorflow/tfx/blob/r0.21/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_beam.py)
+use [Beam as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs/guide/beam_orchestrator.md).
+
+To run the example, install tfx in the virtualenv, and copy data
+and user module file to $TAXI_DIR as above [instruction](#copy-the-pipeline-definition-to-airflows-dag-directory).
+Then simply run `python taxi_pipeline_beam.py` to execute the pipeline.
+
+# Chicago Taxi Kubeflow Orchestrator Example
+
+Use [Kubeflow as orchestrator](https://github.com/tensorflow/tfx/blob/r0.21/docs/guide/kubeflow.md), check [here](https://github.com/kubeflow/pipelines/tree/master/samples/core/tfx-oss) for details.
+
+# Chicago Taxi Native Keras Example (tfx 0.21.1)
+
+Instead of estimator, this example uses native Keras in user module file
+`taxi_utils_native_keras.py`.
+
 # Chicago Taxi Flink Example
 
 This section requires the [local prerequisites](#local_prerequisites) and adds a
@@ -248,8 +262,9 @@ This will start a local Beam Job Server.
 The Apache Flink UI can be viewed at http://localhost:8081.
 
 To run tfx e2e on Flink, open a new terminal and activate another instance of
-same `virtualenv`. Follow above instructions of Chicago Taxi Example with
-'taxi_pipeline_simple' replaced by 'taxi_pipeline_portable_beam'.
+same `virtualenv`. Follow the setup for [beam orchestrator example](#chicago-taxi-beam-orchestrator-example),
+and then run `python taxi_pipeline_portable_beam.py` to execute the pipeline
+with Flink.
 
 # Chicago Taxi Spark Example
 
@@ -274,8 +289,9 @@ http://localhost:4040 for the Spark application UI (while a job is running).
 
 
 To run tfx e2e on Spark, open a new terminal and activate another instance of
-same `virtualenv`. Follow above instructions of Chicago Taxi Example with
-'taxi_pipeline_simple' replaced by 'taxi_pipeline_portable_beam'.
+same `virtualenv`. Follow the setup for [beam orchestrator example](#chicago-taxi-beam-orchestrator-example),
+and then run `python taxi_pipeline_portable_beam.py` to execute the pipeline
+with Spark.
 
 # Learn more
 

@@ -20,23 +20,21 @@ from __future__ import print_function
 
 import abc
 import json
-import multiprocessing
 import os
-import sys
 from typing import Any, Dict, List, Optional, Text
 
 import absl
 import apache_beam as beam
 from apache_beam.options.pipeline_options import DirectOptions
 from apache_beam.options.pipeline_options import PipelineOptions
-from apache_beam.portability import python_urns
-from apache_beam.portability.api import beam_runner_api_pb2
+from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
 
 from tfx import types
 from tfx.types import artifact_utils
+from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
 
 
@@ -92,36 +90,35 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     if self._beam_pipeline_args:
       self._beam_pipeline_args = dependency_utils.make_beam_dependency_flags(
           self._beam_pipeline_args)
+      executor_class_path = '%s.%s' % (self.__class__.__module__,
+                                       self.__class__.__name__)
+      # TODO(zhitaoli): Rethink how we can add labels and only normalize them
+      # if the job is submitted against GCP.
+      with telemetry_utils.scoped_labels(
+          {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+        self._beam_pipeline_args.extend(telemetry_utils.make_beam_labels_args())
 
   # TODO(b/126182711): Look into how to support fusion of multiple executors
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
     """Makes beam pipeline."""
-    # TODO(b/142684737): refactor when beam support multi-processing by args.
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
-    parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
+    if pipeline_options.view_as(StandardOptions).runner:
+      return beam.Pipeline(argv=self._beam_pipeline_args)
 
-    if parallelism == 0:
-      try:
-        parallelism = multiprocessing.cpu_count()
-      except NotImplementedError as e:
-        absl.logging.warning('Cannot get cpu count: %s' % e)
-        parallelism = 1
-      pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
+    # TODO(b/159468583): move this warning to Beam.
+    direct_running_mode = pipeline_options.view_as(
+        DirectOptions).direct_running_mode
+    direct_num_workers = pipeline_options.view_as(
+        DirectOptions).direct_num_workers
+    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
+      absl.logging.warning(
+          'If direct_num_workers is not equal to 1, direct_running_mode should '
+          'be `multi_processing` or `multi_threading` instead of `in_memory` '
+          'in order for it to have the desired worker parallelism effect.')
 
-    absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                      parallelism)
-
-    if parallelism > 1:
-      return beam.Pipeline(
-          options=pipeline_options,
-          runner=fn_api_runner.FnApiRunner(
-              default_environment=beam_runner_api_pb2.Environment(
-                  urn=python_urns.SUBPROCESS_SDK,
-                  payload=b'%s -m apache_beam.runners.worker.sdk_worker_main' %
-                  (sys.executable or sys.argv[0]).encode('ascii'))))
-
-    return beam.Pipeline(argv=self._beam_pipeline_args)
+    return beam.Pipeline(
+        options=pipeline_options, runner=fn_api_runner.FnApiRunner())
 
   def _get_tmp_dir(self) -> Text:
     """Get the temporary directory path."""

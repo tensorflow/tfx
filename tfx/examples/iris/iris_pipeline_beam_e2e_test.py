@@ -58,7 +58,6 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('CsvExampleGen')
     self.assertExecutedOnce('Evaluator')
     self.assertExecutedOnce('ExampleValidator')
-    self.assertExecutedOnce('ModelValidator')
     self.assertExecutedOnce('Pusher')
     self.assertExecutedOnce('SchemaGen')
     self.assertExecutedOnce('StatisticsGen')
@@ -72,7 +71,8 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
             module_file=self._module_file,
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
+            metadata_path=self._metadata_path,
+            beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -82,26 +82,7 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(8, execution_count)
-
-    self.assertPipelineExecution()
-
-    # Run pipeline again.
-    BeamDagRunner().run(
-        iris_pipeline_beam._create_pipeline(
-            pipeline_name=self._pipeline_name,
-            data_root=self._data_root,
-            module_file=self._module_file,
-            serving_model_dir=self._serving_model_dir,
-            pipeline_root=self._pipeline_root,
-            metadata_path=self._metadata_path))
-
-    # Assert cache execution.
-    with metadata.Metadata(metadata_config) as m:
-      # Artifact count is unchanged.
-      self.assertEqual(artifact_count, len(m.store.get_artifacts()))
-      # 9 more cached executions.
-      self.assertEqual(16, len(m.store.get_executions()))
+      self.assertEqual(8, execution_count)  # 7 components + 1 resolver
 
     self.assertPipelineExecution()
 

@@ -20,14 +20,17 @@ from __future__ import print_function
 
 import datetime
 import os
-from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.components.example_validator.component import ExampleValidator
-from tfx.components.schema_gen.component import SchemaGen
-from tfx.components.statistics_gen.component import StatisticsGen
+
+# TODO(b/158143615): importing airflow after kerastuner causes issue.
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner  # pylint: disable=g-bad-import-order
+
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
-from tfx.utils.dsl_utils import csv_input
+from tfx.tools.cli.e2e import test_utils
+
+
+_pipeline_name = 'chicago_taxi_simple'
 
 # This example assumes that the taxi data is stored in ~/taxi/data and the
 # taxi utility function is in ~/taxi.  Feel free to customize this as needed.
@@ -39,7 +42,8 @@ _data_root = os.path.join(_taxi_root, 'data/simple')
 # these files anywhere on your local filesystem.
 _tfx_root = os.path.join(os.environ['HOME'], 'tfx')
 _pipeline_root = os.path.join(_tfx_root, 'pipelines')
-_metadata_db_root = os.path.join(_tfx_root, 'metadata')
+_metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
+                              'metadata.db')
 _log_root = os.path.join(_tfx_root, 'logs')
 
 # Airflow-specific configs; these will be passed directly to airflow
@@ -51,31 +55,15 @@ _airflow_config = {
 
 def _create_pipeline():
   """Implements the chicago taxi pipeline with TFX."""
-  examples = csv_input(_data_root)
-
-  # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = CsvExampleGen(input=examples)
-
-  # Computes statistics over data for visualization and example validation.
-  statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
-
-  # Generates schema based on statistics files.
-  infer_schema = SchemaGen(statistics=statistics_gen.outputs['statistics'])
-
-  # Performs anomaly detection based on statistics and data schema.
-  validate_stats = ExampleValidator(
-      statistics=statistics_gen.outputs['statistics'],
-      schema=infer_schema.outputs['schema'])
-
   return pipeline.Pipeline(
-      pipeline_name='chicago_taxi_simple',
+      pipeline_name=_pipeline_name,
       pipeline_root=_pipeline_root,
-      components=[
-          example_gen, statistics_gen, infer_schema, validate_stats
-      ],
+      components=test_utils.create_e2e_components(_data_root),
       enable_cache=True,
-      metadata_db_root=_metadata_db_root,
+      metadata_connection_config=metadata.sqlite_metadata_connection_config(
+          _metadata_path),
   )
+
 
 # Airflow checks 'DAG' keyword for finding the dag.
 airflow_pipeline = AirflowDagRunner(AirflowPipelineConfig(_airflow_config)).run(

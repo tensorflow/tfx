@@ -37,7 +37,7 @@ class DriverTest(tf.test.TestCase):
     model_blessing.set_int_custom_property('current_model_id', aid)
     model_blessing.set_string_custom_property('component_id', component_id)
     model_blessing.set_int_custom_property('blessed', is_blessed)
-    return model_blessing.artifact
+    return model_blessing.mlmd_artifact
 
   def testFetchLastBlessedModel(self):
     # Mock metadata.
@@ -58,12 +58,26 @@ class DriverTest(tf.test.TestCase):
         for aid in [4, 3, 2, 1]
     ]
 
-    # Mock blessing artifact produced by another component and another pipeline.
-    artifacts.extend([
-        self._create_mock_artifact(True, 5, pipeline_name,
-                                   'different_component'),
-        self._create_mock_artifact(True, 6, 'different_pipeline', component_id)
-    ])
+    # Mock blessing artifact produced by another component.
+    artifacts.append(
+        self._create_mock_artifact(
+            aid=5,
+            is_blessed=True,
+            pipeline_name=pipeline_name,
+            component_id='different_component'))
+
+    mock_metadata.get_artifacts_by_type.return_value = artifacts
+    self.assertEqual(('uri-3', 3),
+                     model_validator_driver._fetch_last_blessed_model(
+                         pipeline_name, component_id))
+
+    # Mock blessing artifact produced by another pipeline.
+    artifacts.append(
+        self._create_mock_artifact(
+            aid=6,
+            is_blessed=True,
+            pipeline_name='different_pipeline',
+            component_id=component_id))
 
     mock_metadata.get_artifacts_by_type.return_value = artifacts
     self.assertEqual(('uri-3', 3),

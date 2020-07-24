@@ -34,7 +34,7 @@ class ChannelTest(tf.test.TestCase):
     with mock.patch.object(tf_logging, 'warning'):
       warn_mock = mock.MagicMock()
       tf_logging.warning = warn_mock
-      channel.Channel(type_name='ExamplesPath')
+      channel.Channel(type=standard_artifacts.Examples)
       warn_mock.assert_called_once()
       self.assertIn(
           'tfx.utils.types.Channel has been renamed to tfx.types.Channel',

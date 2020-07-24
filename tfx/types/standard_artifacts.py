@@ -14,62 +14,194 @@
 # limitations under the License.
 """A set of standard TFX Artifact types.
 
-Note: the artifact definitions here are expected to change. We expect to add
-support for defining artifact-specific properties and to reconcile the TYPE_NAME
-strings to match their class names in an upcoming release.
+Note: the artifact definitions here are expected to change.
 """
 
-from tfx.types import artifact
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import decimal
+import math
+from typing import Text
+
+import absl
+
+from tfx.types.artifact import Artifact
+from tfx.types.artifact import Property
+from tfx.types.artifact import PropertyType
+from tfx.types.artifact import ValueArtifact
+
+# Span for an artifact.
+SPAN_PROPERTY = Property(type=PropertyType.INT)
+# Comma separated of splits for an artifact. Empty string means artifact
+# has no split.
+SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
+# Value for a string-typed artifact.
+STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
 
 
-class Examples(artifact.Artifact):
-  TYPE_NAME = 'ExamplesPath'
+class Examples(Artifact):
+  TYPE_NAME = 'Examples'
+  PROPERTIES = {
+      'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
+  }
 
 
-class ExampleAnomalies(artifact.Artifact):
-  TYPE_NAME = 'ExampleValidationPath'
+class ExampleAnomalies(Artifact):
+  TYPE_NAME = 'ExampleAnomalies'
+  PROPERTIES = {
+      'span': SPAN_PROPERTY,
+  }
 
 
-class ExampleStatistics(artifact.Artifact):
-  TYPE_NAME = 'ExampleStatisticsPath'
+class ExampleStatistics(Artifact):
+  TYPE_NAME = 'ExampleStatistics'
+  PROPERTIES = {
+      'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
+  }
 
 
-class ExternalArtifact(artifact.Artifact):
-  TYPE_NAME = 'ExternalPath'
+# TODO(b/158334890): deprecate ExternalArtifact.
+class ExternalArtifact(Artifact):
+  TYPE_NAME = 'ExternalArtifact'
 
 
-class InferenceResult(artifact.Artifact):
+class InferenceResult(Artifact):
   TYPE_NAME = 'InferenceResult'
 
 
-class InfraBlessing(artifact.Artifact):
-  TYPE_NAME = 'ModelInfraBlessingPath'
+class InfraBlessing(Artifact):
+  TYPE_NAME = 'InfraBlessing'
 
 
-class Model(artifact.Artifact):
-  TYPE_NAME = 'ModelExportPath'
+class Model(Artifact):
+  TYPE_NAME = 'Model'
 
 
-class ModelBlessing(artifact.Artifact):
-  TYPE_NAME = 'ModelBlessingPath'
+class ModelRun(Artifact):
+  TYPE_NAME = 'ModelRun'
 
 
-class ModelEvaluation(artifact.Artifact):
-  TYPE_NAME = 'ModelEvalPath'
+class ModelBlessing(Artifact):
+  TYPE_NAME = 'ModelBlessing'
 
 
-class PushedModel(artifact.Artifact):
-  TYPE_NAME = 'ModelPushPath'
+class ModelEvaluation(Artifact):
+  TYPE_NAME = 'ModelEvaluation'
 
 
-class Schema(artifact.Artifact):
-  TYPE_NAME = 'SchemaPath'
+class PushedModel(Artifact):
+  TYPE_NAME = 'PushedModel'
 
 
-class TransformGraph(artifact.Artifact):
-  TYPE_NAME = 'TransformPath'
+class Schema(Artifact):
+  TYPE_NAME = 'Schema'
 
 
-# Still WIP and subject to change.
-class HyperParameters(artifact.Artifact):
-  TYPE_NAME = 'StudyBestHParamsPath'
+class Bytes(ValueArtifact):
+  """Artifacts representing raw bytes."""
+  TYPE_NAME = 'Bytes'
+
+  def encode(self, value: bytes):
+    if not isinstance(value, bytes):
+      raise TypeError('Expecting bytes but got value %s of type %s' %
+                      (str(value), type(value)))
+    return value
+
+  def decode(self, serialized_value: bytes):
+    return serialized_value
+
+
+class String(ValueArtifact):
+  """String-typed artifact."""
+  TYPE_NAME = 'String'
+
+  # Note, currently we enforce unicode-encoded string.
+  def encode(self, value: Text) -> bytes:
+    if not isinstance(value, Text):
+      raise TypeError('Expecting Text but got value %s of type %s' %
+                      (str(value), type(value)))
+    return value.encode('utf-8')
+
+  def decode(self, serialized_value: bytes) -> Text:
+    return serialized_value.decode('utf-8')
+
+
+class Integer(ValueArtifact):
+  """Integer-typed artifact."""
+  TYPE_NAME = 'Integer'
+
+  def encode(self, value: int) -> bytes:
+    if not isinstance(value, int):
+      raise TypeError('Expecting int but got value %s of type %s' %
+                      (str(value), type(value)))
+    return str(value).encode('utf-8')
+
+  def decode(self, serialized_value: bytes) -> int:
+    return int(serialized_value)
+
+
+class Float(ValueArtifact):
+  """Float-typed artifact."""
+  TYPE_NAME = 'Float'
+
+  _POSITIVE_INFINITY = float('Inf')
+  _NEGATIVE_INFINITY = float('-Inf')
+
+  _ENCODED_POSITIVE_INFINITY = 'Infinity'
+  _ENCODED_NEGATIVE_INFINITY = '-Infinity'
+  _ENCODED_NAN = 'NaN'
+
+  def encode(self, value: float) -> bytes:
+    if not isinstance(value, float):
+      raise TypeError('Expecting float but got value %s of type %s' %
+                      (str(value), type(value)))
+    if math.isinf(value) or math.isnan(value):
+      absl.logging.warning(
+          '! The number "%s" may be unsupported by non-python components.' %
+          value)
+    str_value = str(value)
+    # Special encoding for infinities and NaN to increase comatibility with
+    # other languages.
+    # Decoding works automatically.
+    if math.isinf(value):
+      if value >= 0:
+        str_value = Float._ENCODED_POSITIVE_INFINITY
+      else:
+        str_value = Float._ENCODED_NEGATIVE_INFINITY
+    if math.isnan(value):
+      str_value = Float._ENCODED_NAN
+
+    return str_value.encode('utf-8')
+
+  def decode(self, serialized_value: bytes) -> float:
+    result = float(serialized_value)
+
+    # Check that the decoded value exactly matches the encoded string.
+    # Note that float() can handle bytes, but Decimal() cannot.
+    serialized_string = serialized_value.decode('utf-8')
+    reserialized_string = str(result)
+    is_exact = (decimal.Decimal(serialized_string) ==
+                decimal.Decimal(reserialized_string))
+    if not is_exact:
+      absl.logging.warning(
+          'The number "%s" has lost precision when converted to float "%s"' %
+          (serialized_value, reserialized_string))
+
+    return result
+
+
+class TransformGraph(Artifact):
+  TYPE_NAME = 'TransformGraph'
+
+
+class HyperParameters(Artifact):
+  TYPE_NAME = 'HyperParameters'
+
+
+# WIP and subject to change.
+class DataView(Artifact):
+  TYPE_NAME = 'DataView'

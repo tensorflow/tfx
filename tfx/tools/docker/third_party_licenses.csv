@@ -1,4 +1,5 @@
 APScheduler,https://raw.githubusercontent.com/agronholm/apscheduler/master/LICENSE.txt,MIT
+astunparse,https://raw.githubusercontent.com/simonpercivall/astunparse/master/LICENSE,PSF
 Click,https://raw.githubusercontent.com/pallets/click/master/LICENSE.rst,3-Clause BSD
 Flask,https://raw.githubusercontent.com/pallets/flask/master/LICENSE,3-Clause BSD
 Jinja2,https://raw.githubusercontent.com/pallets/jinja/master/LICENSE.rst,BSD
@@ -39,6 +40,7 @@ chainermn,https://raw.githubusercontent.com/chainer/chainermn/master/LICENSE,MIT
 chainerrl,https://raw.githubusercontent.com/chainer/chainerrl/master/LICENSE,MIT
 chainerui,https://raw.githubusercontent.com/chainer/chainerui/master/LICENSE,MIT
 chardet,https://raw.githubusercontent.com/chardet/chardet/master/LICENSE,LGPL 2.1
+colorama,https://raw.githubusercontent.com/tartley/colorama/master/LICENSE.txt,BSD-3-clause
 configparser,https://bitbucket.org/ambv/configparser/raw/78998f2ded2e840376adc712337545014fa9b622/README.rst,MIT
 crcmod,https://raw.githubusercontent.com/gsutil-mirrors/crcmod/master/LICENSE,MIT
 cryptography,https://raw.githubusercontent.com/pyca/cryptography/master/LICENSE,Apache or BSD
@@ -47,6 +49,7 @@ cycler,https://raw.githubusercontent.com/matplotlib/cycler/master/LICENSE,MIT
 decorator,https://raw.githubusercontent.com/micheles/decorator/master/LICENSE.txt,2-Clause BSD
 defusedxml,https://raw.githubusercontent.com/tiran/defusedxml/master/LICENSE,PSF
 dill,https://raw.githubusercontent.com/uqfoundation/dill/master/LICENSE,BSD-3-clause
+docker,https://raw.githubusercontent.com/docker/docker-py/master/LICENSE,Apache 2.0
 docopt,https://raw.githubusercontent.com/docopt/docopt/master/LICENSE-MIT,MIT
 docutils,https://raw.githubusercontent.com/docutils-mirror/docutils/master/COPYING.txt,Public Domain
 entrypoints,https://raw.githubusercontent.com/takluyver/entrypoints/master/LICENSE,MIT
@@ -71,12 +74,17 @@ google-auth,https://raw.githubusercontent.com/GoogleCloudPlatform/google-auth-li
 google-auth-httplib2,https://raw.githubusercontent.com/GoogleCloudPlatform/google-auth-library-python-httplib2/master/LICENSE,Apache 2.0
 google-auth-library-python-httplib2,https://raw.githubusercontent.com/GoogleCloudPlatform/google-auth-library-python-httplib2/master/LICENSE,Apache 2.0
 google-auth-oauthlib,https://raw.githubusercontent.com/googleapis/google-auth-library-python-oauthlib/master/LICENSE,Apache 2.0
-google-cloud-bigquery,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-python/master/bigquery/LICENSE,Apache 2.0
+google-cloud-bigquery,https://raw.githubusercontent.com/googleapis/python-bigquery/master/LICENSE,Apache 2.0
 google-cloud-bigtable,https://raw.githubusercontent.com/googleapis/google-cloud-python/master/LICENSE,Apache 2.0
-google-cloud-core,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-python/master/core/LICENSE,Apache 2.0
+google-cloud-core,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-python/master/LICENSE,Apache 2.0
 google-cloud-datastore,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-datastore/master/LICENSE,Apache 2.0
 google-cloud-datastore-v1,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-datastore/master/LICENSE,Apache 2.0
-google-cloud-pubsub,https://raw.githubusercontent.com/GoogleCloudPlatform/google-cloud-python/master/pubsub/LICENSE,Apache 2.0
+google-cloud-dlp,https://raw.githubusercontent.com/googleapis/python-dlp/master/LICENSE,Apache 2.0
+google-cloud-language,https://raw.githubusercontent.com/googleapis/google-cloud-python/master/LICENSE,Apache 2.0
+google-cloud-pubsub,https://raw.githubusercontent.com/googleapis/google-cloud-python/master/LICENSE,Apache 2.0
+google-cloud-spanner,https://raw.githubusercontent.com/googleapis/python-spanner/master/LICENSE,Apache 2.0
+google-cloud-videointelligence,https://raw.githubusercontent.com/googleapis/python-videointelligence/master/LICENSE,Apache 2.0
+google-cloud-vision,https://raw.githubusercontent.com/googleapis/python-vision/master/LICENSE,Apache 2.0
 google-gax,https://raw.githubusercontent.com/googleapis/gax-python/master/LICENSE,Apache 2.0
 google-pasta,https://raw.githubusercontent.com/google/pasta/master/LICENSE,Apache 2.0
 google-resumable-media,https://raw.githubusercontent.com/googleapis/google-resumable-media-python/master/LICENSE,Apache 2.0
@@ -85,6 +93,7 @@ googledatastore,https://raw.githubusercontent.com/GoogleCloudPlatform/google-clo
 greenlet,https://raw.githubusercontent.com/python-greenlet/greenlet/master/LICENSE,MIT
 grpc-google-iam-v1,https://raw.githubusercontent.com/googleapis/googleapis/master/LICENSE,Apache 2.0
 grpcio,https://raw.githubusercontent.com/grpc/grpc/master/LICENSE,Apache 2.0
+grpcio-gcp,https://raw.githubusercontent.com/grpc/grpc/master/LICENSE,Apache 2.0
 gym,https://raw.githubusercontent.com/openai/gym/master/LICENSE.md,MIT
 h5py,https://raw.githubusercontent.com/h5py/h5py/master/licenses/license.txt
 hdfs,https://github.com/mtth/hdfs/blob/master/LICENSE,MIT
@@ -92,7 +101,7 @@ horovod,https://raw.githubusercontent.com/uber/horovod/master/LICENSE,Apache 2.0
 html5lib,https://raw.githubusercontent.com/html5lib/html5lib-python/master/LICENSE,MIT
 httplib2,https://raw.githubusercontent.com/httplib2/httplib2/master/LICENSE,MIT
 ideep4py,https://raw.githubusercontent.com/intel/ideep/master/LICENSE,MIT
-idna,https://raw.githubusercontent.com/kjd/idna/master/LICENSE.rst,BSD-like
+idna,https://raw.githubusercontent.com/kjd/idna/master/LICENSE.md,BSD-like
 importlib-metadata,https://gitlab.com/python-devs/importlib_metadata/raw/master/LICENSE, Apache 2.0
 ipaddress,https://raw.githubusercontent.com/phihag/ipaddress/master/LICENSE,PSF
 ipykernel,https://raw.githubusercontent.com/ipython/ipykernel/master/COPYING.md,3-Clause BSD
@@ -112,6 +121,7 @@ jupyter-http-over-ws,https://raw.githubusercontent.com/googlecolab/jupyter_http_
 jupyter-tensorboard,https://raw.githubusercontent.com/lspvic/jupyter_tensorboard/master/LICENSE,MIT
 jupyterlab,https://raw.githubusercontent.com/jupyterlab/jupyterlab/master/LICENSE,BSD-3-clause
 keras,https://raw.githubusercontent.com/keras-team/keras/master/LICENSE,MIT
+keras-tuner,https://raw.githubusercontent.com/keras-team/keras-tuner/master/LICENSE,Apache 2.0
 kfp-component,https://raw.githubusercontent.com/kubeflow/pipelines/master/LICENSE,Apache 2.0
 kubernetes,https://raw.githubusercontent.com/kubernetes-client/python/master/LICENSE,Apache 2.0
 matplotlib,https://raw.githubusercontent.com/matplotlib/matplotlib/master/LICENSE/LICENSE
@@ -130,6 +140,7 @@ oauth2client,https://raw.githubusercontent.com/google/oauth2client/master/LICENS
 oauthlib,https://raw.githubusercontent.com/oauthlib/oauthlib/master/LICENSE,BSD
 opencv-python,https://raw.githubusercontent.com/skvark/opencv-python/master/LICENSE.txt,MIT
 opt-einsum,https://raw.githubusercontent.com/dgasmith/opt_einsum/master/LICENSE,MIT
+packaging,https://raw.githubusercontent.com/pypa/packaging/master/LICENSE.BSD,BSD
 pandas,https://raw.githubusercontent.com/pandas-dev/pandas/master/LICENSE,3-Clause BSD
 pandocfilters,https://raw.githubusercontent.com/jgm/pandocfilters/master/LICENSE,3-Clause BSD
 parso,https://raw.githubusercontent.com/davidhalter/parso/master/LICENSE.txt,MIT
@@ -149,18 +160,22 @@ pyarrow,https://raw.githubusercontent.com/apache/arrow/master/LICENSE.txt,Apache
 pyasn1,https://raw.githubusercontent.com/etingof/pyasn1/master/LICENSE.rst,BSD
 pyasn1-modules,https://raw.githubusercontent.com/etingof/pyasn1-modules/master/LICENSE.txt,BSD
 pycparser,https://raw.githubusercontent.com/eliben/pycparser/master/LICENSE,BSD-3-Clause
+pycurl,https://raw.githubusercontent.com/pycurl/pycurl/master/COPYING-LGPL,LGPL+MIT
 pydot,https://raw.githubusercontent.com/erocarrera/pydot/master/LICENSE,MIT
 pyglet,https://raw.githubusercontent.com/adamlwgriffiths/Pyglet/master/LICENSE,3-Clause BSD
 pygments,https://bitbucket.org/birkenfeld/pygments-main/raw/7941677dc77d4f2bf0bbd6140ade85a9454b8b80/LICENSE,BSD
+pygobject,https://raw.githubusercontent.com/GNOME/pygobject/mainline/COPYING,LGPL 2.1
 pymongo,https://raw.githubusercontent.com/mher/pymongo/master/LICENSE,Apache 2.0
 pyparsing,https://raw.githubusercontent.com/pyparsing/pyparsing/master/LICENSE,MIT
 pyrsistent,https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENCE.mit,MIT
+python-apt,https://raw.githubusercontent.com/excid3/python-apt/master/COPYING.GPL,GPLv2
 python-dateutil,https://raw.githubusercontent.com/dateutil/dateutil/283a3a3a67245e1d5791e5478ce6ff688f2c348a/LICENSE,"Apache Software License, BSD License (Dual License)"
 python-editor,https://raw.githubusercontent.com/fmoo/python-editor/master/LICENSE,Apache v2
 python-snappy,https://raw.githubusercontent.com/andrix/python-snappy/master/LICENSE,BSD
 pytz,https://raw.githubusercontent.com/newvem/pytz/master/LICENSE.txt,MIT
 pyzmq,https://raw.githubusercontent.com/zeromq/pyzmq/master/COPYING.BSD,LGPL+BSD
 qtconsole,https://raw.githubusercontent.com/jupyter/qtconsole/master/LICENSE,3-Clause BSD
+qtpy,https://raw.githubusercontent.com/spyder-ide/qtpy/master/LICENSE.txt,MIT
 requests,https://raw.githubusercontent.com/requests/requests/master/LICENSE,Apache 2.0
 requests-oauthlib,https://raw.githubusercontent.com/requests/requests-oauthlib/master/LICENSE,BSD
 retrying,https://raw.githubusercontent.com/rholder/retrying/master/LICENSE,Apache 2.0
@@ -177,7 +192,9 @@ sqlalchemy,https://raw.githubusercontent.com/zzzeek/sqlalchemy/master/LICENSE,MI
 statistics,https://raw.githubusercontent.com/digitalemagine/py-statistics/master/LICENSE,PSF v2
 strip-hints,https://github.com/abarker/strip-hints/blob/master/LICENSE.txt,MIT
 subprocess32,https://raw.githubusercontent.com/google/python-subprocess32/master/LICENSE,Python Software Foundation License
+tabulate,https://raw.githubusercontent.com/astanin/python-tabulate/master/LICENSE,MIT
 tensorboard,https://raw.githubusercontent.com/tensorflow/tensorboard/master/LICENSE,Apache 2.0
+tensorboard-plugin-wit,https://raw.githubusercontent.com/tensorflow/tensorboard/master/LICENSE,Apache 2.0
 tensorflow,https://raw.githubusercontent.com/tensorflow/tensorflow/master/LICENSE,Apache 2.0
 tensorflow-data-validation,https://raw.githubusercontent.com/tensorflow/data-validation/master/LICENSE,Apache 2.0
 tensorflow-estimator,https://raw.githubusercontent.com/tensorflow/estimator/master/LICENSE,Apache 2.0
@@ -189,20 +206,25 @@ tensorflow-tensorboard,https://raw.githubusercontent.com/tensorflow/tensorboard/
 tensorflow-transform,https://raw.githubusercontent.com/tensorflow/transform/master/LICENSE,Apache 2.0
 termcolor,https://raw.githubusercontent.com/hfeeki/termcolor/master/COPYING.txt,MIT
 terminado,https://raw.githubusercontent.com/jupyter/terminado/master/LICENSE,BSD
+terminaltables,https://raw.githubusercontent.com/Robpol86/terminaltables/master/LICENSE,MIT
 testpath,https://raw.githubusercontent.com/jupyter/testpath/master/LICENSE,MIT
 tfx,https://raw.githubusercontent.com/tensorflow/tfx/master/LICENSE,Apache 2.0
 tfx-bsl,https://raw.githubusercontent.com/tensorflow/tfx-bsl/master/LICENSE,Apache 2.0
 tfx-nightly,https://raw.githubusercontent.com/tensorflow/tfx/master/LICENSE,Apache 2.0
+threadpoolctl,https://raw.githubusercontent.com/joblib/threadpoolctl/master/LICENSE,BSD-3-clause
 torch,https://raw.githubusercontent.com/pytorch/pytorch/master/LICENSE,BSD-3-clause
 torchvision,https://raw.githubusercontent.com/pytorch/vision/master/LICENSE,BSD-3-clause
 tornado,https://raw.githubusercontent.com/tornadoweb/tornado/stable/LICENSE,Apache Software License 2.0
+tqdm,https://raw.githubusercontent.com/tqdm/tqdm/master/LICENCE,MIT
 trainer,https://raw.githubusercontent.com/kubeflow/pipelines/master/LICENSE,Apache 2.0
 traitlets,https://raw.githubusercontent.com/ipython/traitlets/master/COPYING.md,BSD
 typing,https://raw.githubusercontent.com/python/typing/master/LICENSE,PSF
+typing-extensions,https://raw.githubusercontent.com/python/typing/master/typing_extensions/LICENSE,PSF
 tzlocal,https://raw.githubusercontent.com/regebro/tzlocal/master/LICENSE.txt,MIT
 uritemplate,https://github.com/python-hyper/uritemplate/blob/master/LICENSE,BSD 3-Clause License or Apache 2.0
 urllib3,https://raw.githubusercontent.com/urllib3/urllib3/master/LICENSE.txt,MIT
-wcwidth,https://raw.githubusercontent.com/jquast/wcwidth/master/LICENSE.txt,MIT
+virtualenv,https://raw.githubusercontent.com/pypa/virtualenv/master/LICENSE.txt,MIT
+wcwidth,https://raw.githubusercontent.com/jquast/wcwidth/master/LICENSE,MIT
 webencodings,https://raw.githubusercontent.com/gsnedders/python-webencodings/master/LICENSE,BSD
 websocket-client,https://raw.githubusercontent.com/websocket-client/websocket-client/master/LICENSE,LGPL
 widgetsnbextension,https://raw.githubusercontent.com/jupyter-widgets/ipywidgets/master/widgetsnbextension/LICENSE,BSD

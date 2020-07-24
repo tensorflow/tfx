@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Text
+from typing import Optional, Text
 
 import click
 import yaml
@@ -49,9 +49,9 @@ class BuildSpec(object):
 
   @staticmethod
   def load_default(filename: Text = labels.BUILD_SPEC_FILENAME,
-                   target_image: Text = None,
-                   build_context: Text = labels.BUILD_CONTEXT,
-                   dockerfile_name: Text = labels.DOCKERFILE_NAME):
+                   target_image: Optional[Text] = None,
+                   build_context: Optional[Text] = None,
+                   dockerfile_name: Optional[Text] = None):
     """Generate a default build spec yaml.
 
     Args:
@@ -77,6 +77,10 @@ class BuildSpec(object):
     target_image_with_no_tag = target_image_fields[0]
     target_image_tag = 'latest' if len(
         target_image_fields) <= 1 else target_image_fields[1]
+
+    build_context = build_context or labels.BUILD_CONTEXT
+    dockerfile_name = dockerfile_name or labels.DOCKERFILE_NAME
+
     build_spec = {
         'apiVersion': labels.SKAFFOLD_API_VERSION,
         'kind': 'Config',

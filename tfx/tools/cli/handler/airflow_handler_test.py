@@ -27,6 +27,10 @@ import tensorflow as tf
 
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
+from tfx.utils import io_utils
+
+_testdata_dir = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'testdata')
 
 
 def _MockSubprocess(cmd, env):  # pylint: disable=invalid-name, unused-argument
@@ -57,9 +61,8 @@ def _MockSubprocess3(cmd, env):  # pylint: disable=invalid-name, unused-argument
 
 
 def _MockSubprocess4(cmd):  # pylint: disable=invalid-name, unused-argument
-  list_dags_output_path = os.path.join(
-      os.path.dirname(os.path.dirname(__file__)), 'testdata',
-      'test_airflow_list_dags_output.txt')
+  list_dags_output_path = os.path.join(_testdata_dir,
+                                       'test_airflow_list_dags_output.txt')
   with open(list_dags_output_path, 'rb') as f:
     list_dags_output = f.read()
   return list_dags_output
@@ -81,9 +84,7 @@ class AirflowHandlerTest(tf.test.TestCase):
 
     # Flags for handler.
     self.engine = 'airflow'
-    self.chicago_taxi_pipeline_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
-    self.pipeline_path = os.path.join(self.chicago_taxi_pipeline_dir,
+    self.pipeline_path = os.path.join(_testdata_dir,
                                       'test_pipeline_airflow_1.py')
     self.pipeline_root = os.path.join(self._home, 'tfx', 'pipelines')
     self.pipeline_name = 'chicago_taxi_simple'
@@ -139,16 +140,15 @@ class AirflowHandlerTest(tf.test.TestCase):
   @mock.patch('subprocess.call', _MockSubprocess)
   def testUpdatePipeline(self):
     # First create pipeline with test_pipeline.py
-    pipeline_path_1 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_airflow_1.py')
+    pipeline_path_1 = os.path.join(_testdata_dir, 'test_pipeline_airflow_1.py')
     flags_dict_1 = {labels.ENGINE_FLAG: self.engine,
                     labels.PIPELINE_DSL_PATH: pipeline_path_1}
     handler = airflow_handler.AirflowHandler(flags_dict_1)
     handler.create_pipeline()
 
     # Update test_pipeline and run update_pipeline
-    pipeline_path_2 = os.path.join(self.chicago_taxi_pipeline_dir,
-                                   'test_pipeline_airflow_2.py')
+    pipeline_path_2 = os.path.join(self._tmp_dir, 'test_pipeline_airflow_2.py')
+    io_utils.copy_file(pipeline_path_1, pipeline_path_2)
     flags_dict_2 = {labels.ENGINE_FLAG: self.engine,
                     labels.PIPELINE_DSL_PATH: pipeline_path_2}
     handler = airflow_handler.AirflowHandler(flags_dict_2)
@@ -312,7 +312,7 @@ class AirflowHandlerTest(tf.test.TestCase):
     }
     handler = airflow_handler.AirflowHandler(flags_dict)
     # Create fake schema in pipeline root.
-    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'output', '3')
+    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'schema', '3')
     tf.io.gfile.makedirs(schema_path)
     with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
       f.write('SCHEMA')

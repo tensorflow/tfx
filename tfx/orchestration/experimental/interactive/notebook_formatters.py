@@ -22,6 +22,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import abc
+import cgi
 from typing import Callable, List, Optional, Text, Tuple, Type, Union
 
 # Standard Imports
@@ -104,7 +106,8 @@ class NotebookFormatter(object):
   def __init__(self,
                cls: Type[object],
                attributes: List[Text] = None,
-               title_format: Tuple[Text, List[Union[Text, Callable]]] = None):  # pylint: disable=g-bare-generic
+               title_format: Tuple[Text, List[Union[Text, Callable]]] = None,  # pylint: disable=g-bare-generic
+               _show_artifact_attributes: Optional[bool] = False):
     """Constructs a NotebookFormatter.
 
     Args:
@@ -118,10 +121,13 @@ class NotebookFormatter(object):
         in "attributes" above) or callback callable objects taking as input the
         object to be formatted and returning the value for that position of the
         format string. If not specified, the default title format will be used.
+      _show_artifact_attributes: For a formatter of an Artifact object, show
+        the Artifact type-specific properties for each artifact.
     """
     self.cls = cls
     self.attributes = attributes or []
     self.title_format = title_format or NotebookFormatter._DEFAULT_TITLE_FORMAT
+    self._show_artifact_attributes = _show_artifact_attributes
 
   def _extended_getattr(self, obj: object, property_name: Text) -> object:
     """Get a possibly nested attribute of a given object."""
@@ -179,23 +185,31 @@ class NotebookFormatter(object):
     """Render the value section of an object."""
     if isinstance(value, _PropertyDictWrapper):
       value = value.get_all()
+    formatted_value = cgi.escape(Text(value))  # pylint: disable=deprecated-method
     if isinstance(value, dict):
-      value = self.render_dict(value, seen_elements)
+      formatted_value = self.render_dict(value, seen_elements)
     if isinstance(value, list):
-      value = self.render_list(value, seen_elements)
-    for cls in value.__class__.mro():
-      if cls in FORMATTER_REGISTRY:
-        value = FORMATTER_REGISTRY[cls].render(
-            value, expanded=False, seen_elements=seen_elements)
-        break
-    return value
+      formatted_value = self.render_list(value, seen_elements)
+    if value.__class__ != abc.ABCMeta:
+      # abc.ABCMeta.mro() does not work.
+      for cls in value.__class__.mro():
+        if cls in FORMATTER_REGISTRY:
+          formatted_value = FORMATTER_REGISTRY[cls].render(
+              value, expanded=False, seen_elements=seen_elements)
+          break
+    return formatted_value
 
   def render_attributes(self,
                         obj: object,
                         seen_elements: set) -> Text:  # pylint: disable=g-bare-generic
     """Render the attributes section of an object."""
+    if self._show_artifact_attributes and isinstance(obj, Artifact):
+      artifact_attributes = sorted((obj.PROPERTIES or {}).keys())
+      attributes = self.attributes + artifact_attributes
+    else:
+      attributes = self.attributes
     attr_trs = []
-    for property_name in self.attributes:
+    for property_name in attributes:
       value = self._extended_getattr(obj, property_name)
       value = self.render_value(value, seen_elements)
       attr_trs.append(
@@ -212,8 +226,10 @@ class NotebookFormatter(object):
     attr_trs = []
     for key, value in obj.items():
       value = self.render_value(value, seen_elements)
-      attr_trs.append(('<tr><td class="attr-name">[%r]</td>'
-                       '<td class = "attrvalue">%s</td></tr>') % (key, value))
+      attr_trs.append(
+          ('<tr><td class="attr-name">[%r]</td>'
+           '<td class = "attrvalue">%s</td></tr>') % (cgi.escape(Text(key)),  # pylint: disable=deprecated-method
+                                                      value))
     return '<table class="attr-table">%s</table>' % ''.join(attr_trs)
 
   def render_list(self,
@@ -240,11 +256,11 @@ def _create_formatters(formatters_spec):
 
 FORMATTER_REGISTRY = _create_formatters({
     Artifact: {
-        'attributes': ['type_name', 'uri', 'span', 'split'],
-        'title_format': (
-            ('<span class="class-name">Artifact</span> of type '
-             '<span class="class-name">%r</span> (uri: %s)'),
-            ['type_name', 'uri']),
+        'attributes': ['type', 'uri'],
+        '_show_artifact_attributes': True,
+        'title_format': (('<span class="class-name">Artifact</span> of type '
+                          '<span class="class-name">%r</span> (uri: %s)'),
+                         ['type_name', 'uri']),
     },
     BaseComponent: {
         'attributes': ['inputs', 'outputs', 'exec_properties']
@@ -255,7 +271,8 @@ FORMATTER_REGISTRY = _create_formatters({
             ('<span class="class-name">Channel</span> of type '
              '<span class="class-name">%r</span> (%d artifact%s)'),
             [
-                'type_name', lambda o: len(o._artifacts),  # pylint: disable=protected-access
+                'type_name',
+                lambda o: len(o._artifacts),  # pylint: disable=protected-access
                 lambda o: '' if len(o._artifacts) == 1 else 's'  # pylint: disable=protected-access
             ]),
     },

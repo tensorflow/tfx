@@ -25,11 +25,10 @@ import sys
 import absl
 import mock
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import dependency_utils
 
 
-class DepsUtilsTest(tf.test.TestCase):
+class DependencyUtilsTest(tf.test.TestCase):
 
   def setUp(self):
     super(tf.test.TestCase, self).setUp()
@@ -55,10 +54,11 @@ class DepsUtilsTest(tf.test.TestCase):
     test_file = os.path.join(source_data_dir, 'test.csv')
     expected_package = 'mypackage.tar.gz'
 
-    def side_effect(cmd):
+    def side_effect(cmd, stdout, stderr):
       self.assertEqual(3, len(cmd))
       self.assertEqual(sys.executable, cmd[0])
       self.assertEqual('sdist', cmd[2])
+      self.assertEqual(stdout, stderr)
       setup_file = cmd[1]
       dist_dir = os.path.join(os.path.dirname(setup_file), 'dist')
       tf.io.gfile.makedirs(dist_dir)
@@ -69,13 +69,6 @@ class DepsUtilsTest(tf.test.TestCase):
     mock_mkdtemp.return_value = self._tmp_dir
     package = dependency_utils.build_ephemeral_package()
     self.assertEqual(expected_package, os.path.basename(package))
-
-  @mock.patch('tempfile.mkdtemp')
-  def testRequirementFile(self, mock_mkdtemp):
-    mock_mkdtemp.return_value = self._tmp_dir
-    requirements_file = dependency_utils._build_requirements_file()
-    content = file_io.read_file_to_string(requirements_file)
-    self.assertRegexpMatches(content, 'tfx==.*')
 
 
 if __name__ == '__main__':

@@ -25,12 +25,19 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_ai_platform import runner
+from tfx.utils import json_utils
 
-_POLLING_INTERVAL_IN_SECONDS = 30
+# Keys to the items in custom_config passed as a part of exec_properties.
+TRAINING_ARGS_KEY = 'ai_platform_training_args'
+JOB_ID_KEY = 'ai_platform_training_job_id'
+_CUSTOM_CONFIG_KEY = 'custom_config'
 
 
-class Executor(base_executor.BaseExecutor):
-  """Start a trainer job on Google Cloud AI Platform (GAIP)."""
+class GenericExecutor(base_executor.BaseExecutor):
+  """Start a trainer job on Google Cloud AI Platform using a generic Trainer."""
+
+  def _GetExecutorClass(self):
+    return tfx_trainer_executor.GenericExecutor
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -56,16 +63,31 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    custom_config = exec_properties.get('custom_config', {})
-    training_inputs = custom_config.get('ai_platform_training_args')
+    custom_config = json_utils.loads(
+        exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
+    if custom_config is not None and not isinstance(custom_config, Dict):
+      raise ValueError('custom_config in execution properties needs to be a '
+                       'dict.')
+
+    training_inputs = custom_config.get(TRAINING_ARGS_KEY)
     if training_inputs is None:
-      err_msg = '\'ai_platform_training_args\' not found in custom_config.'
+      err_msg = '\'%s\' not found in custom_config.' % TRAINING_ARGS_KEY
       absl.logging.error(err_msg)
       raise ValueError(err_msg)
 
-    job_id = custom_config.get('ai_platform_training_job_id')
-    executor_class_path = '%s.%s' % (tfx_trainer_executor.Executor.__module__,
-                                     tfx_trainer_executor.Executor.__name__)
+    job_id = custom_config.get(JOB_ID_KEY)
+
+    executor_class = self._GetExecutorClass()
+    executor_class_path = '%s.%s' % (executor_class.__module__,
+                                     executor_class.__name__)
+    # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_aip_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
                                      job_id)
+
+
+class Executor(GenericExecutor):
+  """Start a trainer job on Google Cloud AI Platform using a default Trainer."""
+
+  def _GetExecutorClass(self):
+    return tfx_trainer_executor.Executor

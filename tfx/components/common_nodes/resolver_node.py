@@ -24,6 +24,7 @@ from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.types import node_common
 from tfx.utils import json_utils
 
@@ -52,23 +53,42 @@ class ResolverDriver(base_driver.BaseDriver):
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
+    # Registers contexts and execution
+    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
+        pipeline_info)
+    execution = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info,
+        contexts=contexts)
+    # Gets resolved artifacts.
     resolver_class = exec_properties[RESOLVER_CLASS]
     if exec_properties[RESOLVER_CONFIGS]:
       resolver = resolver_class(**exec_properties[RESOLVER_CONFIGS])
     else:
       resolver = resolver_class()
     resolve_result = resolver.resolve(
+        pipeline_info=pipeline_info,
         metadata_handler=self._metadata_handler,
         source_channels=input_dict.copy())
+    # TODO(b/148828122): This is a temporary walkaround for interactive mode.
+    for k, c in output_dict.items():
+      output_dict[k] = types.Channel(
+          type=c.type, artifacts=resolve_result.per_key_resolve_result[k])
+    # Updates execution to reflect artifact resolution results and mark
+    # as cached.
+    self._metadata_handler.update_execution(
+        execution=execution,
+        component_info=component_info,
+        output_artifacts=resolve_result.per_key_resolve_result,
+        execution_state=metadata.EXECUTION_STATE_CACHED,
+        contexts=contexts)
 
     return data_types.ExecutionDecision(
         input_dict={},
         output_dict=resolve_result.per_key_resolve_result,
         exec_properties=exec_properties,
-        execution_id=self._register_execution(
-            exec_properties={},
-            pipeline_info=pipeline_info,
-            component_info=component_info),
+        execution_id=execution.id,
         use_cached_results=True)
 
 
@@ -103,8 +123,6 @@ class ResolverNode(base_node.BaseNode):
       _resolver_class.
   """
 
-  DRIVER_CLASS = ResolverDriver
-
   def __init__(self,
                instance_name: Text,
                resolver_class: Type[base_resolver.BaseResolver],
@@ -114,7 +132,8 @@ class ResolverNode(base_node.BaseNode):
 
     Args:
       instance_name: the name of the ResolverNode instance.
-      resolver_class: the URI to the resource that needs to be registered.
+      resolver_class: a BaseResolver subclass which contains the artifact
+        resolution logic.
       resolver_configs: a dict of key to Jsonable type representing configs that
         will be used to construct the resolver.
       **kwargs: a key -> Channel dict, describing what are the Channels to be
@@ -125,13 +144,14 @@ class ResolverNode(base_node.BaseNode):
     self._input_dict = kwargs
     self._output_dict = {}
     for k, c in self._input_dict.items():
-      self._output_dict[k] = types.Channel(
-          type_name=c.type_name,
-          artifacts=[types.Artifact(type_name=c.type_name)])
-    super(ResolverNode, self).__init__(instance_name=instance_name)
+      self._output_dict[k] = types.Channel(type=c.type, artifacts=[c.type()])
+    super(ResolverNode, self).__init__(
+        instance_name=instance_name,
+        driver_class=ResolverDriver,
+    )
 
   @property
-  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access  # pylint: disable=protected-access
+  def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
     return node_common._PropertyDictWrapper(self._input_dict)  # pylint: disable=protected-access
 
   @property

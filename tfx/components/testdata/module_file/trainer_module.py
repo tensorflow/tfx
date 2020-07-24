@@ -21,13 +21,20 @@ This file is equivalent to examples/chicago_taxi/trainer/model.py and
 examples/chicago_taxi/preprocess.py.
 """
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.components.trainer import executor
+from tfx.utils import io_utils
+from tfx.utils import path_utils
 
 # Categorical features are assumed to each have a maximum value in the dataset.
 _MAX_CATEGORICAL_FEATURE_VALUES = [24, 31, 12]
@@ -236,10 +243,16 @@ def trainer_fn(trainer_fn_args, schema):
       - eval_spec: Spec for eval.
       - eval_input_receiver_fn: Input function for eval.
   """
-  # Number of nodes in the first layer of the DNN
-  first_dnn_layer_size = 100
-  num_dnn_layers = 4
-  dnn_decay_factor = 0.7
+  if trainer_fn_args.hyperparameters:
+    hp = trainer_fn_args.hyperparameters
+    first_dnn_layer_size = hp.get('first_dnn_layer_size')
+    num_dnn_layers = hp.get('num_dnn_layers')
+    dnn_decay_factor = hp.get('dnn_decay_factor')
+  else:
+    # Number of nodes in the first layer of the DNN
+    first_dnn_layer_size = 100
+    num_dnn_layers = 4
+    dnn_decay_factor = 0.7
 
   train_batch_size = 40
   eval_batch_size = 40
@@ -271,9 +284,13 @@ def trainer_fn(trainer_fn_args, schema):
       name='chicago-taxi-eval')
 
   run_config = tf.estimator.RunConfig(
-      save_checkpoints_steps=999, keep_checkpoint_max=1)
+      save_checkpoints_steps=999,
+      # keep_checkpoint_max must be more than the number of worker replicas
+      # nodes if training distributed, in order to avoid race condition.
+      keep_checkpoint_max=5)
 
-  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  export_dir = path_utils.serving_model_dir(trainer_fn_args.model_run_dir)
+  run_config = run_config.replace(model_dir=export_dir)
   warm_start_from = trainer_fn_args.base_model
 
   estimator = _build_estimator(
@@ -295,3 +312,42 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': receiver_fn
   }
+
+
+# TFX generic trainer will call this function
+def run_fn(fn_args: executor.TrainerFnArgs):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
+  training_spec = trainer_fn(fn_args, schema)
+
+  # Train the model
+  absl.logging.info('Training model.')
+  tf.estimator.train_and_evaluate(training_spec['estimator'],
+                                  training_spec['train_spec'],
+                                  training_spec['eval_spec'])
+
+  # Export an eval savedmodel for TFMA
+  # NOTE: When trained in distributed training cluster, eval_savedmodel must be
+  # exported only by the chief worker.
+  absl.logging.info('Exporting eval_savedmodel for TFMA.')
+  tfma.export.export_eval_savedmodel(
+      estimator=training_spec['estimator'],
+      export_dir_base=path_utils.eval_model_dir(fn_args.model_run_dir),
+      eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+  # TODO(b/160795287): Deprecate estimator based executor.
+  # Copy serving and eval model from model_run to model artifact directory.
+  serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
+
+  eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
+
+  absl.logging.info('Training complete. Model written to %s',
+                    fn_args.serving_model_dir)
+  absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)

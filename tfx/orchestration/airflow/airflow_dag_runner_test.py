@@ -21,53 +21,75 @@ import datetime
 import mock
 import tensorflow as tf
 
+# TODO(b/158143615): importing airflow after kerastuner causes issue.
+from tfx.orchestration.airflow import airflow_dag_runner  # pylint: disable=g-bad-import-order
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow import airflow_dag_runner
 from tfx.types import component_spec
+
+
+class _ArtifactTypeA(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeA'
+
+
+class _ArtifactTypeB(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeB'
+
+
+class _ArtifactTypeC(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeC'
+
+
+class _ArtifactTypeD(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeD'
+
+
+class _ArtifactTypeE(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeE'
 
 
 class _FakeComponentSpecA(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='a')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeA)}
 
 
 class _FakeComponentSpecB(types.ComponentSpec):
   PARAMETERS = {}
-  INPUTS = {'a': component_spec.ChannelParameter(type_name='a')}
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='b')}
+  INPUTS = {'a': component_spec.ChannelParameter(type=_ArtifactTypeA)}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeB)}
 
 
 class _FakeComponentSpecC(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
-      'a': component_spec.ChannelParameter(type_name='a'),
-      'b': component_spec.ChannelParameter(type_name='b')
+      'a': component_spec.ChannelParameter(type=_ArtifactTypeA),
+      'b': component_spec.ChannelParameter(type=_ArtifactTypeB)
   }
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='c')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeC)}
 
 
 class _FakeComponentSpecD(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
-      'b': component_spec.ChannelParameter(type_name='b'),
-      'c': component_spec.ChannelParameter(type_name='c'),
+      'b': component_spec.ChannelParameter(type=_ArtifactTypeB),
+      'c': component_spec.ChannelParameter(type=_ArtifactTypeC),
   }
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='d')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeD)}
 
 
 class _FakeComponentSpecE(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
-      'a': component_spec.ChannelParameter(type_name='a'),
-      'b': component_spec.ChannelParameter(type_name='b'),
-      'd': component_spec.ChannelParameter(type_name='d'),
+      'a': component_spec.ChannelParameter(type=_ArtifactTypeA),
+      'b': component_spec.ChannelParameter(type=_ArtifactTypeB),
+      'd': component_spec.ChannelParameter(type=_ArtifactTypeD),
   }
-  OUTPUTS = {'output': component_spec.ChannelParameter(type_name='e')}
+  OUTPUTS = {'output': component_spec.ChannelParameter(type=_ArtifactTypeE)}
 
 
 class _FakeComponent(base_component.BaseComponent):
@@ -84,9 +106,7 @@ class _FakeComponent(base_component.BaseComponent):
 
 class AirflowDagRunnerTest(tf.test.TestCase):
 
-  @mock.patch(
-      'tfx.orchestration.airflow.airflow_component.AirflowComponent'
-  )
+  @mock.patch('tfx.orchestration.airflow.airflow_component.AirflowComponent')
   @mock.patch('airflow.models.DAG')
   def testAirflowDagRunner(self, mock_airflow_dag_class,
                            mock_airflow_component_class):
@@ -107,27 +127,27 @@ class AirflowDagRunnerTest(tf.test.TestCase):
         'start_date': datetime.datetime(2019, 1, 1)
     }
     component_a = _FakeComponent(
-        _FakeComponentSpecA(output=types.Channel(type_name='a')))
+        _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_b = _FakeComponent(
         _FakeComponentSpecB(
             a=component_a.outputs['output'],
-            output=types.Channel(type_name='b')))
+            output=types.Channel(type=_ArtifactTypeB)))
     component_c = _FakeComponent(
         _FakeComponentSpecC(
             a=component_a.outputs['output'],
             b=component_b.outputs['output'],
-            output=types.Channel(type_name='c')))
+            output=types.Channel(type=_ArtifactTypeC)))
     component_d = _FakeComponent(
         _FakeComponentSpecD(
             b=component_b.outputs['output'],
             c=component_c.outputs['output'],
-            output=types.Channel(type_name='d')))
+            output=types.Channel(type=_ArtifactTypeD)))
     component_e = _FakeComponent(
         _FakeComponentSpecE(
             a=component_a.outputs['output'],
             b=component_b.outputs['output'],
             d=component_d.outputs['output'],
-            output=types.Channel(type_name='e')))
+            output=types.Channel(type=_ArtifactTypeE)))
 
     test_pipeline = pipeline.Pipeline(
         pipeline_name='x',

@@ -2,27 +2,28 @@
   "__class__": "NodeWrapper",
   "__module__": "tfx.orchestration.kubeflow.node_wrapper",
   "__tfx_object_type__": "jsonable",
-  "_exec_properties": {},
+  "_exec_properties": {
+    "stats_options_json": null
+  },
   "_id": "StatisticsGen.foo",
   "_inputs": {
     "__class__": "_PropertyDictWrapper",
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
     "_compat_aliases": {
-      "examples": "input_data"
+      "input_data": "examples"
     },
     "_data": {
-      "input_data": {
+      "examples": {
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifacts": [
           {
-            "__class__": "Examples",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "Examples",
             "artifact": {
-              "properties": {
+              "custom_properties": {
                 "name": {
                   "string_value": "examples"
                 },
@@ -31,66 +32,32 @@
                 },
                 "producer_component": {
                   "string_value": "CsvExampleGen"
-                },
-                "split": {
-                  "string_value": "train"
-                },
-                "type_name": {
-                  "string_value": "ExamplesPath"
+                }
+              },
+              "properties": {
+                "split_names": {
+                  "string_value": "[\"train\", \"eval\"]"
                 }
               }
             },
             "artifact_type": {
-              "name": "ExamplesPath",
+              "name": "Examples",
               "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
                 "span": "INT",
-                "split": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
-              }
-            }
-          },
-          {
-            "__class__": "Examples",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
-            "artifact": {
-              "properties": {
-                "name": {
-                  "string_value": "examples"
-                },
-                "pipeline_name": {
-                  "string_value": "test_pipeline"
-                },
-                "producer_component": {
-                  "string_value": "CsvExampleGen"
-                },
-                "split": {
-                  "string_value": "eval"
-                },
-                "type_name": {
-                  "string_value": "ExamplesPath"
-                }
-              }
-            },
-            "artifact_type": {
-              "name": "ExamplesPath",
-              "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
+                "split_names": "STRING"
               }
             }
           }
         ],
-        "type_name": "ExamplesPath"
+        "output_key": "examples",
+        "producer_component_id": "CsvExampleGen",
+        "type": {
+          "name": "Examples",
+          "properties": {
+            "span": "INT",
+            "split_names": "STRING"
+          }
+        }
       }
     }
   },
@@ -99,88 +66,53 @@
     "__module__": "tfx.types.node_common",
     "__tfx_object_type__": "jsonable",
     "_compat_aliases": {
-      "statistics": "output"
+      "output": "statistics"
     },
     "_data": {
-      "output": {
+      "statistics": {
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "_artifacts": [
+        "artifacts": [
           {
-            "__class__": "ExampleStatistics",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "ExampleStatistics",
             "artifact": {
-              "properties": {
+              "custom_properties": {
                 "name": {
-                  "string_value": "output"
+                  "string_value": "statistics"
                 },
                 "pipeline_name": {
                   "string_value": "test_pipeline"
                 },
                 "producer_component": {
                   "string_value": "StatisticsGen.foo"
-                },
-                "split": {
-                  "string_value": "train"
-                },
-                "type_name": {
-                  "string_value": "ExampleStatisticsPath"
+                }
+              },
+              "properties": {
+                "split_names": {
+                  "string_value": "[\"train\", \"eval\"]"
                 }
               }
             },
             "artifact_type": {
-              "name": "ExampleStatisticsPath",
+              "name": "ExampleStatistics",
               "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
                 "span": "INT",
-                "split": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
-              }
-            }
-          },
-          {
-            "__class__": "ExampleStatistics",
-            "__module__": "tfx.types.standard_artifacts",
-            "__tfx_object_type__": "jsonable",
-            "artifact": {
-              "properties": {
-                "name": {
-                  "string_value": "output"
-                },
-                "pipeline_name": {
-                  "string_value": "test_pipeline"
-                },
-                "producer_component": {
-                  "string_value": "StatisticsGen.foo"
-                },
-                "split": {
-                  "string_value": "eval"
-                },
-                "type_name": {
-                  "string_value": "ExampleStatisticsPath"
-                }
-              }
-            },
-            "artifact_type": {
-              "name": "ExampleStatisticsPath",
-              "properties": {
-                "name": "STRING",
-                "pipeline_name": "STRING",
-                "producer_component": "STRING",
-                "span": "INT",
-                "split": "STRING",
-                "state": "STRING",
-                "type_name": "STRING"
+                "split_names": "STRING"
               }
             }
           }
         ],
-        "type_name": "ExampleStatisticsPath"
+        "output_key": "statistics",
+        "producer_component_id": "StatisticsGen.foo",
+        "type": {
+          "name": "ExampleStatistics",
+          "properties": {
+            "span": "INT",
+            "split_names": "STRING"
+          }
+        }
       }
     }
   },

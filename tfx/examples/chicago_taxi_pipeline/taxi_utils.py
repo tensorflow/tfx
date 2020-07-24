@@ -15,14 +15,14 @@
 """Python source file include taxi pipeline functions and necesasry utils.
 
 For a TFX pipeline to successfully run, a preprocessing_fn and a
-_build_estimator function needs to be provided.  This file contains both.
-
-This file is equivalent to examples/chicago_taxi/trainer/model.py and
-examples/chicago_taxi/preprocess.py.
+trainer_fn function needs to be provided. This file contains both.
 """
 
+from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+from typing import List, Text
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
@@ -128,8 +128,7 @@ def preprocessing_fn(inputs):
 
   for key in _BUCKET_FEATURE_KEYS:
     outputs[_transformed_name(key)] = tft.bucketize(
-        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT,
-        always_return_num_quantiles=False)
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
 
   for key in _CATEGORICAL_FEATURE_KEYS:
     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])
@@ -260,30 +259,32 @@ def _eval_input_receiver_fn(tf_transform_output, schema):
       labels=transformed_features[_transformed_name(_LABEL_KEY)])
 
 
-def _input_fn(filenames, tf_transform_output, batch_size=200):
-  """Generates features and labels for training or evaluation.
+def _input_fn(file_pattern: List[Text],
+              tf_transform_output: tft.TFTransformOutput,
+              batch_size: int = 200) -> tf.data.Dataset:
+  """Generates features and label for tuning/training.
 
   Args:
-    filenames: [str] list of CSV files to read data from.
+    file_pattern: List of paths or patterns of input tfrecord files.
     tf_transform_output: A TFTransformOutput.
-    batch_size: int First dimension size of the Tensors returned by input_fn
+    batch_size: representing the number of consecutive elements of returned
+      dataset to combine in a single batch
 
   Returns:
-    A (features, indices) tuple where features is a dictionary of
-      Tensors, and indices is a single Tensor of label indices.
+    A dataset that contains (features, indices) tuple where features is a
+      dictionary of Tensors, and indices is a single Tensor of label indices.
   """
   transformed_feature_spec = (
       tf_transform_output.transformed_feature_spec().copy())
 
   dataset = tf.data.experimental.make_batched_features_dataset(
-      filenames, batch_size, transformed_feature_spec, reader=_gzip_reader_fn)
+      file_pattern=file_pattern,
+      batch_size=batch_size,
+      features=transformed_feature_spec,
+      reader=_gzip_reader_fn,
+      label_key=_transformed_name(_LABEL_KEY))
 
-  transformed_features = tf.compat.v1.data.make_one_shot_iterator(
-      dataset).get_next()
-  # We pop the label because we do not want to use it as a feature while we're
-  # training.
-  return transformed_features, transformed_features.pop(
-      _transformed_name(_LABEL_KEY))
+  return dataset
 
 
 # TFX will call this function
@@ -335,8 +336,11 @@ def trainer_fn(trainer_fn_args, schema):
       exporters=[exporter],
       name='chicago-taxi-eval')
 
+  # Keep multiple checkpoint files for distributed training, note that
+  # keep_max_checkpoint should be greater or equal to the number of replicas to
+  # avoid race condition.
   run_config = tf.estimator.RunConfig(
-      save_checkpoints_steps=999, keep_checkpoint_max=1)
+      save_checkpoints_steps=999, keep_checkpoint_max=5)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
   warm_start_from = trainer_fn_args.base_model

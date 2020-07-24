@@ -20,8 +20,10 @@ from __future__ import print_function
 import os
 from typing import List, Text
 
+import six
 import tensorflow as tf
 
+from google.protobuf import json_format
 from google.protobuf import text_format
 from google.protobuf.message import Message
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
@@ -69,7 +71,7 @@ def copy_dir(src: Text, dst: Text) -> None:
       tf.io.gfile.copy(leaf_file_path, new_file_path)
 
     for sub_dir in sub_dirs:
-      tf.io.gfile.makedirs(os.path.join(dst, sub_dir))
+      tf.io.gfile.makedirs(os.path.join(dir_name.replace(src, dst, 1), sub_dir))
 
 
 def get_only_uri_in_dir(dir_path: Text) -> Text:
@@ -118,6 +120,13 @@ def parse_pbtxt_file(file_name: Text, message: Message) -> Message:
   return message
 
 
+def parse_json_file(file_name: Text, message: Message) -> Message:
+  """Parses a protobuf message from a JSON file and return itself."""
+  contents = file_io.read_file_to_string(file_name)
+  json_format.Parse(contents, message)
+  return message
+
+
 def load_csv_column_names(csv_file: Text) -> List[Text]:
   """Parse the first line of a csv file as column names."""
   with file_io.FileIO(csv_file, 'r') as f:
@@ -126,7 +135,7 @@ def load_csv_column_names(csv_file: Text) -> List[Text]:
 
 def all_files_pattern(file_pattern: Text) -> Text:
   """Returns file pattern suitable for Beam to locate multiple files."""
-  return '{}*'.format(file_pattern)
+  return os.path.join(file_pattern, '*')
 
 
 def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
@@ -148,6 +157,17 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
 
   return 'split:%s,num_files:%d,total_bytes:%d,xor_checksum:%d,sum_checksum:%d' % (
       split_name, len(files), total_bytes, xor_checksum, sum_checksum)
+
+
+def read_string_file(file_name: Text) -> Text:
+  """Reads a string from a file."""
+  if not tf.io.gfile.exists(file_name):
+    msg = '{} does not exist'.format(file_name)
+    if six.PY2:
+      raise OSError(msg)
+    else:
+      raise FileNotFoundError(msg)  # pylint: disable=undefined-variable
+  return file_io.read_file_to_string(file_name)
 
 
 class SchemaReader(object):

@@ -21,7 +21,7 @@ message PushDestination {
     Filesystem filesystem = 3;
   }
 
-  reserved 1, 2, 4, 5;
+  reserved 1, 2, 4, 5, 6;
 
   // File system based destination definition.
   message Filesystem {
@@ -29,6 +29,26 @@ message PushDestination {
     // must have write permission on this directory.
     string base_directory = 1;
 
-    reserved 2,3;
+    // Version name would be used as a sub-directory name under the
+    // `base_directory`. (e.g. base_directory/1582798459)
+    Versioning versioning = 6;
+
+    reserved 2, 3, 4, 5;
   }
+}
+
+// Versioning method for the model to be pushed. Note that This is the semantic
+// TFX provides, therefore depending on the platform, some versioning method
+// might not be compatible. For example TF Serving only accepts an integer
+// version that is monotonically increasing.
+enum Versioning {
+  // Automatically select the best versioning methods depending on the push
+  // destination.
+  AUTO = 0;
+
+  // Integer version (can be used as a string as well).
+  // Unix epoch timestamp in seconds of the model push time (e.g. 1582798459).
+  // Timestamp is freshly generated every time model is pushed, even if the
+  // model is the same.
+  UNIX_TIMESTAMP = 1;
 }

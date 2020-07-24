@@ -49,7 +49,7 @@ class ComponentTest(tf.test.TestCase):
             filesystem=pusher_pb2.PushDestination.Filesystem(
                 base_directory='push_destination')))
     self.assertEqual(standard_artifacts.PushedModel.TYPE_NAME,
-                     pusher.outputs['model_push'].type_name)
+                     pusher.outputs['pushed_model'].type_name)
 
   def testConstructWithParameter(self):
     push_dir = data_types.RuntimeParameter(name='push-dir', ptype=Text)
@@ -60,7 +60,7 @@ class ComponentTest(tf.test.TestCase):
             'base_directory': push_dir
         }})
     self.assertEqual(standard_artifacts.PushedModel.TYPE_NAME,
-                     pusher.outputs['model_push'].type_name)
+                     pusher.outputs['pushed_model'].type_name)
 
   def testConstructNoDestination(self):
     with self.assertRaises(ValueError):
@@ -77,7 +77,7 @@ class ComponentTest(tf.test.TestCase):
             self._MyCustomPusherExecutor),
     )
     self.assertEqual(standard_artifacts.PushedModel.TYPE_NAME,
-                     pusher.outputs['model_push'].type_name)
+                     pusher.outputs['pushed_model'].type_name)
 
 
 if __name__ == '__main__':

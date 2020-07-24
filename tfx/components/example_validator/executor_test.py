@@ -21,8 +21,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 from tensorflow_metadata.proto.v0 import anomalies_pb2
-from tfx import types
 from tfx.components.example_validator import executor
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 
@@ -33,12 +33,13 @@ class ExecutorTest(tf.test.TestCase):
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
-    eval_stats_artifact = types.Artifact('ExampleStatsPath', split='eval')
-    eval_stats_artifact.uri = os.path.join(source_data_dir,
-                                           'statistics_gen/eval/')
+    eval_stats_artifact = standard_artifacts.ExampleStatistics()
+    eval_stats_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
+    eval_stats_artifact.split_names = artifact_utils.encode_split_names(
+        ['eval'])
 
     schema_artifact = standard_artifacts.Schema()
-    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen/')
+    schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -48,11 +49,11 @@ class ExecutorTest(tf.test.TestCase):
     validation_output.uri = os.path.join(output_data_dir, 'output')
 
     input_dict = {
-        'stats': [eval_stats_artifact],
-        'schema': [schema_artifact],
+        executor.STATISTICS_KEY: [eval_stats_artifact],
+        executor.SCHEMA_KEY: [schema_artifact],
     }
     output_dict = {
-        'output': [validation_output],
+        executor.ANOMALIES_KEY: [validation_output],
     }
 
     exec_properties = {}

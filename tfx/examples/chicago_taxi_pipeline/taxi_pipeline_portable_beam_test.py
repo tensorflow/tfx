@@ -38,7 +38,8 @@ class TaxiPipelinePortableBeamTest(tf.test.TestCase):
         data_root=self._test_dir,
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
-        metadata_path=self._test_dir)
+        metadata_path=self._test_dir,
+        worker_parallelism=1)
     self.assertEqual(9, len(logical_pipeline.components))
 
 

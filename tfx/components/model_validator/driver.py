@@ -36,8 +36,13 @@ class Driver(base_driver.BaseDriver):
   ) -> Tuple[Optional[Text], Optional[int]]:
     """Fetch last blessed model in metadata based on span."""
     previous_blessed_models = []
-    for a in self._metadata_handler.get_artifacts_by_type('ModelBlessingPath'):
-      if (a.properties['pipeline_name'].string_value == pipeline_name and
+    for a in self._metadata_handler.get_artifacts_by_type('ModelBlessing'):
+      # TODO(ccy): get pipeline name from MLMD context.
+      if 'pipeline_name' in a.properties:
+        p = a.properties['pipeline_name'].string_value
+      else:
+        p = a.custom_properties['pipeline_name'].string_value
+      if (p == pipeline_name and
           a.custom_properties['blessed'].int_value == 1 and
           a.custom_properties['component_id'].string_value == component_id):
         previous_blessed_models.append(a)
@@ -62,7 +67,7 @@ class Driver(base_driver.BaseDriver):
     (exec_properties['blessed_model'],
      exec_properties['blessed_model_id']) = self._fetch_last_blessed_model(
          pipeline_info.pipeline_name, component_info.component_id)
-    exec_properties['component_id'] = component_info.component_id
+    exec_properties['current_component_id'] = component_info.component_id
     absl.logging.info('Resolved last blessed model {}'.format(
         exec_properties['blessed_model']))
     return exec_properties

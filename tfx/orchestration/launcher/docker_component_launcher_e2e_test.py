@@ -45,8 +45,8 @@ class _HelloWorldComponent(base_component.BaseComponent):
   EXECUTOR_SPEC = executor_spec.ExecutorContainerSpec(
       # TODO(b/143965964): move the image to private repo if the test is flaky
       # due to docker hub.
-      image='docker/whalesay:latest',
-      command=['cowsay'],
+      image='alpine:latest',
+      command=['echo'],
       args=['hello {{exec_properties.name}}'])
 
   def __init__(self, name):

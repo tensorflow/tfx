@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,7 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Text
 
-import absl
+from absl import logging
 from googleapiclient import discovery
 from googleapiclient import errors
 import tensorflow as tf
@@ -31,53 +31,63 @@ import tensorflow as tf
 from tfx import types
 from tfx import version
 from tfx.types import artifact_utils
+from tfx.utils import telemetry_utils
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 
+_CONNECTION_ERROR_RETRY_LIMIT = 5
+
 # TODO(b/139934802) Ensure mirroring of released TFX containers in Docker Hub
 # and gcr.io/tfx-oss-public/ registries.
-_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:%s' % (version.__version__)
+_TFX_IMAGE = 'gcr.io/tfx-oss-public/tfx:{}'.format(version.__version__)
 
-# Compatibility overrides: this is usually result of lags for CAIP releases
-# after tensorflow.
 _TF_COMPATIBILITY_OVERRIDE = {
-    # TODO(b/142654646): Support TF 1.15 in CAIP prediction service and drop
-    # this entry. This is generally considered safe since we are using same
-    # major version of TF.
-    '1.15': '1.14',
+    # Generally, runtimeVersion should be same as <major>.<minor> of currently
+    # installed tensorflow version, with certain compatibility hacks since
+    # some TensorFlow runtime versions are not explicitly supported by
+    # CAIP pusher. See:
+    # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
+    '2.0': '1.15',
+    # TODO(b/157039850) Remove this once CAIP model support TF 2.2 runtime.
+    '2.2': '2.1',
+    '2.3': '2.1',
+    '2.4': '2.1'
 }
 
 
-def _get_tf_runtime_version() -> Text:
+def _get_tf_runtime_version(tf_version: Text) -> Text:
   """Returns the tensorflow runtime version used in Cloud AI Platform.
 
   This is only used for prediction service.
 
+  Args:
+    tf_version: version string returned from `tf.__version__`.
   Returns: same major.minor version of installed tensorflow, except when
     overriden by _TF_COMPATIBILITY_OVERRIDE.
   """
-  # runtimeVersion should be same as <major>.<minor> of currently
-  # installed tensorflow version, with certain compatibility hacks since
-  # some versions of TensorFlow are not yet supported by CAIP pusher.
-  tf_version = '.'.join(tf.__version__.split('.')[0:2])
-  if tf_version.startswith('2'):
-    absl.logging.warn(
-        'tensorflow 2.x may not be supported on CAIP predction service yet, '
-        'please check https://cloud.google.com/ml-engine/docs/runtime-version-list to ensure.'
-    )
-  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version, tf_version)
+  tf_version = '.'.join(tf_version.split('.')[0:2])
+  return _TF_COMPATIBILITY_OVERRIDE.get(tf_version) or tf_version
 
 
-def _get_caip_python_version() -> Text:
+def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
   """Returns supported python version on Cloud AI Platform.
 
   See
   https://cloud.google.com/ml-engine/docs/tensorflow/versioning#set-python-version-training
 
+  Args:
+    caip_tf_runtime_version: version string returned from
+      _get_tf_runtime_version().
+
   Returns:
-    '2.7' for PY2 or '3.5' for PY3.
+    '2.7' for PY2. '3.5' or '3.7' for PY3 depending on caip_tf_runtime_version.
   """
-  return {2: '2.7', 3: '3.5'}[sys.version_info.major]
+  if sys.version_info.major == 2:
+    return '2.7'
+  (major, minor) = caip_tf_runtime_version.split('.')[0:2]
+  if (int(major), int(minor)) >= (1, 15):
+    return '3.7'
+  return '3.5'
 
 
 def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
@@ -96,26 +106,27 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input argment for AI Platform training job.
+    training_inputs: Training input argument for AI Platform training job.
       'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
       the full set of parameters, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
     job_id: Job ID for AI Platform Training job. If not supplied,
       system-determined unique ID is given. Refer to
     https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
+
   Returns:
     None
   Raises:
-    RuntimeError: if the Google Cloud AI Platform training job failed.
+    RuntimeError: if the Google Cloud AI Platform training job failed/cancelled.
   """
   training_inputs = training_inputs.copy()
 
   json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  absl.logging.info('json_inputs=\'%s\'.', json_inputs)
+  logging.info('json_inputs=\'%s\'.', json_inputs)
   json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  absl.logging.info('json_outputs=\'%s\'.', json_outputs)
+  logging.info('json_outputs=\'%s\'.', json_outputs)
   json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-  absl.logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+  logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
   # Configure AI Platform training job
   api_client = discovery.build('ml', 'v1')
@@ -141,15 +152,22 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   # It's been a stowaway in aip_args and has finally reached its destination.
   project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
+  with telemetry_utils.scoped_labels(
+      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+    job_labels = telemetry_utils.get_labels_dict()
 
   # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
-  job_id = job_id or 'tfx_%s' % datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-  job_spec = {'jobId': job_id, 'trainingInput': training_inputs}
+  job_id = job_id or 'tfx_{}'.format(
+      datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+  job_spec = {
+      'jobId': job_id,
+      'trainingInput': training_inputs,
+      'labels': job_labels,
+  }
 
   # Submit job to AIP Training
-  absl.logging.info(
-      'Submitting job=\'{}\', project=\'{}\' to AI Platform.'.format(
-          job_id, project))
+  logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.', job_id,
+               project)
   request = api_client.projects().jobs().create(
       body=job_spec, parent=project_id)
   request.execute()
@@ -158,22 +176,65 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   job_name = '{}/jobs/{}'.format(project_id, job_id)
   request = api_client.projects().jobs().get(name=job_name)
   response = request.execute()
-  while response['state'] not in ('SUCCEEDED', 'FAILED'):
-    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    response = request.execute()
+  retry_count = 0
 
-  if response['state'] == 'FAILED':
+  # Monitors the long-running operation by polling the job state periodically,
+  # and retries the polling when a transient connectivity issue is encountered.
+  #
+  # Long-running operation monitoring:
+  #   The possible states of "get job" response can be found at
+  #   https://cloud.google.com/ai-platform/training/docs/reference/rest/v1/projects.jobs#State
+  #   where SUCCEEDED/FAILED/CANCELLED are considered to be final states.
+  #   The following logic will keep polling the state of the job until the job
+  #   enters a final state.
+  #
+  # During the polling, if a connection error was encountered, the GET request
+  # will be retried by recreating the Python API client to refresh the lifecycle
+  # of the connection being used. See
+  # https://github.com/googleapis/google-api-python-client/issues/218
+  # for a detailed description of the problem. If the error persists for
+  # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will exit
+  # with code 1.
+  while response['state'] not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+    time.sleep(_POLLING_INTERVAL_IN_SECONDS)
+    try:
+      response = request.execute()
+      retry_count = 0
+    # Handle transient connection error.
+    except ConnectionError as err:
+      if retry_count < _CONNECTION_ERROR_RETRY_LIMIT:
+        retry_count += 1
+        logging.warning(
+            'ConnectionError (%s) encountered when polling job: %s. Trying to '
+            'recreate the API client.', err, job_id)
+        # Recreate the Python API client.
+        api_client = discovery.build('ml', 'v1')
+        request = api_client.projects().jobs().get(name=job_name)
+      else:
+        # TODO(b/158433873): Consider raising the error instead of exit with
+        # code 1 after CMLE supports configurable retry policy.
+        # Currently CMLE will automatically retry the job unless return code
+        # 1-128 is returned.
+        logging.error('Request failed after %s retries.',
+                      _CONNECTION_ERROR_RETRY_LIMIT)
+        sys.exit(1)
+
+  if response['state'] in ('FAILED', 'CANCELLED'):
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
         job_name, response)
-    absl.logging.error(err_msg)
+    logging.error(err_msg)
     raise RuntimeError(err_msg)
 
   # AIP training complete
-  absl.logging.info('Job \'{}\' successful.'.format(job_name))
+  logging.info('Job \'%s\' successful.', job_name)
 
 
-def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
-                                    ai_platform_serving_args: Dict[Text, Any]):
+def deploy_model_for_aip_prediction(
+    serving_path: Text,
+    model_version: Text,
+    ai_platform_serving_args: Dict[Text, Any],
+    executor_class_path: Text,
+):
   """Deploys a model for serving with AI Platform.
 
   Args:
@@ -183,19 +244,22 @@ def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
     ai_platform_serving_args: Dictionary containing arguments for pushing to AI
       Platform. For the full set of parameters supported, refer to
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.models.versions#Version
+    executor_class_path: class path for TFX core default trainer.
 
   Raises:
     RuntimeError: if an error is encountered when trying to push.
   """
-  absl.logging.info(
-      'Deploying to model with version {} to AI Platform for serving: {}'
-      .format(model_version, ai_platform_serving_args))
+  logging.info(
+      'Deploying to model with version %s to AI Platform for serving: %s',
+      model_version, ai_platform_serving_args)
 
   model_name = ai_platform_serving_args['model_name']
   project_id = ai_platform_serving_args['project_id']
   regions = ai_platform_serving_args.get('regions', [])
-  runtime_version = _get_tf_runtime_version()
-  python_version = _get_caip_python_version()
+  default_runtime_version = _get_tf_runtime_version(tf.__version__)
+  runtime_version = ai_platform_serving_args.get('runtime_version',
+                                                 default_runtime_version)
+  python_version = _get_caip_python_version(runtime_version)
 
   api = discovery.build('ml', 'v1')
   body = {'name': model_name, 'regions': regions}
@@ -206,16 +270,18 @@ def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
     # If the error is to create an already existing model, it's ok to ignore.
     # TODO(b/135211463): Remove the disable once the pytype bug is fixed.
     if e.resp.status == 409:  # pytype: disable=attribute-error
-      absl.logging.warn('Model {} already exists'.format(model_name))
+      logging.warn('Model %s already exists', model_name)
     else:
       raise RuntimeError('AI Platform Push failed: {}'.format(e))
-
+  with telemetry_utils.scoped_labels(
+      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+    job_labels = telemetry_utils.get_labels_dict()
   body = {
-      'name': 'v{}'.format(model_version),
-      'regions': regions,
+      'name': model_version,
       'deployment_uri': serving_path,
       'runtime_version': runtime_version,
       'python_version': python_version,
+      'labels': job_labels,
   }
 
   # Push to AIP, and record the operation name so we can poll for its state.
@@ -224,24 +290,25 @@ def deploy_model_for_aip_prediction(serving_path: Text, model_version: Text,
       body=body, parent=model_name).execute()
   op_name = response['name']
 
-  while True:
-    deploy_status = api.projects().operations().get(name=op_name).execute()
-    if deploy_status.get('done'):
-      # Set the new version as default.
-      api.projects().models().versions().setDefault(
-          name='{}/versions/{}'.format(model_name, deploy_status['response']
-                                       ['name'])).execute()
-      break
-    if 'error' in deploy_status:
-      # The operation completed with an error.
-      absl.logging.error(deploy_status['error'])
-      raise RuntimeError(
-          'Failed to deploy model to AI Platform for serving: {}'.format(
-              deploy_status['error']))
-
+  deploy_status_resc = api.projects().operations().get(name=op_name)
+  while not deploy_status_resc.execute().get('done'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
-    absl.logging.info('Model still being deployed...')
+    logging.info('Model still being deployed...')
 
-  absl.logging.info(
-      'Successfully deployed model {} with version {}, serving from {}'.format(
-          model_name, model_version, serving_path))
+  deploy_status = deploy_status_resc.execute()
+
+  if deploy_status.get('error'):
+    # The operation completed with an error.
+    raise RuntimeError(
+        'Failed to deploy model to AI Platform for serving: {}'.format(
+            deploy_status['error']))
+
+  # Set the new version as default.
+  # By API specification, if Long-Running-Operation is done and there is
+  # no error, 'response' is guaranteed to exist.
+  api.projects().models().versions().setDefault(name='{}/versions/{}'.format(
+      model_name, deploy_status['response']['name'])).execute()
+
+  logging.info(
+      'Successfully deployed model %s with version %s, serving from %s',
+      model_name, model_version, serving_path)

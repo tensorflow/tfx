@@ -12,10 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Python source file include Iris pipeline functions and necesasry utils.
+"""Python source file include Iris pipeline functions and necessary utils.
 
-For a TFX pipeline to successfully run, a preprocessing_fn and a
-_build_estimator function needs to be provided.  This file contains both.
+The utilities in this file are used to build a model with Keras Layers, but
+uses model_to_estimator for Trainer component adaption.
 """
 
 from __future__ import absolute_import
@@ -24,8 +24,14 @@ from __future__ import print_function
 
 import absl
 import tensorflow as tf
+from tensorflow import keras
 import tensorflow_model_analysis as tfma
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tfx.components.trainer import executor
+from tfx.utils import io_utils
+from tfx.utils import path_utils
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'
@@ -48,7 +54,7 @@ def _serving_input_receiver_fn(schema):
     schema: the schema of the input data.
 
   Returns:
-    serving_input_resiver_fn for serving this model, since no transformation is
+    serving_input_receiver_fn for serving this model, since no transformation is
     required in this case it does not include a tf-transform graph.
   """
   raw_feature_spec = _get_raw_feature_spec(schema)
@@ -68,7 +74,7 @@ def _eval_input_receiver_fn(schema):
   Returns:
     EvalInputReceiver function, which contains:
       - Features (dict of Tensors) to be passed to the model.
-      - Raw features as sereliazlied tf.Examples.
+      - Raw features as serialized tf.Examples.
       - Labels
   """
   # Notice that the inputs are raw features, not transformed features here.
@@ -78,9 +84,10 @@ def _eval_input_receiver_fn(schema):
       raw_feature_spec, default_batch_size=None)
   serving_input_receiver = raw_input_fn()
 
+  labels = serving_input_receiver.features.pop(_LABEL_KEY)
   return tfma.export.EvalInputReceiver(
       features=serving_input_receiver.features,
-      labels=serving_input_receiver.features.pop(_LABEL_KEY),
+      labels=labels,
       receiver_tensors=serving_input_receiver.receiver_tensors)
 
 
@@ -113,24 +120,25 @@ def _keras_model_builder():
   Returns:
     A keras Model.
   """
+  # The model below is built with Functional API, please refer to
+  # https://www.tensorflow.org/guide/keras/overview for all API options.
+  inputs = [tf.keras.layers.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
+  d = keras.layers.concatenate(inputs)
+  for _ in range(3):
+    d = keras.layers.Dense(8, activation='relu')(d)
+  outputs = keras.layers.Dense(3, activation='softmax')(d)
 
-  l = tf.keras.layers
-  opt = tf.keras.optimizers
-  inputs = [l.Input(shape=(1,), name=f) for f in _FEATURE_KEYS]
-  input_layer = l.concatenate(inputs)
-  d1 = l.Dense(8, activation='relu')(input_layer)
-  output = l.Dense(3, activation='softmax')(d1)
-  model = tf.keras.Model(inputs=inputs, outputs=output)
+  model = keras.Model(inputs=inputs, outputs=outputs)
   model.compile(
+      optimizer=keras.optimizers.Adam(lr=0.0005),
       loss='sparse_categorical_crossentropy',
-      optimizer=opt.Adam(lr=0.001),
-      metrics=[tf.keras.metrics.BinaryAccuracy(name='accuracy')])
-  absl.logging.info(model.summary())
+      metrics=[keras.metrics.SparseCategoricalAccuracy()])
+
+  model.summary(print_fn=absl.logging.info)
   return model
 
 
-# TFX will call this function
-def trainer_fn(trainer_fn_args, schema):
+def _trainer_fn(trainer_fn_args, schema):
   """Build the estimator using the high level API.
 
   Args:
@@ -145,8 +153,8 @@ def trainer_fn(trainer_fn_args, schema):
       - eval_input_receiver_fn: Input function for eval.
   """
 
-  train_batch_size = 40
-  eval_batch_size = 40
+  train_batch_size = 20
+  eval_batch_size = 10
 
   train_input_fn = lambda: _input_fn(  # pylint: disable=g-long-lambda
       trainer_fn_args.train_files,
@@ -158,9 +166,8 @@ def trainer_fn(trainer_fn_args, schema):
       schema,
       batch_size=eval_batch_size)
 
-  train_spec = tf.estimator.TrainSpec(  # pylint: disable=g-long-lambda
-      train_input_fn,
-      max_steps=trainer_fn_args.train_steps)
+  train_spec = tf.estimator.TrainSpec(
+      train_input_fn, max_steps=trainer_fn_args.train_steps)
 
   serving_receiver_fn = lambda: _serving_input_receiver_fn(schema)
 
@@ -174,7 +181,8 @@ def trainer_fn(trainer_fn_args, schema):
   run_config = tf.estimator.RunConfig(
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
-  run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
+  export_dir = path_utils.serving_model_dir(trainer_fn_args.model_run_dir)
+  run_config = run_config.replace(model_dir=export_dir)
 
   estimator = tf.keras.estimator.model_to_estimator(
       keras_model=_keras_model_builder(), config=run_config)
@@ -188,3 +196,45 @@ def trainer_fn(trainer_fn_args, schema):
       'eval_spec': eval_spec,
       'eval_input_receiver_fn': eval_receiver_fn
   }
+
+
+# TFX generic trainer will call this function instead of train_fn.
+def run_fn(fn_args: executor.TrainerFnArgs):
+  """Train the model based on given args.
+
+  Args:
+    fn_args: Holds args used to train the model as name/value pairs.
+  """
+  schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
+
+  training_spec = _trainer_fn(fn_args, schema)
+
+  # Train the model
+  absl.logging.info('Training model.')
+  tf.estimator.train_and_evaluate(training_spec['estimator'],
+                                  training_spec['train_spec'],
+                                  training_spec['eval_spec'])
+  absl.logging.info('Training complete.  Model written to %s',
+                    fn_args.serving_model_dir)
+
+  # Export an eval savedmodel for TFMA
+  # NOTE: When trained in distributed training cluster, eval_savedmodel must be
+  # exported only by the chief worker (check TF_CONFIG).
+  absl.logging.info('Exporting eval_savedmodel for TFMA.')
+  eval_export_dir = path_utils.eval_model_dir(fn_args.model_run_dir)
+  tfma.export.export_eval_savedmodel(
+      estimator=training_spec['estimator'],
+      export_dir_base=eval_export_dir,
+      eval_input_receiver_fn=training_spec['eval_input_receiver_fn'])
+
+  absl.logging.info('Exported eval_savedmodel to %s.', fn_args.eval_model_dir)
+
+  # TODO(b/160795287): Deprecate estimator based executor.
+  # Copy serving and eval model from model_run to model artifact directory.
+  serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(serving_source, fn_args.serving_model_dir)
+  absl.logging.info('Serving model copied to: %s.', fn_args.serving_model_dir)
+
+  eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+  io_utils.copy_dir(eval_source, fn_args.eval_model_dir)
+  absl.logging.info('Eval model copied to: %s.', fn_args.eval_model_dir)

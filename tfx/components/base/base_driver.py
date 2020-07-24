@@ -26,28 +26,38 @@ import tensorflow as tf
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
 
-def _generate_output_uri(artifact: types.Artifact, base_output_dir: Text,
-                         name: Text, execution_id: int) -> Text:
+def generate_output_uri(base_output_dir: Text, name: Text,
+                        execution_id: int) -> Text:
   """Generate uri for output artifact."""
+  return os.path.join(base_output_dir, name, str(execution_id))
 
-  # Generates outputs uri based on execution id and optional split.
-  # Last empty string forces this be to a directory.
-  uri = os.path.join(base_output_dir, name, str(execution_id), artifact.split,
-                     '')
-  if tf.io.gfile.exists(uri):
-    msg = 'Output artifact uri %s already exists' % uri
-    absl.logging.error(msg)
-    raise RuntimeError(msg)
-  else:
-    # TODO(zhitaoli): Consider refactoring this out into something
-    # which can handle permission bits.
-    absl.logging.debug('Creating output artifact uri %s as directory', uri)
-    tf.io.gfile.makedirs(uri)
 
-  return uri
+def prepare_output_paths(artifact: types.Artifact):
+  """Create output directories for output artifact."""
+  if tf.io.gfile.exists(artifact.uri):
+    msg = 'Output artifact uri %s already exists' % artifact.uri
+    absl.logging.warning(msg)
+    # TODO(b/158689199): We currently simply return as a short-term workaround
+    # to unblock execution retires. A comprehensive solution to guarantee
+    # idempotent executions is needed.
+    return
+
+  # TODO(zhitaoli): Consider refactoring this out into something
+  # which can handle permission bits.
+  absl.logging.debug('Creating output artifact uri %s as directory',
+                     artifact.uri)
+  tf.io.gfile.makedirs(artifact.uri)
+  # TODO(b/147242148): Avoid special-casing the "split_names" property.
+  if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
+    split_names = artifact_utils.decode_split_names(artifact.split_names)
+    for split in split_names:
+      split_dir = os.path.join(artifact.uri, split)
+      absl.logging.debug('Creating output split %s as directory', split_dir)
+      tf.io.gfile.makedirs(split_dir)
 
 
 class BaseDriver(object):
@@ -116,18 +126,16 @@ class BaseDriver(object):
         related properties including component_type and component_id.
 
     Returns:
-      Final execution properties that will be used in execution.
+      Final artifacts that will be used in execution.
 
     Raises:
-      RuntimeError: for Channels that do not contain any artifact. This will be
-        reverted once we support Channel-based input resolution.
       ValueError: if in interactive mode, the given input channels have not been
         resolved.
     """
     result = {}
     for name, input_channel in input_dict.items():
-      artifacts = list(input_channel.get())
       if driver_args.interactive_resolution:
+        artifacts = list(input_channel.get())
         for artifact in artifacts:
           # Note: when not initialized, artifact.uri is '' and artifact.id is 0.
           if not artifact.uri or not artifact.id:
@@ -138,13 +146,16 @@ class BaseDriver(object):
                 '`interactive_context.run(component)` before their outputs can '
                 'be used in downstream components.') % (artifact, name))
         result[name] = artifacts
-        continue
-      # TODO(ruoyu): Remove once channel-based input resolution is supported.
-      if not artifacts:
-        raise RuntimeError('Channel-based input resolution is not supported.')
-      result[name] = self._metadata_handler.search_artifacts(
-          artifacts[0].name, pipeline_info.pipeline_name, pipeline_info.run_id,
-          artifacts[0].producer_component)
+      else:
+        result[name] = self._metadata_handler.search_artifacts(
+            artifact_name=input_channel.output_key,
+            pipeline_info=pipeline_info,
+            producer_component_id=input_channel.producer_component_id)
+        # TODO(ccy): add this code path to interactive resolution.
+        for artifact in result[name]:
+          if isinstance(artifact, types.ValueArtifact):
+            # Resolve the content of file into value field for value artifacts.
+            _ = artifact.read()
     return result
 
   def resolve_exec_properties(
@@ -173,53 +184,23 @@ class BaseDriver(object):
   def _prepare_output_artifacts(
       self,
       output_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
+    del exec_properties
+
     result = channel_utils.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
     for name, output_list in result.items():
       for artifact in output_list:
-        artifact.uri = _generate_output_uri(artifact, base_output_dir, name,
-                                            execution_id)
+        artifact.uri = generate_output_uri(base_output_dir, name, execution_id)
+        prepare_output_paths(artifact)
+
     return result
-
-  def _fetch_cached_artifacts(
-      self, output_dict: Dict[Text, types.Channel],
-      cached_execution_id: int) -> Dict[Text, List[types.Artifact]]:
-    """Fetch cached output artifacts."""
-    output_artifacts_dict = channel_utils.unwrap_channel_dict(output_dict)
-    return self._metadata_handler.fetch_previous_result_artifacts(
-        output_artifacts_dict, cached_execution_id)
-
-  def _register_execution(self, exec_properties: Dict[Text, Any],
-                          pipeline_info: data_types.PipelineInfo,
-                          component_info: data_types.ComponentInfo):
-    """Register the upcoming execution in MLMD.
-
-    Args:
-      exec_properties: Dict of other execution properties.
-      pipeline_info: An instance of data_types.PipelineInfo, holding pipeline
-        related properties including pipeline_name, pipeline_root and run_id
-      component_info: An instance of data_types.ComponentInfo, holding component
-        related properties including component_type and component_id.
-
-    Returns:
-      the id of the upcoming execution
-    """
-    run_context_id = self._metadata_handler.register_run_context_if_not_exists(
-        pipeline_info)
-    execution_id = self._metadata_handler.register_execution(
-        exec_properties=exec_properties,
-        pipeline_info=pipeline_info,
-        component_info=component_info,
-        run_context_id=run_context_id)
-    absl.logging.debug('Execution id of the upcoming component execution is %s',
-                       execution_id)
-    return execution_id
 
   def pre_execution(
       self,
@@ -257,58 +238,66 @@ class BaseDriver(object):
       RuntimeError: if any input as an empty uri.
     """
     # Step 1. Fetch inputs from metadata.
+    exec_properties = self.resolve_exec_properties(exec_properties,
+                                                   pipeline_info,
+                                                   component_info)
     input_artifacts = self.resolve_input_artifacts(input_dict, exec_properties,
                                                    driver_args, pipeline_info)
     self.verify_input_artifacts(artifacts_dict=input_artifacts)
     absl.logging.debug('Resolved input artifacts are: %s', input_artifacts)
     # Step 2. Register execution in metadata.
-    execution_id = self._register_execution(
+    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
+        pipeline_info)
+    execution = self._metadata_handler.register_execution(
+        input_artifacts=input_artifacts,
         exec_properties=exec_properties,
         pipeline_info=pipeline_info,
-        component_info=component_info)
-    output_artifacts = {}
+        component_info=component_info,
+        contexts=contexts)
     use_cached_results = False
+    output_artifacts = None
 
     if driver_args.enable_cache:
-      # TODO(b/136031301): Combine Step 3 and Step 4b after finish migration to
-      # go/tfx-oss-artifact-passing.
       # Step 3. Decide whether a new execution is needed.
-      cached_execution_id = self._metadata_handler.previous_execution(
+      output_artifacts = self._metadata_handler.get_cached_outputs(
           input_artifacts=input_artifacts,
           exec_properties=exec_properties,
           pipeline_info=pipeline_info,
           component_info=component_info)
-      if cached_execution_id:
-        absl.logging.debug('Found cached_execution: %s', cached_execution_id)
-        # Step 4b. New execution not needed. Fetch cached output artifacts.
-        try:
-          output_artifacts = self._fetch_cached_artifacts(
-              output_dict=output_dict, cached_execution_id=cached_execution_id)
-          absl.logging.debug('Cached output artifacts are: %s',
-                             output_artifacts)
-          use_cached_results = True
-        except RuntimeError:
-          absl.logging.warning(
-              'Error when trying to get cached output artifacts')
-          use_cached_results = False
-    if not use_cached_results:
+    if output_artifacts is not None:
+      # If cache should be used, updates execution to reflect that. Note that
+      # with this update, publisher should / will be skipped.
+      self._metadata_handler.update_execution(
+          execution=execution,
+          component_info=component_info,
+          output_artifacts=output_artifacts,
+          execution_state=metadata.EXECUTION_STATE_CACHED,
+          contexts=contexts)
+      use_cached_results = True
+    else:
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
           output_dict=output_dict,
-          execution_id=execution_id,
+          exec_properties=exec_properties,
+          execution_id=execution.id,
           pipeline_info=pipeline_info,
           component_info=component_info)
       absl.logging.debug(
           'Output artifacts skeleton for the upcoming execution are: %s',
           output_artifacts)
-      exec_properties = self.resolve_exec_properties(exec_properties,
-                                                     pipeline_info,
-                                                     component_info)
+      # Updates the execution to reflect refreshed output artifacts and
+      # execution properties.
+      self._metadata_handler.update_execution(
+          execution=execution,
+          component_info=component_info,
+          output_artifacts=output_artifacts,
+          exec_properties=exec_properties,
+          contexts=contexts)
       absl.logging.debug(
           'Execution properties for the upcoming execution are: %s',
           exec_properties)
 
     return data_types.ExecutionDecision(input_artifacts, output_artifacts,
-                                        exec_properties, execution_id,
+                                        exec_properties, execution.id,
                                         use_cached_results)

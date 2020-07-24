@@ -81,7 +81,7 @@ feature {
 }
 feature {
   name: "pickup_census_tract"
-  type: BYTES
+  type: INT
   presence {
     min_count: 0
   }

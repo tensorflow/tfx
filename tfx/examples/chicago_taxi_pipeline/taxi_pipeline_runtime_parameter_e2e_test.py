@@ -18,34 +18,41 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import logging
-import sys
+from absl import logging
+
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_runtime_parameter
-from tfx.orchestration.kubeflow import test_utils
+from tfx.orchestration import test_utils
+from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
-class TaxiPipelineRuntimeParameterEndToEndTest(test_utils.BaseKubeflowTest):
+class TaxiPipelineRuntimeParameterEndToEndTest(
+    kubeflow_test_utils.BaseKubeflowTest):
 
   def testEndToEndPipelineRun(self):
     """End-to-end test for pipeline with RuntimeParameter."""
-    pipeline_name = 'kubeflow-e2e-test-parameter-{}'.format(self._random_id())
+    pipeline_name = 'kubeflow-e2e-test-parameter-{}'.format(
+        test_utils.random_id())
     pipeline = taxi_pipeline_runtime_parameter._create_parameterized_pipeline(
-        pipeline_name=pipeline_name, direct_num_workers=4)
+        pipeline_name=pipeline_name,
+        pipeline_root=taxi_pipeline_runtime_parameter._pipeline_root,
+        enable_cache=True,
+        beam_pipeline_args=taxi_pipeline_runtime_parameter._beam_pipeline_args)
 
     parameters = {
         'pipeline-root': self._pipeline_root(pipeline_name),
-        'module-file': self._taxi_module_file,
+        'transform-module': self._transform_module,
+        'trainer-module': self._trainer_module,
         'data-root': self._data_root,
         'train-steps': 10,
         'eval-steps': 5,
         'slicing-column': 'trip_start_hour',
     }
 
-    self._compile_and_run_pipeline(pipeline, parameters)
+    self._compile_and_run_pipeline(pipeline=pipeline, parameters=parameters)
 
 
 if __name__ == '__main__':
-  logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+  logging.set_verbosity(logging.INFO)
   tf.test.main()

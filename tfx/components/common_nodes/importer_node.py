@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text, Type, Union
+from typing import Any, Dict, Optional, Text, Type, Union
 
 import absl
 
@@ -25,52 +25,101 @@ from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.types import artifact
+from tfx.orchestration import metadata
 from tfx.types import channel_utils
 from tfx.types import node_common
 
 # Constant to access importer importing result from importer output dict.
 IMPORT_RESULT_KEY = 'result'
-# Constant to access source uri from importer exec_properties dict.
-SOURCE_URI_KEY = 'source_uri'
+# Constant to access artifact uri from importer exec_properties dict.
+SOURCE_URI_KEY = 'artifact_uri'
+# Constant to access artifact properties from importer exec_properties dict.
+PROPERTIES_KEY = 'properties'
+# Constant to access artifact properties from importer exec_properties dict.
+CUSTOM_PROPERTIES_KEY = 'custom_properties'
 # Constant to access re-import option from importer exec_properties dict.
 REIMPORT_OPTION_KEY = 'reimport'
-# Constant to access splits from importer exec_properties dict.
-SPLIT_KEY = 'split'
 
 
 class ImporterDriver(base_driver.BaseDriver):
   """Driver for Importer."""
 
-  def _import_artifacts(self, source_uri: List[Text], reimport: bool,
-                        destination_channel: types.Channel,
-                        split: List[Text]) -> List[types.Artifact]:
-    """Imports external resource in MLMD."""
-    results = []
-    for uri, s in zip(source_uri, split):
-      absl.logging.info('Processing source uri: %s, split: %s' %
-                        (uri, s or 'NO_SPLIT'))
+  def _prepare_artifact(self, uri: Text, properties: Dict[Text, Any],
+                        custom_properties: Dict[Text, Any], reimport: bool,
+                        destination_channel: types.Channel) -> types.Artifact:
+    """Prepares the Importer's output artifact.
 
-      previous_artifacts = self._metadata_handler.get_artifacts_by_uri(uri)
-      result = types.Artifact(type_name=destination_channel.type_name, split=s)
-      result.uri = uri
+    If there is already an artifact in MLMD with the same URI and properties /
+    custom properties, that artifact will be reused unless the `reimport`
+    argument is set to True.
 
-      # If any registered artifact with the same uri also has the same
-      # fingerprint and user does not ask for re-import, just reuse the latest.
-      # Otherwise, register the external resource into MLMD using the type info
-      # in the destination channel.
-      if bool(previous_artifacts) and not reimport:
-        absl.logging.info('Reusing existing artifact')
-        result.set_artifact(max(previous_artifacts, key=lambda m: m.id))
-      else:
-        [registered_artifact
-        ] = self._metadata_handler.publish_artifacts([result])
-        absl.logging.info('Registered new artifact: %s' % registered_artifact)
-        result.set_artifact(registered_artifact)
+    Args:
+      uri: The uri of the artifact.
+      properties: The properties of the artifact, given as a dictionary from
+        string keys to integer / string values. Must conform to the declared
+        properties of the destination channel's output type.
+      custom_properties: The custom properties of the artifact, given as a
+        dictionary from string keys to integer / string values.
+      reimport: If set to True, will register a new artifact even if it already
+        exists in the database.
+      destination_channel: Destination channel for the imported artifact.
 
-      results.append(result)
+    Returns:
+      An Artifact object representing the imported artifact.
+    """
+    absl.logging.info(
+        'Processing source uri: %s, properties: %s, custom_properties: %s' %
+        (uri, properties, custom_properties))
 
-    return results
+    # Check types of custom properties.
+    for key, value in custom_properties.items():
+      if not isinstance(value, (int, Text, bytes)):
+        raise ValueError(
+            ('Custom property value for key %r must be a string or integer '
+             '(got %r instead)') % (key, value))
+
+    unfiltered_previous_artifacts = self._metadata_handler.get_artifacts_by_uri(
+        uri)
+    # Only consider previous artifacts as candidates to reuse, if the properties
+    # of the imported artifact match those of the existing artifact.
+    previous_artifacts = []
+    for candidate_mlmd_artifact in unfiltered_previous_artifacts:
+      is_candidate = True
+      candidate_artifact = destination_channel.type()
+      candidate_artifact.set_mlmd_artifact(candidate_mlmd_artifact)
+      for key, value in properties.items():
+        if getattr(candidate_artifact, key) != value:
+          is_candidate = False
+          break
+      for key, value in custom_properties.items():
+        if isinstance(value, int):
+          if candidate_artifact.get_int_custom_property(key) != value:
+            is_candidate = False
+            break
+        elif isinstance(value, (Text, bytes)):
+          if candidate_artifact.get_string_custom_property(key) != value:
+            is_candidate = False
+            break
+      if is_candidate:
+        previous_artifacts.append(candidate_mlmd_artifact)
+
+    result = destination_channel.type()
+    result.uri = uri
+    for key, value in properties.items():
+      setattr(result, key, value)
+    for key, value in custom_properties.items():
+      if isinstance(value, int):
+        result.set_int_custom_property(key, value)
+      elif isinstance(value, (Text, bytes)):
+        result.set_string_custom_property(key, value)
+
+    # If a registered artifact has the same uri and properties and the user does
+    # not explicitly ask for reimport, reuse that artifact.
+    if bool(previous_artifacts) and not reimport:
+      absl.logging.info('Reusing existing artifact')
+      result.set_mlmd_artifact(max(previous_artifacts, key=lambda m: m.id))
+
+    return result
 
   def pre_execution(
       self,
@@ -81,14 +130,32 @@ class ImporterDriver(base_driver.BaseDriver):
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> data_types.ExecutionDecision:
+    # Registers contexts and execution.
+    contexts = self._metadata_handler.register_pipeline_contexts_if_not_exists(
+        pipeline_info)
+    execution = self._metadata_handler.register_execution(
+        exec_properties=exec_properties,
+        pipeline_info=pipeline_info,
+        component_info=component_info,
+        contexts=contexts)
+    # Create imported artifacts.
     output_artifacts = {
-        IMPORT_RESULT_KEY:
-            self._import_artifacts(
-                source_uri=exec_properties[SOURCE_URI_KEY],
+        IMPORT_RESULT_KEY: [
+            self._prepare_artifact(
+                uri=exec_properties[SOURCE_URI_KEY],
+                properties=exec_properties[PROPERTIES_KEY],
+                custom_properties=exec_properties[CUSTOM_PROPERTIES_KEY],
                 destination_channel=output_dict[IMPORT_RESULT_KEY],
-                reimport=exec_properties[REIMPORT_OPTION_KEY],
-                split=exec_properties[SPLIT_KEY])
+                reimport=exec_properties[REIMPORT_OPTION_KEY])
+        ]
     }
+    # Update execution with imported artifacts.
+    self._metadata_handler.update_execution(
+        execution=execution,
+        component_info=component_info,
+        output_artifacts=output_artifacts,
+        execution_state=metadata.EXECUTION_STATE_CACHED,
+        contexts=contexts)
 
     output_dict[IMPORT_RESULT_KEY] = channel_utils.as_channel(
         output_artifacts[IMPORT_RESULT_KEY])
@@ -96,11 +163,8 @@ class ImporterDriver(base_driver.BaseDriver):
     return data_types.ExecutionDecision(
         input_dict={},
         output_dict=output_artifacts,
-        exec_properties={},
-        execution_id=self._register_execution(
-            exec_properties={},
-            pipeline_info=pipeline_info,
-            component_info=component_info),
+        exec_properties=exec_properties,
+        execution_id=execution.id,
         use_cached_results=False)
 
 
@@ -130,55 +194,45 @@ class ImporterNode(base_node.BaseNode):
       MLMD.
   """
 
-  DRIVER_CLASS = ImporterDriver
-
   def __init__(self,
                instance_name: Text,
-               source_uri: Union[Text, List[Text]],
-               artifact_type: Type[artifact.Artifact],
+               source_uri: Text,
+               artifact_type: Type[types.Artifact],
                reimport: Optional[bool] = False,
-               split: Optional[Union[Text, List[Text]]] = ''):
+               properties: Optional[Dict[Text, Union[Text, int]]] = None,
+               custom_properties: Optional[Dict[Text, Union[Text,
+                                                            int]]] = None):
     """Init function for ImporterNode.
 
     Args:
       instance_name: the name of the ImporterNode instance.
-      source_uri: the URI or list of URIs to the resources that need to be
-        registered.
+      source_uri: the URI of the resource that needs to be registered.
       artifact_type: the type of the artifact to import.
       reimport: whether or not to re-import as a new artifact if the URI has
         been imported in before.
-      split: Names of splits to be given to each artifact. If source_uri is
-        given as list, split is mandatory, and must be the same length as
-        source_uri.
+      properties: Dictionary of properties for the imported Artifact. These
+        properties should be ones declared for the given artifact_type (see the
+        PROPERTIES attribute of the definition of the type for details).
+      custom_properties: Dictionary of custom properties for the imported
+        Artifact. These properties should be of type Text or int.
     """
-    self._source_uri = source_uri if isinstance(source_uri,
-                                                list) else [source_uri]
+    self._source_uri = source_uri
     self._reimport = reimport
-    self._split = split if isinstance(split, list) else [split]
+    self._properties = properties or {}
+    self._custom_properties = custom_properties or {}
 
-    if len(self._source_uri) != len(self._split):
-      raise ValueError('split must be given when source_uri is given as list.')
-
+    artifact = artifact_type()
+    for key, value in self._properties.items():
+      setattr(artifact, key, value)
     self._output_dict = {
         IMPORT_RESULT_KEY:
-            types.Channel(
-                type=artifact_type,
-                artifacts=[artifact_type(split=s) for s in self._split])
+            types.Channel(type=artifact_type, artifacts=[artifact])
     }
 
-    super(ImporterNode, self).__init__(instance_name=instance_name)
-
-  def to_json_dict(self) -> Dict[Text, Any]:
-    # TODO(b/145622586): Consider changing the keys to be named constants.
-    return {
-        '_instance_name': self._instance_name,
-        '_output_dict': self._output_dict,
-        '_reimport': self._reimport,
-        '_source_uri': self._source_uri,
-        '_split': self._split,
-        'driver_class': self.driver_class,
-        'executor_spec': self.executor_spec,
-    }
+    super(ImporterNode, self).__init__(
+        instance_name=instance_name,
+        driver_class=ImporterDriver,
+    )
 
   @property
   def inputs(self) -> node_common._PropertyDictWrapper:  # pylint: disable=protected-access
@@ -193,5 +247,6 @@ class ImporterNode(base_node.BaseNode):
     return {
         SOURCE_URI_KEY: self._source_uri,
         REIMPORT_OPTION_KEY: self._reimport,
-        SPLIT_KEY: self._split,
+        PROPERTIES_KEY: self._properties,
+        CUSTOM_PROPERTIES_KEY: self._custom_properties,
     }

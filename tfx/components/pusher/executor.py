@@ -19,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+import time
+from typing import Any, Dict, List, Optional, Text
 
-import absl
+from absl import logging
 import tensorflow as tf
 
 from google.protobuf import json_format
@@ -32,6 +33,23 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+
+# Aliasing of enum for better readability.
+_Versioning = pusher_pb2.Versioning
+
+# Key for model in executor input_dict.
+MODEL_KEY = 'model'
+# Key for model blessing in executor input_dict.
+MODEL_BLESSING_KEY = 'model_blessing'
+# Key for infra blessing in executor input_dict.
+INFRA_BLESSING_KEY = 'infra_blessing'
+# Key for pushed model in executor output_dict.
+PUSHED_MODEL_KEY = 'pushed_model'
+
+# Key for PushedModel artifact properties.
+_PUSHED_KEY = 'pushed'
+_PUSHED_DESTINATION_KEY = 'pushed_destination'
+_PUSHED_VERSION_KEY = 'pushed_version'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -52,29 +70,42 @@ class Executor(base_executor.BaseExecutor):
   please refer to https://www.tensorflow.org/tfx/guide/serving.
   """
 
-  def CheckBlessing(self, input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]]) -> bool:
-    """Check that model is blessed by upstream ModelValidator, or update output.
+  def CheckBlessing(self, input_dict: Dict[Text, List[types.Artifact]]) -> bool:
+    """Check that model is blessed by upstream validators.
 
     Args:
       input_dict: Input dict from input key to a list of artifacts:
-        - model_blessing: model blessing path from model_validator. Pusher looks
-          for a file named 'BLESSED' to consider the model blessed and safe to
-          push.
-      output_dict: Output dict from key to a list of artifacts, including:
-        - model_push: A list of 'ModelPushPath' artifact of size one.
+        - model_blessing: A `ModelBlessing` artifact from model validator or
+          evaluator.
+          Pusher looks for a custom property `blessed` in the artifact to check
+          it is safe to push.
+        - infra_blessing: An `InfraBlessing` artifact from infra validator.
+          Pusher looks for a custom proeprty `blessed` in the artifact to
+          determine whether the model is mechanically servable from the model
+          server to which Pusher is going to push.
 
     Returns:
       True if the model is blessed by validator.
     """
-    model_blessing = artifact_utils.get_single_instance(
-        input_dict['model_blessing'])
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
     # TODO(jyzhao): should this be in driver or executor.
-    if not model_utils.is_model_blessed(model_blessing):
-      model_push.set_int_custom_property('pushed', 0)
-      absl.logging.info('Model on %s was not blessed', model_blessing.uri)
-      return False
+    maybe_model_blessing = input_dict.get(MODEL_BLESSING_KEY)
+    if maybe_model_blessing:
+      model_blessing = artifact_utils.get_single_instance(maybe_model_blessing)
+      if not model_utils.is_model_blessed(model_blessing):
+        logging.info('Model on %s was not blessed by model validation',
+                     model_blessing.uri)
+        return False
+    maybe_infra_blessing = input_dict.get(INFRA_BLESSING_KEY)
+    if maybe_infra_blessing:
+      infra_blessing = artifact_utils.get_single_instance(maybe_infra_blessing)
+      if not model_utils.is_infra_validated(infra_blessing):
+        logging.info('Model on %s was not blessed by infra validator',
+                     model_blessing.uri)
+        return False
+    if not maybe_model_blessing and not maybe_infra_blessing:
+      logging.warning('Pusher is going to push the model without validation. '
+                      'Consider using Evaluator or InfraValidator in your '
+                      'pipeline.')
     return True
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -99,24 +130,15 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    if not self.CheckBlessing(input_dict, output_dict):
+    model_push = artifact_utils.get_single_instance(
+        output_dict[PUSHED_MODEL_KEY])
+    if not self.CheckBlessing(input_dict):
+      self._MarkNotPushed(model_push)
       return
-    model_push = artifact_utils.get_single_instance(output_dict['model_push'])
-    model_push_uri = model_push.uri
-    model_export = artifact_utils.get_single_instance(
-        input_dict['model_export'])
-    model_export_uri = model_export.uri
-    absl.logging.info('Model pushing.')
-    # Copy the model we are pushing into
-    model_path = path_utils.serving_model_path(model_export_uri)
-    # Note: we do not have a logical model version right now. This
-    # model_version is a timestamp mapped to trainer's exporter.
-    model_version = os.path.basename(model_path)
-    absl.logging.info('Model version is %s', model_version)
-    io_utils.copy_dir(model_path, os.path.join(model_push_uri, model_version))
-    absl.logging.info('Model written to %s.', model_push_uri)
+    model_export = artifact_utils.get_single_instance(input_dict[MODEL_KEY])
+    model_path = path_utils.serving_model_path(model_export.uri)
 
-    # Copied to a fixed outside path, which can be listened by model server.
+    # Push model to the destination, which can be listened by a model server.
     #
     # If model is already successfully copied to outside before, stop copying.
     # This is because model validator might blessed same model twice (check
@@ -126,18 +148,46 @@ class Executor(base_executor.BaseExecutor):
     # TODO(jyzhao): support rpc push and verification.
     push_destination = pusher_pb2.PushDestination()
     json_format.Parse(exec_properties['push_destination'], push_destination)
-    serving_path = os.path.join(push_destination.filesystem.base_directory,
-                                model_version)
-    if tf.io.gfile.exists(serving_path):
-      absl.logging.info(
-          'Destination directory %s already exists, skipping current push.',
-          serving_path)
-    else:
-      # tf.serving won't load partial model, it will retry until fully copied.
-      io_utils.copy_dir(model_path, serving_path)
-      absl.logging.info('Model written to serving path %s.', serving_path)
 
+    destination_kind = push_destination.WhichOneof('destination')
+    if destination_kind == 'filesystem':
+      fs_config = push_destination.filesystem
+      if fs_config.versioning == _Versioning.AUTO:
+        fs_config.versioning = _Versioning.UNIX_TIMESTAMP
+      if fs_config.versioning == _Versioning.UNIX_TIMESTAMP:
+        model_version = str(int(time.time()))
+      else:
+        raise NotImplementedError(
+            'Invalid Versioning {}'.format(fs_config.versioning))
+      logging.info('Model version: %s', model_version)
+      serving_path = os.path.join(fs_config.base_directory, model_version)
+
+      if tf.io.gfile.exists(serving_path):
+        logging.info(
+            'Destination directory %s already exists, skipping current push.',
+            serving_path)
+      else:
+        # tf.serving won't load partial model, it will retry until fully copied.
+        io_utils.copy_dir(model_path, serving_path)
+        logging.info('Model written to serving path %s.', serving_path)
+    else:
+      raise NotImplementedError(
+          'Invalid push destination {}'.format(destination_kind))
+
+    # Copy the model to pushing uri for archiving.
+    io_utils.copy_dir(model_path, model_push.uri)
+    self._MarkPushed(model_push,
+                     pushed_destination=serving_path,
+                     pushed_version=model_version)
+    logging.info('Model pushed to %s.', model_push.uri)
+
+  def _MarkPushed(self, model_push: types.Artifact, pushed_destination: Text,
+                  pushed_version: Optional[Text] = None) -> None:
     model_push.set_int_custom_property('pushed', 1)
-    model_push.set_string_custom_property('pushed_model', model_export_uri)
-    model_push.set_int_custom_property('pushed_model_id', model_export.id)
-    absl.logging.info('Model pushed to %s.', serving_path)
+    model_push.set_string_custom_property(
+        _PUSHED_DESTINATION_KEY, pushed_destination)
+    if pushed_version is not None:
+      model_push.set_string_custom_property(_PUSHED_VERSION_KEY, pushed_version)
+
+  def _MarkNotPushed(self, model_push: types.Artifact):
+    model_push.set_int_custom_property('pushed', 0)

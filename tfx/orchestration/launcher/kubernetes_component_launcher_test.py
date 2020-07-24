@@ -25,15 +25,16 @@ import mock
 import tensorflow as tf
 
 from ml_metadata.proto import metadata_store_pb2
-from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import kubernetes_component_config
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
+from tfx.utils import kube_utils
 
 
 class KubernetesComponentLauncherTest(tf.test.TestCase):
@@ -47,8 +48,8 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
             executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)))
 
   @mock.patch.dict(os.environ, {
-      'KFP_NAMESPACE': 'ns-1',
-      'KFP_POD_NAME': 'pod-1'
+      kube_utils.KFP_NAMESPACE: 'ns-1',
+      kube_utils.KFP_POD_NAME: 'pod-1'
   })
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(config, 'load_incluster_config', autospec=True)
@@ -239,10 +240,11 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
+    metadata_connection = metadata.Metadata(connection_config)
 
     pipeline_root = os.path.join(test_dir, 'Test')
 
-    input_artifact = types.Artifact(type_name='InputPath')
+    input_artifact = test_utils._InputArtifact()
     input_artifact.uri = os.path.join(test_dir, 'input')
 
     component = test_utils._FakeComponent(
@@ -260,7 +262,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
         component=component,
         pipeline_info=pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=[],
         additional_pipeline_args={},
         component_config=component_config)

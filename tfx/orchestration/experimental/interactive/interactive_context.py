@@ -39,7 +39,7 @@ from six.moves import builtins
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.interactive import execution_result
@@ -130,7 +130,7 @@ class InteractiveContext(object):
   @requires_ipython
   def run(
       self,
-      component: base_component.BaseComponent,
+      component: base_node.BaseNode,
       enable_cache: bool = True,
       beam_pipeline_args: Optional[List[Text]] = None
   ) -> execution_result.ExecutionResult:
@@ -152,18 +152,18 @@ class InteractiveContext(object):
         run_id=run_id)
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache, interactive_resolution=True)
+    metadata_connection = metadata.Metadata(self.metadata_connection_config)
     beam_pipeline_args = beam_pipeline_args or []
     additional_pipeline_args = {}
-    for name, output in component.outputs.get_all().items():
+    for name, output in component.outputs.items():
       for artifact in output.get():
         artifact.pipeline_name = self.pipeline_name
         artifact.producer_component = component.id
-        artifact.run_id = run_id
         artifact.name = name
     # TODO(hongyes): figure out how to resolve launcher class in the interactive
     # context.
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
-        component, pipeline_info, driver_args, self.metadata_connection_config,
+        component, pipeline_info, driver_args, metadata_connection,
         beam_pipeline_args, additional_pipeline_args)
     execution_id = launcher.launch().execution_id
 

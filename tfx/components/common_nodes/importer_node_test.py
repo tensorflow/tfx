@@ -12,11 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.model_validator.component."""
+"""Tests for tfx.components.common_nodes.importer_node."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+from typing import Text
 
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
@@ -24,6 +26,7 @@ from tfx import types
 from tfx.components.common_nodes import importer_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
 
@@ -34,42 +37,29 @@ class ImporterNodeTest(tf.test.TestCase):
     impt = importer_node.ImporterNode(
         instance_name='my_importer',
         source_uri='m/y/u/r/i',
+        properties={
+            'split_names': '["train", "eval"]',
+        },
+        custom_properties={
+            'str_custom_property': 'abc',
+            'int_custom_property': 123,
+        },
         artifact_type=standard_artifacts.Examples)
     self.assertDictEqual(
         impt.exec_properties, {
-            importer_node.SOURCE_URI_KEY: ['m/y/u/r/i'],
+            importer_node.SOURCE_URI_KEY: 'm/y/u/r/i',
             importer_node.REIMPORT_OPTION_KEY: False,
-            importer_node.SPLIT_KEY: [''],
+            importer_node.PROPERTIES_KEY: {
+                'split_names': '["train", "eval"]',
+            },
+            importer_node.CUSTOM_PROPERTIES_KEY: {
+                'str_custom_property': 'abc',
+                'int_custom_property': 123,
+            },
         })
     self.assertEmpty(impt.inputs.get_all())
-    self.assertEqual(
-        impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].type_name,
-        standard_artifacts.Examples.TYPE_NAME)
-
-  def testImporterDefinitionWithMultipleUris(self):
-    impt = importer_node.ImporterNode(
-        instance_name='my_importer',
-        source_uri=['m/y/u/r/i/1', 'm/y/u/r/i/2'],
-        artifact_type=standard_artifacts.Examples,
-        split=['train', 'eval'])
-    self.assertDictEqual(
-        impt.exec_properties, {
-            importer_node.SOURCE_URI_KEY: ['m/y/u/r/i/1', 'm/y/u/r/i/2'],
-            importer_node.REIMPORT_OPTION_KEY: False,
-            importer_node.SPLIT_KEY: ['train', 'eval'],
-        })
-    self.assertEqual([
-        s.split
-        for s in impt.outputs.get_all()[importer_node.IMPORT_RESULT_KEY].get()
-    ], ['train', 'eval'])
-
-  def testImporterDefinitionWithMultipleUrisBadSplitSpecification(self):
-    with self.assertRaises(ValueError):
-      _ = importer_node.ImporterNode(
-          instance_name='my_importer',
-          source_uri=['m/y/u/r/i/1', 'm/y/u/r/i/2'],
-          artifact_type=standard_artifacts.Examples,
-      )
+    self.assertEqual(impt.outputs[importer_node.IMPORT_RESULT_KEY].type,
+                     standard_artifacts.Examples)
 
   def testImporterNodeDumpsJsonRoundtrip(self):
     instance_name = 'my_importer'
@@ -93,25 +83,31 @@ class ImporterDriverTest(tf.test.TestCase):
     super(ImporterDriverTest, self).setUp()
     self.connection_config = metadata_store_pb2.ConnectionConfig()
     self.connection_config.sqlite.SetInParent()
-    self.artifact_type = 'Examples'
     self.output_dict = {
         importer_node.IMPORT_RESULT_KEY:
-            types.Channel(type_name=self.artifact_type)
+            types.Channel(type=standard_artifacts.Examples)
     }
-    self.source_uri = ['m/y/u/r/i/1', 'm/y/u/r/i/2']
-    self.split = ['train', 'eval']
+    self.source_uri = 'm/y/u/r/i'
+    self.properties = {
+        'split_names': artifact_utils.encode_split_names(['train', 'eval'])
+    }
+    self.custom_properties = {
+        'string_custom_property': 'abc',
+        'int_custom_property': 123,
+    }
 
     self.existing_artifacts = []
-    for uri, split in zip(self.source_uri, self.split):
-      existing_artifact = types.Artifact(type_name=self.artifact_type)
-      existing_artifact.uri = uri
-      existing_artifact.split = split
-      self.existing_artifacts.append(existing_artifact)
+    existing_artifact = standard_artifacts.Examples()
+    existing_artifact.uri = self.source_uri
+    existing_artifact.split_names = self.properties['split_names']
+    self.existing_artifacts.append(existing_artifact)
 
-    self.component_info = data_types.ComponentInfo(
-        component_type='c_type', component_id='c_id')
     self.pipeline_info = data_types.PipelineInfo(
         pipeline_name='p_name', pipeline_root='p_root', run_id='run_id')
+    self.component_info = data_types.ComponentInfo(
+        component_type='c_type',
+        component_id='c_id',
+        pipeline_info=self.pipeline_info)
     self.driver_args = data_types.DriverArgs(enable_cache=True)
 
   def _callImporterDriver(self, reimport: bool):
@@ -127,24 +123,33 @@ class ImporterDriverTest(tf.test.TestCase):
           exec_properties={
               importer_node.SOURCE_URI_KEY: self.source_uri,
               importer_node.REIMPORT_OPTION_KEY: reimport,
-              importer_node.SPLIT_KEY: self.split,
+              importer_node.PROPERTIES_KEY: self.properties,
+              importer_node.CUSTOM_PROPERTIES_KEY: self.custom_properties,
           })
       self.assertFalse(execution_result.use_cached_results)
       self.assertEmpty(execution_result.input_dict)
       self.assertEqual(
-          execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].uri,
-          self.source_uri[0])
+          1, len(execution_result.output_dict[importer_node.IMPORT_RESULT_KEY]))
       self.assertEqual(
-          execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].id,
-          3 if reimport else 1)
+          execution_result.output_dict[importer_node.IMPORT_RESULT_KEY][0].uri,
+          self.source_uri)
 
       self.assertNotEmpty(
           self.output_dict[importer_node.IMPORT_RESULT_KEY].get())
 
       results = self.output_dict[importer_node.IMPORT_RESULT_KEY].get()
-      for res, uri, split in zip(results, self.source_uri, self.split):
-        self.assertEqual(res.uri, uri)
-        self.assertEqual(res.split, split)
+      self.assertEqual(1, len(results))
+      result = results[0]
+      self.assertEqual(result.uri, result.uri)
+      for key, value in self.properties.items():
+        self.assertEqual(value, getattr(result, key))
+      for key, value in self.custom_properties.items():
+        if isinstance(value, int):
+          self.assertEqual(value, result.get_int_custom_property(key))
+        elif isinstance(value, (Text, bytes)):
+          self.assertEqual(value, result.get_string_custom_property(key))
+        else:
+          raise ValueError('Invalid custom property value: %r.' % value)
 
   def testImportArtifact(self):
     self._callImporterDriver(reimport=True)

@@ -25,14 +25,18 @@ from typing import Any, Iterable, List, Optional, Text, Type
 import absl
 import apache_beam as beam
 
-from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher
+from tfx.orchestration.launcher import docker_component_launcher
+from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.utils import telemetry_utils
 
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
@@ -41,7 +45,7 @@ from tfx.orchestration.launcher import base_component_launcher
 class _ComponentAsDoFn(beam.DoFn):
   """Wrap component as beam DoFn."""
 
-  def __init__(self, component: base_component.BaseComponent,
+  def __init__(self, component: base_node.BaseNode,
                component_launcher_class: Type[
                    base_component_launcher.BaseComponentLauncher],
                component_config: base_component_config.BaseComponentConfig,
@@ -56,11 +60,13 @@ class _ComponentAsDoFn(beam.DoFn):
       tfx_pipeline: Logical pipeline that contains pipeline related information.
     """
     driver_args = data_types.DriverArgs(enable_cache=tfx_pipeline.enable_cache)
+    metadata_connection = metadata.Metadata(
+        tfx_pipeline.metadata_connection_config)
     self._component_launcher = component_launcher_class.create(
         component=component,
         pipeline_info=tfx_pipeline.pipeline_info,
         driver_args=driver_args,
-        metadata_connection_config=tfx_pipeline.metadata_connection_config,
+        metadata_connection=metadata_connection,
         beam_pipeline_args=tfx_pipeline.beam_pipeline_args,
         additional_pipeline_args=tfx_pipeline.additional_pipeline_args,
         component_config=component_config)
@@ -95,9 +101,17 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       beam_orchestrator_args: beam args for the beam orchestrator. Note that
         this is different from the beam_pipeline_args within
         additional_pipeline_args, which is for beam pipelines in components.
-      config: Optional pipeline config for customizing the launching
-        of each component.
+      config: Optional pipeline config for customizing the launching of each
+        component. Defaults to pipeline config that supports
+        InProcessComponentLauncher and DockerComponentLauncher.
     """
+    if config is None:
+      config = pipeline_config.PipelineConfig(
+          supported_launcher_classes=[
+              in_process_component_launcher.InProcessComponentLauncher,
+              docker_component_launcher.DockerComponentLauncher,
+          ],
+      )
     super(BeamDagRunner, self).__init__(config)
     self._beam_orchestrator_args = beam_orchestrator_args
 
@@ -114,36 +128,38 @@ class BeamDagRunner(tfx_runner.TfxRunner):
 
     tfx_pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
-      # Uses for triggering the component DoFns.
-      root = p | 'CreateRoot' >> beam.Create([None])
+    with telemetry_utils.scoped_labels(
+        {telemetry_utils.LABEL_TFX_RUNNER: 'beam'}):
+      with beam.Pipeline(argv=self._beam_orchestrator_args) as p:
+        # Uses for triggering the component DoFns.
+        root = p | 'CreateRoot' >> beam.Create([None])
 
-      # Stores mapping of component to its signal.
-      signal_map = {}
-      # pipeline.components are in topological order.
-      for component in tfx_pipeline.components:
-        component_id = component.id
+        # Stores mapping of component to its signal.
+        signal_map = {}
+        # pipeline.components are in topological order.
+        for component in tfx_pipeline.components:
+          component_id = component.id
 
-        # Signals from upstream components.
-        signals_to_wait = []
-        if component.upstream_nodes:
-          for upstream_node in component.upstream_nodes:
-            assert upstream_node in signal_map, ('Components is not in '
-                                                 'topological order')
-            signals_to_wait.append(signal_map[upstream_node])
-        absl.logging.info('Component %s depends on %s.', component_id,
-                          [s.producer.full_label for s in signals_to_wait])
+          # Signals from upstream components.
+          signals_to_wait = []
+          if component.upstream_nodes:
+            for upstream_node in component.upstream_nodes:
+              assert upstream_node in signal_map, ('Components is not in '
+                                                   'topological order')
+              signals_to_wait.append(signal_map[upstream_node])
+          absl.logging.info('Component %s depends on %s.', component_id,
+                            [s.producer.full_label for s in signals_to_wait])
 
-        (component_launcher_class,
-         component_config) = config_utils.find_component_launch_info(
-             self._config, component)
+          (component_launcher_class,
+           component_config) = config_utils.find_component_launch_info(
+               self._config, component)
 
-        # Each signal is an empty PCollection. AsIter ensures component will be
-        # triggered after upstream components are finished.
-        signal_map[component] = (
-            root
-            | 'Run[%s]' % component_id >> beam.ParDo(
-                _ComponentAsDoFn(component, component_launcher_class,
-                                 component_config, tfx_pipeline),
-                *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
-        absl.logging.info('Component %s is scheduled.', component_id)
+          # Each signal is an empty PCollection. AsIter ensures component will
+          # be triggered after upstream components are finished.
+          signal_map[component] = (
+              root
+              | 'Run[%s]' % component_id >> beam.ParDo(
+                  _ComponentAsDoFn(component, component_launcher_class,
+                                   component_config, tfx_pipeline),
+                  *[beam.pvalue.AsIter(s) for s in signals_to_wait]))
+          absl.logging.info('Component %s is scheduled.', component_id)

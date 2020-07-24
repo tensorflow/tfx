@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
+import absl
+import tensorflow_model_analysis as tfma
 
 from tfx import types
 from tfx.components.base import base_component
@@ -63,7 +65,8 @@ class Evaluator(base_component.BaseComponent):
     # Uses TFMA to compute a evaluation statistics over features of a model.
     model_analyzer = Evaluator(
         examples=example_gen.outputs['examples'],
-        model=trainer.outputs['model'])
+        model=trainer.outputs['model'],
+        eval_config=tfma.EvalConfig(...))
   ```
   """
 
@@ -74,13 +77,18 @@ class Evaluator(base_component.BaseComponent):
       self,
       examples: types.Channel = None,
       model: types.Channel = None,
+      baseline_model: Optional[types.Channel] = None,
+      # TODO(b/148618405): deprecate feature_slicing_spec.
       feature_slicing_spec: Optional[Union[evaluator_pb2.FeatureSlicingSpec,
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      eval_config: Optional[tfma.EvalConfig] = None,
+      blessing: Optional[types.Channel] = None,
+      schema: Optional[types.Channel] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -88,7 +96,10 @@ class Evaluator(base_component.BaseComponent):
         produced by an ExampleGen component. _required_
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a Trainer component.
+      baseline_model: An optional channel of type 'standard_artifacts.Model' as
+        the baseline model for model diff and model validation purpose.
       feature_slicing_spec:
+        Deprecated, please use eval_config instead. Only support estimator.
         [evaluator_pb2.FeatureSlicingSpec](https://github.com/tensorflow/tfx/blob/master/tfx/proto/evaluator.proto)
           instance that describes how Evaluator should slice the data. If any
           field is provided as a RuntimeParameter, feature_slicing_spec should
@@ -105,16 +116,47 @@ class Evaluator(base_component.BaseComponent):
         Evaluator. Required only if multiple Evaluator components are declared
         in the same pipeline.  Either `model_exports` or `model` must be present
         in the input arguments.
+      eval_config: Instance of tfma.EvalConfig containg configuration settings
+        for running the evaluation. This config has options for both estimator
+        and Keras.
+      blessing: Output channel of 'ModelBlessingPath' that contains the
+        blessing result.
+      schema: A `Schema` channel to use for TFXIO.
     """
-    model_exports = model_exports or model
-    output = output or types.Channel(
+    if eval_config is not None and feature_slicing_spec is not None:
+      raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
+                       "must be supplied.")
+    if eval_config is None and feature_slicing_spec is None:
+      feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
+      absl.logging.info('Neither eval_config nor feature_slicing_spec is '
+                        'passed, the model is treated as estimator.')
+
+    if model_exports:
+      absl.logging.warning(
+          'The "model_exports" argument to the Evaluator component has '
+          'been renamed to "model" and is deprecated. Please update your '
+          'usage as support for this argument will be removed soon.')
+      model = model_exports
+
+    if feature_slicing_spec:
+      absl.logging.warning('feature_slicing_spec is deprecated, please use '
+                           'eval_config instead.')
+
+    blessing = blessing or types.Channel(
+        type=standard_artifacts.ModelBlessing,
+        artifacts=[standard_artifacts.ModelBlessing()])
+
+    evaluation = output or types.Channel(
         type=standard_artifacts.ModelEvaluation,
         artifacts=[standard_artifacts.ModelEvaluation()])
     spec = EvaluatorSpec(
         examples=examples,
-        model_exports=model_exports,
-        feature_slicing_spec=(feature_slicing_spec or
-                              evaluator_pb2.FeatureSlicingSpec()),
+        model=model,
+        baseline_model=baseline_model,
+        feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
-        output=output)
+        evaluation=evaluation,
+        eval_config=eval_config,
+        blessing=blessing,
+        schema=schema)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

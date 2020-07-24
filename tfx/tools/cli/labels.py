@@ -46,7 +46,15 @@ ENDPOINT = 'endpoint'
 NAMESPACE = 'namespace'
 # Pipeline id generated when pipeline is uploaded to KFP server.
 PIPELINE_ID = 'pipeline_id'
+# Pipeline version id generated when pipeline is created or updated.
+PIPELINE_VERSION_ID = 'pipeline_version_id'
 # Experiment id generated when a new experiment is created on KFP server.
 EXPERIMENT_ID = 'experiment_id'
 # Environment variable for the default Kubeflow TFX image.
 KUBEFLOW_TFX_IMAGE_ENV = 'KUBEFLOW_TFX_IMAGE'
+
+# Template specific labels.
+# Destination directory path to copy files
+DESTINATION_PATH = 'destination_path'
+# Model kind of the copying template
+MODEL = 'model'

@@ -1,0 +1,184 @@
+feature {
+  name: "company_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 62
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "dropoff_census_tract_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "dropoff_community_area_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "dropoff_latitude_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "dropoff_longitude_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "fare_xf"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "payment_type_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 15
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "pickup_census_tract_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "pickup_community_area_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "pickup_latitude_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "pickup_longitude_xf"
+  type: INT
+  int_domain {
+    min: 0
+    max: 9
+    is_categorical: true
+  }
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "tips_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "trip_miles_xf"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "trip_seconds_xf"
+  type: FLOAT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "trip_start_day_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "trip_start_hour_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+feature {
+  name: "trip_start_month_xf"
+  type: INT
+  presence {
+    min_fraction: 1.0
+  }
+  shape {
+  }
+}
+# generate_legacy_feature_spec: false

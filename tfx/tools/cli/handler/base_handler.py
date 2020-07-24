@@ -21,7 +21,6 @@ from __future__ import print_function
 import abc
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -31,6 +30,7 @@ import click
 from six import with_metaclass
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 
@@ -107,13 +107,12 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     engine_flag = self.flags_dict[labels.ENGINE_FLAG]
     with open(self.flags_dict[labels.PIPELINE_DSL_PATH], 'r') as f:
       dsl_contents = f.read()
-      regexes = {
-          labels.AIRFLOW_ENGINE: r'AirflowDagRunner\(.*\)',
-          labels.KUBEFLOW_ENGINE: r'KubeflowDagRunner\(.*\)',
-          labels.BEAM_ENGINE: r'BeamDagRunner\(.*\)'
+      runner_names = {
+          labels.AIRFLOW_ENGINE: 'AirflowDagRunner',
+          labels.KUBEFLOW_ENGINE: 'KubeflowDagRunner',
+          labels.BEAM_ENGINE: 'BeamDagRunner',
       }
-      match = re.search(regexes[engine_flag], dsl_contents)
-      if not match:
+      if runner_names[engine_flag] not in dsl_contents:
         sys.exit('{} runner not found in dsl.'.format(engine_flag))
 
   def _extract_pipeline_args(self) -> Dict[Text, Any]:
@@ -122,6 +121,9 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     Returns:
       Python dictionary with pipeline details extracted from DSL.
     """
+    # TODO(b/157599419): Consider using a better way to extract pipeline info:
+    # e.g. pipeline name/root. Currently we relies on consulting a env var when
+    # creating Pipeline object, which is brittle.
     pipeline_dsl_path = self.flags_dict[labels.PIPELINE_DSL_PATH]
     if os.path.isdir(pipeline_dsl_path):
       sys.exit('Provide dsl file path.')
@@ -136,7 +138,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
     temp_env[labels.TFX_JSON_EXPORT_PIPELINE_ARGS_PATH] = temp_file
 
     # Run dsl with mock environment to store pipeline args in temp_file.
-    self._subprocess_call(['python', pipeline_dsl_path], env=temp_env)
+    self._subprocess_call([sys.executable, pipeline_dsl_path], env=temp_env)
     if os.stat(temp_file).st_size != 0:
       # Load pipeline_args from temp_file for TFX pipelines
       with open(temp_file, 'r') as f:
@@ -221,13 +223,18 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
       )
 
     # Get the latest SchemaGen output.
-    schemagen_outputs = tf.io.gfile.listdir(
-        os.path.join(pipeline_root, 'SchemaGen', 'output', ''))
+    component_output_dir = os.path.join(pipeline_root, 'SchemaGen')
+    schema1_uri = base_driver.generate_output_uri(component_output_dir,
+                                                  'schema', 1)
+    schema_dir = os.path.join(os.path.dirname(schema1_uri), '')
+    schemagen_outputs = tf.io.gfile.listdir(schema_dir)
     latest_schema_folder = max(schemagen_outputs, key=int)
 
     # Copy schema to current dir.
-    latest_schema_path = os.path.join(pipeline_root, 'SchemaGen', 'output',
-                                      latest_schema_folder, 'schema.pbtxt')
+    latest_schema_uri = base_driver.generate_output_uri(component_output_dir,
+                                                        'schema',
+                                                        latest_schema_folder)
+    latest_schema_path = os.path.join(latest_schema_uri, 'schema.pbtxt')
     curr_dir_path = os.path.join(os.getcwd(), 'schema.pbtxt')
     io_utils.copy_file(latest_schema_path, curr_dir_path, overwrite=True)
 

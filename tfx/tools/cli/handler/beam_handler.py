@@ -116,7 +116,7 @@ class BeamHandler(base_handler.BaseHandler):
 
     # Run pipeline dsl.
     self._subprocess_call(
-        ['python', str(pipeline_args[labels.PIPELINE_DSL_PATH])])
+        [sys.executable, str(pipeline_args[labels.PIPELINE_DSL_PATH])])
 
   def delete_run(self) -> None:
     """Deletes a run."""

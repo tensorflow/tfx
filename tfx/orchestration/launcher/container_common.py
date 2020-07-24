@@ -18,16 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Union
 
 import jinja2
 
 from tfx import types
 from tfx.components.base import executor_spec
+from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.component.experimental import placeholders
 
 
 def resolve_container_template(
-    container_spec_tmpl: executor_spec.ExecutorContainerSpec,
+    container_spec_tmpl: Union[executor_spec.ExecutorContainerSpec,
+                               executor_specs.TemplatedExecutorContainerSpec],
     input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any]) -> executor_spec.ExecutorContainerSpec:
@@ -47,6 +50,17 @@ def resolve_container_template(
       'output_dict': output_dict,
       'exec_properties': exec_properties,
   }
+  if isinstance(container_spec_tmpl,
+                executor_specs.TemplatedExecutorContainerSpec):
+    return executor_spec.ExecutorContainerSpec(
+        image=container_spec_tmpl.image,
+        command=resolve_container_command_line(
+            container_spec=container_spec_tmpl,
+            input_dict=input_dict,
+            output_dict=output_dict,
+            exec_properties=exec_properties,
+        ),
+    )
   return executor_spec.ExecutorContainerSpec(
       image=_render_text(container_spec_tmpl.image, context),
       command=_render_items(container_spec_tmpl.command, context),
@@ -62,6 +76,65 @@ def _render_items(items: List[Text], context: Dict[Text, Any]) -> List[Text]:
 
 def _render_text(text: Text, context: Dict[Text, Any]) -> Text:
   return jinja2.Template(text).render(context)
+
+
+def resolve_container_command_line(
+    container_spec: executor_specs.TemplatedExecutorContainerSpec,
+    input_dict: Dict[Text, List[types.Artifact]],
+    output_dict: Dict[Text, List[types.Artifact]],
+    exec_properties: Dict[Text, Any],
+) -> List[Text]:
+  """Resolves placeholders in the command line of a container.
+
+  Args:
+    container_spec: ContainerSpec to resolve
+    input_dict: Dictionary of input artifacts consumed by this component.
+    output_dict: Dictionary of output artifacts produced by this component.
+    exec_properties: Dictionary of execution properties.
+
+  Returns:
+    Resolved command line.
+  """
+
+  def expand_command_line_arg(
+      cmd_arg: executor_specs.CommandlineArgumentType,
+  ) -> Text:
+    """Resolves a single argument."""
+    if isinstance(cmd_arg, str):
+      return cmd_arg
+    elif isinstance(cmd_arg, placeholders.InputValuePlaceholder):
+      if cmd_arg.input_name in exec_properties:
+        return exec_properties[cmd_arg.input_name]
+      else:
+        artifact = input_dict[cmd_arg.input_name][0]
+        return str(artifact.value)
+    elif isinstance(cmd_arg, placeholders.InputUriPlaceholder):
+      return input_dict[cmd_arg.input_name][0].uri
+    elif isinstance(cmd_arg, placeholders.OutputUriPlaceholder):
+      return output_dict[cmd_arg.output_name][0].uri
+    elif isinstance(cmd_arg, placeholders.ConcatPlaceholder):
+      resolved_items = [expand_command_line_arg(item) for item in cmd_arg.items]
+      for item in resolved_items:
+        if not isinstance(item, (str, Text)):
+          raise TypeError('Expanded item "{}" has incorrect type "{}"'.format(
+              item, type(item)))
+      return ''.join(resolved_items)
+    else:
+      raise TypeError(
+          ('Unsupported type of command-line arguments: "{}".'
+           ' Supported types are {}.')
+          .format(type(cmd_arg), str(executor_specs.CommandlineArgumentType)))
+
+  resolved_command_line = []
+  for cmd_arg in (container_spec.command or []):
+    resolved_cmd_arg = expand_command_line_arg(cmd_arg)
+    if not isinstance(resolved_cmd_arg, (str, Text)):
+      raise TypeError(
+          'Resolved argument "{}" (type="{}") is not a string.'.format(
+              resolved_cmd_arg, type(resolved_cmd_arg)))
+    resolved_command_line.append(resolved_cmd_arg)
+
+  return resolved_command_line
 
 
 def to_swagger_dict(config: Any) -> Any:

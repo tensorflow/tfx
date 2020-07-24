@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Callable, List, Optional, Text, Type
+from typing import Callable, Dict, List, Optional, Text, Type
 
 from kfp import compiler
 from kfp import dsl
@@ -39,6 +39,7 @@ from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import json_utils
+from tfx.utils import telemetry_utils
 
 # OpFunc represents the type of a function that takes as input a
 # dsl.ContainerOp and returns the same object. Common operations such as adding
@@ -99,23 +100,26 @@ def _mount_secret_op(secret_name: Text) -> OpFunc:
   return mount_secret
 
 
-def get_default_pipeline_operator_funcs() -> List[OpFunc]:
+def get_default_pipeline_operator_funcs(
+    use_gcp_sa: bool = False) -> List[OpFunc]:
   """Returns a default list of pipeline operator functions.
+
+  Args:
+    use_gcp_sa: If true, mount a GCP service account secret to each pod, with
+      the name _KUBEFLOW_GCP_SECRET_NAME.
 
   Returns:
     A list of functions with type OpFunc.
   """
-  # Enables authentication for GCP services in a typical GKE Kubeflow
-  # installation.
+  # Enables authentication for GCP services if needed.
   gcp_secret_op = gcp.use_gcp_secret(_KUBEFLOW_GCP_SECRET_NAME)
 
-  # Mounts configmap containing the MySQL DB to use for logging metadata.
-  mount_config_map_op = _mount_config_map_op('metadata-configmap')
-
-  # Mounts the secret containing the MySQL DB password.
-  mysql_password_op = _mount_secret_op('mysql-credential')
-
-  return [gcp_secret_op, mount_config_map_op, mysql_password_op]
+  # Mounts configmap containing Metadata gRPC server configuration.
+  mount_config_map_op = _mount_config_map_op('metadata-grpc-configmap')
+  if use_gcp_sa:
+    return [gcp_secret_op, mount_config_map_op]
+  else:
+    return [mount_config_map_op]
 
 
 def get_default_kubeflow_metadata_config(
@@ -128,27 +132,30 @@ def get_default_kubeflow_metadata_config(
     a Kubeflow cluster.
   """
   # The default metadata configuration for a Kubeflow Pipelines cluster is
-  # codified in a pair of Kubernetes ConfigMap and Secret that can be found in
-  # the following:
-  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-configmap.yaml
-  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-mysql-secret.yaml
+  # codified as a Kubernetes ConfigMap
+  # https://github.com/kubeflow/pipelines/blob/master/manifests/kustomize/base/metadata/metadata-grpc-configmap.yaml
 
   config = kubeflow_pb2.KubeflowMetadataConfig()
-  # The environment variable to use to obtain the MySQL service host in the
-  # cluster that is backing Kubeflow Metadata. Note that the key in the config
-  # map and therefore environment variable used, are lower-cased.
-  config.mysql_db_service_host.environment_variable = 'mysql_host'
-  # The environment variable to use to obtain the MySQL service port in the
-  # cluster that is backing Kubeflow Metadata.
-  config.mysql_db_service_port.environment_variable = 'mysql_port'
-  # The MySQL database name to use.
-  config.mysql_db_name.environment_variable = 'mysql_database'
-  # The MySQL database username.
-  config.mysql_db_user.environment_variable = 'username'
-  # The MySQL database password.
-  config.mysql_db_password.environment_variable = 'password'
+  # The environment variable to use to obtain the Metadata gRPC service host in
+  # the cluster that is backing Kubeflow Metadata. Note that the key in the
+  # config map and therefore environment variable used, are lower-cased.
+  config.grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_HOST'
+  # The environment variable to use to obtain the Metadata grpc service port in
+  # the cluster that is backing Kubeflow Metadata.
+  config.grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_PORT'
 
   return config
+
+
+def get_default_pod_labels() -> Dict[Text, Text]:
+  """Returns the default pod label dict for Kubeflow."""
+  # KFP default transformers add pod env:
+  # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
+  result = {
+      'add-pod-env': 'true',
+      telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx'
+  }
+  return result
 
 
 class KubeflowDagRunnerConfig(pipeline_config.PipelineConfig):
@@ -218,6 +225,7 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       output_dir: Optional[Text] = None,
       output_filename: Optional[Text] = None,
       config: Optional[KubeflowDagRunnerConfig] = None,
+      pod_labels_to_attach: Optional[Dict[Text, Text]] = None
   ):
     """Initializes KubeflowDagRunner for compiling a Kubeflow Pipeline.
 
@@ -231,6 +239,12 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           for format restriction.
       config: An optional KubeflowDagRunnerConfig object to specify runtime
         configuration when running the pipeline under Kubeflow.
+      pod_labels_to_attach: Optional set of pod labels to attach to GKE pod
+        spinned up for this pipeline. Default to the 3 labels:
+        1. add-pod-env: true,
+        2. pipeline SDK type,
+        3. pipeline unique ID,
+        where 2 and 3 are instrumentation of usage tracking.
     """
     if config and not isinstance(config, KubeflowDagRunnerConfig):
       raise TypeError('config must be type of KubeflowDagRunnerConfig.')
@@ -240,6 +254,10 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
     self._compiler = compiler.Compiler()
     self._params = []  # List of dsl.PipelineParam used in this pipeline.
     self._deduped_parameter_names = set()  # Set of unique param names used.
+    if pod_labels_to_attach is None:
+      self._pod_labels_to_attach = get_default_pod_labels()
+    else:
+      self._pod_labels_to_attach = pod_labels_to_attach
 
   def _parse_parameter_from_component(
       self, component: base_component.BaseComponent) -> None:
@@ -259,6 +277,9 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
       placeholder = placeholder.replace('\\', '')  # Clean escapes.
       placeholder = utils.fix_brackets(placeholder)  # Fix brackets if needed.
       parameter = json_utils.loads(placeholder)
+      # Escape pipeline root because it will be added later.
+      if parameter.name == tfx_pipeline.ROOT_PARAMETER.name:
+        continue
       if parameter.name not in self._deduped_parameter_names:
         self._deduped_parameter_names.add(parameter.name)
         dsl_parameter = dsl.PipelineParam(
@@ -305,7 +326,8 @@ class KubeflowDagRunner(tfx_runner.TfxRunner):
           pipeline_root=pipeline_root,
           tfx_image=self._config.tfx_image,
           kubeflow_metadata_config=self._config.kubeflow_metadata_config,
-          component_config=component_config)
+          component_config=component_config,
+          pod_labels_to_attach=self._pod_labels_to_attach)
 
       for operator in self._config.pipeline_operator_funcs:
         kfp_component.container_op.apply(operator)

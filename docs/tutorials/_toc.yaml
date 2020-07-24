@@ -2,11 +2,15 @@ toc:
 - title: "Get started with TFX"
   path: /tfx/tutorials/
 
-- heading: "End-to-End Overview"
-- title: "Component tutorial"
+- heading: "End-to-end tutorials"
+- title: "Interactive tutorial (TF2 Keras)"
+  path: /tfx/tutorials/tfx/components_keras
+- title: "Interactive tutorial (Estimator)"
   path: /tfx/tutorials/tfx/components
 - title: "Airflow tutorial"
   path: /tfx/tutorials/tfx/airflow_workshop
+- title: "Cloud AI Platform Pipelines tutorial"
+  path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
 
 - heading: "Data Validation"
 - title: "Get started with TFDV"
@@ -25,6 +29,8 @@ toc:
   path: https://github.com/tensorflow/fairness-indicators
   status: external
 
-- heading: "Serving"
-- title: "Train and serve a model with REST"
+- heading: "Deploy a trained model"
+- title: "Servers: TFX for TensorFlow Serving"
   path: /tfx/tutorials/serving/rest_simple
+- title: "Mobile & IoT: TFX for TensorFlow Lite"
+  path: /tfx/tutorials/tfx/tfx_for_mobile

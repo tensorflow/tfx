@@ -27,14 +27,14 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-from typing import Optional, Set, Text, Type
+from typing import Dict, Optional, Set, Text, Type
 
 import absl
 from kfp import dsl
 from kubernetes import client as k8s_client
 
 from google.protobuf import json_format
-from tfx.components.base import base_component as tfx_base_component
+from tfx.components.base import base_node as tfx_base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow import node_wrapper
@@ -60,13 +60,18 @@ class BaseComponent(object):
   """
 
   def __init__(
-      self, component: tfx_base_component.BaseComponent,
+      self,
+      component: tfx_base_node.BaseNode,
       component_launcher_class: Type[
           base_component_launcher.BaseComponentLauncher],
-      depends_on: Set[dsl.ContainerOp], pipeline: tfx_pipeline.Pipeline,
-      pipeline_name: Text, pipeline_root: dsl.PipelineParam, tfx_image: Text,
+      depends_on: Set[dsl.ContainerOp],
+      pipeline: tfx_pipeline.Pipeline,
+      pipeline_name: Text,
+      pipeline_root: dsl.PipelineParam,
+      tfx_image: Text,
       kubeflow_metadata_config: Optional[kubeflow_pb2.KubeflowMetadataConfig],
-      component_config: base_component_config.BaseComponentConfig):
+      component_config: base_component_config.BaseComponentConfig,
+      pod_labels_to_attach: Optional[Dict[Text, Text]] = None):
     """Creates a new Kubeflow-based component.
 
     This class essentially wraps a dsl.ContainerOp construct in Kubeflow
@@ -85,6 +90,8 @@ class BaseComponent(object):
       kubeflow_metadata_config: Configuration settings for connecting to the
         MLMD store in a Kubeflow cluster.
       component_config: Component config to launch the component.
+      pod_labels_to_attach: Optional dict of pod labels to attach to the
+        GKE pod.
     """
     component_launcher_class_path = '.'.join([
         component_launcher_class.__module__, component_launcher_class.__name__
@@ -135,7 +142,7 @@ class BaseComponent(object):
     # TODO(b/140172100): Document the use of additional_pipeline_args.
     if _WORKFLOW_ID_KEY in pipeline.additional_pipeline_args:
       # Allow overriding pipeline's run_id externally, primarily for testing.
-      self.container_op.add_env_variable(
+      self.container_op.container.add_env_variable(
           k8s_client.V1EnvVar(
               name=_WORKFLOW_ID_KEY,
               value=pipeline.additional_pipeline_args[_WORKFLOW_ID_KEY]))
@@ -143,13 +150,13 @@ class BaseComponent(object):
       # Add the Argo workflow ID to the container's environment variable so it
       # can be used to uniquely place pipeline outputs under the pipeline_root.
       field_path = "metadata.labels['workflows.argoproj.io/workflow']"
-      self.container_op.add_env_variable(
+      self.container_op.container.add_env_variable(
           k8s_client.V1EnvVar(
               name=_WORKFLOW_ID_KEY,
               value_from=k8s_client.V1EnvVarSource(
                   field_ref=k8s_client.V1ObjectFieldSelector(
                       field_path=field_path))))
 
-    # KFP default transformers adds pod env:
-    # https://github.com/kubeflow/pipelines/blob/0.1.32/sdk/python/kfp/compiler/_default_transformers.py
-    self.container_op.add_pod_label('add-pod-env', 'true')
+    if pod_labels_to_attach:
+      for k, v in pod_labels_to_attach.items():
+        self.container_op.add_pod_label(k, v)
