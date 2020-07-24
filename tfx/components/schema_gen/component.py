@@ -95,7 +95,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics = stats
     if exclude_splits is None:
       exclude_splits = []
-      logging.info('Excluding no splits when exclude_splits is not set.')
+      logging.info('Excluding no splits because exclude_splits is not set.')
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
     spec = SchemaGenSpec(

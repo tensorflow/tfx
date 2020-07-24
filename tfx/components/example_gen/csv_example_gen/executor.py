@@ -75,7 +75,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
 
     self._column_handlers = column_handlers
 
-  def process( #pylint: disable=arguments-differ
+  def process( # pylint: disable=arguments-differ
       self, csv_cells: List[csv_decoder.CSVCell],
       column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]:
     if not self._column_handlers:
