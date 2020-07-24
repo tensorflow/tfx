@@ -126,7 +126,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def _runPipelineGetMetrics(self): # pylint: disable=invalid-name
+  def _runPipelineGetMetrics(self, inputs, outputs, exec_properties): # pylint: disable=invalid-name
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
