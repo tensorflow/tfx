@@ -55,7 +55,7 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
     outputs = tf.io.gfile.listdir(component_path)
     for output in outputs:
       execution = tf.io.gfile.listdir(os.path.join(component_path, output))
-      self.assertLen(1, len(execution))
+      self.assertEqual(1, len(execution))
 
   def assertPipelineExecution(self) -> None:
     self.assertExecutedOnce('ImportExampleGen')
@@ -81,14 +81,14 @@ class CIFAR10PipelineNativeKerasEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir_lite))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    expected_execution_count = 9 # 8 components + 1 resolver
+    expected_execution_count = 9  # 8 components + 1 resolver
     metadata_config = metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())
       execution_count = len(m.store.get_executions())
       self.assertGreaterEqual(artifact_count, execution_count)
-      self.assertEqual(execution_count, expected_execution_count)
+      self.assertEqual(expected_execution_count, execution_count)
 
     self.assertPipelineExecution()
 

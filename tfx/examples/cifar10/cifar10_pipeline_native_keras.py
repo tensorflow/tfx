@@ -90,6 +90,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the CIFAR10 image classification pipeline using TFX."""
   # This is needed for datasets with pre-defined splits
+  # Change the pattern argument to train_whole/* and test_whole/* to train
+  # on the whole CIFAR-10 dataset
   input_config = example_gen_pb2.Input(splits=[
       example_gen_pb2.Input.Split(name='train', pattern='train/*'),
       example_gen_pb2.Input.Split(name='eval', pattern='test/*')])
@@ -118,20 +120,20 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       module_file=module_file)
 
   # Uses user-provided Python function that trains a model.
-  # When traning on the whole dataset, use 20000 for train steps, 156 for eval steps.
-  # 20000 train steps correspond to 25 epochs on the whole train set, and 156 eval
+  # When traning on the whole dataset, use 18744 for train steps, 156 for eval steps.
+  # 18744 train steps correspond to 24 epochs on the whole train set, and 156 eval
   # steps correspond to 1 epoch on the whole test set. The configuration below is for
   # training on the dataset we provided in the data folder, which has 100 train and
-  # 100 test samples. The 78 train steps correspond to 25 epochs on this tiny train set,
-  # and 3 eval steps corresopnd to 1 epoch on this tiny test set.
+  # 100 test samples. The 160 train steps correspond to 40 epochs on this tiny train set,
+  # and 4 eval steps corresopnd to 1 epoch on this tiny test set.
   trainer = Trainer(
       module_file=module_file,
       custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
       examples=transform.outputs['transformed_examples'],
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
-      train_args=trainer_pb2.TrainArgs(num_steps=78),
-      eval_args=trainer_pb2.EvalArgs(num_steps=3))
+      train_args=trainer_pb2.TrainArgs(num_steps=160),
+      eval_args=trainer_pb2.EvalArgs(num_steps=4))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -141,7 +143,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=Channel(type=ModelBlessing))
 
   # Uses TFMA to compute an evaluation statistics over features of a model and
-  # performs quality validation of a candidate model.
+  # perform quality validation of a candidate model (compare to a baseline).
   eval_config = tfma.EvalConfig(
       model_specs=[tfma.ModelSpec(label_key='label_xf', model_type='tf_lite')],
       slicing_specs=[tfma.SlicingSpec()],
@@ -151,7 +153,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                   class_name='SparseCategoricalAccuracy',
                   threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.3}),
+                          lower_bound={'value': 0.55}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-3})))
@@ -160,7 +162,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Uses TFMA to compute the evaluation statistics over features of a model.
   # We evaluate using the materialized examples that are output by Transform because
-  # the operations currently performed within Transform are not compatible with TFLite.
+  # 1. the decoding_png function currently performed within Transform are not
+  # compatible with TFLite.
+  # 2. MLKit requires deserialized (float32) tensor image inputs
   # Note that for deployment, the same logic that is performed within Transform
   # must be reproduced client-side.
   evaluator = Evaluator(

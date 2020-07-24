@@ -12,23 +12,25 @@ virtualenv -p python3.7 cifar10
 source ./cifar10/bin/activate
 ```
 
-Next, install the dependencies required by the CIFAR-10 example (appropriate
-version of TF2 will be installed automatically).
-
-```
-pip install tfx
-pip install tflite-support
-pip install flatbuffers
-```
-
 Then, clone the tfx repo and copy cifar10/ folder to home directory:
 
 ```
 git clone https://github.com/tensorflow/tfx ~/tfx-source && pushd ~/tfx-source
 cp -r ~/tfx-source/tfx/examples/cifar10 ~/
 ```
+
+Next, install the dependencies required by the CIFAR-10 example (appropriate
+version of TF2 will be installed automatically).
+
+```
+pip install -e cifar10/
+# The following is needed until tensorflow-model-analysis 0.23.0 is released
+pip uinstall tensorflow-model-analysis
+pip install git+https://github.com/tensorflow/model-analysis.git#egg=tensorflow_model_analysis
+```
+
 ### Dataset
-There is a subset of CIFAR10 (100 images) available in the data folder. To prepare the whole dataset, first create a script and run the following Python code:
+There is a subset of CIFAR10 (128 images) available in the data folder. To prepare the whole dataset, first create a script and run the following Python code:
 ```
 import tensorflow_datasets as tfds
 ds = tfds.load('cifar10', data_dir='./cifar10/data/',split=['train', 'test'])

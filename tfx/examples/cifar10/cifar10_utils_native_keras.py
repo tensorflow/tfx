@@ -40,27 +40,31 @@ from tfx.components.trainer.rewriting import rewriter_factory
 
 from tfx.components.trainer.executor import TrainerFnArgs
 
-# When training on the whole dataset use following numbers instead
+# When training on the whole dataset use following constants instead.
+# This setting should give ~91% accuracy on the whole test set
 # _TRAIN_DATA_SIZE = 50000
 # _EVAL_DATA_SIZE = 10000
 # _TRAIN_BATCH_SIZE = 64
 # _EVAL_BATCH_SIZE = 64
+# _CLASSIFIER_LEARNING_RATE = 3e-4
+# _FINETUNE_LEARNING_RATE = 5e-5
+# _CLASSIFIER_EPOCHS = 12
 
-_TRAIN_DATA_SIZE = 100
-_EVAL_DATA_SIZE = 100
+_TRAIN_DATA_SIZE = 128
+_EVAL_DATA_SIZE = 128
 _TRAIN_BATCH_SIZE = 32
 _EVAL_BATCH_SIZE = 32
+_CLASSIFIER_LEARNING_RATE = 1e-3
+_FINETUNE_LEARNING_RATE = 7e-6
+_CLASSIFIER_EPOCHS = 30
 
 _IMAGE_KEY = 'image'
 _LABEL_KEY = 'label'
 
-_CLASSIFIER_LEARNING_RATE = 3e-4
-_FINETUNE_LEARNING_RATE = 5e-5
-
 _TFLITE_MODEL_NAME = 'tflite'
 _LABEL_MAP_FILE_PATH = 'cifar10/data/labels.txt'
 
-def transformed_name(key):
+def _transformed_name(key):
   return key + '_xf'
 
 def _gzip_reader_fn(filenames):
@@ -72,10 +76,34 @@ def _get_serve_image_fn(model):
 
   @tf.function
   def serve_image_fn(image_tensor):
-    """Returns the output to be used in the serving signature."""
+    """Returns the output to be used in the serving signature.
+
+    Args:
+      image_tensor: A tensor represeting input image. The image should
+        have 3 channels.
+
+    Returns:
+      The model's predicton on input image tensor
+    """
     return model(image_tensor)
 
   return serve_image_fn
+
+def _image_augmentation(image_features):
+  """Perform image augmentation on batches of images .
+
+  Args:
+    image_feature: a batch of image features
+
+  Returns:
+    The augmented image features
+  """
+  batch_size = tf.shape(image_features)[0]
+  image_features = tf.image.random_flip_left_right(image_features)
+  image_features = tf.image.resize_with_crop_or_pad(image_features, 250, 250)
+  image_features = tf.image.random_crop(image_features,
+                                        (batch_size, 224, 224, 3))
+  return image_features
 
 def _data_augmentation(feature_dict):
   """Perform data augmentation on batches of data.
@@ -86,17 +114,14 @@ def _data_augmentation(feature_dict):
   Returns:
     The feature dict with augmented features
   """
-  image_feature = feature_dict[transformed_name(_IMAGE_KEY)]
-  batch_size = tf.shape(image_feature)[0]
-  image_feature = tf.image.random_flip_left_right(image_feature)
-  image_feature = tf.image.resize_with_crop_or_pad(image_feature, 250, 250)
-  image_feature = tf.image.random_crop(image_feature, (batch_size, 224, 224, 3))
-  feature_dict[transformed_name(_IMAGE_KEY)] = image_feature
+  image_features = feature_dict[_transformed_name(_IMAGE_KEY)]
+  image_features = _image_augmentation(image_features)
+  feature_dict[_transformed_name(_IMAGE_KEY)] = image_features
   return feature_dict
 
 def _input_fn(file_pattern: List[Text],
               tf_transform_output: tft.TFTransformOutput,
-              is_train: bool,
+              is_train: bool = False,
               batch_size: int = 200) -> tf.data.Dataset:
   """Generates features and label for tuning/training.
 
@@ -118,7 +143,7 @@ def _input_fn(file_pattern: List[Text],
       batch_size=batch_size,
       features=transformed_feature_spec,
       reader=_gzip_reader_fn,
-      label_key=transformed_name(_LABEL_KEY))
+      label_key=_transformed_name(_LABEL_KEY))
 
   # Apply data augmentation
   if is_train:
@@ -136,6 +161,10 @@ def _freeze_model_by_percentage(model: tf.keras.Model,
   """
   if percentage < 0 or percentage > 1:
     raise Exception("Freeze percentage should between 0.0 and 1.0")
+
+  if not model.trainable:
+    raise Exception(
+        "The model is not trainable, please set model.trainable to True")
 
   num_layers = len(model.layers)
   num_layers_to_freeze = int(num_layers * percentage)
@@ -165,7 +194,7 @@ def _build_keras_model() -> tf.keras.Model:
   # overfiting, and then a Dense layer to classifying CIFAR10 objects
   model = tf.keras.Sequential([
       tf.keras.layers.InputLayer(
-          input_shape=(224, 224, 3), name=transformed_name(_IMAGE_KEY)),
+          input_shape=(224, 224, 3), name=_transformed_name(_IMAGE_KEY)),
       base_model,
       tf.keras.layers.Dropout(0.1),
       tf.keras.layers.Dense(10, activation='softmax')
@@ -189,15 +218,15 @@ def preprocessing_fn(inputs):
   # We have to use tf.map_fn
   image_features = tf.map_fn(lambda x: tf.io.decode_png(x[0], channels=3),
                              inputs[_IMAGE_KEY], dtype=tf.uint8)
-  image_features = tf.cast(image_features, tf.float32)
+  # image_features = tf.cast(image_features, tf.float32)
   image_features = tf.image.resize(image_features, [224, 224])
   image_features = tf.keras.applications.mobilenet.preprocess_input(
       image_features)
 
-  outputs[transformed_name(_IMAGE_KEY)] = image_features
+  outputs[_transformed_name(_IMAGE_KEY)] = image_features
   # TODO(b/157064428): Support label transformation for Keras.
   # Do not apply label transformation as it will result in wrong evaluation.
-  outputs[transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
+  outputs[_transformed_name(_LABEL_KEY)] = inputs[_LABEL_KEY]
 
   return outputs
 
@@ -214,9 +243,11 @@ def _write_metadata(model_path: str,
     std: The standard deviation used to normalize input image tensor
   """
 
+  # Creates flatbuffer for model information.
   model_meta = _metadata_fb.ModelMetadataT()
 
-  # Creates input normalization info.
+  # Creates flatbuffer for model input metadata.
+  # Here we add the input normalization info to input metadata.
   input_meta = _metadata_fb.TensorMetadataT()
   input_normalization = _metadata_fb.ProcessUnitT()
   input_normalization.optionsType = (
@@ -226,19 +257,22 @@ def _write_metadata(model_path: str,
   input_normalization.options.std = std
   input_meta.processUnits = [input_normalization]
 
-  # Creates output label map info.
+  # Creates flatbuffer for model output metadata.
+  # Here we add label file to output metadata.
   output_meta = _metadata_fb.TensorMetadataT()
   label_file = _metadata_fb.AssociatedFileT()
   label_file.name = os.path.basename(label_map_path)
   label_file.type = _metadata_fb.AssociatedFileType.TENSOR_AXIS_LABELS
   output_meta.associatedFiles = [label_file]
 
-  # Creates subgraph info.
+  # Creates subgraph to contain input and output information,
+  # and add subgraph to the model information.
   subgraph = _metadata_fb.SubGraphMetadataT()
   subgraph.inputTensorMetadata = [input_meta]
   subgraph.outputTensorMetadata = [output_meta]
   model_meta.subgraphMetadata = [subgraph]
 
+  # Serialize the model metadata buffer we created above using flatbuffer builder.
   b = flatbuffers.Builder(0)
   b.Finish(
       model_meta.Pack(b),
@@ -270,14 +304,24 @@ def run_fn(fn_args: TrainerFnArgs):
   with mirrored_strategy.scope():
     model, base_model = _build_keras_model()
 
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  absl.logging.info('Tensorboard logging to {}'.format(log_dir))
+  # Write logs to path
+  tensorboard_callback = tf.keras.callbacks.TensorBoard(
+      log_dir=log_dir, update_freq='batch')
+
   # Our training regime has two phases: we first freeze the backbone and train
   # the newly added classifier only, then unfreeze part of the backbone and
-  # fine-tune with classifier jointly. We evenly share the total number of
-  # train_steps between the two phases.
-  steps_per_epoch = _TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE
+  # fine-tune with classifier jointly.
+  steps_per_epoch = int(_TRAIN_DATA_SIZE / _TRAIN_BATCH_SIZE)
   total_epochs = int(fn_args.train_steps / steps_per_epoch)
-  classifier_epochs = int(total_epochs / 2)
-  finetune_epochs = total_epochs - classifier_epochs
+  if _CLASSIFIER_EPOCHS > total_epochs:
+    raise Exception('Classifier epochs is greater than the total epochs')
 
   absl.logging.info('Start training the top classifier')
   # Freeze the whole MobileNet backbone and train the top classifer only
@@ -291,10 +335,11 @@ def run_fn(fn_args: TrainerFnArgs):
 
   model.fit(
       train_dataset,
-      epochs=classifier_epochs,
+      epochs=_CLASSIFIER_EPOCHS,
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback]
   )
 
   absl.logging.info('Start fine-tuning the model')
@@ -309,10 +354,12 @@ def run_fn(fn_args: TrainerFnArgs):
 
   model.fit(
       train_dataset,
-      epochs=finetune_epochs,
+      initial_epoch=_CLASSIFIER_EPOCHS,
+      epochs=total_epochs,
       steps_per_epoch=steps_per_epoch,
       validation_data=eval_dataset,
-      validation_steps=fn_args.eval_steps
+      validation_steps=fn_args.eval_steps,
+      callbacks=[tensorboard_callback]
   )
 
   # Prepare the TFLite model used for serving in MLKit
@@ -323,7 +370,7 @@ def run_fn(fn_args: TrainerFnArgs):
                   tf.TensorSpec(
                       shape=[None, 224, 224, 3],
                       dtype=tf.float32,
-                      name=transformed_name(_IMAGE_KEY)
+                      name=_transformed_name(_IMAGE_KEY)
                       ))
   }
 
