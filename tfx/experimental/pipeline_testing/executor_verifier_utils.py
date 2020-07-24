@@ -18,22 +18,21 @@ import os
 import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from tensorflow_metadata.proto.v0 import anomalies_pb2
+# from tensorflow_metadata.proto.v0 import anomalies_pb2
 from typing import Dict, List, Text, Optional
 
 from tensorflow_model_analysis.view import SlicedMetrics
-from tensorflow_model_analysis.view import view_types
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.trainer import constants
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
-from tfx.utils import io_utils
+
 def _compare_relative_difference(value: float,
-                                expected_value: float,
-                                threshold: float) -> bool:
-  """Compares relative difference between value and expected_value to 
+                                 expected_value: float,
+                                 threshold: float) -> bool:
+  """Compares relative difference between value and expected_value to
     a specified threshold.
 
   Args:
@@ -64,7 +63,7 @@ def get_pipeline_outputs(
 
   Args:
     metadata_connection_config:
-    pipeline_info: pipeline info of 
+    pipeline_info: pipeline info of
 
   Returns:
     a dictionary of component_id: output.
@@ -89,14 +88,14 @@ def _verify_file_path(output_uri, expected_uri, check_file=False):
   """Verify the file directory paths."""
   for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
     for sub_dir in sub_dirs:
-      file_path = os.path.join(dir_name, sub_dir)
-      new_file_path = os.path.join(dir_name.replace(expected_uri, output_uri, 1), sub_dir)
+      new_file_path = os.path.join(
+          dir_name.replace(expected_uri, output_uri, 1), sub_dir)
       if not tf.io.gfile.exists(new_file_path):
         return False
     if check_file:
       for leaf_file in leaf_files:
-        leaf_file_path = os.path.join(dir_name, leaf_file)
-        new_file_path = os.path.join(dir_name.replace(expected_uri, output_uri, 1), leaf_file)
+        new_file_path = os.path.join(
+            dir_name.replace(expected_uri, output_uri, 1), leaf_file)
         if not tf.io.gfile.exists(new_file_path):
           return False
   return True
@@ -117,9 +116,9 @@ def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
                               for k, v in metric[1][''][''].items()}
   return slice_map
 
-def _compare_eval_results(output_uri: Text, 
-                         expected_uri: Text,
-                         threshold: float) -> bool:
+def _compare_eval_results(output_uri: Text,
+                          expected_uri: Text,
+                          threshold: float) -> bool:
   """Compares accuracy on overall dataset using two EvalResult.
 
   Args:
@@ -144,7 +143,7 @@ def _compare_eval_results(output_uri: Text,
   return True
 
 def _compare_file_sizes(output_uri: Text,
-                        expected_uri: Text, 
+                        expected_uri: Text,
                         threshold: float) -> bool:
   for leaf_file in tf.io.gfile.listdir(expected_uri):
     expected_file_name = os.path.join(expected_uri, leaf_file)
@@ -156,7 +155,7 @@ def _compare_file_sizes(output_uri: Text,
       return False
   return True
 
-def verify(output_uri: Text, key: Text, artifact: Text, threshold: float) -> bool:
+def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
   """Default artifact verifier.
 
   Args: ...

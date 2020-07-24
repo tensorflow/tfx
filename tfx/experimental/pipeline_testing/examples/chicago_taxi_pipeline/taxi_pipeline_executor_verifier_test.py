@@ -20,24 +20,14 @@ from __future__ import print_function
 
 import os
 
-import absl
-from typing import Dict, List, Text
 import tensorflow as tf
-import tensorflow_model_analysis as tfma
-from tensorflow_metadata.proto.v0 import anomalies_pb2
 
-from tfx import types
-from tfx.utils import io_utils
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
-import tensorflow as tf
-from tensorflow.core.framework import graph_pb2 as gpb
-from google.protobuf import text_format as pbtf
-
-
 class ExecutorVerifier(tf.test.TestCase):
+  """Test for verifying executors."""
 
   def setUp(self):
     super(ExecutorVerifier, self).setUp()
@@ -57,8 +47,7 @@ class ExecutorVerifier(tf.test.TestCase):
     # This example assumes that the pipeline outputs are recorded in
     # tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline/testdata.
     # Feel free to customize this as needed.
-    self._record_dir = os.path.join(os.path.dirname(__file__),'testdata')
-
+    self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
   def testExecutorVerifier(self):
     taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
@@ -72,15 +61,15 @@ class ExecutorVerifier(tf.test.TestCase):
 
     BeamDagRunner().run(taxi_pipeline)
     pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
-            taxi_pipeline.metadata_connection_config,
-            taxi_pipeline.pipeline_info)
+        taxi_pipeline.metadata_connection_config,
+        taxi_pipeline.pipeline_info)
 
     # verify_component_ids = ['Transform','Trainer']
     verify_component_ids = ['Trainer', 'Evaluator']
     for component_id in verify_component_ids:
       for key, artifact in pipeline_outputs[component_id].items():
         output_uri = os.path.join(self._record_dir, component_id, key)
-        executor_verifier_utils.verify(output_uri, key, artifact, 0.5)
+        executor_verifier_utils.verify(output_uri, artifact, 0.5)
 
 if __name__ == '__main__':
   tf.test.main()
