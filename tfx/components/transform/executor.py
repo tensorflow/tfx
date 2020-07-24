@@ -42,6 +42,7 @@ from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import value_utils
 from tfx.proto import transform_pb2
+from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -304,7 +305,7 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     splits_config = transform_pb2.SplitsConfig()
-    if exec_properties.get('splits_config'):
+    if exec_properties.get('splits_config', None):
       json_format.Parse(exec_properties['splits_config'], splits_config)
 
     if not splits_config.analyze_splits:
@@ -315,6 +316,17 @@ class Executor(base_executor.BaseExecutor):
       splits_config.transform_splits.extend(['train', 'eval'])
       logging.info("Transform both 'train' and 'eval' splits when "
                    "splits_config.transform_splits is not set.")
+  
+    schema_file = io_utils.get_only_uri_in_dir(
+        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
+    transform_output = artifact_utils.get_single_uri(
+        output_dict[TRANSFORM_GRAPH_KEY])
+    # TODO(b/161490287): move the split_names setting to executor for all
+    #                    components.
+    transformed_example_artifact = artifact_utils.get_single_instance(
+        output_dict[TRANSFORMED_EXAMPLES_KEY])
+    transformed_example_artifact.split_names = artifact_utils.encode_split_names(
+        splits_config.transform_splits)
 
     analyze = []
     for split in splits_config.analyze_splits:
@@ -332,10 +344,6 @@ class Executor(base_executor.BaseExecutor):
           os.path.join(transformed_output,
                        _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
 
-    schema_file = io_utils.get_only_uri_in_dir(
-        artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
-    transform_output = artifact_utils.get_single_uri(
-        output_dict[TRANSFORM_GRAPH_KEY])
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     logging.debug('Using temp path %s for tft.beam', temp_path)
 
@@ -345,8 +353,6 @@ class Executor(base_executor.BaseExecutor):
       else:
         return artifact_utils.get_single_uri(params_dict[label])
 
-    len_analyze_splits = len(splits_config.analyze_splits)
-    len_transform_splits = len(splits_config.transform_splits)
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -357,11 +363,11 @@ class Executor(base_executor.BaseExecutor):
         labels.ANALYZE_DATA_PATHS_LABEL:
             analyze,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            [labels.FORMAT_TFRECORD for _ in range(len_analyze_splits)],
+            [labels.FORMAT_TFRECORD for _ in range(len(analyze))],
         labels.TRANSFORM_DATA_PATHS_LABEL: 
             transform,
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: 
-            [labels.FORMAT_TFRECORD for _ in range(len_transform_splits)],
+            [labels.FORMAT_TFRECORD for _ in range(len(transform))],
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:

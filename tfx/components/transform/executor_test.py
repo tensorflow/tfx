@@ -79,8 +79,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                                 'transformed_graph')
     self._transformed_examples = standard_artifacts.Examples()
     self._transformed_examples.uri = output_data_dir
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
 
@@ -107,6 +105,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._preprocessing_fn = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
+    self._exec_properties['splits_config'] = None
 
     # Executor for test.
     self._transform_executor = executor.Executor()
