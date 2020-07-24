@@ -304,7 +304,8 @@ class Executor(base_executor.BaseExecutor):
     self._log_startup(input_dict, output_dict, exec_properties)
 
     splits_config = transform_pb2.SplitsConfig()
-    json_format.Parse(exec_properties['splits_config'], splits_config)
+    if exec_properties.get('splits_config'):
+      json_format.Parse(exec_properties['splits_config'], splits_config)
 
     if not splits_config.analyze_splits:
       splits_config.analyze_splits.append('train')
