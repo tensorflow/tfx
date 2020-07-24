@@ -54,7 +54,7 @@ def _gzip_reader_fn(filenames):
 def _tokenize(feature):
   """Tokenize the two sentences and insert appropriate tokens"""
   processor = BertPreprocessor(_BERT_LINK)
-  return processor.tokenize_single_sentence(
+  return processor.tokenize_single_sentence_pad(
       tf.reshape(feature, [-1]),
       max_len=_MAX_LEN)
 

@@ -45,32 +45,18 @@ class BertPreprocessor():
       vocab = model.resolved_object.vocab_file.asset_path.numpy()
       self._do_lower_case = model.resolved_object.do_lower_case.numpy()
       with tf.io.gfile.GFile(vocab, 'r') as f:
-        self._sep_id = None
-        self._cls_id = None
-        self._pad_id = None
         lines = f.read().split('\n')
-        for i, line in enumerate(lines):
-          if line == _PAD:
-            self._pad_id = i
-          elif line == _CLS:
-            self._cls_id = i
-          elif line == _SEP:
-            self._sep_id = i
-          if (self._pad_id is not None and
-              self._cls_id is not None and
-              self._sep_id is not None):
-            return
-        raise ValueError('Vocabulary file does not contain the required\
-            special tokens')
+        self._sep_id = lines.index(_SEP)
+        self._cls_id = lines.index(_CLS)
+        self._pad_id = lines.index(_PAD)
 
-  def tokenize_single_sentence(
+  def tokenize_single_sentence_unpad(
       self,
       sequence,
       max_len=128,
       add_cls=True,
-      add_sep=True,
-      add_pad=True):
-    """Tokenize a single sentence according to the vocab used by the Bert model.
+      add_sep=True):
+    """Tokenize a sentence with the BERT model vocab file and without padding. 
 
     Add special tokens according to config.
 
@@ -79,13 +65,9 @@ class BertPreprocessor():
       max_len: The number of tokens after padding and truncating.
       add_cls: Whether to add CLS token at the front of each sequence.
       add_sep: Whether to add SEP token at the end of each sequence.
-      add_pad: If not add_pad, would return ragged tensor instead of tensors
-        input_mask and segment_ids would be none.
 
     Returns:
-      word_ids: Tokenized sequences [batch_size, max_len].
-      input_mask: Mask padded tokens [batch_size, max_len].
-      segment_ids: Distinguish multiple sequences [batch_size, max_len].
+      word_ids: Ragged tokenized sequences [batch_size, None].
     """
     vocab_file_path = self._model.resolved_object.vocab_file.asset_path
     tokenizer = text.BertTokenizer(
@@ -110,9 +92,37 @@ class BertPreprocessor():
       word_ids = word_ids[:, :max_len-1]
       word_ids = tf.concat([word_ids, sep_token], 1)
 
-    if not add_pad:
-      return word_ids, None, None
+    return word_ids
 
+  def tokenize_single_sentence_pad(
+      self,
+      sequence,
+      max_len=128,
+      add_cls=True,
+      add_sep=True):
+    """Tokenize a single sentence according to the vocab used by the Bert model.
+
+    Add special tokens according to config.
+
+    Args:
+      sequence: Tensor of shape [batch_size, 1].
+      max_len: The number of tokens after padding and truncating.
+      add_cls: Whether to add CLS token at the front of each sequence.
+      add_sep: Whether to add SEP token at the end of each sequence.
+      add_pad: If not add_pad, would return ragged tensor instead of tensors
+        input_mask and segment_ids would be none.
+
+    Returns:
+      word_ids: Tokenized sequences [batch_size, max_len].
+      input_mask: Mask padded tokens [batch_size, max_len].
+      segment_ids: Distinguish multiple sequences [batch_size, max_len].
+    """
+    word_ids = self.tokenize_single_sentence_unpad(
+            sequence,
+            max_len,
+            add_cls,
+            add_sep)
+    
     word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
@@ -145,21 +155,23 @@ class BertPreprocessor():
       input_mask: Mask padded tokens [batch_size, max_len].
       segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
+    # TODO: the issue here is nuanced. Depending on the dataset, one might want
+    # to keep the entire first sentence, or the second. The truncate strategy
+    # here is worth discussing. Since truncating to half works for MRPC, left
+    # unchanged for now.
     sentence_len = max_len // 2
-    word_id_a, _, _ = self.tokenize_single_sentence(
+    word_id_a = self.tokenize_single_sentence_unpad(
         sequence_a,
         sentence_len,
         True,
         True,
-        False
     )
 
-    word_id_b, _, _ = self.tokenize_single_sentence(
+    word_id_b = self.tokenize_single_sentence_unpad(
         sequence_b,
         sentence_len,
         False,
         True,
-        False
     )
 
     word_ids = tf.concat([word_id_a, word_id_b], 1)
