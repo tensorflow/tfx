@@ -25,6 +25,11 @@
     support more data payload formats and data container formats, using
     `tfxio_utils` is encouraged to avoid dealing directly with each combination.
     TFXIO is the interface of [Standardized TFX Inputs](https://github.com/tensorflow/community/blob/master/rfcs/20191017-tfx-standardized-inputs.md).
+*   Added experimental BaseStubExecutor and StubComponentLauncher to test TFX
+    pipelines.
+*   Added experimental TFX Pipeline Recorder to record output artifacts of the
+    pipeline.
+
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
