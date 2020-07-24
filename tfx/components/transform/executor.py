@@ -49,6 +49,7 @@ import tfx_bsl
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tf_example_record
 from tfx_bsl.tfxio import tfxio
+from google.protobuf import json_format
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -299,7 +300,9 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    splits_config = exec_properties.get('splits_config', None)
+    splits_config = transform_pb2.SplitsConfig()
+    json_format.Parse(exec_properties['splits_config'], splits_config)
+
     if splits_config:
       analyze_splits = splits_config.analyze
       transform_splits = splits_config.transform
@@ -308,15 +311,19 @@ class Executor(base_executor.BaseExecutor):
       transform_splits = ['train', 'eval']
 
     analyze = []
+    analyze_formats = []
     for split in analyze_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       analyze.append(io_utils.all_files_pattern(data_uri))
+      analyze_formats.append(labels.FORMAT_TFRECORD)
 
     transform = []
+    transform_formats = []
     transform_output_paths = []
     for split in transform_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       transform.append(io_utils.all_files_pattern(data_uri))
+      transform_formats.append(labels.FORMAT_TFRECORD)
       transformed_output = artifact_utils.get_split_uri(
           output_dict[TRANSFORMED_EXAMPLES_KEY], split)
       transform_output_paths.append(os.path.join(
@@ -345,12 +352,11 @@ class Executor(base_executor.BaseExecutor):
         labels.ANALYZE_DATA_PATHS_LABEL:
             analyze,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            labels.FORMAT_TFRECORD,
+            analyze_formats,
         labels.TRANSFORM_DATA_PATHS_LABEL: 
             transform,
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [
-            labels.FORMAT_TFRECORD, labels.FORMAT_TFRECORD
-        ],
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: 
+            transform_formats,
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
