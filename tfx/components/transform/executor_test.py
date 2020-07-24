@@ -126,7 +126,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
+  def _runPipelineGetMetrics(): # pylint: disable=invalid-name
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
@@ -171,13 +171,14 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testDoWithCustomSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze_splits=['train'], 
+        transform_pb2.SplitsConfig(analyze_splits=['train'],
                                    transform_splits=['eval']),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._transformed_examples.split_names = artifact_utils.encode_split_names(
         ['eval'])
-    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = [self._transformed_examples]
+    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = [
+        self._transformed_examples]
 
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
@@ -193,8 +194,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testCounters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:

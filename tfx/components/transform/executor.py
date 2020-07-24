@@ -42,7 +42,6 @@ from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import value_utils
 from tfx.proto import transform_pb2
-from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -316,16 +315,16 @@ class Executor(base_executor.BaseExecutor):
       splits_config.transform_splits.extend(['train', 'eval'])
       logging.info("Transform both 'train' and 'eval' splits when "
                    "splits_config.transform_splits is not set.")
-  
+
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
     # TODO(b/161490287): move the split_names setting to executor for all
     #                    components.
-    transformed_example_artifact = artifact_utils.get_single_instance(
+    transform_example_artifact = artifact_utils.get_single_instance(
         output_dict[TRANSFORMED_EXAMPLES_KEY])
-    transformed_example_artifact.split_names = artifact_utils.encode_split_names(
+    transform_example_artifact.split_names = artifact_utils.encode_split_names(
         splits_config.transform_splits)
 
     analyze = []
@@ -364,9 +363,9 @@ class Executor(base_executor.BaseExecutor):
             analyze,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
             [labels.FORMAT_TFRECORD for _ in range(len(analyze))],
-        labels.TRANSFORM_DATA_PATHS_LABEL: 
+        labels.TRANSFORM_DATA_PATHS_LABEL:
             transform,
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: 
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
             [labels.FORMAT_TFRECORD for _ in range(len(transform))],
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
@@ -558,6 +557,7 @@ class Executor(base_executor.BaseExecutor):
     """Converts a batch of serialized examples to an Arrow RecordBatch."""
 
     def __init__(self, schema: Optional[schema_pb2.Schema]):
+      super().__init__()
       self._serialized_schema = schema.SerializeToString() if schema else None
 
     def setup(self):
@@ -566,7 +566,8 @@ class Executor(base_executor.BaseExecutor):
       self._decoder = (
           tfx_bsl.coders.example_coder.ExamplesToRecordBatchDecoder(*args))
 
-    def process(self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
+    def process( # pylint: disable=arguments-differ
+        self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
       yield self._decoder.DecodeBatch(element)
 
   # TODO(b/160799442, b/130807807): Two code paths are still using this:
@@ -631,10 +632,12 @@ class Executor(base_executor.BaseExecutor):
     """Encodes data as serialized tf.Examples based on the given metadata."""
 
     def __init__(self):
+      super().__init__()
       self._coder = None
 
-    def process(self, element: Dict[Text, Any], schema: schema_pb2.Schema
-               ) -> Generator[Tuple[Any, Any], None, None]:
+    def process( # pylint: disable=arguments-differ
+        self, element: Dict[Text, Any],
+        schema: schema_pb2.Schema) -> Generator[Tuple[Any, Any], None, None]:
       if self._coder is None:
         self._coder = tft.coders.ExampleProtoCoder(schema, serialized=True)
 
@@ -657,6 +660,7 @@ class Executor(base_executor.BaseExecutor):
                  typespecs: Mapping[Text, tf.TypeSpec],
                  preprocessing_fn: Any,
                  cache_source: beam.PTransform):
+      super().__init__()
       # pyformat: enable
       self._input_cache_dir = input_cache_dir
       self._output_cache_dir = output_cache_dir
@@ -674,7 +678,7 @@ class Executor(base_executor.BaseExecutor):
       # picklable.
       return self.to_runner_api_parameter(context)
 
-    def expand(
+    def expand( # pylint: disable=arguments-differ
         self, pipeline
     ) -> Tuple[Dict[Text, Optional[_Dataset]], Optional[Dict[Text, Dict[
         Text, beam.pvalue.PCollection]]]]:
@@ -694,7 +698,7 @@ class Executor(base_executor.BaseExecutor):
         logging.warning(
             'Disabling cache because otherwise the number of stages might be '
             'too high (%d analyzers, %d analysis paths)',
-                len(cache_entry_keys), len(dataset_keys_list))
+            len(cache_entry_keys), len(dataset_keys_list))
         # Returning None as the input cache here disables both input and output
         # cache.
         return ({d.dataset_key: d for d in self._analyze_data_list}, None)
@@ -1198,7 +1202,7 @@ class Executor(base_executor.BaseExecutor):
   def _RunInPlaceImpl(
       self, preprocessing_fn: Any,
       metadata: dataset_metadata.DatasetMetadata,
-      typespecs: Dict[Text, tf.TypeSpec],
+      typespecs: Dict[Text, tf.TypeSpec], # pylint: disable=unused-argument
       transform_output_path: Text) -> _Status:
     """Runs a transformation iteration in-place without looking at the data.
 
@@ -1271,7 +1275,7 @@ class Executor(base_executor.BaseExecutor):
       file_patterns: Sequence[Union[Text, int]],
       file_formats: Sequence[Union[Text, int]],
       data_format: Text,
-      can_process_jointly: bool,
+      can_process_jointly: bool, # pylint: disable=unused-argument
       stats_output_paths: Optional[Sequence[Text]] = None,
       materialize_output_paths: Optional[Sequence[Text]] = None
   ) -> List[_Dataset]:
