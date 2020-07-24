@@ -198,15 +198,14 @@ class KubeflowGCPIntegrationTest(kubeflow_test_utils.BaseKubeflowTest):
 
     # There must be only one saved models each for serving and eval.
     model_uri = os.path.join(trainer_output_base_dir, trainer_outputs[0])
-    self.assertEqual(
-        1, len(tf.io.gfile.listdir(path_utils.eval_model_dir(model_uri))))
+    eval_model_dir = path_utils.eval_model_dir(model_uri)
+    serving_model_dir = path_utils.serving_model_dir(model_uri)
     self.assertEqual(
         1,
-        len(
-            tf.io.gfile.listdir(
-                os.path.join(
-                    path_utils.serving_model_dir(model_uri), 'export',
-                    'chicago-taxi'))))
+        tf.io.gfile.listdir(eval_model_dir).count('saved_model.pb'))
+    self.assertEqual(
+        1,
+        tf.io.gfile.listdir(serving_model_dir).count('saved_model.pb'))
 
   def testAIPlatformTrainerPipeline(self):
     """Trainer-only test pipeline on AI Platform Training."""

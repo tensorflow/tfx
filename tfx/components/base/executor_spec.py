@@ -24,6 +24,7 @@ from typing import List, Text, Type
 from six import with_metaclass
 
 from tfx.components.base import base_executor
+from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 
@@ -33,6 +34,15 @@ class ExecutorSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
   An instance of ExecutorSpec describes the implementation of a component.
   """
+
+  def encode(self) -> pipeline_pb2.ExecutorSpec:
+    """Encodes ExecutorSpec into an IR proto for compiling.
+
+    This method will be used by DSL compiler to generate the corresponding IR.
+    """
+    # TODO(b/158712976, b/161286496): Serialize executor specs for different
+    # platforms.
+    raise NotImplementedError
 
 
 class ExecutorClassSpec(ExecutorSpec):
@@ -76,6 +86,11 @@ class ExecutorClassSpec(ExecutorSpec):
   def _reconstruct_from_executor_class_path(executor_class_path):
     executor_class = import_utils.import_class_by_path(executor_class_path)
     return ExecutorClassSpec(executor_class)
+
+  def encode(self) -> pipeline_pb2.ExecutorSpec:
+    result = pipeline_pb2.ExecutorSpec()
+    result.python_class_executor_spec.class_path = self.class_path
+    return result
 
 
 class ExecutorContainerSpec(ExecutorSpec):

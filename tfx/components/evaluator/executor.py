@@ -25,19 +25,23 @@ import absl
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants as tfma_constants
-from tfx_bsl.tfxio import tensor_adapter
-from tfx_bsl.tfxio import tf_example_record
-
-from google.protobuf import json_format
+# Need to import the following module so that the fairness indicator post-export
+# metric is registered.
+import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=unused-import
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.evaluator import constants
+from tfx.components.util import tfxio_utils
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from tfx_bsl.tfxio import tensor_adapter
+
+from google.protobuf import json_format
 
 
+_TELEMETRY_DESCRIPTORS = ['Evaluator']
 # TODO(pachristopher): After TFMA is released, make TFXIO as the default path.
 _USE_TFXIO = False
 
@@ -109,9 +113,6 @@ class Executor(base_executor.BaseExecutor):
         'fairness_indicator_thresholds', None)
     add_metrics_callbacks = None
     if fairness_indicator_thresholds:
-      # Need to import the following module so that the fairness indicator
-      # post-export metric is registered.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
       add_metrics_callbacks = [
           tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
               thresholds=fairness_indicator_thresholds),
@@ -192,10 +193,12 @@ class Executor(base_executor.BaseExecutor):
       if _USE_TFXIO:
         tensor_adapter_config = None
         if tfma.is_batched_input(eval_shared_model, eval_config):
-          tfxio = tf_example_record.TFExampleRecord(
-              file_pattern=file_pattern,
+          tfxio = tfxio_utils.get_tfxio_factory_from_artifact(
+              examples=input_dict[constants.EXAMPLES_KEY][0],
+              telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
-              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)(
+                  file_pattern)
           if schema is not None:
             tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
                 arrow_schema=tfxio.ArrowSchema(),

@@ -20,14 +20,14 @@ from __future__ import print_function
 
 from typing import Any, Dict, List, Text, NamedTuple
 
-from google.protobuf import json_format
-
+import absl
 from tfx import types
 from tfx.components.trainer import constants
 from tfx.proto import trainer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from google.protobuf import json_format
 
 # TODO(b/156929910): Change TrainerFnArgs to this FnArgs.
 #
@@ -58,17 +58,6 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text, Any],
                        working_dir: Text = None) -> FnArgs:
   """Get common args of training and tuning."""
-  train_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       'train'))
-  ]
-  eval_files = [
-      io_utils.all_files_pattern(
-          artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
-                                       'eval'))
-  ]
-
   if input_dict.get(constants.TRANSFORM_GRAPH_KEY):
     transform_graph_path = artifact_utils.get_single_uri(
         input_dict[constants.TRANSFORM_GRAPH_KEY])
@@ -85,6 +74,33 @@ def get_common_fn_args(input_dict: Dict[Text, List[types.Artifact]],
   eval_args = trainer_pb2.EvalArgs()
   json_format.Parse(exec_properties[constants.TRAIN_ARGS_KEY], train_args)
   json_format.Parse(exec_properties[constants.EVAL_ARGS_KEY], eval_args)
+
+  # Default behavior is train on `train` split (when splits is empty in train
+  # args) and evaluate on `eval` split (when splits is empty in eval args).
+  if not train_args.splits:
+    train_args.splits.append('train')
+    absl.logging.info("Train on the 'train' split when train_args.splits is "
+                      'not set.')
+  if not eval_args.splits:
+    eval_args.splits.append('eval')
+    absl.logging.info("Evaluate on the 'eval' split when eval_args.splits is "
+                      'not set.')
+
+  train_files = []
+  for train_split in train_args.splits:
+    train_files.extend([
+        io_utils.all_files_pattern(uri)
+        for uri in artifact_utils.get_split_uris(
+            input_dict[constants.EXAMPLES_KEY], train_split)
+    ])
+
+  eval_files = []
+  for eval_split in eval_args.splits:
+    eval_files.extend([
+        io_utils.all_files_pattern(uri)
+        for uri in artifact_utils.get_split_uris(
+            input_dict[constants.EXAMPLES_KEY], eval_split)
+    ])
 
   # https://github.com/tensorflow/tfx/issues/45: Replace num_steps=0 with
   # num_steps=None.  Conversion of the proto to python will set the default

@@ -276,7 +276,8 @@ _FARE_KEY = 'fare'
 #       for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
 #   })
 #
-#   # TODO(b/144500510): SparseFeatures for feature columns + Keras.
+#   # TODO(b/161952382): Replace with Keras premade models and
+#   # Keras preprocessing layers.
 #   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
 #   for numnodes in dnn_hidden_units:
 #     deep = tf.keras.layers.Dense(numnodes)(deep)
