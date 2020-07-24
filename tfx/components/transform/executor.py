@@ -295,8 +295,7 @@ class Executor(base_executor.BaseExecutor):
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Default
           behavior is analyze the 'train' split (when analyze_splits is not set)
-          and transform both 'train' and 'eval' splits (when transform_splits is
-          not set).
+          and transform all splits (when transform_splits is not set).
 
     Returns:
       None
@@ -312,9 +311,11 @@ class Executor(base_executor.BaseExecutor):
       logging.info("Analyze the 'train' split when splits_config.analyze_splits"
                    " is not set.")
     if not splits_config.transform_splits:
-      splits_config.transform_splits.extend(['train', 'eval'])
-      logging.info("Transform both 'train' and 'eval' splits when "
-                   "splits_config.transform_splits is not set.")
+      splits_config.transform_splits.extend(
+          artifact_utils.decode_split_names(
+              input_dict[EXAMPLES_KEY][0].split_names))
+      logging.info("Transform all splits when splits_config.transform_splits "
+                   "is not set.")
 
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
@@ -333,13 +334,13 @@ class Executor(base_executor.BaseExecutor):
       analyze.append(io_utils.all_files_pattern(data_uri))
 
     transform = []
-    transform_output_paths = []
+    transformed_examples = []
     for split in splits_config.transform_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       transform.append(io_utils.all_files_pattern(data_uri))
       transformed_output = artifact_utils.get_split_uri(
           output_dict[TRANSFORMED_EXAMPLES_KEY], split)
-      transform_output_paths.append(
+      transformed_examples.append(
           os.path.join(transformed_output,
                        _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
 
@@ -378,7 +379,7 @@ class Executor(base_executor.BaseExecutor):
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: transform_output_paths,
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: transformed_examples,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
     cache_output = _GetCachePath('cache_output_path', output_dict)

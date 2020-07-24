@@ -26,6 +26,7 @@ from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
 
 
 class ComponentTest(tf.test.TestCase):
@@ -104,6 +105,10 @@ class ComponentTest(tf.test.TestCase):
         splits_config=splits_config,
     )
     self._verify_outputs(transform)
+    self.assertEqual(
+        json_format.MessageToJson(splits_config,
+                                  preserving_proto_field_name=True),
+        transform.spec.exec_properties['splits_config'])
 
 
 if __name__ == '__main__':

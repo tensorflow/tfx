@@ -22,6 +22,6 @@ message SplitsConfig {
   repeated string analyze_splits = 1;
 
   // Splits that should be transformed.
-  // hint: this is normally the eval dataset.
+  // hint: this is normally all the dataset.
   repeated string transform_splits = 2;
 }
