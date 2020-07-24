@@ -48,12 +48,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self._pipeline_root = os.path.join(self._test_dir, 'tfx', 'pipelines',
                                        self._pipeline_name)
     # Metadata path for recording successful pipeline run.
-    self._metadata_db_uri = os.path.join(self._test_dir, 'tfx', 'record',
-                                         'metadata.db')
+    self._recorded_mlmd_path = os.path.join(self._test_dir, 'tfx', 'record',
+                                            'metadata.db')
     # Metadata path for stub pipeline runs.
     self._metadata_path = os.path.join(self._test_dir, 'tfx', 'metadata',
                                        self._pipeline_name, 'metadata.db')
-    self._output_dir = os.path.join(self._test_dir, 'testdata')
+    self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
   def assertDirectoryEqual(self, dir1: Text, dir2: Text):
     """Recursively comparing contents of two directories."""
@@ -74,26 +74,26 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       self.assertDirectoryEqual(new_dir1, new_dir2)
 
   def testTaxiPipelineBeam(self):
-    # Runs the pipeline and record to self._output_dir
+    # Runs the pipeline and record to self._recorded_output_dir
     record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
         serving_model_dir=self._serving_model_dir,
         pipeline_root=self._pipeline_root,
-        metadata_path=self._metadata_db_uri,
+        metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
     BeamDagRunner().run(record_taxi_pipeline)
     pipeline_recorder_utils.record_pipeline(
-        output_dir=self._output_dir,
-        metadata_db_uri=self._metadata_db_uri,
+        output_dir=self._recorded_output_dir,
+        metadata_db_uri=self._recorded_mlmd_path,
         host=None,
         port=None,
         pipeline_name=self._pipeline_name,
         run_id=None)
 
     # Run pipeline with stub executors.
-    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access, unexpected-keyword-arg
+    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -108,7 +108,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                              if component.id != model_resolver_id]
 
     stub_launcher = stub_component_launcher.get_stub_launcher_class(
-        test_data_dir=self._output_dir,
+        test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
     stub_pipeline_config = pipeline_config.PipelineConfig(
@@ -127,6 +127,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifacts = m.store.get_artifacts()
       artifact_count = len(artifacts)
       execution_count = len(m.store.get_executions())
+      # artifact count is greater due to blessing and model_run
       self.assertGreaterEqual(artifact_count, execution_count)
       self.assertLen(taxi_pipeline.components, execution_count)
 
@@ -134,9 +135,10 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         artifact_properties = artifact.custom_properties
         component_id = artifact_properties['producer_component'].string_value
         name = artifact_properties['name'].string_value
-        self.assertDirectoryEqual(artifact.uri, os.path.join(self._output_dir,
-                                                             component_id,
-                                                             name))
+        self.assertDirectoryEqual(artifact.uri, os.path.join(
+            self._recorded_output_dir,
+            component_id,
+            name))
 
 if __name__ == '__main__':
   tf.test.main()
