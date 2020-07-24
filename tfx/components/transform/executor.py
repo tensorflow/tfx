@@ -283,6 +283,8 @@ class Executor(base_executor.BaseExecutor):
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
           includes both 'train' and 'eval' splits.
+        - cache_output_path: Cache output of 'tf.Transform', where cached
+          information for analyzed examples will be written.
       exec_properties: A dict of execution properties, including either one of:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
