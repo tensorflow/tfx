@@ -26,8 +26,8 @@ from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
-class ExecutorVerifier(tf.test.TestCase):
-  """Test for verifying executors."""
+class TaxiPipelineExecutorVerifier(tf.test.TestCase):
+  """Test for verifying executors using Chicago Taxi dataset."""
 
   def setUp(self):
     super(ExecutorVerifier, self).setUp()
@@ -64,8 +64,7 @@ class ExecutorVerifier(tf.test.TestCase):
         taxi_pipeline.metadata_connection_config,
         taxi_pipeline.pipeline_info)
 
-    # verify_component_ids = ['Transform','Trainer']
-    verify_component_ids = ['Trainer', 'Evaluator']
+    verify_component_ids = ['Transform', 'Trainer', 'Evaluator']
     for component_id in verify_component_ids:
       for key, artifact in pipeline_outputs[component_id].items():
         output_uri = os.path.join(self._record_dir, component_id, key)

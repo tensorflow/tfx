@@ -23,7 +23,7 @@ from typing import Dict, List, Text, Optional
 
 from tensorflow_model_analysis.view import SlicedMetrics
 from ml_metadata.proto import metadata_store_pb2
-from tfx.components.trainer import constants
+from tfx import components
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -32,13 +32,13 @@ from tfx.types import artifact_utils
 def _compare_relative_difference(value: float,
                                  expected_value: float,
                                  threshold: float) -> bool:
-  """Compares relative difference between value and expected_value to
-    a specified threshold.
+  """Returns whether relative difference between value and expected_value
+    is within a specified threshold.
 
   Args:
-    value:
-    expected_value:
-    threshold: a float between 0 and 1
+    value: a float value to be compared to expected value.
+    expected_value: a float value that is expected.
+    threshold: a float between 0 and 1.
 
   Returns:
     a boolean indicating whether the relative difference is within the
@@ -59,14 +59,14 @@ def get_pipeline_outputs(
         Optional[metadata_store_pb2.ConnectionConfig],
     pipeline_info: data_types.PipelineInfo
     ) -> Dict[Text, Dict[Text, List[types.Artifact]]]:
-  """Returns a dictionary of component_id: output.
+  """Returns a dictionary of pipeline output artifacts for every component.
 
   Args:
-    metadata_connection_config:
-    pipeline_info: pipeline info of
+    metadata_connection_config: connection configuration to MLMD.
+    pipeline_info: pipeline info from orchestration.
 
   Returns:
-    a dictionary of component_id: output.
+    a dictionary of holding list of artifacts for a component id.
   """
   output_map = {}
   with metadata.Metadata(metadata_connection_config) as m:
@@ -84,8 +84,17 @@ def get_pipeline_outputs(
       output_map[component_id] = output_dict
   return output_map
 
-def _verify_file_path(output_uri, expected_uri, check_file=False):
-  """Verify the file directory paths."""
+def _verify_file_dir(output_uri, expected_uri, check_file=False):
+  """Verify pipeline output artifact uri by comparing to recorded uri.
+
+  Args:
+    output_uri: pipeline output artifact uri.
+    expected_uri: recorded pipeline output artifact uri.
+    check_file: boolean indicating whether to check file path.
+
+  Returns:
+    a boolean whether file paths are matching.
+  """
   for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
     for sub_dir in sub_dirs:
       new_file_path = os.path.join(
@@ -102,7 +111,7 @@ def _verify_file_path(output_uri, expected_uri, check_file=False):
 
 def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
                           ) -> Dict[Text, Dict[Text, float]]:
-  """Returns a slice map.
+  """Returns a dictionary holding metric values for every slice.
 
   Args:
     eval_result_metric: list of sliced metrics.
@@ -124,10 +133,10 @@ def _compare_eval_results(output_uri: Text,
   Args:
     eval_result: Result of a model analysis run.
     expected_eval_result: Result of a model analysis run.
-    threshold: a float between 0 and 1
+    threshold: a float between 0 and 1.
 
   Returns:
-    boolean whether the eval result values are similar within a threshold.
+    boolean whether the eval result values differ within a threshold.
   """
   eval_result = tfma.load_eval_result(output_uri)
   expected_eval_result = tfma.load_eval_result(expected_uri)
@@ -145,6 +154,16 @@ def _compare_eval_results(output_uri: Text,
 def _compare_file_sizes(output_uri: Text,
                         expected_uri: Text,
                         threshold: float) -> bool:
+  """Compares pipeline output files in output uri and recorded uri.
+
+  Args:
+    output_uri: pipeline output artifact uri.
+    expected_uri: recorded pipeline output artifact uri.
+    threshold: a float between 0 and 1.
+
+  Returns:
+     boolean whether file sizes differ within a threshold.
+  """
   for leaf_file in tf.io.gfile.listdir(expected_uri):
     expected_file_name = os.path.join(expected_uri, leaf_file)
     file_name = expected_file_name.replace(expected_uri, output_uri)
@@ -156,30 +175,33 @@ def _compare_file_sizes(output_uri: Text,
   return True
 
 def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
-  """Default artifact verifier.
+  """Calls verifier for a specific artifact.
 
-  Args: ...
+  Args:
+    output_uri: pipeline output artifact uri.
+    expected_uri: recorded pipeline output artifact uri.
+    threshold: a float between 0 and 1.
+
+  Returns:
+     boolean whether pipeline outputs are reasonable.
   """
   artifact_name = artifact.custom_properties['name'].string_value
 
-  # if artifact_name == constants.EXAMPLES_KEY:
-  #   eval_output = standard_artifacts.ModelEvaluation()
-  #   eval_output.uri = os.path.join(output_data_dir, 'eval_output')
-  #   blessing_output = standard_artifacts.ModelBlessing()
-  #   blessing_output.uri = os.path.join(output_data_dir, 'blessing_output')
-  if artifact_name == constants.SCHEMA_KEY:
+  if artifact_name == components.trainer.constants.SCHEMA_KEY:
     if not _compare_file_sizes(artifact.uri, output_uri, threshold):
       return False
 
-  if artifact_name == 'evaluation':
+  elif artifact_name == components.evaluator.constants.EVALUATION_KEY:
     if not _compare_eval_results(
         artifact.uri,
         output_uri,
         threshold):
       return False
 
-  elif artifact_name in [constants.MODEL_KEY, constants.TRANSFORM_GRAPH_KEY]:
+  elif artifact_name in [components.evaluator.constants.EXAMPLES_KEY,
+                         components.evaluator.constants.MODEL_KEY,
+                         components.evaluator.constants.TRANSFORM_GRAPH_KEY]:
     if not _compare_file_sizes(artifact.uri, output_uri, threshold):
       return False
 
-  return _verify_file_path(output_uri, artifact.uri)
+  return _verify_file_dir(output_uri, artifact.uri)
