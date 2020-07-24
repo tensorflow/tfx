@@ -124,7 +124,8 @@ def delete_worker_services(training_inputs: Dict[Text,
   api_instance = kube_utils.make_core_v1_api()
   for i in range(num_workers):
     service_name = name + '-' + job + '-' + str(i),
-    api_response = api_instance.delete_namespaced_service(namespace='default', name=service_name)
+    try:
+      api_response = api_instance.delete_namespaced_service(namespace='default', name=service_name)
     except ApiException as e:
       # TODO(ericlege): use absl
       print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)

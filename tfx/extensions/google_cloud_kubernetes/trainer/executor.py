@@ -79,5 +79,4 @@ class Executor(GenericExecutor):
   """Start a trainer job on Google Kubernetes Engine using a default Trainer."""
 
   def _GetExecutorClass(self):
-      # TODO(ericlege): use Executor
-    return tfx_trainer_executor.GenericExecutor
+    return tfx_trainer_executor.Executor
