@@ -277,23 +277,26 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - input_data: A list of type `standard_artifacts.Examples` which
-          should contain two splits 'train' and 'eval'.
+          should contain two splits 'train' and 'eval' if custom splits
+          is not specified in splits_config.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
-          includes both 'train' and 'eval' splits.
-      exec_properties: A dict of execution properties, including either one of:
+          includes both 'train' and 'eval' splits if custom splits is not
+          specified in splits_config.
+      exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
           implements 'preprocessing_fn'.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
-          that should be analyzed and splits that should be transformed. If it
-          is not set, analyze the 'train' split and transform both 'train' and
-          'eval' splits.
+          that should be analyzed and splits that should be transformed. Default
+          behavior is analyze the 'train' split (when analyze_splits is not set)
+          and transform both 'train' and 'eval' splits (when transform_splits is
+          not set).
 
     Returns:
       None
@@ -303,31 +306,30 @@ class Executor(base_executor.BaseExecutor):
     splits_config = transform_pb2.SplitsConfig()
     json_format.Parse(exec_properties['splits_config'], splits_config)
 
-    if splits_config:
-      analyze_splits = splits_config.analyze
-      transform_splits = splits_config.transform
-    else:
-      analyze_splits = ['train']
-      transform_splits = ['train', 'eval']
+    if not splits_config.analyze_splits:
+      splits_config.analyze_splits.append('train')
+      logging.info("Analyze the 'train' split when splits_config.analyze_splits"
+                   " is not set.")
+    if not splits_config.transform_splits:
+      splits_config.transform_splits.extend(['train', 'eval'])
+      logging.info("Transform both 'train' and 'eval' splits when "
+                   "splits_config.transform_splits is not set.")
 
     analyze = []
-    analyze_formats = []
-    for split in analyze_splits:
+    for split in splits_config.analyze_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       analyze.append(io_utils.all_files_pattern(data_uri))
-      analyze_formats.append(labels.FORMAT_TFRECORD)
 
     transform = []
-    transform_formats = []
     transform_output_paths = []
-    for split in transform_splits:
+    for split in splits_config.transform_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       transform.append(io_utils.all_files_pattern(data_uri))
-      transform_formats.append(labels.FORMAT_TFRECORD)
       transformed_output = artifact_utils.get_split_uri(
           output_dict[TRANSFORMED_EXAMPLES_KEY], split)
-      transform_output_paths.append(os.path.join(
-          transformed_output, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
+      transform_output_paths.append(
+          os.path.join(transformed_output,
+                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
 
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
@@ -342,6 +344,8 @@ class Executor(base_executor.BaseExecutor):
       else:
         return artifact_utils.get_single_uri(params_dict[label])
 
+    len_analyze_splits = len(splits_config.analyze_splits)
+    len_transform_splits = len(splits_config.transform_splits)
     label_inputs = {
         labels.COMPUTE_STATISTICS_LABEL:
             False,
@@ -352,11 +356,11 @@ class Executor(base_executor.BaseExecutor):
         labels.ANALYZE_DATA_PATHS_LABEL:
             analyze,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            analyze_formats,
+            [labels.FORMAT_TFRECORD for _ in range(len_analyze_splits)],
         labels.TRANSFORM_DATA_PATHS_LABEL: 
             transform,
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: 
-            transform_formats,
+            [labels.FORMAT_TFRECORD for _ in range(len_transform_splits)],
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:

@@ -82,7 +82,8 @@ class Transform(base_component.BaseComponent):
 
     Args:
       examples: A Channel of type `standard_artifacts.Examples` (required).
-        This should contain the two splits 'train' and 'eval'.
+        This should contain the two splits 'train' and 'eval' if custom splits
+        is not specified in splits_config.
       schema: A Channel of type `standard_artifacts.Schema`. This should
         contain a single schema artifact.
       module_file: The file path to a python module file, from which the
@@ -100,15 +101,16 @@ class Transform(base_component.BaseComponent):
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
         supplied.
       splits_config: A transform_pb2.SplitsConfig instance, providing splits
-        that should be analyzed and splits that should be transformed. If it is
-        not set, analyze the 'train' split and transform both 'train' and 'eval'
-        splits.
+        that should be analyzed and splits that should be transformed. Default
+        behavior is analyze the 'train' split (when analyze_splits is not set)
+        and transform both 'train' and 'eval' splits (when transform_splits is
+        not set).
       transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;
       transformed_examples: Optional output 'ExamplesPath' channel for
         materialized transformed examples, which includes both 'train' and
-        'eval' splits.
+        'eval' splits if custom splits is not specified in splits_config.
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.

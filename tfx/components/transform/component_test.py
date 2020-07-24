@@ -94,8 +94,8 @@ class ComponentTest(tf.test.TestCase):
       )
 
   def testConstructWithSplitsConfig(self):
-    splits_config = transform_pb2.SplitsConfig(analyze=['train'],
-                                               transform=['eval'])
+    splits_config = transform_pb2.SplitsConfig(analyze_splits=['train'],
+                                               transform_splits=['eval'])
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
         examples=self.examples,
