@@ -18,7 +18,7 @@
 *   Switched Transform component to use the new TFXIO code path. Users may
     potentially notice large performance improvement.
 *   Added support for primitive artifacts to InputValuePlaceholder.
-*   Supported multiple artifacts for Trainer's input example Channel.
+*   Supported multiple artifacts for Trainer and Tuner's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
 *   Component authors now can create a TFXIO instance to get access to the
     data through `tfx.components.util.tfxio_utils`. As TFX is going to
