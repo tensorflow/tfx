@@ -56,7 +56,7 @@ class BertPreprocessor():
       max_len=128,
       add_cls=True,
       add_sep=True):
-    """Tokenize a sentence with the BERT model vocab file and without padding. 
+    """Tokenize a sentence with the BERT model vocab file and without padding.
 
     Add special tokens according to config.
 
@@ -118,11 +118,11 @@ class BertPreprocessor():
       segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
     word_ids = self.tokenize_single_sentence_unpad(
-            sequence,
-            max_len,
-            add_cls,
-            add_sep)
-    
+        sequence,
+        max_len,
+        add_cls,
+        add_sep)
+
     word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
