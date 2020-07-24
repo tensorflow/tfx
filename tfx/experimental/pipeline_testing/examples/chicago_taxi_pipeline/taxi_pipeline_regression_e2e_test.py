@@ -127,8 +127,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifacts = m.store.get_artifacts()
       artifact_count = len(artifacts)
       execution_count = len(m.store.get_executions())
-      # artifact count is greater by 2 due to duplicate Evaluator
-      # (blessing and evaluation) and Trainer (model and model_run)
+      # artifact count is greater by 2 due to two artifacts produced by both
+      # Evaluator(blessing and evaluation) and Trainer(model and model_run)
       self.assertEqual(artifact_count, execution_count + 2)
       self.assertLen(taxi_pipeline.components, execution_count)
 
