@@ -129,6 +129,7 @@ class Transform(base_component.BaseComponent):
     transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
+    # TODO(b/162110942): Make cache output optional.
     cache_output_path = cache_output_path or types.Channel(
         type=standard_artifacts.TransformCache,
         artifacts=[standard_artifacts.TransformCache()])

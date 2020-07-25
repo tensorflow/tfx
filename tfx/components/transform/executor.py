@@ -279,6 +279,8 @@ class Executor(base_executor.BaseExecutor):
           should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
+        - cache_output_path: Optinal cache input of 'tf.Transform', where cached
+          information for analyzed examples from previous runs will be read.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
