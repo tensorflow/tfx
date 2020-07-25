@@ -70,8 +70,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                                 'transformed_graph')
     self._transformed_examples = standard_artifacts.Examples()
     self._transformed_examples.uri = output_data_dir
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
     self._output_cache_artifact = standard_artifacts.TransformCache()
