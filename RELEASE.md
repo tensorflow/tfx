@@ -48,6 +48,7 @@
     thread safe.
 *   Stopped requiring `avro-python3`.
 *   Requires [Bazel](https://bazel.build/) to build TFX source code.
+*   `exec_properties` are now stored as custom_properties of Execution in MLMD.
 
 ## Breaking changes
 

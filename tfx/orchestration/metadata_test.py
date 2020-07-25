@@ -188,7 +188,7 @@ class MetadataTest(tf.test.TestCase):
             string_value: "my_component"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
@@ -292,7 +292,7 @@ class MetadataTest(tf.test.TestCase):
             string_value: "my_component"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
@@ -335,13 +335,13 @@ class MetadataTest(tf.test.TestCase):
             string_value: "my_component"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_two"
           value {
             string_value: "2"
@@ -425,13 +425,13 @@ class MetadataTest(tf.test.TestCase):
             string_value: "my_component"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_two"
           value {
             string_value: "2"
@@ -474,7 +474,7 @@ class MetadataTest(tf.test.TestCase):
             string_value: "my_component"
           }
         }
-        properties {
+        custom_properties {
           key: "arg_one"
           value {
             string_value: "1"
@@ -673,7 +673,7 @@ class MetadataTest(tf.test.TestCase):
           contexts=contexts)
       [execution] = m.store.get_executions_by_context(
           m.get_component_run_context(self._component_info).id)
-      self.assertEqual(execution.properties['k'].string_value, 'v1')
+      self.assertEqual(execution.custom_properties['k'].string_value, 'v1')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_NEW)
 
@@ -686,7 +686,7 @@ class MetadataTest(tf.test.TestCase):
 
       [execution] = m.store.get_executions_by_context(
           m.get_component_run_context(self._component_info).id)
-      self.assertEqual(execution.properties['k'].string_value, 'v2')
+      self.assertEqual(execution.custom_properties['k'].string_value, 'v2')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_NEW)
       [event] = m.store.get_events_by_execution_ids([execution.id])
@@ -709,7 +709,7 @@ class MetadataTest(tf.test.TestCase):
 
       [execution] = m.store.get_executions_by_context(
           m.get_component_run_context(self._component_info).id)
-      self.assertEqual(execution.properties['k'].string_value, 'v3')
+      self.assertEqual(execution.custom_properties['k'].string_value, 'v3')
       self.assertEqual(execution.properties['state'].string_value,
                        metadata.EXECUTION_STATE_COMPLETE)
       [_, event_b] = m.store.get_events_by_execution_ids([execution.id])
