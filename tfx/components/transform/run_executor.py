@@ -20,11 +20,13 @@ from __future__ import print_function
 
 import argparse
 import absl
+from tfx.components.transform import labels
+from tfx.components.transform.executor import Executor
+from tfx.proto import example_gen_pb2
+
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.platform import app
 # pylint: enable=g-direct-tensorflow-import
-from tfx.components.transform import labels
-from tfx.components.transform.executor import Executor
 
 
 def _run_transform(args, beam_pipeline_args):
@@ -47,7 +49,7 @@ def _run_transform(args, beam_pipeline_args):
       labels.PREPROCESSING_FN:
           args.preprocessing_fn_path,
       labels.EXAMPLES_DATA_FORMAT_LABEL:
-          args.example_data_format,
+          example_gen_pb2.PayloadFormat.Value(args.example_data_format),
       labels.COMPUTE_STATISTICS_LABEL:
           args.compute_statistics,
       labels.BEAM_PIPELINE_ARGS:
@@ -104,7 +106,8 @@ def main(argv):
   parser.add_argument(
       '--example_data_format',
       type=str,
-      default=labels.FORMAT_TF_EXAMPLE,
+      default=example_gen_pb2.PayloadFormat.Name(
+          example_gen_pb2.FORMAT_TF_EXAMPLE),
       help='Example data format')
   # Arguments in outputs
   parser.add_argument(
