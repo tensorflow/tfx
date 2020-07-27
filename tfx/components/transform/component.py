@@ -100,8 +100,9 @@ class Transform(base_component.BaseComponent):
         supplied.
       splits_config: A transform_pb2.SplitsConfig instance, providing splits
         that should be analyzed and splits that should be transformed. Default
-        behavior is analyze the 'train' split (when analyze_splits is not set)
-        and transform all splits (when transform_splits is not set).
+        behavior (when splits_config is not set) is analyze the 'train' split
+        and transform all splits. If splits_config is set, analyze_splits cannot
+        be empty.
       transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;

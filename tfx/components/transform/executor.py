@@ -294,8 +294,9 @@ class Executor(base_executor.BaseExecutor):
           implements 'preprocessing_fn'.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Default
-          behavior is analyze the 'train' split (when analyze_splits is not set)
-          and transform all splits (when transform_splits is not set).
+          behavior (when splits_config is not set) is analyze the 'train' split
+          and transform all splits. If splits_config is set, analyze_splits
+          cannot be empty.
 
     Returns:
       None
@@ -310,13 +311,11 @@ class Executor(base_executor.BaseExecutor):
             'analyze_splits cannot be empty when splits_config is set.')
     else:
       splits_config.analyze_splits.append('train')
-      logging.info("Analyze the 'train' split when splits_config.analyze_splits"
-                   " is not set.")
       splits_config.transform_splits.extend(
           artifact_utils.decode_split_names(
               input_dict[EXAMPLES_KEY][0].split_names))
-      logging.info("Transform all splits when splits_config.transform_splits "
-                   "is not set.")
+      logging.info("Analyze the 'train' split and transform all splits when "
+                   "splits_config is not set.")
 
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))

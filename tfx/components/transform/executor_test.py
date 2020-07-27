@@ -195,14 +195,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def testDoWithEmptyAnalyzeSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(analyze_splits=[],
-                                   transform_splits=['eval']),
+                                   transform_splits=['train', 'eval']),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        ['eval'])
-    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = [
-        self._transformed_examples]
-
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
