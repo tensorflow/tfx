@@ -27,15 +27,15 @@ class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   def __init__(self, **kwargs):
     super(StubComponentLauncher, self).__init__(**kwargs)
 
-    # TODO: (Step 11) GCS directory where KFP outputs are recorded
+    # TODO(step 11): GCS directory where KFP outputs are recorded
     self.test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
-    # TODO: (Step 11) customize self.stubbed_component_ids to replace components
+    # TODO(step 11): customize self.stubbed_component_ids to replace components
     # with BaseStubExecutor
     self.stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
                                   'SchemaGen', 'ExampleValidator',
                                   'Trainer', 'Transform', 'Evaluator', 'Pusher']
-    # TODO: (Step 11) Insert custom stub executors in self.stubbed_component_map
-    # with component id as a key and custom stub executor class as value.
+    # TODO(step 11): (Optional) Use stubbed_component_map to insert custom stub
+    # executor class as a value and component id as a key.
     self.stubbed_component_map = {}
     for c_id in self.stubbed_component_ids:
       self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
