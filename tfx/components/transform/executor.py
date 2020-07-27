@@ -307,7 +307,7 @@ class Executor(base_executor.BaseExecutor):
       json_format.Parse(exec_properties['splits_config'], splits_config)
       if not splits_config.analyze_splits:
         raise ValueError(
-          'analyze_splits cannot be empty when splits_config is set.')
+            'analyze_splits cannot be empty when splits_config is set.')
     else:
       splits_config.analyze_splits.append('train')
       logging.info("Analyze the 'train' split when splits_config.analyze_splits"

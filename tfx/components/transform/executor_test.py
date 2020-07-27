@@ -126,7 +126,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def _run_pipeline_get_metrics(self, inputs, outputs, exec_properties):
+  def _run_pipeline_get_metrics(self):
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
@@ -209,8 +209,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testCounters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    metrics = self._run_pipeline_get_metrics(self._input_dict, self._output_dict,
-                                             self._exec_properties)
+    metrics = self._run_pipeline_get_metrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:
