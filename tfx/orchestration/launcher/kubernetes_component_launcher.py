@@ -240,13 +240,11 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     Raises:
       RuntimeError: When it sees unexpected errors from Kubernetes API.
     """
-    try:
-      return core_api.read_namespaced_pod(name=pod_name, namespace=namespace)
-    except client.rest.ApiException as e:
-      if e.status != 404:
-        raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                           (e.reason, e.body))
-      return None
+    return kube_utils.get_pod(
+      core_api,
+      pod_name,
+      namespace,
+    )
 
   def _wait_pod(self,
                 core_api: client.CoreV1Api,
@@ -273,19 +271,14 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     Raises:
       RuntimeError: when the function times out.
     """
-    start_time = datetime.datetime.utcnow()
-    while True:
-      resp = self._get_pod(core_api, pod_name, namespace)
-      logging.info(resp.status.phase)
-      if exit_condition_lambda(resp):
-        return resp
-      elapse_time = datetime.datetime.utcnow() - start_time
-      if elapse_time.seconds >= timeout_sec:
-        raise RuntimeError(
-            'Pod "%s:%s" does not reach "%s" within %s seconds.' %
-            (namespace, pod_name, condition_description, timeout_sec))
-      # TODO(hongyes): add exponential backoff here.
-      time.sleep(1)
+    return kube_utils.wait_pod(
+      core_api,
+      pod_name,
+      namespace,
+      exit_condition_lambda,
+      condition_description,
+      timeout_sec,
+    )
 
   def _build_pod_name(self, execution_id: int) -> Text:
     if self._pipeline_info.run_id:

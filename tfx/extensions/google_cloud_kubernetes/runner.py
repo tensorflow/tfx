@@ -28,26 +28,39 @@ from tfx.components.trainer import constants
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import kube_utils
-from tfx.orchestration.launcher import kubernetes_component_launcher
-
+from tfx.extensions.google_cloud_kubernetes.trainer import executor
 import kubernetes.client as client
 from kubernetes.client.rest import ApiException
 
 #TODO: change
 _TFX_IMAGE = "gcr.io/tfx-eric/gpu-tfx"
 
-_COMMAND = "python /tfx-src/tfx/scripts/run_executor.py"
+_COMMAND = ["python", "-m", "tfx.scripts.run_executor"]
 
 def _get_pod_name(name: Text="keras", job: Text="worker", index:int=0):
   return name + '-' + job + '-' + str(index)
 
+def _pod_is_done(resp: client.V1Pod):
+  return kube_utils.PodPhase(resp.status.phase).is_done
+
 def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
-                       Any], name: Text="keras", job: Text="worker"):
+                       Any], exec_properties: Dict[Text,Any],
+                       name: Text="keras", job: Text="worker"):
   num_workers = training_inputs.get("num_workers", 1)
   num_gpus_per_worker = training_inputs.get("num_gpus_per_worker", 0)
   api_instance = kube_utils.make_core_v1_api()
   worker_hosts = ["{}:5000".format(_get_pod_name(name, job, i)) for i in range(num_workers)]
+  # since worker_index is passed through custom_config in exec_properties,
+  # save an original copy to be restored upon function completion.
+  original_custom_config = exec_properties[constants.CUSTOM_CONFIG_KEY]
+  custom_config = json.loads(exec_properties[constants.CUSTOM_CONFIG_KEY])
+  training_args = custom_config[executor.TRAINING_ARGS_KEY]
   for i in range(num_workers):
+    # replace worker_index in training args
+    training_args['worker_index'] = i
+    exec_properties[constants.CUSTOM_CONFIG_KEY] = json.dumps(custom_config, sort_keys=True)
+    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
+    exec_properties_args = ['--exec-properties', json_exec_properties]
     pod = client.V1Pod(
       metadata=client.V1ObjectMeta(
         name=_get_pod_name(name, job, i),
@@ -65,7 +78,7 @@ def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
             # replace with file download
             command=_COMMAND,
             # add other args
-            args=job_args,
+            args=job_args + exec_properties_args,
             ports=[
               client.V1ContainerPort(
                 container_port=5000,
@@ -85,6 +98,7 @@ def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
       api_response = api_instance.create_namespaced_pod(namespace='default', body=pod)
     except ApiException as e:
       print("Exception when calling CoreV1Api->create_namespaced_pod: %s\n" % e)
+  exec_properties[constants.CUSTOM_CONFIG_KEY] = original_custom_config
   print("created {} worker pods".format(num_workers))
 
 
@@ -131,6 +145,7 @@ def delete_worker_services(training_inputs: Dict[Text,
       print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
   print("Deleted {} worker services".format(num_workers))
 
+
 def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                        output_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text,
@@ -171,31 +186,38 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
   # the specified image using the container's entrypoint. The default
   # entrypoint for TFX containers is to call scripts/run_executor.py. The
   # arguments below are passed to this run_executor entry to run the executor
-  # specified in `executor_class_path`.
+  # specified in `executor_class_path`. Note that exec_properties are supplied
+  # dynamically in create_worker_service since each pod needs a different
+  # worker_index passed through it.
   job_args = [
       '--executor_class_path', executor_class_path, '--inputs', json_inputs,
-      '--outputs', json_outputs, '--exec-properties', json_exec_properties
+      '--outputs', json_outputs,
   ]
 
   # launch the services
   create_worker_services(training_inputs=training_inputs)
 
   # launch the worker pods
-  create_worker_pods(job_args=job_args, training_inputs=training_inputs)
+  create_worker_pods(job_args=job_args,
+                    training_inputs=training_inputs,
+                    exec_properties=exec_properties)
 
-  # wait for finish. TODO: not use protected members
-  exit_condition = kubernetes_component_launcher._pod_is_done
-  kubernetes_component_launcher.KubernetesComponentLauncher()._wait_pod(self,
-                core_api=kube_utils.make_core_v1_api(),
-                pod_name=_get_pod_name(), # chief
-                namespace="default",
-                exit_condition_lambda=exit_condition,
-                condition_description="Chief finished",
-                timeout_sec=1200) # wait for autoscaler
-  
+  # wait for finish.
+  resp = kube_utils.wait_pod(core_api=kube_utils.make_core_v1_api(),
+                      pod_name=_get_pod_name(), # chief
+                      namespace="default",
+                      exit_condition_lambda=_pod_is_done,
+                      condition_description="Chief finished",
+                      timeout_sec=1200, # wait for autoscaler
+                      expotential_backoff=True,)
+  if resp.status.phase == kube_utils.PodPhase.FAILED.value:
+      raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
+                         ("default", _get_pod_name(), resp.status))
+
   # clean up
   delete_worker_services(training_inputs=training_inputs)
 
   # GKE training complete
-  logging.info('Job \'%s\' successful.', job_name)
+  #logging.info('Job \'%s\' successful.', job_name)
+  logging.info('Job successful')
 
