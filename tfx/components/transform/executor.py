@@ -38,17 +38,19 @@ from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
 from tfx.components.base import base_executor
+from tfx.components.experimental.data_view import utils as data_view_utils
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
+from tfx.components.util import examples_utils
+from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
+from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
 import tfx_bsl
-from tfx_bsl.tfxio import raw_tf_record
-from tfx_bsl.tfxio import tf_example_record
-from tfx_bsl.tfxio import tfxio
+from tfx_bsl.tfxio import tfxio as tfxio_module
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -83,6 +85,7 @@ _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 _TEMP_DIR_IN_TRANSFORM_OUTPUT = '.temp_path'
 
 _TRANSFORM_COMPONENT_DESCRIPTOR = 'Transform'
+_TELEMETRY_DESCRIPTORS = [_TRANSFORM_COMPONENT_DESCRIPTOR]
 
 # TODO(b/37788560): Increase this max, based on results of experimentation with
 # many non-packable analyzers on our benchmarks.
@@ -129,7 +132,8 @@ class _Dataset(object):
 
   def __init__(self, file_pattern: Text,
                file_format: Union[Text, int],
-               data_format: Union[Text, int],
+               data_format: int,
+               data_view_uri: Optional[Text],
                stats_output_path: Optional[Text] = None,
                materialize_output_path: Optional[Text] = None):
     """Initialize a Dataset.
@@ -137,7 +141,9 @@ class _Dataset(object):
     Args:
       file_pattern: The file pattern of the dataset.
       file_format: The file format of the dataset.
-      data_format: The data format of the dataset.
+      data_format: The data format of the dataset. One of the enums from
+        example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView used to parse the data.
       stats_output_path: The file path where to write stats for the dataset.
       materialize_output_path: The file path where to write the dataset.
     """
@@ -147,6 +153,7 @@ class _Dataset(object):
     self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
     self._file_format = file_format
     self._data_format = data_format
+    self._data_view_uri = data_view_uri
     self._stats_output_path = stats_output_path
     self._materialize_output_path = materialize_output_path
     self._index = None
@@ -185,6 +192,10 @@ class _Dataset(object):
   def data_format(self):
     assert self._data_format
     return self._data_format
+
+  @property
+  def data_view_uri(self):
+    return self._data_view_uri
 
   @property
   def file_format(self):
@@ -299,6 +310,21 @@ class Executor(base_executor.BaseExecutor):
                                                   'train')
     eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                  'eval')
+    assert len(input_dict[EXAMPLES_KEY]) == 1
+    payload_format = examples_utils.get_payload_format(
+        input_dict[EXAMPLES_KEY][0])
+    # TODO(b/161734559): currently there is only one input Examples artifact.
+    # When there are multiple (e.g. when Transform is to handle multiple spans
+    # because of continuous training), we need to add a piece of logic to get
+    # the URI to the LATEST data_view (the DataViews attached to each span may
+    # differ). This will guarantee that each span will share the same Arrow
+    # schema, thus tensors fed to the preprocessing_fn. The DataView will need
+    # to guarantee backward compatibilty with older spans. Usually the DataView
+    # is a struct2tensor query, so such guarantee is provided by protobuf
+    # (as long as the user follows the basic principles of making changes to
+    # the proto).
+    data_view_uri = data_view_utils.get_data_view_uri(
+        input_dict[EXAMPLES_KEY][0])
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
@@ -327,8 +353,8 @@ class Executor(base_executor.BaseExecutor):
             False,
         labels.SCHEMA_PATH_LABEL:
             schema_file,
-        labels.EXAMPLES_DATA_FORMAT_LABEL:
-            labels.FORMAT_TF_EXAMPLE,
+        labels.EXAMPLES_DATA_FORMAT_LABEL: payload_format,
+        labels.DATA_VIEW_LABEL: data_view_uri,
         labels.ANALYZE_DATA_PATHS_LABEL:
             io_utils.all_files_pattern(train_data_uri),
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
@@ -403,37 +429,6 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(beam.Pipeline)
-  # TODO(b/38376110): Obviate the first bytes (ie the key part).
-  @beam.typehints.with_output_types(Tuple[None, bytes])
-  def _ReadExamples(
-      pipeline: beam.Pipeline, dataset: _Dataset,
-      input_dataset_metadata: dataset_metadata.DatasetMetadata
-  ) -> beam.pvalue.PCollection:
-    """Reads examples from the given `dataset`.
-
-    Args:
-      pipeline: beam pipeline.
-      dataset: A `_Dataset` object that represents the data to read.
-      input_dataset_metadata: A `dataset_metadata.DatasetMetadata`. Not used.
-
-    Returns:
-      A PCollection containing KV pairs of bytes.
-    """
-    del input_dataset_metadata
-    assert dataset.file_format == labels.FORMAT_TFRECORD, dataset.file_format
-
-    return (
-        pipeline
-        | 'Read' >> beam.io.ReadFromTFRecord(
-            dataset.file_pattern,
-            coder=beam.coders.BytesCoder(),
-            # TODO(b/114938612): Eventually remove this override.
-            validate=False)
-        | 'AddKey' >> beam.Map(lambda x: (None, x)))
-
-  @staticmethod
-  @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: Text,
@@ -469,12 +464,13 @@ class Executor(base_executor.BaseExecutor):
     schema_reader = io_utils.SchemaReader()
     return schema_reader.read(schema_path)
 
-  def _ReadMetadata(self, data_format: Text,
+  def _ReadMetadata(self, data_format: int,
                     schema_path: Text) -> dataset_metadata.DatasetMetadata:
     """Returns a dataset_metadata.DatasetMetadata for the input data.
 
     Args:
-      data_format: name of the input data format.
+      data_format: The data format of the dataset. One of the enums from
+        example_gen_pb2.PayloadFormat.
       schema_path: path to schema file.
 
     Returns:
@@ -482,7 +478,8 @@ class Executor(base_executor.BaseExecutor):
           columns.
     """
 
-    if self._ShouldDecodeAsRawExample(data_format):
+    if (self._IsDataFormatSequenceExample(data_format) or
+        self._IsDataFormatProto(data_format)):
       return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
     schema_proto = self._GetSchema(schema_path)
     # For compatibility with tensorflow_transform 0.13 and 0.14, we create and
@@ -762,7 +759,8 @@ class Executor(base_executor.BaseExecutor):
       inputs: A dictionary of labelled input values, including:
         - labels.COMPUTE_STATISTICS_LABEL: Whether compute statistics.
         - labels.SCHEMA_PATH_LABEL: Path to schema file.
-        - labels.EXAMPLES_DATA_FORMAT_LABEL: Example data format.
+        - labels.EXAMPLES_DATA_FORMAT_LABEL: Example data format, one of the
+            enums from example_gen_pb2.PayloadFormat.
         - labels.ANALYZE_DATA_PATHS_LABEL: Paths or path patterns to analyze
           data.
         - labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: File formats of paths to
@@ -775,6 +773,8 @@ class Executor(base_executor.BaseExecutor):
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
+        - labels.DATA_VIEW_LABEL: DataView to be used to read the Example,
+          optional
       outputs: A dictionary of labelled output values, including:
         - labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: Paths to statistics output,
           optional.
@@ -821,6 +821,8 @@ class Executor(base_executor.BaseExecutor):
     per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
+    data_view_uri = value_utils.GetSoleValue(
+        inputs, labels.DATA_VIEW_LABEL, strict=False)
 
     absl.logging.debug('Analyze data patterns: %s',
                        list(enumerate(analyze_data_paths)))
@@ -845,6 +847,7 @@ class Executor(base_executor.BaseExecutor):
     analyze_data_list = self._MakeDatasetList(analyze_data_paths,
                                               analyze_paths_file_formats,
                                               raw_examples_data_format,
+                                              data_view_uri,
                                               can_process_analysis_jointly)
     if not analyze_data_list:
       raise ValueError('Analyze data list must not be empty.')
@@ -854,6 +857,7 @@ class Executor(base_executor.BaseExecutor):
     transform_data_list = self._MakeDatasetList(transform_data_paths,
                                                 transform_paths_file_formats,
                                                 raw_examples_data_format,
+                                                data_view_uri,
                                                 can_process_transform_jointly,
                                                 per_set_stats_output_paths,
                                                 materialize_output_paths)
@@ -898,7 +902,7 @@ class Executor(base_executor.BaseExecutor):
   def _RunBeamImpl(self, analyze_data_list: List[_Dataset],
                    transform_data_list: List[_Dataset], preprocessing_fn: Any,
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
-                   transform_output_path: Text, raw_examples_data_format: Text,
+                   transform_output_path: Text, raw_examples_data_format: int,
                    temp_path: Text, input_cache_dir: Optional[Text],
                    output_cache_dir: Optional[Text], compute_statistics: bool,
                    per_set_stats_output_paths: Sequence[Text],
@@ -912,7 +916,8 @@ class Executor(base_executor.BaseExecutor):
       preprocessing_fn: The tf.Transform preprocessing_fn.
       input_dataset_metadata: A DatasetMetadata object for the input data.
       transform_output_path: An absolute path to write the output to.
-      raw_examples_data_format: A string describing the raw data format.
+      raw_examples_data_format: The data format of the raw examples. One of the
+        enums from example_gen_pb2.PayloadFormat.
       temp_path: A path to a temporary dir.
       input_cache_dir: A dir containing the input analysis cache. May be None.
       output_cache_dir: A dir to write the analysis cache to. May be None.
@@ -1248,10 +1253,11 @@ class Executor(base_executor.BaseExecutor):
       self,
       file_patterns: Sequence[Union[Text, int]],
       file_formats: Sequence[Union[Text, int]],
-      data_format: Text,
+      data_format: int,
+      data_view_uri: Optional[Text],
       can_process_jointly: bool,
       stats_output_paths: Optional[Sequence[Text]] = None,
-      materialize_output_paths: Optional[Sequence[Text]] = None
+      materialize_output_paths: Optional[Sequence[Text]] = None,
   ) -> List[_Dataset]:
     """Makes a list of Dataset from the given `file_patterns`.
 
@@ -1260,7 +1266,9 @@ class Executor(base_executor.BaseExecutor):
         one `_Dataset`.
       file_formats: A list of file format where each format corresponds to one
         `_Dataset`. Must have the same size as `file_patterns`.
-      data_format: The data format of the datasets.
+      data_format: The data format of the datasets. One of the enums from
+        example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView to be used to parse the data.
       can_process_jointly: Whether paths can be processed jointly, unused.
       stats_output_paths: The statistics output paths, if applicable.
       materialize_output_paths: The materialization output paths, if applicable.
@@ -1279,7 +1287,7 @@ class Executor(base_executor.BaseExecutor):
       materialize_output_paths = [None] * len(file_patterns)
 
     datasets = [
-        _Dataset(p, f, data_format, s, m)
+        _Dataset(p, f, data_format, data_view_uri, s, m)
         for p, f, s, m in zip(file_patterns, file_formats, stats_output_paths,
                               materialize_output_paths)
     ]
@@ -1288,50 +1296,49 @@ class Executor(base_executor.BaseExecutor):
       dataset.index = index
     return result
 
-  def _ShouldDecodeAsRawExample(self, data_format: Union[Text, int]) -> bool:
+  def _ShouldDecodeAsRawExample(self, data_format: int,
+                                data_view_uri: Optional[Text]) -> bool:
     """Returns true if data format should be decoded as raw example.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView to be used to parse the data.
 
     Returns:
       True if data format should be decoded as raw example.
     """
     return (self._IsDataFormatSequenceExample(data_format) or
-            self._IsDataFormatProto(data_format))
+            (self._IsDataFormatProto(data_format) and data_view_uri is None))
 
   @staticmethod
-  def _IsDataFormatSequenceExample(data_format: Union[Text, int]) -> bool:
+  def _IsDataFormatSequenceExample(data_format: int) -> bool:
     """Returns true if data format is sequence example.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       True if data format is sequence example.
     """
-    assert not isinstance(data_format, int), data_format
-    return data_format == labels.FORMAT_TF_SEQUENCE_EXAMPLE
+    return data_format == example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
 
   @staticmethod
-  def _IsDataFormatProto(data_format: Union[Text, int]) -> bool:
+  def _IsDataFormatProto(data_format: int) -> bool:
     """Returns true if data format is protocol buffer.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       True if data format is protocol buffer.
     """
-    assert not isinstance(data_format, int), data_format
-    return data_format == labels.FORMAT_PROTO
+    return data_format == example_gen_pb2.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(
-      self, data_format: Union[Text, int]) -> Optional[int]:
+  def _GetDesiredBatchSize(self, data_format: int) -> Optional[int]:
     """Returns batch size.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       Batch size or None.
@@ -1354,19 +1361,17 @@ class Executor(base_executor.BaseExecutor):
     io_utils.copy_dir(src, dst)
 
   def _CreateTFXIO(self, dataset: _Dataset,
-                   schema: schema_pb2.Schema) -> tfxio.TFXIO:
+                   schema: schema_pb2.Schema) -> tfxio_module.TFXIO:
     """Creates a TFXIO instance for `dataset`."""
-    if self._ShouldDecodeAsRawExample(dataset.data_format):
-      return raw_tf_record.RawTfRecordTFXIO(
-          file_pattern=dataset.file_pattern,
-          raw_record_column_name=RAW_EXAMPLE_KEY,
-          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR])
-    else:
-      return tf_example_record.TFExampleRecord(
-          file_pattern=dataset.file_pattern,
-          validate=False,
-          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR],
-          schema=schema)
+    read_as_raw_records = self._ShouldDecodeAsRawExample(
+        dataset.data_format, dataset.data_view_uri)
+    return tfxio_utils.make_tfxio(
+        file_pattern=dataset.file_pattern,
+        telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+        payload_format=dataset.data_format,
+        data_view_uri=dataset.data_view_uri,
+        schema=schema,
+        read_as_raw_records=read_as_raw_records)
 
   def _AssertSameTFXIOSchema(self, datasets: Sequence[_Dataset]) -> None:
     if not datasets:

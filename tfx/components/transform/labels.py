@@ -25,6 +25,7 @@ COMPUTE_STATISTICS_LABEL = 'compute_statistics'
 MODULE_FILE = 'module_file'
 PREPROCESSING_FN = 'preprocessing_fn'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
+DATA_VIEW_LABEL = 'data_view_uri'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
 CACHE_INPUT_PATH_LABEL = 'cache_input_path'
@@ -42,11 +43,3 @@ TEMP_OUTPUT_LABEL = 'temp_path'
 
 # Examples File Format
 FORMAT_TFRECORD = 'FORMAT_TFRECORD'
-
-# Examples Data Format
-# Indicates that the data format is tf.Example.
-FORMAT_TF_EXAMPLE = 'FORMAT_TF_EXAMPLE'
-# Indicates that the data format is tf.SequenceExample.
-FORMAT_TF_SEQUENCE_EXAMPLE = 'FORMAT_TF_SEQUENCE_EXAMPLE'
-# Indicates the data format is a custom proto.
-FORMAT_PROTO = 'FORMAT_PROTO'
