@@ -305,12 +305,13 @@ class Executor(base_executor.BaseExecutor):
     splits_config = transform_pb2.SplitsConfig()
     if exec_properties.get('splits_config', None):
       json_format.Parse(exec_properties['splits_config'], splits_config)
-
-    if not splits_config.analyze_splits:
+      if not splits_config.analyze_splits:
+        raise ValueError(
+          'analyze_splits cannot be empty when splits_config is set.')
+    else:
       splits_config.analyze_splits.append('train')
       logging.info("Analyze the 'train' split when splits_config.analyze_splits"
                    " is not set.")
-    if not splits_config.transform_splits:
       splits_config.transform_splits.extend(
           artifact_utils.decode_split_names(
               input_dict[EXAMPLES_KEY][0].split_names))
@@ -328,16 +329,16 @@ class Executor(base_executor.BaseExecutor):
     transform_example_artifact.split_names = artifact_utils.encode_split_names(
         splits_config.transform_splits)
 
-    analyze = []
+    analyze_data_paths = []
     for split in splits_config.analyze_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
-      analyze.append(io_utils.all_files_pattern(data_uri))
+      analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
-    transform = []
+    transform_data_paths = []
     transformed_examples = []
     for split in splits_config.transform_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
-      transform.append(io_utils.all_files_pattern(data_uri))
+      transform_data_paths.append(io_utils.all_files_pattern(data_uri))
       transformed_output = artifact_utils.get_split_uri(
           output_dict[TRANSFORMED_EXAMPLES_KEY], split)
       transformed_examples.append(
@@ -361,13 +362,13 @@ class Executor(base_executor.BaseExecutor):
         labels.EXAMPLES_DATA_FORMAT_LABEL:
             labels.FORMAT_TF_EXAMPLE,
         labels.ANALYZE_DATA_PATHS_LABEL:
-            analyze,
+            analyze_data_paths,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            [labels.FORMAT_TFRECORD for _ in range(len(analyze))],
+            [labels.FORMAT_TFRECORD for _ in range(len(analyze_data_paths))],
         labels.TRANSFORM_DATA_PATHS_LABEL:
-            transform,
+            transform_data_paths,
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
-            [labels.FORMAT_TFRECORD for _ in range(len(transform))],
+            [labels.FORMAT_TFRECORD for _ in range(len(transform_data_paths))],
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
@@ -567,8 +568,7 @@ class Executor(base_executor.BaseExecutor):
       self._decoder = (
           tfx_bsl.coders.example_coder.ExamplesToRecordBatchDecoder(*args))
 
-    def process( # pylint: disable=arguments-differ
-        self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
+    def process(self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
       yield self._decoder.DecodeBatch(element)
 
   # TODO(b/160799442, b/130807807): Two code paths are still using this:
@@ -636,9 +636,8 @@ class Executor(base_executor.BaseExecutor):
       super().__init__()
       self._coder = None
 
-    def process( # pylint: disable=arguments-differ
-        self, element: Dict[Text, Any],
-        schema: schema_pb2.Schema) -> Generator[Tuple[Any, Any], None, None]:
+    def process(self, element: Dict[Text, Any], schema: schema_pb2.Schema
+               ) -> Generator[Tuple[Any, Any], None, None]:
       if self._coder is None:
         self._coder = tft.coders.ExampleProtoCoder(schema, serialized=True)
 
@@ -679,7 +678,7 @@ class Executor(base_executor.BaseExecutor):
       # picklable.
       return self.to_runner_api_parameter(context)
 
-    def expand( # pylint: disable=arguments-differ
+    def expand(
         self, pipeline
     ) -> Tuple[Dict[Text, Optional[_Dataset]], Optional[Dict[Text, Dict[
         Text, beam.pvalue.PCollection]]]]:

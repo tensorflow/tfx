@@ -54,7 +54,7 @@ class ComponentTest(tf.test.TestCase):
         module_file=module_file,
     )
     self._verify_outputs(transform)
-    self.assertEqual(module_file, transform.spec.exec_properties['module_file'])
+    self.assertEqual(module_file, transform.exec_properties['module_file'])
 
   def testConstructWithParameter(self):
     module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
@@ -65,7 +65,7 @@ class ComponentTest(tf.test.TestCase):
     )
     self._verify_outputs(transform)
     self.assertJsonEqual(
-        str(module_file), str(transform.spec.exec_properties['module_file']))
+        str(module_file), str(transform.exec_properties['module_file']))
 
   def testConstructFromPreprocessingFn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
@@ -76,7 +76,7 @@ class ComponentTest(tf.test.TestCase):
     )
     self._verify_outputs(transform)
     self.assertEqual(preprocessing_fn,
-                     transform.spec.exec_properties['preprocessing_fn'])
+                     transform.exec_properties['preprocessing_fn'])
 
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
@@ -108,7 +108,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(
         json_format.MessageToJson(splits_config,
                                   preserving_proto_field_name=True),
-        transform.spec.exec_properties['splits_config'])
+        transform.exec_properties['splits_config'])
 
 
 if __name__ == '__main__':
