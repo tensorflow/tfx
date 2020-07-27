@@ -100,7 +100,7 @@ def make_tfxio(file_pattern: Text,
                data_view_uri: Optional[Text] = None,
                schema: Optional[schema_pb2.Schema] = None,
                read_as_raw_records: bool = False,
-               raw_record_column_name: Optional[Text] = None):
+               raw_record_column_name: Optional[Text] = None) -> tfxio.TFXIO:
   """Creates a TFXIO instance that reads `file_pattern`.
 
   Args:
