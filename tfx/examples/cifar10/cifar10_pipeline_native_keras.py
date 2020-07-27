@@ -123,8 +123,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # When traning on the whole dataset, use 18744 for train steps, 156 for eval steps.
   # 18744 train steps correspond to 24 epochs on the whole train set, and 156 eval
   # steps correspond to 1 epoch on the whole test set. The configuration below is for
-  # training on the dataset we provided in the data folder, which has 100 train and
-  # 100 test samples. The 160 train steps correspond to 40 epochs on this tiny train set,
+  # training on the dataset we provided in the data folder, which has 128 train and
+  # 128 test samples. The 160 train steps correspond to 40 epochs on this tiny train set,
   # and 4 eval steps corresopnd to 1 epoch on this tiny test set.
   trainer = Trainer(
       module_file=module_file,

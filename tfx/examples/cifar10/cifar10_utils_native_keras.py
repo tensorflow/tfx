@@ -200,6 +200,15 @@ def _build_keras_model() -> tf.keras.Model:
       tf.keras.layers.Dense(10, activation='softmax')
   ])
 
+  # Freeze the whole MobileNet backbone to first train the top classifer only
+  _freeze_model_by_percentage(base_model, 1.0)
+
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
+      metrics=['sparse_categorical_accuracy'])
+  model.summary(print_fn=absl.logging.info)
+
   return model, base_model
 
 # TFX Transform will call this function.
@@ -324,15 +333,6 @@ def run_fn(fn_args: TrainerFnArgs):
     raise Exception('Classifier epochs is greater than the total epochs')
 
   absl.logging.info('Start training the top classifier')
-  # Freeze the whole MobileNet backbone and train the top classifer only
-  _freeze_model_by_percentage(base_model, 1.0)
-  # We need to recompile the model because layer properties have changed
-  model.compile(
-      loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=_CLASSIFIER_LEARNING_RATE),
-      metrics=['sparse_categorical_accuracy'])
-  model.summary(print_fn=absl.logging.info)
-
   model.fit(
       train_dataset,
       epochs=_CLASSIFIER_EPOCHS,
@@ -345,11 +345,13 @@ def run_fn(fn_args: TrainerFnArgs):
   absl.logging.info('Start fine-tuning the model')
   # Unfreeze the top MobileNet layers and do joint fine-tuning
   _freeze_model_by_percentage(base_model, 0.9)
-  # We need to recompile the model because layer properties have changed
-  model.compile(
-      loss='sparse_categorical_crossentropy',
-      optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
-      metrics=['sparse_categorical_accuracy'])
+
+  with mirrored_strategy.scope():
+    # We need to recompile the model because layer properties have changed
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
+        metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
   model.fit(

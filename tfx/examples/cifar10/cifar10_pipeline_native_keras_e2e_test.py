@@ -24,7 +24,7 @@ from typing import Text
 
 import tensorflow as tf
 
-import cifar10_pipeline_native_keras
+from tfx.examples import cifar10_pipeline_native_keras
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
