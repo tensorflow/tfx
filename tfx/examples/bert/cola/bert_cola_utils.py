@@ -18,22 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import sys
-
 from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from tfx.components.trainer.executor import TrainerFnArgs
+from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
+from tfx.examples.bert.utils.bert_models import (
+        build_and_compile_bert_classifier)
 
-_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
-sys.path.append(_bert_utils_root)
 
-# pylint: disable=wrong-import-position
+
 from bert_tokenizer_utils import BertPreprocessor
 from bert_models import build_and_compile_bert_classifier
-# pylint: enable=wrong-import-position
 
 _TRAIN_BATCH_SIZE = 16
 _EVAL_BATCH_SIZE = 16

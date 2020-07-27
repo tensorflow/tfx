@@ -20,19 +20,12 @@ from __future__ import print_function
 
 from typing import List, Text
 import os
-import sys
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from tfx.components.trainer.executor import TrainerFnArgs
-
-_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
-sys.path.append(_bert_utils_root)
-
-# pylint: disable=wrong-import-position
-from bert_tokenizer_utils import BertPreprocessor
-from bert_models import build_and_compile_bert_classifier
-# pylint: enable=wrong-import-position
+from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
+from tfx.examples.bert.utils.bert_models import build_and_compile_bert_classifier
 
 _BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _EPOCHS = 1
