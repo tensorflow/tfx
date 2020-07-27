@@ -109,8 +109,6 @@ class BertPreprocessor():
       max_len: The number of tokens after padding and truncating.
       add_cls: Whether to add CLS token at the front of each sequence.
       add_sep: Whether to add SEP token at the end of each sequence.
-      add_pad: If not add_pad, would return ragged tensor instead of tensors
-        input_mask and segment_ids would be none.
 
     Returns:
       word_ids: Tokenized sequences [batch_size, max_len].

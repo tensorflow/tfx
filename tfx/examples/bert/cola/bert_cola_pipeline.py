@@ -141,7 +141,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                       value_threshold=tfma.GenericValueThreshold(
                           # Adjust the threshold when training on the
                           # full dataset.
-                          lower_bound={'value': 0.5}),
+                          lower_bound={'value': 0.1}),
                       change_threshold=tfma.GenericChangeThreshold(
                           direction=tfma.MetricDirection.HIGHER_IS_BETTER,
                           absolute={'value': -1e-2})))
