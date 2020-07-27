@@ -55,7 +55,7 @@ class Driver(base_driver.BaseDriver):
     logging.debug('Processing input %s.', input_base)
 
     # Note that this function updates the input_config.splits.pattern.
-    fp, span, version = utils.calculate_splits_fp_span_and_version(
+    fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
         input_base,
         input_config.splits)
 
@@ -63,7 +63,7 @@ class Driver(base_driver.BaseDriver):
         input_config, sort_keys=True, preserving_proto_field_name=True)
     exec_properties[utils.SPAN_PROPERTY_NAME] = span
     exec_properties[utils.VERSION_PROPERTY_NAME] = version
-    exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fp
+    exec_properties[utils.FINGERPRINT_PROPERTY_NAME] = fingerprint
 
     return exec_properties
 
