@@ -41,6 +41,7 @@ from tfx.components.base import base_executor
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import value_utils
+from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -293,6 +294,7 @@ class Executor(base_executor.BaseExecutor):
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
+
     train_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                   'train')
     eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
@@ -301,6 +303,12 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
+    # TODO(b/161490287): move the split_names setting to executor for all
+    #                    components.
+    transformed_example_artifact = artifact_utils.get_single_instance(
+        output_dict[TRANSFORMED_EXAMPLES_KEY])
+    transformed_example_artifact.split_names = artifact_utils.encode_split_names(
+        artifact.DEFAULT_EXAMPLE_SPLITS)
     transformed_train_output = artifact_utils.get_split_uri(
         output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
     transformed_eval_output = artifact_utils.get_split_uri(

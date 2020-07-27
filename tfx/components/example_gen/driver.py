@@ -67,6 +67,7 @@ class Driver(base_driver.BaseDriver):
 
   def _prepare_output_artifacts(
       self,
+      input_artifacts: Dict[Text, List[types.Artifact]],
       output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       execution_id: int,
@@ -74,6 +75,8 @@ class Driver(base_driver.BaseDriver):
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.Artifact]]:
     """Overrides BaseDriver._prepare_output_artifacts()."""
+    del input_artifacts
+
     result = channel_utils.unwrap_channel_dict(output_dict)
     if len(result) != 1:
       raise RuntimeError('Multiple output artifacts are not supported.')
@@ -83,7 +86,7 @@ class Driver(base_driver.BaseDriver):
 
     example_artifact = artifact_utils.get_single_instance(
         result[utils.EXAMPLES_KEY])
-    example_artifact.uri = base_driver.generate_output_uri(
+    example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, utils.EXAMPLES_KEY, execution_id)
     example_artifact.set_string_custom_property(
         utils.FINGERPRINT_PROPERTY_NAME,
@@ -91,6 +94,6 @@ class Driver(base_driver.BaseDriver):
     example_artifact.set_string_custom_property(
         utils.SPAN_PROPERTY_NAME, exec_properties[utils.SPAN_PROPERTY_NAME])
 
-    base_driver.prepare_output_paths(example_artifact)
+    base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
 
     return result
