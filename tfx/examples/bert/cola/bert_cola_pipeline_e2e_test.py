@@ -23,7 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
-from tfx.examples.bert.cola import bert_cola_pipeline 
+from tfx.examples.bert.cola import bert_cola_pipeline
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
