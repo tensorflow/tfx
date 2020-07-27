@@ -13,39 +13,20 @@
 # limitations under the License.
 """Perform graph partitioning on TensorFlow GraphDefs with remote ops.
 
-The current implementation targets two goals:
+The current implementation has two targets:
   1. Maximal subgraphs
   2. Avoid repeated work when running subgraphs in beam
 
 Definition:
   1. "op" refers to a graph name.
-  2. "execution_specs" refers to a list of execution specs.
-     An execution spec contains enough information to execute
-       a partitioned subgraph.
-
-  <--closer to inputs                   closer to outputs-->
-      --------------------------------------------------
-      |          |          |          |               |
-      |  spec 1  |  spec 2  |  spec 3  |  ......       |
-      |          |          |          |               |
-      --------------------------------------------------
-               /              \
-              /                \
-             / ---------------- \
-               |   Subgraph   |
-               ----------------
-               |  Input_names |
-               ----------------
-               | Output_names |
-               ----------------
-               | is_remote_op |
-               ----------------
+  2. "execution_specs" refers to a list of ExecutionSpecs. The order
+     of the list represents the order of execution.
 
 Key Assumptions/Limitations for this implementation:
   1. Inputs should be GraphDefs
   2. Only one output per node/op
   3. Not supporting tf.functions
-  4. Unknown consequences with tf.variable
+  4. Not supporting tf.variables
 """
 
 import tensorflow as tf
@@ -137,7 +118,7 @@ def _get_remote_op_relations(graph_def,
                              node_name_to_input_names):
   """Get the execution dependencies between remote ops.
 
-  The remote op children must be executed before executing a remote op.
+  The remote op parents must be executed before executing a remote op.
 
   Args:
     graph_def: a GraphDef proto
@@ -145,13 +126,13 @@ def _get_remote_op_relations(graph_def,
     node_name_to_input_names: {node name: a list of node input names}
 
   Returns:
-    {remote op: a list of remote op children}
+    {remote op: a list of immediate remote op parents}
   """
   remote_op_relations = {}
 
   for node in graph_def.node:
     if _is_remote_op(node):
-      remote_op_relations[node.name] = _get_remote_op_children(
+      remote_op_relations[node.name] = _get_remote_op_parents(
           node.name,
           node_name_to_node_def,
           node_name_to_input_names)
@@ -159,10 +140,10 @@ def _get_remote_op_relations(graph_def,
   return remote_op_relations
 
 
-def _get_remote_op_children(remote_op_name,
-                            node_name_to_node_def,
-                            node_name_to_input_names):
-  """Find the remote op children for a remote op.
+def _get_remote_op_parents(remote_op_name,
+                           node_name_to_node_def,
+                           node_name_to_input_names):
+  """Find the immediate remote op parents for a remote op.
 
   Args:
     remote_op_name: the name of the parent remote op
@@ -170,11 +151,11 @@ def _get_remote_op_children(remote_op_name,
     node_name_to_input_names: {node name: a list of node input names}
 
   Returns:
-    A list of remote op children.
+    A list of immediate remote op parents.
   """
   queue = [remote_op_name]
   visited = set([remote_op_name])
-  remote_op_children = []
+  remote_op_parents = []
 
   while queue:
     current_node_name = queue[0]
@@ -186,11 +167,11 @@ def _get_remote_op_children(remote_op_name,
         input_node = node_name_to_node_def[input_node_name]
 
         if _is_remote_op(input_node):
-          remote_op_children.append(input_node_name)
+          remote_op_parents.append(input_node_name)
         else:
           queue.append(input_node_name)
 
-  return remote_op_children
+  return remote_op_parents
 
 
 def _is_placeholder_op(node):
@@ -217,7 +198,7 @@ def _get_execution_specs(graph_def,
     graph: a tf.Graph instance
     node_name_to_node_def: {node name: a NodeDef proto}
     node_name_to_input_names: {node name: a list of node input names}
-    remote_op_relations: {remote op: a list of remote op children}
+    remote_op_relations: {remote op: a list of immediate remote op parents}
     graph_outputs: {graph name: a list of output node names}
 
   Returns:
@@ -226,10 +207,7 @@ def _get_execution_specs(graph_def,
   execution_specs = []
   previous_layers_visited = set([])
 
-  order = Relations(remote_op_relations)
-  while not order.check_if_finished():
-    remote_ops_one_layer = order.get_next_layer()
-
+  for remote_ops_one_layer in Relations(remote_op_relations):
     # Handle one subgraph layer
     layer_output_node_names = _get_subgraph_layer_output_node_names(
         remote_ops_one_layer,
@@ -429,20 +407,25 @@ def _get_body_node_names_from_subgraph(subgraph):
 class Relations:
   """A class that outputs remote op layers (custom topological sort).
 
-  What is a layer? A layer is a set of remote ops that don't have
-    dependencies on each other and are ready to execute."""
+  A layer is a set of remote ops that don't have dependencies on each other
+  and are ready to execute.
+  """
   def __init__(self, relations):
+    """Constructor"""
     self.relations = relations
+
+  def __iter__(self):
+    """Called when the iterator is initialized."""
     self.processed = set([])
-    self.to_be_processed = set(relations.keys())
+    self.to_be_processed = set(self.relations.keys())
+    return self
 
-  def check_if_finished(self):
-    return not self.to_be_processed
-
-  def get_next_layer(self):
+  def __next__(self):
     """Get the next set of remote ops."""
-    layer_nodes = set([])
+    if not self.to_be_processed:
+      raise StopIteration
 
+    layer_nodes = set([])
     for node in self.to_be_processed:
       node_inputs = set(self.relations[node])
       if node_inputs.issubset(self.processed):

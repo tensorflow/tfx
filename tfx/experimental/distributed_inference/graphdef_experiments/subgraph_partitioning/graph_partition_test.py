@@ -28,19 +28,11 @@ class RelationTest(tf.test.TestCase):
     remote_op_relations = {'a1': [], 'a2': [], 'b1': ['a1'],
                            'b2': ['a1', 'a2'], 'c1': ['b1'],
                            'c2': ['b1', 'a1', 'b2', 'a2']}
-    relations = graph_partition.Relations(remote_op_relations)
+    desired_outputs = [{'a1', 'a2'}, {'b1', 'b2'}, {'c1', 'c2'}]
 
-    self.assertFalse(relations.check_if_finished())
-    self.assertFalse(relations.check_if_finished())
-
-    self.assertEqual(relations.get_next_layer(), {'a1', 'a2'})
-    self.assertFalse(relations.check_if_finished())
-    self.assertEqual(relations.get_next_layer(), {'b1', 'b2'})
-    self.assertFalse(relations.check_if_finished())
-    self.assertEqual(relations.get_next_layer(), {'c1', 'c2'})
-
-    self.assertTrue(relations.check_if_finished())
-    self.assertTrue(relations.check_if_finished())
+    order = graph_partition.Relations(remote_op_relations)
+    for index, remote_op_one_layer in enumerate(order):
+      self.assertEqual(remote_op_one_layer, desired_outputs[index])
 
 
 class PartitionTest(tf.test.TestCase):

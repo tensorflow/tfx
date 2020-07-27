@@ -19,6 +19,18 @@ from typing import Any
 
 @dataclass
 class ExecutionSpec:
+  """A spec that represents a partitioned subgraph.
+
+  Attributes:
+    subgraph: a subgraph's graph_def
+    input_names: a set of input node names
+    output_names: a set of output node names
+    is_remote_op: a boolean indicating the type of the subgraph.
+                  (two types: regular subgraph or remote op subgraph)
+    body_node_names: a set of body node names (excluding inputs)
+    nodes_from_other_layers: a set of names for inputs from other subgraphs
+                             that are not the outputs from other subgraphs
+  """
   subgraph: Any
   input_names: set
   output_names: set

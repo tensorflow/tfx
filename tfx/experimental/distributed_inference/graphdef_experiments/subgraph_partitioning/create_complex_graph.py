@@ -45,11 +45,11 @@ with graph_a.as_default():
 
 def remote_op_a(input_ids):
   """Mimic a remote op by numpy_function"""
-  def remote_loopup(input_ids):
+  def remote_lookup(input_ids):
     with create_session(graph_a) as sess:
       return sess.run(result_a, feed_dict={ids_a: input_ids})
 
-  return tf.compat.v1.numpy_function(func=remote_loopup,
+  return tf.compat.v1.numpy_function(func=remote_lookup,
                                      inp=[input_ids],
                                      Tout=tf.float32,
                                      name='remote_op_a')
@@ -119,21 +119,20 @@ with main_graph.as_default():
                           tf.cast(left_upper_floormod, tf.float32)])
 
 
-def save_examples_as_graphdefs(directory_path):
+def save_examples_as_graphdefs(export_dir):
   tf.io.write_graph(graph_a.as_graph_def(),
-                    directory_path,
+                    export_dir,
                     'graph_a.pb',
                     as_text=False)
   tf.io.write_graph(graph_b.as_graph_def(),
-                    directory_path,
+                    export_dir,
                     'graph_b.pb',
                     as_text=False)
   tf.io.write_graph(main_graph.as_graph_def(),
-                    directory_path,
+                    export_dir,
                     'main_graph.pb',
                     as_text=False)
 
 
 if __name__ == "__main__":
   save_examples_as_graphdefs('./complex_graphdefs')
-  
