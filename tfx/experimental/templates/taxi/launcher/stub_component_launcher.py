@@ -26,9 +26,6 @@ from tfx.experimental.pipeline_testing import stub_component_launcher
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template."""
 
-  def __init__(self, **kwargs):
-    super(TemplateStubComponentLauncher, self).__init__(**kwargs)
-
 def get_stub_launcher_class(
     test_data_dir: Text, stubbed_component_ids: List[Text],
     stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
