@@ -21,20 +21,33 @@ from __future__ import print_function
 from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
 
-class TemplateStubComponentLauncher(
-    stub_component_launcher.StubComponentLauncher):
+class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template."""
 
   def __init__(self, **kwargs):
     super(TemplateStubComponentLauncher, self).__init__(**kwargs)
 
-    self.test_data_dir = '' # TODO: GCS directory where KFP outputs are recorded
-    # TODO: (Optional) insert custom stub executors in self.stubbed_component_map with
-    # component id as a key and custom stub executor class as value.
-    self.stubbed_component_map = {}
-    # TODO: customize self,stubbed_component_ids to replace component with BaseStubExecutor
-    self.stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
-                                  'SchemaGen', 'ExampleValidator',
-                                  'Trainer', 'Transform', 'Evaluator', 'Pusher']
-    for c_id in self.stubbed_component_ids:
-      self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
+def get_stub_launcher_class(
+    test_data_dir: Text, stubbed_component_ids: List[Text],
+    stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+) -> Type[StubComponentLauncher]:
+  """Returns a StubComponentLauncher class.
+
+  Args:
+    test_data_dir: GCS path where pipeline outputs are recorded.
+    stubbed_component_ids: List of component ids that should be replaced with a
+      BaseStubExecutor.
+    stubbed_component_map: Dictionary holding user-defined stub executor. These
+      user-defined stub executors must inherit from
+      base_stub_executor.BaseStubExecutor.
+
+  Returns:
+    StubComponentLauncher class holding stub executors.
+  """
+  cls = StubComponentLauncher
+  cls.stubbed_component_map = dict(stubbed_component_map)
+  for component_id in stubbed_component_ids:
+    cls.stubbed_component_map[component_id] = \
+                    base_stub_executor.BaseStubExecutor
+  cls.test_data_dir = test_data_dir
+  return cls
