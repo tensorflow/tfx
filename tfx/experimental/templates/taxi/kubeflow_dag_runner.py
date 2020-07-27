@@ -71,22 +71,10 @@ def run():
   # pipeline DSL file, instead of using environment vars.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
-  # TODO: (Step 11) GCS directory where KFP outputs are recorded
-  test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)  # pylint:disable=unused-variable
-  # TODO: customize self,stubbed_component_ids to replace component with BaseStubExecutor
-  stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',  # pylint:disable=unused-variable
-                           'SchemaGen', 'ExampleValidator',
-                           'Trainer', 'Transform', 'Evaluator', 'Pusher']
-  # TODO: (Step 11) Insert custom stub executors in self.stubbed_component_map with
-  # component id as a key and custom stub executor class as value.
-  stubbed_component_map = {}  # pylint:disable=unused-variable
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       # TODO: (Step 11) Uncomment below to use stub executors.
       # supported_launcher_classes=[
-      #     stub_component_launcher.get_stub_launcher_class(
-      #         test_data_dir,
-      #         stubbed_component_ids,
-      #         stubbed_component_map)
+      #     stub_component_launcher.get_stub_launcher_class()
       # ],
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
   pod_labels = kubeflow_dag_runner.get_default_pod_labels()
