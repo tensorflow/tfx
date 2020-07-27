@@ -27,11 +27,6 @@ from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
 from tfx.examples.bert.utils.bert_models import (
         build_and_compile_bert_classifier)
 
-
-
-from bert_tokenizer_utils import BertPreprocessor
-from bert_models import build_and_compile_bert_classifier
-
 _TRAIN_BATCH_SIZE = 16
 _EVAL_BATCH_SIZE = 16
 _FEATURE_KEY = 'sentence'

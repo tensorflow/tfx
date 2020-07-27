@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-# Copyright 2019 Google LLC. All Rights Reserved.
+# Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for tfx.examples.imdb.imdb_pipeline_native_keras."""
+"""E2E Tests for tfx.examples.bert.cola.bert_cola_pipeline."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -65,7 +65,7 @@ class ColaPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  def testImdbPipelineNativeKeras(self):
+  def testColaPipelineNativeKeras(self):
     pipeline = bert_cola_pipeline._create_pipeline(
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
