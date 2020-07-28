@@ -278,10 +278,14 @@ def _property_search(uri: Text,
 
 def _retrieve_latest_span_version(uri: Text,
                                   split: example_gen_pb2.Input.Split
-                                  ) -> Tuple[Text, Optional[Text]]:
+                                  ) -> Tuple[Optional[Text], Optional[Text]]:
   """Retrieves the most recent span and version for a given split pattern.
 
-  If both Span and Version spec are contained
+  If both Span and Version spec occur in the split pattern, we search for
+  both the latest Span and Version. If only Span exists in the split pattern,
+  we only search for the latest Span, and Version is returned as None. If
+  Version is present, but not Span, an error is raised. If neither Span
+  nor Version is present, return both as None.
 
   Args:
     uri: The base path from which files will be searched.
