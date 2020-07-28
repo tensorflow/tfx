@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Dict, List, Text, Type
+
 from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.experimental.templates.taxi.pipeline import configs
