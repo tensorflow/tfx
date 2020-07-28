@@ -20,7 +20,7 @@ from __future__ import print_function
 import os
 from absl import logging
 
-from tfx.experimental.templates.taxi.pipline import stub_component_launcher  # pylint: disable=unused-import
+from tfx.experimental.templates.taxi.launcher import stub_component_launcher  # pylint: disable=unused-import
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
