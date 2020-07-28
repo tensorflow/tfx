@@ -141,6 +141,9 @@ class Metadata(object):
     # TODO(ruoyu): Establishing a connection pool instead of newing
     # a connection every time. Until then, check self._store before usage
     # in every method.
+    if self._store:
+      # If there is already an MLMD connection, just reuse it.
+      return self
     connection_error = None
     for _ in range(_MAX_INIT_RETRY):
       try:
