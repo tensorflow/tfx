@@ -44,7 +44,7 @@ TRAINING_STATISTICS_KEY = 'training_statistics'
 ANOMALIES_KEY = 'anomalies'
 
 # Default file name for anomalies output.
-DEFAULT_FILE_NAME = 'anomalies.pbtxt'
+_DEFAULT_FILE_NAME = 'anomalies.pbtxt'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -128,11 +128,13 @@ class Executor(base_executor.BaseExecutor):
     """
     schema = value_utils.GetSoleValue(inputs, labels.SCHEMA)
     stats = value_utils.GetSoleValue(inputs, labels.STATS)
-    serving_statistics = value_utils.GetSoleValue(
+    training_statistics = value_utils.GetSoleValue(
         inputs, labels.TRAINING_STATISTICS, strict=False)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
+    # The mismatch between serving_statistics and training_statistics is
+    # intentional.
     anomalies = tfdv.validate_statistics(
-        stats, schema, serving_statistics=serving_statistics)
+        stats, schema, serving_statistics=training_statistics)
     io_utils.write_pbtxt_file(
-        os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies)
+        os.path.join(schema_diff_path, _DEFAULT_FILE_NAME), anomalies)
