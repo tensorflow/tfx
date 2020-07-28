@@ -145,7 +145,10 @@ def _input_fn(file_pattern: List[Text],
       reader=_gzip_reader_fn,
       label_key=_transformed_name(_LABEL_KEY))
 
-  # Apply data augmentation
+  # Apply data augmentation. We have to do data augmentation here because
+  # we need to apply data agumentation on-the-fly during training. If we put
+  # it in Transform, it will only be applied once on the whole dataset, which
+  # will lose the point of data augmentation.
   if is_train:
     dataset = dataset.map(lambda x, y: (_data_augmentation(x), y))
 
@@ -309,9 +312,7 @@ def run_fn(fn_args: TrainerFnArgs):
   eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
                            is_train=False, batch_size=_EVAL_BATCH_SIZE)
 
-  mirrored_strategy = tf.distribute.MirroredStrategy()
-  with mirrored_strategy.scope():
-    model, base_model = _build_keras_model()
+  model, base_model = _build_keras_model()
 
   try:
     log_dir = fn_args.model_run_dir
@@ -346,12 +347,11 @@ def run_fn(fn_args: TrainerFnArgs):
   # Unfreeze the top MobileNet layers and do joint fine-tuning
   _freeze_model_by_percentage(base_model, 0.9)
 
-  with mirrored_strategy.scope():
-    # We need to recompile the model because layer properties have changed
-    model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
-        metrics=['sparse_categorical_accuracy'])
+  # We need to recompile the model because layer properties have changed
+  model.compile(
+      loss='sparse_categorical_crossentropy',
+      optimizer=tf.keras.optimizers.RMSprop(lr=_FINETUNE_LEARNING_RATE),
+      metrics=['sparse_categorical_accuracy'])
   model.summary(print_fn=absl.logging.info)
 
   model.fit(
@@ -388,10 +388,10 @@ def run_fn(fn_args: TrainerFnArgs):
                                  rewriter.ModelType.TFLITE_MODEL)
 
   # Add necessary TFLite metadata to the model in order to use it within MLKit
-  # TODO(@dzats): Handle label map file path more properly, currently hard-coded
+  # TODO(dzats@): Handle label map file path more properly, currently hard-coded
   tflite_model_path = os.path.join(fn_args.serving_model_dir,
                                    _TFLITE_MODEL_NAME)
-  # TODO(@dzats): Extend the TFLite rewriter to be able to add TFLite metadata to the model
+  # TODO(dzats@): Extend the TFLite rewriter to be able to add TFLite metadata to the model
   _write_metadata(model_path=tflite_model_path,
                   label_map_path=_LABEL_MAP_FILE_PATH,
                   mean=[127.5],
