@@ -70,13 +70,13 @@ accelerate community innovation and collaboration.
     *   Custom component authoring was made easier by supporting python function
         and custom container.
     *   Created a new TFJS rewriter.
-    *   Created a new infra validation component.
-    *   Created a new Tuner component for hyper parameter tuning.
+    *   Created a new InfraValidator component.
+    *   Created a new Tuner component.
     *   Introduced artifact types for primitive values and generic type.
 *   Q1 2020
-    *   Released support for native Keras in TFX.
+    *   Released support for native Keras.
     *   Released initial integration with tf.Lite.
-    *   New template to create pipelines in TFX for on-premise and cloud.
+    *   New template to create pipelines for on-premise and cloud.
     *   New ComponentSpec and standard artifact types published.
     *   Allow pipelines to be parameterized with `RuntimeParameters`.
     *   Enabled warm-starting for estimator based trainers.
