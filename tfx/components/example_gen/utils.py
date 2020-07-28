@@ -247,8 +247,8 @@ def _property_search(uri: Text,
       raise ValueError('Glob pattern does not match regex pattern')
 
     # `property_names` and `spec_list` should be ordered in decreasing
-    # order of property importance. For example, a proper `spec_list` is
-    # [{SPAN}, {Version}], since a newer span dominates a new version.
+    # order of property importance. For example, a proper `spec_list` ordering
+    # is [{SPAN}, {Version}], since a newer span dominates a newer version.
     properties = [result.group(name) for name in property_names]
     update_rest = False
 
@@ -262,7 +262,7 @@ def _property_search(uri: Text,
 
       # Since specs are in descreasing order of performance, if we find
       # a newer property value, all subsequently less important properties
-      # must automatically be updated to align with that new property.
+      # must be updated to align with that new property.
       if update_rest:
         latest_properties[i] = prop
       elif latest_properties[i] is None or prop_int >= int(latest_properties[i]):
@@ -282,7 +282,7 @@ def _retrieve_latest_span_version(uri: Text,
   """Retrieves the most recent span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, we search for
-  both the latest Span and Version. If only Span exists in the split pattern,
+  and return both the latest Span and Version. If only Span exists in the split pattern,
   we only search for the latest Span, and Version is returned as None. If
   Version is present, but not Span, an error is raised. If neither Span
   nor Version is present, return both as None.
