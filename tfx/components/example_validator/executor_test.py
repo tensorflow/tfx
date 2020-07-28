@@ -25,6 +25,7 @@ import tensorflow as tf
 import pandas as pd
 
 from tensorflow_metadata.proto.v0 import anomalies_pb2
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import components
 from tfx.components.example_validator import executor
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -35,6 +36,7 @@ from tfx.utils.dsl_utils import external_input
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration import pipeline
 from tfx.orchestration import metadata
+from google.protobuf import text_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -118,7 +120,7 @@ class ExecutorTest(tf.test.TestCase):
 
     BeamDagRunner().run(p)
 
-    # Construct the skewed statsitics artifact from pipeline outputs
+    # Construct the skewed statistics artifact from pipeline outputs
     component_dir = os.path.join(tmp_dir, 'StatisticsGen/statistics')
     component_num = os.listdir(component_dir)[0]
     skewed_statistics = standard_artifacts.ExampleStatistics()
@@ -132,17 +134,18 @@ class ExecutorTest(tf.test.TestCase):
                                               'schema.pbtxt')
     shutil.copy2(original_schema_pbtxt_path, tmp_schema_pbtxt_path)
 
-    f = open(tmp_schema_pbtxt_path, "r")
-    contents = f.readlines()
-    f.close()
+    with open(tmp_schema_pbtxt_path, "r+") as f:
+      contents = f.read()
+      proto_contents = text_format.Parse(contents, schema_pb2.Schema())
 
-    skew_comparator_str = '  skew_comparator: { infinity_norm: { threshold: .1} }'
-    contents.insert(12, skew_comparator_str)
+      for feature in proto_contents.feature:
+        if feature.name == "payment_type":
+          feature.skew_comparator.infinity_norm.threshold = 0.001
 
-    f = open(tmp_schema_pbtxt_path, "w")
-    contents = "".join(contents)
-    f.write(contents)
-    f.close()
+      contents = text_format.MessageToString(proto_contents)
+      f.seek(0)
+      f.write(contents)
+      f.truncate()
 
     self.schema_artifact.uri = tmp_schema_pbtxt_dir
 

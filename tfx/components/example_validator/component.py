@@ -87,7 +87,7 @@ class ExampleValidator(base_component.BaseComponent):
         be present in the arguments.
       training_statistics: Optional Channel of type
         `standard_artifacts.ExampleStatistics` used for training-serving
-        skew detection
+        skew detection.
     """
     if stats:
       absl.logging.warning(
