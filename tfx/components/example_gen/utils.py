@@ -253,9 +253,9 @@ def _property_search(uri: Text,
     update_rest = False
 
     # Uses str instead of int because of zero padding digits.
-    for i, prop in enumerate(properties):
+    for i, prop_str in enumerate(properties):
       try:
-        prop_int = int(prop)
+        prop = int(prop_str)
       except ValueError:
         raise ValueError('Cannot find %s number from %s based on %s' %
                          (property_names[i], file_path, split_regex_pattern))
@@ -264,9 +264,9 @@ def _property_search(uri: Text,
       # a newer property value, all subsequently less important properties
       # must be updated to align with that new property.
       if update_rest:
-        latest_properties[i] = prop
-      elif latest_properties[i] is None or prop_int >= int(latest_properties[i]):
-        latest_properties[i] = prop
+        latest_properties[i] = prop_str
+      elif latest_properties[i] is None or prop >= int(latest_properties[i]):
+        latest_properties[i] = prop_str
         update_rest = True
 
   if any(prop is None for prop in latest_properties):
@@ -293,14 +293,15 @@ def _retrieve_latest_span_version(uri: Text,
       to be searched on. Note that this function will update the {SPAN} in this
       and {VERSION} tags in the split config to actual Span and Version numbers.
   Returns:
-    Tuple of two strings, Span and Version (optional).
+    Tuple of two strings, Span (optional) and Version (optional).
 
   Raises:
     ValueError: if any of the following occurs:
       - If either Span or Version spec is occurs in the split pattern
         more than once.
       - If Version spec is provided, but Span spec is not present.
-      - If a matching cannot be found for split pattern provided
+      - If Span or Version found is not an integer.
+      - If a matching cannot be found for split pattern provided.
   """
 
   latest_span = None
@@ -325,6 +326,7 @@ def _retrieve_latest_span_version(uri: Text,
   elif VERSION_SPEC in split.pattern:
     raise ValueError('Version spec provided, but Span spec is not present.')
 
+  # Replace split.pattern so executor can find files after driver runs.
   if latest_span:
     split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
   if latest_version:
@@ -340,7 +342,7 @@ def calculate_splits_fingerprint_span_and_version(
 
   If a pattern has the {SPAN} placeholder and, optionally, the {VERSION}
   placeholder, attempts to find aligned values that results in all splits
-  having the most recent span, and most recent version for that span.
+  having the most recent span and most recent version for that span.
 
   Args:
     input_base_uri: The base path from which files will be searched.
