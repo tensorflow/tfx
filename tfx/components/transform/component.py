@@ -26,8 +26,6 @@ from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.orchestration import data_types
-from tfx.types import artifact
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
 
@@ -126,11 +124,11 @@ class Transform(base_component.BaseComponent):
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
     if not transformed_examples:
-      example_artifact = standard_artifacts.Examples()
-      example_artifact.split_names = artifact_utils.encode_split_names(
-          artifact.DEFAULT_EXAMPLE_SPLITS)
       transformed_examples = types.Channel(
-          type=standard_artifacts.Examples, artifacts=[example_artifact])
+          type=standard_artifacts.Examples,
+          # TODO(b/161548528): remove the hardcode artifact.
+          artifacts=[standard_artifacts.Examples()],
+          matching_channel_name='examples')
     spec = TransformSpec(
         examples=examples,
         schema=schema,

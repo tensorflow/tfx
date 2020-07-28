@@ -27,16 +27,21 @@ from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
-from tfx.types import channel_utils
 
 
-def generate_output_uri(base_output_dir: Text, name: Text,
-                        execution_id: int) -> Text:
+def _generate_output_uri(base_output_dir: Text,
+                         name: Text,
+                         execution_id: int,
+                         is_single_artifact: bool = True,
+                         index: int = 0) -> Text:
   """Generate uri for output artifact."""
-  return os.path.join(base_output_dir, name, str(execution_id))
+  if is_single_artifact:
+    return os.path.join(base_output_dir, name, str(execution_id), '')
+
+  return os.path.join(base_output_dir, name, str(execution_id), str(index), '')
 
 
-def prepare_output_paths(artifact: types.Artifact):
+def _prepare_output_paths(artifact: types.Artifact):
   """Create output directories for output artifact."""
   if tf.io.gfile.exists(artifact.uri):
     msg = 'Output artifact uri %s already exists' % artifact.uri
@@ -183,6 +188,7 @@ class BaseDriver(object):
 
   def _prepare_output_artifacts(
       self,
+      input_artifacts: Dict[Text, List[types.Artifact]],
       output_dict: Dict[Text, types.Channel],
       exec_properties: Dict[Text, Any],
       execution_id: int,
@@ -192,13 +198,27 @@ class BaseDriver(object):
     """Prepare output artifacts by assigning uris to each artifact."""
     del exec_properties
 
-    result = channel_utils.unwrap_channel_dict(output_dict)
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
-    for name, output_list in result.items():
-      for artifact in output_list:
-        artifact.uri = generate_output_uri(base_output_dir, name, execution_id)
-        prepare_output_paths(artifact)
+
+    result = {}
+    for name, channel in output_dict.items():
+      if channel.matching_channel_name:
+        # Decides the artifact count for output Channel at runtime based on the
+        # artifact count in specified input Channel.
+        count = len(input_artifacts[channel.matching_channel_name])
+        output_list = [channel.type() for _ in range(count)]
+      else:
+        # TODO(b/161490287): use `[channel.type()]` explicitly.
+        output_list = list(channel.get())
+
+      is_single_artifact = len(output_list) == 1
+      for i, artifact in enumerate(output_list):
+        artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
+                                            is_single_artifact, i)
+        _prepare_output_paths(artifact)
+
+      result[name] = output_list
 
     return result
 
@@ -278,6 +298,7 @@ class BaseDriver(object):
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
+          input_artifacts=input_artifacts,
           output_dict=output_dict,
           exec_properties=exec_properties,
           execution_id=execution.id,

@@ -29,7 +29,9 @@
     pipelines.
 *   Added experimental TFX Pipeline Recorder to record output artifacts of the
     pipeline.
-
+*   Supported multiple artifacts in an output Channel to match a certain input
+    Channel's artifact count. This enables Transform component to process
+    multiple artifacts.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
