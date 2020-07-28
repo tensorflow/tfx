@@ -248,7 +248,7 @@ class UtilsTest(tf.test.TestCase):
                                                           splits)
 
   def testVersionNoMatching(self):
-    span_dir = os.path.join(self._input_base_path, 'span01', 'wrong')
+    span_dir = os.path.join(self._input_base_path, 'span01', 'wrong', 'data')
     io_utils.write_string_file(span_dir, 'testing_version_no_matching')
 
     splits = [

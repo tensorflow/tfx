@@ -248,7 +248,7 @@ def _property_search(uri: Text,
 
     # `property_names` and `spec_list` should be ordered in decreasing
     # order of property importance. For example, a proper `spec_list` ordering
-    # is [{SPAN}, {Version}], since a newer span dominates a newer version.
+    # is ['{SPAN}', '{VERSION}'], since a newer span dominates a newer version.
     properties = [result.group(name) for name in property_names]
     update_rest = False
 
@@ -311,7 +311,7 @@ def _retrieve_latest_span_version(uri: Text,
       raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
 
     if VERSION_SPEC in split.pattern:
-      if split.pattern.count(SPAN_SPEC) != 1:
+      if split.pattern.count(VERSION_SPEC) != 1:
         raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
 
       latest_span, latest_version = _property_search(uri, split,
@@ -338,13 +338,9 @@ def calculate_splits_fingerprint_span_and_version(
 ) -> Tuple[Text, Text, Text]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
-  If a pattern has the {SPAN} placeholder, attempts to find an identical
-  value across splits that results in all splits having the most recently
-  updated files.
-
-  If a pattern has the {VERSION} placeholder, after finding span,
-  attempts to find an identical version accross splits that results in all
-  splits having the most recently updated files.
+  If a pattern has the {SPAN} placeholder and, optionally, the {VERSION}
+  placeholder, attempts to find aligned values that results in all splits
+  having the most recent span, and most recent version for that span.
 
   Args:
     input_base_uri: The base path from which files will be searched.
