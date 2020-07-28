@@ -72,7 +72,7 @@ def run():
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
 
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
-      # TODO(step 11): Uncomment below to use stub executors.
+      # TODO(StubExecutor): Uncomment below to use stub executors.
       # supported_launcher_classes=[
       #     stub_component_launcher.get_stub_launcher_class()
       # ],
