@@ -243,7 +243,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError,
-                                 'Cannot not find matching for split'):
+                                 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                  splits)
 
@@ -255,7 +255,7 @@ class UtilsTest(tf.test.TestCase):
                                     pattern='version{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError,
-                                 'Cannot not find matching for split'):
+                                 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                  splits)
 
@@ -267,7 +267,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*'),
         example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot not find span number'):
+    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                  splits)
 
@@ -282,7 +282,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2',
                                     pattern='version{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot not find version number'):
+    with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path, splits)
 
   def testCalculateSplitsFpSpanAndVersion(self):

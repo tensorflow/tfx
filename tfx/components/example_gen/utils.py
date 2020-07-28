@@ -229,14 +229,14 @@ def _property_search(split: example_gen_pb2.Input.Split,
     try:
       prop = int(result.group(1))
     except ValueError:
-      raise ValueError('Cannot not find %s number from %s based on %s' %
+      raise ValueError('Cannot find %s number from %s based on %s' %
                        (property_name, file_path, split_regex_pattern))
     if latest_property is None or prop >= int(latest_property):
       # Uses str instead of int because of zero padding digits.
       latest_property = result.group(1)
 
   if latest_property is None:
-    raise ValueError('Cannot not find matching for split %s based on %s' %
+    raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
   return latest_property
 
