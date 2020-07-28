@@ -281,11 +281,11 @@ def _retrieve_latest_span_version(uri: Text,
                                   ) -> Tuple[Optional[Text], Optional[Text]]:
   """Retrieves the most recent span and version for a given split pattern.
 
-  If both Span and Version spec occur in the split pattern, we search for
-  and return both the latest Span and Version. If only Span exists in the split pattern,
-  we only search for the latest Span, and Version is returned as None. If
-  Version is present, but not Span, an error is raised. If neither Span
-  nor Version is present, return both as None.
+  If both Span and Version spec occur in the split pattern, searches for and
+  returns both the latest Span and Version. If only Span exists in the split
+  pattern, searches for the latest Span, and Version is returned as None.
+  If Version is present, but not Span, an error is raised. If neither Span
+  nor Version is present, returns both as None.
 
   Args:
     uri: The base path from which files will be searched.
