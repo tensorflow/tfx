@@ -38,6 +38,55 @@ class StubComponentLauncher(
   stubbed_component_map = ...  # type: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
   test_data_dir = ...  # type: Text
 
+  @classmethod
+  def get_stub_launcher_class(
+      cls,
+      test_data_dir: Text, 
+      stubbed_component_ids: List[Text],
+      stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+  ):
+    """Returns a StubComponentLauncher class.
+
+    Factory method returns a StubComponentLauncher class, which then can be
+    supported by the pipeline.
+    For example:
+      class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
+      class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
+
+      PipelineConfig(
+          supported_launcher_classes=[
+              stub_component_launcher.get_stub_launcher_class(
+                  test_data_dir,
+                  stubbed_component_ids = ['CsvExampleGen'],
+                  stubbed_component_map = {
+                      'Transform': MyTransformStubExecutor,
+                      'Pusher': MyPusherStubExecutor})
+          ],
+      )
+    The method also sets the necessary class variables for the
+    StubComponentLauncher class, including stubbed_component_ids and
+    stubbed_component_map holding custom executor classes, which
+    users may define differently per component.
+
+    Args:
+      test_data_dir: The directory where pipeline outputs are recorded
+        (pipeline_recorder.py).
+      stubbed_component_ids: List of component ids that should be replaced with a
+        BaseStubExecutor.
+      stubbed_component_map: Dictionary holding user-defined stub executor. These
+        user-defined stub executors must inherit from
+        base_stub_executor.BaseStubExecutor.
+
+    Returns:
+      StubComponentLauncher class holding stub executors.
+    """
+    cls.stubbed_component_map = dict(stubbed_component_map)
+    for component_id in stubbed_component_ids:
+      cls.stubbed_component_map[component_id] = \
+                      base_stub_executor.BaseStubExecutor
+    cls.test_data_dir = test_data_dir
+    return cls
+
   def _run_executor(self, execution_id: int,
                     input_dict: Dict[Text, List[types.Artifact]],
                     output_dict: Dict[Text, List[types.Artifact]],
@@ -57,51 +106,3 @@ class StubComponentLauncher(
                                                           self.test_data_dir,
                                                           executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
-
-
-def get_stub_launcher_class(
-    test_data_dir: Text, stubbed_component_ids: List[Text],
-    stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
-) -> Type[StubComponentLauncher]:
-  """Returns a StubComponentLauncher class.
-
-  Factory method returns a StubComponentLauncher class, which then can be
-  supported by the pipeline.
-  For example:
-    class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
-    class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
-
-    PipelineConfig(
-        supported_launcher_classes=[
-            stub_component_launcher.get_stub_launcher_class(
-                test_data_dir,
-                stubbed_component_ids = ['CsvExampleGen'],
-                stubbed_component_map = {
-                    'Transform': MyTransformStubExecutor,
-                    'Pusher': MyPusherStubExecutor})
-        ],
-    )
-  The method also sets the necessary class variables for the
-  StubComponentLauncher class, including stubbed_component_ids and
-  stubbed_component_map holding custom executor classes, which
-  users may define differently per component.
-
-  Args:
-    test_data_dir: The directory where pipeline outputs are recorded
-      (pipeline_recorder.py).
-    stubbed_component_ids: List of component ids that should be replaced with a
-      BaseStubExecutor.
-    stubbed_component_map: Dictionary holding user-defined stub executor. These
-      user-defined stub executors must inherit from
-      base_stub_executor.BaseStubExecutor.
-
-  Returns:
-    StubComponentLauncher class holding stub executors.
-  """
-  cls = StubComponentLauncher
-  cls.stubbed_component_map = dict(stubbed_component_map)
-  for component_id in stubbed_component_ids:
-    cls.stubbed_component_map[component_id] = \
-                    base_stub_executor.BaseStubExecutor
-  cls.test_data_dir = test_data_dir
-  return cls
