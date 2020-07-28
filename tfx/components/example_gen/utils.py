@@ -256,8 +256,8 @@ def _property_search(uri: Text,
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
     try:
-      if num_groups > 1:
-        prop_tuple = result.group(num_groups)
+      if num_groups == 2:
+        prop_tuple = result.group(1, 2)
         # `spec_list` should specs ordered in decreasing order of importance.
         # For example a proper `spec_list` is [{SPAN}, {Version}].
         update_rest = False
@@ -285,7 +285,6 @@ def _property_search(uri: Text,
   if any([prop == None for prop in latest_props]):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
-  
   return latest_props
 
 
@@ -302,7 +301,7 @@ def _retrieve_latest_span_version(uri: Text,
 
     if VERSION_SPEC in split.pattern:
       if split.pattern.count(SPAN_SPEC) != 1:
-        raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
+        raise ValueError('Only one {VERSION } is allowed in %s' % split_pattern)
 
       latest_span, latest_version = _property_search(uri, split, 
           [SPAN_SPEC, VERSION_SPEC])
@@ -359,6 +358,7 @@ def calculate_splits_fingerprint_span_and_version(
                                                                 split)
     latest_span = latest_span or '0'
     latest_version = latest_version or '0'
+    
     logging.info('latest span and version = (%s, %s)', latest_span,
                  latest_version)
   
