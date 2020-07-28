@@ -287,7 +287,7 @@ example_gen = PrestoExampleGen(presto_config, query='SELECT * FROM chicago_taxi_
 
 ## ExampleGen Downstream Components
 
-Custom split configuration is supported for downstream components. 
+Custom split configuration is supported for downstream components.
 
 ### StatisticsGen
 
@@ -300,7 +300,7 @@ For example:
 from tfx import components
 
 # Exclude the 'eval' split.
-statistics_gen = component.StatisticsGen(
+statistics_gen = components.StatisticsGen(
              examples=example_gen.outputs['examples'],
              exclude_splits=['eval'])
 ```
@@ -316,7 +316,7 @@ For example:
 from tfx import components
 
 # Exclude the 'eval' split.
-schema_gen = component.SchemaGen(
+schema_gen = components.SchemaGen(
              statistics=statistics_gen.outputs['statistics'],
              exclude_splits=['eval'])
 ```
@@ -333,7 +333,7 @@ For example:
 from tfx import components
 
 # Exclude the 'eval' split.
-example_validator = component.ExampleValidator(
+example_validator = components.ExampleValidator(
              statistics=statistics_gen.outputs['statistics'],
              schema=schema_gen.outputs['schema'],
              exclude_splits=['eval'])
@@ -352,7 +352,7 @@ from tfx import components
 from  tfx.proto import transform_pb2
 
 # Analyze the 'train' split and transform the 'eval' split.
-transform = component.Transform(
+transform = components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file,
@@ -362,7 +362,7 @@ transform = component.Transform(
 
 ### Trainer and Tuner
 
-Default behavior is train on the 'train' split and evaluate on the 'eval' split. 
+Default behavior is train on the 'train' split and evaluate on the 'eval' split.
 
 To specify the train splits and evaluate splits, set the `train_args` and
 `eval_args` for Trainer component. For example:
@@ -372,7 +372,7 @@ from tfx import components
 from  tfx.proto import trainer_pb2
 
 # Train on the 'train' split and evaluate on the 'eval' split.
-Trainer = component.Trainer(
+Trainer = components.Trainer(
       module_file=_taxi_module_file,
       examples=transform.outputs['transformed_examples'],
       schema=schema_gen.outputs['schema'],
@@ -393,11 +393,8 @@ from tfx import components
 from  tfx.proto import evaluator_pb2
 
 # Compute metrics on the 'train' split and 'eval' split.
-Trainer = component.Evaluator(
+Trainer = components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      feature_slicing_spec=evaluator_pb2.FeatureSlicingSpec(specs=[
-          evaluator_pb2.SingleSlicingSpec(
-              column_for_slicing=['trip_start_hour'])]),
       example_splits=['train', 'eval'])
 ```
