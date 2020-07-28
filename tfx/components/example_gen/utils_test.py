@@ -270,7 +270,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*'),
         example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find properties'):
+    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                  splits)
 
@@ -301,7 +301,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2',
             pattern='span{SPAN}/version{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find properties'):
+    with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                           splits)
 
