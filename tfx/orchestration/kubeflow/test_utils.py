@@ -173,10 +173,10 @@ class HelloWorldComponent(BaseComponent):
       # due to docker hub.
       image='google/cloud-sdk:latest',
       command=['sh', '-c'],
-      # TODO(b/147242148): Remove /value after decision is made regarding uri
+      # TODO(b/147242148): Remove value after decision is made regarding uri
       # structure.
       args=[
-          'echo "hello {{exec_properties.word}}" | gsutil cp - {{output_dict["greeting"][0].uri}}/value'
+          'echo "hello {{exec_properties.word}}" | gsutil cp - {{output_dict["greeting"][0].uri}}value'
       ])
 
   def __init__(self, word, greeting=None):

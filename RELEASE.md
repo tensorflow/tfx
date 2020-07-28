@@ -7,7 +7,8 @@
 *   Changed Span information as a property of ExampleGen's output artifact.
     Deprecated ExampleGen input (external) artifact.
 *   Added ModelRun artifact for Trainer for storing training related files,
-    e.g., Tensorboard logs.
+    e.g., Tensorboard logs. Trainer's Model artifact now only contain pure
+    models (check utils/path_utils.py for details).
 *   Added support for `tf.train.SequenceExample` in ExampleGen:
     *   ImportExampleGen now supports `tf.train.SequenceExample` importing.
     *   base_example_gen_executor now supports `tf.train.SequenceExample` as
@@ -16,6 +17,21 @@
     the execution and hyperparemeter optimization backend.
 *   Switched Transform component to use the new TFXIO code path. Users may
     potentially notice large performance improvement.
+*   Added support for primitive artifacts to InputValuePlaceholder.
+*   Supported multiple artifacts for Trainer and Tuner's input example Channel.
+*   Supported split configuration for Trainer and Tuner.
+*   Component authors now can create a TFXIO instance to get access to the
+    data through `tfx.components.util.tfxio_utils`. As TFX is going to
+    support more data payload formats and data container formats, using
+    `tfxio_utils` is encouraged to avoid dealing directly with each combination.
+    TFXIO is the interface of [Standardized TFX Inputs](https://github.com/tensorflow/community/blob/master/rfcs/20191017-tfx-standardized-inputs.md).
+*   Added experimental BaseStubExecutor and StubComponentLauncher to test TFX
+    pipelines.
+*   Added experimental TFX Pipeline Recorder to record output artifacts of the
+    pipeline.
+*   Supported multiple artifacts in an output Channel to match a certain input
+    Channel's artifact count. This enables Transform component to process
+    multiple artifacts.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
@@ -28,10 +44,10 @@
     now.
 *   Added support of non tf.train.Example protos as internal data payload
     format by ImportExampleGen.
-*   Fixed the name of the usage telemetry when tfx templates are used.
 *   Used thread local storage for `label_utils.scoped_labels()` to make it
     thread safe.
 *   Stopped requiring `avro-python3`.
+*   Requires [Bazel](https://bazel.build/) to build TFX source code.
 
 ## Breaking changes
 
@@ -57,6 +73,28 @@
 *   Changed GetInputSourceToExamplePTransform interface by removing input_dict.
     This is a breaking change, custom ExampleGens need to follow the interface
     change.
+
+### For component authors
+
+## Documentation updates
+
+## Deprecations
+
+# Version 0.22.1
+
+## Major Features and Improvements
+
+## Bug fixes and other changes
+*   Depends on 'tensorflowjs>=2.0.1.post1,<3' for `[all]` dependency.
+*   Fixed the name of the usage telemetry when tfx templates are used.
+*   Depends on `tensorflow-data-validation>=0.22.2,<0.23.0`.
+*   Depends on `tensorflow-model-analysis>=0.22.2,<0.23.0`.
+*   Depends on `tfx-bsl>=0.22.1,<0.23.0`.
+*   Depends on `ml-metadata>=0.22.1,<0.23.0`.
+
+## Breaking changes
+
+### For pipeline authors
 
 ### For component authors
 

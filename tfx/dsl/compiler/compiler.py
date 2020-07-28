@@ -23,7 +23,6 @@ import json
 import re
 
 from tfx.components.base import base_node
-from tfx.components.base import executor_spec
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.compiler import constants
@@ -156,15 +155,8 @@ class Compiler(object):
                   tfx_node.id, key, type(value)))
 
     # Step 6: Executor
-    # TODO(b/158712976): Add support for ExecutorContainerSpec after
-    # it's added to IR.
     if compiler_utils.is_component(tfx_node):
-      if isinstance(tfx_node.executor_spec, executor_spec.ExecutorClassSpec):
-        node.executor.python_class_executor_spec.class_path = tfx_node.executor_spec.class_path
-      else:
-        raise ValueError(
-            "Component {} does not support executor spec {}".format(
-                tfx_node.id, tfx_node.executor_spec))
+      node.executor.CopyFrom(tfx_node.executor_spec.encode())
 
     # Step 7: Upstream/Downstream nodes
     # Note: the order of tfx_node.upstream_nodes is inconsistent from
