@@ -41,9 +41,10 @@ class StubComponentLauncher(
   @classmethod
   def get_stub_launcher_class(
       cls,
-      test_data_dir: Text, 
+      test_data_dir: Text,
       stubbed_component_ids: List[Text],
-      stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+      stubbed_component_map: Dict[Text, \
+          Type[base_stub_executor.BaseStubExecutor]]
   ):
     """Returns a StubComponentLauncher class.
 
@@ -71,10 +72,10 @@ class StubComponentLauncher(
     Args:
       test_data_dir: The directory where pipeline outputs are recorded
         (pipeline_recorder.py).
-      stubbed_component_ids: List of component ids that should be replaced with a
-        BaseStubExecutor.
-      stubbed_component_map: Dictionary holding user-defined stub executor. These
-        user-defined stub executors must inherit from
+      stubbed_component_ids: List of component ids that should be replaced
+        with aBaseStubExecutor.
+      stubbed_component_map: Dictionary holding user-defined stub executor.
+        These user-defined stub executors must inherit from
         base_stub_executor.BaseStubExecutor.
 
     Returns:
