@@ -245,7 +245,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
-                                                 splits)
+                                                          splits)
 
   def testVersionNoMatching(self):
     span_dir = os.path.join(self._input_base_path, 'span01', 'wrong')
@@ -260,7 +260,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
-                                                 splits)
+                                                          splits)
 
   def testSpanWrongFormat(self):
     wrong_span = os.path.join(self._input_base_path, 'spanx', 'split1', 'data')
@@ -272,11 +272,11 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
-                                                 splits)
+                                                          splits)
 
   def testVersionNoSpan(self):
     wrong_version = os.path.join(self._input_base_path, 'versionx', 'split1',
-                              'data')
+                                 'data')
     io_utils.write_string_file(wrong_version, 'testing_wrong_version')
 
     splits = [

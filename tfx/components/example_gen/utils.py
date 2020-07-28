@@ -253,23 +253,23 @@ def _property_search(uri: Text,
     update_rest = False
 
     # Uses str instead of int because of zero padding digits.
-    for i, property in enumerate(properties):
+    for i, prop in enumerate(properties):
       try:
-        prop = int(property)
+        prop_int = int(prop)
       except ValueError:
         raise ValueError('Cannot find %s number from %s based on %s' %
                          (property_names[i], file_path, split_regex_pattern))
-      
+
       # Since specs are in descreasing order of performance, if we find
       # a newer property value, all subsequently less important properties
       # must automatically be updated to align with that new property.
       if update_rest:
-        latest_properties[i] = property
-      elif latest_properties[i] is None or prop >= int(latest_properties[i]):
-        latest_properties[i] = property
+        latest_properties[i] = prop
+      elif latest_properties[i] is None or prop_int >= int(latest_properties[i]):
+        latest_properties[i] = prop
         update_rest = True
 
-  if any(property == None for property in latest_properties):
+  if any(prop is None for prop in latest_properties):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
@@ -286,7 +286,7 @@ def _retrieve_latest_span_version(uri: Text,
   Args:
     uri: The base path from which files will be searched.
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
-      to be searched on. Note that this function will update the {SPAN} in this 
+      to be searched on. Note that this function will update the {SPAN} in this
       and {VERSION} tags in the split config to actual Span and Version numbers.
   Returns:
     Tuple of two strings, Span and Version (optional).
@@ -298,7 +298,7 @@ def _retrieve_latest_span_version(uri: Text,
       - If Version spec is provided, but Span spec is not present.
       - If a matching cannot be found for split pattern provided
   """
-  
+
   latest_span = None
   latest_version = None
 
@@ -317,7 +317,7 @@ def _retrieve_latest_span_version(uri: Text,
     else:
       latest_span = _property_search(uri, split, [SPAN_PROPERTY_NAME],
           [SPAN_SPEC])[0]
-  
+
   elif VERSION_SPEC in split.pattern:
     raise ValueError('Version spec provided, but Span spec is not present.')
 
@@ -368,10 +368,10 @@ def calculate_splits_fingerprint_span_and_version(
                                                                 split)
     latest_span = latest_span or '0'
     latest_version = latest_version or '0'
-    
+
     logging.info('latest span and version = (%s, %s)', latest_span,
                  latest_version)
-  
+
     if select_span is None and select_version is None:
       select_span = latest_span
       select_version = latest_version
