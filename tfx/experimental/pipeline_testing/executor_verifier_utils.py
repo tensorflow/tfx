@@ -199,8 +199,7 @@ def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
       return False
 
   elif artifact_name in [components.evaluator.constants.EXAMPLES_KEY,
-                         components.evaluator.constants.MODEL_KEY,
-                         components.evaluator.constants.TRANSFORM_GRAPH_KEY]:
+                         components.evaluator.constants.MODEL_KEY]:
     if not _compare_file_sizes(artifact.uri, output_uri, threshold):
       return False
 

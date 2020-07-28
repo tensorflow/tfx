@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
   """Test for verifying executors using Chicago Taxi dataset."""
 
   def setUp(self):
-    super(ExecutorVerifier, self).setUp()
+    super(TaxiPipelineExecutorVerifier, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
