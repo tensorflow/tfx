@@ -213,6 +213,18 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   regex_pattern = regex_pattern.replace(')', '\\)')
   return regex_pattern
 
+def _spec_order(raw_split_pattern: Text,
+                spec_list: List[Text]) -> Dict[Text, int]:
+  """Given a pattern, returns a Dict containing order of spec tags."""
+  order_idx = 0
+  spec_order = {spec:None for spec in spec_list}
+  for i in range(len(raw_split_pattern)):
+    for spec in spec_list:
+      if raw_split_pattern.startswith(spec, beg=i):
+        spec_order[spec] = order_idx
+        order_idx += 1
+  return spec_order
+
 def _property_search(split: example_gen_pb2.Input.Split,
                      split_glob_pattern: Text, split_regex_pattern: Text,
                      property_name: Text) -> Text:
