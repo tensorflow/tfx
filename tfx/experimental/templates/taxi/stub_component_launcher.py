@@ -43,11 +43,12 @@ class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
     for c_id in self.stubbed_component_ids:
       self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
 
-def get_stub_launcher_class(stub_launcher: Type[StubComponentLauncher],
-      test_data_dir: Text, 
-      stubbed_component_ids: List[Text],
-      stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
-  ) -> Type[StubComponentLauncher]:
+def get_stub_launcher_class(
+    stub_launcher: Type[StubComponentLauncher],
+    test_data_dir: Text,
+    stubbed_component_ids: List[Text],
+    stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+    ) -> Type[StubComponentLauncher]:
   """Returns a StubComponentLauncher class.
   Returns:
     StubComponentLauncher class holding stub executors.
