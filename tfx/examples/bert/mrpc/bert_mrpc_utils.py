@@ -19,13 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import List, Text
-import os
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from tfx.components.trainer.executor import TrainerFnArgs
 from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
-from tfx.examples.bert.utils.bert_models import build_and_compile_bert_classifier
+from tfx.examples.bert.utils.bert_models import (
+        build_and_compile_bert_classifier)
 
 _BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _EPOCHS = 1
