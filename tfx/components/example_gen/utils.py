@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Any, Dict, Iterable, List, Text, Tuple, Union
+from typing import Any, Dict, Iterable, List, Text, Tuple, Union, Optional
 
 from absl import logging
 import six
@@ -214,91 +214,108 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 def _spec_order(raw_split_pattern: Text,
-                spec_list: List[Text]) -> Dict[Text, int]:
+                spec_list: List[Text]) -> Dict[Text, Optional[int]]:
   """Given a pattern, returns a Dict containing order of spec tags."""
   order_idx = 0
-  spec_order = {spec:None for spec in spec_list}
+  spec_order = {spec : None for spec in spec_list}
   for i in range(len(raw_split_pattern)):
     for spec in spec_list:
-      if raw_split_pattern.startswith(spec, beg=i):
+      if raw_split_pattern.startswith(spec, i):
         spec_order[spec] = order_idx
         order_idx += 1
   return spec_order
 
-def _property_search(split: example_gen_pb2.Input.Split,
-                     split_glob_pattern: Text, split_regex_pattern: Text,
-                     property_name: Text) -> Text:
+def _property_search(uri: Text,
+                     split: example_gen_pb2.Input.Split,
+                     spec_list: List[Text]) -> Dict[Text, Optional[Text]]:
   """Search for most recently updated property with glob and regex patterns."""
-  if re.compile(split_regex_pattern).groups != 1:
-    raise ValueError('Regex should have only one group')
+  split_pattern = os.path.join(uri, split.pattern)
+
+  split_glob_pattern = split_pattern
+  split_regex_pattern = _glob_to_regex(split_pattern)
+  for spec in spec_list:
+    split_glob_pattern = split_glob_pattern.replace(spec, '*')
+    split_regex_pattern = split_regex_pattern.replace(spec, '(.*)')
+  logging.info('Span glob pattern for split %s: %s', split.name,
+               split_glob_pattern)
+  logging.info('Span regex pattern for split %s: %s', split.name,
+               split_regex_pattern)
+
+  spec_order = _spec_order(split.pattern, spec_list)
+
+  num_groups = re.compile(split_regex_pattern).groups
+  if num_groups != len(spec_list):
+    raise ValueError("Regex does not match desired specs.")
+
+  latest_props = [None] * num_groups
 
   files = tf.io.gfile.glob(split_glob_pattern)
-  latest_property = None
+
   for file_path in files:
     result = re.search(split_regex_pattern, file_path)
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
     try:
-      prop = int(result.group(1))
+      if num_groups > 1:
+        prop_tuple = result.group(num_groups)
+        # `spec_list` should specs ordered in decreasing order of importance.
+        # For example a proper `spec_list` is [{SPAN}, {Version}].
+        update_rest = False
+        for i, spec in enumerate(spec_list):
+          # Uses str instead of int because of zero padding digits.
+          prop_str = prop_tuple[spec_order[spec]]
+          prop = int(prop_str)
+          
+          if update_rest:
+            latest_props[i] = prop_str
+          elif latest_props[i] is None or prop >= int(latest_props[i]):
+            latest_props[i] = prop_str
+            update_rest = True
+          
+      else:
+        prop = int(result.group(1))
+        if latest_props[0] is None or prop >= int(latest_props[0]):
+          # Uses str instead of int because of zero padding digits.
+          latest_props[0] = result.group(1)
+        
     except ValueError:
-      raise ValueError('Cannot find %s number from %s based on %s' %
-                       (property_name, file_path, split_regex_pattern))
-    if latest_property is None or prop >= int(latest_property):
-      # Uses str instead of int because of zero padding digits.
-      latest_property = result.group(1)
+      raise ValueError('Cannot find properties from %s based on %s' %
+                       (file_path, split_regex_pattern))
 
-  if latest_property is None:
+  if any([prop == None for prop in latest_props]):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
-  return latest_property
+  
+  return latest_props
 
 
 def _retrieve_latest_span_version(uri: Text,
                                   split: example_gen_pb2.Input.Split
-                                  ) -> Tuple[Text, Text]:
+                                  ) -> Tuple[Text, Optional[Text]]:
   """Retrieves the most recent span and version for a given split pattern"""
-  split_pattern = os.path.join(uri, split.pattern)
-
-  latest_span = '0'
-  latest_version = '0'
+  latest_span = None
+  latest_version = None
 
   if SPAN_SPEC in split.pattern:
     if split.pattern.count(SPAN_SPEC) != 1:
       raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
 
-    split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
-    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-    logging.info('Span glob pattern for split %s: %s', split.name,
-                 split_glob_pattern)
-    split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC,
-                                                                '(.*)')
-    split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '.*')
-    logging.info('Span regex pattern for split %s: %s', split.name,
-                 split_regex_pattern)
+    if VERSION_SPEC in split.pattern:
+      if split.pattern.count(SPAN_SPEC) != 1:
+        raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
 
-    latest_span = _property_search(split, split_glob_pattern,
-                                   split_regex_pattern, SPAN_PROPERTY_NAME)
+      latest_span, latest_version = _property_search(uri, split, 
+          [SPAN_SPEC, VERSION_SPEC])
 
-  if VERSION_SPEC in split.pattern:
-    if split.pattern.count(VERSION_SPEC) != 1:
-      raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
+    else:
+      latest_span = _property_search(uri, split, [SPAN_SPEC])[0]
+  elif VERSION_SPEC in split.pattern:
+    raise ValueError('Version spec provided, but Span spec is not present.')
 
-    split_glob_pattern = split_pattern.replace(SPAN_SPEC, latest_span)
-    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-    logging.info('Version glob pattern for split %s: %s', split.name,
-                 split_glob_pattern)
-    split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC,
-                                                                latest_span)
-    split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC, '(.*)')
-    logging.info('Version regex pattern for split %s: %s', split.name,
-                 split_regex_pattern)
-
-    latest_version = _property_search(split, split_glob_pattern,
-                                      split_regex_pattern,
-                                      VERSION_PROPERTY_NAME)
-
-  split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
-  split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+  if latest_span:
+    split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+  if latest_version:
+    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
   return latest_span, latest_version
 
@@ -340,8 +357,11 @@ def calculate_splits_fingerprint_span_and_version(
     # Find most recent span and version for this split.
     latest_span, latest_version = _retrieve_latest_span_version(input_base_uri,
                                                                 split)
+    latest_span = latest_span or '0'
+    latest_version = latest_version or '0'
     logging.info('latest span and version = (%s, %s)', latest_span,
                  latest_version)
+  
     if select_span is None and select_version is None:
       select_span = latest_span
       select_version = latest_version
