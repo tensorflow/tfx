@@ -122,6 +122,13 @@ class IoUtilsTest(tf.test.TestCase):
         'split:split,num_files:2,total_bytes:15,xor_checksum:2,sum_checksum:4',
         fingerprint)
 
+  def testReadWriteString(self):
+    file_path = os.path.join(self._base_dir, 'test_file')
+    content = 'testing read/write'
+    io_utils.write_string_file(file_path, content)
+    read_content = io_utils.read_string_file(file_path)
+    self.assertEqual(content, read_content)
+
 
 if __name__ == '__main__':
   tf.test.main()

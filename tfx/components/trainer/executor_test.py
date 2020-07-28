@@ -18,14 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import json
 import os
-
 # Standard Imports
 import mock
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx.components.testdata.module_file import trainer_module
 from tfx.components.trainer import constants
 from tfx.components.trainer import executor
@@ -34,6 +33,7 @@ from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import path_utils
+from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -47,20 +47,27 @@ class ExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(self._source_data_dir,
-                                'transform/transformed_examples')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    e1 = standard_artifacts.Examples()
+    e1.uri = os.path.join(self._source_data_dir,
+                          'transform/transformed_examples')
+    e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
+    e2 = copy.deepcopy(e1)
+
+    self._single_artifact = [e1]
+    self._multiple_artifacts = [e1, e2]
+
     transform_output = standard_artifacts.TransformGraph()
     transform_output.uri = os.path.join(self._source_data_dir,
                                         'transform/transform_graph')
+
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._source_data_dir, 'schema_gen')
     previous_model = standard_artifacts.Model()
     previous_model.uri = os.path.join(self._source_data_dir, 'trainer/previous')
 
     self._input_dict = {
-        constants.EXAMPLES_KEY: [examples],
+        constants.EXAMPLES_KEY: self._single_artifact,
         constants.TRANSFORM_GRAPH_KEY: [transform_output],
         constants.SCHEMA_KEY: [schema],
         constants.BASE_MODEL_KEY: [previous_model]
@@ -180,6 +187,42 @@ class ExecutorTest(tf.test.TestCase):
         json.dumps(hyperparameters))
 
     self._input_dict[constants.HYPERPARAMETERS_KEY] = [hp_artifact]
+
+    self._exec_properties['module_file'] = self._module_file
+    self._do(self._trainer_executor)
+    self._verify_model_exports()
+    self._verify_model_run_exports()
+
+  def testMultipleArtifacts(self):
+    self._input_dict[constants.EXAMPLES_KEY] = self._multiple_artifacts
+    self._exec_properties['module_file'] = self._module_file
+    self._do(self._generic_trainer_executor)
+    self._verify_model_exports()
+    self._verify_model_run_exports()
+
+  def testDoWithCustomSplits(self):
+    # Update input dict.
+    io_utils.copy_dir(
+        os.path.join(self._source_data_dir,
+                     'transform/transformed_examples/data/train'),
+        os.path.join(self._output_data_dir, 'data/training'))
+    io_utils.copy_dir(
+        os.path.join(self._source_data_dir,
+                     'transform/transformed_examples/data/eval'),
+        os.path.join(self._output_data_dir, 'data/evaluating'))
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(self._output_data_dir, 'data')
+    examples.split_names = artifact_utils.encode_split_names(
+        ['training', 'evaluating'])
+    self._input_dict[constants.EXAMPLES_KEY] = [examples]
+
+    # Update exec properties skeleton with custom splits.
+    self._exec_properties['train_args'] = json_format.MessageToJson(
+        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000),
+        preserving_proto_field_name=True)
+    self._exec_properties['eval_args'] = json_format.MessageToJson(
+        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500),
+        preserving_proto_field_name=True)
 
     self._exec_properties['module_file'] = self._module_file
     self._do(self._trainer_executor)

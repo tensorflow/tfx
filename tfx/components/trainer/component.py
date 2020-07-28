@@ -81,8 +81,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
   ```
 
   ## Example 2: Training through a cloud provider
@@ -94,8 +94,8 @@ class Trainer(base_component.BaseComponent):
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
       transform_graph=transform.outputs['transform_graph'],
-      train_args=trainer_pb2.TrainArgs(num_steps=10000),
-      eval_args=trainer_pb2.EvalArgs(num_steps=5000))
+      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
   ```
   """
 
@@ -169,13 +169,15 @@ class Trainer(base_component.BaseComponent):
         based trainer. See 'module_file' for the required signature of the UDF.
         Exactly one of 'module_file' or 'trainer_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance or a dict, containing args
-        used for training. Current only num_steps is available. If it's provided
-        as a dict and any field is a RuntimeParameter, it should have the same
-        field names as a TrainArgs proto message.
+        used for training. Currently only splits and num_steps are available. If
+        it's provided as a dict and any field is a RuntimeParameter, it should
+        have the same field names as a TrainArgs proto message. Default
+        behavior (when splits is empty) is train on `train` split.
       eval_args: A trainer_pb2.EvalArgs instance or a dict, containing args
-        used for evaluation. Current only num_steps is available. If it's
-        provided as a dict and any field is a RuntimeParameter, it should have
-        the same field names as a EvalArgs proto message.
+        used for evaluation. Currently only splits and num_steps are available.
+        If it's provided as a dict and any field is a RuntimeParameter, it
+        should have the same field names as a EvalArgs proto message. Default
+        behavior (when splits is empty) is evaluate on `eval` split.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
       custom_executor_spec: Optional custom executor spec.
@@ -198,8 +200,8 @@ class Trainer(base_component.BaseComponent):
     """
     if [bool(module_file), bool(run_fn), bool(trainer_fn)].count(True) != 1:
       raise ValueError(
-          "Exactly one of 'module_file', 'trainer_fn', or 'run_fn' must be supplied."
-      )
+          "Exactly one of 'module_file', 'trainer_fn', or 'run_fn' must be "
+          "supplied.")
 
     if bool(examples) == bool(transformed_examples):
       raise ValueError(
