@@ -248,11 +248,14 @@ class UtilsTest(tf.test.TestCase):
                                                  splits)
 
   def testVersionNoMatching(self):
+    span_dir = os.path.join(self._input_base_path, 'span01', 'wrong')
+    io_utils.write_string_file(span_dir, 'testing_version_no_matching')
+
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-                                    pattern='version{VERSION}/split1/*'),
+            pattern='span{SPAN}/version{VERSION}/split1/*'),
         example_gen_pb2.Input.Split(name='s2',
-                                    pattern='version{VERSION}/split2/*')
+            pattern='span{SPAN}/version{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot find matching for split'):
@@ -267,14 +270,14 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*'),
         example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
+    with self.assertRaisesRegexp(ValueError, 'Cannot find properties'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                  splits)
 
-  def testVersionWrongFormat(self):
-    wrong_span = os.path.join(self._input_base_path, 'versionx', 'split1',
+  def testVersionNoSpan(self):
+    wrong_version = os.path.join(self._input_base_path, 'versionx', 'split1',
                               'data')
-    io_utils.write_string_file(wrong_span, 'testing_wrong_version')
+    io_utils.write_string_file(wrong_version, 'testing_wrong_version')
 
     splits = [
         example_gen_pb2.Input.Split(name='s1',
@@ -282,10 +285,27 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2',
                                     pattern='version{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
-      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path, splits)
+    with self.assertRaisesRegexp(ValueError,
+        'Version spec provided, but Span spec is not present'):
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits)
 
-  def testCalculateSplitsFpSpanAndVersion(self):
+  def testVersionWrongFormat(self):
+    wrong_version = os.path.join(self._input_base_path, 'span01', 'versionx',
+                                 'split1', 'data')
+    io_utils.write_string_file(wrong_version, 'testing_wrong_version')
+
+    splits = [
+        example_gen_pb2.Input.Split(name='s1',
+            pattern='span{SPAN}/version{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(name='s2',
+            pattern='span{SPAN}/version{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegexp(ValueError, 'Cannot find properties'):
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits)
+
+  def testCalculateSplitsFingerprintSpanAndVersion(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',
                                    'split1', 'data')
