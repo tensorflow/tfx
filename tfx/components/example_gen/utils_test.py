@@ -309,7 +309,7 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('0', version)
   
   def testHaveSpanAndVersion(self):
-    # Test specific behavior when Span spec is present but Version is not.
+    # Test specific behavior when both Span and Version are present.
     split1 = os.path.join(self._input_base_path, 'span1', 'version1', 'split1',
                           'data')
     io_utils.write_string_file(split1, 'testing')
