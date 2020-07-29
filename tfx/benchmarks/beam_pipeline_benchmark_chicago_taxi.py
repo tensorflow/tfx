@@ -32,7 +32,7 @@ class BeamPipelineBenchmarkChicagoTaxi(
     big_shuffle_output_file = os.environ['BIG_SHUFFLE_OUTPUT_FILE']
 
     super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
-        min_num_workers=3, max_num_workers=4,
+        min_num_workers=1, max_num_workers=32,
         base_dir=base_dir,
         big_shuffle_input_file=big_shuffle_input_file,
         big_shuffle_output_file=big_shuffle_output_file,
