@@ -248,7 +248,7 @@ def _glob_and_match_span_version(uri: Text,
     result = re.search(split_regex_pattern, file_path)
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
-      
+
     # Uses str instead of int because of zero padding digits.
     select_span = result.group(SPAN_PROPERTY_NAME)
     try:
@@ -272,7 +272,6 @@ def _glob_and_match_span_version(uri: Text,
       latest_version = select_version
     if latest_version is None or version >= int(latest_version):
       latest_version = select_version
-
 
   if latest_span is None or (is_match_version and latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
