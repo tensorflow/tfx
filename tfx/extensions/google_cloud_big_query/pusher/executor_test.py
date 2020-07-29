@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_bigquery_ml.pusher.executor."""
+"""Tests for tfx.extensions.google_cloud_big_query.ml.pusher.executor."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,7 +25,7 @@ from typing import Any, Dict, Text
 
 from google.cloud import bigquery
 
-from tfx.extensions.google_cloud_big_query_ml.pusher.executor import Executor
+from tfx.extensions.google_cloud_big_query.pusher.executor import Executor
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import json_utils

@@ -40,11 +40,14 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform):
+  def _verify_outputs(self, transform, materialize=True):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     transform.outputs['transformed_examples'].type_name)
+    if materialize:
+      self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                       transform.outputs['transformed_examples'].type_name)
+    else:
+      self.assertNotIn('transformed_examples', transform.outputs.keys())
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
@@ -78,6 +81,14 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(preprocessing_fn,
                      transform.exec_properties['preprocessing_fn'])
 
+  def testConstructWithMaterializationDisabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        materialize=False)
+    self._verify_outputs(transform, materialize=False)
+
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
@@ -109,6 +120,16 @@ class ComponentTest(tf.test.TestCase):
         json_format.MessageToJson(splits_config,
                                   preserving_proto_field_name=True),
         transform.exec_properties['splits_config'])
+
+  def testConstructWithMaterializationDisabledButOutputExamples(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          materialize=False,
+          transformed_examples=channel_utils.as_channel(
+              [standard_artifacts.Examples()]))
 
 
 if __name__ == '__main__':
