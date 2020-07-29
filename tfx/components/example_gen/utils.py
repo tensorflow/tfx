@@ -316,11 +316,13 @@ def _retrieve_latest_span_version(uri: Text,
 
   if SPAN_SPEC in split.pattern:
     if split.pattern.count(SPAN_SPEC) != 1:
-      raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
+      raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC, 
+                                                         split.pattern))
 
     if VERSION_SPEC in split.pattern:
       if split.pattern.count(VERSION_SPEC) != 1:
-        raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
+        raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
+                                                           split.pattern))
 
       latest_span, latest_version = _glob_and_match_span_version(uri, split,
           True)

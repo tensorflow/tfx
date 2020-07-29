@@ -253,9 +253,7 @@ class UtilsTest(tf.test.TestCase):
 
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='span{SPAN}/version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='span{SPAN}/version{VERSION}/split2/*')
+            pattern='span{SPAN}/version{VERSION}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError,
                                  'Cannot find matching for split'):
@@ -267,8 +265,7 @@ class UtilsTest(tf.test.TestCase):
     io_utils.write_string_file(wrong_span, 'testing_wrong_span')
 
     splits = [
-        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2', pattern='span{SPAN}/split2/*')
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
@@ -281,26 +278,36 @@ class UtilsTest(tf.test.TestCase):
 
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='span{SPAN}/version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='span{SPAN}/version{VERSION}/split2/*')
+            pattern='span{SPAN}/version{VERSION}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                           splits)
 
+  def testMultipleSpecs(self):
+    splits1 = [
+        example_gen_pb2.Input.Split(name='s1',
+            pattern='span1{SPAN}/span{SPAN}/split1/*')
+    ]
+    with self.assertRaisesRegexp(ValueError, 'Only one {SPAN} is allowed'):
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits1)
+
+    splits2 = [
+        example_gen_pb2.Input.Split(name='s1',
+            pattern='span{SPAN}/ver1{VERSION}/ver2{VERSION}/split1/*')
+    ]
+    with self.assertRaisesRegexp(ValueError, 'Only one {VERSION} is allowed'):
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits2)
+
   def testHaveSpanNoVersion(self):
     # Test specific behavior when Span spec is present but Version is not.
     split1 = os.path.join(self._input_base_path, 'span1', 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
-    split2 = os.path.join(self._input_base_path, 'span1', 'split2', 'data')
-    io_utils.write_string_file(split2, 'testing2')
 
     splits = [
-        example_gen_pb2.Input.Split(name='s1',
-            pattern='span{SPAN}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='span{SPAN}/split2/*')
+        example_gen_pb2.Input.Split(name='s1', pattern='span{SPAN}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -313,15 +320,10 @@ class UtilsTest(tf.test.TestCase):
     split1 = os.path.join(self._input_base_path, 'span1', 'version1', 'split1',
                           'data')
     io_utils.write_string_file(split1, 'testing')
-    split2 = os.path.join(self._input_base_path, 'span1', 'version1', 'split2',
-                          'data')
-    io_utils.write_string_file(split2, 'testing2')
 
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='span{SPAN}/version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='span{SPAN}/version{VERSION}/split2/*')
+            pattern='span{SPAN}/version{VERSION}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -333,9 +335,7 @@ class UtilsTest(tf.test.TestCase):
     # Test specific behavior when Version spec is present but Span is not.
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='version{VERSION}/split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='version{VERSION}/split2/*')
+            pattern='version{VERSION}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError,
         'Version spec provided, but Span spec is not present'):
@@ -346,14 +346,10 @@ class UtilsTest(tf.test.TestCase):
     # Test specific behavior when neither Span nor Version spec is present.
     split1 = os.path.join(self._input_base_path, 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
-    split2 = os.path.join(self._input_base_path, 'split2', 'data')
-    io_utils.write_string_file(split2, 'testing2')
 
     splits = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='split1/*'),
-        example_gen_pb2.Input.Split(name='s2',
-            pattern='split2/*')
+            pattern='split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
