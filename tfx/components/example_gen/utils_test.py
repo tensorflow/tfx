@@ -337,7 +337,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2',
             pattern='version{VERSION}/split2/*')
     ]
-    with self.assertRaisesRegexp(ValueError, 
+    with self.assertRaisesRegexp(ValueError,
         'Version spec provided, but Span spec is not present.'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                           splits)
@@ -382,7 +382,8 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
-      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path, splits)
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits)
 
     span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'ver01',
                                    'split2', 'data')
@@ -400,7 +401,8 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
-      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path, splits)
+      utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
+                                                          splits)
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02',
                                    'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')

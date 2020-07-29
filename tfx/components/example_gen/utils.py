@@ -237,8 +237,6 @@ def _glob_and_match_span_version(uri: Text,
   logging.info('Span regex pattern for split %s: %s', split.name,
                split_regex_pattern)
 
-  num_groups = re.compile(split_regex_pattern).groups
-  
   latest_span = None
   latest_version = None
 
