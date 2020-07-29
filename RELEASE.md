@@ -57,6 +57,9 @@
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
     previous module path from `tfx.components` is not available anymore.
+*   Moved BigQuery ML Pusher to `tfx.extensions.google_cloud_big_query.pusher`.
+    The previous module path from `tfx.extensions.google_cloud_big_query_ml`
+    is not available anymore.
 *   Updated beam pipeline args, users now need to set both `direct_running_mode`
     and `direct_num_workers` explicitly for multi-processing.
 *   Added required 'output_data_format' execution property to
