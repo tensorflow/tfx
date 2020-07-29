@@ -37,6 +37,7 @@ def make_required_install_packages():
       'ml-metadata>=0.22.1,<0.23',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
+      # TODO(b/157188303): change to 'pyarrow>=0.17,<0.18' before 0.23 release.
       'pyarrow>=0.16,<0.17',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
