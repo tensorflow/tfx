@@ -125,7 +125,7 @@ def _need_chief_oracle(exec_properties: Dict[Text, Any]) -> bool:
   """Returns True if the Tuner instance requires a chief oracle."""
   # TODO(b/160902662): Skip chief oracle for CloudTuner that does not require
   #                    chief oracle for distributed tuning (it is a no-op,
-  #                    because it simply forwards  to the AI Platform Optimizer
+  #                    because it simply forwards to the AI Platform Optimizer
   #                    service).
   del exec_properties
   return True
@@ -258,6 +258,7 @@ class _Executor(base_executor.BaseExecutor):
 
     if not self._is_chief:
       logging.info('Returning since this is not chief worker.')
+      return
 
     tuner_executor.write_best_hyperparameters(tuner, output_dict)
 
