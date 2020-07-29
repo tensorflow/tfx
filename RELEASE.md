@@ -48,6 +48,9 @@
     thread safe.
 *   Stopped requiring `avro-python3`.
 *   Requires [Bazel](https://bazel.build/) to build TFX source code.
+*   Upgraded python version in TFX docker images to 3.7. Older version of
+    python (2.7/3.5/3.6) is not available anymore in `tensorflow/tfx` images
+    on docker hub. Virtualenv is not used anymore.
 
 ## Breaking changes
 
