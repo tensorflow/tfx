@@ -32,6 +32,9 @@
 *   Supported multiple artifacts in an output Channel to match a certain input
     Channel's artifact count. This enables Transform component to process
     multiple artifacts.
+*   Transform component's transformed examples output is now optional (enabled
+    by default) -- specify parameter `materialize=False` when constructing
+    the component to disable.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.

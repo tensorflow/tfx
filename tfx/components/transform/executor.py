@@ -329,18 +329,28 @@ class Executor(base_executor.BaseExecutor):
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
-    # TODO(b/161490287): move the split_names setting to executor for all
-    #                    components.
-    transformed_example_artifact = artifact_utils.get_single_instance(
-        output_dict[TRANSFORMED_EXAMPLES_KEY])
-    transformed_example_artifact.split_names = artifact_utils.encode_split_names(
-        artifact.DEFAULT_EXAMPLE_SPLITS)
-    transformed_train_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
-    transformed_eval_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
+
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
+
+    materialize_output_paths = []
+    if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
+      transformed_example_artifact = artifact_utils.get_single_instance(
+          output_dict[TRANSFORMED_EXAMPLES_KEY])
+      # TODO(b/161490287): move the split_names setting to executor for all
+      # components.
+      transformed_example_artifact.split_names = (
+          artifact_utils.encode_split_names(artifact.DEFAULT_EXAMPLE_SPLITS))
+      transformed_train_output = artifact_utils.get_split_uri(
+          output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
+      transformed_eval_output = artifact_utils.get_split_uri(
+          output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
+      materialize_output_paths = [
+          os.path.join(transformed_train_output,
+                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
+          os.path.join(transformed_eval_output,
+                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+      ]
 
     def _GetCachePath(label, params_dict):
       if label not in params_dict:
@@ -377,12 +387,8 @@ class Executor(base_executor.BaseExecutor):
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: [
-            os.path.join(transformed_train_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-            os.path.join(transformed_eval_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-        ],
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL:
+            materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
     cache_output = _GetCachePath('cache_output_path', output_dict)
