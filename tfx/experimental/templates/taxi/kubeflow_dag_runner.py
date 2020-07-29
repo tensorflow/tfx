@@ -70,25 +70,12 @@ def run():
   # TODO(b/157598477) Find a better way to pass parameters from CLI handler to
   # pipeline DSL file, instead of using environment vars.
   tfx_image = os.environ.get('KUBEFLOW_TFX_IMAGE', None)
-  # TODO(StubExecutor): GCS directory where KFP outputs are recorded
-  test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
-  # TODO(StubExecutor): customize self.stubbed_component_ids to replace components
-  # with BaseStubExecutor
-  stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
-                           'SchemaGen', 'ExampleValidator',
-                           'Trainer', 'Transform', 'Evaluator', 'Pusher']
-  # TODO(StubExecutor): (Optional) Use stubbed_component_map to insert custom stub
-  # executor class as a value and component id as a key.
-  stubbed_component_map = {}
+
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       # TODO(StubExecutor): Uncomment below to use stub executors.
-      supported_launcher_classes=[
-          stub_component_launcher.StubComponentLauncher.get_stub_launcher_class(
-              test_data_dir,
-              stubbed_component_ids,
-              stubbed_component_map
-          )
-      ],
+      # supported_launcher_classes=[
+      #     stub_component_launcher.StubComponentLauncher
+      # ],
       kubeflow_metadata_config=metadata_config, tfx_image=tfx_image)
   pod_labels = kubeflow_dag_runner.get_default_pod_labels()
   pod_labels.update({telemetry_utils.LABEL_KFP_SDK_ENV: 'tfx-template'})

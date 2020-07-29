@@ -18,9 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, List, Text, Type
-
-from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
 
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
@@ -28,20 +25,19 @@ class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   This stub component launcher cannot be defined in the kubeflow_dag_runner.py
   because launcher class is imported by the module path.
   """
+  pass
+# TODO(StubExecutor): GCS directory where KFP outputs are recorded
+test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
+# TODO(StubExecutor): customize self.stubbed_component_ids to replace components
+# with BaseStubExecutor
+stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
+                         'SchemaGen', 'ExampleValidator',
+                         'Trainer', 'Transform', 'Evaluator', 'Pusher']
+# TODO(StubExecutor): (Optional) Use stubbed_component_map to insert custom stub
+# executor class as a value and component id as a key.
+stubbed_component_map = {}
 
-def get_stub_launcher_class(
-    stub_launcher: Type[StubComponentLauncher],
-    test_data_dir: Text,
-    stubbed_component_ids: List[Text],
-    stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
-    ) -> Type[StubComponentLauncher]:
-  """Returns a StubComponentLauncher class.
-  Returns:
-    StubComponentLauncher class holding stub executors.
-  """
-  stub_launcher.stubbed_component_map = dict(stubbed_component_map)
-  for component_id in stubbed_component_ids:
-    stub_launcher.stubbed_component_map[component_id] = \
-                    base_stub_executor.BaseStubExecutor
-  stub_launcher.test_data_dir = test_data_dir
-  return stub_launcher
+StubComponentLauncher.get_stub_launcher_class(
+    test_data_dir,
+    stubbed_component_ids,
+    stubbed_component_map)
