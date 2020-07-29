@@ -261,7 +261,7 @@ will use `my_pipeline`.
 
 ```python
 PIPELINE_NAME="my_pipeline"
-PROJECT_DIR=os.path.join(os.path.expanduser("~"),"AIHub",PIPELINE_NAME)
+PROJECT_DIR=os.path.join(os.path.expanduser("~"),"imported",PIPELINE_NAME)
 ```
 
 The notebook then uses the `tfx` CLI to copy the pipeline template. This
