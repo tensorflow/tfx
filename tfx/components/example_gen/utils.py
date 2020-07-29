@@ -224,18 +224,24 @@ def _glob_and_match_span_version(uri: Text,
   split_regex_pattern = _glob_to_regex(split_pattern)
 
   split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
-  if is_match_version:
-    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-  logging.info('Span glob pattern for split %s: %s', split.name,
-               split_glob_pattern)
-
   split_regex_pattern = split_regex_pattern.replace(SPAN_SPEC,
       '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+
   if is_match_version:
+    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC,
         '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
+
+  logging.info('Span glob pattern for split %s: %s', split.name,
+               split_glob_pattern)  
   logging.info('Span regex pattern for split %s: %s', split.name,
                split_regex_pattern)
+
+  num_groups = re.compile(split_regex_pattern).groups
+  if is_match_version and num_groups != 2:
+    raise ValueError('Span and version regex should have two groups.')
+  elif not is_match_version and num_groups != 1:
+    raise ValueError('Span only regex should have one group.')
 
   files = tf.io.gfile.glob(split_glob_pattern)
   latest_span = None
