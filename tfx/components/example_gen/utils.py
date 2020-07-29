@@ -232,9 +232,8 @@ def _glob_and_match_span_version(uri: Text,
     split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC,
         '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
 
-  logging.info('Span glob pattern for split %s: %s', split.name,
-               split_glob_pattern)  
-  logging.info('Span regex pattern for split %s: %s', split.name,
+  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
+  logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
 
   num_groups = re.compile(split_regex_pattern).groups
@@ -252,7 +251,6 @@ def _glob_and_match_span_version(uri: Text,
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
 
-    # Uses str instead of int because of zero padding digits.
     select_span = result.group(SPAN_PROPERTY_NAME)
     try:
       span = int(select_span)
@@ -271,6 +269,7 @@ def _glob_and_match_span_version(uri: Text,
                           split_regex_pattern))
 
     if latest_span is None or span >= int(latest_span):
+      # Uses str instead of int because of zero padding digits.
       latest_span = select_span
       latest_version = select_version
     if latest_version is None or version >= int(latest_version):
@@ -319,15 +318,13 @@ def _retrieve_latest_span_version(uri: Text,
       raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC,
                                                          split.pattern))
 
-    if VERSION_SPEC in split.pattern:
-      if split.pattern.count(VERSION_SPEC) != 1:
-        raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
+    is_match_version = VERSION_SPEC in split.pattern
+    if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
+      raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
                                                            split.pattern))
-      latest_span, latest_version = _glob_and_match_span_version(uri, split,
-                                                                 True)
 
-    else:
-      latest_span, _ = _glob_and_match_span_version(uri, split, False)
+    latest_span, latest_version = _glob_and_match_span_version(uri, split,
+                                                               is_match_version)
 
   elif VERSION_SPEC in split.pattern:
     raise ValueError('Version spec provided, but Span spec is not present')
