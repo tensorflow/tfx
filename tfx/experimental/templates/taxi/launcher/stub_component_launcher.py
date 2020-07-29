@@ -22,28 +22,12 @@ from typing import Dict, List, Text, Type
 
 from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
-from tfx.experimental.templates.taxi.pipeline import configs
 
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template.
   This stub component launcher cannot be defined in the kubeflow_dag_runner.py
   because launcher class is imported by the module path.
   """
-  def __init__(self, **kwargs):
-    super(StubComponentLauncher, self).__init__(**kwargs)
-
-    # TODO(StubExecutor): GCS directory where KFP outputs are recorded
-    self.test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
-    # TODO(StubExecutor): customize self.stubbed_component_ids to replace components
-    # with BaseStubExecutor
-    self.stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
-                                  'SchemaGen', 'ExampleValidator',
-                                  'Trainer', 'Transform', 'Evaluator', 'Pusher']
-    # TODO(StubExecutor): (Optional) Use stubbed_component_map to insert custom stub
-    # executor class as a value and component id as a key.
-    self.stubbed_component_map = {}
-    for c_id in self.stubbed_component_ids:
-      self.stubbed_component_map[c_id] = base_stub_executor.BaseStubExecutor
 
 def get_stub_launcher_class(
     stub_launcher: Type[StubComponentLauncher],
