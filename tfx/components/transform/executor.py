@@ -46,7 +46,6 @@ from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
 from tfx.proto import example_gen_pb2
 from tfx.proto import transform_pb2
-from tfx.types import artifact
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
@@ -325,7 +324,8 @@ class Executor(base_executor.BaseExecutor):
       splits_config.analyze_splits.append('train')
       splits_config.transform_splits.extend(
           artifact_utils.decode_split_names(
-              input_dict[EXAMPLES_KEY][0].split_names))
+              artifact_utils.get_single_instance(
+                  input_dict[EXAMPLES_KEY]).split_names))
       logging.info("Analyze the 'train' split and transform all splits when "
                    "splits_config is not set.")
 
@@ -361,15 +361,15 @@ class Executor(base_executor.BaseExecutor):
       analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
     transform_data_paths = []
-    transformed_examples = []
+    transform_materialize_output_paths = []
     for split in splits_config.transform_splits:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       transform_data_paths.append(io_utils.all_files_pattern(data_uri))
-      transformed_output = artifact_utils.get_split_uri(
-          output_dict[TRANSFORMED_EXAMPLES_KEY], split)
-      transformed_examples.append(
-          os.path.join(transformed_output,
-                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
+      transformed_example = os.path.join(
+          artifact_utils.get_split_uri(
+              output_dict[TRANSFORMED_EXAMPLES_KEY], split),
+          _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+      transform_materialize_output_paths.append(transformed_example)
 
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     logging.debug('Using temp path %s for tft.beam', temp_path)
@@ -406,7 +406,8 @@ class Executor(base_executor.BaseExecutor):
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: transformed_examples,
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: 
+            transform_materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
     cache_output = _GetCachePath('cache_output_path', output_dict)
