@@ -185,10 +185,97 @@ class BertPreprocessor():
         default_value=tf.constant(1, dtype=tf.int64))
     return word_ids, input_mask, segment_ids
 
-  def char_to_bert_token_index(
+
+  def char_index_to_bert_index(
       self,
+      char_index,
+      original_sentence,
+      tokenized_sentence,
+      shifts=0):
+    
+    @tf.function
+    def space_seperate_helper(x):
+      s, c = x[0], x[1]
+      comb = (tf.constant(0), tf.constant(0))
+      condition = lambda i, cur: tf.less(i, c)
+      def action(i, cur):
+        char = tf.strings.substr(s, tf.squeeze(i), 1)
+        return tf.cond(tf.equal(char, ' '), lambda: (i+1, cur+1), lambda: (i+1, cur))
+      return tf.while_loop(condition, action, comb)[1]
+    
+    space_seperate_result = tf.map_fn(
+        space_seperate_helper,
+        (original_sentence, char_index),
+        dtype=tf.int32)
+
+    @tf.function
+    def find_bert_index(x):
+      index, rag = x[0], x[1]
+      comb = (tf.constant(0), tf.constant(0))
+      # account for special tokens
+      condition = lambda i, cur: tf.less(i, index+shifts)
+      def action(i, cur):
+        return (i+1, cur + tf.size(rag[i]))
+      return tf.while_loop(condition, action, comb)[1]
+
+    answer = tf.map_fn(
+        find_bert_index,
+        (space_seperate_result, tokenized_sentence),
+        dtype=tf.int32)
+
+    return answer
+
+  def preprocess_squad(
+      self,
+      max_len,
       context,
       question,
-      char_index):
+      answer_start,
+      answer_text):
 
+    token_question = self.tokenize_single_sentence_unpad(
+        question,
+        None
+    )
+
+    token_contest = self.tokenize_single_sentence_unpad(
+        context,
+        None,
+        False,
+        True
+    )
+
+    label_start = self.char_index_to_bert_index(
+        answer_start,
+        question,
+        token_question,
+        1
+    )
+
+    vocab_file_path = self._model.resolved_object.vocab_file.asset_path
+    tokenizer = text.BertTokenizer(
+        vocab_file_path,
+        lower_case=self._do_lower_case,
+        token_out_type=tf.int64)
+    tokenized_answer_text = tokenizer.tokenize(answer_text)
+    # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
+    tokenized_answer_text = tokenized_answer_text.merge_dims(-2, -1)
+    answer_size = tf.map_fn(tf.size, tokenized_answer_text)
+    # Account for 0 index
+    label_end = label_start + answer_size - 1
+    labels = tf.stack([label_start, label_end], axis=1)
+    # Dealing with question and context
+    word_ids = tf.concat([token_question, token_contest], 1)
+    word_ids = word_ids.to_tensor(
+        shape=[None, max_len],
+        default_value=tf.constant(self._pad_id, dtype=tf.int64))
+
+    input_mask = tf.cast(tf.not_equal(word_ids, self._pad_id), tf.int64)
+    # Fill a ragged tensor of zero with word_id_a's shape
+    segment_ids = tf.cast(token_question < 0, tf.int64)
+    segment_ids = segment_ids.to_tensor(
+        shape=[None, max_len],
+        default_value=tf.constant(1, dtype=tf.int64))
+
+    return word_ids, input_mask, segment_ids, labels
     

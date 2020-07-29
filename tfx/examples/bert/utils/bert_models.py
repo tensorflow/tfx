@@ -128,3 +128,25 @@ def build_and_compile_bert_classifier(
       metrics=metrics
   )
   return model
+
+def build_bert_question_answering(
+    bert_layer,
+    max_len,
+    dropout=0.1,
+    activation=None):
+  
+  input_layer_names = [
+      "input_word_ids",
+      "input_mask",
+      "segment_ids"]
+
+  input_layers = [
+      keras.layers.Input(
+          shape=(max_len,),
+          dtype=tf.int32,
+          name=name) for name in input_layer_names]
+
+  _, sequence_output = bert_layer(input_layers)
+  output = tf.keras.layers.Dense(2, dropout=dropout)(sequence_output)
+  model = tf.keras.Model(input_layers, output)
+  return model
