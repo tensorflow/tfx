@@ -124,7 +124,7 @@ def _get_common_variables(dataset):
   """Returns metadata schema, preprocessing fn, input dataset metadata."""
 
   tf_metadata_schema = benchmark_utils.read_schema(
-      dataset.tf_metadata_schema_path())
+      "../examples/chicago_taxi_pipeline/data/user_provided_schema/schema.pbtxt")
 
   preprocessing_fn = dataset.tft_preprocessing_fn()
 

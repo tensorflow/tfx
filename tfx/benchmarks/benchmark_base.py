@@ -29,6 +29,7 @@ flags.DEFINE_string(
     "Beam runner to use - any runner name accepted by "
     "apache_beam.runners.create_runner")
 
+
 class BenchmarkBase(test.Benchmark):
   """Base class for running Beam pipelines on various runners"""
 
@@ -37,32 +38,32 @@ class BenchmarkBase(test.Benchmark):
     self.beam_pipeline_mode = mode_config.DEFAULT_MODE
     self.num_workers = 1
     self.cloud_dataflow_temp_loc = None
+    self.cloud_dataflow_project = None
 
-  def _set_cloud_dataflow_flags(self):
-    self.flags = ["--runner=DataflowRunner",
-                  "--project=tfx-keshav",
-                  "--temp_location=" + self.cloud_dataflow_temp_loc,
-                  "--num_workers=%d" % self.num_workers,
-                  "--max_num_workers=" + self.num_workers,
-                  "--no_pipeline_type_check",
-                  "--setup_file=./setup.py",
-                  "--autoscaling_algorithm=NONE",
-                  "--region=us-central1"]
+  def _set_cloud_dataflow_options(self):
+    self.pipeline_options = PipelineOptions(runner="DataflowRunner",
+                                            project=self.cloud_dataflow_project,
+                                            temp_location=self.cloud_dataflow_temp_loc,
+                                            num_workers=self.num_workers,
+                                            no_pipeline_type_check=True,
+                                            setup_file="./setup.py",
+                                            autoscaling_algorithm="NONE",
+                                            region="us-central1")
 
-  def _set_flink_on_k8s_operator_flags(self):
-    self.flags = ["--runner=PortableRunner",
-                  "--job_endpoint=localhost:8099",
-                  "--artifact_endpoint=localhost:8098",
-                  "--environment_type=EXTERNAL",
-                  "--environment_config=localhost:50000",
-                  "--parallelism=%d" % self.num_workers,
-                  "--no_pipeline_type_check"]
+  def _set_flink_on_k8s_operator_options(self):
+    self.pipeline_options = PipelineOptions(runner="PortableRunner",
+                                            job_endpoint="localhost:8099",
+                                            artifact_endpoint="localhost:8098",
+                                            environment_type="EXTERNAL",
+                                            environment_config="localhost:50000",
+                                            parallelism=self.num_workers,
+                                            no_pipeline_type_check=True)
 
-  def _set_local_scaled_execution_flags(self):
-    self.flags = ["--runner=DirectRunner",
-                  "--direct_num_workers%d" % self.num_workers,
-                  "--direct_running_mode=multi_processing",
-                  "--no_pipeline_type_check"]
+  def _set_local_scaled_execution_options(self):
+    self.pipeline_options = PipelineOptions(runner="DirectRunner",
+                                            direct_running_mode="multi_processing",
+                                            direct_num_workers=self.num_workers,
+                                            no_pipeline_type_check=True)
 
   def set_beam_pipeline_mode(self, beam_pipeline_mode):
     assert beam_pipeline_mode in mode_config.modes
@@ -73,6 +74,9 @@ class BenchmarkBase(test.Benchmark):
 
   def set_cloud_dataflow_temp_loc(self, cloud_dataflow_temp_loc):
     self.cloud_dataflow_temp_loc = cloud_dataflow_temp_loc
+
+  def set_cloud_dataflow_project(self, cloud_dataflow_project):
+    self.cloud_dataflow_project = cloud_dataflow_project
 
   def _create_beam_pipeline_default(self):
     # FLAGS may not be parsed if the benchmark is instantiated directly by a
@@ -85,16 +89,15 @@ class BenchmarkBase(test.Benchmark):
 
   def _create_beam_pipeline(self):
     if self.beam_pipeline_mode == mode_config.LOCAL_SCALED_EXECUTION_MODE:
-      self._set_local_scaled_execution_flags()
+      self._set_local_scaled_execution_options()
 
     elif self.beam_pipeline_mode == mode_config.CLOUD_DATAFLOW_MODE:
-      self._set_cloud_dataflow_flags()
+      self._set_cloud_dataflow_options()
 
     elif self.beam_pipeline_mode == mode_config.FLINK_ON_K8S_MODE:
-      self._set_flink_on_k8s_operator_flags()
+      self._set_flink_on_k8s_operator_options()
 
     else:
-      return self._create_beam_pipeline_default()
+      return self._create_beam_pipeline_options()
 
-    pipeline_options = PipelineOptions(flags=self.flags)
-    return beam.Pipeline(options=pipeline_options)
+    return beam.Pipeline(options=self.pipeline_options)
