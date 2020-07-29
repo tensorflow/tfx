@@ -239,9 +239,9 @@ def _glob_and_match_span_version(uri: Text,
 
   num_groups = re.compile(split_regex_pattern).groups
   if is_match_version and num_groups != 2:
-    raise ValueError('Span and version regex should have two groups.')
+    raise ValueError('Span and version regex should have two groups')
   elif not is_match_version and num_groups != 1:
-    raise ValueError('Span only regex should have one group.')
+    raise ValueError('Span only regex should have one group')
 
   files = tf.io.gfile.glob(split_glob_pattern)
   latest_span = None
@@ -329,7 +329,7 @@ def _retrieve_latest_span_version(uri: Text,
       latest_span, _ = _glob_and_match_span_version(uri, split, False)
 
   elif VERSION_SPEC in split.pattern:
-    raise ValueError('Version spec provided, but Span spec is not present.')
+    raise ValueError('Version spec provided, but Span spec is not present')
 
   # Replace split.pattern so executor can find files after driver runs.
   if latest_span:
@@ -385,9 +385,9 @@ def calculate_splits_fingerprint_span_and_version(
 
     # Check if latest span and version are the same over all splits.
     if select_span != latest_span:
-      raise ValueError('Latest span should be the same for each split.')
+      raise ValueError('Latest span should be the same for each split')
     if select_version != latest_version:
-      raise ValueError('Latest version should be the same for each split.')
+      raise ValueError('Latest version should be the same for each split')
 
     # Calculate fingerprint.
     pattern = os.path.join(input_base_uri, split.pattern)

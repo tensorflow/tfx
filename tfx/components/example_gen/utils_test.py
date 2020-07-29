@@ -338,7 +338,7 @@ class UtilsTest(tf.test.TestCase):
             pattern='version{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(ValueError,
-        'Version spec provided, but Span spec is not present.'):
+        'Version spec provided, but Span spec is not present'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
                                                           splits)
 
