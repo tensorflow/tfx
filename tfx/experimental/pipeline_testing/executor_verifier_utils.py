@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@ import os
 import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-# from tensorflow_metadata.proto.v0 import anomalies_pb2
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 from typing import Dict, List, Text, Optional
 
 from tensorflow_model_analysis.view import SlicedMetrics
@@ -28,6 +28,7 @@ from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
+from tfx.utils import io_utils
 
 def _compare_relative_difference(value: float,
                                  expected_value: float,
@@ -148,6 +149,9 @@ def _compare_eval_results(output_uri: Text,
   for metric_name, value in slice_map[()].items():
     expected_value = expected_slice_map[()][metric_name]
     if not _compare_relative_difference(value, expected_value, threshold):
+      print("expected_value", expected_value)
+      print("value", value)
+      print("metric_name", metric_name)
       return False
   return True
 
@@ -173,7 +177,17 @@ def _compare_file_sizes(output_uri: Text,
         threshold):
       return False
   return True
-
+def _compare_anomalies(output_uri: Text,
+                       expected_uri: Text) -> bool:
+  anomalies_fn = tf.io.gfile.listdir(output_uri)[0]
+  expected_anomalies_fn = tf.io.gfile.listdir(expected_uri)[0]
+  anomalies = io_utils.parse_pbtxt_file(
+      os.path.join(output_uri, anomalies_fn),
+      anomalies_pb2.Anomalies())
+  expected_anomalies = io_utils.parse_pbtxt_file(
+      os.path.join(expected_uri, expected_anomalies_fn),
+      anomalies_pb2.Anomalies())
+  return expected_anomalies.anomaly_info == anomalies.anomaly_info
 def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
   """Calls verifier for a specific artifact.
 
@@ -202,5 +216,7 @@ def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
                          components.evaluator.constants.MODEL_KEY]:
     if not _compare_file_sizes(artifact.uri, output_uri, threshold):
       return False
-
+  # elif artifact_name in 'anomalies':
+  #   if not _compare_anomalies(artifact.uri, output_uri):
+  #     return False
   return _verify_file_dir(output_uri, artifact.uri)
