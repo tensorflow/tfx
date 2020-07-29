@@ -21,6 +21,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
 from tfx.extensions.google_cloud_kubernetes import runner
+from tfx.orchestration import test_utils
 from tfx.utils import json_utils
 
 # Keys to the items in custom_config passed as a part of exec_properties.
@@ -70,9 +71,17 @@ class GenericExecutor(base_executor.BaseExecutor):
     executor_class = self._GetExecutorClass()
     executor_class_path = '%s.%s' % (executor_class.__module__,
                                      executor_class.__name__)
+    
+    unique_id = str(self._unique_id)
+    if self._unique_id is None:
+      absl.logging.warning(
+        "Missing unique_id in executor, using a random id instead.")
+      unique_id = test_utils.random_id()
+
     # Note: exec_properties['custom_config'] here is a dict.
     return runner.start_gke_training(input_dict, output_dict, exec_properties,
-                                     executor_class_path, training_inputs)
+                                     executor_class_path, training_inputs,
+                                     unique_id)
 
 
 class Executor(GenericExecutor):

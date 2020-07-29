@@ -37,24 +37,41 @@ _TFX_IMAGE = "gcr.io/tfx-eric/gpu-tfx"
 
 _COMMAND = ["python", "-m", "tfx.scripts.run_executor"]
 
-def _get_pod_name(name: Text="keras", job: Text="worker", index:int=0):
-  return name + '-' + job + '-' + str(index)
+
+def _build_pod_names(num_workers: int, unique_id: Text) -> List[Text]:
+  return ['training-worker-{}-{}'.format(unique_id, i) for i in range(num_workers)]
+
+
+def _build_service_names(num_workers: int, unique_id: Text) -> List[Text]:
+  return ['training-service-{}-{}'.format(unique_id, i) for i in range(num_workers)]
+
 
 def _pod_is_done(resp: client.V1Pod):
   return kube_utils.PodPhase(resp.status.phase).is_done
 
+
 def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
                        Any], exec_properties: Dict[Text,Any],
-                       name: Text="keras", job: Text="worker"):
-  num_workers = training_inputs.get("num_workers", 1)
-  num_gpus_per_worker = training_inputs.get("num_gpus_per_worker", 0)
+                       unique_id: Text):
+  """Create worker pods for multi-worker training."""
+  num_workers = training_inputs.get('num_workers', 1)
+  num_gpus_per_worker = training_inputs.get('num_gpus_per_worker', 0)
   api_instance = kube_utils.make_core_v1_api()
-  worker_hosts = ["{}:5000".format(_get_pod_name(name, job, i)) for i in range(num_workers)]
+
+  service_names = _build_service_names(num_workers=num_workers, unique_id=unique_id)
+  pod_names = _build_pod_names(num_workers=num_workers, unique_id=unique_id)
+  worker_hosts = ['{}:5000'.format(service_name) for service_name in service_names]
+
   # since worker_index is passed through custom_config in exec_properties,
   # save an original copy to be restored upon function completion.
   original_custom_config = exec_properties[constants.CUSTOM_CONFIG_KEY]
   custom_config = json.loads(exec_properties[constants.CUSTOM_CONFIG_KEY])
   training_args = custom_config[executor.TRAINING_ARGS_KEY]
+
+  # set worker_hosts in training args
+  training_args['worker_hosts'] = worker_hosts
+
+  # TODO(ericlege): consider using a jinja2 template instead
   for i in range(num_workers):
     # replace worker_index in training args
     training_args['worker_index'] = i
@@ -63,10 +80,10 @@ def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
     exec_properties_args = ['--exec-properties', json_exec_properties]
     pod = client.V1Pod(
       metadata=client.V1ObjectMeta(
-        name=_get_pod_name(name, job, i),
+        name=pod_names[i],
         labels={
-          'name': name,
-          'job': job,
+          'name': 'training',
+          'id': unique_id,
           'task': str(i),
         },
       ),
@@ -75,9 +92,7 @@ def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
           client.V1Container(
             name='worker-pod',
             image=_TFX_IMAGE,
-            # replace with file download
             command=_COMMAND,
-            # add other args
             args=job_args + exec_properties_args,
             ports=[
               client.V1ContainerPort(
@@ -97,24 +112,28 @@ def create_worker_pods(job_args:List[Text], training_inputs: Dict[Text,
     try:
       api_response = api_instance.create_namespaced_pod(namespace='default', body=pod)
     except ApiException as e:
-      print("Exception when calling CoreV1Api->create_namespaced_pod: %s\n" % e)
+      logging.error('Exception when calling CoreV1Api->create_namespaced_pod: %s\n' % e)
   exec_properties[constants.CUSTOM_CONFIG_KEY] = original_custom_config
-  print("created {} worker pods".format(num_workers))
+  logging.info('created {} worker pods'.format(num_workers))
 
 
 def create_worker_services(training_inputs: Dict[Text,
-                       Any], name="keras", job="worker"):
-  num_workers = training_inputs.get("num_workers", 1)
+                       Any], unique_id: Text):
+  """Create worker services for multi-worker training."""
+  num_workers = training_inputs.get('num_workers', 1)
+  service_names = _build_service_names(num_workers=num_workers, unique_id=unique_id)
   api_instance = kube_utils.make_core_v1_api()
+
+  # TODO(ericlege): consider using a jinja2 template instead
   for i in range(num_workers):
     service = client.V1Service(
       metadata=client.V1ObjectMeta(
-        name=_get_pod_name(name, job, i),
+        name=service_names[i],
       ),
       spec=client.V1ServiceSpec(
         selector={
-          'name': name,
-          'job': job,
+          'name': 'training',
+          'id': unique_id,
           'task': str(i),
         },
         ports=[
@@ -127,23 +146,22 @@ def create_worker_services(training_inputs: Dict[Text,
     try:
       api_response = api_instance.create_namespaced_service(namespace='default', body=service)
     except ApiException as e:
-      # TODO(ericlege): use absl
-      print("Exception when calling CoreV1Api->create_namespaced_service: %s\n" % e)
-  print("created {} worker services".format(num_workers))
+      logging.error('Exception when calling CoreV1Api->create_namespaced_service: %s\n' % e)
+  logging.info('created {} worker services'.format(num_workers))
 
 
 def delete_worker_services(training_inputs: Dict[Text,
-                       Any], name="keras", job="worker"):
-  num_workers = training_inputs.get("num_workers", 1)
+                       Any], unique_id: Text):
+  """Clean up worker services deployed to the kubernetes cluster."""
+  num_workers = training_inputs.get('num_workers', 1)
+  service_names = _build_service_names(num_workers=num_workers, unique_id=unique_id)
   api_instance = kube_utils.make_core_v1_api()
-  for i in range(num_workers):
-    service_name = name + '-' + job + '-' + str(i),
+  for service_name in service_names:
     try:
       api_response = api_instance.delete_namespaced_service(namespace='default', name=service_name)
     except ApiException as e:
-      # TODO(ericlege): use absl
-      print("Exception when calling CoreV1Api->delete_namespaced_service: %s\n" % e)
-  print("Deleted {} worker services".format(num_workers))
+      logging.error('Exception when calling CoreV1Api->delete_namespaced_service: %s\n' % e)
+  logging.info('Deleted {} worker services'.format(num_workers))
 
 
 def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
@@ -151,7 +169,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                        exec_properties: Dict[Text,
                                              Any], executor_class_path: Text,
                        training_inputs: Dict[Text,
-                                             Any]):
+                                             Any], unique_id: Text):
   """Start a trainer job on Google Kubernetes Engine (GKE).
 
   This is done by forwarding the inputs/outputs/exec_properties to the
@@ -195,29 +213,32 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
   ]
 
   # launch the services
-  create_worker_services(training_inputs=training_inputs)
+  create_worker_services(training_inputs=training_inputs, unique_id=unique_id)
 
   # launch the worker pods
   create_worker_pods(job_args=job_args,
-                    training_inputs=training_inputs,
-                    exec_properties=exec_properties)
+                     training_inputs=training_inputs,
+                     exec_properties=exec_properties,
+                     unique_id=unique_id)
 
   # wait for finish.
+  num_workers = training_inputs.get('num_workers', 1)
+  pod_names = _build_pod_names(unique_id=unique_id,
+                               num_workers=num_workers)
   resp = kube_utils.wait_pod(core_api=kube_utils.make_core_v1_api(),
-                      pod_name=_get_pod_name(), # chief
-                      namespace="default",
+                      pod_name=pod_names[0], # chief
+                      namespace='default',
                       exit_condition_lambda=_pod_is_done,
-                      condition_description="Chief finished",
+                      condition_description='Chief finished',
                       timeout_sec=1200, # wait for autoscaler
                       expotential_backoff=True,)
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
       raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
-                         ("default", _get_pod_name(), resp.status))
+                         ('default', _get_pod_name(), resp.status))
 
   # clean up
-  delete_worker_services(training_inputs=training_inputs)
+  delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)
 
   # GKE training complete
   #logging.info('Job \'%s\' successful.', job_name)
   logging.info('Job successful')
-
