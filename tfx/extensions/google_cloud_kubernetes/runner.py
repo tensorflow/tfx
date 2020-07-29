@@ -26,7 +26,8 @@ from tfx.extensions.google_cloud_kubernetes.trainer import executor
 from kubernetes.client.rest import ApiException
 import kubernetes.client as client
 
-#TODO: change
+# For maintenance, see:
+# https://gist.github.com/Eric-Le-Ge/a7ef6c5ae66d4af9cc886536d6724175
 _TFX_IMAGE = "gcr.io/tfx-eric/gpu-tfx"
 
 _COMMAND = ["python", "-m", "tfx.scripts.run_executor"]
