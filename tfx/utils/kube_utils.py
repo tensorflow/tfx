@@ -53,7 +53,7 @@ class PodPhase(enum.Enum):
 
   @property
   def is_done(self):
-    return self == self.SUCCEEDED or self == self.FAILED
+    return self in (self.SUCCEEDED, self.FAILED)
 
 
 class RestartPolicy(enum.Enum):
@@ -212,7 +212,7 @@ def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
   except k8s_client.rest.ApiException as e:
     if e.status != 404:
       raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                          (e.reason, e.body))
+                         (e.reason, e.body))
     return None
 
 def wait_pod(core_api: k8s_client.CoreV1Api,
@@ -221,7 +221,7 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
              exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
              condition_description: Text,
              timeout_sec: int = 300,
-             expotential_backoff:bool = False) -> k8s_client.V1Pod:
+             expotential_backoff: bool = False) -> k8s_client.V1Pod:
   """Wait for a POD to meet an exit condition.
 
   Args:

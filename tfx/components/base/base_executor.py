@@ -59,6 +59,10 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
         raise RuntimeError('Temp path not available')
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
+    @property
+    def unique_id(self):
+      return self._unique_id
+
   @abc.abstractmethod
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],

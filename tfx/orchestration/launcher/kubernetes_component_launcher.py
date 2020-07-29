@@ -18,9 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
 import re
-import time
 from typing import Any, Callable, Dict, List, Optional, Text, cast
 
 from absl import logging
@@ -241,9 +239,9 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       RuntimeError: When it sees unexpected errors from Kubernetes API.
     """
     return kube_utils.get_pod(
-      core_api,
-      pod_name,
-      namespace,
+        core_api=core_api,
+        pod_name=pod_name,
+        namespace=namespace,
     )
 
   def _wait_pod(self,
@@ -272,12 +270,12 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       RuntimeError: when the function times out.
     """
     return kube_utils.wait_pod(
-      core_api,
-      pod_name,
-      namespace,
-      exit_condition_lambda,
-      condition_description,
-      timeout_sec,
+        core_api=core_api,
+        pod_name=pod_name,
+        namespace=namespace,
+        exit_condition_lambda=exit_condition_lambda,
+        condition_description=condition_description,
+        timeout_sec=timeout_sec,
     )
 
   def _build_pod_name(self, execution_id: int) -> Text:

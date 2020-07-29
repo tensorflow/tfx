@@ -15,21 +15,19 @@
 
 import copy
 import os
-import sys
 from typing import Any, Dict, Text, List
 
 import mock
 import tensorflow as tf
 
-from tfx import version
 from tfx.extensions.google_cloud_kubernetes import runner
 from tfx.extensions.google_cloud_kubernetes.trainer import executor
 from tfx.utils import json_utils
-from tfx.utils import telemetry_utils
 
 
 def mock_build_service_names(num_workers: int, unique_id: Text) -> List[Text]:
   return ['TEST-SERVICE-{}-{}'.format(unique_id, i) for i in range(num_workers)]
+
 
 class RunnerTest(tf.test.TestCase):
 
@@ -60,7 +58,7 @@ class RunnerTest(tf.test.TestCase):
     self._model_name = 'model_name'
     self._executor_class_path = 'my.executor.Executor'
 
-  def _setUpTrainingMocks(self):
+  def _set_up_training_mocks(self):
     self._mock_create_pod = mock.Mock()
     self._mock_api_client.create_namespaced_pod = self._mock_create_pod
     self._mock_create_service = mock.Mock()
@@ -73,8 +71,8 @@ class RunnerTest(tf.test.TestCase):
     result = copy.deepcopy(self._exec_properties)
     result['custom_config'] = json_utils.dumps(result['custom_config'])
     return result
-  
-  @mock.patch.object(runner, '_build_service_names',mock_build_service_names)
+
+  @mock.patch.object(runner, '_build_service_names', mock_build_service_names)
   @mock.patch('tfx.extensions.google_cloud_kubernetes.runner.client')
   @mock.patch('tfx.extensions.google_cloud_kubernetes.runner.kube_utils')
   def testStartKubernetesTraining(self, mock_kube_utils, mock_client):
@@ -82,7 +80,7 @@ class RunnerTest(tf.test.TestCase):
     mock_client.V1Service.return_value = self._mock_service
     mock_kube_utils.make_core_v1_api.return_value = self._mock_api_client
     mock_kube_utils.wait_pod.return_value = mock.Mock()
-    self._setUpTrainingMocks()
+    self._set_up_training_mocks()
 
     runner.start_gke_training(self._inputs, self._outputs,
                               self._serialize_custom_config_under_test(),
@@ -90,18 +88,19 @@ class RunnerTest(tf.test.TestCase):
                               self._training_inputs, self._unique_id)
 
     self._mock_api_client.create_namespaced_service.assert_called_with(
-      namespace='default',
-      body=self._mock_service,)
+        namespace='default',
+        body=self._mock_service,)
 
     self._mock_api_client.create_namespaced_pod.assert_called_with(
-      namespace='default',
-      body=self._mock_pod,)
-    
+        namespace='default',
+        body=self._mock_pod,)
+
     expected_service_names = mock_build_service_names(self._num_workers,
-                                                       self._unique_id)
+                                                      self._unique_id)
     expected_calls = [mock.call(namespace='default', name=expected_service_name)
                       for expected_service_name in expected_service_names]
-    self.assertEqual(expected_calls, self._mock_api_client.delete_namespaced_service.mock_calls) 
+    self.assertEqual(expected_calls,
+                     self._mock_api_client.delete_namespaced_service.mock_calls)
 
 
 if __name__ == '__main__':

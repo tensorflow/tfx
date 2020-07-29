@@ -50,15 +50,14 @@ class GenericExecutor(base_executor.BaseExecutor):
     Returns:
       None
     Raises:
-      ValueError: if gke_training_args is not in
-      exec_properties.custom_config.
+      ValueError: if gke_training_args is not in exec_properties.custom_config.
       RuntimeError: if the Google Kubernetes Engine training job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
     custom_config = json_utils.loads(
         exec_properties.get(_CUSTOM_CONFIG_KEY, 'null'))
-    if custom_config is not None and not isinstance(custom_config, Dict):
+    if custom_config is not None and not isinstance(custom_config, dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict.')
 
@@ -71,11 +70,12 @@ class GenericExecutor(base_executor.BaseExecutor):
     executor_class = self._GetExecutorClass()
     executor_class_path = '%s.%s' % (executor_class.__module__,
                                      executor_class.__name__)
-    
-    unique_id = str(self._unique_id)
-    if self._unique_id is None:
+
+    if self._context is not None and self._context.unique_id is not None:
+      unique_id = str(self._context.unique_id)
+    else:
       absl.logging.warning(
-        "Missing unique_id in executor, using a random id instead.")
+          "Missing unique_id in executor, using a random id instead.")
       unique_id = test_utils.random_id()
 
     # Note: exec_properties['custom_config'] here is a dict.

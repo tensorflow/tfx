@@ -39,6 +39,7 @@ class ExecutorTest(tf.test.TestCase):
     self._num_gpus_per_worker = 1
     self._inputs = {}
     self._outputs = {}
+    self._unique_id = 'UNIQUE_ID'
     # Dict format of exec_properties. custom_config needs to be serialized
     # before being passed into Do function.
     self._exec_properties = {
@@ -68,26 +69,30 @@ class ExecutorTest(tf.test.TestCase):
     return result
 
   def testDo(self):
-    executor = gke_trainer_executor.Executor()
+    executor = gke_trainer_executor.Executor(
+        gke_trainer_executor.Executor.Context(unique_id=self._unique_id)
+    )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
     self.mock_runner.start_gke_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
-                'num_workers': self._num_workers,
-                'num_gpus_per_worker': self._num_gpus_per_worker,
-        })
+            'num_gpus_per_worker': self._num_gpus_per_worker,
+            'num_workers': self._num_workers,
+        }, self._unique_id)
 
   def testDoWithGenericExecutorClass(self):
-    executor = gke_trainer_executor.GenericExecutor()
+    executor = gke_trainer_executor.GenericExecutor(
+        tfx_trainer_executor.GenericExecutor.Context(unique_id=self._unique_id)
+    )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
     self.mock_runner.start_gke_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._generic_executor_class_path, {
-                'num_workers': self._num_workers,
-                'num_gpus_per_worker': self._num_gpus_per_worker,
-        })
+            'num_gpus_per_worker': self._num_gpus_per_worker,
+            'num_workers': self._num_workers,
+        }, self._unique_id)
 
 
 if __name__ == '__main__':
