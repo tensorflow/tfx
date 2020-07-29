@@ -299,6 +299,8 @@ For example:
 ```python
 from tfx import components
 
+...
+
 # Exclude the 'eval' split.
 statistics_gen = components.StatisticsGen(
              examples=example_gen.outputs['examples'],
@@ -314,6 +316,8 @@ For example:
 
 ```python
 from tfx import components
+
+...
 
 # Exclude the 'eval' split.
 schema_gen = components.SchemaGen(
@@ -331,6 +335,8 @@ For example:
 
 ```python
 from tfx import components
+
+...
 
 # Exclude the 'eval' split.
 example_validator = components.ExampleValidator(
@@ -350,6 +356,8 @@ Transform component. For example:
 ```python
 from tfx import components
 from  tfx.proto import transform_pb2
+
+...
 
 # Analyze the 'train' split and transform the 'eval' split.
 transform = components.Transform(
@@ -371,6 +379,8 @@ To specify the train splits and evaluate splits, set the `train_args` and
 from tfx import components
 from  tfx.proto import trainer_pb2
 
+...
+
 # Train on the 'train' split and evaluate on the 'eval' split.
 Trainer = components.Trainer(
       module_file=_taxi_module_file,
@@ -391,6 +401,8 @@ for Evaluator component. For example:
 ```python
 from tfx import components
 from  tfx.proto import evaluator_pb2
+
+...
 
 # Compute metrics on the 'train' split and 'eval' split.
 Trainer = components.Evaluator(
