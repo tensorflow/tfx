@@ -213,10 +213,10 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   regex_pattern = regex_pattern.replace(')', '\\)')
   return regex_pattern
 
-def _property_search(uri: Text,
-                     split: example_gen_pb2.Input.Split,
-                     property_names: List[Text],
-                     spec_list: List[Text]) -> List[Text]:
+def _glob_and_match_span_version(uri: Text,
+                                 split: example_gen_pb2.Input.Split,
+                                 property_names: List[Text],
+                                 spec_list: List[Text]) -> List[Text]:
   """Search for most recently updated properties given by `spec_list`."""
   split_pattern = os.path.join(uri, split.pattern)
 
@@ -315,13 +315,13 @@ def _retrieve_latest_span_version(uri: Text,
       if split.pattern.count(VERSION_SPEC) != 1:
         raise ValueError('Only one {VERSION} is allowed in %s' % split_pattern)
 
-      latest_span, latest_version = _property_search(uri, split,
+      latest_span, latest_version = _glob_and_match_span_version(uri, split,
           [SPAN_PROPERTY_NAME, VERSION_PROPERTY_NAME],
           [SPAN_SPEC, VERSION_SPEC])
 
     else:
-      latest_span = _property_search(uri, split, [SPAN_PROPERTY_NAME],
-          [SPAN_SPEC])[0]
+      latest_span = _glob_and_match_span_version(uri, split,
+          [SPAN_PROPERTY_NAME], [SPAN_SPEC])[0]
 
   elif VERSION_SPEC in split.pattern:
     raise ValueError('Version spec provided, but Span spec is not present.')
