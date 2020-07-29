@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import re
-from typing import Any, Dict, Iterable, List, Text, Tuple, Union, Optional
+from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from absl import logging
 import six
@@ -237,10 +237,9 @@ def _glob_and_match_span_version(uri: Text,
   logging.info('Span regex pattern for split %s: %s', split.name,
                split_regex_pattern)
 
+  files = tf.io.gfile.glob(split_glob_pattern)
   latest_span = None
   latest_version = None
-
-  files = tf.io.gfile.glob(split_glob_pattern)
 
   for file_path in files:
     result = re.search(split_regex_pattern, file_path)
