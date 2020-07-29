@@ -287,7 +287,7 @@ class UtilsTest(tf.test.TestCase):
   def testMultipleSpecs(self):
     splits1 = [
         example_gen_pb2.Input.Split(name='s1',
-            pattern='span1{SPAN}/span{SPAN}/split1/*')
+            pattern='span1{SPAN}/span2{SPAN}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError, 'Only one {SPAN} is allowed'):
       utils.calculate_splits_fingerprint_span_and_version(self._input_base_path,
@@ -314,7 +314,7 @@ class UtilsTest(tf.test.TestCase):
         self._input_base_path, splits)
     self.assertEqual('1', span)
     self.assertEqual('0', version)
-  
+
   def testHaveSpanAndVersion(self):
     # Test specific behavior when both Span and Version are present.
     split1 = os.path.join(self._input_base_path, 'span1', 'version1', 'split1',
