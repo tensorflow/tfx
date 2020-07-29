@@ -27,6 +27,8 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
+      # TODO(b/162371496): remove pinned google-resumable-media
+      'google-resumable-media>=0.6.0,<0.7.0',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
