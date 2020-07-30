@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
-import absl
+from absl import logging
 import tensorflow_model_analysis as tfma
 
 from tfx import types
@@ -30,6 +30,7 @@ from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import EvaluatorSpec
+from tfx.utils import json_utils
 
 
 class Evaluator(base_component.BaseComponent):
@@ -83,6 +84,7 @@ class Evaluator(base_component.BaseComponent):
                                            Dict[Text, Any]]] = None,
       fairness_indicator_thresholds: Optional[List[Union[
           float, data_types.RuntimeParameter]]] = None,
+      example_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       model_exports: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
@@ -108,8 +110,11 @@ class Evaluator(base_component.BaseComponent):
       fairness_indicator_thresholds: Optional list of float (or
         RuntimeParameter) threshold values for use with TFMA fairness
           indicators. Experimental functionality: this interface and
-          functionality may change at any time. TODO(b/142653905): add a link to
-          additional documentation for TFMA fairness indicators here.
+          functionality may change at any time. TODO(b/142653905): add a link
+          to additional documentation for TFMA fairness indicators here.
+      example_splits: Names of splits on which the metrics are computed.
+        Default behavior (when example_splits is set to None or Empty) is using
+        the 'eval' split.
       output: Channel of `ModelEvalPath` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
@@ -128,19 +133,19 @@ class Evaluator(base_component.BaseComponent):
                        "must be supplied.")
     if eval_config is None and feature_slicing_spec is None:
       feature_slicing_spec = evaluator_pb2.FeatureSlicingSpec()
-      absl.logging.info('Neither eval_config nor feature_slicing_spec is '
-                        'passed, the model is treated as estimator.')
+      logging.info('Neither eval_config nor feature_slicing_spec is passed, '
+                   'the model is treated as estimator.')
 
     if model_exports:
-      absl.logging.warning(
+      logging.warning(
           'The "model_exports" argument to the Evaluator component has '
           'been renamed to "model" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       model = model_exports
 
     if feature_slicing_spec:
-      absl.logging.warning('feature_slicing_spec is deprecated, please use '
-                           'eval_config instead.')
+      logging.warning('feature_slicing_spec is deprecated, please use '
+                      'eval_config instead.')
 
     blessing = blessing or types.Channel(
         type=standard_artifacts.ModelBlessing,
@@ -155,6 +160,7 @@ class Evaluator(base_component.BaseComponent):
         baseline_model=baseline_model,
         feature_slicing_spec=feature_slicing_spec,
         fairness_indicator_thresholds=fairness_indicator_thresholds,
+        example_splits=json_utils.dumps(example_splits),
         evaluation=evaluation,
         eval_config=eval_config,
         blessing=blessing,

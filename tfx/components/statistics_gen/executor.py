@@ -113,16 +113,17 @@ class Executor(base_executor.BaseExecutor):
                        'list. Got %s instead.' % type(exclude_splits))
 
     split_and_tfxio = []
-    for artifact in input_dict[EXAMPLES_KEY]:
-      tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-          examples=artifact, telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
-      for split in artifact_utils.decode_split_names(artifact.split_names):
-        if split in exclude_splits:
-          continue
+    examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+        examples=[examples],
+        telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
+    for split in artifact_utils.decode_split_names(examples.split_names):
+      if split in exclude_splits:
+        continue
 
-        uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
-        split_and_tfxio.append(
-            (split, tfxio_factory(io_utils.all_files_pattern(uri))))
+      uri = os.path.join(examples.uri, split)
+      split_and_tfxio.append(
+          (split, tfxio_factory(io_utils.all_files_pattern(uri))))
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         logging.info('Generating statistics for split %s.', split)

@@ -72,6 +72,8 @@ class EvaluatorSpec(ComponentSpec):
       # change at any time.
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
+      'example_splits':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
@@ -361,7 +363,7 @@ class TransformSpec(ComponentSpec):
       'transform_graph':
           ChannelParameter(type=standard_artifacts.TransformGraph),
       'transformed_examples':
-          ChannelParameter(type=standard_artifacts.Examples),
+          ChannelParameter(type=standard_artifacts.Examples, optional=True),
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards
