@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.templates.taxi.pipeline import configs
 
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template.
