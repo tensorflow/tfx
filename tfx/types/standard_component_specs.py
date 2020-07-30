@@ -73,6 +73,8 @@ class EvaluatorSpec(ComponentSpec):
       # change at any time.
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
+      'example_splits':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
