@@ -58,7 +58,7 @@ def _get_paths(metadata_connection: metadata.Metadata, execution_ids: List[int],
     component_id = artifact_properties['producer_component'].string_value
     name = artifact_properties['name'].string_value
     if not component_id or not name:
-      raise ValueError("component_id and name cannot be None.")
+      raise ValueError('component_id and name cannot be None.')
     dest_uri = os.path.join(output_dir, component_id, name)
     yield (src_uri, dest_uri)
 
