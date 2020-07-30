@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import filecmp
 
+from absl import logging
 from typing import Text
 import tensorflow as tf
 
@@ -74,72 +75,75 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       self.assertDirectoryEqual(new_dir1, new_dir2)
 
   def testTaxiPipelineBeam(self):
-    # Runs the pipeline and record to self._recorded_output_dir
-    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
-        pipeline_name=self._pipeline_name,
-        data_root=self._data_root,
-        module_file=self._module_file,
-        serving_model_dir=self._serving_model_dir,
-        pipeline_root=self._pipeline_root,
-        metadata_path=self._recorded_mlmd_path,
-        beam_pipeline_args=[])
-    BeamDagRunner().run(record_taxi_pipeline)
-    pipeline_recorder_utils.record_pipeline(
-        output_dir=self._recorded_output_dir,
-        metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+    try:
+      # Runs the pipeline and record to self._recorded_output_dir
+      record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+          pipeline_name=self._pipeline_name,
+          data_root=self._data_root,
+          module_file=self._module_file,
+          serving_model_dir=self._serving_model_dir,
+          pipeline_root=self._pipeline_root,
+          metadata_path=self._recorded_mlmd_path,
+          beam_pipeline_args=[])
+      BeamDagRunner().run(record_taxi_pipeline)
+      pipeline_recorder_utils.record_pipeline(
+          output_dir=self._recorded_output_dir,
+          metadata_db_uri=self._recorded_mlmd_path,
+          host=None,
+          port=None,
+          pipeline_name=self._pipeline_name,
+          run_id=None)
 
-    # Run pipeline with stub executors.
-    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
-        pipeline_name=self._pipeline_name,
-        data_root=self._data_root,
-        module_file=self._module_file,
-        serving_model_dir=self._serving_model_dir,
-        pipeline_root=self._pipeline_root,
-        metadata_path=self._metadata_path,
-        beam_pipeline_args=[])
+      # Run pipeline with stub executors.
+      taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+          pipeline_name=self._pipeline_name,
+          data_root=self._data_root,
+          module_file=self._module_file,
+          serving_model_dir=self._serving_model_dir,
+          pipeline_root=self._pipeline_root,
+          metadata_path=self._metadata_path,
+          beam_pipeline_args=[])
 
-    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    stubbed_component_ids = [component.id
-                             for component in taxi_pipeline.components
-                             if component.id != model_resolver_id]
+      model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
+      stubbed_component_ids = [component.id
+                               for component in taxi_pipeline.components
+                               if component.id != model_resolver_id]
 
-    stub_launcher = stub_component_launcher.get_stub_launcher_class(
-        test_data_dir=self._recorded_output_dir,
-        stubbed_component_ids=stubbed_component_ids,
-        stubbed_component_map={})
-    stub_pipeline_config = pipeline_config.PipelineConfig(
-        supported_launcher_classes=[
-            stub_launcher,
-        ])
-    BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
+      stub_launcher = stub_component_launcher.get_stub_launcher_class(
+          test_data_dir=self._recorded_output_dir,
+          stubbed_component_ids=stubbed_component_ids,
+          stubbed_component_map={})
+      stub_pipeline_config = pipeline_config.PipelineConfig(
+          supported_launcher_classes=[
+              stub_launcher,
+          ])
+      BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
 
-    self.assertTrue(tf.io.gfile.exists(self._metadata_path))
+      self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
-        self._metadata_path)
+      metadata_config = metadata.sqlite_metadata_connection_config(
+          self._metadata_path)
 
-    # Verify that recorded files are successfully copied to the output uris.
-    with metadata.Metadata(metadata_config) as m:
-      artifacts = m.store.get_artifacts()
-      artifact_count = len(artifacts)
-      execution_count = len(m.store.get_executions())
-      # artifact count is greater by 2 due to two artifacts produced by both
-      # Evaluator(blessing and evaluation) and Trainer(model and model_run)
-      self.assertEqual(artifact_count, execution_count + 2)
-      self.assertLen(taxi_pipeline.components, execution_count)
+      # Verify that recorded files are successfully copied to the output uris.
+      with metadata.Metadata(metadata_config) as m:
+        artifacts = m.store.get_artifacts()
+        artifact_count = len(artifacts)
+        execution_count = len(m.store.get_executions())
+        # artifact count is greater by 2 due to two artifacts produced by both
+        # Evaluator(blessing and evaluation) and Trainer(model and model_run)
+        self.assertEqual(artifact_count, execution_count + 2)
+        self.assertLen(taxi_pipeline.components, execution_count)
 
-      for artifact in artifacts:
-        artifact_properties = artifact.custom_properties
-        component_id = artifact_properties['producer_component'].string_value
-        name = artifact_properties['name'].string_value
-        self.assertDirectoryEqual(artifact.uri, os.path.join(
-            self._recorded_output_dir,
-            component_id,
-            name))
+        for artifact in artifacts:
+          artifact_properties = artifact.custom_properties
+          component_id = artifact_properties['producer_component'].string_value
+          name = artifact_properties['name'].string_value
+          self.assertDirectoryEqual(artifact.uri, os.path.join(
+              self._recorded_output_dir,
+              component_id,
+              name))
+    except ValueError as e:
+      logging.warning(e)
 
 if __name__ == '__main__':
   tf.test.main()
