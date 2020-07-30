@@ -979,7 +979,7 @@ class Metadata(object):
     context_type_id = self._register_context_type_if_not_exist(
         context_type_name,
         dict(
-            (k, property_type_mapping[type(v)]) for k, v in properties.items()))
+            (k, property_type_mapping[type(k)]) for k, v in properties.items()))
 
     context = metadata_store_pb2.Context(
         type_id=context_type_id, name=context_name)
