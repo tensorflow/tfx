@@ -21,7 +21,6 @@ from __future__ import print_function
 import os
 import filecmp
 
-from absl import logging
 from typing import Text
 import tensorflow as tf
 
@@ -143,7 +142,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
               component_id,
               name))
     except ValueError as e:
-      logging.warning(e)
+      self.assertEqual("component_id and name cannot be None", e.value)
 
 if __name__ == '__main__':
   tf.test.main()
