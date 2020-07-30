@@ -58,7 +58,7 @@ def preprocessing_fn(inputs):
     inputs: map from feature keys to raw not-yet-transformed features.
 
   Returns:
-    Map from string feature key to transformed feature Tensors operations.
+    Map from string feature key to transformed feature Tensors.
   """
   input_word_ids, input_mask, segment_ids = _tokenize(inputs[_FEATURE_KEY])
   return {
