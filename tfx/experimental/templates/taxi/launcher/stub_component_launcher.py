@@ -22,11 +22,13 @@ from tfx.experimental.pipeline_testing import stub_component_launcher
 
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template.
+
   This stub component launcher cannot be defined in the kubeflow_dag_runner.py
   because launcher class is imported by the module path.
   """
   pass
-# TODO(StubExecutor): GCS directory where KFP outputs are recorded
+
+# GCS directory where KFP outputs are recorded
 test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
 # TODO(StubExecutor): customize self.stubbed_component_ids to replace components
 # with BaseStubExecutor
