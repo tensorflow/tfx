@@ -142,7 +142,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
               component_id,
               name))
     except ValueError as e:
-      self.assertEqual("component_id and name cannot be None", e.value)
+      self.assertEqual("component_id and name cannot be None.", str(e))
 
 if __name__ == '__main__':
   tf.test.main()
