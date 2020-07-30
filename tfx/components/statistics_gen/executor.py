@@ -101,13 +101,14 @@ class Executor(base_executor.BaseExecutor):
         stats_options.schema = schema
 
     split_and_tfxio = []
-    for artifact in input_dict[EXAMPLES_KEY]:
-      tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
-          examples=artifact, telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
-      for split in artifact_utils.decode_split_names(artifact.split_names):
-        uri = os.path.join(artifact.uri, split)
-        split_and_tfxio.append(
-            (split, tfxio_factory(io_utils.all_files_pattern(uri))))
+    examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+    tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+        examples=[examples],
+        telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
+    for split in artifact_utils.decode_split_names(examples.split_names):
+      uri = os.path.join(examples.uri, split)
+      split_and_tfxio.append(
+          (split, tfxio_factory(io_utils.all_files_pattern(uri))))
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         absl.logging.info('Generating statistics for split {}'.format(split))

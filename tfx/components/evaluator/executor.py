@@ -194,7 +194,9 @@ class Executor(base_executor.BaseExecutor):
         tensor_adapter_config = None
         if tfma.is_batched_input(eval_shared_model, eval_config):
           tfxio = tfxio_utils.get_tfxio_factory_from_artifact(
-              examples=input_dict[constants.EXAMPLES_KEY][0],
+              examples=[
+                  artifact_utils.get_single_instance(
+                      input_dict[constants.EXAMPLES_KEY])],
               telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
               schema=schema,
               raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)(
