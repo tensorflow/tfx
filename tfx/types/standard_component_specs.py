@@ -362,7 +362,8 @@ class TransformSpec(ComponentSpec):
       'transformed_examples':
           ChannelParameter(type=standard_artifacts.Examples, optional=True),
       'cache_output_path':
-          ChannelParameter(type=standard_artifacts.TransformCache),
+          ChannelParameter(type=standard_artifacts.TransformCache,
+                           optional=True),
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards
