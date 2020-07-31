@@ -37,13 +37,11 @@ class BaseStubExecutor(base_executor.BaseExecutor):
                test_data_dir: Text,
                context: Optional[base_executor.BaseExecutor.Context] = None):
     """Initializes a BaseStubExecutor.
-
     Args:
       component_id: component id of a component associated with the stub
         executor.
       test_data_dir: The directory to test data (pipeline_recorder.py).
       context: context class for all executors.
-
     Raises:
       ValueError: If the recorded pipeline data doesn't exist at test_data_dir.
     """
@@ -51,31 +49,27 @@ class BaseStubExecutor(base_executor.BaseExecutor):
     logging.info("Running StubExecutor, component_id %s", component_id)
     self._component_id = component_id
     self._test_data_dir = test_data_dir
-    if not tf.io.gfile.exists(self._test_data_dir):
+    if not os.path.exists(self._test_data_dir):
       raise ValueError("Must record pipeline in {}".format(self._test_data_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Copies over recorded data to pipeline output uri.
-
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
       output_dict: Output dict from output key to a list of Artifacts.
       exec_properties: A dict of execution properties.
-
     Returns:
       None
-
     Raises:
       FileNotFoundError: If the recorded test data dir doesn't exist any more.
     """
     for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
-        component_id = artifact.producer_component
-        src = os.path.join(self._test_data_dir, component_id, output_key)
-        if not tf.io.gfile.exists(src):
+        src = os.path.join(self._test_data_dir, self._component_id, output_key)
+        if not tf.io.gfile.exists(self._test_data_dir):
           raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
         logging.info("Finished copying from %s to %s", src, dest)
