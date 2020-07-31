@@ -85,6 +85,7 @@ google-cloud-pubsub,https://raw.githubusercontent.com/googleapis/google-cloud-py
 google-cloud-spanner,https://raw.githubusercontent.com/googleapis/python-spanner/master/LICENSE,Apache 2.0
 google-cloud-videointelligence,https://raw.githubusercontent.com/googleapis/python-videointelligence/master/LICENSE,Apache 2.0
 google-cloud-vision,https://raw.githubusercontent.com/googleapis/python-vision/master/LICENSE,Apache 2.0
+google-crc32c,https://raw.githubusercontent.com/google/crc32c/2e97ab26b1321b655d29c5d1d4b9e9055ff7543f/LICENSE,3-Clause BSD
 google-gax,https://raw.githubusercontent.com/googleapis/gax-python/master/LICENSE,Apache 2.0
 google-pasta,https://raw.githubusercontent.com/google/pasta/master/LICENSE,Apache 2.0
 google-resumable-media,https://raw.githubusercontent.com/googleapis/google-resumable-media-python/master/LICENSE,Apache 2.0

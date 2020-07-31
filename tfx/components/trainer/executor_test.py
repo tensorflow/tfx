@@ -167,12 +167,6 @@ class ExecutorTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       self._do(self._trainer_executor)
 
-  def testDoWithDuplicateTrainerFn(self):
-    self._exec_properties['module_file'] = self._module_file
-    self._exec_properties['trainer_fn'] = self._trainer_fn
-    with self.assertRaises(ValueError):
-      self._do(self._trainer_executor)
-
   def testDoWithHyperParameters(self):
     hp_artifact = standard_artifacts.HyperParameters()
     hp_artifact.uri = os.path.join(self._output_data_dir, 'hyperparameters/')

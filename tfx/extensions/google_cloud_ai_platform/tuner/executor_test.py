@@ -51,8 +51,8 @@ class ExecutorTest(tf.test.TestCase):
         },
     }
     self._executor_class_path = '%s.%s' % (
-        ai_platform_tuner_executor._Executor.__module__,
-        ai_platform_tuner_executor._Executor.__name__)
+        ai_platform_tuner_executor._WorkerExecutor.__module__,
+        ai_platform_tuner_executor._WorkerExecutor.__name__)
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(
