@@ -357,6 +357,25 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('0', span)
     self.assertEqual('0', version)
 
+  def testNewVersionOldSpanAlign(self):
+    # Test specific behavior when a newer Span has older Version.
+    span1_ver2 = os.path.join(self._input_base_path, 'span1', 'ver2', 'split1',
+                          'data')
+    io_utils.write_string_file(span1_ver2, 'testing')
+    span2_ver1 = os.path.join(self._input_base_path, 'span2', 'ver1', 'split1',
+                          'data')
+    io_utils.write_string_file(span2_ver1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(name='s1',
+            pattern='span{SPAN}/ver{VERSION}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual('2', span)
+    self.assertEqual('1', version)
+
   def testCalculateSplitsFingerprintSpanAndVersion(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',
