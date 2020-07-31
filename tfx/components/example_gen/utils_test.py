@@ -357,7 +357,7 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('0', span)
     self.assertEqual('0', version)
 
-  def testNewVersionOldSpanAlign(self):
+  def testNewSpanWithOlderVersionAlign(self):
     # Test specific behavior when a newer Span has older Version.
     span1_ver2 = os.path.join(self._input_base_path, 'span1', 'ver2', 'split1',
                           'data')
