@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import hashlib
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
 import absl
@@ -121,12 +122,6 @@ class _Dataset(object):
   It also contains bundle of stages of a single dataset through the transform
   pipeline.
   """
-  # TODO(b/37788560): This seems like a brittle way of creating dataset keys.
-  # In particular there are no guarantees that there won't be colissions.
-  # A better approach might be something like ArtifactID, or perhaps
-  # SHA256(file_pattern) which might also be a lot less verbose (even if it
-  # might not be as self-describing).
-  _FILE_PATTERN_SUFFIX_LENGTH = 6
 
   def __init__(self, file_pattern: Text,
                file_format: Union[Text, int],
@@ -146,8 +141,7 @@ class _Dataset(object):
       materialize_output_path: The file path where to write the dataset.
     """
     self._file_pattern = file_pattern
-    file_pattern_suffix = os.path.join(
-        *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
+    file_pattern_suffix = hashlib.sha256(file_pattern.encode()).hexdigest()
     self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
     self._file_format = file_format
     self._data_format = data_format
