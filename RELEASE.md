@@ -36,6 +36,10 @@
 *   Transform component's transformed examples output is now optional (enabled
     by default) -- specify parameter `materialize=False` when constructing
     the component to disable.
+*   Enabled analyzer cache optimization in the Transform component with optional
+    cache output (enabled by default) -- when constructing the component, 
+    specify `cache_input_path` to use a cache output from a previous run and 
+    specify parameter `materialize_cache=False`  to disable cache output.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
