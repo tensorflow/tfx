@@ -69,7 +69,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_graph')
     self._transformed_examples = standard_artifacts.Examples()
-    self._transformed_examples.uri = output_data_dir
+    self._transformed_examples.uri = os.path.join(output_data_dir,
+                                                  'transformed_examples')
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
     self._output_cache_artifact = standard_artifacts.TransformCache()
@@ -104,8 +105,16 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Executor for test.
     self._transform_executor = executor.Executor()
 
-  def _verify_transform_outputs(self, materialize=True):
+  def _verify_transform_outputs(self, materialize=True, materialize_cache=True):
+    expected_outputs = ['transformed_graph']
+
+    if materialize_cache:
+      expected_outputs.append('CACHE')
+      self.assertNotEqual(0,
+          len(tf.io.gfile.listdir(self._output_cache_artifact.uri)))
+
     if materialize:
+      expected_outputs.append('transformed_examples')
       self.assertNotEqual(
           0,
           len(
@@ -116,18 +125,17 @@ class ExecutorTest(tft_unit.TransformTestCase):
           len(
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
-    else:
-      # there should not be transformed data under _output_data_dir.
-      self.assertEqual(['transformed_graph'],
-                       tf.io.gfile.listdir(self._output_data_dir))
+
+    # Depending on `materialize` and `materialize_cache`, check that
+    # expected outputs are exactly correct. If either flag is False, its
+    # respective output should not be present.
+    self.assertCountEqual(expected_outputs,
+                          tf.io.gfile.listdir(self._output_data_dir))
+
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
-
-    if check_cache:
-      self.assertNotEqual(0,
-          len(tf.io.gfile.listdir(self._output_cache_artifact.uri)))
 
   def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
     pipelines = []
@@ -166,6 +174,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(materialize=False)
+
+  def testDoWithCacheMaterializationDisabled(self):
+    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    del self._output_dict[labels.CACHE_OUTPUT_PATH_LABEL]
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(materialize_cache=False)
 
   def testDoWithNoPreprocessingFn(self):
     with self.assertRaises(ValueError):
@@ -215,7 +230,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
   def testDoWithCache(self):
-
     # First run that creates cache.
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
@@ -242,7 +256,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
-    self._verify_transform_outputs(check_cache=False)
+    self._verify_transform_outputs(materialize_cache=False)
     self.assertFalse(tf.io.gfile.exists(self._output_cache_artifact.uri))
 
 
