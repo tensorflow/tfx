@@ -38,7 +38,8 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform, materialize=True):
+  def _verify_outputs(self, transform, materialize=True, 
+                      materialize_cache=True):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
     if materialize:
@@ -46,8 +47,12 @@ class ComponentTest(tf.test.TestCase):
                        transform.outputs['transformed_examples'].type_name)
     else:
       self.assertNotIn('transformed_examples', transform.outputs.keys())
-    self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
-                     transform.outputs['cache_output_path'].type_name)
+
+    if materialize_cache:
+      self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
+                       transform.outputs['cache_output_path'].type_name)
+    else:
+      self.assertNotIn('cache_output_path', transform.outputs.keys())
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
@@ -88,6 +93,14 @@ class ComponentTest(tf.test.TestCase):
         preprocessing_fn='my_preprocessing_fn',
         materialize=False)
     self._verify_outputs(transform, materialize=False)
+  
+  def testConstructWithCacheMaterializationDisabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        materialize_cache=False)
+    self._verify_outputs(transform, materialize_cache=False)
 
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
@@ -114,6 +127,16 @@ class ComponentTest(tf.test.TestCase):
           materialize=False,
           transformed_examples=channel_utils.as_channel(
               [standard_artifacts.Examples()]))
+
+  def testConstructWithCacheMaterializationDisabledButOutpuCache(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          materialize_cache=False,
+          cache_output_path=channel_utils.as_channel(
+              [standard_artifacts.TransformCache()]))
 
 if __name__ == '__main__':
   tf.test.main()
