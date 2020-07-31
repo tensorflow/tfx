@@ -63,7 +63,10 @@ def _get_paths(metadata_connection: metadata.Metadata,
           [event.artifact_id])
       for artifact in artifacts:
         src_uri = artifact.uri
-        dest_uri = os.path.join(output_dir, component_id, name)
+        dest_uri = os.path.join(output_dir,
+                                component_id,
+                                name,
+                                str(event.path.steps[1].index))
         yield (src_uri, dest_uri)
 
 

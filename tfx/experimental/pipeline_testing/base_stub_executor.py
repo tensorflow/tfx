@@ -72,8 +72,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
     for output_key, artifact_list in output_dict.items():
       for artifact in artifact_list:
         dest = artifact.uri
-        component_id = artifact.producer_component
-        src = os.path.join(self._test_data_dir, component_id, output_key)
+        src = os.path.join(self._test_data_dir, self._component_id, output_key)
         if not os.path.exists(src):
           raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
