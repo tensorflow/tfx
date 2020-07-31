@@ -329,12 +329,6 @@ def _retrieve_latest_span_version(uri: Text,
   elif VERSION_SPEC in split.pattern:
     raise ValueError('Version spec provided, but Span spec is not present')
 
-  # Replace split.pattern so executor can find files after driver runs.
-  if latest_span:
-    split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
-  if latest_version:
-    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
-
   return latest_span, latest_version
 
 
@@ -371,6 +365,13 @@ def calculate_splits_fingerprint_span_and_version(
     # Find most recent span and version for this split.
     latest_span, latest_version = _retrieve_latest_span_version(input_base_uri,
                                                                 split)
+
+    # Replace split.pattern so executor can find files after driver runs.
+    if latest_span:
+      split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+    if latest_version:
+      split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+
     latest_span = latest_span or '0'
     latest_version = latest_version or '0'
 
