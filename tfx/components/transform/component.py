@@ -76,7 +76,8 @@ class Transform(base_component.BaseComponent):
       cache_input_path: Optional[types.Channel] = None,
       cache_output_path: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
-      materialize: bool = True):
+      materialize: bool = True,
+      materialize_cache: bool = True):
     """Construct a Transform component.
 
     Args:
@@ -113,6 +114,8 @@ class Transform(base_component.BaseComponent):
         transform components are declared in the same pipeline.
       materialize: If True, write transformed examples as an output. If False,
         `transformed_examples` must not be provided.
+      materialize_cache: If True, write Transform cache as an output. If False,
+        `cache_output_path` must not be provided.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -132,11 +135,7 @@ class Transform(base_component.BaseComponent):
     transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
-    # TODO(b/162110942): Make cache output optional.
-    cache_output_path = cache_output_path or types.Channel(
-        type=standard_artifacts.TransformCache,
-        artifacts=[standard_artifacts.TransformCache()])
-    if not transformed_examples:
+
     if materialize and transformed_examples is None:
       transformed_examples = types.Channel(
           type=standard_artifacts.Examples,
@@ -146,6 +145,14 @@ class Transform(base_component.BaseComponent):
     elif not materialize and transformed_examples is not None:
       raise ValueError(
           'must not specify transformed_examples when materialize==False')
+  
+    if materialize_cache and cache_output_path is None: 
+      cache_output_path = types.Channel(type=standard_artifacts.TransformCache,
+          artifacts=[standard_artifacts.TransformCache()])
+    elif not materialize_cache and cache_output_path is not None:
+      raise ValueError(
+          'must not specify cache_output_path when materialize_cache==False')
+
     spec = TransformSpec(
         examples=examples,
         schema=schema,
