@@ -5,8 +5,10 @@ consumes external files/services to generate Examples which will be read by
 other TFX components. It also provides consistent and configurable partition,
 and shuffles the dataset for ML best practice.
 
-*   Consumes: Data from external data sources such as CSV, `TFRecord` and BigQuery
-*   Emits: `tf.Example` records
+*   Consumes: Data from external data sources such as CSV, `TFRecord`, Arvo,
+    Parquet and BigQuery
+*   Emits: `tf.Example` records, `tf.SequenceExample` records, or proto format,
+    depends on the payload_type enum.
 
 ## ExampleGen and Other Components
 
@@ -20,9 +22,9 @@ library, and ultimately to deployment targets during inference.
 ## How to use an ExampleGen Component
 
 For supported data sources (currently, CSV files, TFRecord files with TF Example
-data format, and results of BigQuery queries) the ExampleGen pipeline component
-is typically very easy to deploy and requires little customization. Typical code
-looks like this:
+, TF Sequence Example and proto data format, and results of BigQuery queries)
+the ExampleGen pipeline component is typically very easy to deploy and requires
+little customization. Typical code looks like this:
 
 ```python
 from tfx.utils.dsl_utils import csv_input
