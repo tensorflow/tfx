@@ -19,8 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import filecmp
 
-import absl
 import tensorflow as tf
 from typing import Text
 
@@ -29,21 +29,22 @@ from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration import metadata
+from ml_metadata.proto import metadata_store_pb2
 
-class ImdbPipelineRegressionEndToEndTest(tf.test.TestCase):
+class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
     super(ImdbPipelineRegressionEndToEndTest, self).setUp()
-    self._test_dir = os.path.join(os.environ['HOME'], 'tfx/test')
-    # os.path.join(
-    #     os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
-    #     self._testMethodName)
+    self._test_dir = os.path.join(
+        os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+        self._testMethodName)
     self._pipeline_name = 'imdb_stub_test'
     # This example assumes that the imdb data and imdb utility function are stored in
     # tfx/examples/imdb. Feel free to customize this as needed.
-    _imdb_root = os.path.dirname(imdb_pipeline_native_keras.__file__)
-    self._data_root = os.path.join(_imdb_root, 'data')
-    self._module_file = os.path.join(_imdb_root, 'imdb_utils_native_keras.py')
+    imdb_root = os.path.dirname(imdb_pipeline_native_keras.__file__)
+    self._data_root = os.path.join(imdb_root, 'data')
+    self._module_file = os.path.join(imdb_root, 'imdb_utils_native_keras.py')
     self._serving_model_dir = os.path.join(self._test_dir, 'serving_model')
     self._pipeline_root = os.path.join(self._test_dir, 'pipelines',
                                        self._pipeline_name)
@@ -124,16 +125,7 @@ class ImdbPipelineRegressionEndToEndTest(tf.test.TestCase):
 
     # Verify that recorded files are successfully copied to the output uris.
     with metadata.Metadata(metadata_config) as m:
-      artifacts = m.store.get_artifacts()
-      artifact_count = len(artifacts)
-      executions = m.store.get_executions()
-      execution_count = len(executions)
-      # artifact count is greater by 2 due to two artifacts produced by both
-      # Evaluator(blessing and evaluation) and Trainer(model and model_run)
-      self.assertEqual(artifact_count, execution_count + 2)
-      self.assertLen(taxi_pipeline.components, execution_count)
-
-      for execution in executions:
+      for execution in m.store.get_executions():
         component_id = execution.properties[
             metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
         if component_id == 'ResolverNode.latest_blessed_model_resolver':
@@ -155,4 +147,5 @@ class ImdbPipelineRegressionEndToEndTest(tf.test.TestCase):
                 component_id,
                 name))
 if __name__ == '__main__':
+  tf.compat.v1.enable_v2_behavior()
   tf.test.main()
