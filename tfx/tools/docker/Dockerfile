@@ -24,7 +24,8 @@ LABEL maintainer="tensorflow-extended-dev@googlegroups.com"
 #                    when patching is not needed any more.
 RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install \
   "kubernetes>=10.0.1,<11" \
-  "tensorflow>=1.15,<3" \
+  # DO NOT SUBMIT
+  "tensorflow==2.2" \
   "tensorflow-serving-api>=1.15,<3" \
   "google-api-python-client==1.8.0" \
   "google-apitools==0.5.30"

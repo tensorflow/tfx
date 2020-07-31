@@ -305,7 +305,7 @@ def create_pipeline(
   evaluator = Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      baseline_model=model_resolver.outputs['model'],
+      # baseline_model=model_resolver.outputs['model'],
       # Change threshold will be ignored if there is no baseline (first run).
       eval_config=eval_config)
 
