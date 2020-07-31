@@ -852,6 +852,14 @@ nodes {
           }
         }
       }
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
+      }
     }
     executor {
       python_class_executor_spec {
