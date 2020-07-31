@@ -297,8 +297,7 @@ def _retrieve_latest_span_version(uri: Text,
   Args:
     uri: The base path from which files will be searched.
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
-      to be searched on. Note that this function will update the {SPAN} in this
-      and {VERSION} tags in the split config to actual Span and Version numbers.
+      to be searched on. 
   Returns:
     Tuple of two strings, Span (optional) and Version (optional).
 
@@ -345,8 +344,8 @@ def calculate_splits_fingerprint_span_and_version(
   Args:
     input_base_uri: The base path from which files will be searched.
     splits: An iterable collection of example_gen_pb2.Input.Split objects. Note
-      that this function will update the {SPAN} in this split config to actual
-      Span number.
+      that this function will update the {SPAN} in this and {VERSION} tags in
+      the split config to actual Span and Version numbers.
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
