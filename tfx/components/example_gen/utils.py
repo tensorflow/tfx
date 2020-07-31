@@ -251,30 +251,30 @@ def _glob_and_match_span_version(uri: Text,
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
 
-    select_span = result.group(SPAN_PROPERTY_NAME)
+    span_str = result.group(SPAN_PROPERTY_NAME)
     try:
-      span = int(select_span)
+      span_int = int(span_str)
     except ValueError:
       raise ValueError('Cannot find %s number from %s based on %s' %
                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    select_version = None
+    version_str = None
     if is_match_version:
-      select_version = result.group(VERSION_PROPERTY_NAME)
+      version_str = result.group(VERSION_PROPERTY_NAME)
       try:
-        version = int(select_version)
+        version_int = int(version_str)
       except ValueError:
         raise ValueError('Cannot find %s number from %s based on %s' %
                          (VERSION_PROPERTY_NAME, file_path,
                           split_regex_pattern))
 
-    if latest_span is None or span > int(latest_span):
+    if latest_span is None or span_int > int(latest_span):
       # Uses str instead of int because of zero padding digits.
-      latest_span = select_span
-      latest_version = select_version
-    elif (span == int(latest_span) and
-          (latest_version is None or version >= int(latest_version))):
-      latest_version = select_version
+      latest_span = span_str
+      latest_version = version_str
+    elif (span_int == int(latest_span) and
+          (latest_version is None or version_int >= int(latest_version))):
+      latest_version = version_str
 
   if latest_span is None or (is_match_version and latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
