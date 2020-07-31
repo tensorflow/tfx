@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from tfx import types
 from tfx.experimental.pipeline_testing import base_stub_executor
-from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -40,7 +40,6 @@ from ml_metadata.proto import metadata_store_pb2
 
 class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   """Example of custom stub executor.
-
   This is intended to test whether custom component's Do() is executed.
   At success, this executor would save a file "result.txt" containing
   a string "custom component" in the output artifacts' uri. We don't
@@ -72,8 +71,12 @@ class StubComponentLauncherTest(tf.test.TestCase):
     self.metadata_connection = metadata.Metadata(connection_config)
 
     self.pipeline_root = os.path.join(test_dir, 'Test')
-    self.input_dir = os.path.join(test_dir, 'input')
-    self.output_dir = os.path.join(test_dir, 'output')
+
+    self.input_key = 'input'
+    self.output_key = 'output'
+
+    self.input_dir = os.path.join(test_dir, self.input_key)
+    self.output_dir = os.path.join(test_dir, self.output_key)
     self.record_dir = os.path.join(test_dir, 'record')
     tf.io.gfile.makedirs(self.input_dir)
     tf.io.gfile.makedirs(self.output_dir)
@@ -98,10 +101,10 @@ class StubComponentLauncherTest(tf.test.TestCase):
     mock_publisher.return_value.publish_execution.return_value = {}
 
     component_map = \
-        {'_FakeComponent.FakeComponent': CustomStubExecutor}
+        {self.component.id: CustomStubExecutor}
 
     my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
+        StubComponentLauncher.get_stub_launcher_class(
             test_data_dir=self.record_dir,
             stubbed_component_ids=[],
             stubbed_component_map=component_map)
@@ -115,7 +118,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
         additional_pipeline_args={})
     launcher.launch()
 
-    output_path = self.component.outputs['output'].get()[0].uri
+    output_path = self.component.outputs[self.output_key].get()[0].uri
     generated_file = os.path.join(output_path, 'result.txt')
     self.assertTrue(tf.io.gfile.exists(generated_file))
     contents = io_utils.read_string_file(generated_file)
@@ -126,12 +129,14 @@ class StubComponentLauncherTest(tf.test.TestCase):
     # verify whether base stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
 
-    record_file = os.path.join(self.record_dir, 'output', 'recorded.txt')
+    record_file = os.path.join(self.record_dir,
+                               self.component.id,
+                               self.output_key, 'recorded.txt')
     io_utils.write_string_file(record_file, 'hello world')
-    component_ids = ['_FakeComponent.FakeComponent']
+    component_ids = [self.component.id]
 
     my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
+        StubComponentLauncher.get_stub_launcher_class(
             test_data_dir=self.record_dir,
             stubbed_component_ids=component_ids,
             stubbed_component_map={})
@@ -145,7 +150,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
         additional_pipeline_args={})
     launcher.launch()
 
-    output_path = self.component.outputs['output'].get()[0].uri
+    output_path = self.component.outputs[self.output_key].get()[0].uri
     copied_file = os.path.join(output_path, 'recorded.txt')
     self.assertTrue(tf.io.gfile.exists(copied_file))
     contents = io_utils.read_string_file(copied_file)
@@ -160,7 +165,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
         os.path.join(self.input_dir, 'result.txt'), 'test')
 
     my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
+        StubComponentLauncher.get_stub_launcher_class(
             test_data_dir=self.record_dir,
             stubbed_component_ids=[],
             stubbed_component_map={})
@@ -173,14 +178,14 @@ class StubComponentLauncherTest(tf.test.TestCase):
         beam_pipeline_args=[],
         additional_pipeline_args={})
     self.assertEqual(
-        launcher._component_info.component_type,
+        launcher._component_info.component_type,  # pylint: disable=protected-access
         '.'.join([  # pylint: disable=protected-access
             test_utils._FakeComponent.__module__,  # pylint: disable=protected-access
             test_utils._FakeComponent.__name__  # pylint: disable=protected-access
         ]))
     launcher.launch()
 
-    output_path = self.component.outputs['output'].get()[0].uri
+    output_path = self.component.outputs[self.output_key].get()[0].uri
     self.assertTrue(tf.io.gfile.exists(output_path))
     contents = io_utils.read_string_file(output_path)
     self.assertEqual('test', contents)
