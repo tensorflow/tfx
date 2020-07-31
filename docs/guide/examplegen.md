@@ -21,10 +21,10 @@ library, and ultimately to deployment targets during inference.
 
 ## How to use an ExampleGen Component
 
-For supported data sources (currently, CSV files, TFRecord files with TF Example
-, TF Sequence Example and proto data format, and results of BigQuery queries)
-the ExampleGen pipeline component is typically very easy to deploy and requires
-little customization. Typical code looks like this:
+For supported data sources (currently, CSV files, TFRecord files with TF
+Example, TF Sequence Example data format and proto format, and results of
+BigQuery queries) the ExampleGen pipeline component is typically very easy to
+deploy and requires little customization. Typical code looks like this:
 
 ```python
 from tfx.utils.dsl_utils import csv_input
