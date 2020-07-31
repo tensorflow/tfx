@@ -145,8 +145,8 @@ class Transform(base_component.BaseComponent):
     elif not materialize and transformed_examples is not None:
       raise ValueError(
           'must not specify transformed_examples when materialize==False')
-  
-    if materialize_cache and cache_output_path is None: 
+
+    if materialize_cache and cache_output_path is None:
       cache_output_path = types.Channel(type=standard_artifacts.TransformCache,
           artifacts=[standard_artifacts.TransformCache()])
     elif not materialize_cache and cache_output_path is not None:

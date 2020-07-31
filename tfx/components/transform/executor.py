@@ -282,15 +282,15 @@ class Executor(base_executor.BaseExecutor):
           should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
-        - cache_output_path: Optinal cache input of 'tf.Transform', where cached
+        - cache_output_path: Cache input of 'tf.Transform', where cached
           information for analyzed examples from previous runs will be read.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
           includes both 'train' and 'eval' splits.
-        - cache_output_path: Cache output of 'tf.Transform', where cached
-          information for analyzed examples will be written.
+        - cache_output_path: Cache output of 'tf.Transform', where
+          cached information for analyzed examples will be written.
       exec_properties: A dict of execution properties, including either one of:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.

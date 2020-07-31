@@ -38,7 +38,7 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform, materialize=True, 
+  def _verify_outputs(self, transform, materialize=True,
                       materialize_cache=True):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
@@ -93,7 +93,7 @@ class ComponentTest(tf.test.TestCase):
         preprocessing_fn='my_preprocessing_fn',
         materialize=False)
     self._verify_outputs(transform, materialize=False)
-  
+
   def testConstructWithCacheMaterializationDisabled(self):
     transform = component.Transform(
         examples=self.examples,
