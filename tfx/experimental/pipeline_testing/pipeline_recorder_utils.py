@@ -26,6 +26,7 @@ from absl import logging
 import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
+
 from ml_metadata.proto import metadata_store_pb2
 
 def _get_paths(metadata_connection: metadata.Metadata,
@@ -38,7 +39,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
 
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
-    execution_ids: List of execution ids of a pipeline run.
+    executions: List of executions of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
 
   Yields:
