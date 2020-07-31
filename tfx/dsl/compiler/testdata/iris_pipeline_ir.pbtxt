@@ -255,6 +255,16 @@ nodes {
         }
       }
     }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
     executor {
       python_class_executor_spec {
         class_path: "tfx.components.statistics_gen.executor.Executor"
@@ -348,6 +358,14 @@ nodes {
       }
     }
     parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
       parameters {
         key: "infer_feature_shape"
         value {
@@ -485,7 +503,21 @@ nodes {
                 key: "span"
                 value: INT
               }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
             }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
           }
         }
       }
