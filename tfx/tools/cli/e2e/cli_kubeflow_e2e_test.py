@@ -185,7 +185,7 @@ class CliKubeflowEndToEndTest(tf.test.TestCase):
     prefix = 'test_output/{}'.format(pipeline_name)
     absl.logging.info(
         'Deleting output under GCS bucket prefix: {}'.format(prefix))
-    blobs = bucket.list_blobs(prefix=prefix)
+    blobs = list(bucket.list_blobs(prefix=prefix))
     bucket.delete_blobs(blobs)
 
   def _get_mysql_pod_name(self) -> Text:

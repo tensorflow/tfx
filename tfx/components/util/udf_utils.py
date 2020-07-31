@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Callable, Dict, Text
+from typing import Any, Callable, Dict, Optional, Text
 
 from tfx.utils import import_utils
 
@@ -34,15 +34,27 @@ def get_fn(exec_properties: Dict[Text, Any],
   has_module_file = bool(exec_properties.get(_MODULE_FILE_KEY))
   has_fn = bool(exec_properties.get(fn_name))
 
-  if has_module_file == has_fn:
-    raise ValueError(
-        'Neither or both of module file and user function have been supplied '
-        "in 'exec_properties'.")
-
   if has_module_file:
-    return import_utils.import_func_from_source(
-        exec_properties[_MODULE_FILE_KEY], fn_name)
+    if has_fn:
+      return import_utils.import_func_from_source(
+          exec_properties[_MODULE_FILE_KEY], exec_properties[fn_name])
+    else:
+      return import_utils.import_func_from_source(
+          exec_properties[_MODULE_FILE_KEY], fn_name)
+  elif has_fn:
+    fn_path_split = exec_properties[fn_name].split('.')
+    return import_utils.import_func_from_module('.'.join(fn_path_split[0:-1]),
+                                                fn_path_split[-1])
+  else:
+    raise ValueError(
+        'Neither module file or user function have been supplied in `exec_properties`.'
+    )
 
-  fn_path_split = exec_properties[fn_name].split('.')
-  return import_utils.import_func_from_module('.'.join(fn_path_split[0:-1]),
-                                              fn_path_split[-1])
+
+def try_get_fn(exec_properties: Dict[Text, Any],
+               fn_name: Text) -> Optional[Callable[..., Any]]:
+  """Loads and returns user-defined function if exists."""
+  try:
+    return get_fn(exec_properties, fn_name)
+  except (ValueError, IOError):
+    return None

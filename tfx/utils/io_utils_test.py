@@ -23,8 +23,9 @@ import os
 import mock
 
 import tensorflow as tf
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.utils import io_utils
+
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
 class IoUtilsTest(tf.test.TestCase):
@@ -78,6 +79,25 @@ class IoUtilsTest(tf.test.TestCase):
     self.assertTrue(file_io.file_exists(new_path_file2))
     f = file_io.FileIO(new_path_file2, mode='r')
     self.assertEqual('testing2', f.readline())
+
+  def testCopyDirWithTrailingSlashes(self):
+    old_path1 = os.path.join(self._base_dir, 'old1', '')
+    old_path_file1 = os.path.join(old_path1, 'child', 'file')
+    new_path1 = os.path.join(self._base_dir, 'new1')
+    new_path_file1 = os.path.join(new_path1, 'child', 'file')
+
+    io_utils.write_string_file(old_path_file1, 'testing')
+    io_utils.copy_dir(old_path1, new_path1)
+    self.assertTrue(file_io.file_exists(new_path_file1))
+
+    old_path2 = os.path.join(self._base_dir, 'old2')
+    old_path_file2 = os.path.join(old_path2, 'child', 'file')
+    new_path2 = os.path.join(self._base_dir, 'new2', '')
+    new_path_file2 = os.path.join(new_path2, 'child', 'file')
+
+    io_utils.write_string_file(old_path_file2, 'testing')
+    io_utils.copy_dir(old_path2, new_path2)
+    self.assertTrue(file_io.file_exists(new_path_file2))
 
   def testGetOnlyFileInDir(self):
     file_path = os.path.join(self._base_dir, 'file', 'path')

@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import absl
+from absl import logging
+from absl.testing import parameterized
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from google.protobuf import json_format
@@ -28,11 +29,12 @@ from tfx.components.evaluator import executor
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
-class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
+class ExecutorTest(tf.test.TestCase, parameterized.TestCase):
 
-  @absl.testing.parameterized.named_parameters(('evaluation_w_eval_config', {
+  @parameterized.named_parameters(('evaluation_w_eval_config', {
       'eval_config':
           json_format.MessageToJson(
               tfma.EvalConfig(slicing_specs=[
@@ -75,6 +77,10 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.BLESSING_KEY: [blessing_output],
     }
 
+    # Test multiple splits.
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(
+        ['train', 'eval'])
+
     # Run executor.
     evaluator = executor.Executor()
     evaluator.Do(input_dict, output_dict, exec_properties)
@@ -88,7 +94,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
-  @absl.testing.parameterized.named_parameters(('legacy_feature_slicing', {
+  @parameterized.named_parameters(('legacy_feature_slicing', {
       'feature_slicing_spec':
           json_format.MessageToJson(
               evaluator_pb2.FeatureSlicingSpec(specs=[
@@ -137,9 +143,12 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
           0.1, 0.3, 0.5, 0.7, 0.9
       ]
     except ImportError:
-      absl.logging.warning(
+      logging.warning(
           'Not testing fairness indicators because a compatible TFMA version '
           'is not installed.')
+
+    # List needs to be serialized before being passed into Do function.
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
 
     # Run executor.
     evaluator = executor.Executor()
@@ -154,7 +163,7 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(blessing_output.uri, 'BLESSED')))
 
-  @absl.testing.parameterized.named_parameters(
+  @parameterized.named_parameters(
       (
           'eval_config_w_validation',
           {
@@ -285,6 +294,9 @@ class ExecutorTest(tf.test.TestCase, absl.testing.parameterized.TestCase):
         constants.EVALUATION_KEY: [eval_output],
         constants.BLESSING_KEY: [blessing_output],
     }
+
+    # List needs to be serialized before being passed into Do function.
+    exec_properties[constants.EXAMPLE_SPLITS_KEY] = json_utils.dumps(None)
 
     # Run executor.
     evaluator = executor.Executor()

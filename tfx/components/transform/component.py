@@ -75,7 +75,8 @@ class Transform(base_component.BaseComponent):
       input_data: Optional[types.Channel] = None,
       cache_input_path: Optional[types.Channel] = None,
       cache_output_path: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      materialize: bool = True):
     """Construct a Transform component.
 
     Args:
@@ -110,6 +111,8 @@ class Transform(base_component.BaseComponent):
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
+      materialize: If True, write transformed examples as an output. If False,
+        `transformed_examples` must not be provided.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -134,11 +137,15 @@ class Transform(base_component.BaseComponent):
         type=standard_artifacts.TransformCache,
         artifacts=[standard_artifacts.TransformCache()])
     if not transformed_examples:
+    if materialize and transformed_examples is None:
       transformed_examples = types.Channel(
           type=standard_artifacts.Examples,
           # TODO(b/161548528): remove the hardcode artifact.
           artifacts=[standard_artifacts.Examples()],
           matching_channel_name='examples')
+    elif not materialize and transformed_examples is not None:
+      raise ValueError(
+          'must not specify transformed_examples when materialize==False')
     spec = TransformSpec(
         examples=examples,
         schema=schema,

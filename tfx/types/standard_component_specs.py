@@ -72,6 +72,8 @@ class EvaluatorSpec(ComponentSpec):
       # change at any time.
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
+      'example_splits':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
@@ -358,7 +360,7 @@ class TransformSpec(ComponentSpec):
       'transform_graph':
           ChannelParameter(type=standard_artifacts.TransformGraph),
       'transformed_examples':
-          ChannelParameter(type=standard_artifacts.Examples),
+          ChannelParameter(type=standard_artifacts.Examples, optional=True),
       'cache_output_path':
           ChannelParameter(type=standard_artifacts.TransformCache),
   }
