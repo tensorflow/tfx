@@ -213,75 +213,6 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   regex_pattern = regex_pattern.replace(')', '\\)')
   return regex_pattern
 
-def _glob_and_match_span_version(uri: Text,
-                                 split: example_gen_pb2.Input.Split,
-                                 is_match_version: bool
-                                 ) -> Tuple[Text, Optional[Text]]:
-  """Search for most recently updated properties given by `spec_list`."""
-  split_pattern = os.path.join(uri, split.pattern)
-
-  split_glob_pattern = split_pattern
-  split_regex_pattern = _glob_to_regex(split_pattern)
-
-  split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
-  split_regex_pattern = split_regex_pattern.replace(SPAN_SPEC,
-      '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
-
-  if is_match_version:
-    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-    split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC,
-        '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
-
-  logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
-  logging.info('Regex pattern for split %s: %s', split.name,
-               split_regex_pattern)
-
-  num_groups = re.compile(split_regex_pattern).groups
-  if is_match_version and num_groups != 2:
-    raise ValueError('Span and version regex should have two groups')
-  elif not is_match_version and num_groups != 1:
-    raise ValueError('Span only regex should have one group')
-
-  files = tf.io.gfile.glob(split_glob_pattern)
-  latest_span = None
-  latest_version = None
-
-  for file_path in files:
-    result = re.search(split_regex_pattern, file_path)
-    if result is None:
-      raise ValueError('Glob pattern does not match regex pattern')
-
-    span_str = result.group(SPAN_PROPERTY_NAME)
-    try:
-      span_int = int(span_str)
-    except ValueError:
-      raise ValueError('Cannot find %s number from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-
-    version_str = None
-    if is_match_version:
-      version_str = result.group(VERSION_PROPERTY_NAME)
-      try:
-        version_int = int(version_str)
-      except ValueError:
-        raise ValueError('Cannot find %s number from %s based on %s' %
-                         (VERSION_PROPERTY_NAME, file_path,
-                          split_regex_pattern))
-
-    if latest_span is None or span_int > int(latest_span):
-      # Uses str instead of int because of zero padding digits.
-      latest_span = span_str
-      latest_version = version_str
-    elif (span_int == int(latest_span) and
-          (latest_version is None or version_int >= int(latest_version))):
-      latest_version = version_str
-
-  if latest_span is None or (is_match_version and latest_version is None):
-    raise ValueError('Cannot find matching for split %s based on %s' %
-                     (split.name, split.pattern))
-
-  return latest_span, latest_version
-
 
 def _retrieve_latest_span_version(uri: Text,
                                   split: example_gen_pb2.Input.Split
@@ -310,6 +241,11 @@ def _retrieve_latest_span_version(uri: Text,
       - If a matching cannot be found for split pattern provided.
   """
 
+  split_pattern = os.path.join(uri, split.pattern)
+
+  split_glob_pattern = split_pattern
+  split_regex_pattern = _glob_to_regex(split_pattern)
+  
   latest_span = None
   latest_version = None
 
@@ -318,16 +254,68 @@ def _retrieve_latest_span_version(uri: Text,
       raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC,
                                                          split.pattern))
 
+    split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
+    split_regex_pattern = split_regex_pattern.replace(SPAN_SPEC,
+        '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+
     is_match_version = VERSION_SPEC in split.pattern
     if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
       raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
                                                            split.pattern))
+    if is_match_version:
+      split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+      split_regex_pattern = split_regex_pattern.replace(VERSION_SPEC,
+          '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
+    
+    logging.info('Glob pattern for split %s: %s', split.name,
+                 split_glob_pattern)
+    logging.info('Regex pattern for split %s: %s', split.name,
+                 split_regex_pattern)
 
-    latest_span, latest_version = _glob_and_match_span_version(uri, split,
-                                                               is_match_version)
+    num_groups = re.compile(split_regex_pattern).groups
+    if is_match_version and num_groups != 2:
+      raise ValueError('Span and version regex should have two groups')
+    elif not is_match_version and num_groups != 1:
+      raise ValueError('Span only regex should have one group')
+
+    files = tf.io.gfile.glob(split_glob_pattern)
+
+    for file_path in files:
+      result = re.search(split_regex_pattern, file_path)
+      if result is None:
+        raise ValueError('Glob pattern does not match regex pattern')
+
+      span_str = result.group(SPAN_PROPERTY_NAME)
+      try:
+        span_int = int(span_str)
+      except ValueError:
+        raise ValueError('Cannot find %s number from %s based on %s' %
+                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+
+      version_str = None
+      if is_match_version:
+        version_str = result.group(VERSION_PROPERTY_NAME)
+        try:
+          version_int = int(version_str)
+        except ValueError:
+          raise ValueError('Cannot find %s number from %s based on %s' %
+                          (VERSION_PROPERTY_NAME, file_path,
+                            split_regex_pattern))
+
+      if latest_span is None or span_int > int(latest_span):
+        # Uses str instead of int because of zero padding digits.
+        latest_span = span_str
+        latest_version = version_str
+      elif (span_int == int(latest_span) and
+            (latest_version is None or version_int >= int(latest_version))):
+        latest_version = version_str
+
+    if latest_span is None or (is_match_version and latest_version is None):
+      raise ValueError('Cannot find matching for split %s based on %s' %
+                      (split.name, split.pattern))
 
   elif VERSION_SPEC in split.pattern:
-    raise ValueError('Version spec provided, but Span spec is not present')
+      raise ValueError('Version spec provided, but Span spec is not present')
 
   return latest_span, latest_version
 
