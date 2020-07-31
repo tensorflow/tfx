@@ -12,7 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Stub component launcher for launching stub executors in KFP."""
+"""Stub component launcher for launching stub executors in KFP.
+
+For information on how to use stub executors for KFP pipeline, please
+refer to tfx/docs/tutorials/stub_template.md for a tutorial.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,7 +28,7 @@ from tfx.experimental.templates.taxi.pipeline import configs
 class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
   """Responsible for launching stub executors in KFP Template.
 
-  This stub component launcher cannot be defined in the kubeflow_dag_runner.py
+  This stub component launcher cannot be defined within kubeflow_dag_runner.py
   because launcher class is imported by the module path.
   """
   pass
