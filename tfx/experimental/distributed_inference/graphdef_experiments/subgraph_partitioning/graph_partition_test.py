@@ -18,7 +18,8 @@ import tempfile
 import tensorflow as tf
 
 from create_complex_graph import save_examples_as_graphdefs
-import graph_partition
+from graph_partition import _RemoteOpLayers
+from graph_partition import get_graph_name_to_graph_def, partition_all_graphs
 
 
 class RelationTest(tf.test.TestCase):
@@ -30,9 +31,8 @@ class RelationTest(tf.test.TestCase):
                            'c2': ['b1', 'a1', 'b2', 'a2']}
     desired_outputs = [{'a1', 'a2'}, {'b1', 'b2'}, {'c1', 'c2'}]
 
-    order = graph_partition.Relations(remote_op_relations)
-    for index, remote_op_one_layer in enumerate(order):
-      self.assertEqual(remote_op_one_layer, desired_outputs[index])
+    order = _RemoteOpLayers(remote_op_relations)
+    self.assertEqual(desired_outputs, list(order))
 
 
 class PartitionTest(tf.test.TestCase):
@@ -44,23 +44,24 @@ class PartitionTest(tf.test.TestCase):
       # Save examples into a temporary directory
       save_examples_as_graphdefs(temp_dir)
 
-      op_to_filename = {'main': os.path.join(temp_dir, 'main_graph.pb'),
-                        'remote_op_a': os.path.join(temp_dir, 'graph_a.pb'),
-                        'remote_op_b': os.path.join(temp_dir, 'graph_b.pb'),
-                        }
-      op_to_outputs = {'main': ['AddN_1'],
-                       'remote_op_b': ['Add_1'],
-                       'remote_op_a': ['embedding_lookup/Identity'],
-                       }
+      graph_name_to_filepath = {
+          'main': os.path.join(temp_dir, 'main_graph.pb'),
+          'remote_op_a': os.path.join(temp_dir, 'graph_a.pb'),
+          'remote_op_b': os.path.join(temp_dir, 'graph_b.pb')}
+      graph_name_to_outputs = {
+          'main': ['AddN_1'],
+          'remote_op_b': ['Add_1'],
+          'remote_op_a': ['embedding_lookup/Identity']}
 
-      op_to_graph_def = graph_partition.get_op_to_graph_def(op_to_filename)
-      self.op_to_execution_specs = graph_partition.partition_all_graphs(
-          op_to_graph_def, op_to_outputs)
+      graph_name_to_graph_def = get_graph_name_to_graph_def(
+          graph_name_to_filepath)
+      self.graph_name_to_specs = partition_all_graphs(
+          graph_name_to_graph_def, graph_name_to_outputs)
 
 
   def test_subgraph_import_validity(self):
     """Try to import subgraphs and see if they're valid."""
-    for execution_specs in self.op_to_execution_specs.values():
+    for execution_specs in self.graph_name_to_specs.values():
       for execution_spec in execution_specs:
         if not execution_spec.is_remote_op:
           graph = tf.Graph()
@@ -70,7 +71,7 @@ class PartitionTest(tf.test.TestCase):
 
   def test_subgraph_specs(self):
     """Validate a subgraph spec."""
-    for execution_specs in self.op_to_execution_specs.values():
+    for execution_specs in self.graph_name_to_specs.values():
       for spec in execution_specs:
         if not spec.is_remote_op:
           all_nodes = self._get_node_names_from_subgraph(spec.subgraph)
@@ -93,7 +94,7 @@ class PartitionTest(tf.test.TestCase):
 
   def test_remote_op_specs(self):
     """Validate a remote op spec."""
-    for execution_specs in self.op_to_execution_specs.values():
+    for execution_specs in self.graph_name_to_specs.values():
       for spec in execution_specs:
         if spec.is_remote_op:
           self.assertIsNone(spec.subgraph)

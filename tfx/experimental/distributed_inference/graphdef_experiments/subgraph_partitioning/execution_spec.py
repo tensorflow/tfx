@@ -14,28 +14,27 @@
 """Definition of execution_spec."""
 
 from dataclasses import dataclass
-from typing import Any
-
+from typing import Any, Set, Text
 
 @dataclass
 class ExecutionSpec:
   """A spec that represents a partitioned subgraph.
 
   Attributes:
-    subgraph: a subgraph's graph_def
-    input_names: a set of input node names
-    output_names: a set of output node names
-    is_remote_op: a boolean indicating the type of the subgraph.
-                  (two types: regular subgraph or remote op subgraph)
-    body_node_names: a set of body node names (excluding inputs)
-    nodes_from_other_layers: a set of names for inputs from other subgraphs
-                             that are not the outputs from other subgraphs
+    subgraph: A subgraph's graph_def.
+    input_names: A set of subgraph's input node names.
+    output_names: A set of subgraph's output node names.
+    is_remote_op: A boolean indicating the type of the subgraph
+                  (two types: regular subgraph or remote op subgraph).
+    body_node_names: A set of body node names (excluding inputs).
+    nodes_from_other_layers: A set of names for inputs from other subgraphs
+                             but are not the outputs from other subgraphs.
   """
   subgraph: Any
-  input_names: set
-  output_names: set
+  input_names: Set[Text]
+  output_names: Set[Text]
   is_remote_op: bool
 
   # Assist graph partition but not beam pipeline.
-  body_node_names: set
-  nodes_from_other_layers: set
+  body_node_names: Set[Text]
+  nodes_from_other_layers: Set[Text]

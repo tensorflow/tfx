@@ -44,7 +44,7 @@ with graph_a.as_default():
 
 
 def remote_op_a(input_ids):
-  """Mimic a remote op by numpy_function"""
+  """Mimic a remote op by numpy_function."""
   def remote_lookup(input_ids):
     with create_session(graph_a) as sess:
       return sess.run(result_a, feed_dict={ids_a: input_ids})
@@ -68,7 +68,7 @@ with graph_b.as_default():
 
 
 def remote_op_b(input_ids1, input_ids2):
-  """Mimic another remote op"""
+  """Mimic another remote op."""
 
   def remote_lookup(input_ids1, input_ids2):
     with create_session(graph_b) as sess:
