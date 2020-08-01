@@ -334,7 +334,7 @@ def calculate_splits_fingerprint_span_and_version(
     A Tuple of [fingerprint, select_span, select_version], where select_span
     is either the value matched with the {SPAN} placeholder, or '0' if the
     placeholder wasn't specified, and where select_version is either the
-    value matched with the {VERSION} placeholder, or '0' if the placeholder
+    value matched with the {VERSION} placeholder, or None if the placeholder
     wasn't specified.
   """
 
@@ -355,7 +355,7 @@ def calculate_splits_fingerprint_span_and_version(
     if latest_version:
       split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
-    # TODO(jyzhao): add default behavior for when version spec not present.
+    # TODO(b/162622803): add default behavior for when version spec not present.
     latest_span = latest_span or '0'
 
     logging.info('latest span and version = (%s, %s)', latest_span,
