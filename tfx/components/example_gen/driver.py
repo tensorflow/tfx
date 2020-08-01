@@ -97,7 +97,7 @@ class Driver(base_driver.BaseDriver):
         utils.SPAN_PROPERTY_NAME, exec_properties[utils.SPAN_PROPERTY_NAME])
     example_artifact.set_string_custom_property(
         utils.VERSION_PROPERTY_NAME,
-        exec_properties[utils.VERSION_PROPERTY_NAME])
+        exec_properties[utils.VERSION_PROPERTY_NAME] or '')
 
     base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
 

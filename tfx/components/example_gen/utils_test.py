@@ -235,7 +235,7 @@ class UtilsTest(tf.test.TestCase):
         'split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\n'
         'split:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3')
     self.assertEqual(span, '0')
-    self.assertEqual(version, '0')
+    self.assertEqual(version, None)
 
   def testSpanNoMatching(self):
     splits = [
@@ -313,7 +313,7 @@ class UtilsTest(tf.test.TestCase):
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
     self.assertEqual('1', span)
-    self.assertEqual('0', version)
+    self.assertEqual(None, version)
 
   def testHaveSpanAndVersion(self):
     # Test specific behavior when both Span and Version are present.
@@ -355,7 +355,7 @@ class UtilsTest(tf.test.TestCase):
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
     self.assertEqual('0', span)
-    self.assertEqual('0', version)
+    self.assertEqual(None, version)
 
   def testNewSpanWithOlderVersionAlign(self):
     # Test specific behavior when a newer Span has older Version.

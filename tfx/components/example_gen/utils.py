@@ -317,7 +317,7 @@ def _retrieve_latest_span_version(uri: Text,
 
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Text, Text]:
+) -> Tuple[Text, Text, Optional[Text]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder and, optionally, the {VERSION}
@@ -355,8 +355,8 @@ def calculate_splits_fingerprint_span_and_version(
     if latest_version:
       split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
+    # TODO(jjma): Add logic for setting default Version.
     latest_span = latest_span or '0'
-    latest_version = latest_version or '0'
 
     logging.info('latest span and version = (%s, %s)', latest_span,
                  latest_version)

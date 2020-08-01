@@ -157,6 +157,5 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(
         examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '01')
 
-
 if __name__ == '__main__':
   tf.test.main()
