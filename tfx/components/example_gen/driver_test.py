@@ -157,5 +157,37 @@ class DriverTest(tf.test.TestCase):
     self.assertEqual(
         examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '01')
 
+  # TODO(jyzhao): add default behavior for when version spec not present.
+  def testPrepareOutputArtifactsNoVersion(self):
+    examples = standard_artifacts.Examples()
+    output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
+    exec_properties = {
+        utils.SPAN_PROPERTY_NAME: '02',
+        utils.VERSION_PROPERTY_NAME: None,
+        utils.FINGERPRINT_PROPERTY_NAME: 'fp'
+    }
+
+    pipeline_info = data_types.PipelineInfo(
+        pipeline_name='name', pipeline_root=self._test_dir, run_id='rid')
+    component_info = data_types.ComponentInfo(
+        component_type='type', component_id='cid', pipeline_info=pipeline_info)
+
+    input_artifacts = {}
+    output_artifacts = self._example_gen_driver._prepare_output_artifacts(
+        input_artifacts, output_dict, exec_properties, 1, pipeline_info,
+        component_info)
+    examples = artifact_utils.get_single_instance(
+        output_artifacts[utils.EXAMPLES_KEY])
+    self.assertEqual(examples.uri,
+                     os.path.join(self._test_dir, 'cid', 'examples', '1', ''))
+    self.assertEqual(
+        examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
+        'fp')
+    self.assertEqual(
+        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '02')
+    self.assertEqual(
+        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '')
+
+
 if __name__ == '__main__':
   tf.test.main()

@@ -355,7 +355,7 @@ def calculate_splits_fingerprint_span_and_version(
     if latest_version:
       split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
-    # TODO(jjma): Add logic for setting default Version.
+    # TODO(jyzhao): add default behavior for when version spec not present.
     latest_span = latest_span or '0'
 
     logging.info('latest span and version = (%s, %s)', latest_span,
