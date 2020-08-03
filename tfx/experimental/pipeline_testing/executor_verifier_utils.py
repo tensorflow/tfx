@@ -145,7 +145,8 @@ def _compare_eval_results(output_uri: Text,
   expected_slicing_metrics = expected_eval_result.slicing_metrics
   slice_map = _group_metric_by_slice(eval_slicing_metrics)
   expected_slice_map = _group_metric_by_slice(expected_slicing_metrics)
-
+  print(slice_map[()])
+  print(expected_slice_map[()])
   for metric_name, value in slice_map[()].items():
     expected_value = expected_slice_map[()][metric_name]
     if not _compare_relative_difference(value, expected_value, threshold):
@@ -175,6 +176,13 @@ def _compare_file_sizes(output_uri: Text,
         tf.io.gfile.GFile(file_name).size(),
         tf.io.gfile.GFile(expected_file_name).size(),
         threshold):
+      print("filename", file_name)
+      print("expected_file_name", expected_file_name)
+      '''
+      filename /var/folders/hw/b2mkj_ps2zxbfm8nqynwgh200000gn/T/taxi_pipeline_executor_verifier_testaowa13ys/tmp6x6z2p06/testExecutorVerifier/tfx/pipelines/beam_test/Trainer/model/6//serving_model_dir
+expected_file_name /Users/sujipark/tfx/tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline/testdata/Trainer/model/serving_model_dir
+
+      '''
       return False
   return True
 def _compare_anomalies(output_uri: Text,
@@ -188,35 +196,36 @@ def _compare_anomalies(output_uri: Text,
       os.path.join(expected_uri, expected_anomalies_fn),
       anomalies_pb2.Anomalies())
   return expected_anomalies.anomaly_info == anomalies.anomaly_info
-def verify(output_uri: Text, artifact: Text, threshold: float) -> bool:
+
+def verify(output_uri: Text, artifact: Text, key: Text) -> bool:
   """Calls verifier for a specific artifact.
 
   Args:
     output_uri: pipeline output artifact uri.
     expected_uri: recorded pipeline output artifact uri.
-    threshold: a float between 0 and 1.
 
   Returns:
      boolean whether pipeline outputs are reasonable.
   """
-  artifact_name = artifact.custom_properties['name'].string_value
+  # artifact_name = artifact.custom_properties['name'].string_value
+  print("key", key)
 
-  if artifact_name == components.trainer.constants.SCHEMA_KEY:
-    if not _compare_file_sizes(artifact.uri, output_uri, threshold):
+  if key == components.trainer.constants.SCHEMA_KEY:
+    if not _compare_file_sizes(artifact.uri, output_uri, .5):
       return False
 
-  elif artifact_name == components.evaluator.constants.EVALUATION_KEY:
+  elif key == components.evaluator.constants.EVALUATION_KEY:
     if not _compare_eval_results(
         artifact.uri,
         output_uri,
-        threshold):
+        .5):
       return False
 
-  elif artifact_name in [components.evaluator.constants.EXAMPLES_KEY,
+  elif key in [components.evaluator.constants.EXAMPLES_KEY,
                          components.evaluator.constants.MODEL_KEY]:
-    if not _compare_file_sizes(artifact.uri, output_uri, threshold):
+    if not _compare_file_sizes(artifact.uri, output_uri, .5):
       return False
-  # elif artifact_name in 'anomalies':
-  #   if not _compare_anomalies(artifact.uri, output_uri):
-  #     return False
+  elif key == 'anomalies':
+    if not _compare_anomalies(artifact.uri, output_uri):
+      return False
   return _verify_file_dir(output_uri, artifact.uri)

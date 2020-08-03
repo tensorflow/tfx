@@ -68,7 +68,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
     for component_id in verify_component_ids:
       for key, artifact in pipeline_outputs[component_id].items():
         output_uri = os.path.join(self._record_dir, component_id, key)
-        executor_verifier_utils.verify(output_uri, artifact, 0.5)
+        executor_verifier_utils.verify(output_uri, artifact, key)
 
 if __name__ == '__main__':
   tf.test.main()
