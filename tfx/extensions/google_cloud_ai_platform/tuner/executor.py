@@ -75,8 +75,9 @@ class Executor(base_executor.BaseExecutor):
     if custom_config is None:
       raise ValueError('custom_config is not provided')
 
-    if custom_config is not None and not isinstance(custom_config, Dict):
-      raise ValueError('custom_config in execution properties must be a dict.')
+    if not isinstance(custom_config, Dict):
+      raise TypeError('custom_config in execution properties must be a dict, '
+                      'but received %s' % type(custom_config))
 
     training_inputs = custom_config.get(
         ai_platform_trainer_executor.TRAINING_ARGS_KEY)
@@ -111,7 +112,7 @@ class Executor(base_executor.BaseExecutor):
         'tfx_tuner_{}'.format(datetime.datetime.now().strftime('%Y%m%d%H%M%S')))
 
     # TODO(b/160059039): Factor out label creation to a utility function.
-    executor_class = _Executor
+    executor_class = _WorkerExecutor
     executor_class_path = '%s.%s' % (executor_class.__module__,
                                      executor_class.__name__)
 
@@ -125,55 +126,21 @@ def _need_chief_oracle(exec_properties: Dict[Text, Any]) -> bool:
   """Returns True if the Tuner instance requires a chief oracle."""
   # TODO(b/160902662): Skip chief oracle for CloudTuner that does not require
   #                    chief oracle for distributed tuning (it is a no-op,
-  #                    because it simply forwards  to the AI Platform Optimizer
+  #                    because it simply forwards to the AI Platform Optimizer
   #                    service).
   del exec_properties
   return True
 
 
-class _Executor(base_executor.BaseExecutor):
+class _WorkerExecutor(base_executor.BaseExecutor):
   """TFX Tuner executor impl as a worker in a Google Cloud AI Platform job."""
-
-  def _initialize_cluster_spec(self):
-    """Load cluster specification from environment variable."""
-
-    logging.info('Initializing cluster spec...')
-
-    cluster_spec = json.loads(os.environ.get('CLUSTER_SPEC', '{}'))
-
-    # If CLUSTER_SPEC is not present, assume single-machine tuning.
-    if not cluster_spec:
-      self._is_distributed = False
-      return
-
-    self._master_addr, self._master_port = (
-        # We rely on Cloud AI Platform Training service's specification whereby
-        # there will be no more than one master replica.
-        # https://cloud.google.com/ai-platform/training/docs/distributed-training-containers#cluster-spec-format
-        cluster_spec['cluster']['master'][0].split(':'))
-
-    self._tuner_id = (
-        'tfx-tuner-%s-%d' % (
-            cluster_spec['task']['type'],  # 'master' or 'worker'
-            cluster_spec['task']['index']  # zero-based index
-        ))
-
-    logging.info('Tuner ID is: %s', self._tuner_id)
-
-    self._is_chief = cluster_spec['task']['type'] == 'master'
-    self._is_distributed = True
-
-    # Will be populated when chief oracle is started.
-    self._chief_process = None
-
-    logging.info('Cluster spec initalized with: %s', cluster_spec)
 
   def _start_chief_oracle_in_subprocess(
       self, input_dict: Dict[Text, List[types.Artifact]],
       exec_properties: Dict[Text, List[types.Artifact]]):
     """Starts a chief oracle in a subprocess."""
 
-    def run_chief_oracle():
+    def _run_chief_oracle() -> None:
       """Invoke chief oracle, and listen to the open port."""
       logging.info('chief_oracle() starting...')
 
@@ -189,14 +156,15 @@ class _Executor(base_executor.BaseExecutor):
                    os.environ['KERASTUNER_ORACLE_IP'],
                    os.environ['KERASTUNER_ORACLE_PORT'])
 
-      # By design of KerasTuner, chief oracle blocks forever.
+      # By design of KerasTuner, chief oracle blocks forever. Ref.
+      # https://github.com/keras-team/keras-tuner/blob/e8b0ad3ecae471c73e17cb41f37e6f99202ac0dd/kerastuner/engine/base_tuner.py#L74-L76
       tuner_executor.search(input_dict, exec_properties, _WORKING_DIRECTORY)
 
     # Because of KerasTuner's interface whereby behavior is controlled
     # by environment variables, starting the chief oracle in a sub-process,
     # as opposed to another thread in the main process, in order not to leak
     # the environment variables.
-    result = multiprocessing.Process(target=run_chief_oracle)
+    result = multiprocessing.Process(target=_run_chief_oracle)
     result.start()
 
     logging.info('Chief oracle started at PID: %s', result.pid)
@@ -207,7 +175,7 @@ class _Executor(base_executor.BaseExecutor):
     """Conducts a single search loop, setting up chief oracle if necessary."""
 
     # If not distributed, simply conduct search and return.
-    if not self._is_distributed:
+    if self._tuner_id is None:
       return tuner_executor.search(input_dict, exec_properties,
                                    _WORKING_DIRECTORY)
 
@@ -247,8 +215,52 @@ class _Executor(base_executor.BaseExecutor):
                                  _WORKING_DIRECTORY)
 
   def __init__(self, context):
-    super(_Executor, self).__init__(context)
-    self._initialize_cluster_spec()
+    super(_WorkerExecutor, self).__init__(context)
+
+    # Those fields are populated only when running in distribution.
+    self._is_chief = False
+    self._tuner_id = None
+    self._master_addr = None
+    self._master_port = None
+
+    self._chief_process = None  # Populated when the chief oracle is started.
+
+    # Initialize configuration of distribution according to CLUSTER_SPEC
+    logging.info('Initializing cluster spec... ')
+
+    cluster_spec = json.loads(os.environ.get('CLUSTER_SPEC', '{}'))
+
+    # If CLUSTER_SPEC is not present, assume single-machine tuning.
+    if not cluster_spec:
+      return
+
+    self._master_addr, self._master_port = (
+        # We rely on Cloud AI Platform Training service's specification whereby
+        # there will be no more than one master replica.
+        # https://cloud.google.com/ai-platform/training/docs/distributed-training-containers#cluster-spec-format
+        cluster_spec['cluster']['master'][0].split(':'))
+
+    self._tuner_id = (
+        'tfx-tuner-%s-%d' % (
+            cluster_spec['task']['type'],  # 'master' or 'worker'
+            cluster_spec['task']['index']  # zero-based index
+        ))
+
+    logging.info('Tuner ID is: %s', self._tuner_id)
+
+    self._is_chief = cluster_spec['task']['type'] == 'master'
+
+    logging.info('Cluster spec initalized with: %s', cluster_spec)
+
+  def __del__(self):
+    self._close()
+
+  def _close(self) -> None:
+    """Kills the chief oracle sub-process, if still running."""
+    if self._chief_process and self._chief_process.is_alive():
+      logging.info('Terminating chief oracle at PID: %s',
+                   self._chief_process.pid)
+      self._chief_process.terminate()
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -256,12 +268,10 @@ class _Executor(base_executor.BaseExecutor):
 
     tuner = self._search(input_dict, exec_properties)
 
-    if not self._is_chief:
+    if self._tuner_id is not None and not self._is_chief:
       logging.info('Returning since this is not chief worker.')
+      return
 
     tuner_executor.write_best_hyperparameters(tuner, output_dict)
 
-    if self._chief_process and self._chief_process.is_alive():
-      logging.info('Terminating chief oracle at PID: %s',
-                   self._chief_process.pid)
-      self._chief_process.terminate()
+    self._close()

@@ -55,6 +55,7 @@ class ExampleAnomalies(Artifact):
   TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
   }
 
 

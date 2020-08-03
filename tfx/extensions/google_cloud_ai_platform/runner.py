@@ -166,6 +166,7 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   }
 
   # Submit job to AIP Training
+  logging.info('TrainingInputs=%s', training_inputs)
   logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.', job_id,
                project)
   request = api_client.projects().jobs().create(
