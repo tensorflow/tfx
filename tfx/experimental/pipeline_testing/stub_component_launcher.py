@@ -56,7 +56,7 @@ class StubComponentLauncher(
 
       PipelineConfig(
           supported_launcher_classes=[
-              stub_component_launcher.get_stub_launcher_class(
+              StubComponentLauncher.get_stub_launcher_class(
                   test_data_dir,
                   stubbed_component_ids = ['CsvExampleGen'],
                   stubbed_component_map = {
