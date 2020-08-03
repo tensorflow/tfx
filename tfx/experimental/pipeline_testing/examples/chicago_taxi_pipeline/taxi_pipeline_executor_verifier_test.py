@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import os
 
+from absl import logging
+from typing import Text
 import tensorflow as tf
 
 from tfx.experimental.pipeline_testing import executor_verifier_utils
@@ -49,8 +51,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
     # Feel free to customize this as needed.
     self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
-  def testExecutorVerifier(self):
-    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+    self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -59,16 +60,63 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-    BeamDagRunner().run(taxi_pipeline)
-    pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
-        taxi_pipeline.metadata_connection_config,
-        taxi_pipeline.pipeline_info)
+    BeamDagRunner().run(self.taxi_pipeline)
+    self.pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
+        self.taxi_pipeline.metadata_connection_config,
+        self.taxi_pipeline.pipeline_info)
 
-    verify_component_ids = ['Transform', 'Trainer', 'Evaluator']
+    self._verifier_map = {'Trainer': self._verify_trainer,
+                          'Evaluator': self._verify_trainer,
+                          'CsvExampleGen': self._verify_examples,
+                          'SchemaGen': self._verify_schema,
+                          'ExampleValidator': self._verify_validator}
+
+  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
+
+  def _verify_evaluator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(executor_verifier_utils.compare_eval_results(
+        output_uri,
+        expected_uri, .5))
+
+  def _verify_schema(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_examples(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_trainer(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_validator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_anomalies(output_uri,
+                                                  expected_uri))
+
+  def testExecutorVerifier(self):
+    # Calls verifier for artifacts
+    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
+    # Components to verify
+    verify_component_ids = [component.id
+                            for component in self.taxi_pipeline.components
+                            if component.id != model_resolver_id]
+
     for component_id in verify_component_ids:
-      for key, artifact in pipeline_outputs[component_id].items():
-        output_uri = os.path.join(self._record_dir, component_id, key)
-        executor_verifier_utils.verify(output_uri, artifact, key)
+      for key, artifact_dict in self.pipeline_outputs[component_id].items():
+        for idx, artifact in artifact_dict.items():
+          logging.info("Verifying {}".format(component_id))
+          recorded_uri = os.path.join(self._record_dir, component_id,
+                                      key, str(idx))
+          self._verifier_map.get(component_id,
+                                 self._verify_file_path)(artifact.uri,
+                                                         recorded_uri)
 
 if __name__ == '__main__':
   tf.test.main()

@@ -15,19 +15,19 @@
 """Helper utils for executor verifier."""
 
 import os
+
 import absl
+from typing import Dict, List, Text, Optional
+
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_metadata.proto.v0 import anomalies_pb2
-from typing import Dict, List, Text, Optional
-
 from tensorflow_model_analysis.view import SlicedMetrics
 from ml_metadata.proto import metadata_store_pb2
-from tfx import components
+
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 def _compare_relative_difference(value: float,
@@ -45,6 +45,8 @@ def _compare_relative_difference(value: float,
     a boolean indicating whether the relative difference is within the
     threshold
   """
+  print("expected_value", expected_value)
+  print("value", value)
   if value != expected_value:
     if expected_value:
       relative_diff = abs(value - expected_value)/abs(expected_value)
@@ -78,15 +80,28 @@ def get_pipeline_outputs(
       for event in m.store.get_events_by_execution_ids([execution.id]):
         if event.type == metadata_store_pb2.Event.OUTPUT:
           artifacts = m.store.get_artifacts_by_id([event.artifact_id])
-          for step in event.path.steps:
-            if step.HasField("key"):
-              output_dict[step.key] = artifact_utils.get_single_instance(
-                  artifacts)
+          steps = event.path.steps
+          if not steps or not steps[0].HasField('key'):
+            raise ValueError('Artifact key is not recorded in the MLMD.')
+          key = steps[0].key
+          artifacts = m.store.get_artifacts_by_id(
+              [event.artifact_id])
+          if key not in output_dict:
+            output_dict[key] = {}
+          for artifact in artifacts:
+            if len(steps) < 2 or not steps[1].HasField('index'):
+              raise ValueError('Artifact index is not recorded in the MLMD.')
+            artifact_index = steps[1].index
+            if artifact_index in output_dict[key]:
+              raise ValueError("Artifact already in output_dict")
+            output_dict[key][artifact_index] = artifact
       output_map[component_id] = output_dict
   return output_map
 
-def _verify_file_dir(output_uri, expected_uri, check_file=False):
-  """Verify pipeline output artifact uri by comparing to recorded uri.
+def verify_file_dir(output_uri: Text,
+                    expected_uri: Text,
+                    check_file: bool = False):
+  """Verify pipeline output artifact uri by comparing directory structure.
 
   Args:
     output_uri: pipeline output artifact uri.
@@ -126,9 +141,9 @@ def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
                               for k, v in metric[1][''][''].items()}
   return slice_map
 
-def _compare_eval_results(output_uri: Text,
-                          expected_uri: Text,
-                          threshold: float) -> bool:
+def compare_eval_results(output_uri: Text,
+                         expected_uri: Text,
+                         threshold: float) -> bool:
   """Compares accuracy on overall dataset using two EvalResult.
 
   Args:
@@ -145,8 +160,6 @@ def _compare_eval_results(output_uri: Text,
   expected_slicing_metrics = expected_eval_result.slicing_metrics
   slice_map = _group_metric_by_slice(eval_slicing_metrics)
   expected_slice_map = _group_metric_by_slice(expected_slicing_metrics)
-  print(slice_map[()])
-  print(expected_slice_map[()])
   for metric_name, value in slice_map[()].items():
     expected_value = expected_slice_map[()][metric_name]
     if not _compare_relative_difference(value, expected_value, threshold):
@@ -156,10 +169,10 @@ def _compare_eval_results(output_uri: Text,
       return False
   return True
 
-def _compare_file_sizes(output_uri: Text,
-                        expected_uri: Text,
-                        threshold: float) -> bool:
-  """Compares pipeline output files in output uri and recorded uri.
+def compare_file_sizes(output_uri: Text,
+                       expected_uri: Text,
+                       threshold: float) -> bool:
+  """Compares pipeline output files sizes in output and recorded uri.
 
   Args:
     output_uri: pipeline output artifact uri.
@@ -169,24 +182,36 @@ def _compare_file_sizes(output_uri: Text,
   Returns:
      boolean whether file sizes differ within a threshold.
   """
-  for leaf_file in tf.io.gfile.listdir(expected_uri):
-    expected_file_name = os.path.join(expected_uri, leaf_file)
-    file_name = expected_file_name.replace(expected_uri, output_uri)
-    if not _compare_relative_difference(
-        tf.io.gfile.GFile(file_name).size(),
-        tf.io.gfile.GFile(expected_file_name).size(),
-        threshold):
-      print("filename", file_name)
-      print("expected_file_name", expected_file_name)
-      '''
-      filename /var/folders/hw/b2mkj_ps2zxbfm8nqynwgh200000gn/T/taxi_pipeline_executor_verifier_testaowa13ys/tmp6x6z2p06/testExecutorVerifier/tfx/pipelines/beam_test/Trainer/model/6//serving_model_dir
-expected_file_name /Users/sujipark/tfx/tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline/testdata/Trainer/model/serving_model_dir
-
-      '''
-      return False
+  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+    for sub_dir in sub_dirs:
+      new_file_path = os.path.join(
+          dir_name.replace(expected_uri, output_uri, 1), sub_dir)
+      if not tf.io.gfile.exists(new_file_path):
+        return False
+    for leaf_file in leaf_files:
+      expected_file_name = os.path.join(dir_name, leaf_file)
+      file_name = os.path.join(
+          dir_name.replace(expected_uri, output_uri, 1), leaf_file)
+      if not _compare_relative_difference(
+          tf.io.gfile.GFile(file_name).size(),
+          tf.io.gfile.GFile(expected_file_name).size(),
+          threshold):
+        print("filename", file_name)
+        print("expected_file_name", expected_file_name)
+        return False
   return True
-def _compare_anomalies(output_uri: Text,
-                       expected_uri: Text) -> bool:
+
+def compare_anomalies(output_uri: Text,
+                      expected_uri: Text) -> bool:
+  """Compares anomalies files in output uri and recorded uri.
+
+  Args:
+    output_uri: pipeline output artifact uri.
+    expected_uri: recorded pipeline output artifact uri.
+
+  Returns:
+     boolean whether anomalies are same.
+  """
   anomalies_fn = tf.io.gfile.listdir(output_uri)[0]
   expected_anomalies_fn = tf.io.gfile.listdir(expected_uri)[0]
   anomalies = io_utils.parse_pbtxt_file(
@@ -196,36 +221,3 @@ def _compare_anomalies(output_uri: Text,
       os.path.join(expected_uri, expected_anomalies_fn),
       anomalies_pb2.Anomalies())
   return expected_anomalies.anomaly_info == anomalies.anomaly_info
-
-def verify(output_uri: Text, artifact: Text, key: Text) -> bool:
-  """Calls verifier for a specific artifact.
-
-  Args:
-    output_uri: pipeline output artifact uri.
-    expected_uri: recorded pipeline output artifact uri.
-
-  Returns:
-     boolean whether pipeline outputs are reasonable.
-  """
-  # artifact_name = artifact.custom_properties['name'].string_value
-  print("key", key)
-
-  if key == components.trainer.constants.SCHEMA_KEY:
-    if not _compare_file_sizes(artifact.uri, output_uri, .5):
-      return False
-
-  elif key == components.evaluator.constants.EVALUATION_KEY:
-    if not _compare_eval_results(
-        artifact.uri,
-        output_uri,
-        .5):
-      return False
-
-  elif key in [components.evaluator.constants.EXAMPLES_KEY,
-                         components.evaluator.constants.MODEL_KEY]:
-    if not _compare_file_sizes(artifact.uri, output_uri, .5):
-      return False
-  elif key == 'anomalies':
-    if not _compare_anomalies(artifact.uri, output_uri):
-      return False
-  return _verify_file_dir(output_uri, artifact.uri)
