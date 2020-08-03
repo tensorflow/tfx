@@ -50,7 +50,7 @@ def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
   Args:
     inputs: Dict from label to a value list.
     label: Label of the value to retrieve.
-    strict: If true, exact one value should exist for label.
+    strict: If true, exactly one value should exist for label.
 
   Returns:
     A sole labeled value.
