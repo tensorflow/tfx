@@ -61,7 +61,7 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - stats: A list of type `standard_artifacts.ExampleStatistics` which
-          should contain the 'eval' split. Stats on other splits are ignored.
+          should contain the 'eval' split. 
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
@@ -88,6 +88,15 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
     stats_artifact = artifact_utils.get_single_instance(
         input_dict[STATISTICS_KEY])
+    for anomalies_artifact in output_dict[ANOMALIES_KEY]:
+      statistics_split_names = artifact_utils.decode_split_names(
+          stats_artifact.split_names)
+      split_names = [
+          split for split in statistics_split_names
+          if split not in exclude_splits
+      ]
+      anomalies_artifact.split_names = artifact_utils.encode_split_names(
+          split_names)
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue

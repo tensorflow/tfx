@@ -87,6 +87,23 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
+    # Load and deserialize exclude splits from execution properties.
+    exclude_splits = json_utils.loads(
+        exec_properties.get(EXCLUDE_SPLITS_KEY, 'null')) or []
+    if not isinstance(exclude_splits, list):
+      raise ValueError('exclude_splits in execution properties needs to be a '
+                       'list. Got %s instead.' % type(exclude_splits))
+
+    examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
+    for statistics_artifact in output_dict[STATISTICS_KEY]:
+      examples_split_names = artifact_utils.decode_split_names(
+          examples.split_names)
+      split_names = [
+          split for split in examples_split_names if split not in exclude_splits
+      ]
+      statistics_artifact.split_names = artifact_utils.encode_split_names(
+          split_names)
+
     stats_options = options.StatsOptions()
     stats_options_json = exec_properties.get(STATS_OPTIONS_JSON_KEY)
     if stats_options_json:
@@ -104,15 +121,7 @@ class Executor(base_executor.BaseExecutor):
                 artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
         stats_options.schema = schema
 
-    # Load and deserialize exclude splits from execution properties.
-    exclude_splits = json_utils.loads(
-        exec_properties.get(EXCLUDE_SPLITS_KEY, 'null')) or []
-    if not isinstance(exclude_splits, list):
-      raise ValueError('exclude_splits in execution properties needs to be a '
-                       'list. Got %s instead.' % type(exclude_splits))
-
     split_and_tfxio = []
-    examples = artifact_utils.get_single_instance(input_dict[EXAMPLES_KEY])
     tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
         examples=[examples],
         telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
