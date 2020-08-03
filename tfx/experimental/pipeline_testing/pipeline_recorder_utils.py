@@ -35,7 +35,8 @@ def _get_paths(metadata_connection: metadata.Metadata,
   """Yields tuple with source and destination artifact uris.
 
   The destination artifact uris are located in the output_dir. The source
-  artifact uris are retrieved using execution ids.
+  artifact uris are retrieved using execution ids. Artifact index is used
+  for saving multiple output artifacts with same key.
 
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
@@ -44,11 +45,15 @@ def _get_paths(metadata_connection: metadata.Metadata,
 
   Yields:
     Iterable over tuples of source uri and destination uri.
+
+  Raises:
+    ValueError if artifact key and index are not recorded in MLMD event.
   """
   for execution in executions:
     component_id = execution.properties[
         metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-    if component_id == 'ResolverNode.latest_blessed_model_resolver':
+    # ResolverNode is ignored because it doesn't have a executor that can be replaced with stub.
+    if component_id.startswith('ResolverNode'):
       continue
     eid = [execution.id]
     events = metadata_connection.store.get_events_by_execution_ids(eid)
@@ -57,16 +62,20 @@ def _get_paths(metadata_connection: metadata.Metadata,
     ]
     for event in output_events:
       steps = event.path.steps
-      assert steps[0].HasField('key')
+      if not steps or not steps[0].HasField('key'):
+        raise ValueError('Artifact key is not recorded in the MLMD.')
       name = steps[0].key
       artifacts = metadata_connection.store.get_artifacts_by_id(
           [event.artifact_id])
       for artifact in artifacts:
         src_uri = artifact.uri
+        if len(steps) < 2 or not steps[1].HasField('index'):
+          raise ValueError('Artifact index is not recorded in the MLMD.')
+        artifact_index = steps[1].index
         dest_uri = os.path.join(output_dir,
                                 component_id,
                                 name,
-                                str(event.path.steps[1].index))
+                                str(artifact_index))
         yield (src_uri, dest_uri)
 
 
