@@ -147,6 +147,7 @@ def build_bert_question_answering(
           name=name) for name in input_layer_names]
 
   _, sequence_output = bert_layer(input_layers)
-  output = tf.keras.layers.Dense(2, dropout=dropout)(sequence_output)
+  output = keras.layers.Dropout(dropout)(sequence_output)
+  output = tf.keras.layers.Dense(2)(output)
   model = tf.keras.Model(input_layers, output)
   return model

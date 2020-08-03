@@ -88,8 +88,9 @@ class BertPreprocessor():
       sep_token = tf.fill(
           [tf.shape(sequence)[0], 1],
           tf.constant(self._sep_id, dtype=tf.int64))
-
-      word_ids = word_ids[:, :max_len-1]
+      
+      if not max_len is None:
+        word_ids = word_ids[:, :max_len-1]
       word_ids = tf.concat([word_ids, sep_token], 1)
 
     return word_ids
@@ -233,12 +234,16 @@ class BertPreprocessor():
       answer_start,
       answer_text):
 
+    if tf.rank(answer_start) != 1:
+      answer_start = tf.reshape(tf.slice(answer_start, [0, 0], [-1, 1]), [-1])
+      answer_text = tf.reshape(tf.slice(answer_text, [0, 0], [-1, 1]), [-1])
+
     token_question = self.tokenize_single_sentence_unpad(
         question,
         None
     )
 
-    token_contest = self.tokenize_single_sentence_unpad(
+    token_context = self.tokenize_single_sentence_unpad(
         context,
         None,
         False,
@@ -247,10 +252,14 @@ class BertPreprocessor():
 
     label_start = self.char_index_to_bert_index(
         answer_start,
-        question,
-        token_question,
-        1
+        context,
+        token_context,
     )
+
+    label_start = tf.map_fn(
+        lambda x: tf.size(x[0]) + x[1],
+        (token_question, label_start),
+        dtype=tf.int32)
 
     vocab_file_path = self._model.resolved_object.vocab_file.asset_path
     tokenizer = text.BertTokenizer(
@@ -260,12 +269,14 @@ class BertPreprocessor():
     tokenized_answer_text = tokenizer.tokenize(answer_text)
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
     tokenized_answer_text = tokenized_answer_text.merge_dims(-2, -1)
-    answer_size = tf.map_fn(tf.size, tokenized_answer_text)
+    answer_size = tf.map_fn(tf.size, tokenized_answer_text, dtype=tf.int32)
     # Account for 0 index
     label_end = label_start + answer_size - 1
-    labels = tf.stack([label_start, label_end], axis=1)
+    label_start_one = tf.squeeze(tf.one_hot(label_start, max_len))
+    label_end_one = tf.squeeze(tf.one_hot(label_end, max_len))
+    labels = tf.stack([label_start_one, label_end_one], axis=2)
     # Dealing with question and context
-    word_ids = tf.concat([token_question, token_contest], 1)
+    word_ids = tf.concat([token_question, token_context], 1)
     word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
