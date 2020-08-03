@@ -44,7 +44,7 @@ class ExecutorTest(tf.test.TestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
     self.source_data_dir = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), 'testdata')
+        "../", os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -134,7 +134,7 @@ class ExecutorTest(tf.test.TestCase):
                                               'schema.pbtxt')
     shutil.copy2(original_schema_pbtxt_path, tmp_schema_pbtxt_path)
 
-    with open(tmp_schema_pbtxt_path, "r+") as f:
+    with open(tmp_schema_pbtxt_path, "r") as f:
       contents = f.read()
       proto_contents = text_format.Parse(contents, schema_pb2.Schema())
 
@@ -143,9 +143,9 @@ class ExecutorTest(tf.test.TestCase):
           feature.skew_comparator.infinity_norm.threshold = 0.001
 
       contents = text_format.MessageToString(proto_contents)
-      f.seek(0)
+
+    with open(tmp_schema_pbtxt_path, "w") as f:
       f.write(contents)
-      f.truncate()
 
     self.schema_artifact.uri = tmp_schema_pbtxt_dir
 
@@ -163,7 +163,7 @@ class ExecutorTest(tf.test.TestCase):
 
     # Generate anomalies and test that tfdv detected the skew
     anomalies = self._test_do(input_dict, output_dict, exec_properties)
-    assert 'COMPARATOR_L_INFTY_HIGH' in str(anomalies.anomaly_info)
+    self.assertIn('COMPARATOR_L_INFTY_HIGH', str(anomalies.anomaly_info))
 
     shutil.rmtree(tmp_dir)
 
