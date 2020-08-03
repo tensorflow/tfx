@@ -53,13 +53,16 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
   # The project id to use to run tests.
   _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 
+  # The GCP region in which the end-to-end test is run.
+  #_GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
+
   # The GCP bucket to use to write output artifacts.
   # This default bucket name is valid for KFP marketplace deployment since KFP
   # version 0.5.0.
   _BUCKET_NAME = _GCP_PROJECT_ID + '-kubeflowpipelines-default'
 
-  _KFP_E2E_TEST_FORWARDING_PORT_BEGIN = 17330
-  _KFP_E2E_TEST_FORWARDING_PORT_END = 17335
+  _KFP_E2E_TEST_FORWARDING_PORT_BEGIN = 7330
+  _KFP_E2E_TEST_FORWARDING_PORT_END = 7335
   _MAX_ATTEMPTS = 5
 
   def setUp(self):
@@ -76,6 +79,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._target_container_image = 'gcr.io/{}/{}:{}'.format(
         self._GCP_PROJECT_ID, 'taxi-template-kubeflow-e2e-test', random_id)
     self._record_dir = "gs://{}/testdata".format(self._BUCKET_NAME)
+    io_utils.delete_dir(self._record_dir)
     self._port_forwarding_process = self._setup_mlmd_port_forward()
     self._prepare_base_container_image()
     self._prepare_skaffold()
@@ -84,13 +88,13 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
     super(StubKubeflowE2ETest, self).tearDown()
     logging.info('Killing the GRPC port-forwarding process.')
     self._port_forwarding_process.kill()
-    io_utils.delete_dir(self._record_dir)
-    self._cleanup_kfp()
+#     io_utils.delete_dir(self._record_dir)
+#     self._cleanup_kfp()
 
   def _get_grpc_port(self) -> Text:
     """Get the port number used by MLMD gRPC server."""
     get_grpc_port_command = [
-        'kubectl', '-n', 'default', 'get', 'configmap',
+        'kubectl', '-n', 'kubeflow', 'get', 'configmap',
         'metadata-grpc-configmap', '-o',
         'jsonpath={.data.METADATA_GRPC_SERVICE_PORT}'
     ]
@@ -109,7 +113,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
       print("port", port)
       grpc_forward_command = [
           'kubectl', 'port-forward', 'deployment/metadata-grpc-deployment',
-          '-n', 'default', ('%s:%s' % (port, grpc_port))
+          '-n', 'kubeflow', ('%s:%s' % (port, grpc_port))
       ]
       # Begin port forwarding.
       proc = subprocess.Popen(grpc_forward_command)
@@ -178,7 +182,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
   def _delete_pipeline(self):
     self._runCli([
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
-        self._pipeline_name
+        self._pipeline_name, '--endpoint', self._endpoint
     ])
 
   def _delete_pipeline_data(self):
@@ -201,7 +205,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
   def _get_endpoint(self):  # pylint: disable=inconsistent-return-statements
     output = subprocess.check_output(
-        'kubectl describe configmap inverse-proxy-config -n default'.split())
+        'kubectl describe configmap inverse-proxy-config -n kubeflow'.split())
     for line in output.decode('utf-8').split('\n'):
       if line.endswith('googleusercontent.com'):
         return line
@@ -286,6 +290,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
     end_state = kubeflow_test_utils.poll_kfp_with_retry(
         self._endpoint, run_id, self._MAX_POLLING_COUNT, timeout,
         self._POLLING_INTERVAL_IN_SECONDS)
+    print("end_state", end_state)
     self.assertEqual(end_state.lower(), kubeflow_test_utils.KFP_SUCCESS_STATUS)
 
   def _check_telemetry_label(self):
@@ -326,14 +331,14 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
     ])
 
-    # Create a pipeline with only one component.
+    # Create a pipeline with all components.
     updated_pipeline_file = self._addAllComponents()
     logging.info('Updated %s to add all components to the pipeline.',
                  updated_pipeline_file)
 
     self._create_pipeline()
     self._run_pipeline()
-#     self._check_telemetry_label()
+    self._check_telemetry_label()
     logging.info("Successfully ran the pipeline.")
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._record_dir,
@@ -342,8 +347,8 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
         port=self._port,
         pipeline_name=self._pipeline_name,
         run_id=None)
+    self.assertTrue(tf.io.gfile.exists(self._record_dir))
     logging.info("Pipeline has been recorded.")
-
     # Enable stub executors
     self._uncomment('kubeflow_dag_runner.py',
                     ['supported_launcher_classes=[',
