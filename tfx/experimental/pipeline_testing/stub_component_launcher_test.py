@@ -66,6 +66,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
+    # test_dir = "/Users/sujipark/tfx/test"
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
@@ -132,7 +133,8 @@ class StubComponentLauncherTest(tf.test.TestCase):
 
     record_file = os.path.join(self.record_dir,
                                self.component.id,
-                               self.output_key, 'recorded.txt')
+                               self.output_key,
+                               '0', 'recorded.txt')
     io_utils.write_string_file(record_file, 'hello world')
     component_ids = [self.component.id]
 

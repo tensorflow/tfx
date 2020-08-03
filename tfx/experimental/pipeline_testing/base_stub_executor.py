@@ -75,7 +75,7 @@ class BaseStubExecutor(base_executor.BaseExecutor):
         src = os.path.join(self._test_data_dir,
                            self._component_id,
                            output_key,
-                           idx)
+                           str(idx))
         if not os.path.exists(src):
           raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
