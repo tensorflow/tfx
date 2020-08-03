@@ -26,7 +26,7 @@ from typing import Text
 
 from tfx.examples.imdb import imdb_pipeline_native_keras
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration import metadata
@@ -35,7 +35,7 @@ from ml_metadata.proto import metadata_store_pb2
 class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
-    super(ImdbPipelineRegressionEndToEndTest, self).setUp()
+    super(ImdbStubPipelineRegressionEndToEndTest, self).setUp()
     self._test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
@@ -84,7 +84,9 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root,
         metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
+
     BeamDagRunner().run(record_imdb_pipeline)
+
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
@@ -108,7 +110,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                              for component in imdb_pipeline.components
                              if component.id != model_resolver_id]
 
-    stub_launcher = stub_component_launcher.get_stub_launcher_class(
+    stub_launcher = StubComponentLauncher.get_stub_launcher_class(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
