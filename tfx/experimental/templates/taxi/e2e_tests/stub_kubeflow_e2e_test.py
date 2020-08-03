@@ -24,7 +24,7 @@ import time
 from absl import logging
 import kfp
 import tensorflow as tf
-from typing import *
+from typing import Text
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
@@ -33,19 +33,6 @@ from tfx.utils import telemetry_utils
 from tfx.utils import io_utils
 import yaml
 from google.cloud import storage
-
-# os.environ['KFP_E2E_BASE_CONTAINER_IMAGE'] = 'gcr.io/tfx-intern-sujip-gke/tensorflow:latest'
-# os.environ['KFP_E2E_SRC'] = '/home/jupyter/tfx'
-# os.environ['KFP_E2E_GCP_PROJECT_ID']= 'tfx-intern-sujip-gke'
-#os.environ['KFP_E2E_GCP_REGION'] = '
-# export KFP_E2E_GCP_REGION='us-central1-a'
-# export KFP_E2E_BUCKET_NAME='tfx-intern-sujip-gke-kubeflowpipelines-default'
-# export KFP_E2E_BASE_CONTAINER_IMAGE='gcr.io/tfx-intern-sujip-gke/tensorflow'
-# export KFP_E2E_SRC='/home/jupyter/tfx'
-# export KFP_E2E_GCP_PROJECT_ID='tfx-intern-sujip-gke'
-# export KFP_E2E_TEST_DATA_ROOT='gs://tfx-intern-sujip-gke-kubeflowpipelines-default/tfx-template/data'
-# export PYTHONPATH=/home/jupyter/tfx
-# export PATH=/home/jupyter/.local/bin:$PATH
 
 class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
@@ -120,7 +107,8 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     is_bind = False
 
-    for port in range(self._KFP_E2E_TEST_FORWARDING_PORT_BEGIN,self._KFP_E2E_TEST_FORWARDING_PORT_END):
+    for port in range(self._KFP_E2E_TEST_FORWARDING_PORT_BEGIN,
+                      self._KFP_E2E_TEST_FORWARDING_PORT_END):
       print("port", port)
       grpc_forward_command = [
           'kubectl', 'port-forward', 'deployment/metadata-grpc-deployment',
@@ -149,7 +137,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
       except:  # pylint: disable=bare-except
         # Kill the process in case unexpected error occurred.
         proc.kill()
-      
+
       if is_bind:
         self._port = port
         break
@@ -366,8 +354,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
                      '],'])
     # Update the pipeline to use stub executors.
 
-#     self._update_pipeline()
-    self._create_pipeline()
+    self._update_pipeline()
     self._run_pipeline()
 
 
