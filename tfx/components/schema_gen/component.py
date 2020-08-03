@@ -17,9 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Union
+from typing import Optional, List, Text, Union
 
-import absl
+from absl import logging
 
 from tfx import types
 from tfx.components.base import base_component
@@ -28,6 +28,7 @@ from tfx.components.schema_gen import executor
 from tfx.orchestration import data_types
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import SchemaGenSpec
+from tfx.utils import json_utils
 
 
 class SchemaGen(base_component.BaseComponent):
@@ -62,6 +63,7 @@ class SchemaGen(base_component.BaseComponent):
       statistics: Optional[types.Channel] = None,
       infer_feature_shape: Optional[Union[bool,
                                           data_types.RuntimeParameter]] = False,
+      exclude_splits: Optional[List[Text]] = None,
       output: Optional[types.Channel] = None,
       stats: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None):
@@ -75,6 +77,9 @@ class SchemaGen(base_component.BaseComponent):
         whether or not to infer the shape of features. If the feature shape is
         not inferred, downstream Tensorflow Transform component using the schema
         will parse input as tf.SparseTensor.
+      exclude_splits: Names of splits that will not be taken into consideration
+        when auto-generating a schema. Default behavior (when exclude_splits is
+        set to None) is excluding no splits.
       output: Output `Schema` channel for schema result.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -83,16 +88,19 @@ class SchemaGen(base_component.BaseComponent):
         the input arguments.
     """
     if stats:
-      absl.logging.warning(
+      logging.warning(
           'The "stats" argument to the SchemaGen component has '
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
+    if exclude_splits is None:
+      exclude_splits = []
+      logging.info('Excluding no splits because exclude_splits is not set.')
     schema = output or types.Channel(
         type=standard_artifacts.Schema, artifacts=[standard_artifacts.Schema()])
-
     spec = SchemaGenSpec(
         statistics=statistics,
         infer_feature_shape=infer_feature_shape,
+        exclude_splits=json_utils.dumps(exclude_splits),
         schema=schema)
     super(SchemaGen, self).__init__(spec=spec, instance_name=instance_name)

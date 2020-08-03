@@ -21,6 +21,10 @@
 *   Supported multiple artifacts for Trainer and Tuner's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
 *   Supported split configuration for Evaluator.
+*   Supported split configuration for StatisticsGen, SchemaGen and
+    ExampleValidator. SchemaGen will now use all splits to generate schema
+    instead of just using `train` split. ExampleValidator will now validate all
+    splits against given schema instead of just validating `eval` split.
 *   Component authors now can create a TFXIO instance to get access to the
     data through `tfx.components.util.tfxio_utils`. As TFX is going to
     support more data payload formats and data container formats, using

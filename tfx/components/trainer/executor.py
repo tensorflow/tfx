@@ -26,8 +26,6 @@ import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import constants
@@ -37,6 +35,9 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
+
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 def _all_files_pattern(file_pattern: Text) -> Text:
@@ -163,6 +164,9 @@ class GenericExecutor(base_executor.BaseExecutor):
         base_model=base_model,
         # An optional kerastuner.HyperParameters config.
         hyperparameters=hyperparameters_config,
+        # A fn_args_utils.DataAccessor. Contains factories that can create
+        # tf.data.Datasets or other means to access the train/eval data.
+        data_accessor=fn_args.data_accessor,
         # Additional parameters to pass to trainer function.
         **custom_config)
 
