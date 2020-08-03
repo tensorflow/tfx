@@ -49,35 +49,25 @@ def _pod_is_done(resp: client.V1Pod):
 
 def create_worker_pods(job_args: List[Text],
                        training_inputs: Dict[Text, Any],
-                       exec_properties: Dict[Text, Any],
                        unique_id: Text):
   """Create worker pods for multi-worker training."""
   num_workers = training_inputs.get('num_workers', 1)
   num_gpus_per_worker = training_inputs.get('num_gpus_per_worker', 0)
-  api_instance = kube_utils.make_core_v1_api()
 
+  api_instance = kube_utils.make_core_v1_api()
   service_names = _build_service_names(num_workers=num_workers,
                                        unique_id=unique_id)
   pod_names = _build_pod_names(num_workers=num_workers, unique_id=unique_id)
   worker_hosts = ['{}:5000'.format(svc_name) for svc_name in service_names]
 
-  # since worker_index is passed through custom_config in exec_properties,
-  # save an original copy to be restored upon function completion.
-  original_custom_config = exec_properties[constants.CUSTOM_CONFIG_KEY]
-  custom_config = json.loads(exec_properties[constants.CUSTOM_CONFIG_KEY])
-  training_args = custom_config[executor.TRAINING_ARGS_KEY]
-
-  # set worker_hosts in training args
-  training_args['worker_hosts'] = worker_hosts
-
   # TODO(ericlege): consider using a jinja2 template instead
   for i in range(num_workers):
-    # replace worker_index in training args
-    training_args['worker_index'] = i
-    exec_properties[constants.CUSTOM_CONFIG_KEY] = json.dumps(custom_config,
-                                                              sort_keys=True)
-    json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-    exec_properties_args = ['--exec-properties', json_exec_properties]
+    tf_config = json.dumps({
+      'cluster': {
+          'worker': worker_hosts
+      },
+      'task': {'type': 'worker', 'index': i}
+    })
     pod = client.V1Pod(
         metadata=client.V1ObjectMeta(
             name=pod_names[i],
@@ -93,7 +83,13 @@ def create_worker_pods(job_args: List[Text],
                     name='worker-pod',
                     image=_TFX_IMAGE,
                     command=_COMMAND,
-                    args=job_args + exec_properties_args,
+                    args=job_args,
+                    env=[
+                        client.V1EnvVar(
+                          name='TF_CONFIG',
+                          value=tf_config,
+                        ),
+                    ],
                     ports=[
                         client.V1ContainerPort(
                             container_port=5000,
@@ -102,8 +98,8 @@ def create_worker_pods(job_args: List[Text],
                     resources=client.V1ResourceRequirements(
                         limits={
                             'nvidia.com/gpu': num_gpus_per_worker,
-                        } if num_gpus_per_worker > 0 else {},
-                    ),
+                        },
+                    ) if num_gpus_per_worker > 0 else None,
                 ),
             ],
             restart_policy=kube_utils.RestartPolicy.NEVER.value,
@@ -114,7 +110,7 @@ def create_worker_pods(job_args: List[Text],
     except ApiException as e:
       logging.error(
           'Exception when calling CoreV1Api->create_namespaced_pod: %s' % e)
-  exec_properties[constants.CUSTOM_CONFIG_KEY] = original_custom_config
+
   logging.info('created {} worker pods'.format(num_workers))
 
 
@@ -208,12 +204,10 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
   # the specified image using the container's entrypoint. The default
   # entrypoint for TFX containers is to call scripts/run_executor.py. The
   # arguments below are passed to this run_executor entry to run the executor
-  # specified in `executor_class_path`. Note that exec_properties are supplied
-  # dynamically in create_worker_service since each pod needs a different
-  # worker_index passed through it.
+  # specified in `executor_class_path`.
   job_args = [
       '--executor_class_path', executor_class_path, '--inputs', json_inputs,
-      '--outputs', json_outputs,
+      '--outputs', json_outputs, '--exec-properties', json_exec_properties
   ]
 
   # launch the services
@@ -222,7 +216,6 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
   # launch the worker pods
   create_worker_pods(job_args=job_args,
                      training_inputs=training_inputs,
-                     exec_properties=exec_properties,
                      unique_id=unique_id)
 
   # wait for finish.
@@ -238,7 +231,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                              expotential_backoff=True,)
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
     raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
-                       ('default', _get_pod_name(), resp.status))
+                       ('default', pod_names[0], resp.status))
 
   # clean up
   delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)
