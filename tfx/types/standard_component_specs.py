@@ -72,6 +72,8 @@ class EvaluatorSpec(ComponentSpec):
       # change at any time.
       'fairness_indicator_thresholds':
           ExecutionParameter(type=List[float], optional=True),
+      'example_splits':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':
@@ -100,7 +102,9 @@ class EvaluatorSpec(ComponentSpec):
 class ExampleValidatorSpec(ComponentSpec):
   """ExampleValidator component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+  }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
       'schema': ChannelParameter(type=standard_artifacts.Schema),
@@ -230,7 +234,8 @@ class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
   PARAMETERS = {
-      'infer_feature_shape': ExecutionParameter(type=bool, optional=True)
+      'infer_feature_shape': ExecutionParameter(type=bool, optional=True),
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
@@ -253,8 +258,8 @@ class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
   PARAMETERS = {
-      'stats_options_json':
-          ExecutionParameter(type=(str, Text), optional=True),
+      'stats_options_json': ExecutionParameter(type=(str, Text), optional=True),
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
@@ -356,7 +361,7 @@ class TransformSpec(ComponentSpec):
       'transform_graph':
           ChannelParameter(type=standard_artifacts.TransformGraph),
       'transformed_examples':
-          ChannelParameter(type=standard_artifacts.Examples),
+          ChannelParameter(type=standard_artifacts.Examples, optional=True),
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards

@@ -27,6 +27,8 @@ def make_required_install_packages():
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
+      # TODO(b/162371496): remove pinned google-resumable-media
+      'google-resumable-media>=0.6.0,<0.7.0',
       'grpcio>=1.28.1,<2',
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
@@ -35,6 +37,7 @@ def make_required_install_packages():
       'ml-metadata>=0.22.1,<0.23',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
+      # TODO(b/157188303): change to 'pyarrow>=0.17,<0.18' before 0.23 release.
       'pyarrow>=0.16,<0.17',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',

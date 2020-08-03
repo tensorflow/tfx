@@ -255,6 +255,16 @@ nodes {
         }
       }
     }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+    }
     executor {
       python_class_executor_spec {
         class_path: "tfx.components.statistics_gen.executor.Executor"
@@ -348,6 +358,14 @@ nodes {
       }
     }
     parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
       parameters {
         key: "infer_feature_shape"
         value {
@@ -485,7 +503,21 @@ nodes {
                 key: "span"
                 value: INT
               }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
             }
+          }
+        }
+      }
+    }
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
           }
         }
       }
@@ -849,6 +881,14 @@ nodes {
         value {
           field_value {
             string_value: "{\n  \"metrics_specs\": [\n    {\n      \"thresholds\": {\n        \"sparse_categorical_accuracy\": {\n          \"change_threshold\": {\n            \"absolute\": -1e-10,\n            \"direction\": \"HIGHER_IS_BETTER\"\n          },\n          \"value_threshold\": {\n            \"lower_bound\": 0.6\n          }\n        }\n      }\n    }\n  ],\n  \"model_specs\": [\n    {\n      \"signature_name\": \"eval\"\n    }\n  ],\n  \"slicing_specs\": [\n    {}\n  ]\n}"
+          }
+        }
+      }
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
           }
         }
       }

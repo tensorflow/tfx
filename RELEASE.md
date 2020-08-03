@@ -20,6 +20,11 @@
 *   Added support for primitive artifacts to InputValuePlaceholder.
 *   Supported multiple artifacts for Trainer and Tuner's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
+*   Supported split configuration for Evaluator.
+*   Supported split configuration for StatisticsGen, SchemaGen and
+    ExampleValidator. SchemaGen will now use all splits to generate schema
+    instead of just using `train` split. ExampleValidator will now validate all
+    splits against given schema instead of just validating `eval` split.
 *   Component authors now can create a TFXIO instance to get access to the
     data through `tfx.components.util.tfxio_utils`. As TFX is going to
     support more data payload formats and data container formats, using
@@ -32,6 +37,9 @@
 *   Supported multiple artifacts in an output Channel to match a certain input
     Channel's artifact count. This enables Transform component to process
     multiple artifacts.
+*   Transform component's transformed examples output is now optional (enabled
+    by default) -- specify parameter `materialize=False` when constructing
+    the component to disable.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
@@ -48,12 +56,18 @@
     thread safe.
 *   Stopped requiring `avro-python3`.
 *   Requires [Bazel](https://bazel.build/) to build TFX source code.
+*   Upgraded python version in TFX docker images to 3.7. Older version of
+    python (2.7/3.5/3.6) is not available anymore in `tensorflow/tfx` images
+    on docker hub. Virtualenv is not used anymore.
 
 ## Breaking changes
 
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
     previous module path from `tfx.components` is not available anymore.
+*   Moved BigQuery ML Pusher to `tfx.extensions.google_cloud_big_query.pusher`.
+    The previous module path from `tfx.extensions.google_cloud_big_query_ml`
+    is not available anymore.
 *   Updated beam pipeline args, users now need to set both `direct_running_mode`
     and `direct_num_workers` explicitly for multi-processing.
 *   Added required 'output_data_format' execution property to

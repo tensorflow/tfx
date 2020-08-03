@@ -99,5 +99,5 @@ def delete_gcs_files(gcp_project_id: str, bucket_name: str, path: str):
   logging.info('Deleting files under GCS bucket path: %s', path)
 
   with Timer('ListingAndDeletingFilesFromGCS'):
-    blobs = bucket.list_blobs(prefix=path)
+    blobs = list(bucket.list_blobs(prefix=path))
     bucket.delete_blobs(blobs)
