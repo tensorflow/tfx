@@ -70,9 +70,12 @@ class BaseStubExecutor(base_executor.BaseExecutor):
       FileNotFoundError: If the recorded test data dir doesn't exist any more.
     """
     for output_key, artifact_list in output_dict.items():
-      for artifact in artifact_list:
+      for idx, artifact in enumerate(artifact_list):
         dest = artifact.uri
-        src = os.path.join(self._test_data_dir, self._component_id, output_key)
+        src = os.path.join(self._test_data_dir,
+                           self._component_id,
+                           output_key,
+                           idx)
         if not os.path.exists(src):
           raise FileNotFoundError("{} does not exist".format(src))
         io_utils.copy_dir(src, dest)
