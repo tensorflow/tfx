@@ -151,11 +151,11 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
           name = steps[0].key
           artifacts = m.store.get_artifacts_by_id(
               [event.artifact_id])
-          for artifact in artifacts:
+          for idx, artifact in enumerate(artifacts):
             self.assertDirectoryEqual(artifact.uri, os.path.join(
                 self._recorded_output_dir,
                 component_id,
-                name))
+                name, str(idx)))
 
 if __name__ == '__main__':
   tf.test.main()
