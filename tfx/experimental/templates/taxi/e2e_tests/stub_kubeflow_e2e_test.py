@@ -53,9 +53,6 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
   # The project id to use to run tests.
   _GCP_PROJECT_ID = os.environ['KFP_E2E_GCP_PROJECT_ID']
 
-  # The GCP region in which the end-to-end test is run.
-  #_GCP_REGION = os.environ['KFP_E2E_GCP_REGION']
-
   # The GCP bucket to use to write output artifacts.
   # This default bucket name is valid for KFP marketplace deployment since KFP
   # version 0.5.0.
@@ -78,7 +75,7 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
                                                 random_id)
     self._target_container_image = 'gcr.io/{}/{}:{}'.format(
         self._GCP_PROJECT_ID, 'taxi-template-kubeflow-e2e-test', random_id)
-    self._record_dir = "gs://{}/recorded_testdata".format(self._BUCKET_NAME)
+    self._record_dir = "gs://{}/testdata".format(self._BUCKET_NAME)
     self._port_forwarding_process = self._setup_mlmd_port_forward()
     self._prepare_base_container_image()
     self._prepare_skaffold()
