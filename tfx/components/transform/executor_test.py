@@ -194,6 +194,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
+    self.assertFalse(
+        tf.io.gfile.exists(
+            os.path.join(self._transformed_examples.uri, 'train')))
     self.assertNotEqual(
         0,
         len(
