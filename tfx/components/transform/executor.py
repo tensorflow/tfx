@@ -301,7 +301,8 @@ class Executor(base_executor.BaseExecutor):
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
-          implements 'preprocessing_fn'.
+          implements 'preprocessing_fn'. Exactly one of 'module_file' and
+          'preprocessing_fn' should be set.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Default
           behavior (when splits_config is not set) is analyze the 'train' split
