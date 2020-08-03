@@ -228,14 +228,13 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
       self.exec_properties[arg_name] = value
 
-    for arg_name, arg in self.INPUTS.items():
-      if arg.optional and not self._raw_args.get(arg_name):
-        continue
-      value = self._raw_args[arg_name]
-      inputs[arg_name] = value
-    for arg_name, arg in self.OUTPUTS.items():
-      value = self._raw_args[arg_name]
-      outputs[arg_name] = value
+    for arg_dict, param_dict in (
+        (self.INPUTS, inputs), (self.OUTPUTS, outputs)):
+      for arg_name, arg in arg_dict.items():
+        if arg.optional and not self._raw_args.get(arg_name):
+          continue
+        value = self._raw_args[arg_name]
+        param_dict[arg_name] = value
 
     # Note: for forwards compatibility, ComponentSpec objects may provide an
     # attribute mapping virtual keys to physical keys in the outputs dictionary,

@@ -19,8 +19,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Callable, List, Optional, Text, Union
+from typing import Any, Callable, List, Optional, Text, Tuple, Union
 
+import tensorflow as tf
 from tfx.components.experimental.data_view import constants
 from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
@@ -39,18 +40,87 @@ if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
 else:
   record_to_tensor_tfxio = None
 
+# TODO(b/162532479): clean up once tfx-bsl post-0.22 is released.
+_TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS = getattr(
+    tfx_bsl, 'TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS', False)
+
+# TODO(b/162532479): switch to support List[Text] exclusively, once tfx-bsl
+# post-0.22 is released.
+OneOrMorePatterns = Union[Text, List[Text]]
+
+# TODO(b/162532757): the type should be
+# tfx_bsl.tfxio.dataset_options.TensorFlowDatasetOptions. Switch to it once
+# tfx-bsl post-0.22 is released.
+_TensorFlowDatasetOptions = Any
+
+
+def resolve_payload_format_and_data_view_uri(
+    examples: List[artifact.Artifact]) -> Tuple[int, Optional[Text]]:
+  """Resolves the payload format and a DataView URI for given artifacts.
+
+  This routine make sure that the provided list of Examples artifacts are of
+  the same payload type, and if their payload type is FORMAT_PROTO, it resolves
+  one DataView (if applicable) to be used to access the data in all the
+  artifacts in a consistent way (i.e. the RecordBatches from those artifacts
+  will have the same schema).
+
+  Args:
+    examples: A list of Examples artifact.
+  Returns:
+    A pair. The first term is the payload format (a value in
+      example_gen_pb2.PayloadFormat enum); the second term is the URI to the
+      resolved DataView (could be None, if the examples are not FORMAT_PROTO,
+      or they are all FORMAT_PROTO, but all do not have a DataView attached).
+  Raises:
+    ValueError: if not all artifacts are of the same payload format, or
+      if they are all of FORMAT_PROTO but some (but not all) of them do not
+      have a DataView attached.
+  """
+  assert examples, 'At least one Examples artifact is needed.'
+  payload_format = _get_payload_format(examples)
+
+  if payload_format != example_gen_pb2.PayloadFormat.FORMAT_PROTO:
+    # Only FORMAT_PROTO may have DataView attached.
+    return payload_format, None
+
+  data_view_infos = []
+  for examples_artifact in examples:
+    data_view_infos.append(_get_data_view_info(examples_artifact))
+  # All the artifacts do not have DataView attached -- this is allowed. The
+  # caller may be requesting to read the data as raw string records.
+  if all([i is None for i in data_view_infos]):
+    return payload_format, None
+
+  # All the artifacts have a DataView attached -- resolve to the latest
+  # DataView (the one with the largest ID). This will guarantee that the
+  # RecordBatch read from each artifact will share the same Arrow schema (and
+  # thus Tensors fed to TF graphs, if applicable). The DataView will need
+  # to guarantee backward compatibilty with older spans. Usually the DataView
+  # is a struct2tensor query, so such guarantee is provided by protobuf
+  # (as long as the user follows the basic principles of making changes to
+  # the proto).
+  if all([i is not None for i in data_view_infos]):
+    return payload_format, max(data_view_infos, key=lambda pair: pair[1])[0]
+
+  violating_artifacts = [
+      e for e, i in zip(examples, data_view_infos) if i is None]
+  raise ValueError(
+      'Unable to resolve a DataView for the Examples Artifacts '
+      'provided -- some Artifacts did not have DataView attached: {}'
+      .format(violating_artifacts))
+
 
 def get_tfxio_factory_from_artifact(
-    examples: artifact.Artifact,
+    examples: List[artifact.Artifact],
     telemetry_descriptors: List[Text],
     schema: Optional[schema_pb2.Schema] = None,
     read_as_raw_records: bool = False,
     raw_record_column_name: Optional[Text] = None
-) -> Callable[[Text], tfxio.TFXIO]:
+) -> Callable[[OneOrMorePatterns], tfxio.TFXIO]:
   """Returns a factory function that creates a proper TFXIO.
 
   Args:
-    examples: The Examples artifact that the TFXIO is intended to access.
+    examples: The Examples artifacts that the TFXIO is intended to access.
     telemetry_descriptors: A set of descriptors that identify the component
       that is instantiating the TFXIO. These will be used to construct the
       namespace to contain metrics for profiling and are therefore expected to
@@ -73,17 +143,9 @@ def get_tfxio_factory_from_artifact(
   Raises:
     NotImplementedError: when given an unsupported example payload type.
   """
-  assert examples.type is standard_artifacts.Examples, (
-      'examples must be of type standard_artifacts.Examples')
-  # In case that the payload format custom property is not set.
-  # Assume tf.Example.
-  payload_format = examples_utils.get_payload_format(examples)
-  data_view_uri = None
-  if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
-    data_view_uri = examples.get_string_custom_property(
-        constants.DATA_VIEW_URI_PROPERTY_KEY)
-    if not data_view_uri:
-      data_view_uri = None
+
+  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
+      examples)
   return lambda file_pattern: make_tfxio(  # pylint:disable=g-long-lambda
       file_pattern=file_pattern,
       telemetry_descriptors=telemetry_descriptors,
@@ -94,13 +156,49 @@ def get_tfxio_factory_from_artifact(
       raw_record_column_name=raw_record_column_name)
 
 
-def make_tfxio(file_pattern: Text,
+def get_tf_dataset_factory_from_artifact(
+    examples: List[artifact.Artifact],
+    telemetry_descriptors: List[Text],
+) -> Callable[[
+    List[Text],
+    _TensorFlowDatasetOptions,
+    Optional[schema_pb2.Schema],
+], tf.data.Dataset]:
+  """Returns a factory function that creates a tf.data.Dataset.
+
+  Args:
+    examples: The Examples artifacts that the TFXIO from which the Dataset is
+      created from is intended to access.
+    telemetry_descriptors: A set of descriptors that identify the component
+      that is instantiating the TFXIO. These will be used to construct the
+      namespace to contain metrics for profiling and are therefore expected to
+      be identifiers of the component itself and not individual instances of
+      source use.
+  """
+  payload_format, data_view_uri = resolve_payload_format_and_data_view_uri(
+      examples)
+
+  def dataset_factory(file_pattern: List[Text],
+                      options: _TensorFlowDatasetOptions,
+                      schema: Optional[schema_pb2.Schema]) -> tf.data.Dataset:
+    return make_tfxio(  # pylint:disable=g-long-lambda
+        file_pattern=file_pattern,
+        telemetry_descriptors=telemetry_descriptors,
+        payload_format=payload_format,
+        data_view_uri=data_view_uri,
+        schema=schema).TensorFlowDataset(
+            options)
+
+  return dataset_factory
+
+
+def make_tfxio(file_pattern: OneOrMorePatterns,
                telemetry_descriptors: List[Text],
                payload_format: Union[Text, int],
                data_view_uri: Optional[Text] = None,
                schema: Optional[schema_pb2.Schema] = None,
                read_as_raw_records: bool = False,
-               raw_record_column_name: Optional[Text] = None):
+               raw_record_column_name: Optional[Text] = None) -> tfxio.TFXIO:
   """Creates a TFXIO instance that reads `file_pattern`.
 
   Args:
@@ -128,6 +226,10 @@ def make_tfxio(file_pattern: Text,
   Returns:
     a TFXIO instance.
   """
+  if not _TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS:
+    assert not isinstance(file_pattern, list) or len(file_pattern) == 1, (
+        'multiple file patterns are not supported yet.')
+
   if not isinstance(payload_format, int):
     payload_format = example_gen_pb2.PayloadFormat.Value(payload_format)
 
@@ -166,3 +268,29 @@ def make_tfxio(file_pattern: Text,
 
   raise NotImplementedError(
       'Unsupport payload format: {}'.format(payload_format))
+
+
+def _get_payload_format(examples: List[artifact.Artifact]) -> int:
+  payload_formats = set(
+      [examples_utils.get_payload_format(e) for e in examples])
+  if len(payload_formats) != 1:
+    raise ValueError('Unable to read example artifacts of different payload '
+                     'formats: {}'.format(payload_formats))
+  return payload_formats.pop()
+
+
+def _get_data_view_info(
+    examples: artifact.Artifact) -> Optional[Tuple[Text, int]]:
+  """Returns the payload format and data view URI and ID from examples."""
+  assert examples.type is standard_artifacts.Examples, (
+      'examples must be of type standard_artifacts.Examples')
+  payload_format = examples_utils.get_payload_format(examples)
+  if payload_format == example_gen_pb2.PayloadFormat.FORMAT_PROTO:
+    data_view_uri = examples.get_string_custom_property(
+        constants.DATA_VIEW_URI_PROPERTY_KEY)
+    if data_view_uri:
+      data_view_id = examples.get_int_custom_property(
+          constants.DATA_VIEW_ID_PROPERTY_KEY)
+      return data_view_uri, data_view_id
+
+  return None

@@ -107,17 +107,22 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Executor for test.
     self._transform_executor = executor.Executor()
 
-  def _verify_transform_outputs(self):
-    self.assertNotEqual(
-        0,
-        len(
-            tf.io.gfile.listdir(
-                os.path.join(self._transformed_examples.uri, 'train'))))
-    self.assertNotEqual(
-        0,
-        len(
-            tf.io.gfile.listdir(
-                os.path.join(self._transformed_examples.uri, 'eval'))))
+  def _verify_transform_outputs(self, materialize=True):
+    if materialize:
+      self.assertNotEqual(
+          0,
+          len(
+              tf.io.gfile.listdir(
+                  os.path.join(self._transformed_examples.uri, 'train'))))
+      self.assertNotEqual(
+          0,
+          len(
+              tf.io.gfile.listdir(
+                  os.path.join(self._transformed_examples.uri, 'eval'))))
+    else:
+      # there should not be transformed data under _output_data_dir.
+      self.assertEqual(['transformed_graph'],
+                       tf.io.gfile.listdir(self._output_data_dir))
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
@@ -153,6 +158,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
+
+  def testDoWithMaterializationDisabled(self):
+    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    del self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY]
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(materialize=False)
 
   def testDoWithNoPreprocessingFn(self):
     with self.assertRaises(ValueError):
