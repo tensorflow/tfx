@@ -352,7 +352,7 @@ class Executor(base_executor.BaseExecutor):
       # TODO(b/161490287): move the split_names setting to executor for all
       # components.
       transformed_example_artifact.split_names = (
-          artifact_utils.encode_split_names(artifact.DEFAULT_EXAMPLE_SPLITS))
+          artifact_utils.encode_split_names(splits_config.transform_splits))
 
       for split in splits_config.transform_splits:
         data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
