@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""E2E Tests for taxi pipeline beam with executor verifiers."""
+"""Testing executor verifiers for taxi pipeline."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -49,8 +49,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
     # This example assumes that the pipeline outputs are recorded in
     # tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline/testdata.
     # Feel free to customize this as needed.
-    # self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
-    self._record_dir = os.path.join('/Users/sujipark/tfx', 'testdata')
+    self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
     self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
@@ -94,7 +93,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
   def _verify_trainer(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_model_file_sizes(output_uri,
-                                                   expected_uri, .5))
+                                                         expected_uri, .5))
 
   def _verify_validator(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
@@ -104,7 +103,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
   def testExecutorVerifier(self):
     # Calls verifier for artifacts
     model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    # Components to verify
+    # List of components to verify
     verify_component_ids = [component.id
                             for component in self.taxi_pipeline.components
                             if component.id != model_resolver_id]

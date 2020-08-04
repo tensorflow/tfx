@@ -43,10 +43,8 @@ def _compare_relative_difference(value: float,
 
   Returns:
     a boolean indicating whether the relative difference is within the
-    threshold
+    threshold.
   """
-  print("expected_value", expected_value)
-  print("value", value)
   if value != expected_value:
     if expected_value:
       relative_diff = abs(value - expected_value)/abs(expected_value)
@@ -133,7 +131,7 @@ def _group_metric_by_slice(eval_result_metric: List[SlicedMetrics]
     eval_result_metric: list of sliced metrics.
 
   Returns:
-    a slice map that holds a dictionary of metric and value for slices
+    a slice map that holds a dictionary of metric and value for slices.
   """
   slice_map = {}
   for metric in eval_result_metric:
@@ -163,9 +161,6 @@ def compare_eval_results(output_uri: Text,
   for metric_name, value in slice_map[()].items():
     expected_value = expected_slice_map[()][metric_name]
     if not _compare_relative_difference(value, expected_value, threshold):
-      print("expected_value", expected_value)
-      print("value", value)
-      print("metric_name", metric_name)
       return False
   return True
 
@@ -256,7 +251,5 @@ def compare_anomalies(output_uri: Text,
           os.path.join(expected_uri, expected_file_name),
           anomalies_pb2.Anomalies())
       if expected_anomalies.anomaly_info != anomalies.anomaly_info:
-        print("filename", file_name)
-        print("expected_file_name", expected_file_name)
         return False
   return True
