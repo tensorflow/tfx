@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from tfx import types
 from tfx.experimental.pipeline_testing import base_stub_executor
-from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
+from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher
@@ -37,6 +37,10 @@ from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
+  """Responsible for launching stub executors in Beam.
+  """
+  pass
 
 class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   """Example of custom stub executor.

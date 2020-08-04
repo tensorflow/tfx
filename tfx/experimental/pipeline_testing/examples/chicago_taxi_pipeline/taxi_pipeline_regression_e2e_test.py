@@ -26,13 +26,17 @@ import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
+from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
 
 from ml_metadata.proto import metadata_store_pb2
 
+class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
+  """Responsible for launching stub executors in Beam.
+  """
+  pass
 
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 

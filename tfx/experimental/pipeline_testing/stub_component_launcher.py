@@ -43,8 +43,7 @@ class StubComponentLauncher(
       cls,
       test_data_dir: Text,
       stubbed_component_ids: List[Text],
-      stubbed_component_map: Dict[Text, \
-          Type[base_stub_executor.BaseStubExecutor]]
+      stubbed_component_map: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]  # pylint: disable=line-too-long
   ):
     """Returns a StubComponentLauncher class.
 
@@ -83,8 +82,7 @@ class StubComponentLauncher(
     """
     cls.stubbed_component_map = dict(stubbed_component_map)
     for component_id in stubbed_component_ids:
-      cls.stubbed_component_map[component_id] = \
-                      base_stub_executor.BaseStubExecutor
+      cls.stubbed_component_map[component_id] = base_stub_executor.BaseStubExecutor  # pylint: disable=line-too-long
     cls.test_data_dir = test_data_dir
     return cls
 
