@@ -49,7 +49,8 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
     # This example assumes that the pipeline outputs are recorded in
     # tfx/experimental/pipeline_testing/examples/chicago_taxi_pipeline/testdata.
     # Feel free to customize this as needed.
-    self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
+    # self._record_dir = os.path.join(os.path.dirname(__file__), 'testdata')
+    self._record_dir = os.path.join('/Users/sujipark/tfx', 'testdata')
 
     self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
