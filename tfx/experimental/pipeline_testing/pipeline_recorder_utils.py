@@ -30,35 +30,53 @@ from tfx.utils import io_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-def _get_paths(metadata_connection: metadata.Metadata, execution_ids: List[int],
+def _get_paths(metadata_connection: metadata.Metadata,
+               executions: List[metadata_store_pb2.Execution],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:
   """Yields tuple with source and destination artifact uris.
 
   The destination artifact uris are located in the output_dir. The source
-  artifact uris are retrieved using execution ids.
+  artifact uris are retrieved using execution ids. Artifact index is used
+  for saving multiple output artifacts with same key.
 
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
-    execution_ids: List of execution ids of a pipeline run.
+    executions: List of executions of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
 
   Yields:
     Iterable over tuples of source uri and destination uri.
-  """
-  events = metadata_connection.store.get_events_by_execution_ids(execution_ids)
-  output_events = [
-      x for x in events if x.type == metadata_store_pb2.Event.OUTPUT
-  ]
-  unique_artifact_ids = list({x.artifact_id for x in output_events})
 
-  for artifact in metadata_connection.store.get_artifacts_by_id(
-      unique_artifact_ids):
-    src_uri = artifact.uri
-    artifact_properties = artifact.custom_properties
-    component_id = artifact_properties['producer_component'].string_value
-    name = artifact_properties['name'].string_value
-    dest_uri = os.path.join(output_dir, component_id, name)
-    yield (src_uri, dest_uri)
+  Raises:
+    ValueError if artifact key and index are not recorded in MLMD event.
+  """
+  for execution in executions:
+    component_id = execution.properties[
+        metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
+    # ResolverNode is ignored because it doesn't have a executor that can be
+    # replaced with stub.
+    if component_id.startswith('ResolverNode'):
+      continue
+    eid = [execution.id]
+    events = metadata_connection.store.get_events_by_execution_ids(eid)
+    output_events = [
+        x for x in events if x.type == metadata_store_pb2.Event.OUTPUT
+    ]
+    for event in output_events:
+      steps = event.path.steps
+      if not steps or not steps[0].HasField('key'):
+        raise ValueError('Artifact key is not recorded in the MLMD.')
+      name = steps[0].key
+      artifacts = metadata_connection.store.get_artifacts_by_id(
+          [event.artifact_id])
+      for artifact in artifacts:
+        src_uri = artifact.uri
+        if len(steps) < 2 or not steps[1].HasField('index'):
+          raise ValueError('Artifact index is not recorded in the MLMD.')
+        artifact_index = steps[1].index
+        dest_uri = os.path.join(output_dir, component_id, name,
+                                str(artifact_index))
+        yield (src_uri, dest_uri)
 
 
 def _get_execution_dict(
@@ -151,8 +169,8 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
       else:
         raise ValueError(
             'run_id {} is not recorded in the MLMD metadata'.format(run_id))
-    execution_ids = [e.id for e in executions]
-    for src_uri, dest_uri in _get_paths(metadata_connection, execution_ids,
+
+    for src_uri, dest_uri in _get_paths(metadata_connection, executions,
                                         output_dir):
       if not tf.io.gfile.exists(src_uri):
         raise FileNotFoundError('{} does not exist'.format(src_uri))
