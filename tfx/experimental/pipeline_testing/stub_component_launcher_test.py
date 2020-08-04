@@ -66,6 +66,7 @@ class StubComponentLauncherTest(tf.test.TestCase):
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
+    # test_dir = "/Users/sujipark/tfx/test"
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
@@ -130,10 +131,8 @@ class StubComponentLauncherTest(tf.test.TestCase):
     # verify whether base stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
 
-    record_file = os.path.join(self.record_dir,
-                               self.component.id,
-                               self.output_key,
-                               '0', 'recorded.txt')
+    record_file = os.path.join(self.record_dir, self.component.id,
+                               self.output_key, '0', 'recorded.txt')
     io_utils.write_string_file(record_file, 'hello world')
     component_ids = [self.component.id]
 

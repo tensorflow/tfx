@@ -52,7 +52,8 @@ def _get_paths(metadata_connection: metadata.Metadata,
   for execution in executions:
     component_id = execution.properties[
         metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-    # ResolverNode is ignored because it doesn't have a executor that can be replaced with stub.
+    # ResolverNode is ignored because it doesn't have a executor that can be
+    # replaced with stub.
     if component_id.startswith('ResolverNode'):
       continue
     eid = [execution.id]
@@ -72,9 +73,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
         if len(steps) < 2 or not steps[1].HasField('index'):
           raise ValueError('Artifact index is not recorded in the MLMD.')
         artifact_index = steps[1].index
-        dest_uri = os.path.join(output_dir,
-                                component_id,
-                                name,
+        dest_uri = os.path.join(output_dir, component_id, name,
                                 str(artifact_index))
         yield (src_uri, dest_uri)
 
