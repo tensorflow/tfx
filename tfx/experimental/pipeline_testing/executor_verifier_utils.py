@@ -187,7 +187,38 @@ def compare_file_sizes(output_uri: Text,
       new_file_path = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), sub_dir)
       if not tf.io.gfile.exists(new_file_path):
-        print(new_file_path)
+        return False
+    for leaf_file in leaf_files:
+      expected_file_name = os.path.join(dir_name, leaf_file)
+      file_name = os.path.join(
+          dir_name.replace(expected_uri, output_uri, 1), leaf_file)
+      if not _compare_relative_difference(
+          tf.io.gfile.GFile(file_name).size(),
+          tf.io.gfile.GFile(expected_file_name).size(),
+          threshold):
+        return False
+  return True
+
+def compare_model_file_sizes(output_uri: Text,
+                       expected_uri: Text,
+                       threshold: float) -> bool:
+  """Compares pipeline output files sizes in output and recorded uri.
+
+  Args:
+    output_uri: pipeline output artifact uri.
+    expected_uri: recorded pipeline output artifact uri.
+    threshold: a float between 0 and 1.
+
+  Returns:
+     boolean whether file sizes differ within a threshold.
+  """
+  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+    if 'eval_model_dir' in dir_name or 'export' in dir_name:
+      continue
+    for sub_dir in sub_dirs:
+      new_file_path = os.path.join(
+          dir_name.replace(expected_uri, output_uri, 1), sub_dir)
+      if not tf.io.gfile.exists(new_file_path):
         return False
     for leaf_file in leaf_files:
       if leaf_file.startswith('events.out.tfevents'):
@@ -199,8 +230,6 @@ def compare_file_sizes(output_uri: Text,
           tf.io.gfile.GFile(file_name).size(),
           tf.io.gfile.GFile(expected_file_name).size(),
           threshold):
-        print("filename", file_name)
-        print("expected_file_name", expected_file_name)
         return False
   return True
 

@@ -93,7 +93,7 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
 
   def _verify_trainer(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
-        executor_verifier_utils.compare_file_sizes(output_uri,
+        executor_verifier_utils.compare_model_file_sizes(output_uri,
                                                    expected_uri, .5))
 
   def _verify_validator(self, output_uri: Text, expected_uri: Text):
