@@ -29,46 +29,58 @@ from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
-
-def _get_paths(metadata_connection: metadata.Metadata, execution_ids: List[int],
+def _get_paths(metadata_connection: metadata.Metadata,
+               executions: List[metadata_store_pb2.Execution],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:
   """Yields tuple with source and destination artifact uris.
-
   The destination artifact uris are located in the output_dir. The source
-  artifact uris are retrieved using execution ids.
-
+  artifact uris are retrieved using execution ids. Artifact index is used
+  for saving multiple output artifacts with same key.
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
-    execution_ids: List of execution ids of a pipeline run.
+    executions: List of executions of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
-
   Yields:
     Iterable over tuples of source uri and destination uri.
+  Raises:
+    ValueError if artifact key and index are not recorded in MLMD event.
   """
-  events = metadata_connection.store.get_events_by_execution_ids(execution_ids)
-  output_events = [
-      x for x in events if x.type == metadata_store_pb2.Event.OUTPUT
-  ]
-  unique_artifact_ids = list({x.artifact_id for x in output_events})
-
-  for artifact in metadata_connection.store.get_artifacts_by_id(
-      unique_artifact_ids):
-    src_uri = artifact.uri
-    artifact_properties = artifact.custom_properties
-    component_id = artifact_properties['producer_component'].string_value
-    name = artifact_properties['name'].string_value
-    dest_uri = os.path.join(output_dir, component_id, name)
-    yield (src_uri, dest_uri)
+  for execution in executions:
+    component_id = execution.properties[
+        metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
+    # ResolverNode is ignored because it doesn't have a executor that can be replaced with stub.
+    if component_id.startswith('ResolverNode'):
+      continue
+    eid = [execution.id]
+    events = metadata_connection.store.get_events_by_execution_ids(eid)
+    output_events = [
+        x for x in events if x.type == metadata_store_pb2.Event.OUTPUT
+    ]
+    for event in output_events:
+      steps = event.path.steps
+      if not steps or not steps[0].HasField('key'):
+        raise ValueError('Artifact key is not recorded in the MLMD.')
+      name = steps[0].key
+      artifacts = metadata_connection.store.get_artifacts_by_id(
+          [event.artifact_id])
+      for artifact in artifacts:
+        src_uri = artifact.uri
+        if len(steps) < 2 or not steps[1].HasField('index'):
+          raise ValueError('Artifact index is not recorded in the MLMD.')
+        artifact_index = steps[1].index
+        dest_uri = os.path.join(output_dir,
+                                component_id,
+                                name,
+                                str(artifact_index))
+        yield (src_uri, dest_uri)
 
 
 def _get_execution_dict(
     metadata_connection: metadata.Metadata
 ) -> Mapping[Text, List[metadata_store_pb2.Execution]]:
   """Returns a dictionary holding list of executions for all run_id in MLMD.
-
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
-
   Returns:
     A dictionary that holds list of executions for a run_id.
   """
@@ -83,11 +95,9 @@ def _get_latest_executions(
     metadata_connection: metadata.Metadata,
     pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
-
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
     pipeline_name: Name of the pipeline to rerieve the latest executions for.
-
   Returns:
     List of executions for the latest run of a pipeline with the given
     pipeline_name.
@@ -107,12 +117,10 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
                     pipeline_name: Optional[Text],
                     run_id: Optional[Text]) -> None:
   """Record pipeline run with run_id to output_dir.
-
   For the beam pipeline, metadata_db_uri is required. For KFP pipeline,
   host and port should be specified. If run_id is not specified, then
   pipeline_name ought to be specified in order to fetch the latest execution
   for the specified pipeline.
-
   Args:
     output_dir: Directory path where the pipeline outputs should be recorded.
     metadata_db_uri: Uri to metadata db.
@@ -120,7 +128,6 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
     port: Port number of the metadata grpc server.
     pipeline_name: Pipeline name, which is required if run_id isn't specified.
     run_id: Pipeline execution run_id.
-
   Raises:
     ValueError: In cases of invalid arguments:
       - metadata_db_uri is None or host and/or port is None.
@@ -151,11 +158,9 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
       else:
         raise ValueError(
             'run_id {} is not recorded in the MLMD metadata'.format(run_id))
-    execution_ids = [e.id for e in executions]
-    for src_uri, dest_uri in _get_paths(metadata_connection, execution_ids,
+
+    for src_uri, dest_uri in _get_paths(metadata_connection, executions,
                                         output_dir):
-      if not tf.io.gfile.exists(src_uri):
-        raise FileNotFoundError('{} does not exist'.format(src_uri))
       if tf.io.gfile.exists(dest_uri):
         logging.info("Destination {} already exists.".format(dest_uri))
       else:
