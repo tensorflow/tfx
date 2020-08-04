@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
@@ -113,7 +113,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         if component.id != model_resolver_id
     ]
 
-    stub_launcher = stub_component_launcher.get_stub_launcher_class(
+    stub_launcher = StubComponentLauncher.get_stub_launcher_class(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})

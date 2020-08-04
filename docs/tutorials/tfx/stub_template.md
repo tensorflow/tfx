@@ -86,7 +86,7 @@ stubbed_component_map = {}
 
 #### In Jupyter lab file editor:
 >**Double-click to open `kubeflow_dag_runner.py`**. 
-Uncomment `supported_launcher_classes` argument of `KubeflowDagRunnerConfig` to be able to launch stub executors (Tip: search for comments containing `TODO(11):`),  Make sure to save `kubeflow_dag_runner.py` after you edit it.
+Uncomment `supported_launcher_classes` argument of `KubeflowDagRunnerConfig` to be able to launch stub executors (Tip: search for comments containing `TODO(StubExecutor):`),  Make sure to save `kubeflow_dag_runner.py` after you edit it.
 
 
 
