@@ -33,15 +33,19 @@ def _get_paths(metadata_connection: metadata.Metadata,
                executions: List[metadata_store_pb2.Execution],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:
   """Yields tuple with source and destination artifact uris.
+
   The destination artifact uris are located in the output_dir. The source
   artifact uris are retrieved using execution ids. Artifact index is used
   for saving multiple output artifacts with same key.
+
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
     executions: List of executions of a pipeline run.
     output_dir: Directory path where the pipeline outputs should be recorded.
+
   Yields:
     Iterable over tuples of source uri and destination uri.
+
   Raises:
     ValueError if artifact key and index are not recorded in MLMD event.
   """
@@ -79,8 +83,10 @@ def _get_execution_dict(
     metadata_connection: metadata.Metadata
 ) -> Mapping[Text, List[metadata_store_pb2.Execution]]:
   """Returns a dictionary holding list of executions for all run_id in MLMD.
+
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
+
   Returns:
     A dictionary that holds list of executions for a run_id.
   """
@@ -95,9 +101,11 @@ def _get_latest_executions(
     metadata_connection: metadata.Metadata,
     pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
   """Fetches executions associated with the latest context.
+
   Args:
     metadata_connection: Instance of metadata.Metadata for I/O to MLMD.
     pipeline_name: Name of the pipeline to rerieve the latest executions for.
+
   Returns:
     List of executions for the latest run of a pipeline with the given
     pipeline_name.
@@ -117,10 +125,12 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
                     pipeline_name: Optional[Text],
                     run_id: Optional[Text]) -> None:
   """Record pipeline run with run_id to output_dir.
+
   For the beam pipeline, metadata_db_uri is required. For KFP pipeline,
   host and port should be specified. If run_id is not specified, then
   pipeline_name ought to be specified in order to fetch the latest execution
   for the specified pipeline.
+
   Args:
     output_dir: Directory path where the pipeline outputs should be recorded.
     metadata_db_uri: Uri to metadata db.
@@ -128,6 +138,7 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
     port: Port number of the metadata grpc server.
     pipeline_name: Pipeline name, which is required if run_id isn't specified.
     run_id: Pipeline execution run_id.
+
   Raises:
     ValueError: In cases of invalid arguments:
       - metadata_db_uri is None or host and/or port is None.

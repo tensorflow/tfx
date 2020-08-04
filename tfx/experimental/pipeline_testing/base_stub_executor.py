@@ -37,11 +37,13 @@ class BaseStubExecutor(base_executor.BaseExecutor):
                test_data_dir: Text,
                context: Optional[base_executor.BaseExecutor.Context] = None):
     """Initializes a BaseStubExecutor.
+
     Args:
       component_id: component id of a component associated with the stub
         executor.
       test_data_dir: The directory to test data (pipeline_recorder.py).
       context: context class for all executors.
+
     Raises:
       ValueError: If the recorded pipeline data doesn't exist at test_data_dir.
     """
@@ -56,12 +58,15 @@ class BaseStubExecutor(base_executor.BaseExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Copies over recorded data to pipeline output uri.
+
     Args:
       input_dict: Input dict from input key to a list of Artifacts.
       output_dict: Output dict from output key to a list of Artifacts.
       exec_properties: A dict of execution properties.
+
     Returns:
       None
+
     Raises:
       FileNotFoundError: If the recorded test data dir doesn't exist any more.
     """

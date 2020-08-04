@@ -40,6 +40,7 @@ from ml_metadata.proto import metadata_store_pb2
 
 class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   """Example of custom stub executor.
+
   This is intended to test whether custom component's Do() is executed.
   At success, this executor would save a file "result.txt" containing
   a string "custom component" in the output artifacts' uri. We don't
@@ -65,7 +66,6 @@ class StubComponentLauncherTest(tf.test.TestCase):
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    # test_dir = "/Users/sujipark/tfx/test"
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
