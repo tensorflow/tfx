@@ -33,6 +33,7 @@ from absl import logging
 from click import testing as click_testing
 import tensorflow as tf
 
+from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.tools.cli.cli_main import cli_group
 from tfx.utils import io_utils
@@ -223,6 +224,10 @@ class BaseEndToEndTest(tf.test.TestCase):
     blob = bucket.blob('{}/{}/data.csv'.format(self._DATA_DIRECTORY_NAME,
                                                self._pipeline_name))
     blob.upload_from_filename('data/data.csv')
+
+  def _prepare_base_container_image(self):
+    orchestration_test_utils.build_and_push_docker_image(
+        self._base_container_image, self._REPO_BASE)
 
   def _get_endpoint(self):  # pylint: disable=inconsistent-return-statements
     output = subprocess.check_output(

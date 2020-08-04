@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
+from tfx.utils import io_utils
 
 class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
@@ -48,8 +49,8 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
   # version 0.5.0.
   _BUCKET_NAME = _GCP_PROJECT_ID + '-kubeflowpipelines-default'
 
-  _KFP_E2E_TEST_FORWARDING_PORT_BEGIN = 7330
-  _KFP_E2E_TEST_FORWARDING_PORT_END = 7335
+  _KFP_E2E_TEST_FORWARDING_PORT_BEGIN = 7230
+  _KFP_E2E_TEST_FORWARDING_PORT_END = 7235
   _MAX_ATTEMPTS = 5
 
   def setUp(self):
