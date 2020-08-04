@@ -80,6 +80,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     grpc_port = cls._get_grpc_port()
 
     is_bind = False
+    forwarded_port = None
 
     for port in range(_KFP_E2E_TEST_FORWARDING_PORT_BEGIN,
                       _KFP_E2E_TEST_FORWARDING_PORT_END):
@@ -112,6 +113,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
         proc.kill()
 
       if is_bind:
+        forwarded_port = port
         break
 
     if not is_bind:
@@ -121,7 +123,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
                           _KFP_E2E_TEST_FORWARDING_PORT_END))
 
     # Establish MLMD gRPC channel.
-    forwarding_channel = insecure_channel('localhost:%s' % (int(grpc_port) + 1))
+    forwarding_channel = insecure_channel('localhost:%s' % forwarded_port)
     cls._stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(
         forwarding_channel)
 
@@ -206,7 +208,8 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline = self._create_pipeline(pipeline_name, components)
 
     self._compile_and_run_pipeline(pipeline)
-    self._assert_infra_validator_passed(pipeline_name)
+    # TODO(b/159965444): Re-enable when we have tensorflow/serving for TF 2.3.
+    # self._assert_infra_validator_passed(pipeline_name)
 
   def testPrimitiveEnd2EndPipeline(self):
     """End-to-End test for primitive artifacts passing."""

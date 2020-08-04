@@ -59,6 +59,8 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
 
 def copy_dir(src: Text, dst: Text) -> None:
   """Copies the whole directory recursively from source to destination."""
+  src = src.rstrip('/')
+  dst = dst.rstrip('/')
 
   if tf.io.gfile.exists(dst):
     tf.io.gfile.rmtree(dst)

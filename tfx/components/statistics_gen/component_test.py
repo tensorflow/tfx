@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.statistics_gen.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
 from tfx.components.statistics_gen import component
@@ -31,10 +25,18 @@ class ComponentTest(tf.test.TestCase):
   def testConstruct(self):
     examples = standard_artifacts.Examples()
     examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    exclude_splits = ['eval']
     statistics_gen = component.StatisticsGen(
-        examples=channel_utils.as_channel([examples]))
+        examples=channel_utils.as_channel([examples]),
+        exclude_splits=exclude_splits)
     self.assertEqual(standard_artifacts.ExampleStatistics.TYPE_NAME,
                      statistics_gen.outputs['statistics'].type_name)
+    self.assertEqual(
+        '["train"]',
+        artifact_utils.get_single_instance(
+            list(statistics_gen.outputs['statistics'].get())).split_names)
+    self.assertEqual(statistics_gen.spec.exec_properties['exclude_splits'],
+                     '["eval"]')
 
   def testConstructWithSchemaAndStatsOptions(self):
     examples = standard_artifacts.Examples()

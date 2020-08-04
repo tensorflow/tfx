@@ -26,8 +26,6 @@ from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.transform import executor
 from tfx.orchestration import data_types
-from tfx.types import artifact
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TransformSpec
 
@@ -75,7 +73,8 @@ class Transform(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
-      instance_name: Optional[Text] = None):
+      instance_name: Optional[Text] = None,
+      materialize: bool = True):
     """Construct a Transform component.
 
     Args:
@@ -106,6 +105,8 @@ class Transform(base_component.BaseComponent):
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
+      materialize: If True, write transformed examples as an output. If False,
+        `transformed_examples` must not be provided.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -125,12 +126,15 @@ class Transform(base_component.BaseComponent):
     transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
-    if not transformed_examples:
-      example_artifact = standard_artifacts.Examples()
-      example_artifact.split_names = artifact_utils.encode_split_names(
-          artifact.DEFAULT_EXAMPLE_SPLITS)
+    if materialize and transformed_examples is None:
       transformed_examples = types.Channel(
-          type=standard_artifacts.Examples, artifacts=[example_artifact])
+          type=standard_artifacts.Examples,
+          # TODO(b/161548528): remove the hardcode artifact.
+          artifacts=[standard_artifacts.Examples()],
+          matching_channel_name='examples')
+    elif not materialize and transformed_examples is not None:
+      raise ValueError(
+          'must not specify transformed_examples when materialize==False')
     spec = TransformSpec(
         examples=examples,
         schema=schema,
