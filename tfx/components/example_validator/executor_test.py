@@ -48,8 +48,6 @@ class ExecutorTest(tf.test.TestCase):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
-    validation_output.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
 
     input_dict = {
         executor.STATISTICS_KEY: [eval_stats_artifact],

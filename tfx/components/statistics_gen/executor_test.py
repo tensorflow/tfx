@@ -56,9 +56,6 @@ class ExecutorTest(absltest.TestCase):
     examples.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
 
-    stats = standard_artifacts.ExampleStatistics()
-    stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }
@@ -69,6 +66,9 @@ class ExecutorTest(absltest.TestCase):
             json_utils.dumps(['test']),
     }
 
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
@@ -118,7 +118,6 @@ class ExecutorTest(absltest.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
@@ -165,7 +164,6 @@ class ExecutorTest(absltest.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }

@@ -85,9 +85,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testConstructSubclassFileBased(self):
     example_gen = TestFileBasedExampleGenComponent(input_base='path')
@@ -98,9 +95,6 @@ class ComponentTest(tf.test.TestCase):
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testConstructCustomExecutor(self):
     example_gen = component.FileBasedExampleGen(
@@ -112,9 +106,6 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testConstructWithOutputConfig(self):
     example_gen = TestFileBasedExampleGenComponent(
@@ -129,9 +120,6 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testConstructWithInputConfig(self):
     example_gen = TestFileBasedExampleGenComponent(
@@ -145,9 +133,6 @@ class ComponentTest(tf.test.TestCase):
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testConstructWithCustomConfig(self):
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())

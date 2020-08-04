@@ -90,7 +90,6 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     self._output_dict = {utils.EXAMPLES_KEY: [examples]}
 
     self._train_output_file = os.path.join(examples.uri, 'train',
