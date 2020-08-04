@@ -17,28 +17,31 @@ import os
 import tempfile
 import tensorflow as tf
 
+from tensorflow.core.framework import graph_pb2
+
 from create_complex_graph import save_examples_as_graphdefs
 from graph_partition import _RemoteOpLayers
 from graph_partition import get_graph_name_to_graph_def, partition_all_graphs
 
 
-class RelationTest(tf.test.TestCase):
-  """Tests for Relation."""
+class RemoteOpLayerTest(tf.test.TestCase):
+  """A test for the class _RemoteOpLayer"""
   def test_layers(self):
-    """Construct an example and validate the layers."""
+    """Validates the class through an example."""
     remote_op_relations = {'a1': [], 'a2': [], 'b1': ['a1'],
                            'b2': ['a1', 'a2'], 'c1': ['b1'],
                            'c2': ['b1', 'a1', 'b2', 'a2']}
-    desired_outputs = [{'a1', 'a2'}, {'b1', 'b2'}, {'c1', 'c2'}]
+    desired_outputs = [['a1', 'a2'], ['b1', 'b2'], ['c1', 'c2']]
 
     order = _RemoteOpLayers(remote_op_relations)
     self.assertEqual(desired_outputs, list(order))
 
 
 class PartitionTest(tf.test.TestCase):
-  """Tests for graph partitioning."""
+  """A set of tests for the graph partitioning library."""
 
   def setUp(self):
+    """Sets up some example graphs and their partitions."""
     super().setUp()
     with tempfile.TemporaryDirectory() as temp_dir:
       # Save examples into a temporary directory
@@ -60,46 +63,51 @@ class PartitionTest(tf.test.TestCase):
 
 
   def test_subgraph_import_validity(self):
-    """Try to import subgraphs and see if they're valid."""
+    """Tests if the partitioned subgraphs can be imported."""
     for execution_specs in self.graph_name_to_specs.values():
       for execution_spec in execution_specs:
-        if not execution_spec.is_remote_op:
-          graph = tf.Graph()
-          with graph.as_default():
-            tf.import_graph_def(execution_spec.subgraph)
+        if execution_spec.is_remote_op:
+          continue
 
-
-  def test_subgraph_specs(self):
-    """Validate a subgraph spec."""
-    for execution_specs in self.graph_name_to_specs.values():
-      for spec in execution_specs:
-        if not spec.is_remote_op:
-          all_nodes = self._get_node_names_from_subgraph(spec.subgraph)
-
-          self.assertTrue(spec.output_names.issubset(spec.body_node_names))
-          self.assertEqual(all_nodes,
-                           spec.body_node_names.union(spec.input_names))
-
-          for input_name in spec.input_names:
-            self.assertNotIn(input_name, spec.body_node_names)
-
-          for node_from_other_layer in spec.nodes_from_other_layers:
-            self.assertNotIn(node_from_other_layer, spec.body_node_names)
-
-
-  def _get_node_names_from_subgraph(self, subgraph):
-    node_names = {node.name for node in subgraph.node}
-    return node_names
+        graph = tf.Graph()
+        with graph.as_default():
+          tf.import_graph_def(execution_spec.subgraph)
 
 
   def test_remote_op_specs(self):
-    """Validate a remote op spec."""
+    """Validates a remote op spec."""
     for execution_specs in self.graph_name_to_specs.values():
       for spec in execution_specs:
+        if not spec.is_remote_op:
+          continue
+
+        self.assertIsNone(spec.subgraph)
+        self.assertLen(spec.output_names, 1)
+
+
+  def test_subgraphs_with_golden_set(self):
+    """Checks if the partitioned subgraphs match the golden set."""
+    for graph_name, specs in self.graph_name_to_specs.items():
+      for spec in specs:
         if spec.is_remote_op:
-          self.assertIsNone(spec.subgraph)
-          self.assertLen(spec.output_names, 1)
-          self.assertLen(spec.body_node_names, 1)
+          continue
+        golden_graph_def = _get_golden_subgraph(graph_name, spec)
+        self.assertEqual(golden_graph_def, spec.subgraph)
+
+
+def _get_golden_subgraph(graph_name, spec):
+  """Retrieves a corresponding golden subgraph."""
+  filename = _generate_unique_filename(spec.input_names)
+  filepath = os.path.join('testdata', graph_name, filename)
+
+  graph_def = graph_pb2.GraphDef()
+  with tf.io.gfile.GFile(filepath, 'rb') as f:
+    graph_def.ParseFromString(f.read())
+  return graph_def
+
+
+def _generate_unique_filename(input_names):
+  return "input_names-%s.pb" % ('-'.join(sorted(input_names)))
 
 
 if __name__ == '__main__':

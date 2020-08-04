@@ -19,29 +19,23 @@ from execution_spec import ExecutionSpec
 
 
 class ExecutionSpecTest(tf.test.TestCase):
-  """Test the execution_spec dataclass."""
+  """A test for the dataclass ExecutionSpec."""
   def test_spec(self):
-    """Verify using an example spec."""
+    """Verifies ExecutionSpec with an example."""
     subgraph = None
-    input_names = {'a', 'b', 'c'}
-    output_names = {'d'}
+    input_names = ['a', 'b', 'c']
+    output_names = ['d']
     is_remote_op = True
-    body_node_names = {'d'}
-    nodes_from_other_layers = set([])
 
     spec = ExecutionSpec(subgraph,
                          input_names,
                          output_names,
-                         is_remote_op,
-                         body_node_names,
-                         nodes_from_other_layers)
+                         is_remote_op)
 
     self.assertEqual(spec.subgraph, subgraph)
     self.assertEqual(spec.input_names, input_names)
     self.assertEqual(spec.output_names, output_names)
     self.assertEqual(spec.is_remote_op, is_remote_op)
-    self.assertEqual(spec.body_node_names, body_node_names)
-    self.assertEqual(spec.nodes_from_other_layers, nodes_from_other_layers)
 
 
 if __name__ == '__main__':
