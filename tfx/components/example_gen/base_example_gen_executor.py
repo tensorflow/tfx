@@ -286,9 +286,10 @@ class BaseExampleGenExecutor(
     json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
     json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
 
-    for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-      output_examples_artifact.split_names = artifact_utils.encode_split_names(
-          utils.generate_output_split_names(input_config, output_config))
+    examples_artifact = artifact_utils.get_single_instance(
+        output_dict[utils.EXAMPLES_KEY])
+    examples_artifact.split_names = artifact_utils.encode_split_names(
+        utils.generate_output_split_names(input_config, output_config))
 
     logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:

@@ -88,15 +88,17 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
     stats_artifact = artifact_utils.get_single_instance(
         input_dict[STATISTICS_KEY])
-    for anomalies_artifact in output_dict[ANOMALIES_KEY]:
-      statistics_split_names = artifact_utils.decode_split_names(
-          stats_artifact.split_names)
-      split_names = [
-          split for split in statistics_split_names
-          if split not in exclude_splits
-      ]
-      anomalies_artifact.split_names = artifact_utils.encode_split_names(
-          split_names)
+    anomalies_artifact = artifact_utils.get_single_instance(
+        output_dict[ANOMALIES_KEY])
+    statistics_split_names = artifact_utils.decode_split_names(
+        stats_artifact.split_names)
+    split_names = [
+        split for split in statistics_split_names
+        if split not in exclude_splits
+    ]
+    anomalies_artifact.split_names = artifact_utils.encode_split_names(
+        split_names)
+
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue
