@@ -200,8 +200,8 @@ def compare_file_sizes(output_uri: Text,
   return True
 
 def compare_model_file_sizes(output_uri: Text,
-                       expected_uri: Text,
-                       threshold: float) -> bool:
+                             expected_uri: Text,
+                             threshold: float) -> bool:
   """Compares pipeline output files sizes in output and recorded uri.
 
   Args:
@@ -244,14 +244,14 @@ def compare_anomalies(output_uri: Text,
   Returns:
      boolean whether anomalies are same.
   """
-  for dir_name, sub_dirs, leaf_files in tf.io.gfile.walk(expected_uri):
+  for dir_name, _, leaf_files in tf.io.gfile.walk(expected_uri):
     for leaf_file in leaf_files:
       expected_file_name = os.path.join(dir_name, leaf_file)
       file_name = os.path.join(
           dir_name.replace(expected_uri, output_uri, 1), leaf_file)
       anomalies = io_utils.parse_pbtxt_file(
-      os.path.join(output_uri, file_name),
-      anomalies_pb2.Anomalies())
+          os.path.join(output_uri, file_name),
+          anomalies_pb2.Anomalies())
       expected_anomalies = io_utils.parse_pbtxt_file(
           os.path.join(expected_uri, expected_file_name),
           anomalies_pb2.Anomalies())
@@ -260,7 +260,3 @@ def compare_anomalies(output_uri: Text,
         print("expected_file_name", expected_file_name)
         return False
   return True
-
-  anomalies_fn = tf.io.gfile.listdir(output_uri)[0]
-  expected_anomalies_fn = tf.io.gfile.listdir(expected_uri)[0]
-  
