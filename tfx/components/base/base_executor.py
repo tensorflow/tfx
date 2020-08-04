@@ -160,3 +160,39 @@ class EmptyExecutor(BaseExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     pass
+
+
+class BeamExecutor(BaseExecutor):
+  """ TFX executor class for handling Beam-related logic."""
+
+  @abc.abstractmethod
+  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
+                        output_dict: Dict[Text, List[types.Artifact]],
+                        exec_properties: Dict[Text, Any]
+                        ) -> List[Dict[Text, Any]]:
+    pass
+
+  @abc.abstractmethod
+  def read_inputs(self, pipeline: beam.Pipeline,
+                  input_dict: Dict[Text, List[types.Artifact]],
+                  output_dict: Dict[Text, List[types.Artifact]],
+                  exec_properties: Dict[Text, Any]
+                  ) -> Dict[Text, beam.pvalue.PCollection]:
+    pass
+
+  @abc.abstractmethod
+  def construct_beam_graph(self, pipeline: beam.Pipeline,
+                           beam_inputs: Dict[Text, beam.pvalue.PCollection],
+                           input_dict: Dict[Text, List[types.Artifact]],
+                           output_dict: Dict[Text, List[types.Artifact]],
+                           exec_properties: Dict[Text, Any]
+                           ) -> Dict[Text, beam.pvalue.PCollection]:
+    pass
+
+  @abc.abstractmethod
+  def write_outputs(self, pipeline: beam.Pipeline,
+                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Any]) -> None:
+    pass
