@@ -147,7 +147,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         ]
         for event in output_events:
           steps = event.path.steps
-          assert steps[0].HasField('key')
+          self.assertTrue(steps[0].HasField('key'))
           name = steps[0].key
           artifacts = m.store.get_artifacts_by_id(
               [event.artifact_id])
