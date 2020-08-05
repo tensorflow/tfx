@@ -29,7 +29,7 @@ nohup kubectl port-forward deployment/metadata-grpc-deployment -n $namespace $po
 ```bash
 gcloud container clusters get-credentials $cluster_name --zone $compute_zone --project $gcp_project_id
 ```
-`$compute_zone` is region for gcp engine and `$gcp_project_id` is project id of your gcp project.
+`$compute_zone` is region for gcp engine and `$gcp_project_id` is project id of your GCP project.
 
 3.  Clone the tfx GitHub repository. Inside the tfx directory, run the following command:
 
@@ -41,9 +41,9 @@ python tfx/experimental/pipeline_testing/pipeline_recorder.py \
 --pipeline_name=$pipeline_name
 ```
 
-`$output_dir` should be set to a path in Google Cloud Storage where the pipeline outputs are to be recorded, so make sure to replace `<project_name>` with Google Cloud project name.
+`$output_dir` should be set to a path in Google Cloud Storage where the pipeline outputs are to be recorded, so make sure to replace `<gcp_project_id>` with GCP project id.
 
-`$host` and `$port` are hostname and port of the metadata grpc server to connect to MLMD. `$port` should be set to the port number you used for port-forwarding and "localhost" for hostname.
+`$host` and `$port` are hostname and port of the metadata grpc server to connect to MLMD. `$port` should be set to the port number you used for port-forwarding and you may set "localhost" for the hostname.
 
 In `template.ipynb` tutorial, the pipeline name is set as "my_pipeline" by default, so set `pipeline_name="my_pipeline"`. If you have modified the pipeline name when running the template tutorial, you should modify the `--pipeline_name` accordingly.
 
