@@ -43,6 +43,8 @@
 *   Supported `Version` spec in input config for file based ExampleGen.
 *   Added custom config to Transform component and made it available to
     pre-processing fn.
+*   Add execution_result_pb2.ExecutorOutput as an Optional return value of
+    BaseExecutor. This change is backward compatible to all existing executors.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.

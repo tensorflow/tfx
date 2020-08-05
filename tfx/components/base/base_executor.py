@@ -31,8 +31,8 @@ from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
-
 from tfx import types
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
@@ -60,9 +60,11 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
   @abc.abstractmethod
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(
+      self, input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Any]
+  ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Execute underlying component implementation.
 
     Args:
@@ -78,7 +80,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
         possible on these values.
 
     Returns:
-      None.
+      execution_result_pb2.ExecutorOutput.
     """
     pass
 
