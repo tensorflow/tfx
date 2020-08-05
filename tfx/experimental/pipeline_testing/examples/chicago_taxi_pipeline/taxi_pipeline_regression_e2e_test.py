@@ -33,11 +33,6 @@ from tfx.orchestration.config import pipeline_config
 
 from ml_metadata.proto import metadata_store_pb2
 
-class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
-  """Responsible for launching stub executors in Beam.
-  """
-  pass
-
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):
@@ -117,13 +112,14 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         if component.id != model_resolver_id
     ]
 
-    stub_launcher = StubComponentLauncher.get_stub_launcher_class(
+    stub_component_launcher.StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
+
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            stub_launcher,
+            stub_component_launcher.StubComponentLauncher,
         ])
     BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
 

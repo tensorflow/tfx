@@ -22,10 +22,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tfx.experimental.pipeline_testing import stub_component_launcher
+from tfx.experimental.pipeline_testing import base_stub_component_launcher
 from tfx.experimental.templates.taxi.pipeline import configs
 
-class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
+class StubComponentLauncher(base_stub_component_launcher.BaseStubComponentLauncher):  # pylint: disable=line-too-long
   """Responsible for launching stub executors in KFP Template.
 
   This stub component launcher cannot be defined within kubeflow_dag_runner.py
@@ -44,7 +44,7 @@ stubbed_component_ids = ['CsvExampleGen', 'StatisticsGen',
 # executor class as a value and component id as a key.
 stubbed_component_map = {}
 
-StubComponentLauncher.get_stub_launcher_class(
+StubComponentLauncher.initialize(
     test_data_dir,
     stubbed_component_ids,
     stubbed_component_map)
