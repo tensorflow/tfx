@@ -90,83 +90,37 @@ def _get_caip_python_version(caip_tf_runtime_version: Text) -> Text:
   return '3.5'
 
 
-def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
-                       output_dict: Dict[Text, List[types.Artifact]],
-                       exec_properties: Dict[Text,
-                                             Any], executor_class_path: Text,
-                       training_inputs: Dict[Text,
-                                             Any], job_id: Optional[Text]):
-  """Start a trainer job on AI Platform (AIP).
-
-  This is done by forwarding the inputs/outputs/exec_properties to the
-  tfx.scripts.run_executor module on a AI Platform training job interpreter.
+def _launch_aip_training(
+    job_id: Text,
+    project: Text,
+    training_input: Dict[Text, Any],
+    job_labels: Optional[Dict[Text, Text]] = None) -> None:
+  """Launches and monitors a AIP custom training job.
 
   Args:
-    input_dict: Passthrough input dict for tfx.components.Trainer.executor.
-    output_dict: Passthrough input dict for tfx.components.Trainer.executor.
-    exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
-    executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input argument for AI Platform training job.
-      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
-      the full set of parameters, refer to
+    job_id: the job ID of the AI Platform training job.
+    project: the GCP project under which the training job will be executed.
+    training_input: Training input argument for AI Platform training job. See
       https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
-    job_id: Job ID for AI Platform Training job. If not supplied,
-      system-determined unique ID is given. Refer to
-    https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
+      for the detailed schema.
+    job_labels: the dict of labels that will be attached to this job.
 
-  Returns:
-    None
   Raises:
     RuntimeError: if the Google Cloud AI Platform training job failed/cancelled.
+    ConnectionError: if the status polling of the training job failed due to
+      connection issue.
   """
-  training_inputs = training_inputs.copy()
-
-  json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
-  logging.info('json_inputs=\'%s\'.', json_inputs)
-  json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
-  logging.info('json_outputs=\'%s\'.', json_outputs)
-  json_exec_properties = json.dumps(exec_properties, sort_keys=True)
-  logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
-
   # Configure AI Platform training job
   api_client = discovery.build('ml', 'v1')
-
-  # We use custom containers to launch training on AI Platform, which invokes
-  # the specified image using the container's entrypoint. The default
-  # entrypoint for TFX containers is to call scripts/run_executor.py. The
-  # arguments below are passed to this run_executor entry to run the executor
-  # specified in `executor_class_path`.
-  job_args = [
-      '--executor_class_path', executor_class_path, '--inputs', json_inputs,
-      '--outputs', json_outputs, '--exec-properties', json_exec_properties
-  ]
-
-  if not training_inputs.get('masterConfig'):
-    training_inputs['masterConfig'] = {
-        'imageUri': _TFX_IMAGE,
-    }
-
-  training_inputs['args'] = job_args
-
-  # Pop project_id so AIP doesn't complain about an unexpected parameter.
-  # It's been a stowaway in aip_args and has finally reached its destination.
-  project = training_inputs.pop('project')
   project_id = 'projects/{}'.format(project)
-  with telemetry_utils.scoped_labels(
-      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-    job_labels = telemetry_utils.get_labels_dict()
-
-  # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
-  job_id = job_id or 'tfx_{}'.format(
-      datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
   job_spec = {
       'jobId': job_id,
-      'trainingInput': training_inputs,
+      'trainingInput': training_input,
       'labels': job_labels,
   }
 
   # Submit job to AIP Training
-  logging.info('TrainingInputs=%s', training_inputs)
+  logging.info('TrainingInput=%s', training_input)
   logging.info('Submitting job=\'%s\', project=\'%s\' to AI Platform.', job_id,
                project)
   request = api_client.projects().jobs().create(
@@ -194,8 +148,8 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
   # of the connection being used. See
   # https://github.com/googleapis/google-api-python-client/issues/218
   # for a detailed description of the problem. If the error persists for
-  # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will exit
-  # with code 1.
+  # _CONNECTION_ERROR_RETRY_LIMIT consecutive attempts, the function will raise
+  # ConnectionError.
   while response['state'] not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
     time.sleep(_POLLING_INTERVAL_IN_SECONDS)
     try:
@@ -212,13 +166,9 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
         api_client = discovery.build('ml', 'v1')
         request = api_client.projects().jobs().get(name=job_name)
       else:
-        # TODO(b/158433873): Consider raising the error instead of exit with
-        # code 1 after CMLE supports configurable retry policy.
-        # Currently CMLE will automatically retry the job unless return code
-        # 1-128 is returned.
         logging.error('Request failed after %s retries.',
                       _CONNECTION_ERROR_RETRY_LIMIT)
-        sys.exit(1)
+        raise
 
   if response['state'] in ('FAILED', 'CANCELLED'):
     err_msg = 'Job \'{}\' did not succeed.  Detailed response {}.'.format(
@@ -228,6 +178,77 @@ def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
 
   # AIP training complete
   logging.info('Job \'%s\' successful.', job_name)
+
+
+def start_aip_training(input_dict: Dict[Text, List[types.Artifact]],
+                       output_dict: Dict[Text, List[types.Artifact]],
+                       exec_properties: Dict[Text,
+                                             Any], executor_class_path: Text,
+                       training_inputs: Dict[Text,
+                                             Any], job_id: Optional[Text]):
+  """Start a trainer job on AI Platform (AIP).
+
+  This is done by forwarding the inputs/outputs/exec_properties to the
+  tfx.scripts.run_executor module on a AI Platform training job interpreter.
+
+  Args:
+    input_dict: Passthrough input dict for tfx.components.Trainer.executor.
+    output_dict: Passthrough input dict for tfx.components.Trainer.executor.
+    exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
+    executor_class_path: class path for TFX core default trainer.
+    training_inputs: Training input argument for AI Platform training job.
+      'pythonModule', 'pythonVersion' and 'runtimeVersion' will be inferred. For
+      the full set of parameters, refer to
+      https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#TrainingInput
+    job_id: Job ID for AI Platform Training job. If not supplied,
+      system-determined unique ID is given. Refer to
+    https://cloud.google.com/ml-engine/reference/rest/v1/projects.jobs#resource-job
+
+  Returns:
+    None
+  """
+  training_inputs = training_inputs.copy()
+
+  json_inputs = artifact_utils.jsonify_artifact_dict(input_dict)
+  logging.info('json_inputs=\'%s\'.', json_inputs)
+  json_outputs = artifact_utils.jsonify_artifact_dict(output_dict)
+  logging.info('json_outputs=\'%s\'.', json_outputs)
+  json_exec_properties = json.dumps(exec_properties, sort_keys=True)
+  logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
+
+  # We use custom containers to launch training on AI Platform, which invokes
+  # the specified image using the container's entrypoint. The default
+  # entrypoint for TFX containers is to call scripts/run_executor.py. The
+  # arguments below are passed to this run_executor entry to run the executor
+  # specified in `executor_class_path`.
+  job_args = [
+      '--executor_class_path', executor_class_path, '--inputs', json_inputs,
+      '--outputs', json_outputs, '--exec-properties', json_exec_properties
+  ]
+
+  if not training_inputs.get('masterConfig'):
+    training_inputs['masterConfig'] = {
+        'imageUri': _TFX_IMAGE,
+    }
+
+  training_inputs['args'] = job_args
+
+  # Pop project_id so AIP doesn't complain about an unexpected parameter.
+  # It's been a stowaway in aip_args and has finally reached its destination.
+  project = training_inputs.pop('project')
+  with telemetry_utils.scoped_labels(
+      {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
+    job_labels = telemetry_utils.get_labels_dict()
+
+  # 'tfx_YYYYmmddHHMMSS' is the default job ID if not explicitly specified.
+  job_id = job_id or 'tfx_{}'.format(
+      datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+
+  _launch_aip_training(
+      job_id=job_id,
+      project=project,
+      training_input=training_inputs,
+      job_labels=job_labels)
 
 
 def deploy_model_for_aip_prediction(
