@@ -17,21 +17,21 @@ We first need to record the pipeline outputs so that the stub executors can copy
 
 Since this tutorial assumes that you have completed `template.ipynb` up to step 6, a successful pipeline run must have been saved in the [MLMD](https://www.tensorflow.org/tfx/guide/mlmd). The execution information in MLMD can be accessed using gRPC server. 
 
-Open a Terminal and set up port-forwarding for connecting to MLMD:
+Open a Terminal and run the following commands:
+
+1.  Set up port-forwarding for connecting to MLMD:
 ```bash
 nohup kubectl port-forward deployment/metadata-grpc-deployment -n $namespace $port:8080 &
 ```
 `$namespace` is the cluster namespace and `$port` is any unused port that will be used for port-forwarding.
 
-Then, on a new terminal run the following commands:
-
-1.  Generate a kubeconfig file with appropriate credentials:
+2.  Generate a kubeconfig file with appropriate credentials:
 ```bash
 gcloud container clusters get-credentials $cluster_name --zone $compute_zone --project $gcp_project_id
 ```
 `$compute_zone` is region for gcp engine and `$gcp_project_id` is project id of your gcp project.
 
-2.  Clone the tfx GitHub repository. Inside the tfx directory, run the following command:
+3.  Clone the tfx GitHub repository. Inside the tfx directory, run the following command:
 
 ```bash
 python tfx/experimental/pipeline_testing/pipeline_recorder.py \
