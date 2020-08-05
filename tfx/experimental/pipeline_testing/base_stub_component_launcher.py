@@ -77,7 +77,7 @@ class BaseStubComponentLauncher(
     )
 
     The method initializes the necessary class variables for the
-    StubComponentLauncher class, including stubbed_component_ids and
+    BaseStubComponentLauncher class, including stubbed_component_ids and
     stubbed_component_map holding custom executor classes, which
     users may define differently per component.
 
