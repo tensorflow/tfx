@@ -39,6 +39,8 @@ SPAN_PROPERTY = Property(type=PropertyType.INT)
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 # Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
+# Version for an artifact.
+VERSION_PROPERTY = Property(type=PropertyType.INT)
 
 
 class Examples(Artifact):
@@ -46,6 +48,7 @@ class Examples(Artifact):
   PROPERTIES = {
       'span': SPAN_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
+      'version': VERSION_PROPERTY,
   }
 
 
