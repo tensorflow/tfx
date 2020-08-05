@@ -34,21 +34,21 @@ from tfx.types.artifact import ValueArtifact
 
 # Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)
+# Version for an artifact.
+VERSION_PROPERTY = Property(type=PropertyType.INT)
 # Comma separated of splits for an artifact. Empty string means artifact
 # has no split.
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
 # Value for a string-typed artifact.
 STRING_VALUE_PROPERTY = Property(type=PropertyType.STRING)
-# Version for an artifact.
-VERSION_PROPERTY = Property(type=PropertyType.INT)
 
 
 class Examples(Artifact):
   TYPE_NAME = 'Examples'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
-      'split_names': SPLIT_NAMES_PROPERTY,
       'version': VERSION_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
   }
 
 

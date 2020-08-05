@@ -45,8 +45,8 @@
               "name": "Examples",
               "properties": {
                 "span": "INT",
-                "split_names": "STRING",
-                "version": "INT"
+                "version": "INT",
+                "split_names": "STRING"
               }
             }
           }
@@ -57,8 +57,8 @@
           "name": "Examples",
           "properties": {
             "span": "INT",
-            "split_names": "STRING",
-            "version": "INT"
+            "version": "INT",
+            "split_names": "STRING"
           }
         }
       }
