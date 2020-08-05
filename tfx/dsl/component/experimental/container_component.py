@@ -112,7 +112,8 @@ def create_container_component(
         component_spec.ExecutionParameter(type=parameter_type))
 
   tfx_component_spec_class = type(
-      name + 'Spec',
+      # Need str() for Python 2 compatibility.
+      str(name) + 'Spec',
       (component_spec.ComponentSpec,),
       dict(
           PARAMETERS=execution_parameters,
@@ -134,7 +135,8 @@ def create_container_component(
     )
 
   tfx_component_class = type(
-      name,
+      # Need str() for Python 2 compatibility.
+      str(name),
       (base_component.BaseComponent,),
       dict(
           SPEC_CLASS=tfx_component_spec_class,

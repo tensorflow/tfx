@@ -26,13 +26,14 @@ from typing import Any, Dict, List, Optional, Text, Type
 
 from six import with_metaclass
 
-from google.protobuf import json_format
-from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
+
+from google.protobuf import json_format
+from google.protobuf import message
 
 
 def _make_default(data: Any) -> Any:
@@ -377,7 +378,7 @@ class ChannelParameter(_ComponentParameter):
       optional: Optional[bool] = False):
     if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
-          'Argument "type" of Channel constructor must be a subclass of'
+          'Argument "type" of Channel constructor must be a subclass of '
           'tfx.types.Artifact.')
     self.type = type
     self.optional = optional
