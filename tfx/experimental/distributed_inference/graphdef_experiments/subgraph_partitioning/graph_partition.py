@@ -13,7 +13,7 @@
 # limitations under the License.
 """Graph partitioning on TensorFlow GraphDefs with remote ops.
 
-The current partitioning strategy aims at maximum subgraphs.
+The current partitioning strategy aims for maximum subgraphs.
 
 There are two libraries representing two stages: graph_partition and
 beam_pipeline. In this library, we take in some GraphDef inputs, partition
@@ -49,6 +49,7 @@ import collections
 
 import tensorflow as tf
 from tensorflow.core.framework import graph_pb2, node_def_pb2
+
 from execution_spec import ExecutionSpec
 
 
@@ -120,15 +121,16 @@ def _partition_one_graph(
   graph = _get_graph(graph_def)
   node_name_to_node_def = _get_node_name_to_node_def(graph_def)
 
-  remote_op_to_parents = _get_remote_op_to_parents(node_name_to_node_def)
+  remote_op_to_immediate_dep = _get_remote_op_to_immediate_dep(
+      node_name_to_node_def)
 
   specs = _get_execution_specs(graph_def,
                                output_names,
                                graph,
                                node_name_to_node_def,
-                               remote_op_to_parents)
+                               remote_op_to_immediate_dep)
 
-  _modify_execution_specs(specs)
+  _modify_execution_specs_for_input_validity(specs)
 
   return specs
 
@@ -144,46 +146,47 @@ def _get_node_name_to_node_def(
   return {node.name: node for node in graph_def.node}
 
 
-def _get_remote_op_to_parents(
+def _get_remote_op_to_immediate_dep(
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef]
 ) -> Dict[Text, List[Text]]:
   """Gets the execution dependencies between remote ops.
 
-  The remote op parents must be executed before executing a remote op.
+  The remote op immediate dependencies must be executed before executing
+  a remote op.
 
   Args:
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
 
   Returns:
-    A mapping from a remote op name to a list of immediate remote op parent
-    names.
+    A mapping from a remote op name to a set of remote op immediate
+    dependencies' names.
   """
-  remote_op_to_parents = {}
+  remote_op_to_immediate_dep = {}
 
   for node in node_name_to_node_def.values():
     if _is_remote_op(node):
-      remote_op_to_parents[node.name] = _get_remote_op_parents(
+      remote_op_to_immediate_dep[node.name] = _get_remote_op_immediate_dep(
           node.name, node_name_to_node_def)
 
-  return remote_op_to_parents
+  return remote_op_to_immediate_dep
 
 
-def _get_remote_op_parents(
+def _get_remote_op_immediate_dep(
     remote_op_name: Text,
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef]
 ) -> List[Text]:
-  """Finds the immediate remote op parents for a remote op.
+  """Finds the remote op immediate dependencies for a remote op.
 
   Args:
     remote_op_name: The name of the child remote op.
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
 
   Returns:
-    A list of immediate remote op parent names.
+    A list of remote op immediate dependencies' names.
   """
   queue = collections.deque([remote_op_name])
   visited = set([remote_op_name])
-  remote_op_parents = []
+  remote_op_immediate_dep = []
 
   while queue:
     current_node_name = queue.popleft()
@@ -195,11 +198,11 @@ def _get_remote_op_parents(
 
         # Stop traversing when reaching a remote op.
         if _is_remote_op(input_node):
-          remote_op_parents.append(input_node_name)
+          remote_op_immediate_dep.append(input_node_name)
         else:
           queue.append(input_node_name)
 
-  return remote_op_parents
+  return remote_op_immediate_dep
 
 
 def _is_placeholder_op(node: node_def_pb2.NodeDef) -> bool:
@@ -215,7 +218,7 @@ def _get_execution_specs(
     graph_output_names: List[Text],
     graph: tf.Graph,
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef],
-    remote_op_to_parents: Mapping[Text, List[Text]]
+    remote_op_to_immediate_dep: Mapping[Text, List[Text]]
 ) -> List[ExecutionSpec]:
   """Generates the ExecutionSpecs for a graph.
 
@@ -232,17 +235,17 @@ def _get_execution_specs(
   then traverse and construct the previous subgraph layer.
 
   Each subgraph layer can be captured into one ExecutionSpec, but each
-  remote op layer need to be stored into one or more ExecutionSpecs based on
-  the number of remote ops. This happens because we assume that the execution
-  of ExecutionSpecs is strictly sequential.
+  remote op layer need to be stored into N ExecutionSpecs, where N equals
+  to the number of remote ops inside a remote op layer. This happens
+  because each remote op essentially represents a graph.
 
   Args:
     graph_def: A `GraphDef` proto.
     graph_output_names: A list of graph output node names.
     graph: A tf.Graph representing the same graph as graph_def.
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
-    remote_op_to_parents: A mapping from remote op name to a list of
-                          immediate remote op parent names.
+    remote_op_to_immediate_dep: A mapping from remote op name to a list of
+                                remote op immediate dependencies' names.
 
   Returns:
     A list of ExecutionSpecs, where the order of the list represents the
@@ -251,93 +254,92 @@ def _get_execution_specs(
   execution_specs = []  # type: List[ExecutionSpec]
   previously_visited = set()  # type: Set[Text]
 
-  for remote_op_layer in _RemoteOpLayers(remote_op_to_parents):
+  for remote_op_layer in _RemoteOpLayers(remote_op_to_immediate_dep):
     # Get one subgraph layer
-    output_node_names = _get_subgraph_layer_output_node_names(
+    output_node_names = _get_previous_subgraph_layer_output_node_names(
         remote_op_layer, node_name_to_node_def)
 
     if output_node_names:
-      spec = _partition_one_subgraph_layer(
+      spec = _get_execution_spec_for_subgraph_layer(
           graph_def, graph, node_name_to_node_def,
           previously_visited, output_node_names)
       execution_specs.append(spec)
-      previously_visited |= set(_get_non_input_names(spec.subgraph))
+      previously_visited |= _get_non_input_names(spec.subgraph)
 
     # Get one remote op layer
-    specs = _partition_one_remote_op_layer(
+    specs = _get_execution_specs_for_remote_op_layer(
         remote_op_layer, node_name_to_node_def)
     execution_specs.extend(specs)
 
   # Get the last subgraph layer
-  spec = _partition_one_subgraph_layer(
+  output_node_names = set(graph_output_names)
+  spec = _get_execution_spec_for_subgraph_layer(
       graph_def, graph, node_name_to_node_def,
-      previously_visited, graph_output_names)
+      previously_visited, output_node_names)
   execution_specs.append(spec)
 
   return execution_specs
 
 
-def _get_subgraph_layer_output_node_names(
-    remote_op_layer: List[Text],
+def _get_previous_subgraph_layer_output_node_names(
+    remote_op_layer: Set[Text],
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef]
-) -> List[Text]:
-  """Gets the output node names of a subgraph layer.
+) -> Set[Text]:
+  """Gets the output node names of the previous subgraph layer.
 
-  We derive the output node names from the input names of the succeeding
-  remote op layer.
+  Given a remote op layer, we derive the output node names of the previous
+  subgraph layer. Layers tend to have the following order: subgraph layer,
+  remote op layer, subgraph layer, remote op layer, ...
 
   Args:
-    remote_op_layer: A list of remote op names for a remote op layer.
+    remote_op_layer: A set of remote op names for a remote op layer.
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
 
   Returns:
-    A list of output node names of a subgraph layer.
+    A set of output node names of the previous subgraph layer.
   """
-  output_node_names = []
+  previous_subgraph_layer_output_node_names = set()
 
   for remote_op_name in remote_op_layer:
     for input_node_name in node_name_to_node_def[remote_op_name].input:
       input_node = node_name_to_node_def[input_node_name]
 
-      if input_node_name in output_node_names:
+      # Assumption: Graph inputs and previous remote op outputs are always
+      #             computed and stored.
+      if _is_placeholder_op(input_node) or _is_remote_op(input_node):
         continue
-      # Assumption: Later in beam, the graph inputs will be loaded first.
-      if _is_placeholder_op(input_node):
-        continue
+      previous_subgraph_layer_output_node_names.add(input_node_name)
 
-      output_node_names.append(input_node_name)
-
-  return output_node_names
+  return previous_subgraph_layer_output_node_names
 
 
-def _partition_one_subgraph_layer(
+def _get_execution_spec_for_subgraph_layer(
     graph_def: graph_pb2.GraphDef,
     graph: tf.Graph,
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef],
     previously_visited: Set[Text],
-    output_node_names: List[Text]
+    output_node_names: Set[Text]
 ) -> ExecutionSpec:
-  """Partitions one subgraph layer.
+  """Constructs one subgraph layer.
 
   As discussed in _get_execution_specs(), a subgraph layer contains one or
-  more nodes excluding remote ops. Based on a list of output node names, we
-  perform a BFS, where it stops when it encounters a visited node, a remote
-  op, or a placeholder.
+  more nodes excluding remote ops. Based on a set of output node names, we
+  traverse toward the ancestors (upward) until encountering a "special" node.
 
-  We may encounter different types of nodes as we traverse. Remote ops are
-  the outputs of the previous remote op layers; placeholder ops are the
-  pre-loaded graph inputs; nodes that have been previously visited in other
-  subgraph layers will become outputs as well (in _modify_execution_specs).
-  Therefore, we can characterize them as the placeholder inputs of the
-  current subgraph. Nodes without those properties will be added directly
-  to the current subgraph.
+  Here, we traverse upward because each node's node_def contains input names
+  but not output names.
+
+  A "special" node could be either a placeholder node, a remote op, or a node
+  visited by a previous layer. Since it is computed/stored prior to the
+  current subgraph layer, we can treat it as an input of the current subgraph
+  layer.
 
   Args:
     graph_def: A `GraphDef` proto for the original graph.
     graph: A tf.Graph instance for the original graph.
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
     previously_visited: A set of node names from previous subgraph layers.
-    output_node_names: A list of output node names for the current subgraph.
+    output_node_names: A set of output node names for the current subgraph.
 
   Returns:
     An ExecutionSpec representing a subgraph layer.
@@ -371,7 +373,7 @@ def _partition_one_subgraph_layer(
   return ExecutionSpec(
       subgraph=subgraph,
       input_names=_get_input_names(subgraph),
-      output_names=output_node_names,
+      output_names=set(output_node_names),
       is_remote_op=False)
 
 
@@ -401,20 +403,20 @@ def _create_placeholder_node_from_existing_node(
     return sess.graph_def.node[0]
 
 
-def _get_input_names(subgraph: graph_pb2.GraphDef) -> List[Text]:
-  input_names = [node.name for node in subgraph.node
-                 if _is_placeholder_op(node)]
+def _get_input_names(subgraph: graph_pb2.GraphDef) -> Set[Text]:
+  input_names = {node.name for node in subgraph.node
+                 if _is_placeholder_op(node)}
   return input_names
 
 
-def _get_non_input_names(subgraph: graph_pb2.GraphDef) -> List[Text]:
-  non_input_names = [node.name for node in subgraph.node
-                     if not _is_placeholder_op(node)]
+def _get_non_input_names(subgraph: graph_pb2.GraphDef) -> Set[Text]:
+  non_input_names = {node.name for node in subgraph.node
+                     if not _is_placeholder_op(node)}
   return non_input_names
 
 
-def _partition_one_remote_op_layer(
-    remote_op_layer: List[Text],
+def _get_execution_specs_for_remote_op_layer(
+    remote_op_layer: Set[Text],
     node_name_to_node_def: Mapping[Text, node_def_pb2.NodeDef]
 ) -> List[ExecutionSpec]:
   """Constructs ExecutionSpecs for a remote op layer.
@@ -425,7 +427,7 @@ def _partition_one_remote_op_layer(
   we use multiple ExecutionSpecs to represent a remote op layer.
 
   Args:
-    remote_op_layer: A list of remote op names for a remote op layer.
+    remote_op_layer: A set of remote op names for a remote op layer.
     node_name_to_node_def: A mapping from node names to `NodeDef` protos.
 
   Returns:
@@ -436,83 +438,80 @@ def _partition_one_remote_op_layer(
   for remote_op_name in remote_op_layer:
     spec = ExecutionSpec(
         subgraph=None,
-        input_names=list(node_name_to_node_def[remote_op_name].input),
-        output_names=[remote_op_name],
+        input_names=set(node_name_to_node_def[remote_op_name].input),
+        output_names=set([remote_op_name]),
         is_remote_op=True)
     list_of_specs.append(spec)
 
   return list_of_specs
 
 
-def _modify_execution_specs(specs: List[ExecutionSpec]) -> None:
-  """Modifies the execution specs.
+def _modify_execution_specs_for_input_validity(
+    specs: List[ExecutionSpec]) -> None:
+  """Modifies the execution specs to ensure that all inputs are valid.
 
-  For an execution spec (representing a partitioned subgraph), a placeholder
-  input may either be a remote op, a placeholder input of the original graph,
-  or a regular node from the previously visited subgraphs. In the last
-  scenario, we need to check if that regular node is one of the output nodes
-  of a previously visited subgraph. If not, we'll add it to the output nodes.
+  Ensure inputs have been outputted by a previous spec. Sometimes an input
+  of a spec may be a node from a previous spec but not one of the outputs.
+  We'd like to add it to previous spec's outputs.
 
   Args:
-    specs: A list of ExecutionSpecs, where each ExecutionSpec represents a
-           partitioned subgraph, and the order of the list represents the
+    specs: A list of ExecutionSpecs, where order of the list represents the
            order of the execution.
   """
   for current_spec_index, current_spec in enumerate(specs):
     for previous_spec in specs[:current_spec_index]:
       if previous_spec.is_remote_op:
         continue
-      _modify_output_names(current_spec, previous_spec)
+      _add_current_spec_input_to_previous_spec_output(
+          current_spec, previous_spec)
 
 
-def _modify_output_names(current_spec: ExecutionSpec,
-                         previous_spec: ExecutionSpec) -> None:
+def _add_current_spec_input_to_previous_spec_output(
+    current_spec: ExecutionSpec,
+    previous_spec: ExecutionSpec) -> None:
   for input_name in current_spec.input_names:
     if input_name in _get_non_input_names(previous_spec.subgraph):
-      if input_name in previous_spec.output_names:
-        continue
-      previous_spec.output_names.append(input_name)
+      # Output names is a set, which doesn't allow duplicates.
+      previous_spec.output_names.add(input_name)
 
 
 class _RemoteOpLayers:
   """A class that outputs remote op layers (custom topological sort).
 
-  A remote op layer contains a list of remote op names that don't have
-  dependencies on each other. The "next" remote op layer refers to
-  a remote op layer that is ready to execute.
+  A remote op layer contains a set of remote op names that don't have
+  dependencies on each other. The remote op layers are returned in execution
+  order. In other words, a remote op layer returned earlier will be executed
+  earlier.
   """
-  def __init__(self, remote_op_to_parents: Mapping[Text, List[Text]]):
+  def __init__(self, remote_op_to_immediate_dep: Mapping[Text, List[Text]]):
     """Initializes the class.
 
     Args:
-      remote_op_to_parents: A mapping from a remote op name to a list of
-                            immediate remote op parent names.
+      remote_op_to_immediate_dep: A mapping from a remote op name to a list of
+                                  remote op immediate dependencies' names.
     """
-    self.remote_op_to_parents = remote_op_to_parents
+    self.remote_op_to_immediate_dep = remote_op_to_immediate_dep
 
   def __iter__(self):
-    """Initializes the iterator."""
-    self._processed = []
-    self._not_processed = list(self.remote_op_to_parents.keys())
+    self._not_processed = set(self.remote_op_to_immediate_dep.keys())
     return self
 
-  def __next__(self) -> List[Text]:
+  def __next__(self) -> Set[Text]:
     """Gets the remote op names for the next remote op layer.
 
     Returns:
-      A list of remote op names.
+      A set of remote op names.
     """
     if not self._not_processed:
       raise StopIteration
 
-    layer_node_names = []
+    layer_node_names = set()
     for remote_op_name in self._not_processed:
-      remote_op_parents = set(self.remote_op_to_parents[remote_op_name])
-      if remote_op_parents.issubset(set(self._processed)):
-        layer_node_names.append(remote_op_name)
+      remote_op_immediate_dep = set(
+          self.remote_op_to_immediate_dep[remote_op_name])
+      if not remote_op_immediate_dep & self._not_processed:
+        layer_node_names.add(remote_op_name)
 
-    for layer_node_name in layer_node_names:
-      self._processed.append(layer_node_name)
-      self._not_processed.remove(layer_node_name)
+    self._not_processed -= layer_node_names
 
     return layer_node_names

@@ -18,6 +18,7 @@ import tempfile
 import tensorflow as tf
 
 from tensorflow.core.framework import graph_pb2
+from google.protobuf import text_format
 
 from create_complex_graph import save_examples_as_graphdefs
 from graph_partition import _RemoteOpLayers
@@ -31,7 +32,7 @@ class RemoteOpLayerTest(tf.test.TestCase):
     remote_op_relations = {'a1': [], 'a2': [], 'b1': ['a1'],
                            'b2': ['a1', 'a2'], 'c1': ['b1'],
                            'c2': ['b1', 'a1', 'b2', 'a2']}
-    desired_outputs = [['a1', 'a2'], ['b1', 'b2'], ['c1', 'c2']]
+    desired_outputs = [{'a1', 'a2'}, {'b1', 'b2'}, {'c1', 'c2'}]
 
     order = _RemoteOpLayers(remote_op_relations)
     self.assertEqual(desired_outputs, list(order))
@@ -92,7 +93,12 @@ class PartitionTest(tf.test.TestCase):
         if spec.is_remote_op:
           continue
         golden_graph_def = _get_golden_subgraph(graph_name, spec)
-        self.assertEqual(golden_graph_def, spec.subgraph)
+        # Compare node names instead of `GraphDef` protos because sets in
+        # graph_partition are not ordered. If there are two nodes with the
+        # same type in a subgraph layer, for example Add. Sometimes a node
+        # may have name "Add" while other times have name "Add_1".
+        self.assertEqual(_get_node_names(golden_graph_def),
+                         _get_node_names(spec.subgraph))
 
 
 def _get_golden_subgraph(graph_name, spec):
@@ -101,15 +107,18 @@ def _get_golden_subgraph(graph_name, spec):
   filepath = os.path.join('testdata', graph_name, filename)
 
   graph_def = graph_pb2.GraphDef()
-  with tf.io.gfile.GFile(filepath, 'rb') as f:
-    graph_def.ParseFromString(f.read())
+  with tf.io.gfile.GFile(filepath, 'r') as f:
+    text_format.Parse(f.read(), graph_def)
   return graph_def
 
 
 def _generate_unique_filename(input_names):
-  return "input_names-%s.pb" % ('-'.join(sorted(input_names)))
+  return "input_names-%s.pbtxt" % ('-'.join(sorted(input_names)))
+
+
+def _get_node_names(graph_def):
+  return {node.name for node in graph_def.node}
 
 
 if __name__ == '__main__':
   tf.test.main()
-  

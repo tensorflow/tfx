@@ -14,23 +14,26 @@
 """Definition of execution_spec."""
 
 from dataclasses import dataclass
-from typing import List, Text
+from typing import Set, Text
 
 from tensorflow.core.framework import graph_pb2
 
 
 @dataclass
 class ExecutionSpec:
-  """A spec that represents a partitioned subgraph.
+  """A spec that stores necessary information for execution.
+
+  An ExecutionSpec can either represent a subgraph layer or represent
+  part of a remote op layer (only contains one remote op).
 
   Attributes:
-    subgraph: A subgraph's graph_def.
-    input_names: A list of subgraph's input node names.
-    output_names: A list of subgraph's output node names.
-    is_remote_op: A boolean indicating the type of the subgraph
-                  (two types: regular subgraph or remote op subgraph).
+    subgraph: A `GraphDef` proto.
+    input_names: A set of input node names.
+    output_names: A set of output node names.
+    is_remote_op: A boolean indicating the type of the layer
+                  (two types: subgraph layer or remote op layer).
   """
   subgraph: graph_pb2.GraphDef
-  input_names: List[Text]
-  output_names: List[Text]
+  input_names: Set[Text]
+  output_names: Set[Text]
   is_remote_op: bool

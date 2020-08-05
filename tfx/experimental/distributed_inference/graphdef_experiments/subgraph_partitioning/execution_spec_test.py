@@ -23,8 +23,8 @@ class ExecutionSpecTest(tf.test.TestCase):
   def test_spec(self):
     """Verifies ExecutionSpec with an example."""
     subgraph = None
-    input_names = ['a', 'b', 'c']
-    output_names = ['d']
+    input_names = {'a', 'b', 'c'}
+    output_names = {'d'}
     is_remote_op = True
 
     spec = ExecutionSpec(subgraph,
