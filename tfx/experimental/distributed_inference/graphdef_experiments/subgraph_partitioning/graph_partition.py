@@ -358,8 +358,8 @@ def _get_execution_spec_for_subgraph_layer(
     if current_node_name not in visited:
       visited.add(current_node_name)
 
-      if _is_remote_op(current_node) or _is_placeholder_op(current_node) \
-      or current_node_name in previously_visited:
+      if (_is_remote_op(current_node) or _is_placeholder_op(current_node) or
+          current_node_name in previously_visited):
         # These ops must be computed before this subgraph layer. Hence,
         # we treat them as placeholder inputs.
         placeholder_node = _create_placeholder_node_from_existing_node(

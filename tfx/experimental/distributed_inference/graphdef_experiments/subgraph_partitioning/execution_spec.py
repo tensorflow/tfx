@@ -14,7 +14,7 @@
 """Definition of execution_spec."""
 
 from dataclasses import dataclass
-from typing import Set, Text
+from typing import Optional, Set, Text
 
 from tensorflow.core.framework import graph_pb2
 
@@ -27,13 +27,13 @@ class ExecutionSpec:
   part of a remote op layer (only contains one remote op).
 
   Attributes:
-    subgraph: A `GraphDef` proto.
+    subgraph: A `GraphDef` proto if subgraph layer; None if remote op layer.
     input_names: A set of input node names.
     output_names: A set of output node names.
     is_remote_op: A boolean indicating the type of the layer
                   (two types: subgraph layer or remote op layer).
   """
-  subgraph: graph_pb2.GraphDef
+  subgraph: Optional[graph_pb2.GraphDef]
   input_names: Set[Text]
   output_names: Set[Text]
   is_remote_op: bool
