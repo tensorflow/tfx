@@ -41,6 +41,8 @@
     by default) -- specify parameter `materialize=False` when constructing
     the component to disable.
 *   Supported `Version` spec in input config for file based ExampleGen.
+*   Added custom config to Transform component and made it available to
+    pre-processing fn.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
