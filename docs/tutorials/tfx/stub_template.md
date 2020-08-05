@@ -89,13 +89,14 @@ Update the existing pipeline with modified pipeline definition with stub executo
 ```bash
 tfx pipeline update
 --pipeline-path=kubeflow_dag_runner.py
---endpoint={ENDPOINT} --engine=kubeflow
+--endpoint=$endpoint --engine=kubeflow
 ```
+`$endpoint` should be set to your KFP cluster endpoint.
 
 Run the following command to create a new execution run of your updated pipeline.
 
 ```bash
-tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT} --engine=kubeflow
+tfx run create --pipeline-name $pipeline_name --endpoint=$endpoint --engine=kubeflow
 ```
 
 
