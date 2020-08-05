@@ -101,12 +101,12 @@ class TaxiPipelineExecutorVerifier(tf.test.TestCase):
                                                   expected_uri))
 
   def testExecutorVerifier(self):
-    # Calls verifier for artifacts
-    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    # List of components to verify
+    # Calls verifier for artifacts, excluding resolver node
+    # List of components to verify. ResolverNode is ignored because it
+    # doesn't have a executor that can be replaced with stub.
     verify_component_ids = [component.id
                             for component in self.taxi_pipeline.components
-                            if component.id != model_resolver_id]
+                            if not component.id.startswith('ResolverNode')]
 
     for component_id in verify_component_ids:
       for key, artifact_dict in self.pipeline_outputs[component_id].items():

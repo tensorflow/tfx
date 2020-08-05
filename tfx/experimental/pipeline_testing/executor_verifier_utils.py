@@ -28,6 +28,7 @@ from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
+from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
 def _compare_relative_difference(value: float,
@@ -84,14 +85,19 @@ def get_pipeline_outputs(
           key = steps[0].key
           artifacts = m.store.get_artifacts_by_id(
               [event.artifact_id])
+          print("event", event)
           if key not in output_dict:
             output_dict[key] = {}
-          for artifact in artifacts:
+          for pb_artifact in artifacts:
             if len(steps) < 2 or not steps[1].HasField('index'):
               raise ValueError('Artifact index is not recorded in the MLMD.')
             artifact_index = steps[1].index
             if artifact_index in output_dict[key]:
               raise ValueError("Artifact already in output_dict")
+            [artifact_type] = m.store.get_artifact_types_by_id(
+                [pb_artifact.type_id])
+            artifact = artifact_utils.deserialize_artifact(artifact_type,
+                                                           pb_artifact)
             output_dict[key][artifact_index] = artifact
       output_map[component_id] = output_dict
   return output_map
