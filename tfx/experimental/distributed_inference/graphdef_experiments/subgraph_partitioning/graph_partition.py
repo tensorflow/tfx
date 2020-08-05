@@ -450,7 +450,7 @@ def _modify_execution_specs_for_input_validity(
     specs: List[ExecutionSpec]) -> None:
   """Modifies the execution specs to ensure that all inputs are valid.
 
-  Ensure inputs have been outputted by a previous spec. Sometimes an input
+  Ensure inputs have been outputted by previous specs. Sometimes an input
   of a spec may be a node from a previous spec but not one of the outputs.
   We'd like to add it to previous spec's outputs.
 
