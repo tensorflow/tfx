@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import os
 import re
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from absl import logging
@@ -220,9 +221,9 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
 
 
 
-def _retrieve_latest_span_version(
+def _retrieve_latest_span_elems_version(
     uri: Text, split: example_gen_pb2.Input.Split
-) -> Tuple[Optional[Text], Optional[Text]]:
+) -> Tuple[Optional[Text], Optional[Text], Optional[List[Text]]]:
   """Retrieves the most recent span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
@@ -262,25 +263,31 @@ def _retrieve_latest_span_version(
     if VERSION_SPEC in split.pattern:
       raise ValueError('Version spec provided, but Span or Date spec is not '
                        'present')
-    return (None, None)
+    return (None, None, None)
 
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
   elif is_match_date and not all(split.pattern.count(spec) == 1 
-                                   for spec in DATE_SPECS):
-    raise ValueError('Only one of each \{%s, %s %s\} is allowed in %s' %
+                                 for spec in DATE_SPECS):
+    raise ValueError('Only one of each \(%s, %s %s\) is allowed in %s' %
                      (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
+
+  latest_span_elems = None
+  span_group_names = None
+  latest_version = None
 
   if is_match_span:
     split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
         SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+    span_group_names = [SPAN_PROPERTY_NAME]
   elif is_match_date:
     for spec, name in zip(DATE_SPECS, ['year', 'month', 'day']):
       split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
       split_regex_pattern = split_regex_pattern.replace(
           spec, '(?P<{}>.*)'.format(name))
+    span_group_names = ['year', 'month', 'day']
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
@@ -295,9 +302,6 @@ def _retrieve_latest_span_version(
   logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
 
-  latest_span = None
-  latest_version = None
-
   files = tf.io.gfile.glob(split_glob_pattern)
 
   for file_path in files:
@@ -305,14 +309,12 @@ def _retrieve_latest_span_version(
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
 
-    span_str = None
-    if is_match_span:
-      span_str = result.group(SPAN_PROPERTY_NAME)
-      try:
-        span_int = int(span_str)
-      except ValueError:
-        raise ValueError('Cannot find %s number from %s based on %s' %
-                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+    span_elems_str = [result.group(name) for name in span_group_names]
+    try:
+      span_elems_int = [int(elem) for elem in span_elems_str]
+    except ValueError:
+      raise ValueError('Cannot find %s number from %s based on %s' %
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
 
     version_str = None
     if is_match_version:
@@ -324,19 +326,32 @@ def _retrieve_latest_span_version(
             'Cannot find %s number from %s based on %s' %
             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    if latest_span is None or span_int > int(latest_span):
+    if latest_span_elems is None or span_elems_int > [int(elem) for elem in latest_span_elems]:
       # Uses str instead of int because of zero padding digits.
-      latest_span = span_str
+      latest_span_elems = span_elems_str
       latest_version = version_str
-    elif (span_int == int(latest_span) and
+    elif (span_elems_int == [int(elem) for elem in latest_span_elems] and
           (latest_version is None or version_int >= int(latest_version))):
       latest_version = version_str
 
-  if latest_span is None or (is_match_version and latest_version is None):
+  if latest_span_elems is None or (is_match_version and latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
-  return latest_span, latest_version
+  latest_span = None
+  if is_match_span:
+    latest_span = latest_span_elems[0]
+  elif is_match_date:
+    # Using UNIX epoch as day zero.
+    start_date = datetime(1970, 1, 1)
+    try:
+      latest_date = datetime(*[int(elem) for elem in latest_span_elems])
+    except ValueError:
+      raise ValueError('Retrieved date %s has invalid format.' %
+                       latest_span_elems)
+    latest_span = str((latest_date - start_date).days)
+
+  return latest_span, latest_version, latest_span_elems
 
 
 def calculate_splits_fingerprint_span_and_version(
@@ -370,12 +385,17 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_version = _retrieve_latest_span_version(
+    latest_span, latest_version, latest_span_elems = _retrieve_latest_span_elems_version(
         input_base_uri, split)
 
     # Replace split.pattern so executor can find files after driver runs.
-    if latest_span:
-      split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+    if latest_span_elems:
+      if len(latest_span_elems) == 3:
+        for spec, value in zip(DATE_SPECS, latest_span_elems):
+          split.pattern = split.pattern.replace(spec, value)
+      else:
+        split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+      
     if latest_version:
       split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
