@@ -5,7 +5,7 @@ consumes external files/services to generate Examples which will be read by
 other TFX components. It also provides consistent and configurable partition,
 and shuffles the dataset for ML best practice.
 
-*   Consumes: Data from external data sources such as CSV, `TFRecord`, Arvo,
+*   Consumes: Data from external data sources such as CSV, `TFRecord`, Avro,
     Parquet and BigQuery
 *   Emits: `tf.Example` records, `tf.SequenceExample` records, or proto format,
     depends on the payload_type enum.
