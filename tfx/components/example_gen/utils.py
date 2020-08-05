@@ -59,7 +59,9 @@ VERSION_SPEC = '{VERSION}'
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
 DAY_SPEC = '{DD}'
+# Group names and order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
+DATE_SPEC_NAMES = ['year', 'month', 'day']
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -251,8 +253,8 @@ def _retrieve_latest_span_elems_version(
   is_match_span = SPAN_SPEC in split.pattern
   is_match_date = all(spec in split.pattern for spec in DATE_SPECS)
   if [is_match_span, is_match_date].count(True) > 1:
-    raise ValueError('Either span spec or date specs can be specified '
-                     'exclusively')
+    raise ValueError('Either span spec or date specs must be specified '
+                     'exclusively.')
 
   split_pattern = os.path.join(uri, split.pattern)
 
@@ -262,7 +264,7 @@ def _retrieve_latest_span_elems_version(
   if not is_match_span and not is_match_date:
     if VERSION_SPEC in split.pattern:
       raise ValueError('Version spec provided, but Span or Date spec is not '
-                       'present')
+                       'present.')
     return (None, None, None)
 
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
@@ -283,11 +285,11 @@ def _retrieve_latest_span_elems_version(
         SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
     span_group_names = [SPAN_PROPERTY_NAME]
   elif is_match_date:
-    for spec, name in zip(DATE_SPECS, ['year', 'month', 'day']):
+    for spec, name in zip(DATE_SPECS, DATE_SPEC_NAMES):
       split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
       split_regex_pattern = split_regex_pattern.replace(
           spec, '(?P<{}>.*)'.format(name))
-    span_group_names = ['year', 'month', 'day']
+    span_group_names = DATE_SPEC_NAMES
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
@@ -351,7 +353,7 @@ def _retrieve_latest_span_elems_version(
                        latest_span_elems)
     latest_span = str((latest_date - start_date).days)
 
-  return latest_span, latest_version, latest_span_elems
+  return latest_span, latest_span_elems, latest_version,
 
 
 def calculate_splits_fingerprint_span_and_version(
@@ -385,12 +387,13 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_version, latest_span_elems = _retrieve_latest_span_elems_version(
+    latest_span, latest_span_elems, latest_version, = _retrieve_latest_span_elems_version(
         input_base_uri, split)
 
     # Replace split.pattern so executor can find files after driver runs.
     if latest_span_elems:
       if len(latest_span_elems) == 3:
+        # If Date spec was used, replace Date specs with correct values.
         for spec, value in zip(DATE_SPECS, latest_span_elems):
           split.pattern = split.pattern.replace(spec, value)
       else:
