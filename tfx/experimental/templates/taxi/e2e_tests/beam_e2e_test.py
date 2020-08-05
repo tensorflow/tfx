@@ -34,7 +34,7 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
   [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
   """
 
-  def _getAllUnitTests(self):
+  def _get_all_unit_tests(self):
     for root, _, files in os.walk(self._project_dir):
       base_dir = os.path.relpath(root, self._project_dir)
       if base_dir == '.':  # project_dir == root
@@ -47,18 +47,18 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
           yield base_module + filename[:-3]
 
   def testGeneratedUnitTests(self):
-    self._copyTemplate()
-    for m in self._getAllUnitTests():
+    self._copy_template()
+    for m in self._get_all_unit_tests():
       logging.info('Running unit test "%s"', m)
       # A failed googletest will raise a CalledProcessError.
       _ = subprocess.check_output([sys.executable, '-m', m])
 
   def testBeamPipeline(self):
-    self._copyTemplate()
+    self._copy_template()
     os.environ['BEAM_HOME'] = os.path.join(self._temp_dir, 'beam')
 
     # Create a pipeline with only one component.
-    result = self._runCli([
+    result = self._run_cli([
         'pipeline',
         'create',
         '--engine',
@@ -72,7 +72,7 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
         result.output)
 
     # Run the pipeline.
-    result = self._runCli([
+    result = self._run_cli([
         'run',
         'create',
         '--engine',
@@ -83,10 +83,10 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
     self.assertEqual(0, result.exit_code)
 
     # Update the pipeline to include all components.
-    updated_pipeline_file = self._addAllComponents()
+    updated_pipeline_file = self._add_all_components()
     logging.info('Updated %s to add all components to the pipeline.',
                  updated_pipeline_file)
-    result = self._runCli([
+    result = self._run_cli([
         'pipeline',
         'update',
         '--engine',
@@ -100,7 +100,7 @@ class TaxiTemplateBeamEndToEndTest(test_utils.BaseEndToEndTest):
         result.output)
 
     # Run the updated pipeline.
-    result = self._runCli([
+    result = self._run_cli([
         'run',
         'create',
         '--engine',

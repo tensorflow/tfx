@@ -2,10 +2,10 @@
 ## Testing the pipeline using Stub Executors
 
 ### Introduction
-**You should complete [template.ipynb](https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb) tutorial up to *6* in order to proceed this tutorial.**
+**You should complete [template.ipynb](https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb) tutorial up to *Step 6* in order to proceed this tutorial.**
 
 This document will provide instructions to test a TensorFlow Extended (TFX) pipeline
-using `BaseStubExecuctor`, which generates fake data using the golden test data. This is intended for users to replace executors they don't want to test so that they could save time from running the actual executors. Stub executor is provided with TFX Python package under `tfx.experimental.pipeline_testing.base_stub_executor`.
+using `BaseStubExecuctor`, which generates fake artifacts using the golden test data. This is intended for users to replace executors they don't want to test so that they could save time from running the actual executors. Stub executor is provided with TFX Python package under `tfx.experimental.pipeline_testing.base_stub_executor`.
 
 This tutorial serves as an extension to `template.ipynb` tutorial, thus you will also use [Taxi Trips dataset](
 https://data.cityofchicago.org/Transportation/Taxi-Trips/wrvz-psew)
@@ -13,46 +13,37 @@ released by the City of Chicago. We strongly encourage you to try modifying the 
 
 ### 1. Record the pipeline outputs in Google Cloud Storage
 
-Since this tutorial assumes that you have completed `template.ipynb` up to 6, a successful pipeline run must have been saved in the MLMD, which can be accessed using gRPC server. 
+We first need to record the pipeline outputs so that the stub executors can copy over the artifacts from the recorded outputs.
 
-Open a Terminal and run the following commands:
+Since this tutorial assumes that you have completed `template.ipynb` up to step 6, a successful pipeline run must have been saved in the [MLMD](https://www.tensorflow.org/tfx/guide/mlmd). The execution information in MLMD can be accessed using gRPC server. 
 
+Open a Terminal and set up port-forwarding for connecting to MLMD:
 ```bash
-gcloud container clusters get-credentials <cluster_name> --zone <compute_zone> --project {GOOGLE_CLOUD_PROJECT}
+nohup kubectl port-forward deployment/metadata-grpc-deployment -n $namespace $port:8080 &
 ```
+`$namespace` is the cluster namespace and `$port` is any unused port that will be used for port-forwarding.
 
+Then, on a new terminal run the following commands:
+
+1.  Generate a kubeconfig file with appropriate credentials:
 ```bash
-nohup kubectl port-forward deployment/metadata-grpc-deployment -n <namespace> {PORT}:8080 &
+gcloud container clusters get-credentials $cluster_name --zone $compute_zone --project $gcp_project_id
 ```
+`$compute_zone` is region for gcp engine and `$gcp_project_id` is project id of your gcp project.
 
-Then, you can either:
+2.  Clone the tfx GitHub repository. Inside the tfx directory, run the following command:
 
-1.  Open another terminal and clone the tfx GitHub repository.
- Inside the directory, run the following command:
 ```bash
 python tfx/experimental/pipeline_testing/pipeline_recorder.py \
---output_dir=gs://<project_name>-kubeflowpipelines-default/testdata \
+--output_dir=gs://<gcp_project_id>-kubeflowpipelines-default/testdata \
 --host=$host \
 --port=$port \
 --pipeline_name=$pipeline_name
 ```
 
-2. Run the python file
-```python
-from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-    pipeline_recorder_utils.record_pipeline(
-        output_dir=gs://<project_name>-kubeflowpipelines-default/testdata,
-        metadata_db_uri=None,
-        host=$host,
-        port=$port,
-        pipeline_name=$pipeline_name,
-        run_id=None)
-```
-
-
 `$output_dir` should be set to a path in Google Cloud Storage where the pipeline outputs are to be recorded, so make sure to replace `<project_name>` with Google Cloud project name.
 
-`$host` and `$port` are hostname and port of the metadata grpc server to connect to MLMD. You may choose any unused port and "localhost" for hostname.
+`$host` and `$port` are hostname and port of the metadata grpc server to connect to MLMD. `$port` should be set to the port number you used for port-forwarding and "localhost" for hostname.
 
 In `template.ipynb` tutorial, the pipeline name is set as "my_pipeline" by default, so set `pipeline_name="my_pipeline"`. If you have modified the pipeline name when running the template tutorial, you should modify the `--pipeline_name` accordingly.
 
@@ -70,7 +61,7 @@ First, make sure that the predefined template has been copied to your project di
       ],
 ```
 
-2.  In `launcher/stub_component_launcher.py`, modify the default list of component ids that are to be replaced with BaseStubExecutor. If you want to replace component executor with a custom stub executor, which inherits BaseStubExecutor, modify stubbed_component_map to include component id to custom stub executor mapping. If 
+2.  In `launcher/stub_component_launcher.py`, modify the default list of component ids that are to be replaced with BaseStubExecutor. If you want to replace component executor with a custom stub executor, which inherits BaseStubExecutor, modify stubbed_component_map to include component id to custom stub executor mapping. 
 ```python
 # GCS directory where KFP outputs are recorded
 test_data_dir = "gs://{}/testdata".format(configs.GCS_BUCKET_NAME)
@@ -106,3 +97,18 @@ Run the following command to create a new execution run of your updated pipeline
 ```bash
 tfx run create --pipeline-name {PIPELINE_NAME} --endpoint={ENDPOINT} --engine=kubeflow
 ```
+
+
+## Cleaning up
+
+Use command `fg` to access the port-forwarding in the background then ctrl-C to terminate.
+You can delete the directory with recorded pipeline outputs using `gsutil -m rm -R $output_dir`.
+
+To clean up all Google Cloud resources used in this project, you can
+[delete the Google Cloud project](https://cloud.google.com/resource-manager/docs/creating-managing-projects#shutting_down_projects)
+you used for the tutorial.
+
+Alternatively, you can clean up individual resources by visiting each
+consoles: - [Google Cloud Storage](https://console.cloud.google.com/storage) -
+[Google Container Registry](https://console.cloud.google.com/gcr) -
+[Google Kubernetes Engine](https://console.cloud.google.com/kubernetes)

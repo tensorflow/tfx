@@ -50,19 +50,22 @@ class StubComponentLauncher(
     Factory method returns a StubComponentLauncher class, which then can be
     supported by the pipeline.
     For example:
-      class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
-      class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
 
-      PipelineConfig(
-          supported_launcher_classes=[
-              StubComponentLauncher.get_stub_launcher_class(
-                  test_data_dir,
-                  stubbed_component_ids = ['CsvExampleGen'],
-                  stubbed_component_map = {
-                      'Transform': MyTransformStubExecutor,
-                      'Pusher': MyPusherStubExecutor})
-          ],
-      )
+    class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
+    class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
+    class StubComponentLauncher(stub_component_launcher.StubComponentLauncher):
+      pass
+    PipelineConfig(
+        supported_launcher_classes=[
+            StubComponentLauncher.get_stub_launcher_class(
+                test_data_dir,
+                stubbed_component_ids = ['CsvExampleGen'],
+                stubbed_component_map = {
+                    'Transform': MyTransformStubExecutor,
+                    'Pusher': MyPusherStubExecutor})
+        ],
+    )
+
     The method also sets the necessary class variables for the
     StubComponentLauncher class, including stubbed_component_ids and
     stubbed_component_map holding custom executor classes, which

@@ -86,11 +86,11 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._cleanup_with_retry(self._delete_runs)
 
   def testPipeline(self):
-    self._copyTemplate()
+    self._copy_template()
     os.environ['KUBEFLOW_HOME'] = os.path.join(self._temp_dir, 'kubeflow')
 
     # Uncomment all variables in config.
-    self._uncommentMultiLineVariables(
+    self._uncomment_multiline_variables(
         os.path.join('pipeline', 'configs.py'), [
             'GOOGLE_CLOUD_REGION',
             'BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
@@ -100,14 +100,14 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
 
     # Prepare data
     self._prepare_data()
-    self._replaceFileContent('kubeflow_dag_runner.py', [
+    self._replace_file_content('kubeflow_dag_runner.py', [
         ('DATA_PATH = \'gs://{}/tfx-template/data/\'.format(configs.GCS_BUCKET_NAME)',  # pylint: disable=line-too-long
          'DATA_PATH = \'gs://{{}}/{}/{}\'.format(configs.GCS_BUCKET_NAME)'
          .format(self._DATA_DIRECTORY_NAME, self._pipeline_name)),
     ])
 
     # Create a pipeline with all components.
-    updated_pipeline_file = self._addAllComponents()
+    updated_pipeline_file = self._add_all_components()
     logging.info('Updated %s to add all components to the pipeline.',
                  updated_pipeline_file)
 

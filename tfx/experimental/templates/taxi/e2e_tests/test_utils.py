@@ -81,7 +81,7 @@ class BaseEndToEndTest(tf.test.TestCase):
       else:
         break
 
-  def _runCli(self, args: List[Text]) -> click_testing.Result:  # pylint:disable=invalid-name
+  def _run_cli(self, args: List[Text]) -> click_testing.Result:
     logging.info('Running cli: %s', args)
     result = self._cli_runner.invoke(cli_group, args)
     logging.info('%s', result.output)
@@ -92,7 +92,7 @@ class BaseEndToEndTest(tf.test.TestCase):
 
     return result
 
-  def _addAllComponents(self) -> Text:  # pylint:disable=invalid-name
+  def _add_all_components(self) -> Text:
     """Change 'pipeline.py' file to put all components into the pipeline."""
     return self._uncomment(
         os.path.join('pipeline', 'pipeline.py'), ['components.append('])
@@ -100,10 +100,10 @@ class BaseEndToEndTest(tf.test.TestCase):
   def _uncomment(self, filepath: Text, expressions: Iterable[Text]) -> Text:
     """Update given file by uncommenting the `expression`."""
     replacements = [('# ' + s, s) for s in expressions]
-    return self._replaceFileContent(filepath, replacements)
+    return self._replace_file_content(filepath, replacements)
 
-  def _replaceFileContent(self, filepath: Text,  # pylint:disable=invalid-name
-                          replacements: Iterable[Tuple[Text, Text]]) -> Text:
+  def _replace_file_content(self, filepath: Text,
+                            replacements: Iterable[Tuple[Text, Text]]) -> Text:
     """Update given file using `replacements`."""
     path = os.path.join(self._project_dir, filepath)
     with open(path) as fp:
@@ -113,8 +113,8 @@ class BaseEndToEndTest(tf.test.TestCase):
     io_utils.write_string_file(path, content)
     return path
 
-  def _uncommentMultiLineVariables(self, filepath: Text,  # pylint:disable=invalid-name
-                                   variables: Iterable[Text]) -> Text:
+  def _uncomment_multiline_variables(self, filepath: Text,
+                                     variables: Iterable[Text]) -> Text:
     """Update given file by uncommenting a variable.
 
     The variable should be defined in following form.
@@ -169,8 +169,8 @@ class BaseEndToEndTest(tf.test.TestCase):
     io_utils.write_string_file(path, ''.join(result))
     return path
 
-  def _copyTemplate(self):  # pylint:disable=invalid-name
-    result = self._runCli([
+  def _copy_template(self):
+    result = self._run_cli([
         'template',
         'copy',
         '--pipeline_name',
@@ -195,7 +195,7 @@ class BaseEndToEndTest(tf.test.TestCase):
       self._kfp_client._run_api.delete_run(id=run.id)  # pylint: disable=protected-access
 
   def _delete_pipeline(self):
-    self._runCli([
+    self._run_cli([
         'pipeline', 'delete', '--engine', 'kubeflow', '--pipeline_name',
         self._pipeline_name, '--endpoint', self._endpoint
     ])
@@ -244,7 +244,7 @@ class BaseEndToEndTest(tf.test.TestCase):
     os.chmod(self._skaffold, 0o775)
 
   def _create_pipeline(self):
-    result = self._runCli([
+    result = self._run_cli([
         'pipeline',
         'create',
         '--engine',
@@ -263,7 +263,7 @@ class BaseEndToEndTest(tf.test.TestCase):
     self.assertEqual(0, result.exit_code)
 
   def _update_pipeline(self):
-    result = self._runCli([
+    result = self._run_cli([
         'pipeline',
         'update',
         '--engine',
@@ -278,7 +278,7 @@ class BaseEndToEndTest(tf.test.TestCase):
     self.assertEqual(0, result.exit_code)
 
   def _run_pipeline(self):
-    result = self._runCli([
+    result = self._run_cli([
         'run',
         'create',
         '--engine',

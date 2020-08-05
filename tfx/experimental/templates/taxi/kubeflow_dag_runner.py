@@ -73,6 +73,7 @@ def run():
 
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       # TODO(StubExecutor): Uncomment below to use stub executors.
+      # Refer to tfx/docs/tutorials/stub_template.md for more information.
       # supported_launcher_classes=[
       #     stub_component_launcher.StubComponentLauncher
       # ],
