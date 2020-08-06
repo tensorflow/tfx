@@ -92,11 +92,11 @@ class Driver(base_driver.BaseDriver):
     example_artifact.set_string_custom_property(
         utils.FINGERPRINT_PROPERTY_NAME,
         exec_properties[utils.FINGERPRINT_PROPERTY_NAME])
-    example_artifact.set_string_custom_property(
+    example_artifact.set_int_custom_property(
         utils.SPAN_PROPERTY_NAME, exec_properties[utils.SPAN_PROPERTY_NAME])
     # TODO(b/162622803): add default behavior for when version spec not present.
     if exec_properties[utils.VERSION_PROPERTY_NAME]:
-      example_artifact.set_string_custom_property(
+      example_artifact.set_int_custom_property(
           utils.VERSION_PROPERTY_NAME,
           exec_properties[utils.VERSION_PROPERTY_NAME])
 

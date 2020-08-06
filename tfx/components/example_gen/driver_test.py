@@ -104,8 +104,8 @@ class DriverTest(tf.test.TestCase):
     # for each split.
     self._example_gen_driver.resolve_exec_properties(self._exec_properties,
                                                      None, None)
-    self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], '02')
-    self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], '02')
+    self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 2)
+    self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 2)
     self.assertRegex(
         self._exec_properties[utils.FINGERPRINT_PROPERTY_NAME],
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
@@ -130,8 +130,8 @@ class DriverTest(tf.test.TestCase):
     examples = standard_artifacts.Examples()
     output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
     exec_properties = {
-        utils.SPAN_PROPERTY_NAME: '02',
-        utils.VERSION_PROPERTY_NAME: '01',
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: 1,
         utils.FINGERPRINT_PROPERTY_NAME: 'fp'
     }
 
@@ -152,9 +152,9 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
     self.assertEqual(
-        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '02')
+        examples.get_int_custom_property(utils.SPAN_PROPERTY_NAME), 2)
     self.assertEqual(
-        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '01')
+        examples.get_int_custom_property(utils.VERSION_PROPERTY_NAME), 1)
 
 
 if __name__ == '__main__':
