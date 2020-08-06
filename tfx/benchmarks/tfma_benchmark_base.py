@@ -44,7 +44,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     super(TFMABenchmarkBase, self).__init__()
     self._dataset = dataset
 
-  def report_benchmark(self, **kwargs): # pylint: disable=arguments-differ
+  def report_benchmark(self, **kwargs):
     if "extras" not in kwargs:
       kwargs["extras"] = {}
     # Note that the GIT_COMMIT_ID is not included in the packages themselves:

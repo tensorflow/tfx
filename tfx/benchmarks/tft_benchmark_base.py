@@ -50,7 +50,7 @@ class _CopySavedModel(beam.PTransform):
     super(_CopySavedModel, self).__init__()
     self._dest_path = dest_path
 
-  def expand(self, transform_fn): # pylint: disable=arguments-differ
+  def expand(self, transform_fn):
 
     def copy_saved_model(unused_element, source_path, dest_path):
       shutil.rmtree(dest_path, ignore_errors=True)
@@ -92,7 +92,7 @@ class _AnalyzeAndTransformDataset(beam.PTransform):
     self._transform_input_dataset_metadata = transform_input_dataset_metadata
     self._generate_dataset = generate_dataset
 
-  def expand(self, pipeline): # pylint: disable=arguments-differ
+  def expand(self, pipeline):
     # TODO(b/147620802): Consider making this (and other parameters)
     # configurable to test more variants (e.g. with and without deep-copy
     # optimisation, with and without cache, etc).
@@ -188,7 +188,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     super(TFTBenchmarkBase, self).__init__()
     self._dataset = dataset
 
-  def report_benchmark(self, **kwargs): # pylint: disable=arguments-differ
+  def report_benchmark(self, **kwargs):
     if "extras" not in kwargs:
       kwargs["extras"] = {}
     # Note that the GIT_COMMIT_ID is not included in the packages themselves:
@@ -297,7 +297,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
       feed_list = impl_helper.make_feed_list(input_tensor_keys, input_schema,
                                              batch)
       outputs_list = callable_get_outputs(*feed_list)
-      _ = {key: value for key, value in zip(outputs_tensor_keys, outputs_list)} # pylint: disable=unnecessary-comprehension
+      _ = {key: value for key, value in zip(outputs_tensor_keys, outputs_list)}
     end = time.time()
     delta = end - start
 

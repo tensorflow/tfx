@@ -73,7 +73,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self._eval_shared_model = tfma.default_eval_shared_model(
         self._dataset.trained_saved_model_path(), eval_config=self._eval_config)
 
-  def report_benchmark(self, **kwargs): # pylint: disable=arguments-differ
+  def report_benchmark(self, **kwargs):
     if "extras" not in kwargs:
       kwargs["extras"] = {}
     # Note that the GIT_COMMIT_ID is not included in the packages themselves:
