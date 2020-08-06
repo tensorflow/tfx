@@ -21,10 +21,12 @@ from __future__ import print_function
 import filecmp
 import os
 
+from absl import logging
 from typing import Text
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
+from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata

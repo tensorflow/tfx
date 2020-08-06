@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Helper utils for executor verifier."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import os
 
@@ -74,8 +77,6 @@ def get_pipeline_outputs(
   with metadata.Metadata(metadata_connection_config) as m:
     context = m.get_pipeline_run_context(pipeline_info)
     executions = m.store.get_executions_by_context(context.id)
-    print("executions", executions)
-    print("len(executions)", len(executions))
     for execution in executions:
       component_id = execution.properties['component_id'].string_value
       output_dict = {}
