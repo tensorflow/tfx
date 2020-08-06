@@ -25,7 +25,6 @@ from google.protobuf import json_format
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
 

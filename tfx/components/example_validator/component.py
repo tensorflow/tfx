@@ -25,7 +25,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 from tfx.utils import json_utils

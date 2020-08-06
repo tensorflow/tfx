@@ -61,7 +61,7 @@ class Executor(base_executor.BaseExecutor):
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
         - stats: A list of type `standard_artifacts.ExampleStatistics` which
-          should contain the 'eval' split. 
+          should contain the 'eval' split.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
