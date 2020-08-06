@@ -53,6 +53,7 @@
               "name": "Examples",
               "properties": {
                 "span": "INT",
+                "version": "INT",
                 "split_names": "STRING"
               }
             }
@@ -64,6 +65,7 @@
           "name": "Examples",
           "properties": {
             "span": "INT",
+            "version": "INT",
             "split_names": "STRING"
           }
         }

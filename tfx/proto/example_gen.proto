@@ -50,7 +50,18 @@ message Input {
   //   - If SPAN is specified, pipeline will process the latest span, and store
   //     the span number in metadata.
   //
-  // TODO(jyzhao): support version and date spec.
+  // [VERSION spec]
+  //   - '{VERSION}', for using in pattern below to retrieve version number.
+  //   - This spec matches to non-zero padding digits and maps the data to
+  //     the relvant VERSION numbers under the SPAN.
+  //   - When VERSION spec is missing, version is set to be None.
+  //   - If SPAN and VERSION are both specified, pipeline will process the
+  //     latest version for the latest span, and store the version number in
+  //     metadata.
+  //   - If VERSION is specified, but not SPAN, an error will be thrown.
+  //
+  // TODO(b/162622803): add default behavior for when version spec not present.
+  // TODO(jyzhao): support date spec.
   // TODO(jyzhao): support range config for define certain spans to process.
   message Split {
     string name = 1;

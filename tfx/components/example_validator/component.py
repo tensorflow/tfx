@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text
+from typing import Optional, List, Text
 
 from absl import logging
 
@@ -25,8 +25,10 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
+from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
+from tfx.utils import json_utils
 
 
 class ExampleValidator(base_component.BaseComponent):
@@ -68,6 +70,7 @@ class ExampleValidator(base_component.BaseComponent):
   def __init__(self,
                statistics: types.Channel = None,
                schema: types.Channel = None,
+               exclude_splits: Optional[List[Text]] = None,
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
@@ -78,6 +81,9 @@ class ExampleValidator(base_component.BaseComponent):
         should contain at least 'eval' split. Other splits are currently
         ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
+      exclude_splits: Names of splits that the example validator should not
+        validate. Default behavior (when exclude_splits is set to None)
+        is excluding no splits.
       output: Output channel of type `standard_artifacts.ExampleAnomalies`.
       stats: Backwards compatibility alias for the 'statistics' argument.
       instance_name: Optional name assigned to this specific instance of
@@ -91,10 +97,28 @@ class ExampleValidator(base_component.BaseComponent):
           'been renamed to "statistics" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       statistics = stats
-    anomalies = output or types.Channel(
-        type=standard_artifacts.ExampleAnomalies,
-        artifacts=[standard_artifacts.ExampleAnomalies()])
+    if exclude_splits is None:
+      exclude_splits = []
+      logging.info('Excluding no splits because exclude_splits is not set.')
+    anomalies = output
+    if not anomalies:
+      anomalies_artifact = standard_artifacts.ExampleAnomalies()
+      statistics_split_names = artifact_utils.decode_split_names(
+          artifact_utils.get_single_instance(list(
+              statistics.get())).split_names)
+      split_names = [
+          split for split in statistics_split_names
+          if split not in exclude_splits
+      ]
+      anomalies_artifact.split_names = artifact_utils.encode_split_names(
+          split_names)
+      anomalies = types.Channel(
+          type=standard_artifacts.ExampleAnomalies,
+          artifacts=[anomalies_artifact])
     spec = ExampleValidatorSpec(
-        statistics=statistics, schema=schema, anomalies=anomalies)
+        statistics=statistics,
+        schema=schema,
+        exclude_splits=json_utils.dumps(exclude_splits),
+        anomalies=anomalies)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

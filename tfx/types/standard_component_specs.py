@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text
+from typing import List, Text
 
 import tensorflow_model_analysis as tfma
 from tfx.proto import bulk_inferrer_pb2
@@ -103,7 +103,9 @@ class EvaluatorSpec(ComponentSpec):
 class ExampleValidatorSpec(ComponentSpec):
   """ExampleValidator component spec."""
 
-  PARAMETERS = {}
+  PARAMETERS = {
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
+  }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
       'schema': ChannelParameter(type=standard_artifacts.Schema),
@@ -233,7 +235,8 @@ class SchemaGenSpec(ComponentSpec):
   """SchemaGen component spec."""
 
   PARAMETERS = {
-      'infer_feature_shape': ExecutionParameter(type=bool, optional=True)
+      'infer_feature_shape': ExecutionParameter(type=bool, optional=True),
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
@@ -256,8 +259,8 @@ class StatisticsGenSpec(ComponentSpec):
   """StatisticsGen component spec."""
 
   PARAMETERS = {
-      'stats_options_json':
-          ExecutionParameter(type=(str, Text), optional=True),
+      'stats_options_json': ExecutionParameter(type=(str, Text), optional=True),
+      'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples': ChannelParameter(type=standard_artifacts.Examples),
@@ -349,7 +352,7 @@ class TransformSpec(ComponentSpec):
   PARAMETERS = {
       'module_file': ExecutionParameter(type=(str, Text), optional=True),
       'preprocessing_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=Dict[Text, Any], optional=True),
+      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
       'splits_config': ExecutionParameter(type=transform_pb2.SplitsConfig,
                                           optional=True),
   }

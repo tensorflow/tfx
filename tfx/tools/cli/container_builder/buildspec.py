@@ -22,9 +22,8 @@ import os
 from typing import Optional, Text
 
 import click
-import yaml
-
 from tfx.tools.cli.container_builder import labels
+import yaml
 
 
 class BuildSpec(object):
@@ -36,6 +35,7 @@ class BuildSpec(object):
     filename: build spec filename.
     build_context: build working directory.
     target_image: target image with no tag.
+    target_image_tag: tag of the target image.
     _buildspec: in-memory representation of the build spec.
   """
 
@@ -87,7 +87,7 @@ class BuildSpec(object):
         'build': {
             'tagPolicy': {
                 'envTemplate': {
-                    'template': '{{.IMAGE_NAME}}:' + target_image_tag
+                    'template': target_image_tag
                 }
             },
             'artifacts': [{
@@ -113,6 +113,12 @@ class BuildSpec(object):
                            'only one is supported.')
       self._build_context = self._buildspec['build']['artifacts'][0]['context']
       self._target_image = self._buildspec['build']['artifacts'][0]['image']
+      self._target_image_tag = self._buildspec['build']['tagPolicy'][
+          'envTemplate']['template']
+      # For compatibility with old build files which have `{{.IMAGE_NAME}}:tag`
+      # format.
+      if self._target_image_tag.startswith('{{.IMAGE_NAME}}:'):
+        self._target_image_tag = self._target_image_tag.split(':', 2)[-1]
 
   @property
   def filename(self):
@@ -125,3 +131,7 @@ class BuildSpec(object):
   @property
   def target_image(self):
     return self._target_image
+
+  @property
+  def target_image_tag(self):
+    return self._target_image_tag
