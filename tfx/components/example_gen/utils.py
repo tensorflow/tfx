@@ -62,7 +62,7 @@ DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
 # Unix epoch date to calculate span number from.
-EPOCH_DATE = datetime(1970, 1, 1)
+UNIX_EPOCH_DATE = datetime(1970, 1, 1)
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -234,6 +234,10 @@ def _retrieve_latest_span_elems_version(
   If Version is present, but not Span, an error is raised. If neither Span
   nor Version is present, returns both as None.
 
+  Additonally, supports parsing span number from datesteamps using the Date.
+  specs. Once the calendar date is parsed from the Date specs, it is converted into
+  a span number by counting the number of days since 01/01/1970.
+
   Args:
     uri: The base path from which files will be searched.
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
@@ -337,7 +341,7 @@ def _retrieve_latest_span_elems_version(
             'Cannot find %s number from %s based on %s' %
             (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
       try:
-        span_int = (datetime(*span_ints) - EPOCH_DATE).days
+        span_int = (datetime(*span_ints) - UNIX_EPOCH_DATE).days
       except ValueError:
         raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
@@ -382,9 +386,10 @@ def calculate_splits_fingerprint_span_and_version(
 ) -> Tuple[Text, Text, Optional[Text]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
-  If a pattern has the {SPAN} placeholder and, optionally, the {VERSION}
-  placeholder, attempts to find aligned values that results in all splits
-  having the most recent span and most recent version for that span.
+  If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
+  {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find 
+  aligned values that results in all splits having the most recent span and most
+  recent version for that span.
 
   Args:
     input_base_uri: The base path from which files will be searched.
