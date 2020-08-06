@@ -94,8 +94,9 @@ class BaseStubComponentLauncher(
       None
     """
     cls.stubbed_component_map = dict(stubbed_component_map)
+    default_stub_executor = base_stub_executor.BaseStubExecutor
     for component_id in stubbed_component_ids:
-      cls.stubbed_component_map[component_id] = base_stub_executor.BaseStubExecutor  # pylint: disable=line-too-long
+      cls.stubbed_component_map[component_id] = default_stub_executor
     cls.test_data_dir = test_data_dir
 
   def _run_executor(self, execution_id: int,

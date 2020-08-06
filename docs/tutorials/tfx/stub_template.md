@@ -19,17 +19,17 @@ Since this tutorial assumes that you have completed `template.ipynb` up to step 
 
 Open a Terminal and run the following commands:
 
-1.  Set up port-forwarding for connecting to MLMD:
-```bash
-nohup kubectl port-forward deployment/metadata-grpc-deployment -n $namespace $port:8080 &
-```
-`$namespace` is the cluster namespace and `$port` is any unused port that will be used for port-forwarding.
-
-2.  Generate a kubeconfig file with appropriate credentials:
+1.  Generate a kubeconfig file with appropriate credentials:
 ```bash
 gcloud container clusters get-credentials $cluster_name --zone $compute_zone --project $gcp_project_id
 ```
 `$compute_zone` is region for gcp engine and `$gcp_project_id` is project id of your GCP project.
+
+2.  Set up port-forwarding for connecting to MLMD:
+```bash
+nohup kubectl port-forward deployment/metadata-grpc-deployment -n $namespace $port:8080 &
+```
+`$namespace` is the cluster namespace and `$port` is any unused port that will be used for port-forwarding.
 
 3.  Clone the tfx GitHub repository. Inside the tfx directory, run the following command:
 
@@ -53,7 +53,7 @@ First, make sure that the predefined template has been copied to your project di
 
 1.  In `kubeflow_dag_runner.py`, add `StubComponentLauncher` class to `KubeflowDagRunnerConfig`'s `supported_launcher_class` to enable launch of stub executors:
 
-``` python
+```python
   runner_config = kubeflow_dag_runner.KubeflowDagRunnerConfig(
       # TODO(StubExecutor): Uncomment below to use stub executors.
       supported_launcher_classes=[

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from tfx.experimental.pipeline_testing import base_stub_component_launcher
 
-class StubComponentLauncher(base_stub_component_launcher.BaseStubComponentLauncher):  # pylint: disable=line-too-long
+class StubComponentLauncher(
+    base_stub_component_launcher.BaseStubComponentLauncher):
   """Responsible for launching stub executors in Beam."""
   pass
