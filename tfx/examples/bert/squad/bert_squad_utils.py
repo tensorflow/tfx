@@ -35,6 +35,7 @@ from bert_models import (
 _TRAIN_BATCH_SIZE = 16
 _EVAL_BATCH_SIZE = 16
 _FEATURE_KEY = 'sentence'
+_RAW_LABELS = ['answers/text', 'answers/answer_start']
 _LABEL_KEY = 'label'
 _BERT_LINK = 'https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/2'
 _MAX_LEN = 256
@@ -109,7 +110,8 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
   def serve_tf_examples_fn(serialized_tf_examples):
     """Returns the output to be used in the serving signature."""
     feature_spec = tf_transform_output.raw_feature_spec()
-    feature_spec.pop(_LABEL_KEY)
+    for raw_key in _RAW_LABELS:
+      feature_spec.pop(raw_key)
     parsed_features = tf.io.parse_example(
         serialized_tf_examples, feature_spec)
 
