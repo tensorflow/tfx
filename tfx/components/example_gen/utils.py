@@ -59,9 +59,9 @@ VERSION_SPEC = '{VERSION}'
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
 DAY_SPEC = '{DD}'
-# Group names and order of importance for Date specs.
+# Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
-DATE_SPEC_NAMES = ['year', 'month', 'day']
+
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -294,7 +294,7 @@ def _retrieve_latest_span_elems_version(
         MONTH_SPEC, '(?P<{}>\d{{2}})'.format('month'))
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>\d{{2}})'.format('day'))
-    span_group_names = DATE_SPEC_NAMES
+    span_group_names = ['year', 'month', 'day']
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
