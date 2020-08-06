@@ -90,7 +90,8 @@ class Evaluator(base_component.BaseComponent):
       instance_name: Optional[Text] = None,
       eval_config: Optional[tfma.EvalConfig] = None,
       blessing: Optional[types.Channel] = None,
-      schema: Optional[types.Channel] = None):
+      schema: Optional[types.Channel] = None,
+      module_file: Optional[Text] = None):
     """Construct an Evaluator component.
 
     Args:
@@ -127,6 +128,15 @@ class Evaluator(base_component.BaseComponent):
       blessing: Output channel of 'ModelBlessingPath' that contains the
         blessing result.
       schema: A `Schema` channel to use for TFXIO.
+      module_file: A path to python module file containing UDFs for Evaluator
+        customization. The module_file can implement following functions at its
+        top level.
+          def custom_eval_shared_model(
+             eval_saved_model_path, model_name, eval_config, **kwargs,
+          ) -> tfma.EvalSharedModel:
+          def custom_extractors(
+            eval_shared_model, eval_config, tensor_adapter_config,
+          ) -> List[tfma.extractors.Extractor]:
     """
     if eval_config is not None and feature_slicing_spec is not None:
       raise ValueError("Exactly one of 'eval_config' or 'feature_slicing_spec' "
@@ -164,5 +174,6 @@ class Evaluator(base_component.BaseComponent):
         evaluation=evaluation,
         eval_config=eval_config,
         blessing=blessing,
-        schema=schema)
+        schema=schema,
+        module_file=module_file)
     super(Evaluator, self).__init__(spec=spec, instance_name=instance_name)

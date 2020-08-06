@@ -32,6 +32,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.evaluator import constants
 from tfx.components.util import tfxio_utils
+from tfx.components.util import udf_utils
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
@@ -123,6 +124,10 @@ class Executor(base_executor.BaseExecutor):
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
 
+    eval_shared_model_fn = udf_utils.try_get_fn(
+        exec_properties=exec_properties,
+        fn_name='custom_eval_shared_model') or tfma.default_eval_shared_model
+
     run_validation = False
     models = []
     if 'eval_config' in exec_properties and exec_properties['eval_config']:
@@ -156,11 +161,12 @@ class Executor(base_executor.BaseExecutor):
         else:
           model_path = path_utils.serving_model_path(model_uri)
         logging.info('Using %s as %s model.', model_path, model_spec.name)
-        models.append(tfma.default_eval_shared_model(
-            model_name=model_spec.name,
-            eval_saved_model_path=model_path,
-            add_metrics_callbacks=add_metrics_callbacks,
-            eval_config=eval_config))
+        models.append(
+            eval_shared_model_fn(
+                eval_saved_model_path=model_path,
+                model_name=model_spec.name,
+                eval_config=eval_config,
+                add_metrics_callbacks=add_metrics_callbacks))
     else:
       eval_config = None
       assert ('feature_slicing_spec' in exec_properties and
@@ -174,9 +180,12 @@ class Executor(base_executor.BaseExecutor):
       model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])
       model_path = path_utils.eval_model_path(model_uri)
       logging.info('Using %s for model eval.', model_path)
-      models.append(tfma.default_eval_shared_model(
-          eval_saved_model_path=model_path,
-          add_metrics_callbacks=add_metrics_callbacks))
+      models.append(
+          eval_shared_model_fn(
+              eval_saved_model_path=model_path,
+              model_name='',
+              eval_config=None,
+              add_metrics_callbacks=add_metrics_callbacks))
 
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
@@ -233,11 +242,21 @@ class Executor(base_executor.BaseExecutor):
               beam.io.ReadFromTFRecord(file_pattern=file_pattern))
           examples_list.append(data)
 
+      custom_extractors = udf_utils.try_get_fn(
+          exec_properties=exec_properties, fn_name='custom_extractors')
+      extractors = None
+      if custom_extractors:
+        extractors = custom_extractors(
+            eval_shared_model=eval_shared_model,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config)
+
       (examples_list | 'FlattenExamples' >> beam.Flatten()
        |
        'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
            eval_shared_model=models[0] if len(models) == 1 else models,
            eval_config=eval_config,
+           extractors=extractors,
            output_path=output_uri,
            slice_spec=slice_spec,
            tensor_adapter_config=tensor_adapter_config))

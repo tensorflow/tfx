@@ -74,6 +74,8 @@ class EvaluatorSpec(ComponentSpec):
           ExecutionParameter(type=List[float], optional=True),
       'example_splits':
           ExecutionParameter(type=(str, Text), optional=True),
+      'module_file':
+          ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
       'examples':

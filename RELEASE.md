@@ -43,10 +43,11 @@
 *   Supported `Version` spec in input config for file based ExampleGen.
 *   Added custom config to Transform component and made it available to
     pre-processing fn.
+*   Supported custom extractors in Evaluator.
 *   Enabled analyzer cache optimization in the Transform component with optional
     cache output (enabled by default) -- when constructing the component, 
     specify `cache_input_path` to use a cache output from a previous run and 
-    specify parameter `store_cache=False`  to disable cache output.
+    specify parameter `store_cache=False` to disable cache output.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
