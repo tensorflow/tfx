@@ -88,10 +88,10 @@ class BertPreprocessor():
       sep_token = tf.fill(
           [tf.shape(sequence)[0], 1],
           tf.constant(self._sep_id, dtype=tf.int64))
-      
-      if not max_len is None:
-        word_ids = word_ids[:, :max_len-1]
       word_ids = tf.concat([word_ids, sep_token], 1)
+
+    if not max_len is None:
+      word_ids = word_ids[:, :max_len-1]
 
     return word_ids
 
@@ -237,6 +237,9 @@ class BertPreprocessor():
     if tf.rank(answer_start) != 1:
       answer_start = tf.reshape(tf.slice(answer_start, [0, 0], [-1, 1]), [-1])
       answer_text = tf.reshape(tf.slice(answer_text, [0, 0], [-1, 1]), [-1])
+    else:
+      answer_start = tf.reshape(answer_start, [-1])
+      answer_text = tf.reshape(answer_text, [-1])
 
     token_question = self.tokenize_single_sentence_unpad(
         question,
@@ -249,11 +252,11 @@ class BertPreprocessor():
         False,
         True
     )
-
+    
     label_start = self.char_index_to_bert_index(
         answer_start,
         context,
-        token_context,
+        tf.cast(token_context, tf.int32),
     )
 
     label_start = tf.map_fn(

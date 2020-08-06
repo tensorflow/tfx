@@ -18,13 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import sys
+_bert_utils_root = os.path.join(os.environ['HOME'], 'bert', 'utils')
+sys.path.append(_bert_utils_root)
+
 from typing import List, Text
 import tensorflow as tf
 import tensorflow_transform as tft
 import tensorflow_hub as hub
 from tfx.components.trainer.executor import TrainerFnArgs
-from tfx.examples.bert.utils.bert_tokenizer_utils import BertPreprocessor
-from tfx.examples.bert.utils.bert_models import (
+from bert_tokenizer_utils import BertPreprocessor
+from bert_models import (
     build_bert_question_answering, compile_bert_classifier)
 
 _TRAIN_BATCH_SIZE = 16
@@ -54,10 +59,10 @@ def preprocessing_fn(inputs):
   processor = BertPreprocessor(_BERT_LINK)
   input_word_ids, input_mask, segment_ids, labels = processor.preprocess_squad(
       _MAX_LEN,
-      inputs['context'],
-      inputs['question'],
-      inputs['answer_start'],
-      inputs['text']
+      tf.reshape(tf.sparse.to_dense(inputs['context']), [-1]),
+      tf.reshape(tf.sparse.to_dense(inputs['question']), [-1]),
+      tf.cast(tf.sparse.to_dense(inputs['answers/answer_start']), dtype=tf.int32),
+      tf.sparse.to_dense(inputs['answers/text'])
   )
   return {
       'label': labels,
@@ -142,7 +147,7 @@ def run_fn(fn_args: TrainerFnArgs):
     )
     compile_bert_classifier(
         model,
-        tf.keras.loss.CategoricalCrossentropy(from_logits=True))
+        tf.keras.losses.CategoricalCrossentropy(from_logits=True))
 
   model.fit(
       train_dataset,
