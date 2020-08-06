@@ -344,4 +344,6 @@ message Pipeline {
   map<string, google.protobuf.Any> platform_configs = 5;
   // TFX DSL SDK version for this pipeline.
   string sdk_version = 6;
+  // MLMD connection config
+  ml_metadata.ConnectionConfig metadata_connection_config = 7;
 }
