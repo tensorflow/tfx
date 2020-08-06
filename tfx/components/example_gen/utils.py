@@ -61,6 +61,8 @@ MONTH_SPEC = '{MM}'
 DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
+# Unix epoch date to calculate span number from.
+EPOCH_DATE = datetime(1970, 1, 1)
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -263,7 +265,7 @@ def _retrieve_latest_span_elems_version(
     if VERSION_SPEC in split.pattern:
       raise ValueError('Version spec provided, but Span or Date spec is not '
                        'present.')
-    return (None, None, None)
+    return (None, None)
 
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
     raise ValueError('Only one %s is allowed in %s' %
@@ -274,14 +276,13 @@ def _retrieve_latest_span_elems_version(
                      split.pattern)
 
   latest_span_elems = None
-  span_group_names = None
+  latest_span_number = None
   latest_version = None
 
   if is_match_span:
     split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
         SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
-    span_group_names = [SPAN_PROPERTY_NAME]
   elif is_match_date:
     for spec in DATE_SPECS:
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
@@ -293,7 +294,7 @@ def _retrieve_latest_span_elems_version(
         MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
-    span_group_names = ['year', 'month', 'day']
+
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
@@ -315,12 +316,29 @@ def _retrieve_latest_span_elems_version(
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
 
-    span_elems_str = [result.group(name) for name in span_group_names]
-    try:
-      span_elems_int = [int(elem) for elem in span_elems_str]
-    except ValueError:
-      raise ValueError('Cannot find %s number from %s based on %s' %
-                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+    span_strs = None
+    span_int = None
+
+    if is_match_span:
+      span_strs = [result.group(SPAN_PROPERTY_NAME)]
+      try:
+        span_int = int(span_strs[0])
+      except ValueError:
+        raise ValueError('Cannot find %s number from %s based on %s' %
+                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+
+    elif is_match_date:
+      span_strs = [result.group(name) for name in ['year', 'month', 'day']]
+      try:
+        span_ints = [int(elem) for elem in span_strs]
+      except ValueError:
+        raise ValueError(
+            'Cannot find %s number from %s based on %s' %
+            (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+      try:
+        span_int = (datetime(*span_ints) - EPOCH_DATE).days
+      except ValueError:
+        raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
     version_str = None
     if is_match_version:
@@ -332,34 +350,30 @@ def _retrieve_latest_span_elems_version(
             'Cannot find %s number from %s based on %s' %
             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    if (latest_span_elems is None
-        or span_elems_int > [int(elem) for elem in latest_span_elems]):
+    if latest_span_number is None or span_int > latest_span_number:
       # Uses str instead of int because of zero padding digits.
-      latest_span_elems = span_elems_str
+      latest_span_elems = span_strs
+      latest_span_number = span_int
       latest_version = version_str
-    elif (span_elems_int == [int(elem) for elem in latest_span_elems] and
+    elif (latest_span_number == span_int and
           (latest_version is None or version_int >= int(latest_version))):
       latest_version = version_str
 
-  if latest_span_elems is None or (is_match_version and latest_version is None):
+  if latest_span_number is None or (is_match_version and 
+                                    latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
-  latest_span = None
-  if is_match_span:
-    latest_span = latest_span_elems[0]
-  elif is_match_date:
-    # Using UNIX epoch as day zero.
-    start_date = datetime(1970, 1, 1)
-    try:
-      latest_date = datetime(*[int(elem) for elem in latest_span_elems])
-    except ValueError:
-      raise ValueError('Retrieved latest date is invalid: %s-%s-%s' %
-                       tuple(latest_span_elems))
-    # Calculate span number as days since unix epoch.
-    latest_span = str((latest_date - start_date).days)
+  if is_match_version:
+    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
-  return latest_span, latest_span_elems, latest_version
+  if is_match_span:
+    split.pattern = split.pattern.replace(SPAN_SPEC, latest_span_elems[0])
+    return latest_span_elems[0], latest_version
+  elif is_match_date:
+    for spec, value in zip(DATE_SPECS, latest_span_elems):
+      split.pattern = split.pattern.replace(spec, value)
+    return str(latest_span_number), latest_version
 
 
 def calculate_splits_fingerprint_span_and_version(
@@ -393,20 +407,8 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_span_elems, latest_version, = _retrieve_latest_span_elems_version(
+    latest_span, latest_version = _retrieve_latest_span_elems_version(
         input_base_uri, split)
-
-    # Replace split.pattern so executor can find files after driver runs.
-    if latest_span_elems:
-      if len(latest_span_elems) == 3:
-        # If Date spec was used, replace Date specs with correct values.
-        for spec, value in zip(DATE_SPECS, latest_span_elems):
-          split.pattern = split.pattern.replace(spec, value)
-      else:
-        split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
-
-    if latest_version:
-      split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
     latest_span = latest_span or '0'
