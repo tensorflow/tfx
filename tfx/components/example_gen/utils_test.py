@@ -405,12 +405,12 @@ class UtilsTest(tf.test.TestCase):
 
   def testBadDateFormat(self):
     # Test improperly formed date.
-    split1 = os.path.join(self._input_base_path, '2020-13-01', 'split1', 'data')
+    split1 = os.path.join(self._input_base_path, '20201301', 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
 
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/split1/*')
+            name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
     with self.assertRaisesRegexp(ValueError,
@@ -420,12 +420,12 @@ class UtilsTest(tf.test.TestCase):
 
   def testHaveDateNoVersion(self):
     # Test specific behavior when Date spec is present but Version is not.
-    split1 = os.path.join(self._input_base_path, '1970-01-02', 'split1', 'data')
+    split1 = os.path.join(self._input_base_path, '19700102', 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
 
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/split1/*')
+            name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -435,13 +435,13 @@ class UtilsTest(tf.test.TestCase):
 
   def testHaveDateAndVersion(self):
     # Test specific behavior when both Date and Version are present.
-    split1 = os.path.join(self._input_base_path, '1970-01-02', 'ver1', 'split1',
+    split1 = os.path.join(self._input_base_path, '19700102', 'ver1', 'split1',
                           'data')
     io_utils.write_string_file(split1, 'testing')
 
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*')
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -509,56 +509,56 @@ class UtilsTest(tf.test.TestCase):
 
   def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
     # Test align of span and version numbers.
-    span1_v1_split1 = os.path.join(self._input_base_path, '1970-01-02', 'ver01',
+    span1_v1_split1 = os.path.join(self._input_base_path, '19700102', 'ver01',
                                    'split1', 'data')
     io_utils.write_string_file(span1_v1_split1, 'testing11')
-    span1_v1_split2 = os.path.join(self._input_base_path, '1970-01-02', 'ver01',
+    span1_v1_split2 = os.path.join(self._input_base_path, '19700102', 'ver01',
                                    'split2', 'data')
     io_utils.write_string_file(span1_v1_split2, 'testing12')
-    span2_v1_split1 = os.path.join(self._input_base_path, '1970-01-03', 'ver01',
+    span2_v1_split1 = os.path.join(self._input_base_path, '19700103', 'ver01',
                                    'split1', 'data')
     io_utils.write_string_file(span2_v1_split1, 'testing21')
 
     # Test if error raised when date does not align.
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
         example_gen_pb2.Input.Split(
-            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
-    span2_v1_split2 = os.path.join(self._input_base_path, '1970-01-03', 'ver01',
+    span2_v1_split2 = os.path.join(self._input_base_path, '19700103', 'ver01',
                                    'split2', 'data')
     io_utils.write_string_file(span2_v1_split2, 'testing22')
-    span2_v2_split1 = os.path.join(self._input_base_path, '1970-01-03', 'ver02',
+    span2_v2_split1 = os.path.join(self._input_base_path, '19700103', 'ver02',
                                    'split1', 'data')
     io_utils.write_string_file(span2_v2_split1, 'testing21')
 
     # Test if error raised when date aligns but version does not.
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
         example_gen_pb2.Input.Split(
-            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
     ]
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
-    span2_v2_split2 = os.path.join(self._input_base_path, '1970-01-03', 'ver02',
+    span2_v2_split2 = os.path.join(self._input_base_path, '19700103', 'ver02',
                                    'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
 
     # Test if latest span and version is selected when aligned for each split.
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+            name='s1', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split1/*'),
         example_gen_pb2.Input.Split(
-            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+            name='s2', pattern='{YYYY}{MM}{DD}/ver{VERSION}/split2/*')
     ]
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)

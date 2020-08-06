@@ -284,10 +284,15 @@ def _retrieve_latest_span_elems_version(
         SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
     span_group_names = [SPAN_PROPERTY_NAME]
   elif is_match_date:
-    for spec, name in zip(DATE_SPECS, DATE_SPEC_NAMES):
+    for spec in DATE_SPECS:
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
-      split_regex_pattern = split_regex_pattern.replace(
-          spec, '(?P<{}>.*)'.format(name))
+    split_regex_pattern = split_regex_pattern.replace(
+        YEAR_SPEC, '(?P<{}>\d{{4}})'.format('year'))
+    split_regex_pattern = split_regex_pattern.replace(
+        MONTH_SPEC, '(?P<{}>\d{{2}})'.format('month'))
+    split_regex_pattern = split_regex_pattern.replace(
+        DAY_SPEC, '(?P<{}>\d{{2}})'.format('day'))
+
     span_group_names = DATE_SPEC_NAMES
 
   is_match_version = VERSION_SPEC in split.pattern
