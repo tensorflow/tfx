@@ -152,8 +152,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         autospec=True,
         side_effect=_create_pipeline_wrapper):
       transform_executor = executor.Executor()
-      transform_executor.Do(self._input_dict, self._output_dict,
-                            self._exec_properties)
+      transform_executor.Do(inputs, outputs, exec_properties)
     assert len(pipelines) == 1
     return pipelines[0].metrics
 
@@ -247,7 +246,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._exec_properties['module_file'] = self._module_file
     metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
                                           self._exec_properties)
-                                          
+
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset. Since the analysis dataset (train) is read twice when
     # no input cache is present (once for analysis and once for transform), the
