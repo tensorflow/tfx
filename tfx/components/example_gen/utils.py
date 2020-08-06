@@ -251,7 +251,7 @@ def _retrieve_latest_span_elems_version(
       - If a matching cannot be found for split pattern provided.
   """
   is_match_span = SPAN_SPEC in split.pattern
-  is_match_date = all(spec in split.pattern for spec in DATE_SPECS)
+  is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
   if [is_match_span, is_match_date].count(True) > 1:
     raise ValueError('Either span spec or date specs must be specified '
                      'exclusively.')
@@ -272,8 +272,8 @@ def _retrieve_latest_span_elems_version(
                      (SPAN_SPEC, split.pattern))
   elif is_match_date and not all(split.pattern.count(spec) == 1 
                                  for spec in DATE_SPECS):
-    raise ValueError('Only one of each \(%s, %s %s\) is allowed in %s' %
-                     (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
+    raise ValueError('Exactly one of each date spec is required in %s' %
+                     split.pattern)
 
   latest_span_elems = None
   span_group_names = None
@@ -286,7 +286,7 @@ def _retrieve_latest_span_elems_version(
     span_group_names = [SPAN_PROPERTY_NAME]
   elif is_match_date:
     for spec, name in zip(DATE_SPECS, DATE_SPEC_NAMES):
-      split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
+      split_glob_pattern = split_glob_pattern.replace(spec, '*')
       split_regex_pattern = split_regex_pattern.replace(
           spec, '(?P<{}>.*)'.format(name))
     span_group_names = DATE_SPEC_NAMES
@@ -349,7 +349,7 @@ def _retrieve_latest_span_elems_version(
     try:
       latest_date = datetime(*[int(elem) for elem in latest_span_elems])
     except ValueError:
-      raise ValueError('Retrieved date %s has invalid format.' %
+      raise ValueError('Retrieved date has invalid format: %s' %
                        latest_span_elems)
     latest_span = str((latest_date - start_date).days)
 
