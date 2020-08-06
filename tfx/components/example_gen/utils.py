@@ -62,7 +62,6 @@ DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
 
-
 _DEFAULT_ENCODING = 'utf-8'
 
 
