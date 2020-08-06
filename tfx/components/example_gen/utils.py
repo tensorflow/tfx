@@ -222,7 +222,6 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
-
 def _retrieve_latest_span_elems_version(
     uri: Text, split: example_gen_pb2.Input.Split
 ) -> Tuple[Optional[Text], Optional[Text], Optional[List[Text]]]:

@@ -372,16 +372,24 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('2', span)
     self.assertEqual('1', version)
 
-  def testDateSpecIncomplete(self):
-    splits = [
+  def testDateSpecMissingMultiple(self):
+    splits1 = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='{YYYY}-{MM}/split1/*')
     ]
-
     with self.assertRaisesRegexp(ValueError,
         'Exactly one of each date spec is required'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits1)
+
+    splits2 = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
+    ]
+    with self.assertRaisesRegexp(ValueError,
+        'Exactly one of each date spec is required'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits2)
 
   def testBothSpanAndDate(self):
     splits = [
@@ -440,7 +448,7 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('1', span)
     self.assertEqual('1', version)
 
-  def testCalculateSplitsFingerprintSpanAndVersion(self):
+  def testCalculateSplitsFingerprintSpanAndVersionWithSpan(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',
                                    'split1', 'data')
@@ -486,7 +494,7 @@ class UtilsTest(tf.test.TestCase):
                                    'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
 
-    # Test if latest span is selected when span aligns for each split.
+    # Test if latest span and version is selected when aligned for each split.
     splits = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/ver{VERSION}/split1/*'),
@@ -496,6 +504,64 @@ class UtilsTest(tf.test.TestCase):
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
     self.assertEqual(span, '02')
+    self.assertEqual(version, '02')
+  
+  def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
+    # Test align of span and version numbers.
+    span1_v1_split1 = os.path.join(self._input_base_path, '1970-01-02', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span1_v1_split1, 'testing11')
+    span1_v1_split2 = os.path.join(self._input_base_path, '1970-01-02', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span1_v1_split2, 'testing12')
+    span2_v1_split1 = os.path.join(self._input_base_path, '1970-01-03', 'ver01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v1_split1, 'testing21')
+
+    # Test if error raised when date does not align.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegexp(
+        ValueError, 'Latest span should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+    span2_v1_split2 = os.path.join(self._input_base_path, '1970-01-03', 'ver01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v1_split2, 'testing22')
+    span2_v2_split1 = os.path.join(self._input_base_path, '1970-01-03', 'ver02',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v2_split1, 'testing21')
+
+    # Test if error raised when date aligns but version does not.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+    ]
+    with self.assertRaisesRegexp(
+        ValueError, 'Latest version should be the same for each split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+    span2_v2_split2 = os.path.join(self._input_base_path, '1970-01-03', 'ver02',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v2_split2, 'testing22')
+
+    # Test if latest span and version is selected when aligned for each split.
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split1/*'),
+        example_gen_pb2.Input.Split(
+            name='s2', pattern='{YYYY}-{MM}-{DD}/ver{VERSION}/split2/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, '2')
     self.assertEqual(version, '02')
 
 
