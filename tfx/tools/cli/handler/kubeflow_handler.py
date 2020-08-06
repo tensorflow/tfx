@@ -284,7 +284,7 @@ class KubeflowHandler(base_handler.BaseHandler):
   def _build_pipeline_image(self,
                             target_image: Optional[Text] = None,
                             base_image: Optional[Text] = None,
-                            skaffold_cmd: Optional[Text] = None) -> None:
+                            skaffold_cmd: Optional[Text] = None) -> Text:
     return builder.ContainerBuilder(
         target_image=target_image,
         base_image=base_image,
