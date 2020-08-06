@@ -45,6 +45,7 @@ if __name__ == "__main__":
 
   cloud_dataflow_project = os.environ['CLOUD_DATAFLOW_PROJECT']
   cloud_dataflow_temp_loc = os.environ['CLOUD_DATAFLOW_TEMP_LOC']
-  beam_pipeline_benchmark_chicago_taxi.benchmarkCloudDataflow(cloud_dataflow_project, cloud_dataflow_temp_loc)
+  beam_pipeline_benchmark_chicago_taxi.benchmarkCloudDataflow(
+      cloud_dataflow_project, cloud_dataflow_temp_loc)
 
   beam_pipeline_benchmark_chicago_taxi.benchmarkFlinkOnK8s()

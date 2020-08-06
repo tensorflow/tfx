@@ -35,9 +35,11 @@ from tensorflow_transform.beam import impl as tft_beam_impl
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
+
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
+from tfx.benchmarks import constants
 from tfx_bsl.beam import shared
 
 
@@ -45,9 +47,10 @@ class _CopySavedModel(beam.PTransform):
   """Copies the TFT SavedModel to another directory."""
 
   def __init__(self, dest_path):
+    super(_CopySavedModel, self).__init__()
     self._dest_path = dest_path
 
-  def expand(self, transform_fn):
+  def expand(self, transform_fn): # pylint: disable=arguments-differ
 
     def copy_saved_model(unused_element, source_path, dest_path):
       shutil.rmtree(dest_path, ignore_errors=True)
@@ -82,13 +85,14 @@ class _AnalyzeAndTransformDataset(beam.PTransform):
         intermediate outputs (just the TFT SavedModel for now) necessary for
         other benchmarks.
     """
+    super(_AnalyzeAndTransformDataset, self).__init__()
     self._dataset = dataset
     self._tf_metadata_schema = tf_metadata_schema
     self._preprocessing_fn = preprocessing_fn
     self._transform_input_dataset_metadata = transform_input_dataset_metadata
     self._generate_dataset = generate_dataset
 
-  def expand(self, pipeline):
+  def expand(self, pipeline): # pylint: disable=arguments-differ
     # TODO(b/147620802): Consider making this (and other parameters)
     # configurable to test more variants (e.g. with and without deep-copy
     # optimisation, with and without cache, etc).
@@ -122,9 +126,7 @@ CommonVariablesTuple = collections.namedtuple("CommonVariablesTuple", [
 
 def _get_common_variables(dataset):
   """Returns metadata schema, preprocessing fn, input dataset metadata."""
-
-  tf_metadata_schema = benchmark_utils.read_schema(
-      "../examples/chicago_taxi_pipeline/data/user_provided_schema/schema.pbtxt")
+  tf_metadata_schema = benchmark_utils.read_schema(constants.SCHEMA_PATH)
 
   preprocessing_fn = dataset.tft_preprocessing_fn()
 
@@ -295,7 +297,7 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
       feed_list = impl_helper.make_feed_list(input_tensor_keys, input_schema,
                                              batch)
       outputs_list = callable_get_outputs(*feed_list)
-      _ = {key: value for key, value in zip(outputs_tensor_keys, outputs_list)}
+      _ = {key: value for key, value in zip(outputs_tensor_keys, outputs_list)} # pylint: disable=unnecessary-comprehension
     end = time.time()
     delta = end - start
 

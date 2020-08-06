@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tfx.benchmarks import mode_config
+from tfx.benchmarks import constants
 from tfx.benchmarks.datasets.chicago_taxi import dataset
 from tfx.benchmarks.tfma_benchmark_chicago_taxi import TFMABenchmarkChicagoTaxi
 from tfx.benchmarks.tfma_v2_benchmark_chicago_taxi import TFMAV2BenchmarkChicagoTaxi
@@ -73,7 +73,7 @@ class BeamPipelineBenchmarkBase(object):
                                       beam_pipeline_mode):
     benchmark_class.set_num_workers(num_workers)
     benchmark_class.set_beam_pipeline_mode(beam_pipeline_mode)
-    if beam_pipeline_mode == mode_config.CLOUD_DATAFLOW_MODE:
+    if beam_pipeline_mode == constants.CLOUD_DATAFLOW_MODE:
       assert  self.cloud_dataflow_project
       assert self.cloud_dataflow_temp_loc
       benchmark_class.set_cloud_dataflow_temp_loc(self.cloud_dataflow_temp_loc)
@@ -85,22 +85,27 @@ class BeamPipelineBenchmarkBase(object):
     self._set_benchmark_class_parameters(tfma_benchmark_chicago_taxi,
                                          num_workers, beam_pipeline_mode)
 
-    self._wall_times[_TFMA][_TFMA_BENCHMARK_MINI_PIPELINE] = tfma_benchmark_chicago_taxi.benchmarkMiniPipeline()
+    self._wall_times[_TFMA][_TFMA_BENCHMARK_MINI_PIPELINE] = (
+        tfma_benchmark_chicago_taxi.benchmarkMiniPipeline())
 
   def _run_tfma_v2_benchmarks(self, num_workers, beam_pipeline_mode):
-    tfma_v2_benchmark_chicago_taxi = TFMAV2BenchmarkChicagoTaxi(dataset=self._dataset)
+    tfma_v2_benchmark_chicago_taxi = TFMAV2BenchmarkChicagoTaxi(
+        dataset=self._dataset)
     self._set_benchmark_class_parameters(tfma_v2_benchmark_chicago_taxi,
                                          num_workers, beam_pipeline_mode)
 
-    self._wall_times[_TFMA_V2][_TFMA_V2_BENCHMARK_MINI_PIPELINE_UNBATCHED] = tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineUnbatched()
-    self._wall_times[_TFMA_V2][_TFMA_V2_BENCHMARK_MINI_PIPELINE_BATCHED] = tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineBatched()
+    self._wall_times[_TFMA_V2][_TFMA_V2_BENCHMARK_MINI_PIPELINE_UNBATCHED] = (
+        tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineUnbatched())
+    self._wall_times[_TFMA_V2][_TFMA_V2_BENCHMARK_MINI_PIPELINE_BATCHED] = (
+        tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineBatched())
 
   def _run_tft_benchmarks(self, num_workers, beam_pipeline_mode):
     tft_benchmark_chicago_taxi = TFTBenchmarkChicagoTaxi(dataset=self._dataset)
     self._set_benchmark_class_parameters(tft_benchmark_chicago_taxi,
                                          num_workers, beam_pipeline_mode)
 
-    self._wall_times[_TFT][_TFT_BENCHMARK_ANALYZE_AND_TRANSFORM_DATASET] = tft_benchmark_chicago_taxi.benchmarkAnalyzeAndTransformDataset()
+    self._wall_times[_TFT][_TFT_BENCHMARK_ANALYZE_AND_TRANSFORM_DATASET] = (
+        tft_benchmark_chicago_taxi.benchmarkAnalyzeAndTransformDataset())
 
   def _run_big_shuffle_benchmarks(self, num_workers, beam_pipeline_mode):
     big_shuffle_benchmark = BigShuffleBenchmarkBase(
@@ -115,10 +120,13 @@ class BeamPipelineBenchmarkBase(object):
 
     while file_size <= max_file_size:
       big_shuffle_benchmark.regenerate_data(file_size)
-      self._wall_times[_BIG_SHUFFLE][_BIG_SHUFFLE_BENCHMARK + str(file_size)] = big_shuffle_benchmark.benchmarkBigShuffle()
+      second_key = _BIG_SHUFFLE_BENCHMARK + str(file_size)
+      self._wall_times[_BIG_SHUFFLE][second_key] = (
+          big_shuffle_benchmark.benchmarkBigShuffle())
       file_size *= 10
 
-    self._wall_times[_BIG_SHUFFLE][_BIG_SHUFFLE_EMPTY_PIPELINE_BENCHMARK] = big_shuffle_benchmark.benchmarkEmptyPipeline()
+    self._wall_times[_BIG_SHUFFLE][_BIG_SHUFFLE_EMPTY_PIPELINE_BENCHMARK] = (
+        big_shuffle_benchmark.benchmarkEmptyPipeline())
 
   def _run_all_benchmarks(self, num_workers, beam_pipeline_mode):
     self._run_tfma_benchmarks(num_workers, beam_pipeline_mode)
@@ -178,7 +186,7 @@ class BeamPipelineBenchmarkBase(object):
   def benchmarkFlinkOnK8s(self):
     """Utilizes the flink-on-k8s-operator to run Beam pipelines"""
 
-    beam_pipeline_mode = mode_config.FLINK_ON_K8S_MODE
+    beam_pipeline_mode = constants.FLINK_ON_K8S_MODE
     num_workers = self.min_num_workers
     yaml_path, yaml_tf = self._generate_temp_yaml()
 
@@ -232,7 +240,7 @@ class BeamPipelineBenchmarkBase(object):
   def benchmarkLocalScaled(self):
     """Utilizes the local machine to run Beam pipelines"""
 
-    beam_pipeline_mode = mode_config.LOCAL_SCALED_EXECUTION_MODE
+    beam_pipeline_mode = constants.LOCAL_SCALED_EXECUTION_MODE
     num_workers = self.min_num_workers
 
     while num_workers <= self.max_num_workers:
@@ -253,7 +261,7 @@ class BeamPipelineBenchmarkBase(object):
     self.cloud_dataflow_project = cloud_dataflow_project
     self.cloud_dataflow_temp_loc = cloud_dataflow_temp_loc
 
-    beam_pipeline_mode = mode_config.CLOUD_DATAFLOW_MODE
+    beam_pipeline_mode = constants.CLOUD_DATAFLOW_MODE
     num_workers = self.min_num_workers
 
     while num_workers <= self.max_num_workers:
