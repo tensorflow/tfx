@@ -223,7 +223,7 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
-def _retrieve_latest_span_elems_version(
+def _retrieve_latest_span_version(
     uri: Text, split: example_gen_pb2.Input.Split
 ) -> Tuple[Optional[int], Optional[int]]:
   """Retrieves the most recent span and version for a given split pattern.
@@ -412,7 +412,7 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_version = _retrieve_latest_span_elems_version(
+    latest_span, latest_version = _retrieve_latest_span_version(
         input_base_uri, split)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
