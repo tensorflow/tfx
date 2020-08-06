@@ -19,9 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Union, Tuple
 
 import absl
+import apache_beam as beam
+import tensorflow as tf
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
 from tfx_bsl.tfxio import tf_example_record
@@ -48,7 +50,7 @@ _DEFAULT_FILE_NAME = 'stats_tfrecord'
 _TELEMETRY_DESCRIPTORS = ['StatisticsGen']
 
 
-class Executor(base_executor.BaseExecutor):
+class Executor(base_executor.FuseableBeamExecutor):
   """Computes statistics over input training data for example validation.
 
   The StatisticsGen component generates features statistics and random samples
@@ -58,6 +60,76 @@ class Executor(base_executor.BaseExecutor):
   To include StatisticsGen in a TFX pipeline, configure your pipeline similar to
   https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_simple.py#L75.
   """
+
+  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
+                        output_dict: Dict[Text, List[types.Artifact]],
+                        exec_properties: Dict[Text, Union[int, float, Text]]
+                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
+    input_signature = {}
+    output_signature = {}
+
+    for artifact in input_dict[EXAMPLES_KEY]:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        key = EXAMPLES_KEY + '/' + split
+        input_signature[key] = tf.train.Example
+        output_signature[key] = tf.train.Example
+
+    return input_signature, output_signature
+
+  def read_inputs(self, pipeline: beam.Pipeline,
+                  input_dict: Dict[Text, List[types.Artifact]],
+                  output_dict: Dict[Text, List[types.Artifact]],
+                  exec_properties: Dict[Text, Union[int, float, Text]]
+                  ) -> Dict[Text, beam.pvalue.PCollection]:
+    inputs = {}
+    for artifact in input_dict[EXAMPLES_KEY]:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        uri = os.path.join(artifact.uri, split)
+        absl.logging.info('Generating statistics for split {}'.format(split))
+        input_uri = io_utils.all_files_pattern(uri)
+        input_tfxio = tf_example_record.TFExampleRecord(
+            file_pattern=input_uri,
+            telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
+
+        key = EXAMPLES_KEY + '/' + split
+        inputs[key] = (pipeline
+                       | 'TFXIORead[{}]'.format(split)
+                       >> input_tfxio.BeamSource())
+    return inputs
+
+  def run_component(self, pipeline: beam.Pipeline,
+                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> Dict[Text, beam.pvalue.PCollection]:
+    outputs = {}
+    for artifact in input_dict[EXAMPLES_KEY]:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        suffix = '/' + split
+        outputs[STATISTICS_KEY + suffix] = (
+            beam_inputs[EXAMPLES_KEY +suffix]
+            | 'GenerateStatistics[{}]'.format(split)
+            >> stats_api.GenerateStatistics(self.stats_options))
+    return outputs
+
+  def write_outputs(self, pipeline: beam.Pipeline,
+                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> None:
+    for artifact in input_dict[EXAMPLES_KEY]:
+      for split in artifact_utils.decode_split_names(artifact.split_names):
+        output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
+                                                  split)
+        output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
+        key = STATISTICS_KEY + '/' + split
+        _ = (beam_outputs[key]
+             | 'WriteStatsOutput[{}]'.format(split)
+             >> stats_api.WriteStatisticsToTFRecord(output_path))
+        absl.logging.info('Statistics for split {} written to {}.'.format(
+            split, output_uri))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -88,15 +160,15 @@ class Executor(base_executor.BaseExecutor):
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    stats_options = options.StatsOptions()
+    self.stats_options = options.StatsOptions()
     if STATS_OPTIONS_JSON_KEY in exec_properties:
       stats_options_json = exec_properties[STATS_OPTIONS_JSON_KEY]
       if stats_options_json:
         # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
         # json_utils
-        stats_options = options.StatsOptions.from_json(stats_options_json)
+        self.stats_options = options.StatsOptions.from_json(stats_options_json)
     if input_dict.get(SCHEMA_KEY):
-      if stats_options.schema:
+      if self.stats_options.schema:
         raise ValueError('A schema was provided as an input and the '
                          'stats_options exec_property also contains a schema '
                          'value. At most one of these may be set.')
@@ -104,7 +176,7 @@ class Executor(base_executor.BaseExecutor):
         schema = io_utils.SchemaReader().read(
             io_utils.get_only_uri_in_dir(
                 artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
-        stats_options.schema = schema
+        self.stats_options.schema = schema
 
     split_uris = []
     for artifact in input_dict[EXAMPLES_KEY]:
@@ -112,21 +184,9 @@ class Executor(base_executor.BaseExecutor):
         uri = os.path.join(artifact.uri, split)
         split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
-      for split, uri in split_uris:
-        absl.logging.info('Generating statistics for split {}'.format(split))
-        input_uri = io_utils.all_files_pattern(uri)
-        input_tfxio = tf_example_record.TFExampleRecord(
-            file_pattern=input_uri,
-            telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
-        output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
-                                                  split)
-        output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
-        data = p | 'TFXIORead[{}]'.format(split) >> input_tfxio.BeamSource()
-        _ = (
-            data
-            | 'GenerateStatistics[{}]'.format(split) >>
-            stats_api.GenerateStatistics(stats_options)
-            | 'WriteStatsOutput[{}]'.format(split) >>
-            stats_api.WriteStatisticsToTFRecord(output_path))
-        absl.logging.info('Statistics for split {} written to {}.'.format(
-            split, output_uri))
+      beam_inputs = self.read_inputs(
+          p, input_dict, output_dict, exec_properties)
+      beam_outputs = self.run_component(
+          p, beam_inputs, input_dict, output_dict, exec_properties)
+      self.write_outputs(
+          p, beam_outputs, input_dict, output_dict, exec_properties)

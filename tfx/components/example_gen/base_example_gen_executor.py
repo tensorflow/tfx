@@ -22,7 +22,7 @@ import abc
 import bisect
 import hashlib
 import os
-from typing import Any, Dict, List, Text
+from typing import Any, Dict, List, Text, Union, Tuple
 
 import absl
 import apache_beam as beam
@@ -106,7 +106,7 @@ def _InputToSerializedExample(pipeline: beam.Pipeline,
 
 
 class BaseExampleGenExecutor(
-    with_metaclass(abc.ABCMeta, base_executor.BaseExecutor)):
+    with_metaclass(abc.ABCMeta, base_executor.FuseableBeamExecutor)):
   """Generic TFX example gen base executor.
 
   The base ExampleGen executor takes a configuration and converts external data
@@ -130,6 +130,47 @@ class BaseExampleGenExecutor(
   sources and different interpretations of the configurations, the custom
   ExampleGen can override `GenerateExamplesByBeam`.
   """
+
+  def __init__(self):
+    super(BaseExampleGenExecutor, self).__init__()
+    self.input_signature = {}
+    self.output_signature = {}
+
+  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
+                        output_dict: Dict[Text, List[types.Artifact]],
+                        exec_properties: Dict[Text, Union[int, float, Text]]
+                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
+    return self.input_signature, self.output_signature
+
+  def read_inputs(self, pipeline: beam.Pipeline,
+                  input_dict: Dict[Text, List[types.Artifact]],
+                  output_dict: Dict[Text, List[types.Artifact]],
+                  exec_properties: Dict[Text, Union[int, float, Text]]
+                  ) -> Dict[Text, beam.pvalue.PCollection]:
+    inputs = self.GenerateExamplesByBeam(pipeline, input_dict, exec_properties)
+    return inputs
+
+  def run_component(self, pipeline: beam.Pipeline,
+                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> Dict[Text, beam.pvalue.PCollection]:
+    return beam_inputs
+
+  def write_outputs(self, pipeline: beam.Pipeline,
+                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> None:
+    # pylint: disable=expression-not-assigned, no-value-for-parameter
+    for split_name, example_split in beam_outputs.items():
+      (example_split
+       | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
+           artifact_utils.get_split_uri(output_dict['examples'], split_name)))
+    # pylint: enable=expression-not-assigned, no-value-for-parameter
+
 
   @abc.abstractmethod
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
@@ -223,6 +264,9 @@ class BaseExampleGenExecutor(
     result = {}
     for index, example_split in enumerate(example_splits):
       result[split_names[index]] = example_split
+      self.input_signature[split_names[index]] = tf.train.Example
+      self.output_signature[split_names[index]] = tf.train.Example
+
     return result
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
@@ -249,14 +293,9 @@ class BaseExampleGenExecutor(
 
     absl.logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
-      example_splits = self.GenerateExamplesByBeam(pipeline, input_dict,
-                                                   exec_properties)
-
-      # pylint: disable=expression-not-assigned, no-value-for-parameter
-      for split_name, example_split in example_splits.items():
-        (example_split
-         | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
-             artifact_utils.get_split_uri(output_dict['examples'], split_name)))
-      # pylint: enable=expression-not-assigned, no-value-for-parameter
+      beam_outputs = self.read_inputs(
+          pipeline, input_dict, output_dict, exec_properties)
+      self.write_outputs(
+          pipeline, beam_outputs, input_dict, output_dict, exec_properties)
 
     absl.logging.info('Examples generated.')
