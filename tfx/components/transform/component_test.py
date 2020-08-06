@@ -40,7 +40,7 @@ class ComponentTest(tf.test.TestCase):
         [standard_artifacts.Schema()])
 
   def _verify_outputs(self, transform, materialize=True,
-                      materialize_cache=True):
+                      store_cache=True):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
     if materialize:
@@ -49,7 +49,7 @@ class ComponentTest(tf.test.TestCase):
     else:
       self.assertNotIn('transformed_examples', transform.outputs.keys())
 
-    if materialize_cache:
+    if store_cache:
       self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
                        transform.outputs['cache_output_path'].type_name)
     else:
@@ -100,9 +100,9 @@ class ComponentTest(tf.test.TestCase):
         examples=self.examples,
         schema=self.schema,
         preprocessing_fn='my_preprocessing_fn',
-        materialize_cache=False)
-    self._verify_outputs(transform, materialize_cache=False)
-    
+        store_cache=False)
+    self._verify_outputs(transform, store_cache=False)
+
   def testConstructFromPreprocessingFnWithCustomConfig(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     custom_config = {'param': 1}
@@ -150,7 +150,7 @@ class ComponentTest(tf.test.TestCase):
           examples=self.examples,
           schema=self.schema,
           preprocessing_fn='my_preprocessing_fn',
-          materialize_cache=False,
+          store_cache=False,
           cache_output_path=channel_utils.as_channel(
               [standard_artifacts.TransformCache()]))
 

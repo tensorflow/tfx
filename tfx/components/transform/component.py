@@ -78,7 +78,7 @@ class Transform(base_component.BaseComponent):
       cache_output_path: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       materialize: bool = True,
-      materialize_cache: bool = True,
+      store_cache: bool = True,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
@@ -126,7 +126,7 @@ class Transform(base_component.BaseComponent):
         transform components are declared in the same pipeline.
       materialize: If True, write transformed examples as an output. If False,
         `transformed_examples` must not be provided.
-      materialize_cache: If True, write Transform cache as an output. If False,
+      store_cache: If True, write Transform cache as an output. If False,
         `cache_output_path` must not be provided.
       custom_config: A dict which contains additional parameters that will be
         passed to preprocessing_fn.
@@ -160,12 +160,12 @@ class Transform(base_component.BaseComponent):
       raise ValueError(
           'must not specify transformed_examples when materialize==False')
 
-    if materialize_cache and cache_output_path is None:
+    if store_cache and cache_output_path is None:
       cache_output_path = types.Channel(type=standard_artifacts.TransformCache,
           artifacts=[standard_artifacts.TransformCache()])
-    elif not materialize_cache and cache_output_path is not None:
+    elif not store_cache and cache_output_path is not None:
       raise ValueError(
-          'must not specify cache_output_path when materialize_cache==False')
+          'must not specify cache_output_path when store_cache==False')
 
     spec = TransformSpec(
         examples=examples,
