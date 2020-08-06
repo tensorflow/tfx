@@ -346,7 +346,8 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='version{VERSION}/split1/*')
     ]
     with self.assertRaisesRegexp(
-        ValueError, 'Version spec provided, but Span or Date spec is not present'):
+        ValueError,
+        'Version spec provided, but Span or Date spec is not present'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -505,7 +506,7 @@ class UtilsTest(tf.test.TestCase):
         self._input_base_path, splits)
     self.assertEqual(span, '02')
     self.assertEqual(version, '02')
-  
+
   def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, '1970-01-02', 'ver01',

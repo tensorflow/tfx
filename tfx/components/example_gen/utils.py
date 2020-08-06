@@ -269,7 +269,7 @@ def _retrieve_latest_span_elems_version(
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
-  elif is_match_date and not all(split.pattern.count(spec) == 1 
+  elif is_match_date and not all(split.pattern.count(spec) == 1
                                  for spec in DATE_SPECS):
     raise ValueError('Exactly one of each date spec is required in %s' %
                      split.pattern)
@@ -353,7 +353,7 @@ def _retrieve_latest_span_elems_version(
                        tuple(latest_span_elems))
     latest_span = str((latest_date - start_date).days)
 
-  return latest_span, latest_span_elems, latest_version,
+  return latest_span, latest_span_elems, latest_version
 
 
 def calculate_splits_fingerprint_span_and_version(
@@ -398,7 +398,7 @@ def calculate_splits_fingerprint_span_and_version(
           split.pattern = split.pattern.replace(spec, value)
       else:
         split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
-      
+
     if latest_version:
       split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
