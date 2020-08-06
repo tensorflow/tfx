@@ -327,7 +327,8 @@ def _retrieve_latest_span_elems_version(
             'Cannot find %s number from %s based on %s' %
             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    if latest_span_elems is None or span_elems_int > [int(elem) for elem in latest_span_elems]:
+    if (latest_span_elems is None
+        or span_elems_int > [int(elem) for elem in latest_span_elems]):
       # Uses str instead of int because of zero padding digits.
       latest_span_elems = span_elems_str
       latest_version = version_str
@@ -348,8 +349,8 @@ def _retrieve_latest_span_elems_version(
     try:
       latest_date = datetime(*[int(elem) for elem in latest_span_elems])
     except ValueError:
-      raise ValueError('Retrieved date has invalid format: %s' %
-                       latest_span_elems)
+      raise ValueError('Retrieved latest date is invalid: %s-%s-%s' %
+                       tuple(latest_span_elems))
     latest_span = str((latest_date - start_date).days)
 
   return latest_span, latest_span_elems, latest_version,

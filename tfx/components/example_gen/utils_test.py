@@ -300,6 +300,15 @@ class UtilsTest(tf.test.TestCase):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits2)
 
+    splits3 = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
+    ]
+    with self.assertRaisesRegexp(ValueError,
+        'Exactly one of each date spec is required'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits3)
+
   def testHaveSpanNoVersion(self):
     # Test specific behavior when Span spec is present but Version is not.
     split1 = os.path.join(self._input_base_path, 'span1', 'split1', 'data')
@@ -372,7 +381,7 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual('2', span)
     self.assertEqual('1', version)
 
-  def testDateSpecMissingMultiple(self):
+  def testDateSpecPartiallyMissing(self):
     splits1 = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='{YYYY}-{MM}/split1/*')
@@ -381,15 +390,6 @@ class UtilsTest(tf.test.TestCase):
         'Exactly one of each date spec is required'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits1)
-
-    splits2 = [
-        example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
-    ]
-    with self.assertRaisesRegexp(ValueError,
-        'Exactly one of each date spec is required'):
-      utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits2)
 
   def testBothSpanAndDate(self):
     splits = [
@@ -413,7 +413,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Retrieved date has invalid format'):
+        'Retrieved latest date is invalid'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
