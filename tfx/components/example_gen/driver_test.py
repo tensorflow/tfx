@@ -147,7 +147,7 @@ class DriverTest(tf.test.TestCase):
     examples = artifact_utils.get_single_instance(
         output_artifacts[utils.EXAMPLES_KEY])
     self.assertEqual(examples.uri,
-                     os.path.join(self._test_dir, 'cid', 'examples', '1', ''))
+                     os.path.join(self._test_dir, 'cid', 'examples', '1'))
     self.assertEqual(
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
