@@ -225,7 +225,7 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
 
 def _retrieve_latest_span_elems_version(
     uri: Text, split: example_gen_pb2.Input.Split
-) -> Tuple[Optional[Text], Optional[Text], Optional[List[Text]]]:
+) -> Tuple[Optional[Text], Optional[Text]]:
   """Retrieves the most recent span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
@@ -240,7 +240,9 @@ def _retrieve_latest_span_elems_version(
       to be searched on.
 
   Returns:
-    Tuple of two strings, Span (optional) and Version (optional).
+    Tuple of two strings, Span (optional) and Version (optional). Note
+      that this function will update the {SPAN} or Date tags as well as the
+      {VERSION} tags in the split config to actual Span and Version numbers.
 
   Raises:
     ValueError: if any of the following occurs:
@@ -294,7 +296,6 @@ def _retrieve_latest_span_elems_version(
         MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
-
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
@@ -387,9 +388,7 @@ def calculate_splits_fingerprint_span_and_version(
 
   Args:
     input_base_uri: The base path from which files will be searched.
-    splits: An iterable collection of example_gen_pb2.Input.Split objects. Note
-      that this function will update the {SPAN} in this and {VERSION} tags in
-      the split config to actual Span and Version numbers.
+    splits: An iterable collection of example_gen_pb2.Input.Split objects.
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
