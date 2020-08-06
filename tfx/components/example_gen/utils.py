@@ -372,6 +372,8 @@ def _retrieve_latest_span_elems_version(
   if is_match_version:
     split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
+  # TODO(jjma): discussion on whether to simply return these as ints
+  # and change span property to an int property?
   if is_match_span:
     split.pattern = split.pattern.replace(SPAN_SPEC, latest_span_elems[0])
     return latest_span_elems[0], latest_version
