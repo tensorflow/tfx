@@ -50,6 +50,10 @@ FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
+# Key for the `version` custom property of output examples artifact.
+VERSION_PROPERTY_NAME = 'version'
+# Version spec used in split pattern.
+VERSION_SPEC = '{VERSION}'
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -210,83 +214,167 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
-def _retrieve_latest_span(uri: Text,
-                          split: example_gen_pb2.Input.Split) -> Text:
-  """Retrieves the most recently updated span matching a given split pattern."""
-  split_pattern = os.path.join(uri, split.pattern)
-  if split_pattern.count(SPAN_SPEC) != 1:
-    raise ValueError('Only one {SPAN} is allowed in %s' % split_pattern)
+def _retrieve_latest_span_version(
+    uri: Text, split: example_gen_pb2.Input.Split
+) -> Tuple[Optional[Text], Optional[Text]]:
+  """Retrieves the most recent span and version for a given split pattern.
 
-  split_glob_pattern = split_pattern.replace(SPAN_SPEC, '*')
+  If both Span and Version spec occur in the split pattern, searches for and
+  returns both the latest Span and Version. If only Span exists in the split
+  pattern, searches for the latest Span, and Version is returned as None.
+  If Version is present, but not Span, an error is raised. If neither Span
+  nor Version is present, returns both as None.
+
+  Args:
+    uri: The base path from which files will be searched.
+    split: An example_gen_pb2.Input.Split object which contains a split pattern,
+      to be searched on.
+
+  Returns:
+    Tuple of two strings, Span (optional) and Version (optional).
+
+  Raises:
+    ValueError: if any of the following occurs:
+      - If either Span or Version spec is occurs in the split pattern
+        more than once.
+      - If Version spec is provided, but Span spec is not present.
+      - If Span or Version found is not an integer.
+      - If a matching cannot be found for split pattern provided.
+  """
+
+  split_pattern = os.path.join(uri, split.pattern)
+
+  split_glob_pattern = split_pattern
+  split_regex_pattern = _glob_to_regex(split_pattern)
+
+  latest_span = None
+  latest_version = None
+
+  if SPAN_SPEC not in split.pattern:
+    if VERSION_SPEC in split.pattern:
+      raise ValueError('Version spec provided, but Span spec is not present')
+    return latest_span, latest_version
+
+  if split.pattern.count(SPAN_SPEC) != 1:
+    raise ValueError('Only one %s is allowed in %s' %
+                     (SPAN_SPEC, split.pattern))
+
+  split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
+  split_regex_pattern = split_regex_pattern.replace(
+      SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+
+  is_match_version = VERSION_SPEC in split.pattern
+  if is_match_version:
+    if split.pattern.count(VERSION_SPEC) != 1:
+      raise ValueError('Only one %s is allowed in %s' %
+                       (VERSION_SPEC, split.pattern))
+    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+    split_regex_pattern = split_regex_pattern.replace(
+        VERSION_SPEC, '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
+
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
-  split_regex_pattern = _glob_to_regex(split_pattern).replace(SPAN_SPEC, '(.*)')
   logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
-  if re.compile(split_regex_pattern).groups != 1:
-    raise ValueError('Regex should have only one group')
 
   files = tf.io.gfile.glob(split_glob_pattern)
-  latest_span = None
+
   for file_path in files:
     result = re.search(split_regex_pattern, file_path)
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
+
+    span_str = result.group(SPAN_PROPERTY_NAME)
     try:
-      span = int(result.group(1))
+      span_int = int(span_str)
     except ValueError:
-      raise ValueError('Cannot not find span number from %s based on %s' %
-                       (file_path, split_regex_pattern))
-    if latest_span is None or span >= int(latest_span):
+      raise ValueError('Cannot find %s number from %s based on %s' %
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+
+    version_str = None
+    if is_match_version:
+      version_str = result.group(VERSION_PROPERTY_NAME)
+      try:
+        version_int = int(version_str)
+      except ValueError:
+        raise ValueError(
+            'Cannot find %s number from %s based on %s' %
+            (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
+
+    if latest_span is None or span_int > int(latest_span):
       # Uses str instead of int because of zero padding digits.
-      latest_span = result.group(1)
+      latest_span = span_str
+      latest_version = version_str
+    elif (span_int == int(latest_span) and
+          (latest_version is None or version_int >= int(latest_version))):
+      latest_version = version_str
 
-  if latest_span is None:
-    raise ValueError('Cannot not find matching for split %s based on %s' %
+  if latest_span is None or (is_match_version and latest_version is None):
+    raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
-  return latest_span
+
+  return latest_span, latest_version
 
 
-def calculate_splits_fingerprint_and_span(
+def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Optional[Text]]:
+) -> Tuple[Text, Text, Optional[Text]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
-  If a pattern has the {SPAN} placeholder, attempts to find an identical value
-  across splits that results in all splits having the most recently updated
-  files.
+  If a pattern has the {SPAN} placeholder and, optionally, the {VERSION}
+  placeholder, attempts to find aligned values that results in all splits
+  having the most recent span and most recent version for that span.
 
   Args:
-    input_base_uri: The base path from which files will be searched
+    input_base_uri: The base path from which files will be searched.
     splits: An iterable collection of example_gen_pb2.Input.Split objects. Note
-      that this function will update the {SPAN} in this split config to actual
-      Span number.
+      that this function will update the {SPAN} in this and {VERSION} tags in
+      the split config to actual Span and Version numbers.
 
   Returns:
-    A Tuple of [fingerprint, select_span], where select_span is either
-    the value matched with the {SPAN} placeholder, or None if the placeholder
+    A Tuple of [fingerprint, select_span, select_version], where select_span
+    is either the value matched with the {SPAN} placeholder, or '0' if the
+    placeholder wasn't specified, and where select_version is either the
+    value matched with the {VERSION} placeholder, or None if the placeholder
     wasn't specified.
   """
 
   split_fingerprints = []
-  select_span = None
+  select_span = '0'
+  select_version = None
   # Calculate the fingerprint of files under input_base_uri.
   for split in splits:
-    logging.info('select span = %s', select_span)
-    if SPAN_SPEC in split.pattern:
-      latest_span = _retrieve_latest_span(input_base_uri, split)
-      logging.info('latest span = %s', latest_span)
-      if select_span is None:
-        select_span = latest_span
-      if select_span != latest_span:
-        raise ValueError(
-            'Latest span should be the same for each split: %s != %s' %
-            (select_span, latest_span))
-      split.pattern = split.pattern.replace(SPAN_SPEC, select_span)
-    if select_span is None:
-      select_span = '0'
-    # Calculate fingerprint
+    logging.info('select span and version = (%s, %s)', select_span,
+                 select_version)
+    # Find most recent span and version for this split.
+    latest_span, latest_version = _retrieve_latest_span_version(
+        input_base_uri, split)
+
+    # Replace split.pattern so executor can find files after driver runs.
+    if latest_span:
+      split.pattern = split.pattern.replace(SPAN_SPEC, latest_span)
+    if latest_version:
+      split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+
+    # TODO(b/162622803): add default behavior for when version spec not present.
+    latest_span = latest_span or '0'
+
+    logging.info('latest span and version = (%s, %s)', latest_span,
+                 latest_version)
+
+    if select_span == '0' and select_version is None:
+      select_span = latest_span
+      select_version = latest_version
+
+    # Check if latest span and version are the same over all splits.
+    if select_span != latest_span:
+      raise ValueError('Latest span should be the same for each split')
+    if select_version != latest_version:
+      raise ValueError('Latest version should be the same for each split')
+
+    # Calculate fingerprint.
     pattern = os.path.join(input_base_uri, split.pattern)
     split_fingerprint = io_utils.generate_fingerprint(split.name, pattern)
     split_fingerprints.append(split_fingerprint)
+
   fingerprint = '\n'.join(split_fingerprints)
-  return fingerprint, select_span
+  return fingerprint, select_span, select_version

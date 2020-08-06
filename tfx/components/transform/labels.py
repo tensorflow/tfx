@@ -24,6 +24,7 @@ TRANSFORM_PATHS_FILE_FORMATS_LABEL = 'transform_paths_file_formats'
 COMPUTE_STATISTICS_LABEL = 'compute_statistics'
 MODULE_FILE = 'module_file'
 PREPROCESSING_FN = 'preprocessing_fn'
+CUSTOM_CONFIG = 'custom_config'
 BEAM_PIPELINE_ARGS = 'pipeline_args'
 DATA_VIEW_LABEL = 'data_view_uri'
 # This label is currently not used externally.
