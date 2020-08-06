@@ -286,13 +286,14 @@ def _retrieve_latest_span_elems_version(
   elif is_match_date:
     for spec in DATE_SPECS:
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
+    # Defines a clear number of digits for each element of date. This covers
+    # cases where date stamps may not have seperators between them.
     split_regex_pattern = split_regex_pattern.replace(
         YEAR_SPEC, '(?P<{}>\d{{4}})'.format('year'))
     split_regex_pattern = split_regex_pattern.replace(
         MONTH_SPEC, '(?P<{}>\d{{2}})'.format('month'))
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>\d{{2}})'.format('day'))
-
     span_group_names = DATE_SPEC_NAMES
 
   is_match_version = VERSION_SPEC in split.pattern
@@ -356,6 +357,7 @@ def _retrieve_latest_span_elems_version(
     except ValueError:
       raise ValueError('Retrieved latest date is invalid: %s-%s-%s' %
                        tuple(latest_span_elems))
+    # Calculate span number as days since unix epoch.
     latest_span = str((latest_date - start_date).days)
 
   return latest_span, latest_span_elems, latest_version
