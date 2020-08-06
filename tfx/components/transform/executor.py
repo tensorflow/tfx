@@ -753,6 +753,10 @@ class Executor(base_executor.BaseExecutor):
                                                     labels.CUSTOM_CONFIG)
       custom_config = json.loads(
           custom_config_json) if custom_config_json else {}
+      if custom_config is None:
+        print('>>> Custom config is None. custom_config_json: {}'.format(
+            custom_config_json))
+        custom_config = {}
       result = functools.partial(fn, custom_config=custom_config)
     else:
       result = fn
