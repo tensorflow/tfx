@@ -41,6 +41,7 @@
     by default) -- specify parameter `materialize=False` when constructing
     the component to disable.
 *   Supported `Version` spec in input config for file based ExampleGen.
+*   Supported `Date` spec in input config for file based ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
