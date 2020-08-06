@@ -23,6 +23,7 @@ from typing import Optional, Text
 
 import click
 
+from tfx import version
 from tfx.tools.cli.container_builder import buildspec
 from tfx.tools.cli.container_builder import labels
 from tfx.tools.cli.container_builder.dockerfile import Dockerfile
@@ -64,6 +65,11 @@ class ContainerBuilder(object):
         python package for the workspace directory. If not specified, the
         whole directory is copied and PYTHONPATH is configured.
     """
+    if base_image is None and version.__version__.endswith('.dev'):
+      raise ValueError('Cannot find a base image automatically in development /'
+                       ' nightly version. Please specify a base image using'
+                       ' --build-base-image flag.')
+
     base_image = base_image or labels.BASE_IMAGE
     self._skaffold_cmd = skaffold_cmd or labels.SKAFFOLD_COMMAND
     buildspec_filename = buildspec_filename or labels.BUILD_SPEC_FILENAME
@@ -90,8 +96,7 @@ class ContainerBuilder(object):
 
   def build(self):
     """Build the container and return the built image path with SHA."""
-    click.echo('Use skaffold to build the container image.')
     skaffold_cli = SkaffoldCli(cmd=self._skaffold_cmd)
-    image_sha = skaffold_cli.build(buildspec_filename=self._buildspec.filename)
+    image_sha = skaffold_cli.build(self._buildspec)
     target_image = self._buildspec.target_image
     return target_image + '@' + image_sha

@@ -17,7 +17,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, Union
+import json
+from typing import Any, Dict, Optional, Text, Union
 
 import absl
 
@@ -77,7 +78,8 @@ class Transform(base_component.BaseComponent):
       cache_output_path: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       materialize: bool = True,
-      materialize_cache: bool = True):
+      materialize_cache: bool = True,
+      custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
     Args:
@@ -86,15 +88,25 @@ class Transform(base_component.BaseComponent):
       schema: A Channel of type `standard_artifacts.Schema`. This should
         contain a single schema artifact.
       module_file: The file path to a python module file, from which the
-        'preprocessing_fn' function will be loaded. The function must have the
-        following signature.
+        'preprocessing_fn' function will be loaded.
+        Exactly one of 'module_file' or 'preprocessing_fn' must be supplied.
 
+        The function needs to have the following signature:
+        ```
         def preprocessing_fn(inputs: Dict[Text, Any]) -> Dict[Text, Any]:
           ...
-
+        ```
         where the values of input and returned Dict are either tf.Tensor or
-        tf.SparseTensor.  Exactly one of 'module_file' or 'preprocessing_fn'
-        must be supplied.
+        tf.SparseTensor.
+
+        If additional inputs are needed for preprocessing_fn, they can be passed
+        in custom_config:
+
+        ```
+        def preprocessing_fn(inputs: Dict[Text, Any], custom_config:
+                             Dict[Text, Any]) -> Dict[Text, Any]:
+          ...
+        ```
       preprocessing_fn: The path to python function that implements a
         'preprocessing_fn'. See 'module_file' for expected signature of the
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
@@ -116,6 +128,8 @@ class Transform(base_component.BaseComponent):
         `transformed_examples` must not be provided.
       materialize_cache: If True, write Transform cache as an output. If False,
         `cache_output_path` must not be provided.
+      custom_config: A dict which contains additional parameters that will be
+        passed to preprocessing_fn.
 
     Raises:
       ValueError: When both or neither of 'module_file' and 'preprocessing_fn'
@@ -161,5 +175,6 @@ class Transform(base_component.BaseComponent):
         transform_graph=transform_graph,
         transformed_examples=transformed_examples,
         cache_input_path=cache_input_path,
-        cache_output_path=cache_output_path)
+        cache_output_path=cache_output_path,
+        custom_config=json.dumps(custom_config))
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)
