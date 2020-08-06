@@ -225,7 +225,7 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
 
 def _retrieve_latest_span_elems_version(
     uri: Text, split: example_gen_pb2.Input.Split
-) -> Tuple[Optional[Text], Optional[Text]]:
+) -> Tuple[Optional[int], Optional[int]]:
   """Retrieves the most recent span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
@@ -369,23 +369,22 @@ def _retrieve_latest_span_elems_version(
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
-  if is_match_version:
-    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
-
-  # TODO(jjma): discussion on whether to simply return these as ints
-  # and change span property to an int property?
   if is_match_span:
     split.pattern = split.pattern.replace(SPAN_SPEC, latest_span_elems[0])
-    return latest_span_elems[0], latest_version
   elif is_match_date:
     for spec, value in zip(DATE_SPECS, latest_span_elems):
       split.pattern = split.pattern.replace(spec, value)
-    return str(latest_span_number), latest_version
 
+  latest_version_number = None
+  if is_match_version:
+    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+    latest_version_number = int(latest_version)
+    
+  return latest_span_number, latest_version_number
 
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
-) -> Tuple[Text, Text, Optional[Text]]:
+) -> Tuple[Text, int, Optional[int]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
@@ -406,7 +405,7 @@ def calculate_splits_fingerprint_span_and_version(
   """
 
   split_fingerprints = []
-  select_span = '0'
+  select_span = 0
   select_version = None
   # Calculate the fingerprint of files under input_base_uri.
   for split in splits:
@@ -417,12 +416,12 @@ def calculate_splits_fingerprint_span_and_version(
         input_base_uri, split)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
-    latest_span = latest_span or '0'
+    latest_span = latest_span or 0
 
     logging.info('latest span and version = (%s, %s)', latest_span,
                  latest_version)
 
-    if select_span == '0' and select_version is None:
+    if select_span == 0 and select_version is None:
       select_span = latest_span
       select_version = latest_version
 

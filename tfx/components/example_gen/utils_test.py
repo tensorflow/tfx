@@ -234,7 +234,7 @@ class UtilsTest(tf.test.TestCase):
         fingerprint,
         'split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\n'
         'split:s2,num_files:1,total_bytes:8,xor_checksum:3,sum_checksum:3')
-    self.assertEqual(span, '0')
+    self.assertEqual(span, 0)
     self.assertIsNone(version)
 
   def testSpanNoMatching(self):
@@ -320,7 +320,7 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('1', span)
+    self.assertEqual(span, 1)
     self.assertIsNone(version)
 
   def testHaveSpanAndVersion(self):
@@ -336,8 +336,8 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('1', span)
-    self.assertEqual('1', version)
+    self.assertEqual(span, 1)
+    self.assertEqual(version, 1)
 
   def testHaveVersionNoSpan(self):
     # Test specific behavior when Version spec is present but Span is not.
@@ -360,7 +360,7 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('0', span)
+    self.assertEqual(span, 0)
     self.assertIsNone(version)
 
   def testNewSpanWithOlderVersionAlign(self):
@@ -379,8 +379,8 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('2', span)
-    self.assertEqual('1', version)
+    self.assertEqual(span, 2)
+    self.assertEqual(version, 1)
 
   def testDateSpecPartiallyMissing(self):
     splits1 = [
@@ -427,7 +427,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Retrieved latest date is invalid'):
+        'Retrieved date is invalid'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -443,7 +443,7 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('1', span)
+    self.assertEqual(span, 1)
     self.assertIsNone(version)
 
   def testHaveDateAndVersion(self):
@@ -459,8 +459,8 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual('1', span)
-    self.assertEqual('1', version)
+    self.assertEqual(span, 1)
+    self.assertEqual(version, 1)
 
   def testCalculateSplitsFingerprintSpanAndVersionWithSpan(self):
     # Test align of span and version numbers.
@@ -517,8 +517,8 @@ class UtilsTest(tf.test.TestCase):
     ]
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual(span, '02')
-    self.assertEqual(version, '02')
+    self.assertEqual(span, 2)
+    self.assertEqual(version, 2)
 
   def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
     # Test align of span and version numbers.
@@ -575,8 +575,8 @@ class UtilsTest(tf.test.TestCase):
     ]
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits)
-    self.assertEqual(span, '2')
-    self.assertEqual(version, '02')
+    self.assertEqual(span, 2)
+    self.assertEqual(version, 2)
 
 
 if __name__ == '__main__':
