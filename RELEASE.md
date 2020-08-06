@@ -41,6 +41,8 @@
     by default) -- specify parameter `materialize=False` when constructing
     the component to disable.
 *   Supported `Version` spec in input config for file based ExampleGen.
+*   Added custom config to Transform component and made it available to
+    pre-processing fn.
 *   Supported `Date` spec in input config for file based ExampleGen.
 
 ## Bug fixes and other changes
