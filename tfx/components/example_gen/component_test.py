@@ -107,31 +107,43 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(1, len(artifact_collection))
 
   def testConstructWithOutputConfig(self):
+    output_config = example_gen_pb2.Output(
+        split_config=example_gen_pb2.SplitConfig(splits=[
+            example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
+            example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
+            example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
+        ]))
     example_gen = TestFileBasedExampleGenComponent(
         input_base='path',
-        output_config=example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
-                example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
-            ])))
+        output_config=output_config)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
 
+    stored_output_config = example_gen_pb2.Output()
+    json_format.Parse(example_gen.exec_properties['output_config'],
+                      stored_output_config)
+    self.assertEqual(output_config, stored_output_config)
+
   def testConstructWithInputConfig(self):
+    input_config = example_gen_pb2.Input(splits=[
+        example_gen_pb2.Input.Split(name='train', pattern='train/*'),
+        example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
+        example_gen_pb2.Input.Split(name='test', pattern='test/*')
+    ])
     example_gen = TestFileBasedExampleGenComponent(
         input_base='path',
-        input_config=example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='train/*'),
-            example_gen_pb2.Input.Split(name='eval', pattern='eval/*'),
-            example_gen_pb2.Input.Split(name='test', pattern='test/*')
-        ]))
+        input_config=input_config)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     artifact_collection = example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
+
+    stored_input_config = example_gen_pb2.Input()
+    json_format.Parse(example_gen.exec_properties['input_config'],
+                      stored_input_config)
+    self.assertEqual(input_config, stored_input_config)
 
   def testConstructWithCustomConfig(self):
     custom_config = example_gen_pb2.CustomConfig(custom_config=any_pb2.Any())

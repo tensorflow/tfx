@@ -136,8 +136,7 @@ class Executor(base_executor.BaseExecutor):
     with self._make_beam_pipeline() as p:
       for split, tfxio in split_and_tfxio:
         logging.info('Generating statistics for split %s.', split)
-        output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
-                                                  split)
+        output_uri = artifact_utils.get_split_uri([statistics_artifact], split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
         data = p | 'TFXIORead[%s]' % split >> tfxio.BeamSource()
         _ = (
