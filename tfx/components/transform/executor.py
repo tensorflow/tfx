@@ -122,6 +122,7 @@ class _Dataset(object):
   It also contains bundle of stages of a single dataset through the transform
   pipeline.
   """
+  _FILE_PATTERN_SUFFIX_LENGTH = 6
 
   def __init__(self, file_pattern: Text,
                file_format: Union[Text, int],
@@ -141,8 +142,11 @@ class _Dataset(object):
       materialize_output_path: The file path where to write the dataset.
     """
     self._file_pattern = file_pattern
-    file_pattern_suffix = hashlib.sha256(file_pattern.encode()).hexdigest()
-    self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
+    file_pattern_suffix = os.path.join(
+        *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
+    dataset_identifier = file_pattern_suffix + \
+        hashlib.sha256(file_pattern.encode()).hexdigest()
+    self._dataset_key = analyzer_cache.DatasetKey(dataset_identifier)
     self._file_format = file_format
     self._data_format = data_format
     self._data_view_uri = data_view_uri
