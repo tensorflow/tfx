@@ -22,7 +22,7 @@ import abc
 import json
 import multiprocessing
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional, Text, Union, Tuple
 
 import absl
 import apache_beam as beam
@@ -75,7 +75,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        component or later injection from orchestration systems is necessary or
+        components or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:
@@ -162,14 +162,16 @@ class EmptyExecutor(BaseExecutor):
     pass
 
 
-class BeamExecutor(BaseExecutor):
-  """ Abstract TFX executor class for handling Beam-related logic."""
+class FuseableBeamExecutor(BaseExecutor):
+  """ Abstract TFX executor class for handling Beam-related logic.
+      Experimental: no backwards compatability guarantees.
+  """
 
   @abc.abstractmethod
   def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
                         output_dict: Dict[Text, List[types.Artifact]],
-                        exec_properties: Dict[Text, Any]
-                        ) -> List[Dict[Text, Any]]:
+                        exec_properties: Dict[Text, Union[int, float, Text]]
+                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
     """Provides input and output signatures for the input_dict and output_dict
        of the underlying component.
 
@@ -182,7 +184,7 @@ class BeamExecutor(BaseExecutor):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        component or later injection from orchestration systems is necessary or
+        components or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:
@@ -196,7 +198,7 @@ class BeamExecutor(BaseExecutor):
   def read_inputs(self, pipeline: beam.Pipeline,
                   input_dict: Dict[Text, List[types.Artifact]],
                   output_dict: Dict[Text, List[types.Artifact]],
-                  exec_properties: Dict[Text, Any]
+                  exec_properties: Dict[Text, Union[int, float, Text]]
                   ) -> Dict[Text, beam.pvalue.PCollection]:
     """Executes reads for underlying component implementation.
 
@@ -209,7 +211,7 @@ class BeamExecutor(BaseExecutor):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        component or later injection from orchestration systems is necessary or
+        components or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:
@@ -219,12 +221,12 @@ class BeamExecutor(BaseExecutor):
     pass
 
   @abc.abstractmethod
-  def construct_beam_graph(self, pipeline: beam.Pipeline,
-                           beam_inputs: Dict[Text, beam.pvalue.PCollection],
-                           input_dict: Dict[Text, List[types.Artifact]],
-                           output_dict: Dict[Text, List[types.Artifact]],
-                           exec_properties: Dict[Text, Any]
-                           ) -> Dict[Text, beam.pvalue.PCollection]:
+  def run_component(self, pipeline: beam.Pipeline,
+                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
+                    input_dict: Dict[Text, List[types.Artifact]],
+                    output_dict: Dict[Text, List[types.Artifact]],
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> Dict[Text, beam.pvalue.PCollection]:
     """Executes underlying component implementation, except for reads/writes.
 
     Args:
@@ -238,7 +240,7 @@ class BeamExecutor(BaseExecutor):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        component or later injection from orchestration systems is necessary or
+        components or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:
@@ -252,12 +254,13 @@ class BeamExecutor(BaseExecutor):
                     beam_outputs: Dict[Text, beam.pvalue.PCollection],
                     input_dict: Dict[Text, List[types.Artifact]],
                     output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Any]) -> None:
+                    exec_properties: Dict[Text, Union[int, float, Text]]
+                    ) -> None:
     """Executes writes for underlying component implementation.
 
     Args:
       beam_outputs: A Beam output dict from input key to PCollections. Output
-        of self.construct_beam_graph().
+        of self.run_component().
       input_dict: Input dict from input key to a list of Artifacts. These are
         often outputs of another component in the pipeline and passed to the
         component by the orchestration system.
@@ -266,7 +269,7 @@ class BeamExecutor(BaseExecutor):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        component or later injection from orchestration systems is necessary or
+        components or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:
