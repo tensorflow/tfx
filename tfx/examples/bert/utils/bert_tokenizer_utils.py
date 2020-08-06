@@ -275,8 +275,8 @@ class BertPreprocessor():
     answer_size = tf.map_fn(tf.size, tokenized_answer_text, dtype=tf.int32)
     # Account for 0 index
     label_end = label_start + answer_size - 1
-    label_start_one = tf.squeeze(tf.one_hot(label_start, max_len))
-    label_end_one = tf.squeeze(tf.one_hot(label_end, max_len))
+    label_start_one = tf.reshape(tf.one_hot(label_start, max_len), [-1, max_len])
+    label_end_one = tf.reshape(tf.one_hot(label_end, max_len), [-1, max_len])
     labels = tf.stack([label_start_one, label_end_one], axis=2)
     # Dealing with question and context
     word_ids = tf.concat([token_question, token_context], 1)
