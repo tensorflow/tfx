@@ -403,8 +403,21 @@ class UtilsTest(tf.test.TestCase):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
-  def testBadDateFormat(self):
+  def testDateBadFormat(self):
     # Test improperly formed date.
+    split1 = os.path.join(self._input_base_path, 'yyyymmdd', 'split1', 'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+  def testInvalidDate(self):
     split1 = os.path.join(self._input_base_path, '20201301', 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
 
