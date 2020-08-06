@@ -73,7 +73,6 @@ class BeamPipelineBenchmarkBase(object):
                                       beam_pipeline_mode):
     benchmark_class.set_num_workers(num_workers)
     benchmark_class.set_beam_pipeline_mode(beam_pipeline_mode)
-
     if beam_pipeline_mode == mode_config.CLOUD_DATAFLOW_MODE:
       assert  self.cloud_dataflow_project
       assert self.cloud_dataflow_temp_loc
