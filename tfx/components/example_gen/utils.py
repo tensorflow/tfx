@@ -282,7 +282,7 @@ def _retrieve_latest_span_elems_version(
                      split.pattern)
 
   latest_span_elems = None
-  latest_span_number = None
+  latest_span_int = None
   latest_version = None
 
   if is_match_span:
@@ -355,16 +355,16 @@ def _retrieve_latest_span_elems_version(
             'Cannot find %s number from %s based on %s' %
             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    if latest_span_number is None or span_int > latest_span_number:
+    if latest_span_int is None or span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
       latest_span_elems = span_strs
-      latest_span_number = span_int
+      latest_span_int = span_int
       latest_version = version_str
-    elif (latest_span_number == span_int and
+    elif (latest_span_int == span_int and
           (latest_version is None or version_int >= int(latest_version))):
       latest_version = version_str
 
-  if latest_span_number is None or (is_match_version and 
+  if latest_span_int is None or (is_match_version and 
                                     latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
@@ -375,12 +375,12 @@ def _retrieve_latest_span_elems_version(
     for spec, value in zip(DATE_SPECS, latest_span_elems):
       split.pattern = split.pattern.replace(spec, value)
 
-  latest_version_number = None
+  latest_version_int = None
   if is_match_version:
     split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
-    latest_version_number = int(latest_version)
+    latest_version_int = int(latest_version)
     
-  return latest_span_number, latest_version_number
+  return latest_span_int, latest_version_int
 
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
