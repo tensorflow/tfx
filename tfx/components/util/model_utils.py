@@ -46,3 +46,15 @@ def is_infra_validated(infra_blessing: types.Artifact) -> bool:
     Whether model is infra validated or not.
   """
   return infra_blessing.get_int_custom_property('blessed') == 1
+
+
+def is_model_pushed(pushed_model: types.Artifact) -> bool:
+  """Returns whether model is pushed successfully.
+
+  Args:
+    pushed_model: pushed model artifact from pusher.
+
+  Returns:
+    True if the model is pushed successfully.
+  """
+  return pushed_model.get_int_custom_property('pushed') == 1

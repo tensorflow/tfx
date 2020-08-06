@@ -9,8 +9,10 @@ BulkInferrer consumes:
 
 *   A Trained model in
     [SavedModel](https://www.tensorflow.org/guide/saved_model.md) format.
-*   Validation result from
+*   (Optional) Validation result from
     [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component.
+*   (Optional) Pushed model from
+    [Pusher](https://www.tensorflow.org/tfx/guide/pusher.md) component.
 *   Unlabelled
     [tf.Examples](https://www.tensorflow.org/tutorials/load_data/tfrecord.md)
     that contain features.
@@ -22,11 +24,13 @@ BulkInferrer emits:
 ## Using the BulkInferrer Component
 
 A BulkInferrer TFX component is used to perform batch inference on unlabeled
-tf.Examples. It is typically deployed after an
+tf.Examples. It is typically deployed in several ways: 1. After an
 [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator.md) component to
-perform inference with a validated model, or after a
+perform inference with a validated model. 2. After a
 [Trainer](https://www.tensorflow.org/tfx/guide/trainer.md) component to directly
-perform inference on exported model.
+perform inference on exported model. 3. After a
+[Pusher](https://www.tensorflow.org/tfx/guide/pusher.md) component to perform
+inference on a pushed model.
 
 It currently performs in-memory model inference and remote inference.
 Remote inference requires the model to be hosted on Cloud AI Platform.

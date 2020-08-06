@@ -43,6 +43,7 @@
 *   Supported `Version` spec in input config for file based ExampleGen.
 *   Added custom config to Transform component and made it available to
     pre-processing fn.
+*   Support pushed model in BulkInferrer.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.

@@ -53,6 +53,7 @@ class BulkInferrer(base_component.BaseComponent):
                examples: types.Channel = None,
                model: Optional[types.Channel] = None,
                model_blessing: Optional[types.Channel] = None,
+               pushed_model: Optional[types.Channel] = None,
                data_spec: Optional[Union[bulk_inferrer_pb2.DataSpec,
                                          Dict[Text, Any]]] = None,
                model_spec: Optional[Union[bulk_inferrer_pb2.ModelSpec,
@@ -68,6 +69,8 @@ class BulkInferrer(base_component.BaseComponent):
         a Trainer component.
       model_blessing: A Channel of type `standard_artifacts.ModelBlessing`,
         usually produced by a ModelValidator component.
+      pushed_model: A Channel of type `standard_artifacts.PushedModel`,
+        usually produced by a Pusher component.
       data_spec: bulk_inferrer_pb2.DataSpec instance that describes data
         selection. If any field is provided as a RuntimeParameter, data_spec
         should be constructed as a dict with the same field names as DataSpec
@@ -89,6 +92,7 @@ class BulkInferrer(base_component.BaseComponent):
         examples=examples,
         model=model,
         model_blessing=model_blessing,
+        pushed_model=pushed_model,
         data_spec=data_spec or bulk_inferrer_pb2.DataSpec(),
         model_spec=model_spec or bulk_inferrer_pb2.ModelSpec(),
         inference_result=inference_result)

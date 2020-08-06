@@ -20,14 +20,17 @@ from __future__ import print_function
 
 import os
 
+import mock
 import tensorflow as tf
-
-from google.protobuf import json_format
-from tensorflow_serving.apis import prediction_log_pb2
 from tfx.components.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx_bsl.public.proto import model_spec_pb2
+
+from google.protobuf import json_format
+
+from tensorflow_serving.apis import prediction_log_pb2
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -53,6 +56,15 @@ class ExecutorTest(tf.test.TestCase):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
+
+    self._pushed_model = standard_artifacts.PushedModel()
+    self._pushed_model.uri = os.path.join(self._source_data_dir, 'pushed_model')
+    self._pushed_model.set_int_custom_property('pushed', 1)
+    self._pushed_model.set_string_custom_property(
+        'pushed_destination',
+        'projects/project_id/models/model_name/versions/version_name')
+    self._pushed_model.set_string_custom_property('pushed_version',
+                                                  'version_name')
 
     self._inference_result = standard_artifacts.InferenceResult()
     self._prediction_log_dir = os.path.join(self._output_data_dir,
@@ -115,6 +127,42 @@ class ExecutorTest(tf.test.TestCase):
     self.assertEqual(
         len(results[0].classify_log.response.result.classifications[0].classes),
         2)
+
+  @mock.patch.object(executor.Executor, '_run_model_inference')
+  def testDoWithPushedModel(self, mock_import_func):
+    input_dict = {
+        'examples': [self._examples],
+        'model': [self._model],
+        'pushed_model': [self._pushed_model],
+    }
+    output_dict = {
+        'inference_result': [self._inference_result],
+    }
+    # Create exe properties.
+    exec_properties = {
+        'data_spec':
+            json_format.MessageToJson(
+                bulk_inferrer_pb2.DataSpec(), preserving_proto_field_name=True),
+        'component_id':
+            self.component_id,
+    }
+
+    # Run executor.
+    bulk_inferrer = executor.Executor(self._context)
+    bulk_inferrer.Do(input_dict, output_dict, exec_properties)
+    ai_platform_prediction_model_spec = (
+        model_spec_pb2.AIPlatformPredictionModelSpec(
+            project_id='project_id',
+            model_name='model_name',
+            version_name='version_name'))
+    # TODO(b/155325467): Remove the if check after next release of tfx_bsl.
+    if hasattr(ai_platform_prediction_model_spec, 'use_serialization_config'):
+      ai_platform_prediction_model_spec.use_serialization_config = True
+    inference_endpoint = model_spec_pb2.InferenceSpecType()
+    inference_endpoint.ai_platform_prediction_model_spec.CopyFrom(
+        ai_platform_prediction_model_spec)
+    mock_import_func.assert_called_once_with(mock.ANY, mock.ANY,
+                                             inference_endpoint)
 
 
 if __name__ == '__main__':
