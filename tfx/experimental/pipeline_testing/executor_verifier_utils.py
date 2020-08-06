@@ -73,7 +73,10 @@ def get_pipeline_outputs(
   output_map = {}
   with metadata.Metadata(metadata_connection_config) as m:
     context = m.get_pipeline_run_context(pipeline_info)
-    for execution in m.store.get_executions_by_context(context.id):
+    executions = m.store.get_executions_by_context(context.id)
+    print("executions", executions)
+    print("len(executions)", len(executions))
+    for execution in executions:
       component_id = execution.properties['component_id'].string_value
       output_dict = {}
       for event in m.store.get_events_by_execution_ids([execution.id]):
@@ -85,7 +88,6 @@ def get_pipeline_outputs(
           key = steps[0].key
           artifacts = m.store.get_artifacts_by_id(
               [event.artifact_id])
-          print("event", event)
           if key not in output_dict:
             output_dict[key] = {}
           for pb_artifact in artifacts:

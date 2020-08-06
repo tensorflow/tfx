@@ -59,6 +59,35 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
+    # Runs the pipeline and record to self._recorded_output_dir
+    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._recorded_mlmd_path,
+        beam_pipeline_args=[])
+
+    BeamDagRunner().run(record_taxi_pipeline)
+
+    pipeline_recorder_utils.record_pipeline(
+        output_dir=self._recorded_output_dir,
+        metadata_db_uri=self._recorded_mlmd_path,
+        host=None,
+        port=None,
+        pipeline_name=self._pipeline_name,
+        run_id=None)
+
+    self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+        pipeline_name=self._pipeline_name,
+        data_root=self._data_root,
+        module_file=self._module_file,
+        serving_model_dir=self._serving_model_dir,
+        pipeline_root=self._pipeline_root,
+        metadata_path=self._metadata_path,
+        beam_pipeline_args=[])
+
   def assertDirectoryEqual(self, dir1: Text, dir2: Text):
     """Recursively comparing contents of two directories."""
 
@@ -77,40 +106,41 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       new_dir2 = os.path.join(dir2, common_dir)
       self.assertDirectoryEqual(new_dir1, new_dir2)
 
-  def testTaxiPipelineBeam(self):
-    # Runs the pipeline and record to self._recorded_output_dir
-    record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
-        pipeline_name=self._pipeline_name,
-        data_root=self._data_root,
-        module_file=self._module_file,
-        serving_model_dir=self._serving_model_dir,
-        pipeline_root=self._pipeline_root,
-        metadata_path=self._recorded_mlmd_path,
-        beam_pipeline_args=[])
-    BeamDagRunner().run(record_taxi_pipeline)
-    pipeline_recorder_utils.record_pipeline(
-        output_dir=self._recorded_output_dir,
-        metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
+  def _verify_evaluator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(executor_verifier_utils.compare_eval_results(
+        output_uri,
+        expected_uri, .5))
+
+  def _verify_schema(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_examples(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_trainer(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_model_file_sizes(output_uri,
+                                                         expected_uri, .5))
+
+  def _verify_validator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_anomalies(output_uri,
+                                                  expected_uri))
+
+  def testStubbedTaxiPipelineBeam(self):
     # Run pipeline with stub executors.
-    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
-        pipeline_name=self._pipeline_name,
-        data_root=self._data_root,
-        module_file=self._module_file,
-        serving_model_dir=self._serving_model_dir,
-        pipeline_root=self._pipeline_root,
-        metadata_path=self._metadata_path,
-        beam_pipeline_args=[])
-
-    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
     stubbed_component_ids = [
         component.id
-        for component in taxi_pipeline.components
-        if component.id != model_resolver_id
+        for component in self.taxi_pipeline.components
+        if not component.id.startswith('ResolverNode')
     ]
 
     stub_launcher = stub_component_launcher.get_stub_launcher_class(
@@ -121,7 +151,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         supported_launcher_classes=[
             stub_launcher,
         ])
-    BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
+    BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
@@ -137,12 +167,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       # artifact count is greater by 2 due to two artifacts produced by both
       # Evaluator(blessing and evaluation) and Trainer(model and model_run)
       self.assertEqual(artifact_count, execution_count + 2)
-      self.assertLen(taxi_pipeline.components, execution_count)
+      self.assertLen(self.taxi_pipeline.components, execution_count)
 
       for execution in executions:
         component_id = execution.properties[
             metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-        if component_id == 'ResolverNode.latest_blessed_model_resolver':
+        if component_id.startswith('ResolverNode'):
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
@@ -159,7 +189,33 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                 artifact.uri,
                 os.path.join(self._recorded_output_dir, component_id, name,
                              str(idx)))
+    # Calls verifier for output artifacts, excluding resolver node.
+    BeamDagRunner().run(self.taxi_pipeline)
+    pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
+        self.taxi_pipeline.metadata_connection_config,
+        self.taxi_pipeline.pipeline_info)
 
+    verifier_map = {'Trainer': self._verify_trainer,
+                    'Evaluator': self._verify_trainer,
+                    'CsvExampleGen': self._verify_examples,
+                    'SchemaGen': self._verify_schema,
+                    'ExampleValidator': self._verify_validator}
+
+    # List of components to verify. ResolverNode is ignored because it
+    # doesn't have a executor that can be replaced with stub.
+    verify_component_ids = [component.id
+                            for component in self.taxi_pipeline.components
+                            if not component.id.startswith('ResolverNode')]
+
+    for component_id in verify_component_ids:
+      for key, artifact_dict in pipeline_outputs[component_id].items():
+        for idx, artifact in artifact_dict.items():
+          logging.info("Verifying {}".format(component_id))
+          recorded_uri = os.path.join(self._recorded_output_dir, component_id,
+                                      key, str(idx))
+          verifier_map.get(component_id,
+                           self._verify_file_path)(artifact.uri,
+                                                   recorded_uri)
 
 if __name__ == '__main__':
   tf.test.main()
