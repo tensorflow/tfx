@@ -56,5 +56,7 @@ def try_get_fn(exec_properties: Dict[Text, Any],
   """Loads and returns user-defined function if exists."""
   try:
     return get_fn(exec_properties, fn_name)
-  except (ValueError, IOError):
+  except (ValueError, AttributeError):
+    # ValueError: module file or user function is unset.
+    # AttributeError: the function doesn't exist in the module.
     return None

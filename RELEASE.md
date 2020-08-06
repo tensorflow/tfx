@@ -43,6 +43,7 @@
 *   Supported `Version` spec in input config for file based ExampleGen.
 *   Added custom config to Transform component and made it available to
     pre-processing fn.
+*   Supported custom extractors in Evaluator.
 *   Supported `Date` spec in input config for file based ExampleGen.
 
 ## Bug fixes and other changes
