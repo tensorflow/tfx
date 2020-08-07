@@ -114,7 +114,8 @@ class Executor(base_executor.BaseExecutor):
           labels.SCHEMA:
               schema
       }
-      output_uri = artifact_utils.get_split_uri([anomalies_artifact], split)
+      output_uri = artifact_utils.get_split_uri(output_dict[ANOMALIES_KEY],
+                                                split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
       self._Validate(label_inputs, label_outputs)
       logging.info(

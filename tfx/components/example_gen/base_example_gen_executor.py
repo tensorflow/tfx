@@ -299,7 +299,8 @@ class BaseExampleGenExecutor(
       for split_name, example_split in example_splits.items():
         (example_split
          | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
-             artifact_utils.get_split_uri([examples_artifact], split_name)))
+             artifact_utils.get_split_uri(output_dict[utils.EXAMPLES_KEY],
+                                          split_name)))
       # pylint: enable=expression-not-assigned, no-value-for-parameter
 
     output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
