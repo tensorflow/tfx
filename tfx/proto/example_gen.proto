@@ -73,8 +73,8 @@ message Input {
   //       input for Span-17167.
   //
   // TODO(b/162622803): add default behavior for when version spec not present.
-  // TODO(jyzhao): support number of digits retreived in Span and Version spec
-  //     (i.e. {SPAN:2})
+  // TODO(jyzhao): support retrieving a specific number of digits in Span and
+  //     Version spec (i.e. {SPAN:2} or {VERSION:4})
   // TODO(jyzhao): support range config for define certain spans to process.
   message Split {
     string name = 1;
