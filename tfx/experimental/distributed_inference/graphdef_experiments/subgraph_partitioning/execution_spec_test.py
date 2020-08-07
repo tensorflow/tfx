@@ -15,7 +15,8 @@
 
 import tensorflow as tf
 
-from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
+#from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
+import execution_spec
 
 
 class ExecutionSpecTest(tf.test.TestCase):

@@ -1,12 +1,9 @@
 # (generated with --quick)
 
-import execution_spec
-from typing import Any, Dict, List, Mapping, Set, Type, TypeVar
+from typing import Any, Dict, List, Mapping, Set, TypeVar
 
-ExecutionSpec: Type[execution_spec.ExecutionSpec]
 collections: module
-graph_pb2: module
-node_def_pb2: module
+execution_spec: module
 tf: module
 
 _T_RemoteOpLayers = TypeVar('_T_RemoteOpLayers', bound=_RemoteOpLayers)

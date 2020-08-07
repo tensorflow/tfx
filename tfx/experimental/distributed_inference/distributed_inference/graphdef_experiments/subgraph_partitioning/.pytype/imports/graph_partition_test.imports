@@ -1,6 +1,0 @@
-tensorflow/__init__ /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/default.pyi
-tensorflow/core/framework/graph_pb2 /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/default.pyi
-create_complex_graph /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/create_complex_graph.pyi
-tensorflow/core/framework/node_def_pb2 /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/default.pyi
-execution_spec /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/execution_spec.pyi
-graph_partition /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/graph_partition.pyi

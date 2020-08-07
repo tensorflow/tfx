@@ -1,0 +1,8 @@
+# ninja log v5
+1	811	1596824409364374005	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/execution_spec.pyi	1c075d6d53772fa9
+811	2437	1596824410784479805	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline.pyi	25dd50313d4c5e45
+0	1013	1596824415992867839	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/create_complex_graph.pyi	ee0dd803fc33f053
+1013	2214	1596824417164955161	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/graph_partition.pyi	62dab70412429204
+2214	3258	1596824418221033841	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline.pyi	8047896a8184ad64
+3258	4928	1596824419861156032	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline_test.pyi	ba1ba3209875837a
+0	1675	1596824584329409184	/usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline_test.pyi	ba1ba3209875837a

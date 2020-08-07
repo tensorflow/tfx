@@ -42,9 +42,12 @@ class BeamPipelineTest(tf.test.TestCase):
                                    'ids_b2': 'ids2'},
                    'remote_op_a_1': {'ids_a': 'FloorMod_1'},
                    'remote_op_b_1': {'ids_b1': 'FloorMod_1',
-                                     'ids_b2': 'FloorMod'}},
+                                     'ids_b2': 'FloorMod'}
+                  },
           'remote_op_b': {'remote_op_a': {'ids_a': 'FloorMod'},
-                          'remote_op_a_1': {'ids_a': 'ids_b2'}}}
+                          'remote_op_a_1': {'ids_a': 'ids_b2'}
+                         }
+      }
 
       # Create input PColl with this.
       root_graph_inputs = [
