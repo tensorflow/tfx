@@ -27,8 +27,8 @@ class SimpleDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
   def _decode_record_internal(self, record: tf.Tensor) -> Dict[Text, Any]:
     indices = tf.transpose(
         tf.stack([
-            tf.range(tf.size(record), dtype=tf.int64),
-            tf.zeros(tf.size(record), dtype=tf.int64)
+            tf.range(tf.size(record, tf.int64), dtype=tf.int64),
+            tf.zeros(tf.size(record, tf.int64), dtype=tf.int64)
         ]))
 
     return {
