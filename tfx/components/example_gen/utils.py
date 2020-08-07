@@ -382,6 +382,7 @@ def _retrieve_latest_span_version(
     
   return latest_span_int, latest_version_int
 
+
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
 ) -> Tuple[Text, int, Optional[int]]:
