@@ -29,11 +29,11 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
 
-def _generate_output_uri(base_output_dir: Text,
-                         name: Text,
-                         execution_id: int,
-                         is_single_artifact: bool = True,
-                         index: int = 0) -> Text:
+def generate_output_uri(base_output_dir: Text,
+                        name: Text,
+                        execution_id: int,
+                        is_single_artifact: bool = True,
+                        index: int = 0) -> Text:
   """Generate uri for output artifact."""
   if is_single_artifact:
     # TODO(b/145680633): Consider differentiating different types of uris.
@@ -215,8 +215,8 @@ class BaseDriver(object):
 
       is_single_artifact = len(output_list) == 1
       for i, artifact in enumerate(output_list):
-        artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
-                                            is_single_artifact, i)
+        artifact.uri = generate_output_uri(base_output_dir, name, execution_id,
+                                           is_single_artifact, i)
         _prepare_output_paths(artifact)
 
       result[name] = output_list

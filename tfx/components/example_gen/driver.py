@@ -87,7 +87,7 @@ class Driver(base_driver.BaseDriver):
 
     example_artifact = artifact_utils.get_single_instance(
         result[utils.EXAMPLES_KEY])
-    example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+    example_artifact.uri = base_driver.generate_output_uri(
         base_output_dir, utils.EXAMPLES_KEY, execution_id)
     example_artifact.set_string_custom_property(
         utils.FINGERPRINT_PROPERTY_NAME,
