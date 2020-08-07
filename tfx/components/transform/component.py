@@ -112,16 +112,18 @@ class Transform(base_component.BaseComponent):
         function. Exactly one of 'module_file' or 'preprocessing_fn' must be
         supplied.
       splits_config: A transform_pb2.SplitsConfig instance, providing splits
-        that should be analyzed and splits that should be transformed. Default
-        behavior (when splits_config is not set) is analyze the 'train' split
-        and transform all splits. If splits_config is set, analyze_splits cannot
+        that should be analyzed and splits that should be transformed. Note
+        analyze_splits and transform_splits can have overlap. Default behavior
+        (when splits_config is not set) is analyze the 'train' split and
+        transform all splits. If splits_config is set, analyze_splits cannot
         be empty.
       transform_graph: Optional output 'TransformPath' channel for output of
         'tf.Transform', which includes an exported Tensorflow graph suitable for
         both training and serving;
       transformed_examples: Optional output 'ExamplesPath' channel for
-        materialized transformed examples, which includes both 'train' and
-        'eval' splits if custom splits is not specified in splits_config.
+        materialized transformed examples, which includes transform_splits as
+        specified in splits_config. If custom split is not provided, this should
+        include both 'train' and 'eval' splits.
       input_data: Backwards compatibility alias for the 'examples' argument.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.

@@ -288,9 +288,9 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - input_data: A list of type `standard_artifacts.Examples` which
-          should contain two splits 'train' and 'eval' if custom splits
-          is not specified in splits_config.
+        - input_data: A list of type `standard_artifacts.Examples` which should
+          contain custom splits specified in splits_config. If custom split is
+          not provided, this should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
@@ -306,10 +306,11 @@ class Executor(base_executor.BaseExecutor):
           implements 'preprocessing_fn'. Exactly one of 'module_file' and
           'preprocessing_fn' should be set.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
-          that should be analyzed and splits that should be transformed. Default
-          behavior (when splits_config is not set) is analyze the 'train' split
-          and transform all splits. If splits_config is set, analyze_splits
-          cannot be empty.
+          that should be analyzed and splits that should be transformed. Note
+          analyze_splits and transform_splits can have overlap. Default behavior
+          (when splits_config is not set) is analyze the 'train' split and
+          transform all splits. If splits_config is set, analyze_splits cannot
+          be empty.
 
     Returns:
       None
@@ -384,11 +385,11 @@ class Executor(base_executor.BaseExecutor):
         labels.ANALYZE_DATA_PATHS_LABEL:
             analyze_data_paths,
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            [labels.FORMAT_TFRECORD for _ in range(len(analyze_data_paths))],
+            [labels.FORMAT_TFRECORD] * len(analyze_data_paths),
         labels.TRANSFORM_DATA_PATHS_LABEL:
             transform_data_paths,
         labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL:
-            [labels.FORMAT_TFRECORD for _ in range(len(transform_data_paths))],
+            [labels.FORMAT_TFRECORD] * len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
@@ -924,7 +925,7 @@ class Executor(base_executor.BaseExecutor):
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
         self._RunInPlaceImpl(preprocessing_fn, input_dataset_metadata,
-                             typespecs, transform_output_path)
+                             transform_output_path)
         # TODO(b/122478841): Writes status to status file.
         return
 
@@ -1220,14 +1221,12 @@ class Executor(base_executor.BaseExecutor):
   def _RunInPlaceImpl(
       self, preprocessing_fn: Any,
       metadata: dataset_metadata.DatasetMetadata,
-      typespecs: Dict[Text, tf.TypeSpec], # pylint: disable=unused-argument
       transform_output_path: Text) -> _Status:
     """Runs a transformation iteration in-place without looking at the data.
 
     Args:
       preprocessing_fn: The tf.Transform preprocessing_fn.
       metadata: A DatasetMetadata object for the input data.
-      typespecs: a Dict[Text, tf.TypeSpec]
       transform_output_path: An absolute path to write the output to.
 
     Returns:
