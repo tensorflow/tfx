@@ -118,8 +118,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       transform_graph=transform.outputs['transform_graph'],
       schema=schema_gen.outputs['schema'],
       # Adjust these steps when training on the full dataset.
-      train_args=trainer_pb2.TrainArgs(num_steps=2),
-      eval_args=trainer_pb2.EvalArgs(num_steps=1))
+      train_args=trainer_pb2.TrainArgs(num_steps=17000),
+      eval_args=trainer_pb2.EvalArgs(num_steps=1700))
 
   # Get the latest blessed model for model validation.
   model_resolver = ResolverNode(
@@ -170,9 +170,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       example_validator,
       transform,
       trainer,
-      model_resolver,
-      evaluator,
-      pusher,
+      #model_resolver,
+      #evaluator,
+      #pusher,
   ]
 
   return pipeline.Pipeline(
