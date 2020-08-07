@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Text, Union
+from typing import Any, Dict, List, Optional, Text, Union
 
 import jinja2
 
@@ -54,8 +54,8 @@ def resolve_container_template(
                 executor_specs.TemplatedExecutorContainerSpec):
     return executor_spec.ExecutorContainerSpec(
         image=container_spec_tmpl.image,
-        command=resolve_container_command_line(
-            container_spec=container_spec_tmpl,
+        command=_resolve_container_command_line(
+            cmd_args=container_spec_tmpl.command,
             input_dict=input_dict,
             output_dict=output_dict,
             exec_properties=exec_properties,
@@ -78,8 +78,9 @@ def _render_text(text: Text, context: Dict[Text, Any]) -> Text:
   return jinja2.Template(text).render(context)
 
 
-def resolve_container_command_line(
-    container_spec: executor_specs.TemplatedExecutorContainerSpec,
+def _resolve_container_command_line(
+    cmd_args: Optional[List[
+        executor_specs.CommandlineArgumentType]],
     input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any],
@@ -87,7 +88,7 @@ def resolve_container_command_line(
   """Resolves placeholders in the command line of a container.
 
   Args:
-    container_spec: ContainerSpec to resolve
+    cmd_args: command line args to resolve.
     input_dict: Dictionary of input artifacts consumed by this component.
     output_dict: Dictionary of output artifacts produced by this component.
     exec_properties: Dictionary of execution properties.
@@ -104,7 +105,7 @@ def resolve_container_command_line(
       return cmd_arg
     elif isinstance(cmd_arg, placeholders.InputValuePlaceholder):
       if cmd_arg.input_name in exec_properties:
-        return exec_properties[cmd_arg.input_name]
+        return str(exec_properties[cmd_arg.input_name])
       else:
         artifact = input_dict[cmd_arg.input_name][0]
         return str(artifact.value)
@@ -126,7 +127,7 @@ def resolve_container_command_line(
           .format(type(cmd_arg), str(executor_specs.CommandlineArgumentType)))
 
   resolved_command_line = []
-  for cmd_arg in (container_spec.command or []):
+  for cmd_arg in (cmd_args or []):
     resolved_cmd_arg = expand_command_line_arg(cmd_arg)
     if not isinstance(resolved_cmd_arg, (str, Text)):
       raise TypeError(

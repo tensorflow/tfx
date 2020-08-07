@@ -256,6 +256,30 @@ class ComponentSpecTest(tf.test.TestCase):
     # Okay since y is optional.
     _ = SimpleComponentSpec(x=10, z=Channel(type=_Z))
 
+  def testOptionalInputs(self):
+
+    class SpecWithOptionalInput(ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {'x': ChannelParameter(type=_Z, optional=True)}
+      OUTPUTS = {}
+
+    optional_not_specified = SpecWithOptionalInput()
+    self.assertNotIn('x', optional_not_specified.inputs.keys())
+    optional_specified = SpecWithOptionalInput(x=Channel(type=_Z))
+    self.assertIn('x', optional_specified.inputs.keys())
+
+  def testOptionalOutputs(self):
+
+    class SpecWithOptionalOutput(ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {'x': ChannelParameter(type=_Z, optional=True)}
+
+    optional_not_specified = SpecWithOptionalOutput()
+    self.assertNotIn('x', optional_not_specified.outputs.keys())
+    optional_specified = SpecWithOptionalOutput(x=Channel(type=_Z))
+    self.assertIn('x', optional_specified.outputs.keys())
+
   def testExecutionParameterTypeCheck(self):
     int_parameter = ExecutionParameter(type=int)
     int_parameter.type_check('int_parameter', 8)

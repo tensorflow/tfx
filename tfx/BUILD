@@ -11,21 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-licenses(["notice"])  # Apache 2.0
 
-sh_binary(
-    name = "build_pip_package",
-    srcs = ["build_pip_package.sh"],
-    data = [
-        "//tfx/orchestration/kubeflow/proto:kubeflow_pb2.py",
-        "//tfx/proto:bulk_inferrer_pb2.py",
-        "//tfx/proto:evaluator_pb2.py",
-        "//tfx/proto:example_gen_pb2.py",
-        "//tfx/proto:infra_validator_pb2.py",
-        "//tfx/proto:pusher_pb2.py",
-        "//tfx/proto:trainer_pb2.py",
-        "//tfx/proto/orchestration:execution_result_pb2.py",
-        "//tfx/proto/orchestration:executor_invocation_pb2.py",
-        "//tfx/proto/orchestration:pipeline_pb2.py",
-    ],
-)
+# Despite no content, every .bzl file must have a corresponding package
+# therefore leaving this empty BUILD file to mark this directory as a bazel
+# package. (Bazel says "this BUILD file does not need to do anything except
+# exists".)

@@ -29,12 +29,14 @@ import apache_beam as beam
 from six import with_metaclass
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.example_gen import utils
+from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
+
+from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
@@ -294,7 +296,6 @@ class BaseExampleGenExecutor(
     output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
       for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-        output_examples_artifact.set_string_custom_property(
-            utils.PAYLOAD_FORMAT_PROPERTY_NAME,
-            example_gen_pb2.PayloadFormat.Name(output_payload_format))
+        examples_utils.set_payload_format(
+            output_examples_artifact, output_payload_format)
     logging.info('Examples generated.')

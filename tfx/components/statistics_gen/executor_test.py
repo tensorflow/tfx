@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.components.statistics_gen.executor."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 import tempfile
 
@@ -28,6 +22,7 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -58,7 +53,8 @@ class ExecutorTest(absltest.TestCase):
     # Create input dict.
     examples = standard_artifacts.Examples()
     examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    examples.split_names = artifact_utils.encode_split_names(
+        ['train', 'eval', 'test'])
 
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
@@ -67,19 +63,29 @@ class ExecutorTest(absltest.TestCase):
         executor.EXAMPLES_KEY: [examples],
     }
 
+    exec_properties = {
+        # List needs to be serialized before being passed into Do function.
+        executor.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test']),
+    }
+
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(input_dict, output_dict, exec_properties={})
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
         os.path.join(stats.uri, 'train', 'stats_tfrecord'))
     self._validate_stats_output(
         os.path.join(stats.uri, 'eval', 'stats_tfrecord'))
+
+    # Assert 'test' split is excluded.
+    self.assertFalse(
+        tf.io.gfile.exists(os.path.join(stats.uri, 'test', 'stats_tfrecord')))
 
   def testDoWithSchemaAndStatsOptions(self):
     source_data_dir = os.path.join(
@@ -105,6 +111,8 @@ class ExecutorTest(absltest.TestCase):
     exec_properties = {
         executor.STATS_OPTIONS_JSON_KEY:
             tfdv.StatsOptions(label_feature='company').to_json(),
+        executor.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps([])
     }
 
     # Create output dict.
@@ -117,8 +125,7 @@ class ExecutorTest(absltest.TestCase):
 
     # Run executor.
     stats_gen_executor = executor.Executor()
-    stats_gen_executor.Do(
-        input_dict, output_dict, exec_properties=exec_properties)
+    stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
@@ -149,8 +156,10 @@ class ExecutorTest(absltest.TestCase):
 
     exec_properties = {
         executor.STATS_OPTIONS_JSON_KEY:
-            tfdv.StatsOptions(label_feature='company',
-                              schema=schema_pb2.Schema()).to_json(),
+            tfdv.StatsOptions(
+                label_feature='company', schema=schema_pb2.Schema()).to_json(),
+        executor.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps([])
     }
 
     # Create output dict.
@@ -164,8 +173,7 @@ class ExecutorTest(absltest.TestCase):
     # Run executor.
     stats_gen_executor = executor.Executor()
     with self.assertRaises(ValueError):
-      stats_gen_executor.Do(
-          input_dict, output_dict, exec_properties=exec_properties)
+      stats_gen_executor.Do(input_dict, output_dict, exec_properties)
 
 
 if __name__ == '__main__':

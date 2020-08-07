@@ -41,13 +41,8 @@ class UdfUtilsTest(tf.test.TestCase):
     mock_import_func.assert_called_once_with('path.to', 'test_fn')
 
   def testGetFnFailure(self):
-    exec_properties = {
-        'module_file': 'path/to/module_file.py',
-        'test_fn': 'path.to.test_fn',
-    }
-
     with self.assertRaises(ValueError):
-      udf_utils.get_fn(exec_properties, 'test_fn')
+      udf_utils.get_fn({}, 'test_fn')
 
 
 if __name__ == '__main__':

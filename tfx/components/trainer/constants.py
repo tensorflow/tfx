@@ -29,11 +29,11 @@ BASE_MODEL_KEY = 'base_model'
 # Key for hyperparameters in executor input_dict.
 HYPERPARAMETERS_KEY = 'hyperparameters'
 
-# Key for train args.
+# Key for train args in executor exec_properties.
 TRAIN_ARGS_KEY = 'train_args'
-# Key for eval args.
+# Key for eval args in executor exec_properties.
 EVAL_ARGS_KEY = 'eval_args'
-# Key for custom config.
+# Key for custom config in executor exec_properties.
 CUSTOM_CONFIG_KEY = 'custom_config'
 
 # Key for output model in executor output_dict.

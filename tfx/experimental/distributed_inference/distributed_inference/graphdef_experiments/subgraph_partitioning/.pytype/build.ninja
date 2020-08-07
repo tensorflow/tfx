@@ -1,0 +1,21 @@
+rule infer
+  command = /usr/local/google/home/jzhunybj/anaconda3/bin/python -m pytype.single --imports_info $imports --module-name $module -V 3.7 -o $out --no-report-errors --nofail --quick $in
+  description = infer $module
+rule check
+  command = /usr/local/google/home/jzhunybj/anaconda3/bin/python -m pytype.single --imports_info $imports --module-name $module -V 3.7 -o $out --analyze-annotated --nofail --quick $in
+  description = check $module
+build /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/create_complex_graph.pyi: infer /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/create_complex_graph.py
+  imports = /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/create_complex_graph.imports
+  module = create_complex_graph
+build /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/execution_spec.pyi: infer /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/execution_spec.py
+  imports = /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/execution_spec.imports
+  module = execution_spec
+build /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/graph_partition.pyi: infer /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/graph_partition.py | /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/execution_spec.pyi
+  imports = /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/graph_partition.imports
+  module = graph_partition
+build /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline.pyi: infer /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline.py | /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/execution_spec.pyi
+  imports = /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/beam_pipeline.imports
+  module = beam_pipeline
+build /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline_test.pyi: check /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/beam_pipeline_test.py | /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/create_complex_graph.pyi /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/graph_partition.pyi /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/pyi/beam_pipeline.pyi
+  imports = /usr/local/google/home/jzhunybj/Desktop/tfx/tfx/experimental/distributed_inference/graphdef_experiments/subgraph_partitioning/.pytype/imports/beam_pipeline_test.imports
+  module = beam_pipeline_test
