@@ -338,7 +338,7 @@ def _retrieve_latest_span_version(
         span_ints = [int(elem) for elem in span_strs]
       except ValueError:
         raise ValueError(
-            'Cannot find %s number from %s based on %s' %
+            'Cannot find %s number using date from %s based on %s' %
             (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
       try:
         span_int = (datetime(*span_ints) - UNIX_EPOCH_DATE).days
@@ -398,8 +398,9 @@ def calculate_splits_fingerprint_span_and_version(
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
-    is either the value matched with the {SPAN} placeholder, or '0' if the
-    placeholder wasn't specified, and where select_version is either the
+    is either the value matched with the {SPAN} placeholder, the value mapped
+    from matching the calendar date with the date placeholders {YYYY}, {MM},
+    {DD} or 0 if a placeholder wasn't specified, and where select_version is either the
     value matched with the {VERSION} placeholder, or None if the placeholder
     wasn't specified.
   """

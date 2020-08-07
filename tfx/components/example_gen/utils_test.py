@@ -413,7 +413,8 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
+    with self.assertRaisesRegexp(ValueError,
+        'Cannot find span number from date'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
