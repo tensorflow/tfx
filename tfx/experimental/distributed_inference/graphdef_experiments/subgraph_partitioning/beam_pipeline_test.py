@@ -20,9 +20,9 @@ import apache_beam as beam
 from apache_beam.testing import test_pipeline
 from apache_beam.testing import util
 
-import create_complex_graph
-import graph_partition
-import beam_pipeline
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import beam_pipeline
 
 
 class BeamPipelineTest(tf.test.TestCase):

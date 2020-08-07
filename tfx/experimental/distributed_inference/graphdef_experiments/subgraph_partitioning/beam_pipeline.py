@@ -46,7 +46,7 @@ from typing import Dict, Generator, List, Optional, Mapping, Set, Text
 import tensorflow as tf
 import apache_beam as beam
 
-import execution_spec
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
 
 
 @beam.ptransform_fn

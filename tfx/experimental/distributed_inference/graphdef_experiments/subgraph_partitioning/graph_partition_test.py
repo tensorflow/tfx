@@ -17,10 +17,8 @@ import os
 import tempfile
 import tensorflow as tf
 
-#from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
-#from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
-import create_complex_graph
-import graph_partition
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 from google.protobuf import text_format
 
 

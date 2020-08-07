@@ -47,8 +47,7 @@ The current implementation has some key limitations:
 import collections
 from typing import Dict, List, Mapping, Set, Text
 import tensorflow as tf
-#from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
-import execution_spec
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import execution_spec
 
 
 def get_graph_name_to_graph_def(
