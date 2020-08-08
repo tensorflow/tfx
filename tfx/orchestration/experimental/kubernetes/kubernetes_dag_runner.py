@@ -11,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definition of Beam TFX runner."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import datetime
-from typing import Optional, Text, Type
+"""Definition of kubernetes TFX runner."""
 
 import absl
+import datetime
+import re
+import time
+from typing import Optional, Text, Type
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.dsl.component.experimental import container_component
@@ -39,6 +36,7 @@ from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.utils import json_utils, kube_utils
 from google.protobuf import json_format
+from kubernetes import client
 import json
 
 _CONTAINER_COMMAND = [
@@ -53,11 +51,19 @@ _WRAPPER_SUFFIX = 'Wrapper'
 
 _TFX_IMAGE = 'gcr.io/tfx-eric/tfx-dev'
 
+
+def _sanitize_pod_name(pod_name: Text) -> Text:
+  pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
+  pod_name = re.sub(r'^[-]+', '', pod_name)
+  return re.sub(r'[-]+', '-', pod_name)
+
+
 def is_inside_cluster() -> bool:
   """Determines if kubernetes dag runner is executed from within a cluster.
   Can be pacthed for testing purpose.
   """
   return kube_utils.is_inside_cluster()
+
 
 def get_default_kubernetes_metadata_config(
 ) -> metadata_store_pb2.ConnectionConfig:
@@ -250,6 +256,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
       ran_components.add(component)
 
+
   def _run_as_kubernetes_job(self, pipeline: tfx_pipeline.Pipeline) -> None:
     """Submits and runs a tfx pipeline from outside the cluster.
 
@@ -261,16 +268,86 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         '--serialized_pipeline',
         serialized_pipeline,
     ]
-    api_instance = kube_utils.make_batch_v1_api()
+    batch_api = kube_utils.make_batch_v1_api()
+    job_name = 'Job_' + pipeline.pipeline_info.run_id
+    pod_label = _sanitize_pod_name(job_name)
+    container_name = 'pipeline-orchestrator'
     job = kube_utils.make_job_object(
-        name='Job_' + pipeline.pipeline_info.run_id,
+        name=job_name,
         container_image=_TFX_IMAGE,
         command=_DRIVER_COMMAND + arguments,
+        container_name=container_name,
+        pod_labels={
+            'job-name': pod_label,
+        },
     )
-    api_response = api_instance.create_namespaced_job(
-        "default", job, pretty=True)
-    absl.logging.info('Submitted Job to Kubernetes: %s', api_response)
+    try:
+      batch_api.create_namespaced_job(
+          "default", job, pretty=True)
+    except client.rest.ApiException as e:
+      raise RuntimeError('Failed to submit job! \nReason: %s\nBody: %s' %
+                         (e.reason, e.body))
 
+    # Wait for pod to start
+    orchestrator_pods = []
+    core_api = kube_utils.make_core_v1_api()
+    start_time = datetime.datetime.utcnow()
+    while not orchestrator_pods and (datetime.datetime.utcnow() - start_time
+                                     ).seconds < 300:
+      try:
+        orchestrator_pods = core_api.list_namespaced_pod(
+            namespace='default',
+            label_selector='job-name={}'.format(pod_label)
+        ).items
+      except client.rest.ApiException as e:
+        if e.status != 404:
+          raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
+                             (e.reason, e.body))
+      time.sleep(1)
+
+    # transient orchestrator should only have 1 pod
+    orchestrator_pod = orchestrator_pods.pop()
+    pod_name = orchestrator_pod.metadata.name
+
+    #TODO(https://github.com/tensorflow/tfx/pull/2248): refactor protected members
+    cond = kubernetes_component_launcher._pod_is_not_pending # pylint: disable=W0212
+    absl.logging.info('Waiting for pod "default:%s" to start.', pod_name)
+    kube_utils.wait_pod(
+        core_api,
+        pod_name,
+        'default',
+        exit_condition_lambda=cond,
+        condition_description='non-pending status')
+
+    # stream logs from pod
+    absl.logging.info('Start log streaming for pod "default:%s".', pod_name)
+    try:
+      logs = core_api.read_namespaced_pod_log(
+          name=pod_name,
+          namespace='default',
+          container=container_name,
+          follow=True,
+          _preload_content=False).stream()
+    except client.rest.ApiException as e:
+      raise RuntimeError(
+          'Failed to stream the logs from the pod!\nReason: %s\nBody: %s' %
+          (e.reason, e.body))
+
+    for log in logs:
+      absl.logging.info(log.decode().rstrip('\n'))
+
+    cond = kubernetes_component_launcher._pod_is_done # pylint: disable=W0212
+    resp = kube_utils.wait_pod(
+        core_api,
+        pod_name,
+        'default',
+        exit_condition_lambda=cond,
+        condition_description='done state',
+        expotential_backoff=True)
+
+    if resp.status.phase == kube_utils.PodPhase.FAILED.value:
+      raise RuntimeError('Pod "default:%s" failed with status "%s".' %
+                         (pod_name, resp.status))
 
   def _serialize_pipeline(self, pipeline: tfx_pipeline.Pipeline) -> Text:
     """Serializes a TFX pipeline.

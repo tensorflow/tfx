@@ -19,9 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import enum
+import datetime
 import os
 import re
-from typing import List, Text
+from absl import logging
+from typing import Callable, Dict, List, Optional, Text
 
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
@@ -160,12 +162,14 @@ def make_job_object(
     command: List[Text],
     namespace: Text = 'default',
     container_name: Text = 'jobcontainer',
+    pod_labels: Dict[Text, Text] = None,
 ) -> k8s_client.V1Job:
   """Make a kubernetes Job object.
 
   See
   https://kubernetes.io/docs/concepts/workloads/controllers/job/#writing-a-job-spec
   """
+  pod_labels = pod_labels or {}
   return k8s_client.V1Job(
       api_version="batch/v1",
       kind="Job",
@@ -176,6 +180,9 @@ def make_job_object(
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
           template=k8s_client.V1PodTemplateSpec(
+              metadata=k8s_client.V1ObjectMeta(
+                  labels=pod_labels,
+              ),
               spec=k8s_client.V1PodSpec(
                   containers=[
                       k8s_client.V1Container(
@@ -237,3 +244,65 @@ def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
     return client.read_namespaced_pod(name=pod_name, namespace=namespace)
   except KeyError:
     raise RuntimeError('Cannot determine KFP pod from the environment.')
+
+
+def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
+            namespace: Text) -> Optional[k8s_client.V1Pod]:
+  """Get a pod from Kubernetes metadata API.
+  Args:
+    core_api: Client of Core V1 API of Kubernetes API.
+    pod_name: The name of the POD.
+    namespace: The namespace of the POD.
+  Returns:
+    The found POD object. None if it's not found.
+  Raises:
+    RuntimeError: When it sees unexpected errors from Kubernetes API.
+  """
+  try:
+    return core_api.read_namespaced_pod(name=pod_name, namespace=namespace)
+  except k8s_client.rest.ApiException as e:
+    if e.status != 404:
+      raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
+                         (e.reason, e.body))
+    return None
+
+
+def wait_pod(core_api: k8s_client.CoreV1Api,
+             pod_name: Text,
+             namespace: Text,
+             exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
+             condition_description: Text,
+             timeout_sec: int = 300,
+             expotential_backoff: bool = False) -> k8s_client.V1Pod:
+  """Wait for a POD to meet an exit condition.
+  Args:
+    core_api: Client of Core V1 API of Kubernetes API.
+    pod_name: The name of the POD.
+    namespace: The namespace of the POD.
+    exit_condition_lambda: A lambda which will be called intervally to wait
+      for a POD to exit. The function returns True to exit.
+    condition_description: The description of the exit condition which will be
+      set in the error message if the wait times out.
+    timeout_sec: The seconds for the function to wait. Defaults to 300s.
+  Returns:
+    The POD object which meets the exit condition.
+  Raises:
+    RuntimeError: when the function times out.
+  """
+  start_time = datetime.datetime.utcnow()
+  # Exponential backoff: https://cloud.google.com/storage/docs/exponential-backoff
+  backoff_interval = 1
+  maximum_backoff = 32
+  while True:
+    resp = get_pod(core_api, pod_name, namespace)
+    logging.info(resp.status.phase)
+    if exit_condition_lambda(resp):
+      return resp
+    elapse_time = datetime.datetime.utcnow() - start_time
+    if elapse_time.seconds >= timeout_sec:
+      raise RuntimeError(
+          'Pod "%s:%s" does not reach "%s" within %s seconds.' %
+          (namespace, pod_name, condition_description, timeout_sec))
+    time.sleep(backoff_interval)
+    if expotential_backoff and backoff_interval < maximum_backoff:
+      backoff_interval *= 2
