@@ -19,10 +19,8 @@ from typing import Any, Dict, List, Text
 from absl import logging
 
 from tfx import types
-from tfx.components.trainer import constants
 from tfx.types import artifact_utils
 from tfx.utils import kube_utils
-from tfx.extensions.google_cloud_kubernetes.trainer import executor
 from kubernetes.client.rest import ApiException
 import kubernetes.client as client
 
@@ -63,10 +61,10 @@ def create_worker_pods(job_args: List[Text],
   # TODO(ericlege): consider using a jinja2 template instead
   for i in range(num_workers):
     tf_config = json.dumps({
-      'cluster': {
-          'worker': worker_hosts
-      },
-      'task': {'type': 'worker', 'index': i}
+        'cluster': {
+            'worker': worker_hosts
+        },
+        'task': {'type': 'worker', 'index': i}
     })
     pod = client.V1Pod(
         metadata=client.V1ObjectMeta(
@@ -86,8 +84,8 @@ def create_worker_pods(job_args: List[Text],
                     args=job_args,
                     env=[
                         client.V1EnvVar(
-                          name='TF_CONFIG',
-                          value=tf_config,
+                            name='TF_CONFIG',
+                            value=tf_config,
                         ),
                     ],
                     ports=[
