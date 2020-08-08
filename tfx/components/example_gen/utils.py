@@ -234,7 +234,7 @@ def _retrieve_latest_span_version(
   If Version is present, but not Span, an error is raised. If neither Span
   nor Version is present, returns both as None.
 
-  Additonally, supports parsing span number from datesteamps using the Date.
+  Additonally, supports parsing span number from date stamps using the Date.
   specs. Once the calendar date is parsed from the Date specs, it is converted into
   a span number by counting the number of days since 01/01/1970.
 
@@ -369,6 +369,7 @@ def _retrieve_latest_span_version(
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
+  # Update split pattern so executor can find the files to ingest.
   if is_match_span:
     split.pattern = split.pattern.replace(SPAN_SPEC, latest_span_elems[0])
   elif is_match_date:
