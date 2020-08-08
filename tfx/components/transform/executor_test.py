@@ -209,8 +209,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testCounters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:
@@ -245,8 +244,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def testDoWithCache(self):
     # First run that creates cache.
     self._exec_properties['module_file'] = self._module_file
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset. Since the analysis dataset (train) is read twice when
@@ -265,8 +263,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._input_dict[labels.CACHE_INPUT_PATH_LABEL] = [input_cache_artifact]
 
     self._exec_properties['module_file'] = self._module_file
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
     # Since input cache should now cover all analysis (train) paths, the train
     # and eval sets are each read exactly once for transform. Thus, the
