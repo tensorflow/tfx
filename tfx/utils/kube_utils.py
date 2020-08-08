@@ -215,6 +215,7 @@ def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
                          (e.reason, e.body))
     return None
 
+
 def wait_pod(core_api: k8s_client.CoreV1Api,
              pod_name: Text,
              namespace: Text,
