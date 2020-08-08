@@ -138,7 +138,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
+  def _runPipelineGetMetrics(self):
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
@@ -152,7 +152,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
         autospec=True,
         side_effect=_create_pipeline_wrapper):
       transform_executor = executor.Executor()
-      transform_executor.Do(inputs, outputs, exec_properties)
+      transform_executor.Do(self._input_dict, self._output_dict,
+                            self._exec_properties)
     assert len(pipelines) == 1
     return pipelines[0].metrics
 
