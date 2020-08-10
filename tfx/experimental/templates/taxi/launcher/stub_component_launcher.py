@@ -25,8 +25,9 @@ from __future__ import print_function
 from tfx.experimental.pipeline_testing import base_stub_component_launcher
 from tfx.experimental.templates.taxi.pipeline import configs
 
+
 class StubComponentLauncher(
-    base_stub_component_launcher.BaseStubComponentLauncher):  # pylint: disable=line-too-long
+    base_stub_component_launcher.BaseStubComponentLauncher):
   """Responsible for launching stub executors in KFP Template.
 
   This stub component launcher cannot be defined within kubeflow_dag_runner.py

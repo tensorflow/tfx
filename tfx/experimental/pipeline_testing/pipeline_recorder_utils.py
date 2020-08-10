@@ -29,6 +29,7 @@ from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+
 def _get_paths(metadata_connection: metadata.Metadata,
                executions: List[metadata_store_pb2.Execution],
                output_dir: Text) -> Iterable[Tuple[Text, Text]]:

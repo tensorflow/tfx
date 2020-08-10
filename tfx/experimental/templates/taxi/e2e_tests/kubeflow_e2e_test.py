@@ -24,7 +24,7 @@ from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
-class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
+class TaxiTemplateKubeflowE2ETest(test_utils.KubeflowBaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 10
   _MAX_POLLING_COUNT = 20 * 6  # 20 min.

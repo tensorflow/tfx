@@ -37,6 +37,7 @@ from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
 
+
 class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
   """Example of custom stub executor.
 

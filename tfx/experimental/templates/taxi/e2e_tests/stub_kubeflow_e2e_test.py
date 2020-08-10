@@ -25,7 +25,8 @@ from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.utils import io_utils
 
-class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
+
+class StubKubeflowE2ETest(test_utils.KubeflowBaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 10
   _MAX_POLLING_COUNT = 20 * 6  # 20 min.
@@ -126,10 +127,8 @@ class StubKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self.assertTrue(tf.io.gfile.exists(self._record_dir))
     logging.info("Pipeline has been recorded.")
     # Enable stub executors
-    self._uncomment('kubeflow_dag_runner.py',
-                    ['supported_launcher_classes=[',
-                     '    stub_component_launcher.StubComponentLauncher',
-                     '],'])
+    self._uncomment_multiline_variables('kubeflow_dag_runner.py', ['supported_launcher_classes'])
+
     # Update the pipeline to use stub executors.
     self._update_pipeline()
     self._run_pipeline()

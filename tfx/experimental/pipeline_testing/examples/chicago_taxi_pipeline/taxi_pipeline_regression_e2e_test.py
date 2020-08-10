@@ -33,6 +33,7 @@ from tfx.orchestration.config import pipeline_config
 
 from ml_metadata.proto import metadata_store_pb2
 
+
 class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def setUp(self):

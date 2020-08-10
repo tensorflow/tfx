@@ -25,9 +25,9 @@ import os
 import subprocess
 import tarfile
 import time
-import urllib.request
 
 from typing import Text, List, Iterable, Tuple
+import urllib.request
 
 from absl import logging
 from click import testing as click_testing
@@ -40,6 +40,7 @@ from tfx.utils import io_utils
 from tfx.utils import telemetry_utils
 import yaml
 from google.cloud import storage
+
 
 class BaseEndToEndTest(tf.test.TestCase):
   """This test covers step 1~6 of the accompanying document[1] for taxi template.
@@ -144,7 +145,9 @@ class BaseEndToEndTest(tf.test.TestCase):
     path = os.path.join(self._project_dir, filepath)
     result = []
     commented_variables = ['# ' + variable + ' =' for variable in variables]
+    commented_arguments = ['# ' + variable + '=[' for variable in variables]
     in_variable_definition = False
+    in_argument_definition = False
 
     with open(path) as fp:
       for line in fp:
@@ -157,10 +160,26 @@ class BaseEndToEndTest(tf.test.TestCase):
             continue
           else:
             in_variable_definition = False
+        if in_argument_definition:
+          print(line)
+          if line.lstrip().startswith("# "):
+            if "]" in line:
+              result.append(line.replace("# ", ""))
+              in_argument_definition = False
+              continue
+            else:
+              result.append(line.replace("# ", ""))
+              continue
+
         for commented_var in commented_variables:
           if line.startswith(commented_var):
             in_variable_definition = True
             result.append(line[2:])
+            break
+        for commented_var in commented_arguments:
+          if line.lstrip().startswith(commented_var):
+            in_argument_definition = True
+            result.append(line.replace("# ", ''))
             break
         else:
           # doesn't include a variable definition to uncomment.
@@ -182,6 +201,12 @@ class BaseEndToEndTest(tf.test.TestCase):
     ])
     self.assertEqual(0, result.exit_code)
     self.assertIn('Copying taxi pipeline template', result.output)
+
+class KubeflowBaseEndToEndTest(BaseEndToEndTest):
+  """This test covers step 1~6 of the accompanying document[1] for taxi template.
+
+  [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
+  """
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
