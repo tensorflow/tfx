@@ -463,6 +463,100 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(span, 1)
     self.assertEqual(version, 1)
 
+  def testSpanWidthBadFormat(self):
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{SPANx}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError,
+        'Span spec with width modifier is improperly formatted'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+  def testSpanInvalidWidth(self):
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{SPAN:x}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError,
+        'Width modifier in span spec is not an integer'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+  
+  def testSpanWidth(self):
+    split1 = os.path.join(self._input_base_path, 'span1', 'split1', 'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    # TODO(jjma): find a better way of describing this error to user.
+    with self.assertRaisesRegexp(ValueError,
+        'Cannot find matching for split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+    
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:1}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+
+  def testVersionWidthBadFormat(self):
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{SPAN}/{VERSIONx}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError,
+        'Version spec with width modifier is improperly formatted'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+
+  def testVersionInvalidWidth(self):
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{SPAN}/{VERSION:x}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError,
+        'Width modifier in version spec is not an integer'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+  
+  def testVersionWidth(self):
+    split1 = os.path.join(self._input_base_path, 'span1', 'ver1', 'split1',
+                          'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:1}/ver{VERISON:2}/split1/*')
+    ]
+
+    # TODO(jjma): find a better way of describing this error to user.
+    with self.assertRaisesRegexp(ValueError,
+        'Cannot find matching for split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits)
+    
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:1}/ver{VERSION:1}/split1/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 1)
+    self.assertEqual(version, 1)
+
   def testCalculateSplitsFingerprintSpanAndVersionWithSpan(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',

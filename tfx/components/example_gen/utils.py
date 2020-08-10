@@ -294,8 +294,8 @@ def _retrieve_latest_span_version(
   latest_version = None
 
   if is_match_span:
-    span_width_regex = '.*'
-    # Check if span spec has any width args.
+    # Check if span spec has any width args. Defaults to greedy matching.
+    span_width_regex = '.*?'
     if len(span_arg_match[0]) > 0:
       # Check for proper formatting of span spec with width modifier.
       # This spec should have the form '{SPAN:xxx}', where the span regex
@@ -305,14 +305,16 @@ def _retrieve_latest_span_version(
                          'formatted: %s' % split.pattern)
       try:
         span_width = int(span_arg_match[0][1:])
-        span_width_regex = '{%s}' % str(span_width)
+        span_width_regex = '.{%s}' % str(span_width)
       except ValueError:
-        raise ValueError('Width modifier for span spec is not an integer: %s' %
+        raise ValueError('Width modifier in span spec is not an integer: %s' %
                          split.pattern)
 
-    split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
-    split_regex_pattern = split_regex_pattern.replace(
-        SPAN_SPEC, '(?P<{}>{})'.format(SPAN_PROPERTY_NAME, span_width_regex))
+    split_glob_pattern = re.sub(SPAN_SPEC_REGEX, '*', split_glob_pattern)
+    split_regex_pattern = re.sub(SPAN_SPEC_REGEX,
+        '(?P<{}>{})'.format(SPAN_PROPERTY_NAME, span_width_regex),
+        split_regex_pattern)
+
   elif is_match_date:
     for spec in DATE_SPECS:
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
@@ -333,8 +335,8 @@ def _retrieve_latest_span_version(
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
     
-    version_width_regex = '.*'
-    # Check if version spec has any width args.
+    # Check if version spec has any width args. Defaults to greedy matching.
+    version_width_regex = '.*?'
     if len(version_arg_match[0]) > 0:
       # Check for proper formatting of version spec with width modifier.
       # This spec should have the form '{SPAN:xxx}', where the version regex
@@ -344,15 +346,15 @@ def _retrieve_latest_span_version(
                          'formatted: %s' % split.pattern)
       try:
         version_width = int(version_arg_match[0][1:])
-        version_width_regex = '{%s}' % str(version_width)
+        version_width_regex = '.{%s}' % str(version_width)
       except ValueError:
-        raise ValueError('Width modifier for version spec is not an integer: %s'
+        raise ValueError('Width modifier in version spec is not an integer: %s'
                          % split.pattern)
 
-    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
-    split_regex_pattern = split_regex_pattern.replace(
-        VERSION_SPEC, '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
-                                          version_width_regex))
+    split_glob_pattern = re.sub(VERSION_SPEC_REGEX, '*', split_glob_pattern)
+    split_regex_pattern = re.sub(VERSION_SPEC_REGEX,
+        '(?P<{}>{})'.format(VERSION_PROPERTY_NAME, version_width_regex),
+        split_regex_pattern)
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
