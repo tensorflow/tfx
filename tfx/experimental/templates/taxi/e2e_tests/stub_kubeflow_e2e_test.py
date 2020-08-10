@@ -127,7 +127,8 @@ class StubKubeflowE2ETest(test_utils.KubeflowBaseEndToEndTest):
     self.assertTrue(tf.io.gfile.exists(self._record_dir))
     logging.info("Pipeline has been recorded.")
     # Enable stub executors
-    self._uncomment_multiline_variables('kubeflow_dag_runner.py', ['supported_launcher_classes'])
+    self._uncomment_multiline_variables('kubeflow_dag_runner.py',
+                                        ['supported_launcher_classes'])
 
     # Update the pipeline to use stub executors.
     self._update_pipeline()

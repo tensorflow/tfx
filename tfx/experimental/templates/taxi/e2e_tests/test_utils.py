@@ -161,7 +161,6 @@ class BaseEndToEndTest(tf.test.TestCase):
           else:
             in_variable_definition = False
         if in_argument_definition:
-          print(line)
           if line.lstrip().startswith("# "):
             if "]" in line:
               result.append(line.replace("# ", ""))
