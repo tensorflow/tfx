@@ -27,6 +27,7 @@ from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ComponentTest(tf.test.TestCase):
@@ -36,11 +37,14 @@ class ComponentTest(tf.test.TestCase):
     model_exports = standard_artifacts.Model()
     evaluator = component.Evaluator(
         examples=channel_utils.as_channel([examples]),
-        model=channel_utils.as_channel([model_exports]))
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'])
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
                      evaluator.outputs['evaluation'].type_name)
     self.assertEqual(standard_artifacts.ModelBlessing.TYPE_NAME,
                      evaluator.outputs['blessing'].type_name)
+    self.assertEqual(
+        json_utils.dumps(['eval']), evaluator.exec_properties['example_splits'])
 
   def testConstructWithBaselineModel(self):
     examples = standard_artifacts.Examples()
@@ -106,7 +110,19 @@ class ComponentTest(tf.test.TestCase):
             slicing_specs=[tfma.SlicingSpec(feature_keys=['trip_start_hour'])]),
         schema=channel_utils.as_channel([schema]),)
     self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
-                     evaluator.outputs['output'].type_name)
+                     evaluator.outputs['evaluation'].type_name)
+
+  def testConstructWithModuleFile(self):
+    examples = standard_artifacts.Examples()
+    model_exports = standard_artifacts.Model()
+    evaluator = component.Evaluator(
+        examples=channel_utils.as_channel([examples]),
+        model=channel_utils.as_channel([model_exports]),
+        example_splits=['eval'],
+        module_file='path')
+    self.assertEqual(standard_artifacts.ModelEvaluation.TYPE_NAME,
+                     evaluator.outputs['evaluation'].type_name)
+    self.assertEqual('path', evaluator.exec_properties['module_file'])
 
 
 if __name__ == '__main__':

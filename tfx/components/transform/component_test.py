@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 from typing import Text
 import tensorflow as tf
 from tfx.components.transform import component
@@ -38,11 +39,14 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform):
+  def _verify_outputs(self, transform, materialize=True):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     transform.outputs['transformed_examples'].type_name)
+    if materialize:
+      self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                       transform.outputs['transformed_examples'].type_name)
+    else:
+      self.assertNotIn('transformed_examples', transform.outputs.keys())
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
@@ -76,6 +80,29 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(preprocessing_fn,
                      transform.spec.exec_properties['preprocessing_fn'])
 
+  def testConstructWithMaterializationDisabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        materialize=False)
+    self._verify_outputs(transform, materialize=False)
+
+  def testConstructFromPreprocessingFnWithCustomConfig(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    custom_config = {'param': 1}
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn=preprocessing_fn,
+        custom_config=custom_config,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(preprocessing_fn,
+                     transform.spec.exec_properties['preprocessing_fn'])
+    self.assertEqual(json.dumps(custom_config),
+                     transform.spec.exec_properties['custom_config'])
+
   def testConstructMissingUserModule(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
@@ -92,6 +119,15 @@ class ComponentTest(tf.test.TestCase):
           preprocessing_fn='path.to.my_preprocessing_fn',
       )
 
+  def testConstructWithMaterializationDisabledButOutputExamples(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          materialize=False,
+          transformed_examples=channel_utils.as_channel(
+              [standard_artifacts.Examples()]))
 
 if __name__ == '__main__':
   tf.test.main()

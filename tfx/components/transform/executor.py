@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
+import json
 import os
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
@@ -38,10 +40,8 @@ from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
 from tfx import types
 from tfx.components.base import base_executor
-from tfx.components.experimental.data_view import utils as data_view_utils
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
-from tfx.components.util import examples_utils
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
 from tfx.proto import example_gen_pb2
@@ -310,37 +310,35 @@ class Executor(base_executor.BaseExecutor):
                                                   'train')
     eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
                                                  'eval')
-    assert len(input_dict[EXAMPLES_KEY]) == 1
-    payload_format = examples_utils.get_payload_format(
-        input_dict[EXAMPLES_KEY][0])
-    # TODO(b/161734559): currently there is only one input Examples artifact.
-    # When there are multiple (e.g. when Transform is to handle multiple spans
-    # because of continuous training), we need to add a piece of logic to get
-    # the URI to the LATEST data_view (the DataViews attached to each span may
-    # differ). This will guarantee that each span will share the same Arrow
-    # schema, thus tensors fed to the preprocessing_fn. The DataView will need
-    # to guarantee backward compatibilty with older spans. Usually the DataView
-    # is a struct2tensor query, so such guarantee is provided by protobuf
-    # (as long as the user follows the basic principles of making changes to
-    # the proto).
-    data_view_uri = data_view_utils.get_data_view_uri(
-        input_dict[EXAMPLES_KEY][0])
+    payload_format, data_view_uri = (
+        tfxio_utils.resolve_payload_format_and_data_view_uri(
+            input_dict[EXAMPLES_KEY]))
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
-    # TODO(b/161490287): move the split_names setting to executor for all
-    #                    components.
-    transformed_example_artifact = artifact_utils.get_single_instance(
-        output_dict[TRANSFORMED_EXAMPLES_KEY])
-    transformed_example_artifact.split_names = artifact_utils.encode_split_names(
-        artifact.DEFAULT_EXAMPLE_SPLITS)
-    transformed_train_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
-    transformed_eval_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
+
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
+
+    materialize_output_paths = []
+    if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
+      transformed_example_artifact = artifact_utils.get_single_instance(
+          output_dict[TRANSFORMED_EXAMPLES_KEY])
+      # TODO(b/161490287): move the split_names setting to executor for all
+      # components.
+      transformed_example_artifact.split_names = (
+          artifact_utils.encode_split_names(artifact.DEFAULT_EXAMPLE_SPLITS))
+      transformed_train_output = artifact_utils.get_split_uri(
+          output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
+      transformed_eval_output = artifact_utils.get_split_uri(
+          output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
+      materialize_output_paths = [
+          os.path.join(transformed_train_output,
+                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
+          os.path.join(transformed_eval_output,
+                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+      ]
 
     def _GetCachePath(label, params_dict):
       if label not in params_dict:
@@ -353,8 +351,10 @@ class Executor(base_executor.BaseExecutor):
             False,
         labels.SCHEMA_PATH_LABEL:
             schema_file,
-        labels.EXAMPLES_DATA_FORMAT_LABEL: payload_format,
-        labels.DATA_VIEW_LABEL: data_view_uri,
+        labels.EXAMPLES_DATA_FORMAT_LABEL:
+            payload_format,
+        labels.DATA_VIEW_LABEL:
+            data_view_uri,
         labels.ANALYZE_DATA_PATHS_LABEL:
             io_utils.all_files_pattern(train_data_uri),
         labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
@@ -370,6 +370,8 @@ class Executor(base_executor.BaseExecutor):
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
             exec_properties.get('preprocessing_fn', None),
+        labels.CUSTOM_CONFIG:
+            exec_properties.get('custom_config', None),
     }
     cache_input = _GetCachePath('cache_input_path', input_dict)
     if cache_input is not None:
@@ -377,12 +379,8 @@ class Executor(base_executor.BaseExecutor):
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: [
-            os.path.join(transformed_train_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-            os.path.join(transformed_eval_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-        ],
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL:
+            materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
     cache_output = _GetCachePath('cache_output_path', output_dict)
@@ -714,12 +712,15 @@ class Executor(base_executor.BaseExecutor):
                           unused_outputs: Mapping[Text, Any]) -> Any:
     """Returns a user defined preprocessing_fn.
 
+    If a custom config is provided in inputs, and also needed in
+    preprocessing_fn, bind it to preprocessing_fn.
+
     Args:
       inputs: A dictionary of labelled input values.
       unused_outputs: A dictionary of labelled output values.
 
     Returns:
-      User defined function.
+      User defined function, optionally bound with a custom config.
 
     Raises:
       ValueError: When neither or both of MODULE_FILE and PREPROCESSING_FN
@@ -736,15 +737,26 @@ class Executor(base_executor.BaseExecutor):
           'supplied in inputs.')
 
     if has_module_file:
-      return import_utils.import_func_from_source(
+      fn = import_utils.import_func_from_source(
           value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
           'preprocessing_fn')
+    else:
+      preprocessing_fn_path_split = value_utils.GetSoleValue(
+          inputs, labels.PREPROCESSING_FN).split('.')
+      fn = import_utils.import_func_from_module(
+          '.'.join(preprocessing_fn_path_split[0:-1]),
+          preprocessing_fn_path_split[-1])
 
-    preprocessing_fn_path_split = value_utils.GetSoleValue(
-        inputs, labels.PREPROCESSING_FN).split('.')
-    return import_utils.import_func_from_module(
-        '.'.join(preprocessing_fn_path_split[0:-1]),
-        preprocessing_fn_path_split[-1])
+    # For compatibility, only bind custom config if it's in the signature.
+    if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
+      custom_config_json = value_utils.GetSoleValue(inputs,
+                                                    labels.CUSTOM_CONFIG)
+      custom_config = (json.loads(
+          custom_config_json) if custom_config_json else {}) or {}
+      result = functools.partial(fn, custom_config=custom_config)
+    else:
+      result = fn
+    return result
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
@@ -772,6 +784,8 @@ class Executor(base_executor.BaseExecutor):
         - labels.MODULE_FILE: Path to a Python module that contains the
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
+          preprocessing_fn, optional.
+        - labels.CUSTOM_CONFIG: Dictionary of additional parameters for
           preprocessing_fn, optional.
         - labels.DATA_VIEW_LABEL: DataView to be used to read the Example,
           optional
