@@ -30,13 +30,14 @@ import urllib.request
 from absl import logging
 import tensorflow as tf
 
+from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import telemetry_utils
 import yaml
 from google.cloud import storage
 
-class KubeflowBaseEndToEndTest(BaseEndToEndTest):
+class KubeflowBaseEndToEndTest(test_utils.BaseEndToEndTest):
   """This test covers step 1~6 of the accompanying document[1] for taxi template.
   [1]https://github.com/tensorflow/tfx/blob/master/docs/tutorials/tfx/template.ipynb
   """
