@@ -295,7 +295,7 @@ def _retrieve_latest_span_version(
 
   if is_match_span:
     # Check if span spec has any width args. Defaults to greedy matching.
-    span_width_regex = '.*?'
+    span_width_regex = '.*'
     if len(span_arg_match[0]) > 0:
       # Check for proper formatting of span spec with width modifier.
       # This spec should have the form '{SPAN:xxx}', where the span regex
@@ -336,7 +336,7 @@ def _retrieve_latest_span_version(
                        (VERSION_SPEC, split.pattern))
     
     # Check if version spec has any width args. Defaults to greedy matching.
-    version_width_regex = '.*?'
+    version_width_regex = '.*'
     if len(version_arg_match[0]) > 0:
       # Check for proper formatting of version spec with width modifier.
       # This spec should have the form '{SPAN:xxx}', where the version regex
@@ -417,14 +417,14 @@ def _retrieve_latest_span_version(
 
   # Update split pattern so executor can find the files to ingest.
   if is_match_span:
-    split.pattern = split.pattern.replace(SPAN_SPEC, latest_span_elems[0])
+    split.pattern = re.sub(SPAN_SPEC_REGEX, latest_span_elems[0], split.pattern)
   elif is_match_date:
     for spec, value in zip(DATE_SPECS, latest_span_elems):
       split.pattern = split.pattern.replace(spec, value)
 
   latest_version_int = None
   if is_match_version:
-    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+    split.pattern = re.sub(VERSION_SPEC_REGEX, latest_version, split.pattern)
     latest_version_int = int(latest_version)
     
   return latest_span_int, latest_version_int
