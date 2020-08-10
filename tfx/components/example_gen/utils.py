@@ -51,10 +51,14 @@ FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
+# Span spec regex to parse digit modifier.
+SPAN_SPEC_REGEX = '{SPAN(.*?)}'
 # Key for the `version` custom property of output examples artifact.
 VERSION_PROPERTY_NAME = 'version'
 # Version spec used in split pattern.
 VERSION_SPEC = '{VERSION}'
+# Span spec regex to parse digit modifier.
+VERSION_SPEC_REGEX = '{VERSION(.*?)}'
 # Date specs used in split pattern.
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
@@ -256,7 +260,11 @@ def _retrieve_latest_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-  is_match_span = SPAN_SPEC in split.pattern
+
+  # Match occurences of pattern '{SPAN*}' and capture .
+  span_arg_match = re.findall(SPAN_SPEC_REGEX, split.pattern)
+
+  is_match_span = len(span_arg_match) > 0
   is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
   if [is_match_span, is_match_date].count(True) > 1:
     raise ValueError('Either span spec or date specs must be specified '
@@ -273,7 +281,7 @@ def _retrieve_latest_span_version(
                        'present.')
     return (None, None)
 
-  if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
+  if is_match_span and len(span_arg_match) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
   elif is_match_date and not all(split.pattern.count(spec) == 1
@@ -286,9 +294,25 @@ def _retrieve_latest_span_version(
   latest_version = None
 
   if is_match_span:
+    span_width_regex = '.*'
+    # Check if span spec has any width args.
+    if len(span_arg_match[0]) > 0:
+      # Check for proper formatting of span spec with width modifier.
+      # This should have the form '{SPAN:xxx}', where the span regex
+      # captures the spec args ':xxx'.
+      if span_arg_match[0][0] != ':':
+        raise ValueError('Span spec with width modifier is improperly '
+                         'formatted: %s' % split.pattern)
+      try:
+        span_width = int(span_arg_match[0][1:])
+        span_width_regex = '{%s}' % str(span_width)
+      except ValueError:
+        raise ValueError('Width modifier for span spec is not an integer: %s' %
+                         split.pattern)
+
     split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
-        SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+        SPAN_SPEC, '(?P<{}>{})'.format(SPAN_PROPERTY_NAME, span_width_regex))
   elif is_match_date:
     for spec in DATE_SPECS:
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
@@ -301,14 +325,34 @@ def _retrieve_latest_span_version(
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
 
-  is_match_version = VERSION_SPEC in split.pattern
+  # Match occurences of pattern '{VERSION*}'.
+  version_arg_match = re.findall(VERSION_SPEC_REGEX, split.pattern)
+  is_match_version = len(version_arg_match) > 0
   if is_match_version:
-    if split.pattern.count(VERSION_SPEC) != 1:
+    if len(version_arg_match) != 1:
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
+    
+    version_width_regex = '.*'
+    # Check if version spec has any width args.
+    if len(version_arg_match[0]) > 0:
+      # Check for proper formatting of version spec with width modifier.
+      # This should have the form '{VERSION:xxx}', where the version regex
+      # captures the version args ':xxx'.
+      if version_arg_match[0][0] != ':':
+        raise ValueError('Version spec with width modifier is improperly '
+                         'formatted: %s' % split.pattern)
+      try:
+        version_width = int(version_arg_match[0][1:])
+        version_width_regex = '{%s}' % str(version_width)
+      except ValueError:
+        raise ValueError('Width modifier for version spec is not an integer: %s'
+                         % split.pattern)
+
     split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
-        VERSION_SPEC, '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
+        VERSION_SPEC, '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
+                                          version_width_regex))
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
