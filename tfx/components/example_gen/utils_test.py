@@ -414,7 +414,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Cannot find span number from date'):
+        'Cannot find span number using date'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
