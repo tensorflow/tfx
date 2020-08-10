@@ -261,7 +261,7 @@ def _retrieve_latest_span_version(
       - If a matching cannot be found for split pattern provided.
   """
 
-  # Match occurences of pattern '{SPAN*}' and capture .
+  # Match occurences of pattern '{SPAN*}' and capture span width argument.
   span_arg_match = re.findall(SPAN_SPEC_REGEX, split.pattern)
 
   is_match_span = len(span_arg_match) > 0
@@ -298,8 +298,8 @@ def _retrieve_latest_span_version(
     # Check if span spec has any width args.
     if len(span_arg_match[0]) > 0:
       # Check for proper formatting of span spec with width modifier.
-      # This should have the form '{SPAN:xxx}', where the span regex
-      # captures the spec args ':xxx'.
+      # This spec should have the form '{SPAN:xxx}', where the span regex
+      # captures the sequence ':xxx'.
       if span_arg_match[0][0] != ':':
         raise ValueError('Span spec with width modifier is improperly '
                          'formatted: %s' % split.pattern)
@@ -325,7 +325,7 @@ def _retrieve_latest_span_version(
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
 
-  # Match occurences of pattern '{VERSION*}'.
+  # Match occurences of pattern '{VERSION*}' and capture version width argument.
   version_arg_match = re.findall(VERSION_SPEC_REGEX, split.pattern)
   is_match_version = len(version_arg_match) > 0
   if is_match_version:
@@ -337,8 +337,8 @@ def _retrieve_latest_span_version(
     # Check if version spec has any width args.
     if len(version_arg_match[0]) > 0:
       # Check for proper formatting of version spec with width modifier.
-      # This should have the form '{VERSION:xxx}', where the version regex
-      # captures the version args ':xxx'.
+      # This spec should have the form '{SPAN:xxx}', where the version regex
+      # captures the sequence ':xxx'.
       if version_arg_match[0][0] != ':':
         raise ValueError('Version spec with width modifier is improperly '
                          'formatted: %s' % split.pattern)
