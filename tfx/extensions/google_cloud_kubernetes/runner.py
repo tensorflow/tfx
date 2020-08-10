@@ -82,6 +82,9 @@ def create_worker_pods(job_args: List[Text],
                     image=_TFX_IMAGE,
                     command=_COMMAND,
                     args=job_args,
+                    security_context=client.V1SecurityContext(
+                        privileged=True,
+                    ),
                     env=[
                         client.V1EnvVar(
                             name='TF_CONFIG',
