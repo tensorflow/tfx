@@ -169,18 +169,20 @@ class BaseEndToEndTest(tf.test.TestCase):
             else:
               result.append(line.replace("# ", ""))
               continue
-
+        uncommented = False
         for commented_var in commented_variables:
           if line.startswith(commented_var):
             in_variable_definition = True
             result.append(line[2:])
+            uncommented = True
             break
         for commented_var in commented_arguments:
           if line.lstrip().startswith(commented_var):
             in_argument_definition = True
             result.append(line.replace("# ", ''))
+            uncommented = True
             break
-        else:
+        if not uncommented:
           # doesn't include a variable definition to uncomment.
           result.append(line)
 
