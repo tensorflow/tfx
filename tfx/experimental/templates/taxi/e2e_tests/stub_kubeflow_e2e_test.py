@@ -21,12 +21,12 @@ import kfp
 import tensorflow as tf
 
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.templates.taxi.e2e_tests import test_utils
+from tfx.experimental.templates.taxi.e2e_tests import kfp_test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.utils import io_utils
 
 
-class StubKubeflowE2ETest(test_utils.KubeflowBaseEndToEndTest):
+class StubKubeflowE2ETest(kfp_test_utils.KubeflowBaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 10
   _MAX_POLLING_COUNT = 20 * 6  # 20 min.

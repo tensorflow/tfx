@@ -19,12 +19,12 @@ import os
 from absl import logging
 import kfp
 import tensorflow as tf
-from tfx.experimental.templates.taxi.e2e_tests import test_utils
+from tfx.experimental.templates.taxi.e2e_tests import kfp_test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 
 
-class TaxiTemplateKubeflowE2ETest(test_utils.KubeflowBaseEndToEndTest):
+class TaxiTemplateKubeflowE2ETest(kfp_test_utils.KubeflowBaseEndToEndTest):
 
   _POLLING_INTERVAL_IN_SECONDS = 10
   _MAX_POLLING_COUNT = 20 * 6  # 20 min.
