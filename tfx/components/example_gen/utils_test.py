@@ -558,6 +558,21 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(span, 1)
     self.assertEqual(version, 1)
 
+  def testSpanVersionWidthNoSeperator(self):
+    split1 = os.path.join(self._input_base_path, '1234', 'split1',
+                          'data')
+    io_utils.write_string_file(split1, 'testing')
+
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{SPAN:2}{VERSION:2}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits)
+    self.assertEqual(span, 12)
+    self.assertEqual(version, 34)
+
   def testCalculateSplitsFingerprintSpanAndVersionWithSpan(self):
     # Test align of span and version numbers.
     span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'ver01',

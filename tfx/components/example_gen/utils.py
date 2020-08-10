@@ -294,7 +294,8 @@ def _retrieve_latest_span_version(
   latest_version = None
 
   if is_match_span:
-    # Check if span spec has any width args. Defaults to greedy matching.
+    # Check if span spec has any width args. Defaults to greedy matching if 
+    # no widh modifiers are present.
     span_width_regex = '.*'
     if len(span_arg_match[0]) > 0:
       # Check for proper formatting of span spec with width modifier.
@@ -305,6 +306,8 @@ def _retrieve_latest_span_version(
                          'formatted: %s' % split.pattern)
       try:
         span_width = int(span_arg_match[0][1:])
+        if span_width <= 0:
+          raise ValueError()
         span_width_regex = '.{%s}' % str(span_width)
       except ValueError:
         raise ValueError('Width modifier in span spec is not an integer: %s' %
@@ -335,7 +338,8 @@ def _retrieve_latest_span_version(
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
     
-    # Check if version spec has any width args. Defaults to greedy matching.
+    # Check if version spec has any width modifier. Defaults to greedy matching
+    # if no widh modifiers are present.
     version_width_regex = '.*'
     if len(version_arg_match[0]) > 0:
       # Check for proper formatting of version spec with width modifier.
@@ -346,10 +350,12 @@ def _retrieve_latest_span_version(
                          'formatted: %s' % split.pattern)
       try:
         version_width = int(version_arg_match[0][1:])
+        if version_width <= 0:
+          raise ValueError()
         version_width_regex = '.{%s}' % str(version_width)
       except ValueError:
-        raise ValueError('Width modifier in version spec is not an integer: %s'
-                         % split.pattern)
+        raise ValueError('Width modifier in version spec is not a positive '
+                         'integer: %s' split.pattern)
 
     split_glob_pattern = re.sub(VERSION_SPEC_REGEX, '*', split_glob_pattern)
     split_regex_pattern = re.sub(VERSION_SPEC_REGEX,
