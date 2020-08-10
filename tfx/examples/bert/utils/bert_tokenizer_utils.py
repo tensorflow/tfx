@@ -180,13 +180,11 @@ class BertPreprocessor(object):
         shape=[None, max_len], default_value=tf.constant(1, dtype=tf.int64))
     return word_ids, input_mask, segment_ids
 
-  def char_index_to_bert_index(
-      self,
-      char_index,
-      original_sentence,
-      tokenized_sentence,
-      shifts=0):
-    
+  def char_index_to_bert_index(self, char_index: tf.Tensor,
+                               original_sentence: tf.Tensor,
+                               tokenized_sentence: tf.RaggedTensor,
+                               shifts: int = 0):
+
     @tf.function
     def space_seperate_helper(x):
       s, c = x[0], x[1]
@@ -197,11 +195,10 @@ class BertPreprocessor(object):
         return tf.cond(tf.equal(char, ' '), lambda: (i+1, cur+1),
             lambda: (i+1, cur))
       return tf.while_loop(condition, action, comb)[1]
-    
-    space_seperate_result = tf.map_fn(
-        space_seperate_helper,
-        (original_sentence, char_index),
-        dtype=tf.int32)
+
+    space_seperate_result = tf.map_fn(space_seperate_helper,
+                                      (original_sentence, char_index),
+                                      dtype=tf.int32)
 
     @tf.function
     def find_bert_index(x):
@@ -213,20 +210,35 @@ class BertPreprocessor(object):
         return (i+1, cur + tf.size(rag[i]))
       return tf.while_loop(condition, action, comb)[1]
 
-    answer = tf.map_fn(
-        find_bert_index,
-        (space_seperate_result, tokenized_sentence),
-        dtype=tf.int32)
+    answer = tf.map_fn(find_bert_index,
+                       (space_seperate_result, tokenized_sentence),
+                       dtype=tf.int32)
 
     return answer
 
-  def preprocess_squad(
-      self,
-      max_len,
-      context,
-      question,
-      answer_start,
-      answer_text):
+  def preprocess_squad(self, max_len: int, context: tf.Tensor,
+      question: tf.Tensor, answer_start: tf.SparseTensor,
+      answer_text: tf.SparseTensor):
+    """Preprocess the squad dataset.
+
+    Concatenate the context and question tensors. Tokenize them. Convert answer
+    to vector tensors indicating the start and end token of to the answer in the
+    context input.
+
+    Args:
+      max_len: The length of the concatenated tokenized sentences.
+      context: [batch_size, 1]
+      question: [batch_size, 1]
+      answer_start: [batch_size,]
+      answer_text: [batch_size,]
+
+    Returns:
+      word_ids: Tokenized sequences [batch_size, max_len].
+      input_mask: Mask padded tokens [batch_size, max_len].
+      segment_ids: Distinguish multiple sequences [batch_size, max_len].
+      labels: Dim two tokens [batch_size, max_len, 2]
+    """
+  
 
     # answer_start and answer_text are sparse tensor. Currently, just use the
     # first possible answer.

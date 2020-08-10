@@ -156,7 +156,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
-  pusher = Pusher(
+  _ = Pusher(
       model=trainer.outputs['model'],
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
