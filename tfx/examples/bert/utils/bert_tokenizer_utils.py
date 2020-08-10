@@ -12,14 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-<<<<<<< HEAD
-"""Prepressing using tensorflow_text BertTokenizer"""
-
-import tensorflow as tf
-import tensorflow_text as text
-from tensorflow.python.eager.context import eager_mode
-import tensorflow_hub as hub
-=======
 """Prepressing using tensorflow_text BertTokenizer."""
 
 from __future__ import absolute_import
@@ -34,34 +26,22 @@ import tensorflow_text as text
 
 from tensorflow.python.eager.context import eager_mode  # pylint: disable=g-direct-tensorflow-import
 
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
 
 _CLS = '[CLS]'
 _PAD = '[PAD]'
 _SEP = '[SEP]'
 
-<<<<<<< HEAD
-class BertPreprocessor():
-  """ Bert Tokenizer built ontop of tensorflow_text.BertTokenizer"""
-
-  def __init__(self, model_link):
-=======
 
 class BertPreprocessor(object):
   """Bert Tokenizer built ontop of tensorflow_text.BertTokenizer."""
 
   def __init__(self, model_link: Text):
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
     self._model_link = model_link
     self._model = hub.KerasLayer(model_link)
     self._find_special_tokens()
 
   def _find_special_tokens(self):
-<<<<<<< HEAD
-    """Find the special token ID's for [CLS] [PAD] [SEP]
-=======
     """Find the special token ID's for [CLS] [PAD] [SEP].
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
 
     Since each Bert model is trained on different vocabulary, it's important
     to find the special token indices pertaining to that model.
@@ -79,20 +59,11 @@ class BertPreprocessor(object):
         self._cls_id = lines.index(_CLS)
         self._pad_id = lines.index(_PAD)
 
-<<<<<<< HEAD
-  def tokenize_single_sentence_unpad(
-      self,
-      sequence,
-      max_len=128,
-      add_cls=True,
-      add_sep=True):
-=======
   def tokenize_single_sentence_unpad(self,
                                      sequence: tf.Tensor,
                                      max_len: int = 128,
                                      add_cls: bool = True,
                                      add_sep: bool = True):
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
     """Tokenize a sentence with the BERT model vocab file and without padding.
 
     Add special tokens according to config.
@@ -115,36 +86,12 @@ class BertPreprocessor(object):
     # Tokenizer default puts tokens into array of size 1. merge_dims flattens it
     word_ids = word_ids.merge_dims(-2, -1)
     if add_cls:
-<<<<<<< HEAD
-      cls_token = tf.fill(
-          [tf.shape(sequence)[0], 1],
-          tf.constant(self._cls_id, dtype=tf.int64))
-=======
       cls_token = tf.fill([tf.shape(sequence)[0], 1],
                           tf.constant(self._cls_id, dtype=tf.int64))
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
 
       word_ids = tf.concat([cls_token, word_ids], 1)
 
     if add_sep:
-<<<<<<< HEAD
-      sep_token = tf.fill(
-          [tf.shape(sequence)[0], 1],
-          tf.constant(self._sep_id, dtype=tf.int64))
-      word_ids = tf.concat([word_ids, sep_token], 1)
-
-    if not max_len is None:
-      word_ids = word_ids[:, :max_len-1]
-
-    return word_ids
-
-  def tokenize_single_sentence_pad(
-      self,
-      sequence,
-      max_len=128,
-      add_cls=True,
-      add_sep=True):
-=======
       sep_token = tf.fill([tf.shape(sequence)[0], 1],
                           tf.constant(self._sep_id, dtype=tf.int64))
 
@@ -158,7 +105,6 @@ class BertPreprocessor(object):
                                    max_len: int = 128,
                                    add_cls: bool = True,
                                    add_sep: bool = True):
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
     """Tokenize a single sentence according to the vocab used by the Bert model.
 
     Add special tokens according to config.
@@ -174,42 +120,20 @@ class BertPreprocessor(object):
       input_mask: Mask padded tokens [batch_size, max_len].
       segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
-<<<<<<< HEAD
-    word_ids = self.tokenize_single_sentence_unpad(
-        sequence,
-        max_len,
-        add_cls,
-        add_sep)
-=======
     word_ids = self.tokenize_single_sentence_unpad(sequence, max_len, add_cls,
                                                    add_sep)
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
 
     word_ids = word_ids.to_tensor(
         shape=[None, max_len],
         default_value=tf.constant(self._pad_id, dtype=tf.int64))
 
     input_mask = tf.cast(tf.not_equal(word_ids, self._pad_id), tf.int64)
-<<<<<<< HEAD
-    segment_ids = tf.fill(
-        tf.shape(input_mask),
-        tf.constant(0, dtype=tf.int64))
-
-    return word_ids, input_mask, segment_ids
-
-  def tokenize_sentence_pair(
-      self,
-      sequence_a,
-      sequence_b,
-      max_len):
-=======
     segment_ids = tf.fill(tf.shape(input_mask), tf.constant(0, dtype=tf.int64))
 
     return word_ids, input_mask, segment_ids
 
   def tokenize_sentence_pair(self, sequence_a: tf.Tensor, sequence_b: tf.Tensor,
                              max_len: int):
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
     """Tokenize a sequence pair.
 
     Tokenize each sequence with self.tokenize_single_sentence. Then add CLS
@@ -226,16 +150,9 @@ class BertPreprocessor(object):
       input_mask: Mask padded tokens [batch_size, max_len].
       segment_ids: Distinguish multiple sequences [batch_size, max_len].
     """
-<<<<<<< HEAD
-    # TODO: the issue here is nuanced. Depending on the dataset, one might want
-    # to keep the entire first sentence, or the second. The truncate strategy
-    # here is worth discussing. Since truncating to half works for MRPC, left
-    # unchanged for now.
-=======
     # TODO(dzats): the issue here is nuanced. Depending on the dataset, one
     # might want to keep the entire first sentence, or the second. Consider
     # alternate truncate stratagies.
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43
     sentence_len = max_len // 2
     word_id_a = self.tokenize_single_sentence_unpad(
         sequence_a,
@@ -260,11 +177,8 @@ class BertPreprocessor(object):
     # Fill a ragged tensor of zero with word_id_a's shape
     segment_ids = tf.cast(word_id_a < 0, tf.int64)
     segment_ids = segment_ids.to_tensor(
-<<<<<<< HEAD
-        shape=[None, max_len],
-        default_value=tf.constant(1, dtype=tf.int64))
+        shape=[None, max_len], default_value=tf.constant(1, dtype=tf.int64))
     return word_ids, input_mask, segment_ids
-
 
   def char_index_to_bert_index(
       self,
@@ -280,7 +194,8 @@ class BertPreprocessor(object):
       condition = lambda i, cur: tf.less(i, c)
       def action(i, cur):
         char = tf.strings.substr(s, tf.squeeze(i), 1)
-        return tf.cond(tf.equal(char, ' '), lambda: (i+1, cur+1), lambda: (i+1, cur))
+        return tf.cond(tf.equal(char, ' '), lambda: (i+1, cur+1),
+            lambda: (i+1, cur))
       return tf.while_loop(condition, action, comb)[1]
     
     space_seperate_result = tf.map_fn(
@@ -313,6 +228,8 @@ class BertPreprocessor(object):
       answer_start,
       answer_text):
 
+    # answer_start and answer_text are sparse tensor. Currently, just use the
+    # first possible answer.
     if tf.rank(answer_start) != 1:
       answer_start = tf.reshape(tf.slice(answer_start, [0, 0], [-1, 1]), [-1])
       answer_text = tf.reshape(tf.slice(answer_text, [0, 0], [-1, 1]), [-1])
@@ -354,7 +271,9 @@ class BertPreprocessor(object):
     answer_size = tf.map_fn(tf.size, tokenized_answer_text, dtype=tf.int32)
     # Account for 0 index
     label_end = label_start + answer_size - 1
-    label_start_one = tf.reshape(tf.one_hot(label_start, max_len), [-1, max_len])
+    label_start_one = tf.reshape(
+        tf.one_hot(label_start, max_len),
+        [-1, max_len])
     label_end_one = tf.reshape(tf.one_hot(label_end, max_len), [-1, max_len])
     labels = tf.stack([label_start_one, label_end_one], axis=2)
     # Dealing with question and context
@@ -371,8 +290,3 @@ class BertPreprocessor(object):
         default_value=tf.constant(1, dtype=tf.int64))
 
     return word_ids, input_mask, segment_ids, labels
-    
-=======
-        shape=[None, max_len], default_value=tf.constant(1, dtype=tf.int64))
-    return word_ids, input_mask, segment_ids
->>>>>>> c7a67f4a400574a6347e8042bca7ff5cd6452f43

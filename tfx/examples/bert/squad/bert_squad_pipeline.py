@@ -170,9 +170,9 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       example_validator,
       transform,
       trainer,
-      #model_resolver,
-      #evaluator,
-      #pusher,
+      # model_resolver,
+      # evaluator,
+      # pusher,
   ]
 
   return pipeline.Pipeline(
