@@ -23,7 +23,6 @@ from typing import Optional, Text
 
 import click
 
-from tfx import version
 from tfx.tools.cli.container_builder import buildspec
 from tfx.tools.cli.container_builder import labels
 from tfx.tools.cli.container_builder.dockerfile import Dockerfile
@@ -65,16 +64,9 @@ class ContainerBuilder(object):
         python package for the workspace directory. If not specified, the
         whole directory is copied and PYTHONPATH is configured.
     """
-    if base_image is None and version.__version__.endswith('.dev'):
-      raise ValueError('Cannot find a base image automatically in development /'
-                       ' nightly version. Please specify a base image using'
-                       ' --build-base-image flag.')
-
-    base_image = base_image or labels.BASE_IMAGE
     self._skaffold_cmd = skaffold_cmd or labels.SKAFFOLD_COMMAND
     buildspec_filename = buildspec_filename or labels.BUILD_SPEC_FILENAME
     dockerfile_name = dockerfile_name or labels.DOCKERFILE_NAME
-    setup_py_filename = setup_py_filename or labels.SETUP_PY_FILENAME
 
     if os.path.exists(buildspec_filename):
       self._buildspec = buildspec.BuildSpec(filename=buildspec_filename)
