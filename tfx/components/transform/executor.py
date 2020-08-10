@@ -753,8 +753,8 @@ class Executor(base_executor.BaseExecutor):
     if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
       custom_config_json = value_utils.GetSoleValue(inputs,
                                                     labels.CUSTOM_CONFIG)
-      custom_config = json.loads(
-          custom_config_json) if custom_config_json else {}
+      custom_config = (json.loads(
+          custom_config_json) if custom_config_json else {}) or {}
       result = functools.partial(fn, custom_config=custom_config)
     else:
       result = fn
