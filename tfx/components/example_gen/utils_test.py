@@ -484,7 +484,7 @@ class UtilsTest(tf.test.TestCase):
         'Width modifier in version spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
-  
+
   def testSpanWidth(self):
     split1 = os.path.join(self._input_base_path, 'span1', 'split1', 'data')
     io_utils.write_string_file(split1, 'testing')
@@ -499,7 +499,7 @@ class UtilsTest(tf.test.TestCase):
         'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
-    
+
     splits = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN:1}/split1/*')
@@ -525,7 +525,7 @@ class UtilsTest(tf.test.TestCase):
         'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
-    
+
     splits = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/ver{VERSION:1}/split1/*')

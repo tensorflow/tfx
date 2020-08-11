@@ -52,14 +52,14 @@ SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
 # Span spec regex to capture width modifier. This matches the spec '{SPAN:x}'
-# and captures 'x', which is a 1+ length string.
+# and captures 'x', which must be a 1+ length string.
 SPAN_SPEC_WIDTH_REGEX = '{SPAN:(.+?)}'
 # Key for the `version` custom property of output examples artifact.
 VERSION_PROPERTY_NAME = 'version'
 # Version spec used in split pattern.
 VERSION_SPEC = '{VERSION}'
-# Version spec regex to capture width modifier. This matches the spec 
-# '{VERSION:x}' and captures 'x', which is a 1+ length string.
+# Version spec regex to capture width modifier. This matches the spec
+# '{VERSION:x}' and captures 'x', which must be a 1+ length string.
 VERSION_SPEC_WIDTH_REGEX = '{VERSION:(.+?)}'
 # Date specs used in split pattern.
 YEAR_SPEC = '{YYYY}'
@@ -298,7 +298,7 @@ def _retrieve_latest_span_version(
   latest_version = None
 
   if is_match_span:
-    # Check if span spec has any width args. Defaults to greedy matching if 
+    # Check if span spec has any width args. Defaults to greedy matching if
     # no width modifiers are present.
     span_width_regex = '.*'
     if span_matches[0] != '':
@@ -338,7 +338,7 @@ def _retrieve_latest_span_version(
     if len(version_matches) != 1:
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
-    
+
     # Check if version spec has any width modifier. Defaults to greedy matching
     # if no width modifiers are present.
     version_width_regex = '.*'
@@ -350,7 +350,7 @@ def _retrieve_latest_span_version(
         version_width_regex = '.{%s}' % str(version_width)
       except ValueError:
         raise ValueError(
-            'Width modifier in version spec is not a positive integer: %s' % 
+            'Width modifier in version spec is not a positive integer: %s' %
             split.pattern)
 
     split_glob_pattern = re.sub(version_regex, '*', split_glob_pattern)
