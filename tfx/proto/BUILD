@@ -53,3 +53,8 @@ tfx_py_proto_library(
     name = "tuner_proto_py_pb2",
     srcs = ["tuner.proto"],
 )
+
+tfx_py_proto_library(
+    name = "range_config_py_pb2",
+    srcs = ["range_config.proto"],
+)

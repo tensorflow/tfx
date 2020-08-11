@@ -32,5 +32,6 @@ sh_binary(
         "//tfx/proto/orchestration:execution_result_pb2.py",
         "//tfx/proto/orchestration:executor_invocation_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",
+        "//tfx/proto/orchestration:range_config_pb2.py",
     ],
 )
