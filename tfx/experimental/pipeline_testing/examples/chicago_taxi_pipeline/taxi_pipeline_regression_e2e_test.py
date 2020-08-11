@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import filecmp
 import os
 
 from absl import logging
@@ -91,22 +90,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         beam_pipeline_args=[])
 
   def assertDirectoryEqual(self, dir1: Text, dir2: Text):
-    """Recursively comparing contents of two directories."""
-
-    dir_cmp = filecmp.dircmp(dir1, dir2)
-    self.assertEmpty(dir_cmp.left_only)
-    self.assertEmpty(dir_cmp.right_only)
-    self.assertEmpty(dir_cmp.funny_files)
-
-    _, mismatch, errors = filecmp.cmpfiles(
-        dir1, dir2, dir_cmp.common_files, shallow=False)
-    self.assertEmpty(mismatch)
-    self.assertEmpty(errors)
-
-    for common_dir in dir_cmp.common_dirs:
-      new_dir1 = os.path.join(dir1, common_dir)
-      new_dir2 = os.path.join(dir2, common_dir)
-      self.assertDirectoryEqual(new_dir1, new_dir2)
+    self.assertTrue(executor_verifier_utils.compare_dirs(dir1, dir2))
 
   def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
     self.assertTrue(
@@ -139,19 +123,21 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def testStubbedTaxiPipelineBeam(self):
     # Run pipeline with stub executors.
+    # ResolverNode is ignored because it doesn't have a executor that can be replaced with stub.
     stubbed_component_ids = [
         component.id
         for component in self.taxi_pipeline.components
         if not component.id.startswith('ResolverNode')
     ]
 
-    stub_launcher = stub_component_launcher.get_stub_launcher_class(
+    stub_component_launcher.StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
+
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            stub_launcher,
+            stub_component_launcher.StubComponentLauncher,
         ])
     BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
 

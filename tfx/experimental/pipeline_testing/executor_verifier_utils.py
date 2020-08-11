@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import filecmp
 import os
 
 import absl
@@ -34,6 +35,33 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
+
+def compare_dirs(dir1: Text, dir2: Text):
+  """Recursively compares contents of the two directories.
+
+  Args:
+    dir1: path to a directory.
+    dir2: path to another directory.
+
+  Returns:
+    a boolean whether the specified directories have the same file contents.
+  """
+  dir_cmp = filecmp.dircmp(dir1, dir2)
+  if not all(len(v) == 0 for v in (dir_cmp.left_only,
+                                   dir_cmp.right_only,
+                                   dir_cmp.funny_files)):
+    return False
+  _, mismatch, errors = filecmp.cmpfiles(
+      dir1, dir2, dir_cmp.common_files, shallow=False)
+  if len(mismatch) != 0 or len(errors) != 0:
+    return False
+
+  for common_dir in dir_cmp.common_dirs:
+    new_dir1 = os.path.join(dir1, common_dir)
+    new_dir2 = os.path.join(dir2, common_dir)
+    if new_dir1 != new_dir2:
+      return False
+  return True
 
 def _compare_relative_difference(value: float,
                                  expected_value: float,
