@@ -59,7 +59,7 @@ def compare_dirs(dir1: Text, dir2: Text):
   for common_dir in dir_cmp.common_dirs:
     new_dir1 = os.path.join(dir1, common_dir)
     new_dir2 = os.path.join(dir2, common_dir)
-    if new_dir1 != new_dir2:
+    if not compare_dirs(new_dir1, new_dir2):
       return False
   return True
 
