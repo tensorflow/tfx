@@ -235,8 +235,8 @@ def _retrieve_latest_span_version(
   nor Version is present, returns both as None.
 
   Additonally, supports parsing span number from date stamps using the Date.
-  specs. Once the calendar date is parsed from the Date specs, it is converted into
-  a span number by counting the number of days since 01/01/1970.
+  specs. Once the calendar date is parsed from the Date specs, it is converted
+  into a span number by counting the number of days since 01/01/1970.
 
   Args:
     uri: The base path from which files will be searched.
@@ -330,7 +330,7 @@ def _retrieve_latest_span_version(
         span_int = int(span_strs[0])
       except ValueError:
         raise ValueError('Cannot find %s number from %s based on %s' %
-                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+                         (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
 
     elif is_match_date:
       span_strs = [result.group(name) for name in ['year', 'month', 'day']]
@@ -364,8 +364,8 @@ def _retrieve_latest_span_version(
           (latest_version is None or version_int >= int(latest_version))):
       latest_version = version_str
 
-  if latest_span_int is None or (is_match_version and 
-                                    latest_version is None):
+  if latest_span_int is None or (is_match_version and
+                                 latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
@@ -380,7 +380,7 @@ def _retrieve_latest_span_version(
   if is_match_version:
     split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
     latest_version_int = int(latest_version)
-    
+
   return latest_span_int, latest_version_int
 
 
@@ -390,7 +390,7 @@ def calculate_splits_fingerprint_span_and_version(
   """Calculates the fingerprint of files in a URI matching split patterns.
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
-  {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find 
+  {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find
   aligned values that results in all splits having the most recent span and most
   recent version for that span.
 
@@ -402,9 +402,9 @@ def calculate_splits_fingerprint_span_and_version(
     A Tuple of [fingerprint, select_span, select_version], where select_span
     is either the value matched with the {SPAN} placeholder, the value mapped
     from matching the calendar date with the date placeholders {YYYY}, {MM},
-    {DD} or 0 if a placeholder wasn't specified, and where select_version is either the
-    value matched with the {VERSION} placeholder, or None if the placeholder
-    wasn't specified.
+    {DD} or 0 if a placeholder wasn't specified, and where select_version is
+    either the value matched with the {VERSION} placeholder, or None if the
+    placeholder wasn't specified.
   """
 
   split_fingerprints = []
