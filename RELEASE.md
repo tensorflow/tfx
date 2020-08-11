@@ -44,9 +44,11 @@
 *   Added custom config to Transform component and made it available to
     pre-processing fn.
 *   Supported custom extractors in Evaluator.
+*   Deprecated tensorflow dependency from MLMD python client.
 *   Supported `Date` spec in input config for file based ExampleGen.
 *   Span and Version are now stored as `int` custom properties for example
     artifacts, where previously they were stored as strings.
+
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
@@ -66,6 +68,7 @@
 *   Upgraded python version in TFX docker images to 3.7. Older version of
     python (2.7/3.5/3.6) is not available anymore in `tensorflow/tfx` images
     on docker hub. Virtualenv is not used anymore.
+*   Depends on `pyarrow>=0.17,<0.18`.
 
 ## Breaking changes
 
