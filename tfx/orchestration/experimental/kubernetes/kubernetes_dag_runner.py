@@ -29,7 +29,7 @@ from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.kubeflow import node_wrapper
-from tfx.orchestration.kubeflow import utils
+
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
@@ -39,18 +39,18 @@ from kubernetes import client
 import json
 
 _CONTAINER_COMMAND = [
-    'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/container_entrypoint.py'
+    'python', '-m', 'tfx.orchestration.experimental.kubernetes.container_entrypoint'
 ]
 
 _DRIVER_COMMAND = [
-    'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/orchestrator_container_entrypoint.py'
+    'python', '-m', 'tfx.orchestration.experimental.kubernetes.driver_container_entrypoint'
 ]
 
 # Suffix added to the component id to avoid MLMD conflict when
 # registering this component.
 _WRAPPER_SUFFIX = 'Wrapper'
 
-_TFX_IMAGE = 'gcr.io/tfx-eric/tfx-dev'
+_TFX_IMAGE = ''
 
 
 def get_default_kubernetes_metadata_config(
@@ -92,8 +92,7 @@ def _wrap_container_component(
       component_launcher_class.__module__, component_launcher_class.__name__
   ])
 
-  serialized_component = utils.replace_placeholder(
-      json_utils.dumps(node_wrapper.NodeWrapper(component)))
+  serialized_component = json_utils.dumps(node_wrapper.NodeWrapper(component))
 
   arguments = [
       '--pipeline_name',
@@ -274,10 +273,13 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       raise RuntimeError('Failed to submit job! \nReason: %s\nBody: %s' %
                          (e.reason, e.body))
 
-    # Wait for pod to start
+    # Wait for pod to start.
     orchestrator_pods = []
     core_api = kube_utils.make_core_v1_api()
     start_time = datetime.datetime.utcnow()
+
+    # Wait for the kubernetes job to launch a pod.
+    # This is expected to only take a few seconds.
     while not orchestrator_pods and (datetime.datetime.utcnow() - start_time
                                      ).seconds < 300:
       try:
@@ -291,12 +293,14 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
                              (e.reason, e.body))
       time.sleep(1)
 
-    # transient orchestrator should only have 1 pod
+    # Transient orchestrator should only have 1 pod
+    if len(orchestrator_pods) != 1:
+      raise RuntimeError('Expected 1 pod launched by kubernetes job, found %s' %
+                         len(orchestrator_pods))
     orchestrator_pod = orchestrator_pods.pop()
     pod_name = orchestrator_pod.metadata.name
 
-    #TODO(https://github.com/tensorflow/tfx/pull/2248): refactor protected members
-    cond = kubernetes_component_launcher._pod_is_not_pending # pylint: disable=W0212
+    cond = kube_utils.pod_is_not_pending
     absl.logging.info('Waiting for pod "default:%s" to start.', pod_name)
     kube_utils.wait_pod(
         core_api,
@@ -305,7 +309,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         exit_condition_lambda=cond,
         condition_description='non-pending status')
 
-    # stream logs from pod
+    # Stream logs from orchestrator pod.
     absl.logging.info('Start log streaming for pod "default:%s".', pod_name)
     try:
       logs = core_api.read_namespaced_pod_log(
@@ -322,7 +326,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     for log in logs:
       absl.logging.info(log.decode().rstrip('\n'))
 
-    cond = kubernetes_component_launcher._pod_is_done # pylint: disable=W0212
+    cond = kube_utils.pod_is_done
     resp = kube_utils.wait_pod(
         core_api,
         pod_name,
@@ -349,8 +353,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     """
     serialized_components = []
     for component in pipeline.components:
-      serialized_components.append(utils.replace_placeholder(
-          json_utils.dumps(node_wrapper.NodeWrapper(component))))
+      serialized_components.append(json_utils.dumps(node_wrapper.NodeWrapper(component)))
     return json.dumps({
         'pipeline_name': pipeline.pipeline_info.pipeline_name,
         'pipeline_root': pipeline.pipeline_info.pipeline_root,

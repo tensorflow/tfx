@@ -22,6 +22,7 @@ import enum
 import datetime
 import os
 import re
+import time
 from absl import logging
 from typing import Callable, Dict, List, Optional, Text
 
@@ -152,6 +153,14 @@ def sanitize_pod_name(pod_name: Text) -> Text:
   pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
   pod_name = re.sub(r'^[-]+', '', pod_name)
   return re.sub(r'[-]+', '-', pod_name)
+
+
+def pod_is_not_pending(resp: k8s_client.V1Pod):
+  return resp.status.phase != PodPhase.PENDING.value
+
+
+def pod_is_done(resp: k8s_client.V1Pod):
+  return PodPhase(resp.status.phase).is_done
 
 
 def make_core_v1_api() -> k8s_client.CoreV1Api:
