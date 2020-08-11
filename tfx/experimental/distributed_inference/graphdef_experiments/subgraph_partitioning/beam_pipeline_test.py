@@ -33,10 +33,9 @@ class BeamPipelineTest(tf.test.TestCase):
     with tempfile.TemporaryDirectory() as temp_dir:
       create_complex_graph.save_examples_as_graphdefs(temp_dir)
 
-      # Root graph is the graph to compute. Since it's unique, it's both the
-      # graph name extended and the graph name.
+      # "main" is both a graph name and a remote op name.
       root_graph = 'main'
-      parent_graph_to_remote_graph_input_name_mapping = {
+      graph_to_remote_op_input_name_mapping = {
           'main': {'remote_op_a': {'ids_a': 'ids1'},
                    'remote_op_b': {'ids_b1': 'ids1',
                                    'ids_b2': 'ids2'},
@@ -44,46 +43,53 @@ class BeamPipelineTest(tf.test.TestCase):
                    'remote_op_b_1': {'ids_b1': 'FloorMod_1',
                                      'ids_b2': 'FloorMod'}
                   },
-          'remote_op_b': {'remote_op_a': {'ids_a': 'FloorMod'},
-                          'remote_op_a_1': {'ids_a': 'ids_b2'}
-                         }
+          'graph_b': {'remote_op_a': {'ids_a': 'FloorMod'},
+                      'remote_op_a_1': {'ids_a': 'ids_b2'}
+                     }
       }
 
       # Create input PColl with this.
-      root_graph_inputs = [
+      root_graph_input_data = [
           {'main': {'import/ids1:0': 3, 'import/ids2:0': 3}},
           {'main': {'import/ids1:0': 10, 'import/ids2:0': 10}}]
 
       graph_name_to_filepath = {
           'main': os.path.join(temp_dir, 'main_graph.pb'),
-          'remote_op_a': os.path.join(temp_dir, 'graph_a.pb'),
-          'remote_op_b': os.path.join(temp_dir, 'graph_b.pb')}
-      graph_name_to_outputs = {
+          'graph_b': os.path.join(temp_dir, 'graph_b.pb'),
+          'graph_a': os.path.join(temp_dir, 'graph_a.pb')}
+      graph_name_to_output_names = {
           'main': ['AddN_1'],
-          'remote_op_b': ['Add_1'],
-          'remote_op_a': ['embedding_lookup/Identity']}
+          'graph_b': ['Add_1'],
+          'graph_a': ['embedding_lookup/Identity']}
+      remote_op_name_to_graph_name = {
+          'main': 'main',
+          'remote_op_a': 'graph_a',
+          'remote_op_a_1': 'graph_a',
+          'remote_op_b': 'graph_b',
+          'remote_op_b_1': 'graph_b'}
 
       original_model_outputs = _run_original_model(root_graph,
-                                                   root_graph_inputs,
+                                                   root_graph_input_data,
                                                    graph_name_to_filepath,
-                                                   graph_name_to_outputs)
+                                                   graph_name_to_output_names)
 
       graph_name_to_graph_def = graph_partition.get_graph_name_to_graph_def(
           graph_name_to_filepath)
       graph_name_to_specs = graph_partition.partition_all_graphs(
-          graph_name_to_graph_def, graph_name_to_outputs)
+          graph_name_to_graph_def, graph_name_to_output_names)
 
       with test_pipeline.TestPipeline() as p:
 
-        inputs = p | 'LoadInputs' >> beam.Create(root_graph_inputs)
+        inputs = p | 'LoadInputs' >> beam.Create(root_graph_input_data)
         outputs = (inputs
-                   | 'RunModel' >> beam_pipeline.ExecuteOneGraph(
+                   | 'RunModel' >> beam_pipeline.ExecuteGraph(
+                       root_graph,
+                       remote_op_name_to_graph_name,
                        graph_name_to_specs,
-                       parent_graph_to_remote_graph_input_name_mapping,
-                       root_graph)
+                       graph_to_remote_op_input_name_mapping)
                    | 'ExtractOutputs' >> beam.Map(_extract_outputs,
-                                                  graph_name_to_outputs,
-                                                  root_graph))
+                                                  root_graph,
+                                                  graph_name_to_output_names))
 
         # Problem: The output for the example graph is a scalar, equal_to
         # doesn't work with more complex things like tensors.
@@ -91,20 +97,20 @@ class BeamPipelineTest(tf.test.TestCase):
 
 
 def _run_original_model(root_graph,
-                        root_graph_inputs,
+                        root_graph_input_data,
                         graph_name_to_filepath,
-                        graph_name_to_outputs):
+                        graph_name_to_output_names):
   """Runs the original model."""
   graph_name_to_graph_def = graph_partition.get_graph_name_to_graph_def(
       graph_name_to_filepath)
   graph_def = graph_name_to_graph_def[root_graph]
-  output_tensor_names = [_import_tensor_name(node_name)
-                         for node_name in graph_name_to_outputs[root_graph]]
+  output_tensor_names = [_import_tensor_name(name)
+                         for name in graph_name_to_output_names[root_graph]]
 
   outputs = []
   with tf.compat.v1.Session(graph=tf.Graph()) as sess:
     tf.import_graph_def(graph_def)
-    for graph_name_to_feed_dict in root_graph_inputs:
+    for graph_name_to_feed_dict in root_graph_input_data:
       outputs.append(
           sess.run(output_tensor_names, graph_name_to_feed_dict[root_graph]))
 
@@ -115,9 +121,9 @@ def _import_tensor_name(node_name):
   return 'import/%s:0' % node_name
 
 
-def _extract_outputs(element, graph_name_to_outputs, root_graph):
-  outputs = [element[root_graph][_import_tensor_name(node_name)]
-             for node_name in graph_name_to_outputs[root_graph]]
+def _extract_outputs(element, root_graph, graph_name_to_output_names):
+  outputs = [element[root_graph][_import_tensor_name(name)]
+             for name in graph_name_to_output_names[root_graph]]
   return outputs
 
 
