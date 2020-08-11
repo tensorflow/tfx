@@ -28,6 +28,7 @@ from absl import logging
 
 from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
+from tfx.components.base import base_executor
 from tfx.orchestration import data_types
 
 # Argo's workflow name cannot exceed 63 chars:
@@ -189,3 +190,76 @@ class Pipeline(object):
     # has all its dependencies visited.
     if len(self._components) < len(deduped_components):
       raise RuntimeError('There is a cycle in the pipeline')
+
+  def get_fuseable_components(self):
+    """
+       Returns a list of fuseable Beam component subraphs in sorted topological
+       order. For example:
+
+       [[component_a, component_b],[component_c, component_d, component_e]]
+
+       Experimental, backward compatability not guaranteed.
+    """
+
+    # Finds all Beam based components
+    beam_components = set()
+
+    for component in self.components:
+      if (component.EXECUTOR_SPEC.executor_class ==
+          base_executor.FuseableBeamExecutor):
+        beam_components.add(component)
+
+    # Finds Beam component "sources" (components with no parents that are Beam
+    # based components).
+    beam_component_sources = []
+
+    for component in sorted(beam_components, key=lambda c: c.id):
+      is_source = True
+
+      for parent in component.upstream_nodes:
+        if parent in beam_components:
+          is_source = False
+          break
+
+      if is_source:
+        beam_component_sources.append(component)
+
+    # Finds subgraphs of fuseable beam components, sorted in topological order
+    fuseable_components = []
+    visited = set()
+
+    for source in beam_component_sources: # pylint: disable=too-many-nested-blocks
+      fuseable_component = []
+      current_layer = [source]
+
+      # Conducts BFS search to build out fuseable Beam component subgraph
+      while current_layer:
+        next_layer = []
+        for component in sorted(current_layer, key=lambda c: c.id):
+          if component in visited:
+            continue
+
+          visited.add(component)
+          fuseable_component.append(component)
+
+          # Iterate through the children to find Beam components
+          for child in component.downstream_nodes:
+            if child in beam_components and child not in visited:
+              fuseable = True
+
+              # Ensure the child is fuseable (all parents of child are beam
+              # components)
+              for parent in child.upstream_nodes:
+                if parent not in beam_components:
+                  fuseable = False
+                  break
+
+              if fuseable:
+                next_layer.append(child)
+
+          current_layer = next_layer
+
+      if len(fuseable_component) > 1:
+        fuseable_components.append(fuseable_component)
+
+    return fuseable_components
