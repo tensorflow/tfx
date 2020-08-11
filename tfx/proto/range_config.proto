@@ -13,7 +13,15 @@
 // limitations under the License.
 syntax = "proto3";
 
-package tfx.configs;
+// Describes a static window within the specified span numbers
+// [start_span_number, end_span_number]. If not all spans in the
+// range ar available, processing may continue on a partial range as long as 
+// RangeConfig.min_spans are availiable.
+// Note that both numberts should be specified for StaticRange.
+message StaticRange {
+  int32 start_span_number = 1;
+  int32 end_span_number = 2;
+}
 
 // RangeConfig is an abstract proto which can be used to describe ranges
 // for different entities in TFX Pipeline, organized under directories.
@@ -39,14 +47,4 @@ message RangeConfig {
   int32 min_spans = 4
 
   reserved 2, 5;
-}
-
-// Describes a static window within the specified span numbers
-// [start_span_number, end_span_number]. If not all spans in the
-// range ar available, processing may continue on a partial range as long as 
-// RangeConfig.min_spans are availiable.
-// Note that both numberts should be specified for StaticRange.
-message StaticRange {
-  int32 start_span_number = 1;
-  int32 end_span_number = 2;
 }
