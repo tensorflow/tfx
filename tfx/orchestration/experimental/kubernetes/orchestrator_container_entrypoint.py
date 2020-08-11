@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Main entrypoint for driver containers with Kubernetes TFX pipeline executors."""
+"""Main entrypoint for orchestrator container on Kubernetes."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -30,10 +30,8 @@ from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.utils import json_utils
 
 
-
 def main():
-  # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
-  # the user.
+  # Log to the container's stdout so it can be streamed by the client.
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)
   logging.getLogger().setLevel(logging.INFO)
 

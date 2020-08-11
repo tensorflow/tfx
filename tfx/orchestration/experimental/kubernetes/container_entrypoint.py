@@ -35,8 +35,7 @@ from tfx.utils import telemetry_utils
 
 
 def main():
-  # Log to the container's stdout so Kubeflow Pipelines UI can display logs to
-  # the user.
+  # Log to the container's stdout so it can be streamed by the orchestrator.
   logging.basicConfig(stream=sys.stdout, level=logging.INFO)
   logging.getLogger().setLevel(logging.INFO)
 
@@ -77,9 +76,7 @@ def main():
       pipeline_info=data_types.PipelineInfo(
           pipeline_name=args.pipeline_name,
           pipeline_root=args.pipeline_root,
-          # Kubeflow uses workflow_id for the run_id. For refernece,
-          # see tfx/orchestration/kubeflow/base_component.py
-          run_id=args.run_id
+          run_id=args.run_id,
       ),
       driver_args=driver_args,
       metadata_connection=metadata.Metadata(connection_config=metadata_config),
@@ -88,8 +85,6 @@ def main():
       component_config=component_config)
 
   # Attach necessary labels to distinguish different runner and DSL.
-  # TODO(zhitaoli): Pass this from KFP runner side when the same container
-  # entrypoint can be used by a different runner.
   with telemetry_utils.scoped_labels({
       telemetry_utils.LABEL_TFX_RUNNER: 'kubernetes',
   }):

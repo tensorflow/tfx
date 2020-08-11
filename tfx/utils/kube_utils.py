@@ -37,6 +37,9 @@ ARGO_MAIN_CONTAINER_NAME = 'main'
 KFP_POD_NAME = 'KFP_POD_NAME'
 KFP_NAMESPACE = 'KFP_NAMESPACE'
 
+# Enum variable indicating unlimited time out seconds, used in wait_pod
+UNLIMITED_TIMEOUT = -1
+
 
 class PodPhase(enum.Enum):
   """Phase of the Kubernetes Pod.
@@ -141,20 +144,25 @@ class _KubernetesClientFactory(object):
       self._LoadConfig()
     return k8s_client.BatchV1Api()
 
+
 _factory = _KubernetesClientFactory()
 
-def _sanitize_pod_name(pod_name: Text) -> Text:
+
+def sanitize_pod_name(pod_name: Text) -> Text:
   pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
   pod_name = re.sub(r'^[-]+', '', pod_name)
   return re.sub(r'[-]+', '-', pod_name)
+
 
 def make_core_v1_api() -> k8s_client.CoreV1Api:
   """Make a kubernetes CoreV1Api client."""
   return _factory.MakeCoreV1Api()
 
+
 def make_batch_v1_api() -> k8s_client.BatchV1Api:
   """Make a kubernetes BatchV1Api client."""
   return _factory.MakeBatchV1Api()
+
 
 def make_job_object(
     name: Text,
@@ -175,7 +183,7 @@ def make_job_object(
       kind="Job",
       metadata=k8s_client.V1ObjectMeta(
           namespace=namespace,
-          name=_sanitize_pod_name(name),
+          name=sanitize_pod_name(name),
       ),
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
@@ -196,6 +204,7 @@ def make_job_object(
           )
       ),
   )
+
 
 def is_inside_cluster() -> bool:
   """Whether current running environment is inside the kubernetes cluster."""
@@ -251,10 +260,10 @@ def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
   """Get a pod from Kubernetes metadata API.
   Args:
     core_api: Client of Core V1 API of Kubernetes API.
-    pod_name: The name of the POD.
-    namespace: The namespace of the POD.
+    pod_name: The name of the Pod.
+    namespace: The namespace of the Pod.
   Returns:
-    The found POD object. None if it's not found.
+    The found Pod object. None if it's not found.
   Raises:
     RuntimeError: When it sees unexpected errors from Kubernetes API.
   """
@@ -272,25 +281,28 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
              namespace: Text,
              exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
              condition_description: Text,
-             timeout_sec: int = 300,
-             expotential_backoff: bool = False) -> k8s_client.V1Pod:
-  """Wait for a POD to meet an exit condition.
+             timeout_sec: int = UNLIMITED_TIMEOUT,
+             exponential_backoff: bool = False) -> k8s_client.V1Pod:
+  """Wait for a Pod to meet an exit condition.
   Args:
     core_api: Client of Core V1 API of Kubernetes API.
-    pod_name: The name of the POD.
-    namespace: The namespace of the POD.
+    pod_name: The name of the Pod.
+    namespace: The namespace of the Pod.
     exit_condition_lambda: A lambda which will be called intervally to wait
-      for a POD to exit. The function returns True to exit.
+      for a Pod to exit. The function returns True to exit.
     condition_description: The description of the exit condition which will be
       set in the error message if the wait times out.
-    timeout_sec: The seconds for the function to wait. Defaults to 300s.
+    timeout_sec: The seconds for the function to wait. Defaults to unlimited.
+    exponential_backoff: Whether to use exponential back off for polling.
+      Defaults to False.
   Returns:
-    The POD object which meets the exit condition.
+    The Pod object which meets the exit condition.
   Raises:
     RuntimeError: when the function times out.
   """
   start_time = datetime.datetime.utcnow()
-  # Exponential backoff: https://cloud.google.com/storage/docs/exponential-backoff
+  # Link to exponential back-off algorithm used here:
+  # https://cloud.google.com/storage/docs/exponential-backoff
   backoff_interval = 1
   maximum_backoff = 32
   while True:
@@ -299,10 +311,10 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
     if exit_condition_lambda(resp):
       return resp
     elapse_time = datetime.datetime.utcnow() - start_time
-    if elapse_time.seconds >= timeout_sec:
+    if elapse_time.seconds >= timeout_sec and timeout_sec != UNLIMITED_TIMEOUT:
       raise RuntimeError(
           'Pod "%s:%s" does not reach "%s" within %s seconds.' %
           (namespace, pod_name, condition_description, timeout_sec))
     time.sleep(backoff_interval)
-    if expotential_backoff and backoff_interval < maximum_backoff:
+    if exponential_backoff and backoff_interval < maximum_backoff:
       backoff_interval *= 2

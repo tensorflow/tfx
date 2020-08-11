@@ -13,10 +13,6 @@
 # limitations under the License.
 """Container-based pipeline on kubernetes sample."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import absl
 
 from tfx.orchestration import pipeline as pipeline_module
@@ -38,6 +34,7 @@ def _create_pipeline() -> pipeline_module.Pipeline:
   pattern = 'art thou'
   components = create_pipeline_component_instances(text_url, pattern)
 
+  # Use the default in-cluster MySql metadata config.
   config = kubernetes_dag_runner.get_default_kubernetes_metadata_config()
 
   return pipeline_module.Pipeline(
@@ -49,8 +46,12 @@ def _create_pipeline() -> pipeline_module.Pipeline:
   )
 
 
-if __name__ == '__main__':
-  # first, create a tfx pipiline
+def main():
+  # First, create the tfx pipeline instance.
   pipeline = _create_pipeline()
-  # use kubernetes dag runner to run the pipeline
+  # Use kubernetes dag runner to run the pipeline.
   kubernetes_dag_runner.KubernetesDagRunner().run(pipeline=pipeline)
+
+
+if __name__ == '__main__':
+  main()

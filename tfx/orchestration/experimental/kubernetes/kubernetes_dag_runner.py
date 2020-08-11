@@ -15,7 +15,6 @@
 
 import absl
 import datetime
-import re
 import time
 from typing import Optional, Text, Type
 
@@ -44,25 +43,14 @@ _CONTAINER_COMMAND = [
 ]
 
 _DRIVER_COMMAND = [
-    'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/driver_container_entrypoint.py'
+    'python', '/tfx-src/tfx/orchestration/experimental/kubernetes/orchestrator_container_entrypoint.py'
 ]
 
+# Suffix added to the component id to avoid MLMD conflict when
+# registering this component.
 _WRAPPER_SUFFIX = 'Wrapper'
 
 _TFX_IMAGE = 'gcr.io/tfx-eric/tfx-dev'
-
-
-def _sanitize_pod_name(pod_name: Text) -> Text:
-  pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
-  pod_name = re.sub(r'^[-]+', '', pod_name)
-  return re.sub(r'[-]+', '-', pod_name)
-
-
-def is_inside_cluster() -> bool:
-  """Determines if kubernetes dag runner is executed from within a cluster.
-  Can be pacthed for testing purpose.
-  """
-  return kube_utils.is_inside_cluster()
 
 
 def get_default_kubernetes_metadata_config(
@@ -100,7 +88,6 @@ def _wrap_container_component(
   pipeline: Logical pipeline that contains pipeline related information.
   """
 
-  # Reference: tfx.orchestration.kubeflow.base_component
   component_launcher_class_path = '.'.join([
       component_launcher_class.__module__, component_launcher_class.__name__
   ])
@@ -132,8 +119,7 @@ def _wrap_container_component(
   ]
 
   # Outputs/Parameters fields are not used as they are contained in
-  # the serialized component. We add a suffix to the component id
-  # to avoid MLMD conflict when registering this component.
+  # the serialized component.
   return container_component.create_container_component(
       name=component.id + _WRAPPER_SUFFIX,
       outputs={},
@@ -143,40 +129,36 @@ def _wrap_container_component(
   )()
 
 
-class LaunchAsContainerComponent():
-  """Wrapper for kubernetes_component_launcher"""
-  def __init__(self, component: base_node.BaseNode,
-               component_launcher_class: Type[
-                   base_component_launcher.BaseComponentLauncher],
-               component_config: base_component_config.BaseComponentConfig,
-               pipeline: tfx_pipeline.Pipeline):
-    """Initialize the LaunchAsContainerComponent.
+def launch_container_component(
+    component: base_node.BaseNode,
+    component_launcher_class:
+        Type[base_component_launcher.BaseComponentLauncher],
+    component_config: base_component_config.BaseComponentConfig,
+    pipeline: tfx_pipeline.Pipeline):
+  """Use the kubernetes component launcher to launch the component.
 
-    Args:
-      component: Container component to be executed.
-      component_launcher_class: The class of the launcher to launch the
-        component.
-      component_config: component config to launch the component.
-      pipeline: Logical pipeline that contains pipeline related information.
-    """
-    driver_args = data_types.DriverArgs(enable_cache=pipeline.enable_cache)
-    metadata_connection = metadata.Metadata(
-        pipeline.metadata_connection_config)
+  Args:
+    component: Container component to be executed.
+    component_config: component config to launch the component.
+    component_launcher_class: The class of the launcher to launch the
+      component.
+    pipeline: Logical pipeline that contains pipeline related information.
+  """
+  driver_args = data_types.DriverArgs(enable_cache=pipeline.enable_cache)
+  metadata_connection = metadata.Metadata(
+      pipeline.metadata_connection_config)
 
-    self._component_launcher = component_launcher_class.create(
-        component=component,
-        pipeline_info=pipeline.pipeline_info,
-        driver_args=driver_args,
-        metadata_connection=metadata_connection,
-        beam_pipeline_args=pipeline.beam_pipeline_args,
-        additional_pipeline_args=pipeline.additional_pipeline_args,
-        component_config=component_config)
-    self._component_id = component.id
-
-  def run_component(self) -> None:
-    absl.logging.info('Component %s is running.', self._component_id)
-    self._component_launcher.launch()
-    absl.logging.info('Component %s is finished.', self._component_id)
+  component_launcher = component_launcher_class.create(
+      component=component,
+      pipeline_info=pipeline.pipeline_info,
+      driver_args=driver_args,
+      metadata_connection=metadata_connection,
+      beam_pipeline_args=pipeline.beam_pipeline_args,
+      additional_pipeline_args=pipeline.additional_pipeline_args,
+      component_config=component_config)
+  absl.logging.info('Component %s is running.', component.id)
+  component_launcher.launch()
+  absl.logging.info('Component %s is finished.', component.id)
 
 
 class KubernetesDagRunner(tfx_runner.TfxRunner):
@@ -184,7 +166,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
   def __init__(self,
                config: Optional[pipeline_config.PipelineConfig] = None):
-    """Initializes BeamDagRunner as a TFX orchestrator.
+    """Initializes KubernetesDagRunner as a TFX orchestrator.
 
     Args:
       config: Optional pipeline config for customizing the launching of each
@@ -208,17 +190,16 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     if not pipeline.pipeline_info.run_id:
       pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
-    if not is_inside_cluster():
+    if not kube_utils.is_inside_cluster():
       self._run_as_kubernetes_job(pipeline)
       return
 
-    # TODO(ericlege) support running components in parallel
+    # TODO(ericlege): Support running components in parallel.
     ran_components = set()
 
-    # Runs component in topological order
+    # Runs component in topological order.
     for component in pipeline.components:
-
-      # verify that components are in topological order
+      # Verify that components are in topological order.
       if hasattr(component, 'upstream_nodes') and component.upstream_nodes:
         for upstream_node in component.upstream_nodes:
           assert upstream_node in ran_components, ('Components is not in '
@@ -228,15 +209,17 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
        component_config) = config_utils.find_component_launch_info(
            self._config, component)
 
-      # Check if the component is launchable as a containerComponent.
-      # If not, wrap the component to a containerComponent.
+      # Check if the component is launchable as a container component.
       if kubernetes_component_launcher.KubernetesComponentLauncher.can_launch(
           component.executor_spec, component_config):
-        LaunchAsContainerComponent(component,
+        launch_container_component(component,
                                    component_launcher_class,
                                    component_config,
-                                   pipeline).run_component()
-      else:
+                                   pipeline)
+      # Otherwise, the component should be launchable with the in process
+      # component launcher. wrap the component to a container component.
+      elif in_process_component_launcher.InProcessComponentLauncher.can_launch(
+          component.executor_spec, component_config):
         wrapped_component = _wrap_container_component(
             component=component,
             component_launcher_class=component_launcher_class,
@@ -244,15 +227,18 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
             pipeline=pipeline
         )
 
-        # reload properties
+        # Component launch info is updated by wrapping the component into a
+        # container component. Therefore, these properties need to be reloaded.
         (wrapped_component_launcher_class,
          wrapped_component_config) = config_utils.find_component_launch_info(
              self._config, wrapped_component)
 
-        LaunchAsContainerComponent(wrapped_component,
+        launch_container_component(wrapped_component,
                                    wrapped_component_launcher_class,
                                    wrapped_component_config,
-                                   pipeline).run_component()
+                                   pipeline)
+      else:
+        raise ValueError("Can not find suitable launcher for component.")
 
       ran_components.add(component)
 
@@ -270,7 +256,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     ]
     batch_api = kube_utils.make_batch_v1_api()
     job_name = 'Job_' + pipeline.pipeline_info.run_id
-    pod_label = _sanitize_pod_name(job_name)
+    pod_label = kube_utils.sanitize_pod_name(job_name)
     container_name = 'pipeline-orchestrator'
     job = kube_utils.make_job_object(
         name=job_name,
@@ -343,7 +329,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         'default',
         exit_condition_lambda=cond,
         condition_description='done state',
-        expotential_backoff=True)
+        exponential_backoff=True)
 
     if resp.status.phase == kube_utils.PodPhase.FAILED.value:
       raise RuntimeError('Pod "default:%s" failed with status "%s".' %
@@ -359,17 +345,17 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       pipeline: Logical pipeline containing pipeline args and components.
 
     Returns:
-      Serialized pipeline
+      Pipeline serialized as JSON string.
     """
-    serialzed_components = []
+    serialized_components = []
     for component in pipeline.components:
-      serialzed_components.append(utils.replace_placeholder(
+      serialized_components.append(utils.replace_placeholder(
           json_utils.dumps(node_wrapper.NodeWrapper(component))))
     return json.dumps({
         'pipeline_name': pipeline.pipeline_info.pipeline_name,
         'pipeline_root': pipeline.pipeline_info.pipeline_root,
         'enable_cache': pipeline.enable_cache,
-        'components': serialzed_components,
+        'components': serialized_components,
         'metadata_connection_config': json_format.MessageToJson(
             message=pipeline.metadata_connection_config,
             preserving_proto_field_name=True,

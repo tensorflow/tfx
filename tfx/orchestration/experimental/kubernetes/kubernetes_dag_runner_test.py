@@ -20,9 +20,11 @@ from __future__ import print_function
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
+from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
@@ -51,11 +53,8 @@ class _ArtifactTypeE(types.Artifact):
   TYPE_NAME = 'ArtifactTypeE'
 
 
-class _FakeLaunchAsContainerComponent(
-    kubernetes_dag_runner.LaunchAsContainerComponent):
-
-  def run_component(self):
-    _executed_components.append(self._component_id)
+def _mock_launch_container_component(component: base_node.BaseNode, *_):
+  _executed_components.append(component.component_id)
 
 
 # We define fake component spec classes below for testing. Note that we can't
@@ -116,13 +115,15 @@ class _FakeComponent(base_component.BaseComponent):
 
 class KubernetesDagRunnerTest(tf.test.TestCase):
 
-
-  @mock.patch.multiple(
+  @mock.patch.object(
       kubernetes_dag_runner,
-      LaunchAsContainerComponent=_FakeLaunchAsContainerComponent,
-      is_inside_cluster=lambda: True,
+      'launch_container_component',
+      _mock_launch_container_component,
   )
-  def testRun(self):
+  @mock.patch.object(kubernetes_dag_runner, 'kube_utils')
+  def testRun(self, mock_kube_utils):
+    mock_kube_utils.is_inside_cluster.return_value = True
+
     component_a = _FakeComponent(
         _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_b = _FakeComponent(

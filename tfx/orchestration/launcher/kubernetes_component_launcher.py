@@ -44,12 +44,6 @@ def _pod_is_done(resp: client.V1Pod):
   return kube_utils.PodPhase(resp.status.phase).is_done
 
 
-def _sanitize_pod_name(pod_name: Text) -> Text:
-  pod_name = re.sub(r'[^a-z0-9-]', '-', pod_name.lower())
-  pod_name = re.sub(r'^[-]+', '', pod_name)
-  return re.sub(r'[-]+', '-', pod_name)
-
-
 class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
                                  ):
   """Responsible for launching a container executor on Kubernetes."""
@@ -297,4 +291,4 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
 
     pod_name = '%s-%s-%s' % (
         pipeline_name, self._component_info.component_id[:50], execution_id)
-    return _sanitize_pod_name(pod_name)
+    return kube_utils.sanitize_pod_name(pod_name)
