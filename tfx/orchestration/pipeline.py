@@ -205,8 +205,8 @@ class Pipeline(object):
     beam_components = set()
 
     for component in self.components:
-      if (component.EXECUTOR_SPEC.executor_class ==
-          base_executor.FuseableBeamExecutor):
+      if issubclass(component.EXECUTOR_SPEC.executor_class,
+                    base_executor.FuseableBeamExecutor):
         beam_components.add(component)
 
     # Finds Beam component "sources" (components with no parents that are Beam
