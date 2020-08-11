@@ -15,6 +15,7 @@
 """Common utilities for testing various runners."""
 
 import datetime
+import os
 import random
 import string
 import time
@@ -23,6 +24,9 @@ from absl import logging
 import docker
 
 from google.cloud import storage
+
+_TFX_DOCKERFILE = 'TFX_DOCKERFILE'
+_TFX_WHEEL_PARENT_DIR = 'TFX_WHEEL_PARENT_DIR'
 
 
 class Timer:
@@ -69,16 +73,25 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
   """
   client = docker.from_env()
 
+  dockerfile = 'tfx/tools/docker/Dockerfile'
+  build_args = {
+      # Skip license gathering for tests.
+      'gather_third_party_licenses': 'false',
+  }
+  maybe_dockerfile = os.environ.get(_TFX_DOCKERFILE)
+  if maybe_dockerfile:
+    dockerfile = maybe_dockerfile
+  maybe_wheel_parent_dir = os.environ.get(_TFX_WHEEL_PARENT_DIR)
+  if maybe_wheel_parent_dir:
+    build_args['wheel_parent_dir'] = maybe_wheel_parent_dir
+
   logging.info('Building image %s', container_image)
   with Timer('BuildingTFXContainerImage'):
     _ = client.images.build(
         path=repo_base,
-        dockerfile='tfx/tools/docker/Dockerfile',
+        dockerfile=dockerfile,
         tag=container_image,
-        buildargs={
-            # Skip license gathering for tests.
-            'gather_third_party_licenses': 'false',
-        },
+        buildargs=build_args,
     )
 
   logging.info('Pushing image %s', container_image)
