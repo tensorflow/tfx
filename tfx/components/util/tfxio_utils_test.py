@@ -20,7 +20,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tempfile
-import unittest
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -29,24 +28,14 @@ from tfx.components.util import examples_utils
 from tfx.components.util import tfxio_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
-import tfx_bsl
+from tfx_bsl.coders import tf_graph_record_decoder
 from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import record_based_tfxio
+from tfx_bsl.tfxio import record_to_tensor_tfxio
 from tfx_bsl.tfxio import tf_example_record
 from tfx_bsl.tfxio import tf_sequence_example_record
-
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
-
-# TODO(b/161449255): clean this up after a release post tfx_bsl 0.22.1.
-if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
-  from tfx_bsl.coders import tf_graph_record_decoder  # pylint: disable=g-import-not-at-top
-  from tfx_bsl.coders.tf_graph_record_decoder import TFGraphRecordDecoder  # pylint: disable=g-import-not-at-top
-  from tfx_bsl.tfxio.record_to_tensor_tfxio import TFRecordToTensorTFXIO  # pylint: disable=g-import-not-at-top
-else:
-  tf_graph_record_decoder = None
-  TFRecordToTensorTFXIO = None  # pylint: disable=invalid-name
-  TFGraphRecordDecoder = object  # pylint: disable=invalid-name
 
 _RAW_RECORD_COLUMN_NAME = 'raw_record'
 _MAKE_TFXIO_TEST_CASES = [
@@ -71,7 +60,7 @@ _MAKE_TFXIO_TEST_CASES = [
         testcase_name='proto_with_data_view',
         payload_format=example_gen_pb2.PayloadFormat.FORMAT_PROTO,
         provide_data_view_uri=True,
-        expected_tfxio_type=TFRecordToTensorTFXIO),
+        expected_tfxio_type=record_to_tensor_tfxio.TFRecordToTensorTFXIO),
     dict(
         testcase_name='tf_example_raw_record',
         payload_format=example_gen_pb2.PayloadFormat.FORMAT_TF_EXAMPLE,
@@ -140,7 +129,7 @@ feature {
 """, schema_pb2.Schema())
 
 
-class _SimpleTfGraphRecordDecoder(TFGraphRecordDecoder):
+class _SimpleTfGraphRecordDecoder(tf_graph_record_decoder.TFGraphRecordDecoder):
   """A simple DataView Decoder used for testing."""
 
   def __init__(self):
@@ -162,9 +151,6 @@ class _SimpleTfGraphRecordDecoder(TFGraphRecordDecoder):
     }
 
 
-@unittest.skipIf(not getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False),
-                 'tfx-bsl installed does not have modules required to run '
-                 'this test.')
 class TfxioUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(*_MAKE_TFXIO_TEST_CASES)
