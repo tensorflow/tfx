@@ -324,7 +324,7 @@ def _retrieve_latest_span_version(
     # Defines a clear number of digits for certain element of date. This covers
     # cases where date stamps may not have seperators between them.
     split_regex_pattern = split_regex_pattern.replace(
-        YEAR_SPEC, '(?P<{}>.*)'.format('year'))
+        YEAR_SPEC, '(?P<{}>.{{4}})'.format('year'))
     split_regex_pattern = split_regex_pattern.replace(
         MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
     split_regex_pattern = split_regex_pattern.replace(
