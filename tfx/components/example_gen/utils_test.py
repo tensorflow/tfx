@@ -463,17 +463,6 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(span, 1)
     self.assertEqual(version, 1)
 
-  def testSpanWidthBadFormat(self):
-    splits = [
-        example_gen_pb2.Input.Split(
-            name='s1', pattern='{SPANx}/split1/*')
-    ]
-
-    with self.assertRaisesRegexp(ValueError,
-        'Span spec with width modifier is improperly formatted'):
-      utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
-
   def testSpanInvalidWidth(self):
     splits = [
         example_gen_pb2.Input.Split(
@@ -481,18 +470,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Width modifier in span spec is not an integer'):
-      utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
-
-  def testVersionWidthBadFormat(self):
-    splits = [
-        example_gen_pb2.Input.Split(
-            name='s1', pattern='{SPAN}/{VERSIONx}/split1/*')
-    ]
-
-    with self.assertRaisesRegexp(ValueError,
-        'Version spec with width modifier is improperly formatted'):
+        'Width modifier in span spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -503,7 +481,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Width modifier in version spec is not an integer'):
+        'Width modifier in version spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
   

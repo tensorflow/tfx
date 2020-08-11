@@ -51,14 +51,16 @@ FINGERPRINT_PROPERTY_NAME = 'input_fingerprint'
 SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
-# Span spec regex to parse width modifier.
-SPAN_SPEC_REGEX = '{SPAN(.*?)}'
+# Span spec regex to capture width modifier. This matches the spec '{SPAN:x}'
+# and captures 'x', which is a 1+ length string.
+SPAN_SPEC_WIDTH_REGEX = '{SPAN:(.+?)}'
 # Key for the `version` custom property of output examples artifact.
 VERSION_PROPERTY_NAME = 'version'
 # Version spec used in split pattern.
 VERSION_SPEC = '{VERSION}'
-# Span spec regex to parse width modifier.
-VERSION_SPEC_REGEX = '{VERSION(.*?)}'
+# Version spec regex to capture width modifier. This matches the spec 
+# '{VERSION:x}' and captures 'x', which is a 1+ length string.
+VERSION_SPEC_WIDTH_REGEX = '{VERSION:(.+?)}'
 # Date specs used in split pattern.
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
@@ -261,10 +263,12 @@ def _retrieve_latest_span_version(
       - If a matching cannot be found for split pattern provided.
   """
 
-  # Match occurences of pattern '{SPAN*}' and capture span width modifier.
-  span_arg_match = re.findall(SPAN_SPEC_REGEX, split.pattern)
+  # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
+  # span width modifier. Otherwise, the empty string is captured.
+  span_regex = '{}|{}'.format(SPAN_SPEC, SPAN_SPEC_WIDTH_REGEX)
+  span_matches = re.findall(span_regex, split.pattern)
 
-  is_match_span = len(span_arg_match) > 0
+  is_match_span = len(span_matches) > 0
   is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
   if [is_match_span, is_match_date].count(True) > 1:
     raise ValueError('Either span spec or date specs must be specified '
@@ -281,7 +285,7 @@ def _retrieve_latest_span_version(
                        'present.')
     return (None, None)
 
-  if is_match_span and len(span_arg_match) != 1:
+  if is_match_span and len(span_matches) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
   elif is_match_date and not all(split.pattern.count(spec) == 1
@@ -297,24 +301,19 @@ def _retrieve_latest_span_version(
     # Check if span spec has any width args. Defaults to greedy matching if 
     # no width modifiers are present.
     span_width_regex = '.*'
-    if len(span_arg_match[0]) > 0:
-      # Check for proper formatting of span spec with width modifier.
-      # This spec should have the form '{SPAN:xxx}', where the span regex
-      # captures the sequence ':xxx'.
-      if span_arg_match[0][0] != ':':
-        raise ValueError('Span spec with width modifier is improperly '
-                         'formatted: %s' % split.pattern)
+    if span_matches[0] != '':
       try:
-        span_width = int(span_arg_match[0][1:])
+        span_width = int(span_matches[0])
         if span_width <= 0:
-          raise ValueError()
+          raise ValueError("Not a positive integer.")
         span_width_regex = '.{%s}' % str(span_width)
       except ValueError:
-        raise ValueError('Width modifier in span spec is not an integer: %s' %
-                         split.pattern)
+        raise ValueError(
+            'Width modifier in span spec is not a positive integer: %s' %
+            split.pattern)
 
-    split_glob_pattern = re.sub(SPAN_SPEC_REGEX, '*', split_glob_pattern)
-    split_regex_pattern = re.sub(SPAN_SPEC_REGEX,
+    split_glob_pattern = re.sub(span_regex, '*', split_glob_pattern)
+    split_regex_pattern = re.sub(span_regex,
         '(?P<{}>{})'.format(SPAN_PROPERTY_NAME, span_width_regex),
         split_regex_pattern)
 
@@ -330,37 +329,32 @@ def _retrieve_latest_span_version(
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
 
-  # Match occurences of pattern '{VERSION*}' and capture version width modifier.
-  version_arg_match = re.findall(VERSION_SPEC_REGEX, split.pattern)
-  is_match_version = len(version_arg_match) > 0
+  # Match occurences of pattern '{VERSION}|{VERSION:*}'. If it exists, capture
+  # version width modifier. Otherwise, the empty string is captured.
+  version_regex = '{}|{}'.format(VERSION_SPEC, VERSION_SPEC_WIDTH_REGEX)
+  version_matches = re.findall(version_regex, split.pattern)
+  is_match_version = len(version_matches) > 0
   if is_match_version:
-    if len(version_arg_match) != 1:
+    if len(version_matches) != 1:
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
     
     # Check if version spec has any width modifier. Defaults to greedy matching
     # if no width modifiers are present.
     version_width_regex = '.*'
-    if len(version_arg_match[0]) > 0:
-      # Check for proper formatting of version spec with width modifier.
-      # This spec should have the form '{SPAN:xxx}', where the version regex
-      # captures the sequence ':xxx'.
-      if version_arg_match[0][0] != ':':
-        raise ValueError(
-            'Version spec with width modifier is improperly formatted: %s' % 
-            split.pattern)
+    if version_matches[0] != '':
       try:
-        version_width = int(version_arg_match[0][1:])
+        version_width = int(version_matches[0])
         if version_width <= 0:
-          raise ValueError()
+          raise ValueError("Not a positive integer.")
         version_width_regex = '.{%s}' % str(version_width)
       except ValueError:
         raise ValueError(
             'Width modifier in version spec is not a positive integer: %s' % 
             split.pattern)
 
-    split_glob_pattern = re.sub(VERSION_SPEC_REGEX, '*', split_glob_pattern)
-    split_regex_pattern = re.sub(VERSION_SPEC_REGEX,
+    split_glob_pattern = re.sub(version_regex, '*', split_glob_pattern)
+    split_regex_pattern = re.sub(version_regex,
         '(?P<{}>{})'.format(VERSION_PROPERTY_NAME, version_width_regex),
         split_regex_pattern)
 
@@ -425,14 +419,14 @@ def _retrieve_latest_span_version(
 
   # Update split pattern so executor can find the files to ingest.
   if is_match_span:
-    split.pattern = re.sub(SPAN_SPEC_REGEX, latest_span_elems[0], split.pattern)
+    split.pattern = re.sub(span_regex, latest_span_elems[0], split.pattern)
   elif is_match_date:
     for spec, value in zip(DATE_SPECS, latest_span_elems):
       split.pattern = split.pattern.replace(spec, value)
 
   latest_version_int = None
   if is_match_version:
-    split.pattern = re.sub(VERSION_SPEC_REGEX, latest_version, split.pattern)
+    split.pattern = re.sub(version_regex, latest_version, split.pattern)
     latest_version_int = int(latest_version)
 
   return latest_span_int, latest_version_int
