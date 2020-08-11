@@ -34,11 +34,11 @@ from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 
+
 def _compare_relative_difference(value: float,
                                  expected_value: float,
                                  threshold: float) -> bool:
-  """Returns whether relative difference between value and expected_value
-    is within a specified threshold.
+  """Compares relative difference between value and expected_value against threshold.
 
   Args:
     value: a float value to be compared to expected value.

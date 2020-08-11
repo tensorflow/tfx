@@ -193,7 +193,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                              str(idx)))
 
   def testExecutorVerifier(self):
-    # Calls verifier for output artifacts, excluding resolver node.
+    # Calls verifier for pipeline output artifacts, excluding the resolver node.
     BeamDagRunner().run(self.taxi_pipeline)
     pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
         self.taxi_pipeline.metadata_connection_config,
