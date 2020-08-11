@@ -48,7 +48,7 @@
 *   Supported `Date` spec in input config for file based ExampleGen.
 *   Span and Version are now stored as `int` custom properties for example
     artifacts, where previously they were stored as strings.
-
+*   Added support for width modifiers in Span and Version specs.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
