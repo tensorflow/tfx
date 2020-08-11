@@ -53,14 +53,14 @@ SPAN_PROPERTY_NAME = 'span'
 SPAN_SPEC = '{SPAN}'
 # Span spec regex to capture width modifier. This matches the spec '{SPAN:x}'
 # and captures 'x', which must be a 1+ length string.
-SPAN_SPEC_WIDTH_REGEX = '{SPAN:(.+?)}'
+SPAN_SPEC_WIDTH_REGEX = '{SPAN:(?P<width>.+?)}'
 # Key for the `version` custom property of output examples artifact.
 VERSION_PROPERTY_NAME = 'version'
 # Version spec used in split pattern.
 VERSION_SPEC = '{VERSION}'
 # Version spec regex to capture width modifier. This matches the spec
 # '{VERSION:x}' and captures 'x', which must be a 1+ length string.
-VERSION_SPEC_WIDTH_REGEX = '{VERSION:(.+?)}'
+VERSION_SPEC_WIDTH_REGEX = '{VERSION:(?P<width>.+?)}'
 # Date specs used in split pattern.
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
@@ -301,16 +301,16 @@ def _retrieve_latest_span_version(
     # Check if span spec has any width args. Defaults to greedy matching if
     # no width modifiers are present.
     span_width_regex = '.*'
-    if span_matches[0] != '':
+    span_width_str = re.search(span_regex, split.pattern).group('width')
+    if span_width_str:
       try:
-        span_width = int(span_matches[0])
-        if span_width <= 0:
-          raise ValueError("Not a positive integer.")
-        span_width_regex = '.{%s}' % str(span_width)
+        if int(span_width_str) <= 0:
+            raise ValueError('Not a positive integer.')
+        span_width_regex = '.{%s}' % span_width_str
       except ValueError:
         raise ValueError(
-            'Width modifier in span spec is not a positive integer: %s' %
-            split.pattern)
+              'Width modifier in span spec is not a positive integer: %s' %
+              split.pattern)
 
     split_glob_pattern = re.sub(span_regex, '*', split_glob_pattern)
     split_regex_pattern = re.sub(span_regex,
@@ -342,12 +342,12 @@ def _retrieve_latest_span_version(
     # Check if version spec has any width modifier. Defaults to greedy matching
     # if no width modifiers are present.
     version_width_regex = '.*'
-    if version_matches[0] != '':
+    version_width_str = re.search(version_regex, split.pattern).group('width')
+    if version_width_str:
       try:
-        version_width = int(version_matches[0])
-        if version_width <= 0:
-          raise ValueError("Not a positive integer.")
-        version_width_regex = '.{%s}' % str(version_width)
+        if int(version_width_str) <= 0:
+          raise ValueError('Not a positive integer.')
+        version_width_regex = '.{%s}' % version_width_str
       except ValueError:
         raise ValueError(
             'Width modifier in version spec is not a positive integer: %s' %
