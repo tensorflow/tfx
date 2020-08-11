@@ -56,26 +56,6 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
-  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
-    """Recursively comparing contents of two directories."""
-
-    dir_cmp = filecmp.dircmp(dir1, dir2)
-    self.assertEmpty(dir_cmp.left_only)
-    self.assertEmpty(dir_cmp.right_only)
-    self.assertEmpty(dir_cmp.funny_files)
-
-    _, mismatch, errors = filecmp.cmpfiles(
-        dir1, dir2, dir_cmp.common_files, shallow=False)
-    self.assertEmpty(mismatch)
-    self.assertEmpty(errors)
-
-    for common_dir in dir_cmp.common_dirs:
-      new_dir1 = os.path.join(dir1, common_dir)
-      new_dir2 = os.path.join(dir2, common_dir)
-      self.assertDirectoryEqual(new_dir1, new_dir2)
-
-  def testImdbPipelineBeam(self):
-    # Runs the pipeline and record to self._recorded_output_dir
     record_imdb_pipeline = imdb_pipeline_native_keras._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
@@ -96,7 +76,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         run_id=None)
 
     # Run pipeline with stub executors.
-    imdb_pipeline = imdb_pipeline_native_keras._create_pipeline(  # pylint:disable=protected-access
+    self.imdb_pipeline = imdb_pipeline_native_keras._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -105,20 +85,69 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    stubbed_component_ids = [component.id
-                             for component in imdb_pipeline.components
-                             if component.id != model_resolver_id]
+  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
-    stub_launcher = StubComponentLauncher.get_stub_launcher_class(
+  def _verify_evaluator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(executor_verifier_utils.compare_eval_results(
+        output_uri,
+        expected_uri, .5))
+
+  def _verify_schema(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_examples(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_file_sizes(output_uri,
+                                                   expected_uri, .5))
+
+  def _verify_trainer(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_model_file_sizes(output_uri,
+                                                         expected_uri, .5))
+
+  def _verify_validator(self, output_uri: Text, expected_uri: Text):
+    self.assertTrue(
+        executor_verifier_utils.compare_anomalies(output_uri,
+                                                  expected_uri))
+
+  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
+    """Recursively comparing contents of two directories."""
+
+    dir_cmp = filecmp.dircmp(dir1, dir2)
+    self.assertEmpty(dir_cmp.left_only)
+    self.assertEmpty(dir_cmp.right_only)
+    self.assertEmpty(dir_cmp.funny_files)
+
+    _, mismatch, errors = filecmp.cmpfiles(
+        dir1, dir2, dir_cmp.common_files, shallow=False)
+    self.assertEmpty(mismatch)
+    self.assertEmpty(errors)
+
+    for common_dir in dir_cmp.common_dirs:
+      new_dir1 = os.path.join(dir1, common_dir)
+      new_dir2 = os.path.join(dir2, common_dir)
+      self.assertDirectoryEqual(new_dir1, new_dir2)
+
+  def testStubbedImdbPipelineBeam(self):
+    # Runs the pipeline and record to self._recorded_output_dir
+    stubbed_component_ids = [component.id
+                             for component in self.imdb_pipeline.components
+                             if not component.id.startswith('ResolverNode')]
+
+    StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
+
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
             stub_launcher,
         ])
-    BeamDagRunner(config=stub_pipeline_config).run(imdb_pipeline)
+    BeamDagRunner(config=stub_pipeline_config).run(self.imdb_pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
@@ -148,6 +177,35 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                 self._recorded_output_dir,
                 component_id,
                 name))
+
+  def testExecutorVerifier(self):
+    # Calls verifier for pipeline output artifacts, excluding the resolver node.
+    BeamDagRunner().run(self.imdb_pipeline)
+    pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
+        self.imdb_pipeline.metadata_connection_config,
+        self.imdb_pipeline.pipeline_info)
+
+    verifier_map = {'Trainer': self._verify_trainer,
+                    'Evaluator': self._verify_trainer,
+                    'CsvExampleGen': self._verify_examples,
+                    'SchemaGen': self._verify_schema,
+                    'ExampleValidator': self._verify_validator}
+
+    # List of components to verify. ResolverNode is ignored because it
+    # doesn't have a executor that can be replaced with stub.
+    verify_component_ids = [component.id
+                            for component in self.imdb_pipeline.components
+                            if not component.id.startswith('ResolverNode')]
+
+    for component_id in verify_component_ids:
+      for key, artifact_dict in pipeline_outputs[component_id].items():
+        for idx, artifact in artifact_dict.items():
+          logging.info("Verifying {}".format(component_id))
+          recorded_uri = os.path.join(self._recorded_output_dir, component_id,
+                                      key, str(idx))
+          verifier_map.get(component_id,
+                           self._verify_file_path)(artifact.uri,
+                                                   recorded_uri)
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
   tf.test.main()
