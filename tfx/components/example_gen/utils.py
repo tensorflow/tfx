@@ -223,6 +223,35 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
+def _verify_split_specs(split: example_gen_pb2.Input.Split):
+  """Verify and identify specs to be matched in split pattern."""
+  is_match_span = SPAN_SPEC in split.pattern
+  is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
+  is_match_version = VERSION_SPEC in split.pattern
+
+  if [is_match_span, is_match_date].count(True) > 1:
+    raise ValueError('Either span spec or date specs must be specified '
+                     'exclusively.')
+  
+  if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
+    raise ValueError('Only one %s is allowed in %s' %
+                     (SPAN_SPEC, split.pattern))
+  elif is_match_date and not all(split.pattern.count(spec) == 1
+                                 for spec in DATE_SPECS):
+    raise ValueError('Exactly one of each date spec is required in %s' %
+                     split.pattern)
+
+  if is_match_version and (not is_match_span and not is_match_date):
+    raise ValueError('Version spec provided, but Span or Date spec is not '
+                      'present.')
+                      
+  if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
+      raise ValueError('Only one %s is allowed in %s' %
+                       (VERSION_SPEC, split.pattern))
+
+  return is_match_span, is_match_date, is_match_version     
+
+
 def _retrieve_latest_span_version(
     uri: Text, split: example_gen_pb2.Input.Split
 ) -> Tuple[Optional[int], Optional[int]]:
@@ -244,7 +273,7 @@ def _retrieve_latest_span_version(
       to be searched on.
 
   Returns:
-    Tuple of two strings, Span (optional) and Version (optional). Note
+    Tuple of two ints, Span (optional) and Version (optional). Note
       that this function will update the {SPAN} or Date tags as well as the
       {VERSION} tags in the split config to actual Span and Version numbers.
 
@@ -256,30 +285,15 @@ def _retrieve_latest_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-  is_match_span = SPAN_SPEC in split.pattern
-  is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
-  if [is_match_span, is_match_date].count(True) > 1:
-    raise ValueError('Either span spec or date specs must be specified '
-                     'exclusively.')
+
+  is_match_span, is_match_date, is_match_version = _verify_split_specs(split)
 
   split_pattern = os.path.join(uri, split.pattern)
-
   split_glob_pattern = split_pattern
   split_regex_pattern = _glob_to_regex(split_pattern)
 
   if not is_match_span and not is_match_date:
-    if VERSION_SPEC in split.pattern:
-      raise ValueError('Version spec provided, but Span or Date spec is not '
-                       'present.')
     return (None, None)
-
-  if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
-    raise ValueError('Only one %s is allowed in %s' %
-                     (SPAN_SPEC, split.pattern))
-  elif is_match_date and not all(split.pattern.count(spec) == 1
-                                 for spec in DATE_SPECS):
-    raise ValueError('Exactly one of each date spec is required in %s' %
-                     split.pattern)
 
   latest_span_elems = None
   latest_span_int = None
@@ -303,9 +317,6 @@ def _retrieve_latest_span_version(
 
   is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
-    if split.pattern.count(VERSION_SPEC) != 1:
-      raise ValueError('Only one %s is allowed in %s' %
-                       (VERSION_SPEC, split.pattern))
     split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
         VERSION_SPEC, '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
