@@ -13,6 +13,8 @@
 // limitations under the License.
 syntax = "proto3";
 
+package tfx.configs;
+
 // Describes a static window within the specified span numbers
 // [start_span_number, end_span_number]. If not all spans in the
 // range ar available, processing may continue on a partial range as long as 
@@ -44,7 +46,7 @@ message RangeConfig {
   // This field is not relevant to ExampleGen. For all other components, if
   // min_spans is not set, it defaults to a range-type dependent value:
   // For StaticRange, defaults to end_span_number - start_span_number + 1.
-  int32 min_spans = 4
+  int32 min_spans = 4;
 
   reserved 2, 5;
 }

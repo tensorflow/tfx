@@ -27,6 +27,7 @@ from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
@@ -162,6 +163,21 @@ class ComponentTest(tf.test.TestCase):
                       stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
+  def testConstructWithRangeConfig(self):
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=0,
+                                                  end_span_number=5),
+        exclude_span_numbers=[1,2,3],
+        min_spans=1)
+    example_gen = component.FileBasedExampleGen(
+        input_base='path',
+        range_config=range_config,
+         custom_executor_spec=executor_spec.ExecutorClassSpec(
+            TestExampleGenExecutor))
+    stored_range_config = range_config_pb2.RangeConfig()
+    json_format.Parse(example_gen.exec_properties['range_config'],
+                      stored_range_config)
+    self.assertEqual(range_config, stored_range_config)
 
 if __name__ == '__main__':
   tf.test.main()
