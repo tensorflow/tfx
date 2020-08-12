@@ -62,16 +62,16 @@ def ExecuteGraph(  # pylint: disable=invalid-name
     graph_to_remote_op_input_name_mapping:
         Mapping[Text, Mapping[Text, Mapping[Text, Text]]]
 ) -> beam.pvalue.PCollection:
-  """Executes a graph.
+  """A PTransform that executes a graph.
 
   Each graph has a list of ExecutionSpecs, in which the order of the list
   represents the order of execution. An ExecutionSpec can either represent
   a subgraph layer or a remote op in a remote op layer. When executing a
   subgraph layer, we can load and execute the subgraph with a beam ParDo.
   When executing a remote op (which represents another graph), we need to
-  load the remote graph inputs, call ExecuteGraph to switch to that graph,
-  and extract the remote graph output. When executing a remote op, we call the
-  current graph "parent" and the remote graph "child".
+  load the remote graph inputs, call ExecuteGraph to recursively execute that
+  graph, and extract the remote graph output. When executing a remote op, we
+  call the current graph "parent" and the remote graph "child".
 
   Here, each Beam element is a dictionary from remote op names to a dictionary
   from tensor names to tensors, or {remote op name: {tensor name: tensor}}.
@@ -90,11 +90,10 @@ def ExecuteGraph(  # pylint: disable=invalid-name
     graph_name_to_specs:
       A mapping from graph names to a list of ExecutionSpecs, where the order
       of the list represents the order of execution.
-
-    # We don't have this information since it was stored in PyFunc's function.
     graph_to_remote_op_input_name_mapping:
       A mapping from graph names to remote op names to remote graph placeholder
-      names to parent graph input names.
+      names to parent graph input names. We don't have this information since
+      it was stored in PyFunc's function.
       {graph name: {remote op name: {placeholder name: input name}}}.
 
   Returns:
@@ -214,12 +213,12 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
     graph_to_remote_op_input_name_mapping:
         Mapping[Text, Mapping[Text, Mapping[Text, Text]]]
 ) -> beam.pvalue.PCollection:
-  """Loads remote graph inputs.
+  """A PTransform that prepares inputs for a remote graph.
 
   Before executing a remote graph, we need to prepare its inputs. We first
   get the mapping from remote graph placeholder names to parent graph input
-  names. Then, in a copy of element, we load the remote graph inputs from
-  the parent graph.
+  names. Then, in a copy of element, we copy the inputs from the parent
+  graph's key to the remote graph's key.
 
   Args:
     pcoll: A PCollection of child graph inputs not loaded yet. Each element is
@@ -282,7 +281,7 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
     remote_op_name_to_graph_name: Mapping[Text, Text],
     graph_name_to_specs: Mapping[Text, List[execution_spec.ExecutionSpec]],
 ) -> beam.pvalue.PCollection:
-  """Extracts remote graph output.
+  """A PTransform that extracts remote graph output.
 
   After finish executing a remote graph, we need to collect its output.
   We first find the output name of the remote graph, then we copy the
@@ -308,7 +307,7 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
     A PCollection of child graph output in parent graph. Each element is a
     dictionary from remote op names to a dictionary from tensor names to
     tensors. Here, element[parent_remote_op_name] contains the output from
-    the child graph, and element[child_remote_op_name] becomes empty.
+    the child graph, and element[child_remote_op_name] is deleted.
   """
   child_graph_name = remote_op_name_to_graph_name[child_remote_op_name]
   child_specs = graph_name_to_specs[child_graph_name]
