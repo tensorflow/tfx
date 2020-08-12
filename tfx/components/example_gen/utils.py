@@ -232,7 +232,7 @@ def _verify_split_specs(split: example_gen_pb2.Input.Split):
   if [is_match_span, is_match_date].count(True) > 1:
     raise ValueError('Either span spec or date specs must be specified '
                      'exclusively.')
-  
+
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
@@ -244,7 +244,7 @@ def _verify_split_specs(split: example_gen_pb2.Input.Split):
   if is_match_version and (not is_match_span and not is_match_date):
     raise ValueError('Version spec provided, but Span or Date spec is not '
                       'present.')
-                      
+
   if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
       raise ValueError('Only one %s is allowed in %s' %
                        (VERSION_SPEC, split.pattern))
@@ -295,10 +295,6 @@ def _retrieve_latest_span_version(
   if not is_match_span and not is_match_date:
     return (None, None)
 
-  latest_span_elems = None
-  latest_span_int = None
-  latest_version = None
-
   if is_match_span:
     split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
@@ -315,7 +311,6 @@ def _retrieve_latest_span_version(
     split_regex_pattern = split_regex_pattern.replace(
         DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
 
-  is_match_version = VERSION_SPEC in split.pattern
   if is_match_version:
     split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
     split_regex_pattern = split_regex_pattern.replace(
@@ -324,6 +319,10 @@ def _retrieve_latest_span_version(
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
+
+  latest_span_elems = None
+  latest_span_int = None
+  latest_version = None
 
   files = tf.io.gfile.glob(split_glob_pattern)
 
