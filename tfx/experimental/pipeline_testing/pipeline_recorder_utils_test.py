@@ -22,7 +22,7 @@ import os
 import mock
 import tensorflow as tf
 
-from tfx.experimental.pipeline_testing import pipeline_recorder_utils1 as pipeline_recorder_utils
+from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.utils import io_utils
 
 
