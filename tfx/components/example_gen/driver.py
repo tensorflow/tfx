@@ -54,6 +54,9 @@ class Driver(base_driver.BaseDriver):
     input_base = exec_properties[utils.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
+    # TODO(jjma): get range_config from exec properties (like input_config above)
+    #     and pass config to `utils.calculate_splits_fp_span_and_version`
+
     # Note that this function updates the input_config.splits.pattern.
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
         input_base, input_config.splits)

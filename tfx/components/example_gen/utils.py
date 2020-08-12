@@ -36,6 +36,8 @@ INPUT_BASE_KEY = 'input_base'
 INPUT_CONFIG_KEY = 'input_config'
 # Key for `output_config` in executor exec_properties.
 OUTPUT_CONFIG_KEY = 'output_config'
+# Key for `range_config` in executor exec_properties.
+RANGE_CONFIG_KEY = 'range_config'
 # Key for the `output_data_format` in executor exec_properties.
 OUTPUT_DATA_FORMAT_KEY = 'output_data_format'
 
