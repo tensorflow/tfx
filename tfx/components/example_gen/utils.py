@@ -317,7 +317,7 @@ def _retrieve_latest_span_version(
 
   return latest_span, latest_version
 
-
+# TODO(jjma): Add logic to use range config with span and version parsing.
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split],
     range_config: Optional[range_config_pb2.RangeConfig]
