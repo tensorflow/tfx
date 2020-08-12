@@ -223,7 +223,8 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
-def _verify_split_specs(split: example_gen_pb2.Input.Split):
+def _verify_split_specs(
+    split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
   is_match_span = SPAN_SPEC in split.pattern
   is_match_date = any(spec in split.pattern for spec in DATE_SPECS)
