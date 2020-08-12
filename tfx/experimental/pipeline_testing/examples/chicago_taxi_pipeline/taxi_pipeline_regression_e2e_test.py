@@ -75,10 +75,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+        pipeline_name=self._pipeline_name)
 
     self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
@@ -123,7 +120,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def testStubbedTaxiPipelineBeam(self):
     # Run pipeline with stub executors.
-    # ResolverNode is ignored because it doesn't have a executor that can be replaced with stub.
+    # ResolverNode is ignored because it doesn't have an executor that can be replaced with stub.
     stubbed_component_ids = [
         component.id
         for component in self.taxi_pipeline.components
@@ -192,7 +189,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                     'ExampleValidator': self._verify_validator}
 
     # List of components to verify. ResolverNode is ignored because it
-    # doesn't have a executor that can be replaced with stub.
+    # doesn't have an executor.
     verify_component_ids = [component.id
                             for component in self.taxi_pipeline.components
                             if not component.id.startswith('ResolverNode')]
