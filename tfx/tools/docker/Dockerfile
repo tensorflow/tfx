@@ -27,7 +27,8 @@ RUN CFLAGS=$(/usr/bin/python-config --cflags) python -m pip install \
   "tensorflow>=1.15,<3" \
   "tensorflow-serving-api>=1.15,<3" \
   "google-api-python-client==1.8.0" \
-  "google-apitools==0.5.30"
+  "google-apitools==0.5.30" \
+  "boto3>=1.14.0"
 
 # docker build command should be run under root directory of github checkout.
 ENV TFX_SRC_DIR=/tfx-src
