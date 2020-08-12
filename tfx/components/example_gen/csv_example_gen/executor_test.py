@@ -46,13 +46,37 @@ class ExecutorTest(tf.test.TestCase):
               exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
               split_pattern='csv/*'))
 
-      def check_result(got):
+      def check_results(results):
         # We use Python assertion here to avoid Beam serialization error in
         # pickling tf.test.TestCase.
-        assert (15000 == len(got)), 'Unexpected example count'
-        assert (18 == len(got[0].features.feature)), 'Example not match'
+        assert (15000 == len(results)), 'Unexpected example count.'
+        assert (18 == len(results[0].features.feature)), 'Example not match.'
 
-      util.assert_that(examples, check_result)
+      util.assert_that(examples, check_results)
+
+  def testCsvToExampleWithEmptyColumn(self):
+    with beam.Pipeline() as pipeline:
+      examples = (
+          pipeline
+          | 'ToTFExample' >> executor._CsvToExample(
+              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
+              split_pattern='csv_empty/*'))
+
+      def check_results(results):
+        # We use Python assertion here to avoid Beam serialization error in
+        # pickling tf.test.TestCase.
+        assert (3 == len(results)), 'Unexpected example count.'
+        for example in results:
+          assert (example.features.feature['A'].HasField('int64_list')
+                 ), 'Column A should be int64 type.'
+          assert (not example.features.feature['B'].WhichOneof('kind')
+                 ), 'Column B should be empty.'
+          assert (example.features.feature['C'].HasField('bytes_list')
+                 ), 'Column C should be byte type.'
+          assert (example.features.feature['D'].HasField('float_list')
+                 ), 'Column D should be float type.'
+
+      util.assert_that(examples, check_results)
 
   def testDo(self):
     output_data_dir = os.path.join(
