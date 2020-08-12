@@ -17,19 +17,12 @@ import unittest
 
 import tensorflow as tf
 from tfx.components.experimental.data_view import provider_executor
+from tfx.components.testdata.module_file import data_view_module
 from tfx.types import standard_artifacts
-import tfx_bsl
-# TODO(b/161449255): clean this up after a release post tfx_bsl 0.22.1.
-if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
-  # pylint:disable=g-import-not-at-top
-  from tfx.components.testdata.module_file import data_view_module
-  from tfx_bsl.coders import tf_graph_record_decoder
+from tfx_bsl.coders import tf_graph_record_decoder
 
 
-# TODO(b/161449255): clean the condition on HAS_TF_GRAPH_RECORD_DECODER up after
-# a release post tfx_bsl 0.22.1.
-@unittest.skipIf(not getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False) or
-                 tf.__version__ < '2',
+@unittest.skipIf(tf.__version__ < '2',
                  'tfx-bsl installed does not have modules required to run this '
                  'test or Tensorflow is not 2.x.')
 class DataViewProviderExecutorTest(tf.test.TestCase):

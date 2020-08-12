@@ -18,13 +18,7 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
-import tfx_bsl
-# TODO(b/161449255): clean this up after a release post tfx_bsl 0.22.1.
-if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
-  from tfx_bsl.coders import tf_graph_record_decoder  # pylint: disable=g-import-not-at-top
-else:
-  tf_graph_record_decoder = None
-
+from tfx_bsl.coders import tf_graph_record_decoder
 
 # Keys for exec_properties dict.
 _CREATE_DECODER_FUNC_KEY = 'create_decoder_func'
