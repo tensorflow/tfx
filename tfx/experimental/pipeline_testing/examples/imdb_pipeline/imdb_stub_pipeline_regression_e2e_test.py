@@ -19,14 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import filecmp
 
+from absl import logging
 import tensorflow as tf
 from typing import Text
 
 from tfx.examples.imdb import imdb_pipeline_native_keras
+from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
-from tfx.experimental.pipeline_testing.stub_component_launcher import StubComponentLauncher
+from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration import metadata
@@ -115,22 +116,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                                                   expected_uri))
 
   def assertDirectoryEqual(self, dir1: Text, dir2: Text):
-    """Recursively comparing contents of two directories."""
-
-    dir_cmp = filecmp.dircmp(dir1, dir2)
-    self.assertEmpty(dir_cmp.left_only)
-    self.assertEmpty(dir_cmp.right_only)
-    self.assertEmpty(dir_cmp.funny_files)
-
-    _, mismatch, errors = filecmp.cmpfiles(
-        dir1, dir2, dir_cmp.common_files, shallow=False)
-    self.assertEmpty(mismatch)
-    self.assertEmpty(errors)
-
-    for common_dir in dir_cmp.common_dirs:
-      new_dir1 = os.path.join(dir1, common_dir)
-      new_dir2 = os.path.join(dir2, common_dir)
-      self.assertDirectoryEqual(new_dir1, new_dir2)
+    self.assertTrue(executor_verifier_utils.compare_dirs(dir1, dir2))
 
   def testStubbedImdbPipelineBeam(self):
     # Runs the pipeline and record to self._recorded_output_dir
@@ -138,14 +124,14 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                              for component in self.imdb_pipeline.components
                              if not component.id.startswith('ResolverNode')]
 
-    StubComponentLauncher.initialize(
+    stub_component_launcher.StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
         stubbed_component_ids=stubbed_component_ids,
         stubbed_component_map={})
 
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            stub_launcher,
+            stub_component_launcher.StubComponentLauncher,
         ])
     BeamDagRunner(config=stub_pipeline_config).run(self.imdb_pipeline)
 
@@ -172,13 +158,12 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
           name = steps[0].key
           artifacts = m.store.get_artifacts_by_id(
               [event.artifact_id])
-          for artifact in artifacts:
+          for idx, artifact in enumerate(artifacts):
             self.assertDirectoryEqual(artifact.uri, os.path.join(
                 self._recorded_output_dir,
                 component_id,
-                name))
+                name, str(idx)))
 
-  def testExecutorVerifier(self):
     # Calls verifier for pipeline output artifacts, excluding the resolver node.
     BeamDagRunner().run(self.imdb_pipeline)
     pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
