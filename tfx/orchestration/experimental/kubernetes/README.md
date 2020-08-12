@@ -20,14 +20,20 @@ kubectl apply -k tfx/orchestration/experimental/kubernetes/yaml/
 The in-cluster Jupyter Notebook allows you to edit files and run pipelines directly from within your Kubernetes cluster. The default Jupyter Notebook resource uses a [Nodeport](https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_nodeport) to expose its service. To log on to your jupyter server, you need the external ip, port and log in token. You may customize a log in password after the first time you log in.
 
 To obtain the log in token, first use `kubectl get pods` to locate the pod name starting with "jupyter-". Then, read the pod start-up log to obtain the login password by replacing $YOUR_POD_NAME with the name of the jupyter pod:
-```kubectl logs $YOUR_POD_NAME```
+```
+kubectl logs $YOUR_POD_NAME
+```
 
 To obtain the port of the service, look for the Nodeport attribute when typing:
-```kubectl describe service jupyter```
+```
+kubectl describe service jupyter
+```
 The port would by default be some number in the range 30000-32767.
 
 You can use the external ip address of any node in your cluster. Type:
-```kubectl desribe nodes```
+```
+kubectl desribe nodes
+```
 and look for the EXTERNAL_IP of any of the nodes.
 
 Finally, you should be able to access your server at http:// $EXTERNAL_IP : $NODE_PORT
@@ -36,7 +42,9 @@ Finally, you should be able to access your server at http:// $EXTERNAL_IP : $NOD
 The Mysql Service will be used as a [metadata store](https://www.tensorflow.org/tfx/guide/mlmd) for your TFX pipelines. You do not need to intereract with it by default, but it may be useful for debugging pipeline executions.
 
 To access the service from the command line, use:
-```kubectl run -it --rm --image=mysql:5.6 --restart=Never mysql-client -- mysql --host mysql```
+```
+kubectl run -it --rm --image=mysql:5.6 --restart=Never mysql-client -- mysql --host mysql
+```
 
 To use the mysql instance as a metadata store ([example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb)), you can initialize a custom interactive context with:
 
