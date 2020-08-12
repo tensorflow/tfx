@@ -52,15 +52,15 @@ SPAN_PROPERTY_NAME = 'span'
 # Span spec used in split pattern.
 SPAN_SPEC = '{SPAN}'
 # Span spec regex to capture width modifier. This matches the spec '{SPAN:x}'
-# and captures 'x', which must be a 1+ length string.
-SPAN_SPEC_WIDTH_REGEX = '{SPAN:(?P<width>.+?)}'
+# and captures the string 'x'.
+SPAN_SPEC_WIDTH_REGEX = '{SPAN:(?P<width>.*?)}'
 # Key for the `version` custom property of output examples artifact.
 VERSION_PROPERTY_NAME = 'version'
 # Version spec used in split pattern.
 VERSION_SPEC = '{VERSION}'
 # Version spec regex to capture width modifier. This matches the spec
-# '{VERSION:x}' and captures 'x', which must be a 1+ length string.
-VERSION_SPEC_WIDTH_REGEX = '{VERSION:(?P<width>.+?)}'
+# '{VERSION:x}' and captures the string 'x'.
+VERSION_SPEC_WIDTH_REGEX = '{VERSION:(?P<width>.*?)}'
 # Date specs used in split pattern.
 YEAR_SPEC = '{YYYY}'
 MONTH_SPEC = '{MM}'
