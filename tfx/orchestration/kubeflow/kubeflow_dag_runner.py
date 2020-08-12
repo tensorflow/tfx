@@ -139,10 +139,10 @@ def get_default_kubeflow_metadata_config(
   # The environment variable to use to obtain the Metadata gRPC service host in
   # the cluster that is backing Kubeflow Metadata. Note that the key in the
   # config map and therefore environment variable used, are lower-cased.
-  config.grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_HOST'
+  config.grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_SERVICE_HOST'
   # The environment variable to use to obtain the Metadata grpc service port in
   # the cluster that is backing Kubeflow Metadata.
-  config.grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_PORT'
+  config.grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_SERVICE_PORT'
 
   return config
 

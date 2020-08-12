@@ -61,13 +61,13 @@ class MLMDConfigTest(tf.test.TestCase):
 
   def testGrpcMetadataConnectionConfig(self):
     self._set_required_env_vars({
-        'METADATA_GRPC_SERVICE_HOST': 'metadata-grpc',
-        'METADATA_GRPC_SERVICE_PORT': '8080',
+        'METADATA_GRPC_SERVICE_SERVICE_HOST': 'metadata-grpc-service',
+        'METADATA_GRPC_SERVICE_SERVICE_PORT': '8080',
     })
 
     grpc_config = kubeflow_pb2.KubeflowGrpcMetadataConfig()
-    grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_HOST'
-    grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_PORT'
+    grpc_config.grpc_service_host.environment_variable = 'METADATA_GRPC_SERVICE_SERVICE_HOST'
+    grpc_config.grpc_service_port.environment_variable = 'METADATA_GRPC_SERVICE_SERVICE_PORT'
     metadata_config = kubeflow_pb2.KubeflowMetadataConfig()
     metadata_config.grpc_config.CopyFrom(grpc_config)
 
@@ -75,7 +75,7 @@ class MLMDConfigTest(tf.test.TestCase):
         metadata_config)
     self.assertIsInstance(ml_metadata_config,
                           metadata_store_pb2.MetadataStoreClientConfig)
-    self.assertEqual(ml_metadata_config.host, 'metadata-grpc')
+    self.assertEqual(ml_metadata_config.host, 'metadata-grpc-service')
     self.assertEqual(ml_metadata_config.port, 8080)
 
 
