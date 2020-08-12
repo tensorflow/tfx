@@ -229,7 +229,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                              exit_condition_lambda=_pod_is_done,
                              condition_description='Chief finished',
                              timeout_sec=1200, # wait for autoscaler
-                             expotential_backoff=True,)
+                             exponential_backoff=True,)
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
     raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
                        ('default', pod_names[0], resp.status))
