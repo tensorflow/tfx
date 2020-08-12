@@ -44,7 +44,7 @@ be the same as the results from the original model.
 """
 
 import copy
-from typing import Dict, Generator, List, Mapping, Text
+from typing import Dict, Iterator, List, Mapping, Text
 import tensorflow as tf
 import apache_beam as beam
 
@@ -106,14 +106,14 @@ def ExecuteGraph(  # pylint: disable=invalid-name
   specs = graph_name_to_specs[remote_op_name_to_graph_name[remote_op_name]]
 
   for spec in specs:
-    # Construct Beam subgraph for a subgraph layer
+    # Construct Beam subgraph for a subgraph layer.
     if not spec.is_remote_op:
       step_name = ("SubgraphLayerDoFn[Graph_%s][Outputs_%s]" %
                    (remote_op_name, '_'.join(spec.output_names)))
       pcoll = pcoll | step_name >> beam.ParDo(
           _SubgraphLayerDoFn(), spec, remote_op_name)
 
-    # Construct Beam subgraph for a remote op
+    # Construct Beam subgraph for a remote op.
     else:
       # ExecutionSpec stores one remote op.
       child_remote_op_name = list(spec.output_names)[0]
@@ -127,7 +127,7 @@ def ExecuteGraph(  # pylint: disable=invalid-name
           remote_op_name_to_graph_name,
           graph_to_remote_op_input_name_mapping)
 
-      # A good place to add beam.Reshuffle()
+      # A good place to add beam.Reshuffle() to prevent fusion.
       step_name = "ExecuteGraph%s" % step_descriptor
       pcoll = pcoll | step_name >> ExecuteGraph(
           child_remote_op_name,
@@ -154,7 +154,7 @@ class _SubgraphLayerDoFn(beam.DoFn):
       element: Dict[Text, Dict[Text, tf.Tensor]],
       spec: execution_spec.ExecutionSpec,
       remote_op_name: Text
-  ) -> Generator[Dict[Text, Dict[Text, tf.Tensor]], None, None]:
+  ) -> Iterator[Dict[Text, Dict[Text, tf.Tensor]]]:
     """Executes a subgraph layer.
 
     To execute a subgraph layer, we need to prepare a feed_dict by extracting
