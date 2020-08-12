@@ -18,7 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Text, Sequence, Mapping
+import inspect
+import sys
+from typing import Any, Callable, Text, Sequence, Mapping
 
 
 def GetValues(inputs: Mapping[Text, Sequence[Any]],
@@ -70,3 +72,19 @@ def GetSoleValue(inputs: Mapping[Text, Sequence[Any]], label: Text,
     if not values:
       return None
   return values[0]
+
+
+def FunctionHasArg(fn: Callable, arg_name: Text) -> bool:  # pylint: disable=g-bare-generic
+  """Test at runtime if a function's signature contains a certain argument.
+
+  Args:
+    fn: function to be tested.
+    arg_name: Name of the argument to be tested.
+
+  Returns:
+    True if the function signature contains that argument.
+  """
+  if sys.version_info.major == 2:
+    return arg_name in inspect.getargspec(fn).args  # pylint: disable=deprecated-method
+  else:
+    return arg_name in inspect.signature(fn).parameters

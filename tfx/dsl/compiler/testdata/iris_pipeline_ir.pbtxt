@@ -50,6 +50,10 @@ nodes {
                 value: INT
               }
               properties {
+                key: "version"
+                value: INT
+              }
+              properties {
                 key: "split_names"
                 value: STRING
               }

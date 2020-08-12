@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Callable, List, Optional, Text, Tuple, Union
+from typing import Callable, List, Optional, Text, Tuple, Union
 
 import tensorflow as tf
 from tfx.components.experimental.data_view import constants
@@ -27,31 +27,17 @@ from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact
 from tfx.types import standard_artifacts
-import tfx_bsl
+from tfx_bsl.tfxio import dataset_options
 from tfx_bsl.tfxio import raw_tf_record
+from tfx_bsl.tfxio import record_to_tensor_tfxio
 from tfx_bsl.tfxio import tf_example_record
 from tfx_bsl.tfxio import tf_sequence_example_record
 from tfx_bsl.tfxio import tfxio
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-# TODO(b/161449255): clean this up after a release post tfx_bsl 0.22.1.
-if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
-  from tfx_bsl.tfxio import record_to_tensor_tfxio  # pylint: disable=g-import-not-at-top
-else:
-  record_to_tensor_tfxio = None
-
-# TODO(b/162532479): clean up once tfx-bsl post-0.22 is released.
-_TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS = getattr(
-    tfx_bsl, 'TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS', False)
-
 # TODO(b/162532479): switch to support List[Text] exclusively, once tfx-bsl
 # post-0.22 is released.
 OneOrMorePatterns = Union[Text, List[Text]]
-
-# TODO(b/162532757): the type should be
-# tfx_bsl.tfxio.dataset_options.TensorFlowDatasetOptions. Switch to it once
-# tfx-bsl post-0.22 is released.
-_TensorFlowDatasetOptions = Any
 
 
 def resolve_payload_format_and_data_view_uri(
@@ -161,7 +147,7 @@ def get_tf_dataset_factory_from_artifact(
     telemetry_descriptors: List[Text],
 ) -> Callable[[
     List[Text],
-    _TensorFlowDatasetOptions,
+    dataset_options.TensorFlowDatasetOptions,
     Optional[schema_pb2.Schema],
 ], tf.data.Dataset]:
   """Returns a factory function that creates a tf.data.Dataset.
@@ -179,7 +165,7 @@ def get_tf_dataset_factory_from_artifact(
       examples)
 
   def dataset_factory(file_pattern: List[Text],
-                      options: _TensorFlowDatasetOptions,
+                      options: dataset_options.TensorFlowDatasetOptions,
                       schema: Optional[schema_pb2.Schema]) -> tf.data.Dataset:
     return make_tfxio(  # pylint:disable=g-long-lambda
         file_pattern=file_pattern,
@@ -226,10 +212,6 @@ def make_tfxio(file_pattern: OneOrMorePatterns,
   Returns:
     a TFXIO instance.
   """
-  if not _TFXIO_SUPPORT_MULTIPLE_FILE_PATTERNS:
-    assert not isinstance(file_pattern, list) or len(file_pattern) == 1, (
-        'multiple file patterns are not supported yet.')
-
   if not isinstance(payload_format, int):
     payload_format = example_gen_pb2.PayloadFormat.Value(payload_format)
 

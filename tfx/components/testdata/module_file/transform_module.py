@@ -92,14 +92,15 @@ def _identity(x):
   return x
 
 
-def preprocessing_fn(inputs):
+def preprocessing_fn(inputs, custom_config):
   """tf.transform's callback function for preprocessing inputs.
 
   Args:
     inputs: map from feature keys to raw not-yet-transformed features.
+    custom_config: additional properties for pre-processing.
 
   Returns:
-    Map from string feature key to transformed feature operations.
+    Map from string feature key to transformed features.
   """
   outputs = {}
   for key in _DENSE_FLOAT_FEATURE_KEYS:
@@ -111,13 +112,12 @@ def preprocessing_fn(inputs):
     # Build a vocabulary for this feature.
     outputs[_transformed_name(key)] = tft.compute_and_apply_vocabulary(
         _fill_in_missing(inputs[key]),
-        top_k=_VOCAB_SIZE,
-        num_oov_buckets=_OOV_SIZE)
+        top_k=custom_config.get('VOCAB_SIZE', _VOCAB_SIZE),
+        num_oov_buckets=custom_config.get('OOV_SIZE', _OOV_SIZE))
 
   for key in _BUCKET_FEATURE_KEYS:
     outputs[_transformed_name(key)] = tft.bucketize(
-        _fill_in_missing(inputs[key]),
-        _FEATURE_BUCKET_COUNT)
+        _fill_in_missing(inputs[key]), _FEATURE_BUCKET_COUNT)
 
   for key in _CATEGORICAL_FEATURE_KEYS:
     outputs[_transformed_name(key)] = _fill_in_missing(inputs[key])

@@ -44,8 +44,6 @@ RUN patch `python -c 'import googleapiclient; print(googleapiclient.__path__[0])
  patch `python -c 'import apitools; print(apitools.__path__[0])'`/base/py/base_api.py \
   /tfx-src/tfx/tools/docker/patches/base_api.patch
 
-# TODO(zhitaoli): Ensure that license dependency is an exact match instead of
-# subset check.
 ARG gather_third_party_licenses=true
 RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
   /tfx-src/tfx/tools/docker/license.sh \

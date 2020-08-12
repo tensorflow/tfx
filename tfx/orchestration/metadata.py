@@ -26,21 +26,20 @@ import os
 import random
 import time
 import types
-
 from typing import Any, Dict, List, Optional, Set, Text, Tuple, Type, Union
 
 import absl
 import six
 import tensorflow as tf
-
-from ml_metadata.metadata_store import metadata_store
-from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import ArtifactState
+
+import ml_metadata as mlmd
+from ml_metadata.proto import metadata_store_pb2
+from ml_metadata.proto import metadata_store_service_pb2
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 # Number of times to retry initialization of connection.
 _MAX_INIT_RETRY = 10
@@ -144,7 +143,7 @@ class Metadata(object):
     connection_error = None
     for _ in range(_MAX_INIT_RETRY):
       try:
-        self._store = metadata_store.MetadataStore(self._connection_config)
+        self._store = mlmd.MetadataStore(self._connection_config)
       except RuntimeError as err:
         # MetadataStore could raise Aborted error if multiple concurrent
         # connections try to execute initialization DDL in database.
@@ -165,7 +164,7 @@ class Metadata(object):
     self._store = None
 
   @property
-  def store(self) -> metadata_store.MetadataStore:
+  def store(self) -> mlmd.MetadataStore:
     """Returns underlying MetadataStore.
 
     Raises:
@@ -263,8 +262,8 @@ class Metadata(object):
       try:
         artifact_type = self.store.get_artifact_type(type_name)
         if artifact_type is None:
-          raise tf.errors.NotFoundError(None, None, 'No type found.')
-      except tf.errors.NotFoundError:
+          raise mlmd.errors.NotFoundError('No type found.')
+      except mlmd.errors.NotFoundError:
         absl.logging.warning('Artifact type %s not registered' % type_name)
         continue
 
@@ -312,9 +311,9 @@ class Metadata(object):
     try:
       artifact_type = self.store.get_artifact_type(type_name)
       if not artifact_type:
-        raise tf.errors.NotFoundError(
+        raise mlmd.errors.NotFoundError(
             None, None, 'No artifact type found for %s.' % type_name)
-    except tf.errors.NotFoundError:
+    except mlmd.errors.NotFoundError:
       return []
 
     # Gets the executions that are associated with all contexts.
@@ -397,9 +396,8 @@ class Metadata(object):
              for k in exec_properties.keys()):
         return existing_execution_type.id
       else:
-        raise tf.errors.NotFoundError(None, None,
-                                      'No qualified execution type found.')
-    except tf.errors.NotFoundError:
+        raise mlmd.errors.NotFoundError('No qualified execution type found.')
+    except mlmd.errors.NotFoundError:
       execution_type = metadata_store_pb2.ExecutionType(name=type_name)
       execution_type.properties[
           _EXECUTION_TYPE_KEY_STATE] = metadata_store_pb2.STRING
@@ -428,7 +426,7 @@ class Metadata(object):
         absl.logging.debug('Registering a new execution type with id %s.' %
                            execution_type_id)
         return execution_type_id
-      except tf.errors.AlreadyExistsError:
+      except mlmd.errors.AlreadyExistsError:
         warning_str = (
             'missing or modified key in exec_properties comparing with '
             'existing execution type with the same type name. Existing type: '
@@ -661,7 +659,7 @@ class Metadata(object):
           contexts=contexts + [component_run_context])
       execution.id = execution_id
       component_run_context.id = context_ids[-1]
-    except tf.errors.AlreadyExistsError:
+    except mlmd.errors.AlreadyExistsError:
       component_run_context = self.get_component_run_context(component_info)
       absl.logging.debug(
           'Component run context already exists. Reusing the context %s.',
@@ -1018,7 +1016,7 @@ class Metadata(object):
     try:
       [context_id] = self.store.put_contexts([context])
       context.id = context_id
-    except tf.errors.AlreadyExistsError:
+    except mlmd.errors.AlreadyExistsError:
       absl.logging.debug('Run context %s already exists.', context_name)
       context = self.store.get_context_by_type_and_name(context_type_name,
                                                         context_name)
