@@ -56,6 +56,7 @@ ROOT_PARAMETER = data_types.RuntimeParameter(name=_PIPELINE_ROOT, ptype=Text)
 
 class Pipeline(object):
   """Logical TFX pipeline object.
+
   Attributes:
     pipeline_args: Kwargs used to create real pipeline implementation. This is
       forwarded to PipelineRunners instead of consumed in this class. This
@@ -81,6 +82,7 @@ class Pipeline(object):
                beam_pipeline_args: Optional[List[Text]] = None,
                **kwargs):
     """Initialize pipeline.
+
     Args:
       pipeline_name: Name of the pipeline;
       pipeline_root: Path to root directory of the pipeline;
