@@ -71,10 +71,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+        pipeline_name=self._pipeline_name)
 
     # Run pipeline with stub executors.
     self.imdb_pipeline = imdb_pipeline_native_keras._create_pipeline(  # pylint:disable=protected-access
@@ -174,10 +171,11 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
                     'Evaluator': self._verify_trainer,
                     'CsvExampleGen': self._verify_examples,
                     'SchemaGen': self._verify_schema,
-                    'ExampleValidator': self._verify_validator}
+                    'ExampleValidator': self._verify_validator,
+                    'Evalutaor': self._verify_evaluator}
 
     # List of components to verify. ResolverNode is ignored because it
-    # doesn't have a executor that can be replaced with stub.
+    # doesn't have an executor.
     verify_component_ids = [component.id
                             for component in self.imdb_pipeline.components
                             if not component.id.startswith('ResolverNode')]
