@@ -223,7 +223,7 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
-def _verify_split_specs(
+def _verify_split_pattern_specs(
     split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
   is_match_span = SPAN_SPEC in split.pattern
@@ -235,8 +235,8 @@ def _verify_split_specs(
                      'exclusively.')
 
   if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
-    raise ValueError('Only one %s is allowed in %s' %
-                     (SPAN_SPEC, split.pattern))
+    raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC,
+                                                       split.pattern))
   elif is_match_date and not all(split.pattern.count(spec) == 1
                                  for spec in DATE_SPECS):
     raise ValueError('Exactly one of each date spec is required in %s' %
@@ -247,8 +247,8 @@ def _verify_split_specs(
                       'present.')
 
   if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
-      raise ValueError('Only one %s is allowed in %s' %
-                       (VERSION_SPEC, split.pattern))
+      raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
+                                                         split.pattern))
 
   return is_match_span, is_match_date, is_match_version     
 
@@ -287,7 +287,8 @@ def _retrieve_latest_span_version(
       - If a matching cannot be found for split pattern provided.
   """
 
-  is_match_span, is_match_date, is_match_version = _verify_split_specs(split)
+  is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
+      split)
 
   split_pattern = os.path.join(uri, split.pattern)
   split_glob_pattern = split_pattern

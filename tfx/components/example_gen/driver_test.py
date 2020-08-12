@@ -152,9 +152,9 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
     self.assertEqual(
-        examples.get_int_custom_property(utils.SPAN_PROPERTY_NAME), 2)
+        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
     self.assertEqual(
-        examples.get_int_custom_property(utils.VERSION_PROPERTY_NAME), 1)
+        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
 
 
 if __name__ == '__main__':
