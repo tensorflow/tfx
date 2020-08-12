@@ -28,6 +28,7 @@ from tfx.components.base import base_driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 
@@ -54,12 +55,15 @@ class Driver(base_driver.BaseDriver):
     input_base = exec_properties[utils.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
-    # TODO(jjma): get range_config from exec properties (like input_config above)
-    #     and pass config to `utils.calculate_splits_fp_span_and_version`
+    # TODO(jjma): add driver tests for RangeConfig.
+    range_config = None
+    if utils.RANGE_CONFIG_KEY in exec_properties:
+        range_config = range_config_pb2.RangeConfig()
+        json_format.Parse(exec_properties[utils.RANGE_CONFIG_KEY], range_config)
 
     # Note that this function updates the input_config.splits.pattern.
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        input_base, input_config.splits)
+        input_base, input_config.splits, range_config)
 
     exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)

@@ -229,7 +229,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(name='s2', pattern='split2/*')
     ]
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual(
         fingerprint,
         'split:s1,num_files:1,total_bytes:7,xor_checksum:1,sum_checksum:1\n'
@@ -244,7 +244,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testVersionNoMatching(self):
     span_dir = os.path.join(self._input_base_path, 'span01', 'wrong', 'data')
@@ -256,7 +256,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testSpanWrongFormat(self):
     wrong_span = os.path.join(self._input_base_path, 'spanx', 'split1', 'data')
@@ -267,7 +267,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find span number'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testVersionWrongFormat(self):
     wrong_version = os.path.join(self._input_base_path, 'span01', 'versionx',
@@ -280,7 +280,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Cannot find version number'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testMultipleSpecs(self):
     splits1 = [
@@ -289,7 +289,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Only one {SPAN} is allowed'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits1)
+          self._input_base_path, splits1, None)
 
     splits2 = [
         example_gen_pb2.Input.Split(
@@ -298,7 +298,7 @@ class UtilsTest(tf.test.TestCase):
     ]
     with self.assertRaisesRegexp(ValueError, 'Only one {VERSION} is allowed'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits2)
+          self._input_base_path, splits2, None)
 
   def testHaveSpanNoVersion(self):
     # Test specific behavior when Span spec is present but Version is not.
@@ -310,7 +310,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual('1', span)
     self.assertIsNone(version)
 
@@ -326,7 +326,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual('1', span)
     self.assertEqual('1', version)
 
@@ -339,7 +339,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(
         ValueError, 'Version spec provided, but Span spec is not present'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testNoSpanOrVersion(self):
     # Test specific behavior when neither Span nor Version spec is present.
@@ -349,7 +349,7 @@ class UtilsTest(tf.test.TestCase):
     splits = [example_gen_pb2.Input.Split(name='s1', pattern='split1/*')]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual('0', span)
     self.assertIsNone(version)
 
@@ -368,7 +368,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual('2', span)
     self.assertEqual('1', version)
 
@@ -394,7 +394,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
     span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'ver01',
                                    'split2', 'data')
@@ -413,7 +413,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(
         ValueError, 'Latest version should be the same for each split'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
     span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'ver02',
                                    'split2', 'data')
     io_utils.write_string_file(span2_v2_split2, 'testing22')
@@ -426,7 +426,7 @@ class UtilsTest(tf.test.TestCase):
             name='s2', pattern='span{SPAN}/ver{VERSION}/split2/*')
     ]
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual(span, '02')
     self.assertEqual(version, '02')
 

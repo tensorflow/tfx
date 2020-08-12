@@ -27,6 +27,7 @@ import six
 import tensorflow as tf
 
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from google.protobuf import json_format
 
@@ -318,7 +319,8 @@ def _retrieve_latest_span_version(
 
 
 def calculate_splits_fingerprint_span_and_version(
-    input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split]
+    input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split],
+    range_config: Optional[range_config_pb2.RangeConfig]
 ) -> Tuple[Text, Text, Optional[Text]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
@@ -331,6 +333,8 @@ def calculate_splits_fingerprint_span_and_version(
     splits: An iterable collection of example_gen_pb2.Input.Split objects. Note
       that this function will update the {SPAN} in this and {VERSION} tags in
       the split config to actual Span and Version numbers.
+    range_config: An instance of range_config_pb2.RangeConfig, which specifies
+      which spans to consider when finding the most recent span and version.
 
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
