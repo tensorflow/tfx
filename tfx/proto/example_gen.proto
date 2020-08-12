@@ -55,18 +55,6 @@ message Input {
   //   - If SPAN is specified, pipeline will process the latest span, and store
   //     the span number in metadata.
   //
-  // [VERSION spec]
-  //   - '{VERSION}', for using in pattern below to retrieve version number.
-  //   - This spec matches to non-zero padding digits and maps the data to
-  //     the relvant VERSION numbers under the SPAN.
-  //   - When VERSION spec is missing, version is set to be None.
-  //   - If SPAN and VERSION are both specified, pipeline will process the
-  //     latest version for the latest span, and store the version number in
-  //     metadata.
-  //   - If VERSION is specified, but not SPAN, an error will be thrown.
-  //   - It could also be optionally specified with the width in the same way
-  //     as SPAN spec. e.g. 'data_span_{SPAN}_version_{VERSION:4}.data-*'.
-  //
   // [date specs]
   //   - There are three specs to represent mapping from dates to spans:
   //     {YYYY}, {MM}, and {DD}. The three specs should be altogether present,
@@ -78,6 +66,18 @@ message Input {
   //     e.g. 'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data'
   //       and consumes it as input for Span-0, and 'log-20170101.data' as
   //       input for Span-17167.
+  //
+  // [VERSION spec]
+  //   - '{VERSION}', for using in pattern below to retrieve version number.
+  //   - This spec matches to non-zero padding digits and maps the data to
+  //     the relvant VERSION numbers under the SPAN.
+  //   - When VERSION spec is missing, version is set to be None.
+  //   - If SPAN and VERSION are both specified, pipeline will process the
+  //     latest version for the latest span, and store the version number in
+  //     metadata.
+  //   - If VERSION is specified, but not SPAN, an error will be thrown.
+  //   - It could also be optionally specified with the width in the same way
+  //     as SPAN spec. e.g. 'data_span_{SPAN}_version_{VERSION:4}.data-*'.
   //
   // TODO(b/162622803): add default behavior for when version spec not present.
   // TODO(jyzhao): support range config for define certain spans to process.
