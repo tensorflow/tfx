@@ -242,7 +242,7 @@ def _verify_split_pattern_specs(
                                  for spec in DATE_SPECS):
     raise ValueError(
         'Exactly one of each date spec (%s, %s, %s) is required in %s' %
-                     (YEAR_SPEC, MONTH_SPEC, DATE_SPEC, split.pattern))
+                     (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
 
   if is_match_version and (not is_match_span and not is_match_date):
     raise ValueError(
