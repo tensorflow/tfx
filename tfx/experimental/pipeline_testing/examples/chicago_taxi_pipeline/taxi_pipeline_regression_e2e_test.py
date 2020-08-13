@@ -93,10 +93,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
-  def _verify_evaluator(self, output_uri: Text, expected_uri: Text):
+  def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
+    print("_verify_evaluator")
     self.assertTrue(executor_verifier_utils.compare_eval_results(
         output_uri,
         expected_uri, .5))
+    print("done _verify_evaluator")
 
   def _verify_schema(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
@@ -108,12 +110,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         executor_verifier_utils.compare_file_sizes(output_uri,
                                                    expected_uri, .5))
 
-  def _verify_trainer(self, output_uri: Text, expected_uri: Text):
+  def _verify_model(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_model_file_sizes(output_uri,
                                                          expected_uri, .5))
 
-  def _verify_validator(self, output_uri: Text, expected_uri: Text):
+  def _verify_anomalies(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_anomalies(output_uri,
                                                   expected_uri))
@@ -181,11 +183,12 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         self.taxi_pipeline.metadata_connection_config,
         self.taxi_pipeline.pipeline_info)
 
-    verifier_map = {'Trainer': self._verify_trainer,
-                    'Evaluator': self._verify_trainer,
-                    'CsvExampleGen': self._verify_examples,
-                    'SchemaGen': self._verify_schema,
-                    'ExampleValidator': self._verify_validator}
+    verifier_map = {'model': self._verify_model,
+                    'model_run': self._verify_model,
+                    'examples': self._verify_examples,
+                    'schema': self._verify_schema,
+                    'anomalies': self._verify_anomalies,
+                    'evaluation': self._verify_evaluation}
 
     # List of components to verify. ResolverNode is ignored because it
     # doesn't have an executor.
@@ -194,14 +197,13 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                             if not component.id.startswith('ResolverNode')]
 
     for component_id in verify_component_ids:
+      logging.info("Verifying {}".format(component_id))
       for key, artifact_dict in pipeline_outputs[component_id].items():
         for idx, artifact in artifact_dict.items():
-          logging.info("Verifying {}".format(component_id))
           recorded_uri = os.path.join(self._recorded_output_dir, component_id,
                                       key, str(idx))
-          verifier_map.get(component_id,
-                           self._verify_file_path)(artifact.uri,
-                                                   recorded_uri)
+          verifier_map.get(key, self._verify_file_path)(artifact.uri,
+                                                        recorded_uri)
 
 if __name__ == '__main__':
   tf.test.main()
