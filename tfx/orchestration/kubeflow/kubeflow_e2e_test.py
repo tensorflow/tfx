@@ -208,8 +208,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline = self._create_pipeline(pipeline_name, components)
 
     self._compile_and_run_pipeline(pipeline)
-    # TODO(b/159965444): Re-enable when we have tensorflow/serving for TF 2.3.
-    # self._assert_infra_validator_passed(pipeline_name)
+    self._assert_infra_validator_passed(pipeline_name)
 
   def testPrimitiveEnd2EndPipeline(self):
     """End-to-End test for primitive artifacts passing."""
