@@ -87,7 +87,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
-  def _verify_evaluator(self, output_uri: Text, expected_uri: Text):
+  def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(executor_verifier_utils.compare_eval_results(
         output_uri,
         expected_uri, .5))
@@ -102,12 +102,12 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         executor_verifier_utils.compare_file_sizes(output_uri,
                                                    expected_uri, .5))
 
-  def _verify_trainer(self, output_uri: Text, expected_uri: Text):
+  def _verify_model(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_model_file_sizes(output_uri,
                                                          expected_uri, .5))
 
-  def _verify_validator(self, output_uri: Text, expected_uri: Text):
+  def _verify_anomalies(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
         executor_verifier_utils.compare_anomalies(output_uri,
                                                   expected_uri))
@@ -142,7 +142,7 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
       for execution in m.store.get_executions():
         component_id = execution.properties[
             metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-        if component_id == 'ResolverNode.latest_blessed_model_resolver':
+        if component_id.startswith('ResolverNode'):
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
@@ -167,12 +167,12 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
         self.imdb_pipeline.metadata_connection_config,
         self.imdb_pipeline.pipeline_info)
 
-    verifier_map = {'Trainer': self._verify_trainer,
-                    'Evaluator': self._verify_trainer,
-                    'CsvExampleGen': self._verify_examples,
-                    'SchemaGen': self._verify_schema,
-                    'ExampleValidator': self._verify_validator,
-                    'Evalutaor': self._verify_evaluator}
+    verifier_map = {'model': self._verify_model,
+                    'model_run': self._verify_model,
+                    'examples': self._verify_examples,
+                    'schema': self._verify_schema,
+                    'anomalies': self._verify_anomalies,
+                    'evaluation': self._verify_evaluation}
 
     # List of components to verify. ResolverNode is ignored because it
     # doesn't have an executor.
@@ -186,9 +186,9 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
           logging.info("Verifying {}".format(component_id))
           recorded_uri = os.path.join(self._recorded_output_dir, component_id,
                                       key, str(idx))
-          verifier_map.get(component_id,
-                           self._verify_file_path)(artifact.uri,
-                                                   recorded_uri)
+          verifier_map.get(key, self._verify_file_path)(artifact.uri,
+                                                        recorded_uri)
+
 if __name__ == '__main__':
   tf.compat.v1.enable_v2_behavior()
   tf.test.main()
