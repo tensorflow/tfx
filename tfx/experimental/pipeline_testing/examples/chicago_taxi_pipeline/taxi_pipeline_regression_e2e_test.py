@@ -94,11 +94,9 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
 
   def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
-    print("_verify_evaluator")
     self.assertTrue(executor_verifier_utils.compare_eval_results(
         output_uri,
         expected_uri, .5))
-    print("done _verify_evaluator")
 
   def _verify_schema(self, output_uri: Text, expected_uri: Text):
     self.assertTrue(
