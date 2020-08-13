@@ -256,6 +256,71 @@ def _verify_split_pattern_specs(
   return is_match_span, is_match_date, is_match_version     
 
 
+def _find_matched_span_tokens_from_path(
+    result: re.Match, file_path: Text, split_regex_pattern: Text, 
+    is_match_span: bool, is_match_date: bool
+) -> Tuple[Optional[List[Text]], Optional[int]]:
+  """Finds the span tokens and number given a file path and split regex."""
+  matched_span_tokens = None
+  matched_span_int = None
+
+  if is_match_span:
+    matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
+    try:
+      matched_span_int = int(matched_span_tokens[0])
+    except ValueError:
+      raise ValueError('Cannot find %s number from %s based on %s' %
+                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+
+  elif is_match_date:
+    matched_span_tokens = [result.group(name) 
+                           for name in ['year', 'month', 'day']]
+    try:
+      matched_span_ints = [int(elem) for elem in matched_span_tokens]
+    except ValueError:
+      raise ValueError(
+          'Cannot find %s number using date from %s based on %s' %
+          (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+    try:
+      matched_span_int = (datetime(*matched_span_ints) - UNIX_EPOCH_DATE).days
+    except ValueError:
+      raise ValueError('Retrieved date is invalid for file: %s' % file_path)
+
+  return matched_span_tokens, matched_span_int
+
+
+def _create_matching_glob_and_regex(
+    uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
+    is_match_date: bool, is_match_version: bool) -> Tuple[Text, Text]:
+  """Constructs glob and regex patterns for matching span and version."""
+  split_pattern = os.path.join(uri, split.pattern)
+  split_glob_pattern = split_pattern
+  split_regex_pattern = _glob_to_regex(split_pattern)
+
+  if is_match_span:
+    split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
+    split_regex_pattern = split_regex_pattern.replace(
+        SPAN_SPEC, '(?P<{}>.*)'.format(SPAN_PROPERTY_NAME))
+  elif is_match_date:
+    for spec in DATE_SPECS:
+      split_glob_pattern = split_glob_pattern.replace(spec, '*')
+    # Defines a clear number of digits for certain element of date. This covers
+    # cases where date stamps may not have seperators between them.
+    split_regex_pattern = split_regex_pattern.replace(
+        YEAR_SPEC, '(?P<{}>.{{4}})'.format('year'))
+    split_regex_pattern = split_regex_pattern.replace(
+        MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
+    split_regex_pattern = split_regex_pattern.replace(
+        DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
+
+  if is_match_version:
+    split_glob_pattern = split_glob_pattern.replace(VERSION_SPEC, '*')
+    split_regex_pattern = split_regex_pattern.replace(
+        VERSION_SPEC, '(?P<{}>.*)'.format(VERSION_PROPERTY_NAME))
+
+  return split_glob_pattern, split_regex_pattern
+
+
 def _retrieve_latest_span_version(
     uri: Text, split: example_gen_pb2.Input.Split
 ) -> Tuple[Optional[int], Optional[int]]:
@@ -293,12 +358,11 @@ def _retrieve_latest_span_version(
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
       split)
 
-  split_pattern = os.path.join(uri, split.pattern)
-  split_glob_pattern = split_pattern
-  split_regex_pattern = _glob_to_regex(split_pattern)
-
   if not is_match_span and not is_match_date:
     return (None, None)
+
+  split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
+      uri, split, is_match_span, is_match_date, is_match_version)
 
   if is_match_span:
     split_glob_pattern = split_glob_pattern.replace(SPAN_SPEC, '*')
@@ -336,48 +400,27 @@ def _retrieve_latest_span_version(
     if result is None:
       raise ValueError('Glob pattern does not match regex pattern')
 
-    matched_span_tokens = None
-    span_int = None
-
-    if is_match_span:
-      matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
-      try:
-        span_int = int(matched_span_tokens[0])
-      except ValueError:
-        raise ValueError('Cannot find %s number from %s based on %s' %
-                         (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-
-    elif is_match_date:
-      matched_span_tokens = [result.group(name) for name in ['year', 'month', 'day']]
-      try:
-        span_ints = [int(elem) for elem in matched_span_tokens]
-      except ValueError:
-        raise ValueError(
-            'Cannot find %s number using date from %s based on %s' %
-            (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-      try:
-        span_int = (datetime(*span_ints) - UNIX_EPOCH_DATE).days
-      except ValueError:
-        raise ValueError('Retrieved date is invalid for file: %s' % file_path)
-
-    version_str = None
+    matched_span_tokens, matched_span_int = _find_matched_span_tokens_from_path(
+        result, file_path, split_regex_pattern, is_match_span, is_match_date)
+  
+    matched_version = None
     if is_match_version:
-      version_str = result.group(VERSION_PROPERTY_NAME)
+      matched_version = result.group(VERSION_PROPERTY_NAME)
       try:
-        version_int = int(version_str)
+        version_int = int(matched_version)
       except ValueError:
         raise ValueError(
             'Cannot find %s number from %s based on %s' %
             (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-    if latest_span_int is None or span_int > latest_span_int:
+    if latest_span_int is None or matched_span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
       latest_span_tokens = matched_span_tokens
-      latest_span_int = span_int
-      latest_version = version_str
-    elif (latest_span_int == span_int and
+      latest_span_int = matched_span_int
+      latest_version = matched_version
+    elif (latest_span_int == matched_span_int and
           (latest_version is None or version_int >= int(latest_version))):
-      latest_version = version_str
+      latest_version = matched_version
 
   if latest_span_int is None or (is_match_version and
                                  latest_version is None):
