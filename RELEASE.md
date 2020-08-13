@@ -46,8 +46,6 @@
 *   Supported custom extractors in Evaluator.
 *   Deprecated tensorflow dependency from MLMD python client.
 *   Supported `Date` spec in input config for file based ExampleGen.
-*   Span and Version are now stored as `int` custom properties for example
-    artifacts, where previously they were stored as strings.
 
 
 ## Bug fixes and other changes

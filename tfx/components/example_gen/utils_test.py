@@ -305,7 +305,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError,
-        'Exactly one of each date spec is required'):
+        'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits3)
 
