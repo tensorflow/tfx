@@ -239,10 +239,10 @@ def _verify_split_pattern_specs(
     raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC,
                                                        split.pattern))
   if is_match_date and not all(split.pattern.count(spec) == 1
-                                 for spec in DATE_SPECS):
+                               for spec in DATE_SPECS):
     raise ValueError(
         'Exactly one of each date spec (%s, %s, %s) is required in %s' %
-                     (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
+        (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
 
   if is_match_version and (not is_match_span and not is_match_date):
     raise ValueError(
@@ -250,14 +250,14 @@ def _verify_split_pattern_specs(
         split.pattern)
 
   if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
-      raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
-                                                         split.pattern))
+    raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
+                                                       split.pattern))
 
-  return is_match_span, is_match_date, is_match_version     
+  return is_match_span, is_match_date, is_match_version
 
 
 def _find_matched_span_tokens_from_path(
-    result: re.Match, file_path: Text, split_regex_pattern: Text, 
+    result: re.Match, file_path: Text, split_regex_pattern: Text,
     is_match_span: bool, is_match_date: bool
 ) -> Tuple[Optional[List[Text]], Optional[int]]:
   """Finds the span tokens and number given a file path and split regex."""
@@ -270,10 +270,10 @@ def _find_matched_span_tokens_from_path(
       matched_span_int = int(matched_span_tokens[0])
     except ValueError:
       raise ValueError('Cannot find %s number from %s based on %s' %
-                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
 
   elif is_match_date:
-    matched_span_tokens = [result.group(name) 
+    matched_span_tokens = [result.group(name)
                            for name in ['year', 'month', 'day']]
     try:
       matched_span_ints = [int(elem) for elem in matched_span_tokens]
@@ -402,7 +402,7 @@ def _retrieve_latest_span_version(
 
     matched_span_tokens, matched_span_int = _find_matched_span_tokens_from_path(
         result, file_path, split_regex_pattern, is_match_span, is_match_date)
-  
+
     matched_version = None
     if is_match_version:
       matched_version = result.group(VERSION_PROPERTY_NAME)
@@ -462,8 +462,8 @@ def calculate_splits_fingerprint_span_and_version(
     from matching the calendar date with the date placeholders {YYYY}, {MM},
     {DD} or 0 if a placeholder wasn't specified, and where select_version is
     either the value matched with the {VERSION} placeholder, or None if the
-    placeholder wasn't specified. Note that this function will update the 
-    {SPAN} or Date tags as well as the {VERSION} tags in the split configs to 
+    placeholder wasn't specified. Note that this function will update the
+    {SPAN} or Date tags as well as the {VERSION} tags in the split configs to
     actual Span and Version numbers.
   """
 

@@ -47,7 +47,6 @@
 *   Deprecated tensorflow dependency from MLMD python client.
 *   Supported `Date` spec in input config for file based ExampleGen.
 
-
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
 *   Relaxed the rule that output artifact uris must be newly created. This is a
