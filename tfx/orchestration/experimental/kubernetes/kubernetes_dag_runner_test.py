@@ -13,10 +13,6 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubernetes.kubernetes_dag_runner."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
