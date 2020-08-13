@@ -297,8 +297,9 @@ class Executor(base_executor.BaseExecutor):
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
-          includes both 'train' and 'eval' splits if custom splits is not
-          specified in splits_config.
+          includes transform_splits as specified in splits_config. If custom
+          split is not provided, this should include both 'train' and 'eval'
+          splits.
       exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.

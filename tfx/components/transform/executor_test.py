@@ -124,8 +124,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
       self.assertGreater(
-        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'train')),
-        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'eval')))
+        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'train')).size(),
+        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'eval')).size())
     else:
       # there should not be transformed data under _output_data_dir.
       self.assertEqual(['transformed_graph'],

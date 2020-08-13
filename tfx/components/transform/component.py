@@ -83,8 +83,9 @@ class Transform(base_component.BaseComponent):
 
     Args:
       examples: A Channel of type `standard_artifacts.Examples` (required).
-        This should contain the two splits 'train' and 'eval' if custom splits
-        is not specified in splits_config.
+        This should contain custom splits specified in splits_config. If
+        custom split is not provided, this should contain two splits 'train'
+        and 'eval'.
       schema: A Channel of type `standard_artifacts.Schema`. This should
         contain a single schema artifact.
       module_file: The file path to a python module file, from which the
