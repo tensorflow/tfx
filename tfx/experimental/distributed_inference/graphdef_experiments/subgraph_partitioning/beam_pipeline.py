@@ -44,7 +44,7 @@ be the same as the results from the original model.
 """
 
 import copy
-from typing import Dict, Iterator, List, Mapping, Text
+from typing import Any, Dict, Iterator, List, Mapping, Text
 import tensorflow as tf
 import apache_beam as beam
 
@@ -52,8 +52,8 @@ from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partit
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, tf.Tensor]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, tf.Tensor]])
+@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
 def ExecuteGraph(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
     remote_op_name: Text,
@@ -74,15 +74,15 @@ def ExecuteGraph(  # pylint: disable=invalid-name
   call the current graph "parent" and the remote graph "child".
 
   Here, each Beam element is a dictionary from remote op names to a dictionary
-  from tensor names to tensors, or {remote op name: {tensor name: tensor}}.
-  Note that at any time, PColl only stores input tensors and computed tensors.
-  The input PColl should have the input tensor names and values for the graph
-  ready. As we execute the partitioned subgraphs, we add the intermediate
-  output names and values to PColl.
+  from tensor names to values, or {remote op name: {tensor name: value}}.
+  Note that at any time, PColl only stores input tensor values and computed
+  tensor values. The input PColl should have the input tensor names and values
+  for the graph ready. As we execute the partitioned subgraphs, we add the
+  intermediate output names and values to PColl.
 
   Args:
     pcoll: A PCollection of inputs to the graph. Each element is a dictionary
-           from remote op names to a dictionary from tensor names to tensors.
+           from remote op names to a dictionary from tensor names to values.
            Here, element[remote_op_name] contains graph inputs.
     remote_op_name: The remote op name of the current graph.
     remote_op_name_to_graph_name:
@@ -98,7 +98,7 @@ def ExecuteGraph(  # pylint: disable=invalid-name
 
   Returns:
     A PCollection of results of this graph. Each element is a dictionary from
-    remote op names to a dictionary from tensor names to tensors. Here,
+    remote op names to a dictionary from tensor names to values. Here,
     element[remote_op_name] stores graph inputs, intermediate results, and
     graph outputs.
   """
@@ -150,15 +150,15 @@ class _SubgraphLayerDoFn(beam.DoFn):
   def process(
       self,
       # Not using mapping here because it doesn't support item assignment.
-      element: Dict[Text, Dict[Text, tf.Tensor]],
+      element: Dict[Text, Dict[Text, Any]],
       spec: execution_spec.ExecutionSpec,
       remote_op_name: Text
-  ) -> Iterator[Dict[Text, Dict[Text, tf.Tensor]]]:
+  ) -> Iterator[Dict[Text, Dict[Text, Any]]]:
     """Executes a subgraph layer.
 
     To execute a subgraph layer, we need to prepare a feed_dict by extracting
-    tensors from element. Then, we run the subgraph and store its outputs to
-    a copy of element.
+    tensor values from element. Then, we run the subgraph and store its outputs
+    to a copy of element.
 
     Since we import `GraphDef` protos, all the node names now have the prefix
     "import/". Also, TensorFlow feed_dict and outputs accept tensor
@@ -168,14 +168,14 @@ class _SubgraphLayerDoFn(beam.DoFn):
 
     Args:
       element: A dictionary from remote op names to a dictionary from tensor
-               names to tensors. Element[remote_op_name] stores graph inputs
+               names to values. Element[remote_op_name] stores graph inputs
                and previous specs' outputs.
       spec: An ExecutionSpec for a subgraph layer.
       remote_op_name: The remote op name of the current graph.
 
     Returns:
       A dictionary from remote op names to a dictionary from tensor names to
-      tensors. The dictionary is a copy of the input element, to which the
+      values. The dictionary is a copy of the input element, to which the
       outputs of this subgraph layer have been added.
     """
     element = copy.deepcopy(element)
@@ -203,8 +203,8 @@ def _import_tensor_name(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, tf.Tensor]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, tf.Tensor]])
+@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
 def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
     parent_remote_op_name: Text,
@@ -223,7 +223,7 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
   Args:
     pcoll: A PCollection of child graph inputs not loaded yet. Each element is
            a dictionary from remote op names to a dictionary from tensor names
-           to tensors. Here, element[child_remote_op_name] is empty now.
+           to values. Here, element[child_remote_op_name] is empty now.
     parent_remote_op_name: The remote op name of the parent graph.
     child_remote_op_name: The remote op name of the child graph.
     remote_op_name_to_graph_name:
@@ -235,7 +235,7 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
 
   Returns:
     A PCollection of inputs to the child graph. Each element is a dictionary
-    from remote op names to a dictionary from tensor names to tensors. Here,
+    from remote op names to a dictionary from tensor names to values. Here,
     element[child_remote_op_name] stores the inputs of child graph.
   """
   parent_graph_name = remote_op_name_to_graph_name[parent_remote_op_name]
@@ -243,14 +243,14 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
                   [parent_graph_name][child_remote_op_name])
 
   mapping = name_mapping.items()
-  # Calling _copy_tensor multiple times may introduce a burden, since
-  # _copy_tensor invokes a deepcopy on element.
+  # Calling _copy_tensor_value multiple times may introduce a burden, since
+  # _copy_tensor_value invokes a deepcopy on element.
   for child_graph_placeholder_name, parent_graph_input_name in mapping:
 
     step_name = ("PrepareInput[Graph_%s][Input_%s]" %
                  (child_remote_op_name, child_graph_placeholder_name))
     pcoll = pcoll | step_name >> beam.Map(
-        _copy_tensor,
+        _copy_tensor_value,
         parent_remote_op_name,
         _import_tensor_name(parent_graph_input_name),
         child_remote_op_name,
@@ -259,11 +259,11 @@ def _LoadRemoteGraphInputs(  # pylint: disable=invalid-name
   return pcoll
 
 
-def _copy_tensor(  # pylint: disable=invalid-name
-    element: Dict[Text, Dict[Text, tf.Tensor]],
+def _copy_tensor_value(  # pylint: disable=invalid-name
+    element: Dict[Text, Dict[Text, Any]],
     old_graph: Text, old_tensor_name: Text,
     new_graph: Text, new_tensor_name: Text
-) -> Dict[Text, Dict[Text, tf.Tensor]]:
+) -> Dict[Text, Dict[Text, Any]]:
   element = copy.deepcopy(element)
   if new_graph not in element:
     element[new_graph] = {}
@@ -272,8 +272,8 @@ def _copy_tensor(  # pylint: disable=invalid-name
 
 
 @beam.ptransform_fn
-@beam.typehints.with_input_types(Dict[Text, Dict[Text, tf.Tensor]])
-@beam.typehints.with_output_types(Dict[Text, Dict[Text, tf.Tensor]])
+@beam.typehints.with_input_types(Dict[Text, Dict[Text, Any]])
+@beam.typehints.with_output_types(Dict[Text, Dict[Text, Any]])
 def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
     pcoll: beam.pvalue.PCollection,
     parent_remote_op_name: Text,
@@ -293,7 +293,7 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
 
   Args:
     pcoll: A PCollection of child graph results. Each element is a dictionary
-           from remote op names to a dictionary from tensor names to tensors.
+           from remote op names to a dictionary from tensor names to values.
            Here, element[child_remote_op_name] stores graph inputs,
            intermediate results, and graph output.
     parent_remote_op_name: The remote op name of the parent graph.
@@ -306,7 +306,7 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
   Returns:
     A PCollection of child graph output in parent graph. Each element is a
     dictionary from remote op names to a dictionary from tensor names to
-    tensors. Here, element[parent_remote_op_name] contains the output from
+    values. Here, element[parent_remote_op_name] contains the output from
     the child graph, and element[child_remote_op_name] is deleted.
   """
   child_graph_name = remote_op_name_to_graph_name[child_remote_op_name]
@@ -320,7 +320,7 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
 
   return (pcoll
           | step_name_extract >> beam.Map(
-              _copy_tensor,
+              _copy_tensor_value,
               child_remote_op_name,
               _import_tensor_name(child_output_name),
               parent_remote_op_name,
@@ -331,8 +331,8 @@ def _ExtractRemoteGraphOutput(  # pylint: disable=invalid-name
 
 
 def _clear_outputs_for_finished_graph(  # pylint: disable=invalid-name
-    element: Dict[Text, Dict[Text, tf.Tensor]],
-    finished_graph: Text) -> Dict[Text, Dict[Text, tf.Tensor]]:
+    element: Dict[Text, Dict[Text, Any]],
+    finished_graph: Text) -> Dict[Text, Dict[Text, Any]]:
   element = copy.deepcopy(element)
   del element[finished_graph]
   return element
