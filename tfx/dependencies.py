@@ -45,7 +45,7 @@ def make_required_install_packages():
       'tensorflow-model-analysis>=0.22.2,<0.23',
       'tensorflow-serving-api>=1.15,<3',
       'tensorflow-transform>=0.22,<0.23',
-      'tfx-bsl>=0.22.1,<0.23',
+      'tfx-bsl>=0.23,<0.24',
   ]
 
 
