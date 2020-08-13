@@ -361,13 +361,14 @@ from  tfx.proto import transform_pb2
 
 ...
 
-# Analyze the 'train' split and transform the 'eval' split.
+# Analyze the 'train' split and transform both 'train' and 'eval' splits.
 transform = components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file,
       splits_config=transform_pb2.SplitsConfig(analyze_splits=['train'],
-                                               transform_splits=['eval']))
+                                               transform_splits=['train',
+                                                                 'eval']))
 ```
 
 ### Trainer and Tuner
@@ -406,9 +407,9 @@ from  tfx.proto import evaluator_pb2
 
 ...
 
-# Compute metrics on the 'train' split and 'eval' split.
+# Compute metrics on the 'eval1' split and 'eval2' split.
 Trainer = components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
-      example_splits=['train', 'eval'])
+      example_splits=['eval1', 'eval2'])
 ```
