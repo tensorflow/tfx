@@ -34,11 +34,10 @@ def make_required_install_packages():
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
-      'ml-metadata>=0.22.1,<0.23',
+      'ml-metadata>=0.23,<0.24',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
-      # TODO(b/157188303): change to 'pyarrow>=0.17,<0.18' before 0.23 release.
-      'pyarrow>=0.16,<0.17',
+      'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15,!=2.0.*,<3',

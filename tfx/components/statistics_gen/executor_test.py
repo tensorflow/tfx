@@ -18,11 +18,12 @@ import tempfile
 from absl.testing import absltest
 import tensorflow as tf
 import tensorflow_data_validation as tfdv
-from tensorflow_metadata.proto.v0 import schema_pb2
+
 from tfx.components.statistics_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 # TODO(b/133421802): Investigate why tensorflow.TestCase could cause a crash
@@ -56,9 +57,6 @@ class ExecutorTest(absltest.TestCase):
     examples.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
 
-    stats = standard_artifacts.ExampleStatistics()
-    stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     input_dict = {
         executor.EXAMPLES_KEY: [examples],
     }
@@ -69,6 +67,9 @@ class ExecutorTest(absltest.TestCase):
             json_utils.dumps(['test']),
     }
 
+    # Create output dict.
+    stats = standard_artifacts.ExampleStatistics()
+    stats.uri = output_data_dir
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
@@ -76,6 +77,9 @@ class ExecutorTest(absltest.TestCase):
     # Run executor.
     stats_gen_executor = executor.Executor()
     stats_gen_executor.Do(input_dict, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']), stats.split_names)
 
     # Check statistics_gen outputs.
     self._validate_stats_output(
@@ -118,7 +122,6 @@ class ExecutorTest(absltest.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }
@@ -165,7 +168,6 @@ class ExecutorTest(absltest.TestCase):
     # Create output dict.
     stats = standard_artifacts.ExampleStatistics()
     stats.uri = output_data_dir
-    stats.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {
         executor.STATISTICS_KEY: [stats],
     }

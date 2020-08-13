@@ -21,12 +21,13 @@ from __future__ import print_function
 import os
 import apache_beam as beam
 import tensorflow as tf
-from google.protobuf import json_format
+
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
 
 
 @beam.ptransform_fn
@@ -88,14 +89,13 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
         self._testMethodName)
 
     # Create output dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    self._output_dict = {utils.EXAMPLES_KEY: [examples]}
+    self._examples = standard_artifacts.Examples()
+    self._examples.uri = output_data_dir
+    self._output_dict = {utils.EXAMPLES_KEY: [self._examples]}
 
-    self._train_output_file = os.path.join(examples.uri, 'train',
+    self._train_output_file = os.path.join(self._examples.uri, 'train',
                                            'data_tfrecord-00000-of-00001.gz')
-    self._eval_output_file = os.path.join(examples.uri, 'eval',
+    self._eval_output_file = os.path.join(self._examples.uri, 'eval',
                                           'data_tfrecord-00000-of-00001.gz')
 
     # Create exec proterties for output splits.
@@ -122,6 +122,10 @@ class BaseExampleGenExecutorTest(tf.test.TestCase):
     # Run executor.
     example_gen = TestExampleGenExecutor()
     example_gen.Do({}, self._output_dict, self._exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        self._examples.split_names)
 
     # Check example gen outputs.
     self.assertTrue(tf.io.gfile.exists(self._train_output_file))

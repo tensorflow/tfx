@@ -34,11 +34,6 @@
                 "producer_component": {
                   "string_value": "CsvExampleGen"
                 }
-              },
-              "properties": {
-                "split_names": {
-                  "string_value": "[\"examples\"]"
-                }
               }
             },
             "artifact_type": {
@@ -90,11 +85,6 @@
                 },
                 "producer_component": {
                   "string_value": "StatisticsGen.foo"
-                }
-              },
-              "properties": {
-                "split_names": {
-                  "string_value": "[\"examples\"]"
                 }
               }
             },

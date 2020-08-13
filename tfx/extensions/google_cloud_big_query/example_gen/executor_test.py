@@ -124,7 +124,6 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {'examples': [examples]}
 
     # Create exe properties.
@@ -151,6 +150,10 @@ class ExecutorTest(tf.test.TestCase):
     # Run executor.
     big_query_example_gen = executor.Executor()
     big_query_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
 
     # Check BigQuery example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',
