@@ -34,7 +34,7 @@ def make_required_install_packages():
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
-      'ml-metadata>=0.22.1,<0.23',
+      'ml-metadata>=0.23,<0.24',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
       'pyarrow>=0.17,<0.18',
