@@ -322,17 +322,18 @@ def _create_matching_glob_and_regex(
     if span_width_str:
       try:
         if int(span_width_str) <= 0:
-            raise ValueError('Not a positive integer.')
+          raise ValueError('Not a positive integer.')
         span_width_regex = '.{%s}' % span_width_str
       except ValueError:
         raise ValueError(
-              'Width modifier in span spec is not a positive integer: %s' %
-              split.pattern)
+            'Width modifier in span spec is not a positive integer: %s' %
+            split.pattern)
 
     split_glob_pattern = re.sub(SPAN_FULL_REGEX, '*', split_glob_pattern)
-    split_regex_pattern = re.sub(SPAN_FULL_REGEX,
-        '(?P<{}>{})'.format(SPAN_PROPERTY_NAME, span_width_regex),
-        split_regex_pattern)
+    span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
+                                             span_width_regex)
+    split_regex_pattern = re.sub(SPAN_FULL_REGEX, span_capture_regex,
+                                 split_regex_pattern)
 
   elif is_match_date:
     for spec in DATE_SPECS:
@@ -363,9 +364,10 @@ def _create_matching_glob_and_regex(
             split.pattern)
 
     split_glob_pattern = re.sub(VERSION_FULL_REGEX, '*', split_glob_pattern)
-    split_regex_pattern = re.sub(VERSION_FULL_REGEX,
-        '(?P<{}>{})'.format(VERSION_PROPERTY_NAME, version_width_regex),
-        split_regex_pattern)
+    version_capture_regex = '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
+                                                version_width_regex)
+    split_regex_pattern = re.sub(VERSION_FULL_REGEX, version_capture_regex,
+                                 split_regex_pattern)
 
   return split_glob_pattern, split_regex_pattern
 
@@ -412,7 +414,7 @@ def _retrieve_latest_span_version(
 
   split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
       uri, split, is_match_span, is_match_date, is_match_version)
-  
+
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
                split_regex_pattern)
