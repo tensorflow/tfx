@@ -349,7 +349,7 @@ example_validator = components.ExampleValidator(
 
 ### Transform
 
-Default behavior is analyze and produce the metadata from the ‘train’ split and
+Default behavior is analyze and produce the metadata from the 'train' split and
 transform all splits.
 
 To specify the analyze splits and transform splits, set the `splits_config` for
@@ -361,14 +361,13 @@ from  tfx.proto import transform_pb2
 
 ...
 
-# Analyze the 'train' split and transform both 'train' and 'eval' splits.
+# Analyze the 'train' split and transform all splits.
 transform = components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file,
       splits_config=transform_pb2.SplitsConfig(analyze_splits=['train'],
-                                               transform_splits=['train',
-                                                                 'eval']))
+                                               transform_splits=['train', 'eval']))
 ```
 
 ### Trainer and Tuner
@@ -407,7 +406,7 @@ from  tfx.proto import evaluator_pb2
 
 ...
 
-# Compute metrics on the 'eval1' split and 'eval2' split.
+# Compute metrics on the 'eval1' split and the 'eval2' split.
 Trainer = components.Evaluator(
       examples=example_gen.outputs['examples'],
       model=trainer.outputs['model'],
