@@ -256,7 +256,7 @@ def _verify_split_pattern_specs(
   return is_match_span, is_match_date, is_match_version
 
 
-def _find_matched_span_tokens_from_path(
+def _find_matched_span_version_from_path(
     file_path: Text, split_regex_pattern: Text, is_match_span: bool,
     is_match_date: bool, is_match_version: bool
 ) -> Tuple[Optional[List[Text]], Optional[int]]:
@@ -268,8 +268,8 @@ def _find_matched_span_tokens_from_path(
 
   matched_span_tokens = None
   matched_span_int = None
-  matched_vers = None
-  matched_vers_int = None
+  matched_version = None
+  matched_version_int = None
 
   if is_match_span:
     matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
@@ -293,15 +293,16 @@ def _find_matched_span_tokens_from_path(
       raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
   if is_match_version:
-    matched_vers = result.group(VERSION_PROPERTY_NAME)
+    matched_version = result.group(VERSION_PROPERTY_NAME)
     try:
-      matched_vers_int = int(matched_vers)
+      matched_version_int = int(matched_version)
     except ValueError:
       raise ValueError(
           'Cannot find %s number from %s based on %s' %
           (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
 
-  return matched_span_tokens, matched_span_int, matched_vers, matched_vers_int
+  return (matched_span_tokens, matched_span_int, matched_version,
+          matched_version_int)
 
 
 def _create_matching_glob_and_regex(
@@ -390,18 +391,18 @@ def _retrieve_latest_span_version(
   files = tf.io.gfile.glob(split_glob_pattern)
 
   for file_path in files:
-    matched_span_tokens, matched_span_int, matched_vers, matched_vers_int = \
-        _find_matched_span_tokens_from_path(file_path, split_regex_pattern, 
+    match_span_tokens, match_span_int, match_version, match_version_int = \
+        _find_matched_span_version_from_path(file_path, split_regex_pattern, 
             is_match_span, is_match_date,is_match_version)
 
-    if latest_span_int is None or matched_span_int > latest_span_int:
+    if latest_span_int is None or match_span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
-      latest_span_tokens = matched_span_tokens
-      latest_span_int = matched_span_int
-      latest_version = matched_vers
-    elif (latest_span_int == matched_span_int and
-          (latest_version is None or matched_vers_int >= int(latest_version))):
-      latest_version = matched_vers
+      latest_span_tokens = match_span_tokens
+      latest_span_int = match_span_int
+      latest_version = match_version
+    elif (latest_span_int == match_span_int and
+          (latest_version is None or match_version_int >= int(latest_version))):
+      latest_version = match_version
 
   if latest_span_int is None or (is_match_version and
                                  latest_version is None):
