@@ -123,6 +123,9 @@ class ExecutorTest(tft_unit.TransformTestCase):
           len(
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
+      self.assertGreater(
+        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'train')),
+        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'eval')))
     else:
       # there should not be transformed data under _output_data_dir.
       self.assertEqual(['transformed_graph'],
@@ -222,7 +225,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
-  
+
   def testDoWithEmptyTransformSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(analyze_splits=['train'],
