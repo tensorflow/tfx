@@ -259,7 +259,7 @@ def _verify_split_pattern_specs(
 def _find_matched_span_version_from_path(
     file_path: Text, split_regex_pattern: Text, is_match_span: bool,
     is_match_date: bool, is_match_version: bool
-) -> Tuple[Optional[List[Text]], Optional[int]]:
+) -> Tuple[Optional[List[Text]], Optional[int], Optional[Text], Optional[int]]:
   """Finds the span tokens and number given a file path and split regex."""
 
   result = re.search(split_regex_pattern, file_path)
@@ -393,7 +393,7 @@ def _retrieve_latest_span_version(
   for file_path in files:
     match_span_tokens, match_span_int, match_version, match_version_int = \
         _find_matched_span_version_from_path(file_path, split_regex_pattern, 
-            is_match_span, is_match_date,is_match_version)
+            is_match_span, is_match_date, is_match_version)
 
     if latest_span_int is None or match_span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
