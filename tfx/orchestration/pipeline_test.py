@@ -22,7 +22,7 @@ from __future__ import unicode_literals
 import itertools
 import os
 import tempfile
-from typing import Any, Dict, Text, Type, Optional
+from typing import Any, Dict, Text, Type
 
 import tensorflow as tf
 
@@ -62,8 +62,7 @@ def _make_fake_node_instance(name: Text):
 
 def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
                                   inputs: Dict[Text, types.Channel],
-                                  outputs: Dict[Text, types.Channel],
-                                  use_beam_executor: Optional[bool] = False):
+                                  outputs: Dict[Text, types.Channel]):
 
   class _FakeComponentSpec(types.ComponentSpec):
     PARAMETERS = {}
@@ -76,13 +75,7 @@ def _make_fake_component_instance(name: Text, output_type: Type[types.Artifact],
   class _FakeComponent(base_component.BaseComponent):
 
     SPEC_CLASS = _FakeComponentSpec
-
-    if use_beam_executor:
-      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
-          base_executor.FuseableBeamExecutor)
-    else:
-      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
-          base_executor.BaseExecutor)
+    EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
     def __init__(
         self,
@@ -127,14 +120,6 @@ class _OutputTypeE(types.Artifact):
   TYPE_NAME = 'OutputTypeE'
 
 
-class _OutputTypeF(types.Artifact):
-  TYPE_NAME = 'OutputTypeE'
-
-
-class _OutputTypeG(types.Artifact):
-  TYPE_NAME = 'OutputTypeE'
-
-
 class PipelineTest(tf.test.TestCase):
 
   def setUp(self):
@@ -146,9 +131,8 @@ class PipelineTest(tf.test.TestCase):
                                  tempfile.mkdtemp(prefix='cli_tmp_')[1])
     self._original_tmp_value = os.environ.get(
         'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
-    self._metadata_connection_config = (
-        metadata.sqlite_metadata_connection_config(
-            os.path.join(self._tmp_dir, 'metadata')))
+    self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
+        os.path.join(self._tmp_dir, 'metadata'))
 
   def tearDown(self):
     super(PipelineTest, self).tearDown()
@@ -334,94 +318,6 @@ class PipelineTest(tf.test.TestCase):
         metadata_connection_config=self._metadata_connection_config)
     self.assertNotIn('TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', os.environ)
 
-  def testPipelineGetFuseableComponents(self):
-    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {}, False)
-    component_b = _make_fake_component_instance(
-        'component_b', _OutputTypeB, {'a': component_a.outputs['output']}, {},
-        True)
-    component_c = _make_fake_component_instance(
-        'component_c', _OutputTypeC, {'a': component_a.outputs['output']}, {},
-        True)
-    component_d = _make_fake_component_instance('component_d', _OutputTypeD, {
-        'b': component_b.outputs['output']}, {}, True)
-    component_e = _make_fake_component_instance(
-        'component_e', _OutputTypeE, {
-            'a': component_a.outputs['output'],
-            'd': component_d.outputs['output']
-        }, {}, True)
-    component_f = _make_fake_component_instance(
-        'component_f', _OutputTypeF, {'c': component_c.outputs['output']}, {},
-        True)
-    component_g = _make_fake_component_instance(
-        'component_g', _OutputTypeG, {'c': component_c.outputs['output']}, {},
-        True)
-
-    my_pipeline = pipeline.Pipeline(
-        pipeline_name='my_pipeline',
-        pipeline_root='root',
-        components=[
-            component_d, component_c, component_g, component_a, component_b,
-            component_e, component_f
-        ],
-        enable_cache=True,
-        metadata_connection_config=self._metadata_connection_config,
-        beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
-
-    actual_fuseable_components = my_pipeline.get_fuseable_components()
-    expected_fuseable_components = [[component_b, component_d],
-                                    [component_c, component_f, component_g]]
-    self.assertEqual(actual_fuseable_components, expected_fuseable_components)
-
-  def testPipelineGetFuseableComponentsNoBeamComponents(self):
-    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {}, False)
-    component_b = _make_fake_component_instance(
-        'component_b', _OutputTypeB, {'a': component_a.outputs['output']}, {},
-        False)
-    component_c = _make_fake_component_instance('component_c', _OutputTypeC, {
-        'a': component_a.outputs['output']}, {}, False)
-
-    my_pipeline = pipeline.Pipeline(
-        pipeline_name='my_pipeline',
-        pipeline_root='root',
-        components=[component_b, component_a, component_c],
-        enable_cache=True,
-        metadata_connection_config=self._metadata_connection_config,
-        beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
-
-    actual_fuseable_components = my_pipeline.get_fuseable_components()
-    expected_fuseable_components = []
-    self.assertEqual(actual_fuseable_components, expected_fuseable_components)
-
-  def testPipelineGetFuseableComponentsNotAllParentsBeamComponent(self):
-    component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
-                                                {}, False)
-    component_b = _make_fake_component_instance('component_b', _OutputTypeB, {},
-                                                {}, True)
-    component_c = _make_fake_component_instance('component_c', _OutputTypeC, {},
-                                                {}, True)
-    component_d = _make_fake_component_instance(
-        'component_d', _OutputTypeE, {
-            'a': component_a.outputs['output'],
-            'b': component_b.outputs['output'],
-            'c': component_c.outputs['output']
-        }, {}, True)
-
-    my_pipeline = pipeline.Pipeline(
-        pipeline_name='my_pipeline',
-        pipeline_root='root',
-        components=[component_b, component_a, component_c, component_d],
-        enable_cache=True,
-        metadata_connection_config=self._metadata_connection_config,
-        beam_pipeline_args=['--runner=PortableRunner'],
-        additional_pipeline_args={})
-
-    actual_fuseable_components = my_pipeline.get_fuseable_components()
-    expected_fuseable_components = []
-    self.assertEqual(actual_fuseable_components, expected_fuseable_components)
 
 if __name__ == '__main__':
   tf.test.main()
