@@ -304,8 +304,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='{YYYY}-{MM}-{DD}-{MM}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError,
-        'Exactly one of each date spec is required'):
+    with self.assertRaisesRegexp(ValueError, 'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits3)
 
@@ -387,8 +386,7 @@ class UtilsTest(tf.test.TestCase):
         example_gen_pb2.Input.Split(
             name='s1', pattern='{YYYY}-{MM}/split1/*')
     ]
-    with self.assertRaisesRegexp(ValueError,
-        'Exactly one of each date spec is required'):
+    with self.assertRaisesRegexp(ValueError, 'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits1)
 
@@ -608,6 +606,8 @@ class UtilsTest(tf.test.TestCase):
         self._input_base_path, splits)
     self.assertEqual(span, 2)
     self.assertEqual(version, 2)
+    self.assertEqual(splits[0].pattern, 'span02/ver02/split1/*')
+    self.assertEqual(splits[1].pattern, 'span02/ver02/split2/*')
 
   def testCalculateSplitsFingerprintSpanAndVersionWithDate(self):
     # Test align of span and version numbers.
@@ -666,6 +666,8 @@ class UtilsTest(tf.test.TestCase):
         self._input_base_path, splits)
     self.assertEqual(span, 2)
     self.assertEqual(version, 2)
+    self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
+    self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
 
 
 if __name__ == '__main__':
