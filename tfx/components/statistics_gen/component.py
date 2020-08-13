@@ -21,7 +21,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
-from tfx.types import artifact_utils
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import StatisticsGenSpec
 from tfx.utils import json_utils
@@ -88,17 +88,8 @@ class StatisticsGen(base_component.BaseComponent):
       exclude_splits = []
       logging.info('Excluding no splits because exclude_splits is not set.')
     if not output:
-      statistics_artifact = standard_artifacts.ExampleStatistics()
-      examples_split_names = artifact_utils.decode_split_names(
-          artifact_utils.get_single_instance(list(examples.get())).split_names)
-      split_names = [
-          split for split in examples_split_names if split not in exclude_splits
-      ]
-      statistics_artifact.split_names = artifact_utils.encode_split_names(
-          split_names)
-      output = types.Channel(
-          type=standard_artifacts.ExampleStatistics,
-          artifacts=[statistics_artifact])
+      output = channel_utils.as_channel(
+          [standard_artifacts.ExampleStatistics()])
     # TODO(b/150802589): Move jsonable interface to tfx_bsl and use json_utils.
     stats_options_json = stats_options.to_json() if stats_options else None
     spec = StatisticsGenSpec(

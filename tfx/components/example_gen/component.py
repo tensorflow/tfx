@@ -93,10 +93,8 @@ class QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     if not example_artifacts:
-      artifact = standard_artifacts.Examples()
-      artifact.split_names = artifact_utils.encode_split_names(
-          utils.generate_output_split_names(input_config, output_config))
-      example_artifacts = channel_utils.as_channel([artifact])
+      example_artifacts = channel_utils.as_channel(
+          [standard_artifacts.Examples()])
     spec = QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
@@ -181,10 +179,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     if not example_artifacts:
-      artifact = standard_artifacts.Examples()
-      artifact.split_names = artifact_utils.encode_split_names(
-          utils.generate_output_split_names(input_config, output_config))
-      example_artifacts = channel_utils.as_channel([artifact])
+      example_artifacts = channel_utils.as_channel(
+          [standard_artifacts.Examples()])
     spec = FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,
