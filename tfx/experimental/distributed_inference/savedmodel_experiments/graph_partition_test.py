@@ -17,111 +17,47 @@ import os
 import tempfile
 import tensorflow as tf
 
-from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
-from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
-from google.protobuf import text_format
-
-
-class RemoteOpLayerTest(tf.test.TestCase):
-  """A test for the class _RemoteOpLayer."""
-
-  def test_layers(self):
-    """Validates the class through an example."""
-    remote_op_relations = {
-        'a1': [],
-        'a2': [],
-        'b1': ['a1'],
-        'b2': ['a1', 'a2'],
-        'c1': ['b1'],
-        'c2': ['b1', 'a1', 'b2', 'a2']
-    }
-    desired_outputs = [{'a1', 'a2'}, {'b1', 'b2'}, {'c1', 'c2'}]
-
-    order = graph_partition._RemoteOpLayers(remote_op_relations)
-    self.assertEqual(desired_outputs, list(order))
+from tfx.experimental.distributed_inference.savedmodel_experiments import create_complex_graph
+from tfx.experimental.distributed_inference.savedmodel_experiments import graph_partition
 
 
 class PartitionTest(tf.test.TestCase):
-  """A set of tests for the graph partitioning library."""
-
-  def setUp(self):
-    """Sets up some example graphs and their partitions."""
-    super().setUp()
-    with tempfile.TemporaryDirectory() as temp_dir:
-      # Save examples into a temporary directory
-      create_complex_graph.save_examples_as_graphdefs(temp_dir)
-
-      graph_name_to_filepath = {
-          'main': os.path.join(temp_dir, 'main_graph.pb'),
-          'remote_op_a': os.path.join(temp_dir, 'graph_a.pb'),
-          'remote_op_b': os.path.join(temp_dir, 'graph_b.pb')
-      }
-      graph_name_to_outputs = {
-          'main': ['AddN_1'],
-          'remote_op_b': ['Add_1'],
-          'remote_op_a': ['embedding_lookup/Identity']
-      }
-
-      graph_name_to_graph_def = graph_partition.get_graph_name_to_graph_def(
-          graph_name_to_filepath)
-      self.graph_name_to_specs = graph_partition.partition_all_graphs(
-          graph_name_to_graph_def, graph_name_to_outputs)
+  """Tests for graph partitioning."""
 
   def test_subgraph_import_validity(self):
     """Tests if the partitioned subgraphs can be imported."""
-    for execution_specs in self.graph_name_to_specs.values():
-      for execution_spec in execution_specs:
-        if execution_spec.is_remote_op:
-          continue
+    with tempfile.TemporaryDirectory() as temp_dir:
+      create_complex_graph.save_examples_as_saved_models(temp_dir)
 
-        graph = tf.Graph()
-        with graph.as_default():
-          tf.import_graph_def(execution_spec.subgraph)
+      graph_name_to_unpartitioned_paths = {
+          'remote_op_a': os.path.join(temp_dir, 'graph_a'),
+          'remote_op_b': os.path.join(temp_dir, 'graph_b'),
+          'main': os.path.join(temp_dir, 'main_graph')
+      }
 
-  def test_remote_op_specs(self):
-    """Validates a remote op spec."""
-    for execution_specs in self.graph_name_to_specs.values():
-      for spec in execution_specs:
-        if not spec.is_remote_op:
-          continue
+      out_1, out_2 = graph_partition.get_info_from_paths(
+          graph_name_to_unpartitioned_paths)
+      graph_name_to_graph_def, graph_name_to_output_names = out_1, out_2
+      graph_name_to_partitioned_paths = graph_partition.partition_all_graphs(
+          graph_name_to_graph_def, graph_name_to_output_names, temp_dir)
 
-        self.assertIsNone(spec.subgraph)
-        self.assertLen(spec.output_names, 1)
+      for partitioned_paths in graph_name_to_partitioned_paths.values():
+        for path in partitioned_paths:
+          with tf.compat.v1.Session(graph=tf.Graph()) as sess:
+            meta_graph_def = tf.compat.v1.saved_model.load(
+                sess, [tf.compat.v1.saved_model.tag_constants.SERVING], path)
+            self.assertIsNotNone(meta_graph_def)
 
-  def test_subgraphs_with_golden_set(self):
-    """Checks if the partitioned subgraphs match the golden set."""
-    for graph_name, specs in self.graph_name_to_specs.items():
-      for spec in specs:
-        if spec.is_remote_op:
-          continue
-        golden_graph_def = _get_golden_subgraph(graph_name, spec)
-        # Compare node names instead of `GraphDef` protos because sets in
-        # graph_partition are not ordered. If there are two nodes with the
-        # same type in a subgraph layer, for example Add. Sometimes a node
-        # may have name "Add" while other times have name "Add_1".
-        self.assertEqual(
-            _get_node_names(golden_graph_def), _get_node_names(spec.subgraph))
+  def test_with_golden_set(self):
+    """Tests if the SavedModels match the golden set.
 
-
-def _get_golden_subgraph(graph_name, spec):
-  """Retrieves a corresponding golden subgraph."""
-  filename = _generate_unique_filename(spec.input_names)
-  filepath = os.path.join(
-      os.path.dirname(__file__), 'testdata', graph_name, filename)
-
-  graph_def = tf.compat.v1.GraphDef()
-  with tf.io.gfile.GFile(filepath, 'r') as f:
-    text_format.Parse(f.read(), graph_def)
-  return graph_def
-
-
-def _generate_unique_filename(input_names):
-  return 'input_names-%s.pbtxt' % ('-'.join(sorted(input_names)))
-
-
-def _get_node_names(graph_def):
-  return {node.name for node in graph_def.node}
+    Problem: Saved_model.save or saved_model.simple_save doesn't allow us
+             to specify the format (binary or text) of the saved_model file
+             inside the folder. Not sure if I should use binary files
+             for the golden set.
+    """
 
 
 if __name__ == '__main__':
   tf.test.main()
+  
