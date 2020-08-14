@@ -44,7 +44,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> N
   # Extract and pass pipeline graph information which are lost during the
   # serialization process. The orchestrator container uses downstream_ids
   # to reconstruct pipeline graph.
-  downstream_ids = json.dumps(_extract_downstream_ids(pipeline))
+  downstream_ids = json.dumps(_extract_downstream_ids(pipeline.components))
   arguments = [
       '--serialized_pipeline',
       serialized_pipeline,
