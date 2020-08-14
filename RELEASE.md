@@ -67,6 +67,7 @@
 *   Depends on `pyarrow>=0.17,<0.18`.
 
 ## Breaking changes
+*   Changed the URIs of the value artifacts to point to files.
 
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
