@@ -122,7 +122,7 @@ class KubeflowGcpPerfTest(kubeflow_test_utils.BaseKubeflowTest):
       # configure workers to not use public IPs. If workers needs access to
       # public Internet, CloudNAT needs to be configured for the VPC in which
       # Dataflow runs.
-      '--no_use_public_ips'
+      '--no_use_public_ips',
 
       # Temporary overrides of defaults.
       '--disk_size_gb=50',
