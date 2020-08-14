@@ -20,9 +20,9 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 
-from tfx.experimental.distributed_inference.savedmodel_experiments import beam_pipeline
-from tfx.experimental.distributed_inference.savedmodel_experiments import create_complex_graph
-from tfx.experimental.distributed_inference.savedmodel_experiments import graph_partition
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import beam_pipeline
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import create_complex_graph
+from tfx.experimental.distributed_inference.graphdef_experiments.subgraph_partitioning import graph_partition
 
 
 class BeamPipelineTest(tf.test.TestCase):
@@ -31,7 +31,7 @@ class BeamPipelineTest(tf.test.TestCase):
   def test_compare_outputs(self):
     """Compares the results from the original model and the beam pipeline."""
     with tempfile.TemporaryDirectory() as temp_dir:
-      create_complex_graph.save_examples_as_saved_models(temp_dir)
+      create_complex_graph.save_examples_as_graphdefs(temp_dir)
 
       # "main" is both a graph name and a remote op name.
       root_graph = 'main'
@@ -75,10 +75,15 @@ class BeamPipelineTest(tf.test.TestCase):
           }
       }]
 
-      graph_name_to_unpartitioned_path = {
-          'main': os.path.join(temp_dir, 'main_graph'),
-          'graph_b': os.path.join(temp_dir, 'graph_b'),
-          'graph_a': os.path.join(temp_dir, 'graph_a')
+      graph_name_to_filepath = {
+          'main': os.path.join(temp_dir, 'main_graph.pb'),
+          'graph_b': os.path.join(temp_dir, 'graph_b.pb'),
+          'graph_a': os.path.join(temp_dir, 'graph_a.pb')
+      }
+      graph_name_to_output_names = {
+          'main': ['AddN_1'],
+          'graph_b': ['Add_1'],
+          'graph_a': ['embedding_lookup/Identity']
       }
       remote_op_name_to_graph_name = {
           'main': 'main',
@@ -88,25 +93,23 @@ class BeamPipelineTest(tf.test.TestCase):
           'remote_op_b_1': 'graph_b'
       }
 
-      out_1, out_2 = graph_partition.get_info_from_paths(
-          graph_name_to_unpartitioned_path)
-      graph_name_to_graph_def, graph_name_to_output_names = out_1, out_2
-      graph_name_to_partitioned_paths = graph_partition.partition_all_graphs(
-          graph_name_to_graph_def, graph_name_to_output_names, temp_dir)
-
       original_model_outputs = _run_original_model(root_graph,
                                                    root_graph_input_data,
-                                                   graph_name_to_graph_def,
+                                                   graph_name_to_filepath,
                                                    graph_name_to_output_names)
+
+      graph_name_to_graph_def = graph_partition.get_graph_name_to_graph_def(
+          graph_name_to_filepath)
+      graph_name_to_specs = graph_partition.partition_all_graphs(
+          graph_name_to_graph_def, graph_name_to_output_names)
 
       with beam.Pipeline() as p:
 
         beam_inputs = p | 'LoadInputs' >> beam.Create(root_graph_input_data)
         beam_outputs = (
             beam_inputs
-            | 'RunModel' >> beam_pipeline.ExecuteGraph(  # pylint: disable=no-value-for-parameter
-                root_graph, remote_op_name_to_graph_name,
-                graph_name_to_partitioned_paths,
+            | 'RunModel' >> beam_pipeline.ExecuteGraph(
+                root_graph, remote_op_name_to_graph_name, graph_name_to_specs,
                 graph_to_remote_op_input_name_mapping)
             | 'ExtractOutputs' >> beam.Map(_extract_outputs, root_graph,
                                            graph_name_to_output_names))
@@ -115,8 +118,10 @@ class BeamPipelineTest(tf.test.TestCase):
 
 
 def _run_original_model(root_graph, root_graph_input_data,
-                        graph_name_to_graph_def, graph_name_to_output_names):
+                        graph_name_to_filepath, graph_name_to_output_names):
   """Runs the original model."""
+  graph_name_to_graph_def = graph_partition.get_graph_name_to_graph_def(
+      graph_name_to_filepath)
   graph_def = graph_name_to_graph_def[root_graph]
   output_tensor_names = [
       _import_tensor_name(name)
