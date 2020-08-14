@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-from google.protobuf import json_format
+from tfx.components.base import base_driver
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
@@ -29,6 +29,7 @@ from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from google.protobuf import json_format
 
 
 class DriverTest(tf.test.TestCase):
@@ -146,8 +147,11 @@ class DriverTest(tf.test.TestCase):
         component_info)
     examples = artifact_utils.get_single_instance(
         output_artifacts[utils.EXAMPLES_KEY])
-    self.assertEqual(examples.uri,
-                     os.path.join(self._test_dir, 'cid', 'examples', '1'))
+    base_output_dir = os.path.join(self._test_dir, component_info.component_id)
+    expected_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        base_output_dir, 'examples', 1)
+
+    self.assertEqual(examples.uri, expected_uri)
     self.assertEqual(
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
