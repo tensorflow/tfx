@@ -63,11 +63,13 @@ def main():
       len(components), len(downstream_ids))
 
   id_to_component = {component.id: component for component in components}
-  for ind in range(len(components)):
+  for component in components:
     # Since downstream and upstream node attributes are discarded during the
     # serialization process, we initialize them here.
-    components[ind]._upstream_nodes = set() # pylint: disable=protected-access
-    components[ind]._downstream_nodes = set() # pylint: disable=protected-access
+    component._upstream_nodes = set() # pylint: disable=protected-access
+    component._downstream_nodes = set() # pylint: disable=protected-access
+
+  for ind in range(len(components)):
     for downstream_id in downstream_ids[ind]:
       components[ind].add_downstream_node(id_to_component[downstream_id])
       id_to_component[downstream_id].add_upstream_node(components[ind])
