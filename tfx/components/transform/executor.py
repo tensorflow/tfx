@@ -297,7 +297,7 @@ class Executor(base_executor.BaseExecutor):
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
-          includes transform_splits as specified in splits_config. If custom
+          includes transform splits as specified in splits_config. If custom
           split is not provided, this should include both 'train' and 'eval'
           splits.
       exec_properties: A dict of execution properties, including:
@@ -308,10 +308,9 @@ class Executor(base_executor.BaseExecutor):
           'preprocessing_fn' should be set.
         - splits_config: A transform_pb2.SplitsConfig instance, providing splits
           that should be analyzed and splits that should be transformed. Note
-          analyze_splits and transform_splits can have overlap. Default behavior
-          (when splits_config is not set) is analyze the 'train' split and
-          transform all splits. If splits_config is set, analyze_splits cannot
-          be empty.
+          analyze and transform splits can have overlap. Default behavior (when
+          splits_config is not set) is analyze the 'train' split and transform
+          all splits. If splits_config is set, analyze cannot be empty.
 
     Returns:
       None
@@ -321,12 +320,11 @@ class Executor(base_executor.BaseExecutor):
     splits_config = transform_pb2.SplitsConfig()
     if exec_properties.get('splits_config', None):
       json_format.Parse(exec_properties['splits_config'], splits_config)
-      if not splits_config.analyze_splits:
-        raise ValueError(
-            'analyze_splits cannot be empty when splits_config is set.')
+      if not splits_config.analyze:
+        raise ValueError('analyze cannot be empty when splits_config is set.')
     else:
-      splits_config.analyze_splits.append('train')
-      splits_config.transform_splits.extend(
+      splits_config.analyze.append('train')
+      splits_config.transform.extend(
           artifact_utils.decode_split_names(
               artifact_utils.get_single_instance(
                   input_dict[EXAMPLES_KEY]).split_names))
@@ -345,7 +343,7 @@ class Executor(base_executor.BaseExecutor):
     logging.debug('Using temp path %s for tft.beam', temp_path)
 
     analyze_data_paths = []
-    for split in splits_config.analyze_splits:
+    for split in splits_config.analyze:
       data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
       analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
@@ -357,9 +355,9 @@ class Executor(base_executor.BaseExecutor):
       # TODO(b/161490287): move the split_names setting to executor for all
       # components.
       transformed_example_artifact.split_names = (
-          artifact_utils.encode_split_names(splits_config.transform_splits))
+          artifact_utils.encode_split_names(splits_config.transform))
 
-      for split in splits_config.transform_splits:
+      for split in splits_config.transform:
         data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
         transform_data_paths.append(io_utils.all_files_pattern(data_uri))
         transformed_example = os.path.join(

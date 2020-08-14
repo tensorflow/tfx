@@ -208,8 +208,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testDoWithCustomSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze_splits=['train'],
-                                   transform_splits=['train', 'eval']),
+        transform_pb2.SplitsConfig(analyze=['train'],
+                                   transform=['train', 'eval']),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
@@ -218,8 +218,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testDoWithEmptyAnalyzeSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze_splits=[],
-                                   transform_splits=['train', 'eval']),
+        transform_pb2.SplitsConfig(analyze=[],
+                                   transform=['train', 'eval']),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     with self.assertRaises(ValueError):
@@ -228,8 +228,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testDoWithEmptyTransformSplits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze_splits=['train'],
-                                   transform_splits=[]),
+        transform_pb2.SplitsConfig(analyze=['train'],
+                                   transform=[]),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._transformed_examples.split_names = artifact_utils.encode_split_names(

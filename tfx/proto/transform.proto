@@ -19,9 +19,9 @@ package tfx.components.transform;
 message SplitsConfig {
   // Splits that should be analyzed and used to produce the metadata.
   // hint: this is normally the train dataset.
-  repeated string analyze_splits = 1;
+  repeated string analyze = 1;
 
   // Splits that should be transformed.
   // hint: this is normally all the dataset.
-  repeated string transform_splits = 2;
+  repeated string transform = 2;
 }
