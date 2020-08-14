@@ -64,7 +64,7 @@ def main():
 
   id_to_component = {component.id: component for component in components}
   for ind in range(len(components)):
-    for downstream_id in downstream_ids:
+    for downstream_id in downstream_ids[ind]:
       components[ind].add_downstream_node(id_to_component[downstream_id])
       id_to_component[downstream_id].add_upstream_node(components[ind])
 
