@@ -22,7 +22,6 @@ import json
 import logging
 import sys
 import absl
-from typing import List
 
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
@@ -52,15 +51,15 @@ def main():
   metadata_connection_config = metadata_store_pb2.ConnectionConfig()
   json_format.Parse(tfx_pipeline['metadata_connection_config'],
                     metadata_connection_config)
-  
+
   # Restore component dependencies.
   downstream_ids = json.loads(args.downstream_ids)
-  if not isinstance(downstream_ids, List):
+  if not isinstance(downstream_ids, list):
     raise RuntimeError("downstream_ids needs to be a 'dict'.")
   if len(downstream_ids) != len(components):
     raise RuntimeError(
-      'Wrong number of elements in downstream_ids. Expected: %s. Actual: %s' %
-      len(components), len(downstream_ids))
+        'Wrong number of elements in downstream_ids. Expected: %s. Actual: %s' %
+        len(components), len(downstream_ids))
 
   id_to_component = {component.id: component for component in components}
   for component in components:
@@ -69,10 +68,10 @@ def main():
     component._upstream_nodes = set() # pylint: disable=protected-access
     component._downstream_nodes = set() # pylint: disable=protected-access
 
-  for ind in range(len(components)):
+  for ind, component in enumerate(components):
     for downstream_id in downstream_ids[ind]:
-      components[ind].add_downstream_node(id_to_component[downstream_id])
-      id_to_component[downstream_id].add_upstream_node(components[ind])
+      component.add_downstream_node(id_to_component[downstream_id])
+      id_to_component[downstream_id].add_upstream_node(component)
 
   absl.logging.set_verbosity(absl.logging.INFO)
   kubernetes_dag_runner.KubernetesDagRunner(

@@ -15,24 +15,25 @@
 
 import absl
 import datetime
+import json
 import time
 from typing import List, Text
 
 from tfx.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
-from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.utils import json_utils, kube_utils
+
 from google.protobuf import json_format
 from kubernetes import client
-import json
 
 
 _ORCHESTRATOR_COMMAND = [
     'python', '-m', 'tfx.orchestration.experimental.kubernetes.orchestrator_container_entrypoint'
 ]
 
-def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> None:
+def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
+                          tfx_image: Text) -> None:
   """Submits and runs a tfx pipeline from outside the cluster.
 
   Args:
@@ -71,7 +72,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> N
         "default", job, pretty=True)
   except client.rest.ApiException as e:
     raise RuntimeError('Failed to submit job! \nReason: %s\nBody: %s' %
-                        (e.reason, e.body))
+                       (e.reason, e.body))
 
   # Wait for pod to start.
   orchestrator_pods = []
@@ -80,8 +81,8 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> N
 
   # Wait for the kubernetes job to launch a pod.
   # This is expected to only take a few seconds.
-  while not orchestrator_pods and (datetime.datetime.utcnow() - start_time
-                                    ).seconds < 300:
+  while not orchestrator_pods and (
+      datetime.datetime.utcnow() - start_time).seconds < 300:
     try:
       orchestrator_pods = core_api.list_namespaced_pod(
           namespace='default',
@@ -90,13 +91,13 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> N
     except client.rest.ApiException as e:
       if e.status != 404:
         raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                            (e.reason, e.body))
+                           (e.reason, e.body))
     time.sleep(1)
 
   # Transient orchestrator should only have 1 pod
   if len(orchestrator_pods) != 1:
     raise RuntimeError('Expected 1 pod launched by kubernetes job, found %s' %
-                        len(orchestrator_pods))
+                       len(orchestrator_pods))
   orchestrator_pod = orchestrator_pods.pop()
   pod_name = orchestrator_pod.metadata.name
 
@@ -137,7 +138,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline, tfx_image: Text) -> N
 
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
     raise RuntimeError('Pod "default:%s" failed with status "%s".' %
-                        (pod_name, resp.status))
+                       (pod_name, resp.status))
 
 def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   """Serializes a TFX pipeline.
@@ -157,7 +158,8 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   """
   serialized_components = []
   for component in pipeline.components:
-    serialized_components.append(json_utils.dumps(node_wrapper.NodeWrapper(component)))
+    serialized_components.append(
+        json_utils.dumps(node_wrapper.NodeWrapper(component)))
   return json.dumps({
       'pipeline_name': pipeline.pipeline_info.pipeline_name,
       'pipeline_root': pipeline.pipeline_info.pipeline_root,
@@ -170,7 +172,8 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
       'beam_pipeline_args': pipeline.beam_pipeline_args,
   })
 
-def _extract_downstream_ids(components: List[base_node.BaseNode]) -> List[List[Text]]:
+def _extract_downstream_ids(
+    components: List[base_node.BaseNode]) -> List[List[Text]]:
   """Extract downstream component ids from a list of components.
 
   Args:

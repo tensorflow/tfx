@@ -150,8 +150,8 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
     if not kube_utils.is_inside_cluster():
       kubernetes_remote_runner.run_as_kubernetes_job(
-        pipeline=pipeline,
-        tfx_image=self._config.tfx_image)
+          pipeline=pipeline,
+          tfx_image=self._config.tfx_image)
       return
     # TODO(ericlege): Support running components in parallel.
     ran_components = set()

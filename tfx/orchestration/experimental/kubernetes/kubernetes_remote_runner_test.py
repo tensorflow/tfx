@@ -13,7 +13,6 @@
 # limitations under the License.
 """Kubernetes TFX runner for out-of-cluster orchestration."""
 
-import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
 from google.protobuf import json_format
@@ -22,7 +21,6 @@ import json
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
-from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
@@ -75,10 +73,9 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
             component_a, component_b
         ])
 
-  @mock.patch.object(kubernetes_remote_runner, 'kube_utils')
-  def testSerialization(self, mock_kube_utils):
-    serialized_pipeline = kubernetes_remote_runner._serialize_pipeline(
-        self.test_pipeline) # pylint: disable=protected-access
+  def testSerialization(self):
+    serialized_pipeline = kubernetes_remote_runner._serialize_pipeline( # pylint: disable=protected-access
+        self.test_pipeline)
 
     tfx_pipeline = json.loads(serialized_pipeline)
     components = [
@@ -98,9 +95,9 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
     self.assertEqual(self.test_pipeline.metadata_connection_config,
                      metadata_connection_config)
     self.assertListEqual(
-      [component.executor_spec.executor_class for component in 
-          self.test_pipeline.components],
-      [component.executor_spec.executor_class for component in components])    
+        [component.executor_spec.executor_class for component in
+         self.test_pipeline.components],
+        [component.executor_spec.executor_class for component in components])
     self.assertEqual(self.test_pipeline.metadata_connection_config,
                      metadata_connection_config)
 
