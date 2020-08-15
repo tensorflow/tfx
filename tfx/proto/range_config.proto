@@ -25,8 +25,6 @@ message StaticRange {
   int32 end_span_number = 2;
 }
 
-// TODO(jjma): Maybe Date Range? create helper function
-
 // RangeConfig is an abstract proto which can be used to describe ranges
 // for different entities in TFX Pipeline, organized under directories.
 // All indices corespond to increasing span numbers starting from the initial

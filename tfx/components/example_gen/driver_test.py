@@ -183,7 +183,7 @@ class DriverTest(tf.test.TestCase):
         component_type='type', component_id='cid', pipeline_info=pipeline_info)
 
     input_artifacts = {}
-    output_artifacts = self._example_gen_driver._prepare_output_artifacts(
+    output_artifacts = self._example_gen_driver._prepare_output_artifacts(  # pylint: disable=protected-access
         input_artifacts, output_dict, exec_properties, 1, pipeline_info,
         component_info)
     examples = artifact_utils.get_single_instance(

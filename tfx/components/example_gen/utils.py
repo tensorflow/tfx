@@ -226,6 +226,11 @@ def _glob_to_regex(glob_pattern: Text) -> Text:
   return regex_pattern
 
 
+def date_to_span_number(year: int, month: int, day: int) -> int:
+  """Calculated span from date as number of days since unix epoch."""
+  return (datetime.datetime(year, month, day) - UNIX_EPOCH_DATE).days
+
+
 def _verify_split_pattern_specs(
     split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
@@ -291,8 +296,7 @@ def _find_matched_span_version_from_path(
       raise ValueError('Cannot find %s number using date from %s based on %s' %
                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
     try:
-      matched_span_int = (datetime.datetime(*matched_span_ints) -
-                          UNIX_EPOCH_DATE).days
+      matched_span_int = date_to_span_number(*matched_span_ints)
     except ValueError:
       raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 

@@ -161,12 +161,11 @@ class ComponentTest(tf.test.TestCase):
     range_config = range_config_pb2.RangeConfig(
         static_range=range_config_pb2.StaticRange(start_span_number=0,
                                                   end_span_number=5),
-        exclude_span_numbers=[1,2,3],
-        min_spans=1)
+        exclude_span_numbers=[1, 2, 3], min_spans=1)
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         range_config=range_config,
-         custom_executor_spec=executor_spec.ExecutorClassSpec(
+        custom_executor_spec=executor_spec.ExecutorClassSpec(
             TestExampleGenExecutor))
     stored_range_config = range_config_pb2.RangeConfig()
     json_format.Parse(example_gen.exec_properties['range_config'],

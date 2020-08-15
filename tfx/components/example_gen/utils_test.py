@@ -212,7 +212,7 @@ class UtilsTest(tf.test.TestCase):
   def testGlobToRegex(self):
     glob_pattern = 'a(b)c'
     self.assertEqual(1, re.compile(glob_pattern).groups)
-    regex_pattern = utils._glob_to_regex(glob_pattern)
+    regex_pattern = utils._glob_to_regex(glob_pattern)  # pylint: disable=protected-access
     self.assertEqual(0, re.compile(regex_pattern).groups)
     self.assertEqual(glob_pattern,
                      re.match(regex_pattern, glob_pattern).group())
@@ -598,7 +598,7 @@ class UtilsTest(tf.test.TestCase):
                                                   end_span_number=2))
     splits1 = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='span{SPAN}/split1/*'), 
+            name='s1', pattern='span{SPAN}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -611,7 +611,7 @@ class UtilsTest(tf.test.TestCase):
     range_config = range_config_pb2.RangeConfig(exclude_span_numbers=[3])
     splits2 = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='span{SPAN}/split1/*'), 
+            name='s1', pattern='span{SPAN}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
