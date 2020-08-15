@@ -34,18 +34,18 @@ def make_required_install_packages():
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
       # LINT.IfChange
-      'ml-metadata>=0.22.1,<0.23',
+      'ml-metadata>=0.23,<0.24',
       # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
-      'tensorflow>=1.15,!=2.0.*,<3',
+      'tensorflow>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-data-validation>=0.22.2,<0.23',
       'tensorflow-model-analysis>=0.22.2,<0.23',
       'tensorflow-serving-api>=1.15,<3',
       'tensorflow-transform>=0.22,<0.23',
-      'tfx-bsl>=0.22.1,<0.23',
+      'tfx-bsl>=0.23,<0.24',
   ]
 
 

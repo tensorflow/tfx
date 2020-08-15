@@ -45,6 +45,7 @@
     pre-processing fn.
 *   Supported custom extractors in Evaluator.
 *   Deprecated tensorflow dependency from MLMD python client.
+*   Supported `Date` spec in input config for file based ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
@@ -67,6 +68,7 @@
 *   Depends on `pyarrow>=0.17,<0.18`.
 
 ## Breaking changes
+*   Changed the URIs of the value artifacts to point to files.
 
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
