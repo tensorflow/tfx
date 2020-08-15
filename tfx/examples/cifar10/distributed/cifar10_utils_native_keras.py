@@ -428,4 +428,3 @@ def run_fn(fn_args: TrainerFnArgs):
                     std=[127.5])
   else:
     tf.io.gfile.rmtree(temp_saving_model_dir)
-  
