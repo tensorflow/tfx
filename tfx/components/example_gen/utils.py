@@ -403,14 +403,15 @@ def _retrieve_latest_span_version(
         _find_matched_span_version_from_path(file_path, split_regex_pattern,
                                              is_match_span, is_match_date,
                                              is_match_version))
-    
+
+    # Check parsed span number against range config, if it exists.
     if range_config:
       if range_config.HasField('static_range'):
-        if (match_span_int < range_config.static_range.start_span_number or 
+        if (match_span_int < range_config.static_range.start_span_number or
             match_span_int > range_config.static_range.end_span_number):
           # If span not in static range, skip to next file path.
           continue
-  
+
       if match_span_int in range_config.exclude_span_numbers:
         continue
 

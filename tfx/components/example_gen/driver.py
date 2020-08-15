@@ -58,8 +58,8 @@ class Driver(base_driver.BaseDriver):
     # TODO(jjma): add driver tests for RangeConfig.
     range_config = None
     if utils.RANGE_CONFIG_KEY in exec_properties:
-        range_config = range_config_pb2.RangeConfig()
-        json_format.Parse(exec_properties[utils.RANGE_CONFIG_KEY], range_config)
+      range_config = range_config_pb2.RangeConfig()
+      json_format.Parse(exec_properties[utils.RANGE_CONFIG_KEY], range_config)
 
     # Note that this function updates the input_config.splits.pattern.
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(

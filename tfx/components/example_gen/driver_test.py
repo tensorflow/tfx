@@ -128,7 +128,7 @@ class DriverTest(tf.test.TestCase):
           pattern: "span02/version02/split2/*"
         }""", updated_input_config)
 
-    # Reset input config.
+    # Test driver behavior using RangeConfig with static range.
     self._exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(
@@ -139,8 +139,7 @@ class DriverTest(tf.test.TestCase):
                 pattern='span{SPAN}/version{VERSION}/split2/*')
         ]),
         preserving_proto_field_name=True)
-    
-    # Test driver behavior using RangeConfig with static range.
+
     self._exec_properties[utils.RANGE_CONFIG_KEY] = json_format.MessageToJson(
         range_config_pb2.RangeConfig(
             static_range=range_config_pb2.StaticRange(start_span_number=1,
@@ -157,7 +156,7 @@ class DriverTest(tf.test.TestCase):
     updated_input_config = example_gen_pb2.Input()
     json_format.Parse(self._exec_properties[utils.INPUT_CONFIG_KEY],
                       updated_input_config)
-    # Check if correct span is selected.
+    # Check if correct span inside static range is selected.
     self.assertProtoEquals(
         """
         splits {
