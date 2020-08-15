@@ -366,7 +366,8 @@ def _retrieve_latest_span_version(
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
       to be searched on.
     range_config: An instance of range_config_pb2.RangeConfig, which specifies
-      which spans to consider when finding the most recent span and version.
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
 
   Returns:
     Tuple of two ints, Span (optional) and Version (optional). Note
@@ -462,7 +463,8 @@ def calculate_splits_fingerprint_span_and_version(
     input_base_uri: The base path from which files will be searched.
     splits: An iterable collection of example_gen_pb2.Input.Split objects.
     range_config: An instance of range_config_pb2.RangeConfig, which specifies
-      which spans to consider when finding the most recent span and version.
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
   Returns:
     A Tuple of [fingerprint, select_span, select_version], where select_span
     is either the value matched with the {SPAN} placeholder, the value mapped

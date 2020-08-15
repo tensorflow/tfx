@@ -163,7 +163,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
       custom_config: An optional example_gen_pb2.CustomConfig instance,
         providing custom configuration for executor.
       range_config: An optional range_config_pb2.RangeConfig instance,
-        specifying the range of span values to consider.
+        specifying the range of span values to consider. If unset, driver will
+        default to searching for latest span with no restrictions.
       output_data_format: Payload format of generated data in output artifact,
         one of example_gen_pb2.PayloadFormat enum.
       example_artifacts: Channel of 'ExamplesPath' for output train and eval
