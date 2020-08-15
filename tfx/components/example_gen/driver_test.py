@@ -25,6 +25,7 @@ from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -127,8 +128,46 @@ class DriverTest(tf.test.TestCase):
           pattern: "span02/version02/split2/*"
         }""", updated_input_config)
 
-  def testResolveExecPropertiesWithRangeConfig(self):
-    pass
+    # Reset input config.
+    self._exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
+        example_gen_pb2.Input(splits=[
+            example_gen_pb2.Input.Split(
+                name='s1',
+                pattern='span{SPAN}/version{VERSION}/split1/*'),
+            example_gen_pb2.Input.Split(
+                name='s2',
+                pattern='span{SPAN}/version{VERSION}/split2/*')
+        ]),
+        preserving_proto_field_name=True)
+    
+    # Test driver behavior using RangeConfig with static range.
+    self._exec_properties[utils.RANGE_CONFIG_KEY] = json_format.MessageToJson(
+        range_config_pb2.RangeConfig(
+            static_range=range_config_pb2.StaticRange(start_span_number=1,
+                                                      end_span_number=1)),
+        preserving_proto_field_name=True)
+    self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                     None, None)
+    self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 1)
+    self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 1)
+    self.assertRegex(
+        self._exec_properties[utils.FINGERPRINT_PROPERTY_NAME],
+        r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
+    )
+    updated_input_config = example_gen_pb2.Input()
+    json_format.Parse(self._exec_properties[utils.INPUT_CONFIG_KEY],
+                      updated_input_config)
+    # Check if correct span is selected.
+    self.assertProtoEquals(
+        """
+        splits {
+          name: "s1"
+          pattern: "span01/version01/split1/*"
+        }
+        splits {
+          name: "s2"
+          pattern: "span01/version01/split2/*"
+        }""", updated_input_config)
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
