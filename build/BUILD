@@ -31,6 +31,7 @@ sh_binary(
         "//tfx/proto:tuner_pb2.py",
         "//tfx/proto/orchestration:execution_result_pb2.py",
         "//tfx/proto/orchestration:executor_invocation_pb2.py",
+        "//tfx/proto/orchestration:local_deployment_config_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",
     ],
 )

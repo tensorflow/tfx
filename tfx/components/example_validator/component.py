@@ -25,7 +25,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
-from tfx.types import artifact_utils
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 from tfx.utils import json_utils
@@ -102,19 +102,8 @@ class ExampleValidator(base_component.BaseComponent):
       logging.info('Excluding no splits because exclude_splits is not set.')
     anomalies = output
     if not anomalies:
-      anomalies_artifact = standard_artifacts.ExampleAnomalies()
-      statistics_split_names = artifact_utils.decode_split_names(
-          artifact_utils.get_single_instance(list(
-              statistics.get())).split_names)
-      split_names = [
-          split for split in statistics_split_names
-          if split not in exclude_splits
-      ]
-      anomalies_artifact.split_names = artifact_utils.encode_split_names(
-          split_names)
-      anomalies = types.Channel(
-          type=standard_artifacts.ExampleAnomalies,
-          artifacts=[anomalies_artifact])
+      anomalies = channel_utils.as_channel(
+          [standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,

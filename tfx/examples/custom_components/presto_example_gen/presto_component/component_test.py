@@ -22,10 +22,9 @@ from presto_component import component
 from proto import presto_config_pb2
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
 
 
 class ComponentTest(tf.test.TestCase):
@@ -54,51 +53,6 @@ class ComponentTest(tf.test.TestCase):
                      presto_example_gen.outputs['examples'].type_name)
     artifact_collection = presto_example_gen.outputs['examples'].get()
     self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
-
-  def testConstructWithOutputConfig(self):
-    presto_example_gen = component.PrestoExampleGen(
-        self.conn_config,
-        query='query',
-        output_config=example_gen_pb2.Output(
-            split_config=example_gen_pb2.SplitConfig(splits=[
-                example_gen_pb2.SplitConfig.Split(name='train', hash_buckets=2),
-                example_gen_pb2.SplitConfig.Split(name='eval', hash_buckets=1),
-                example_gen_pb2.SplitConfig.Split(name='test', hash_buckets=1)
-            ])))
-    self.assertEqual(
-        self.conn_config,
-        self._extract_conn_config(
-            presto_example_gen.exec_properties['custom_config']))
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     presto_example_gen.outputs['examples'].type_name)
-    artifact_collection = presto_example_gen.outputs['examples'].get()
-    self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
-
-  def testConstructWithInputConfig(self):
-    presto_example_gen = component.PrestoExampleGen(
-        self.conn_config,
-        input_config=example_gen_pb2.Input(splits=[
-            example_gen_pb2.Input.Split(name='train', pattern='query1'),
-            example_gen_pb2.Input.Split(name='eval', pattern='query2'),
-            example_gen_pb2.Input.Split(name='test', pattern='query3')
-        ]))
-    self.assertEqual(
-        self.conn_config,
-        self._extract_conn_config(
-            presto_example_gen.exec_properties['custom_config']))
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     presto_example_gen.outputs['examples'].type_name)
-    artifact_collection = presto_example_gen.outputs['examples'].get()
-    self.assertEqual(1, len(artifact_collection))
-    self.assertEqual(['train', 'eval', 'test'],
-                     artifact_utils.decode_split_names(
-                         artifact_collection[0].split_names))
 
   def testBadConstruction(self):
     empty_config = presto_config_pb2.PrestoConnConfig()

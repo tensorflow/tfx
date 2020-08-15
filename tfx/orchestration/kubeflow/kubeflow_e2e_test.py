@@ -152,14 +152,11 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
   def _get_value_of_string_artifact(
       self, string_artifact: metadata_store_pb2.Artifact) -> Text:
     """Helper function returns the actual value of a ValueArtifact."""
-    file_path = os.path.join(string_artifact.uri,
-                             standard_artifacts.String.VALUE_FILE)
-    # Assert there is a file exists.
-    if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
-      raise RuntimeError(
-          'Given path does not exist or is not a valid file: %s' % file_path)
-    serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-    return standard_artifacts.String().decode(serialized_value)
+
+    string_artifact_obj = standard_artifacts.String()
+    string_artifact_obj.uri = string_artifact.uri
+    string_artifact_obj.read()
+    return string_artifact_obj.value
 
   def _get_executions_by_pipeline_name(
       self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:
@@ -208,8 +205,7 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
     pipeline = self._create_pipeline(pipeline_name, components)
 
     self._compile_and_run_pipeline(pipeline)
-    # TODO(b/159965444): Re-enable when we have tensorflow/serving for TF 2.3.
-    # self._assert_infra_validator_passed(pipeline_name)
+    self._assert_infra_validator_passed(pipeline_name)
 
   def testPrimitiveEnd2EndPipeline(self):
     """End-to-End test for primitive artifacts passing."""

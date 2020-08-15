@@ -20,12 +20,13 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-from tensorflow_metadata.proto.v0 import anomalies_pb2
+
 from tfx.components.example_validator import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tensorflow_metadata.proto.v0 import anomalies_pb2
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -48,8 +49,6 @@ class ExecutorTest(tf.test.TestCase):
 
     validation_output = standard_artifacts.ExampleAnomalies()
     validation_output.uri = os.path.join(output_data_dir, 'output')
-    validation_output.split_names = artifact_utils.encode_split_names(
-        ['train', 'eval'])
 
     input_dict = {
         executor.STATISTICS_KEY: [eval_stats_artifact],
@@ -68,6 +67,10 @@ class ExecutorTest(tf.test.TestCase):
 
     example_validator_executor = executor.Executor()
     example_validator_executor.Do(input_dict, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        validation_output.split_names)
 
     # Check example_validator outputs.
     train_anomalies_path = os.path.join(validation_output.uri, 'train',

@@ -383,8 +383,7 @@ class UtilsTest(tf.test.TestCase):
 
   def testDateSpecPartiallyMissing(self):
     splits1 = [
-        example_gen_pb2.Input.Split(
-            name='s1', pattern='{YYYY}-{MM}/split1/*')
+        example_gen_pb2.Input.Split(name='s1', pattern='{YYYY}-{MM}/split1/*')
     ]
     with self.assertRaisesRegexp(ValueError, 'Exactly one of each date spec'):
       utils.calculate_splits_fingerprint_span_and_version(
@@ -396,7 +395,8 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}-{MM}-{DD}/{SPAN}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError,
+    with self.assertRaisesRegexp(
+        ValueError,
         'Either span spec or date specs must be specified exclusively'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
@@ -412,7 +412,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     with self.assertRaisesRegexp(ValueError,
-        'Cannot find span number using date'):
+                                 'Cannot find span number using date'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 
@@ -425,8 +425,7 @@ class UtilsTest(tf.test.TestCase):
             name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError,
-        'Retrieved date is invalid'):
+    with self.assertRaisesRegexp(ValueError, 'Retrieved date is invalid'):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits)
 

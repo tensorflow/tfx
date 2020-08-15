@@ -60,8 +60,8 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - stats: A list of type `standard_artifacts.ExampleStatistics` which
-          should contain the 'eval' split. Stats on other splits are ignored.
+        - stats: A list of type `standard_artifacts.ExampleStatistics` generated
+          by StatisticsGen.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
       output_dict: Output dict from key to a list of artifacts, including:
@@ -82,12 +82,23 @@ class Executor(base_executor.BaseExecutor):
     if not isinstance(exclude_splits, list):
       raise ValueError('exclude_splits in execution properties needs to be a '
                        'list. Got %s instead.' % type(exclude_splits))
+    # Setup output splits.
+    stats_artifact = artifact_utils.get_single_instance(
+        input_dict[STATISTICS_KEY])
+    stats_split_names = artifact_utils.decode_split_names(
+        stats_artifact.split_names)
+    split_names = [
+        split for split in stats_split_names if split not in exclude_splits
+    ]
+    anomalies_artifact = artifact_utils.get_single_instance(
+        output_dict[ANOMALIES_KEY])
+    anomalies_artifact.split_names = artifact_utils.encode_split_names(
+        split_names)
 
     schema = io_utils.SchemaReader().read(
         io_utils.get_only_uri_in_dir(
             artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
-    stats_artifact = artifact_utils.get_single_instance(
-        input_dict[STATISTICS_KEY])
+
     for split in artifact_utils.decode_split_names(stats_artifact.split_names):
       if split in exclude_splits:
         continue

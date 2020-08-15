@@ -18,9 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import datetime
 import os
 import re
-from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from absl import logging
@@ -72,7 +72,7 @@ DAY_SPEC = '{DD}'
 # Order of importance for Date specs.
 DATE_SPECS = [YEAR_SPEC, MONTH_SPEC, DAY_SPEC]
 # Unix epoch date to calculate span number from.
-UNIX_EPOCH_DATE = datetime(1970, 1, 1)
+UNIX_EPOCH_DATE = datetime.datetime(1970, 1, 1)
 
 _DEFAULT_ENCODING = 'utf-8'
 
@@ -253,11 +253,11 @@ def _verify_split_pattern_specs(
         'Either span spec or date specs must be specified exclusively in %s' %
         split.pattern)
 
-  if is_match_span and len(span_matches) != 1:
-    raise ValueError('Only one %s is allowed in %s' % (SPAN_SPEC,
-                                                       split.pattern))
-  if is_match_date and not all(split.pattern.count(spec) == 1
-                               for spec in DATE_SPECS):
+  if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
+    raise ValueError('Only one %s is allowed in %s' %
+                     (SPAN_SPEC, split.pattern))
+  if is_match_date and not all(
+      split.pattern.count(spec) == 1 for spec in DATE_SPECS):
     raise ValueError(
         'Exactly one of each date spec (%s, %s, %s) is required in %s' %
         (YEAR_SPEC, MONTH_SPEC, DAY_SPEC, split.pattern))
@@ -266,20 +266,28 @@ def _verify_split_pattern_specs(
     raise ValueError(
         'Version spec provided, but Span or Date spec is not present in %s' %
         split.pattern)
-  if is_match_version and len(version_matches) != 1:
-    raise ValueError('Only one %s is allowed in %s' % (VERSION_SPEC,
-                                                       split.pattern))
+
+  if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
+    raise ValueError('Only one %s is allowed in %s' %
+                     (VERSION_SPEC, split.pattern))
 
   return is_match_span, is_match_date, is_match_version
 
 
-def _find_matched_span_tokens_from_path(
-    result: re.Match, file_path: Text, split_regex_pattern: Text,
-    is_match_span: bool, is_match_date: bool
-) -> Tuple[Optional[List[Text]], Optional[int]]:
+def _find_matched_span_version_from_path(
+    file_path: Text, split_regex_pattern: Text, is_match_span: bool,
+    is_match_date: bool, is_match_version: bool
+) -> Tuple[Optional[List[Text]], Optional[int], Optional[Text], Optional[int]]:
   """Finds the span tokens and number given a file path and split regex."""
+
+  result = re.search(split_regex_pattern, file_path)
+  if result is None:
+    raise ValueError('Glob pattern does not match regex pattern')
+
   matched_span_tokens = None
   matched_span_int = None
+  matched_version = None
+  matched_version_int = None
 
   if is_match_span:
     matched_span_tokens = [result.group(SPAN_PROPERTY_NAME)]
@@ -288,22 +296,31 @@ def _find_matched_span_tokens_from_path(
     except ValueError:
       raise ValueError('Cannot find %s number from %s based on %s' %
                        (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
-
   elif is_match_date:
-    matched_span_tokens = [result.group(name)
-                           for name in ['year', 'month', 'day']]
+    matched_span_tokens = [
+        result.group(name) for name in ['year', 'month', 'day']
+    ]
     try:
       matched_span_ints = [int(elem) for elem in matched_span_tokens]
     except ValueError:
-      raise ValueError(
-          'Cannot find %s number using date from %s based on %s' %
-          (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
+      raise ValueError('Cannot find %s number using date from %s based on %s' %
+                       (SPAN_PROPERTY_NAME, file_path, split_regex_pattern))
     try:
-      matched_span_int = (datetime(*matched_span_ints) - UNIX_EPOCH_DATE).days
+      matched_span_int = (datetime.datetime(*matched_span_ints) -
+                          UNIX_EPOCH_DATE).days
     except ValueError:
       raise ValueError('Retrieved date is invalid for file: %s' % file_path)
 
-  return matched_span_tokens, matched_span_int
+  if is_match_version:
+    matched_version = result.group(VERSION_PROPERTY_NAME)
+    try:
+      matched_version_int = int(matched_version)
+    except ValueError:
+      raise ValueError('Cannot find %s number from %s based on %s' %
+                       (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
+
+  return (matched_span_tokens, matched_span_int, matched_version,
+          matched_version_int)
 
 
 def _create_matching_glob_and_regex(
@@ -373,8 +390,8 @@ def _create_matching_glob_and_regex(
 
 
 def _retrieve_latest_span_version(
-    uri: Text, split: example_gen_pb2.Input.Split
-) -> Tuple[Optional[int], Optional[int]]:
+    uri: Text,
+    split: example_gen_pb2.Input.Split) -> Tuple[Optional[int], Optional[int]]:
   """Retrieves the most recent span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
@@ -422,38 +439,28 @@ def _retrieve_latest_span_version(
   latest_span_tokens = None
   latest_span_int = None
   latest_version = None
+  latest_version_int = None
 
   files = tf.io.gfile.glob(split_glob_pattern)
 
   for file_path in files:
-    result = re.search(split_regex_pattern, file_path)
-    if result is None:
-      raise ValueError('Glob pattern does not match regex pattern')
+    match_span_tokens, match_span_int, match_version, match_version_int = (
+        _find_matched_span_version_from_path(file_path, split_regex_pattern,
+                                             is_match_span, is_match_date,
+                                             is_match_version))
 
-    matched_span_tokens, matched_span_int = _find_matched_span_tokens_from_path(
-        result, file_path, split_regex_pattern, is_match_span, is_match_date)
-
-    matched_version = None
-    if is_match_version:
-      matched_version = result.group(VERSION_PROPERTY_NAME)
-      try:
-        version_int = int(matched_version)
-      except ValueError:
-        raise ValueError(
-            'Cannot find %s number from %s based on %s' %
-            (VERSION_PROPERTY_NAME, file_path, split_regex_pattern))
-
-    if latest_span_int is None or matched_span_int > latest_span_int:
+    if latest_span_int is None or match_span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
-      latest_span_tokens = matched_span_tokens
-      latest_span_int = matched_span_int
-      latest_version = matched_version
-    elif (latest_span_int == matched_span_int and
-          (latest_version is None or version_int >= int(latest_version))):
-      latest_version = matched_version
+      latest_span_tokens = match_span_tokens
+      latest_span_int = match_span_int
+      latest_version = match_version
+      latest_version_int = match_version_int
+    elif (latest_span_int == match_span_int and
+          (latest_version is None or match_version_int >= latest_version_int)):
+      latest_version = match_version
+      latest_version_int = match_version_int
 
-  if latest_span_int is None or (is_match_version and
-                                 latest_version is None):
+  if latest_span_int is None or (is_match_version and latest_version is None):
     raise ValueError('Cannot find matching for split %s based on %s' %
                      (split.name, split.pattern))
 
@@ -465,10 +472,8 @@ def _retrieve_latest_span_version(
     for spec, value in zip(DATE_SPECS, latest_span_tokens):
       split.pattern = split.pattern.replace(spec, value)
 
-  latest_version_int = None
   if is_match_version:
-    split.pattern = re.sub(VERSION_FULL_REGEX, latest_version, split.pattern)
-    latest_version_int = int(latest_version)
+    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
 
   return latest_span_int, latest_version_int
 
