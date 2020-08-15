@@ -405,15 +405,12 @@ def _retrieve_latest_span_version(
                                              is_match_version))
     
     if range_config:
-      range = range_config.range
-      if isinstance(range, range_config_pb2.StaticRange):
-        if (match_span_int < range.min_span_number or 
-            match_span_int > range.max_span_number):
-          # If span not in static range, ignore this file.
+      if range_config.HasField('static_range'):
+        if (match_span_int < range_config.static_range.start_span_number or 
+            match_span_int > range_config.static_range.end_span_number):
+          # If span not in static range, skip to next file path.
           continue
-      else:
-        raise ValueError("RangeConfig descriptor not supported.")
-
+  
       if match_span_int in range_config.exclude_span_numbers:
         continue
 
@@ -444,7 +441,7 @@ def _retrieve_latest_span_version(
 
   return latest_span_int, latest_version_int
 
-# TODO(jjma): Add logic to use range config with span and version parsing.
+
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split],
     range_config: Optional[range_config_pb2.RangeConfig]

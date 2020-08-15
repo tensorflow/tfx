@@ -127,6 +127,9 @@ class DriverTest(tf.test.TestCase):
           pattern: "span02/version02/split2/*"
         }""", updated_input_config)
 
+  def testResolveExecPropertiesWithRangeConfig(self):
+    pass
+
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
     output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
@@ -159,7 +162,6 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
     self.assertEqual(
         examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
-
 
 if __name__ == '__main__':
   tf.test.main()

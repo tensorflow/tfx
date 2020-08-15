@@ -28,6 +28,7 @@ import tensorflow as tf
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 
@@ -580,6 +581,44 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
     self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
 
+  def testSpanAlignWithRangeConfig(self):
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+    span2_split1 = os.path.join(self._input_base_path, 'span02', 'split1',
+                                'data')
+    io_utils.write_string_file(span2_split1, 'testing21')
+    span3_split1 = os.path.join(self._input_base_path, 'span03', 'split1',
+                                'data')
+    io_utils.write_string_file(span3_split1, 'testing31')
+
+    # Test static range in RangeConfig.
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=0,
+                                                  end_span_number=2))
+    splits1 = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/split1/*'), 
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits1, range_config)
+    self.assertEqual(span, 2)
+    self.assertIsNone(version)
+    self.assertEqual(splits1[0].pattern, 'span02/split1/*')
+
+    # Test excluded span numbers behavior in RangeConfig.
+    range_config = range_config_pb2.RangeConfig(exclude_span_numbers=[3])
+    splits2 = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/split1/*'), 
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits2, range_config)
+    self.assertEqual(span, 2)
+    self.assertIsNone(version)
+    self.assertEqual(splits2[0].pattern, 'span02/split1/*')
 
 if __name__ == '__main__':
   tf.test.main()
