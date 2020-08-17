@@ -563,7 +563,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
-    kwargs = tfdv.utils.batch_util.GetBeamBatchKwargs(
+    kwargs = tfx_bsl.coders.batch_util.GetBatchElementsKwargs(
         tft_beam.Context.get_desired_batch_size())
     return (
         pcoll
