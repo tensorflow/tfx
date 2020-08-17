@@ -23,6 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.examples.iris import iris_pipeline_native_keras_infraval
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -56,12 +57,15 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
       self.assertEqual(1, len(execution))
 
   def assertInfraValidatorPassed(self) -> None:
+    infra_validator_path = os.path.join(self._pipeline_root, 'InfraValidator')
     blessing_path = os.path.join(self._pipeline_root, 'InfraValidator',
                                  'blessing')
     executions = tf.io.gfile.listdir(blessing_path)
     self.assertGreaterEqual(len(executions), 1)
     for exec_id in executions:
-      blessed = os.path.join(blessing_path, exec_id, 'INFRA_BLESSED')
+      blessing_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+          infra_validator_path, 'blessing', exec_id)
+      blessed = os.path.join(blessing_uri, 'INFRA_BLESSED')
       self.assertTrue(tf.io.gfile.exists(blessed))
 
   def assertPipelineExecution(self) -> None:

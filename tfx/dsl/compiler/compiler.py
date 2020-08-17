@@ -22,6 +22,7 @@ from __future__ import print_function
 import json
 import re
 
+from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.compiler import compiler_utils
@@ -30,6 +31,7 @@ from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
+from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 
@@ -38,7 +40,7 @@ class _CompilerContext(object):
 
   def __init__(self, pipeline_info: data_types.PipelineInfo):
     self.pipeline_info = pipeline_info
-    self.component_pbs = {}
+    self.node_pbs = {}
 
 
 class Compiler(object):
@@ -48,13 +50,16 @@ class Compiler(object):
     pass
 
   def _compile_node(
-      self, tfx_node: base_node.BaseNode,
-      compile_context: _CompilerContext) -> pipeline_pb2.PipelineNode:
+      self, tfx_node: base_node.BaseNode, compile_context: _CompilerContext,
+      deployment_config: pipeline_pb2.IntermediateDeploymentConfig
+  ) -> pipeline_pb2.PipelineNode:
     """Compiles an individual TFX node into a PipelineNode proto.
 
     Args:
       tfx_node: A TFX node.
       compile_context: Resources needed to compile the node.
+      deployment_config: Intermediate deployment config to set. Will include
+        related specs for executors, drivers and platform specific configs.
 
     Returns:
       A PipelineNode proto that encodes information of the node.
@@ -84,9 +89,9 @@ class Compiler(object):
         channel.producer_node_query.id = value.producer_component_id
 
         # Here we rely on pipeline.components to be topologically sorted.
-        assert value.producer_component_id in compile_context.component_pbs, (
+        assert value.producer_component_id in compile_context.node_pbs, (
             "producer component should have already been compiled.")
-        producer_pb = compile_context.component_pbs[value.producer_component_id]
+        producer_pb = compile_context.node_pbs[value.producer_component_id]
         for producer_context in producer_pb.contexts.contexts:
           if (not compiler_utils.is_resolver(tfx_node) or
               producer_context.name.runtime_parameter.name !=
@@ -154,9 +159,19 @@ class Compiler(object):
               "Component {} got unsupported parameter {} with type {}.".format(
                   tfx_node.id, key, type(value)))
 
-    # Step 6: Executor
+    # Step 6: Executor spec and optional driver spec for components
     if compiler_utils.is_component(tfx_node):
-      node.executor.CopyFrom(tfx_node.executor_spec.encode())
+      executor_spec = tfx_node.executor_spec.encode()
+      deployment_config.executor_specs[tfx_node.id].Pack(executor_spec)
+
+      # TODO(b/163433174): Remove specialized logic once generalization of
+      # driver spec is done.
+      if tfx_node.driver_class != base_driver.BaseDriver:
+        driver_class_path = "{}.{}".format(tfx_node.driver_class.__module__,
+                                           tfx_node.driver_class.__name__)
+        driver_spec = local_deployment_config_pb2.ExecutableSpec()
+        driver_spec.python_class_executable_spec.class_path = driver_class_path
+        deployment_config.custom_driver_specs[tfx_node.id].Pack(driver_spec)
 
     # Step 7: Upstream/Downstream nodes
     # Note: the order of tfx_node.upstream_nodes is inconsistent from
@@ -199,14 +214,19 @@ class Compiler(object):
 
     assert compiler_utils.ensure_topological_order(tfx_pipeline.components), (
         "Pipeline components are not topologically sorted.")
+    deployment_config = pipeline_pb2.IntermediateDeploymentConfig()
+    if tfx_pipeline.metadata_connection_config:
+      deployment_config.metadata_connection_config.Pack(
+          tfx_pipeline.metadata_connection_config)
     for node in tfx_pipeline.components:
-      component_pb = self._compile_node(node, context)
+      node_pb = self._compile_node(node, context, deployment_config)
       pipeline_or_node = pipeline_pb.PipelineOrNode()
-      pipeline_or_node.pipeline_node.CopyFrom(component_pb)
+      pipeline_or_node.pipeline_node.CopyFrom(node_pb)
       # TODO(b/158713812): Support sub-pipeline.
       pipeline_pb.nodes.append(pipeline_or_node)
-      context.component_pbs[node.id] = component_pb
+      context.node_pbs[node.id] = node_pb
 
+    pipeline_pb.deployment_config.Pack(deployment_config)
     # Currently only synchronous mode is supported
     pipeline_pb.execution_mode = pipeline_pb2.Pipeline.ExecutionMode.SYNC
     return pipeline_pb
