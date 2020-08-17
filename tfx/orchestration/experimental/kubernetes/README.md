@@ -12,37 +12,37 @@ Pipelines](https://www.kubeflow.org/docs/pipelines/overview/pipelines-overview/)
 ## Step 1: Set up a Kubernetes cluster
 
 ### Kubernetes setup
-To create your own on-premise or cloud-based Kubernetes cluster, follow the 
-[Kubernetes Getting Started Guide](https://kubernetes.io/docs/setup/) to set up 
+To create your own on-premise or cloud-based Kubernetes cluster, follow the
+[Kubernetes Getting Started Guide](https://kubernetes.io/docs/setup/) to set up
 your Kubernetes environment.
 
 ### Creating a Google Kubernetes Engine cluster on Google Cloud Platform
-If you would like to run a managed Kubernetes cluster on Google Cloud, follow 
+If you would like to run a managed Kubernetes cluster on Google Cloud, follow
 the [Google Kubernetes Engine Quickstart Guide
 ](https://cloud.google.com/kubernetes-engine/docs/quickstart).
 
 ## Step 2: Set up Jupyter Notebook Service and Mysql MLMD
 
-First, ensure that you are in the base TFX directory. Use the following command 
+First, ensure that you are in the base TFX directory. Use the following command
 to deploy the defualt Jupyter Notebook and MySql resources:
 ```
 kubectl apply -k tfx/orchestration/experimental/kubernetes/yaml/
 ```
-**Important: If you are using a Kubernetes cluster other than GKE, go to 
-tfx/orchestration/experimental/kubernetes/yaml/mysql-pv.yaml and follow the 
+**Important: If you are using a Kubernetes cluster other than GKE, go to
+tfx/orchestration/experimental/kubernetes/yaml/mysql-pv.yaml and follow the
 instructions to modify the configurations for your cluster.**
 
 ### Using the In-Cluster Jupyter Notebook
-The in-cluster Jupyter Notebook allows you to edit files and run pipelines 
-directly from within your Kubernetes cluster. The default Jupyter Notebook 
-resource uses a 
+The in-cluster Jupyter Notebook allows you to edit files and run pipelines
+directly from within your Kubernetes cluster. The default Jupyter Notebook
+resource uses a
 [Nodeport](https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_nodeport)
-to expose its service. 
-To log on to your jupyter server, you need the external ip, port and log in 
+to expose its service.
+To log on to your jupyter server, you need the external ip, port and log in
 token. You may customize a log in password after the first time you log in.
 
-To obtain the log in token, first use `kubectl get pods` to locate the pod name 
-starting with "jupyter-". Then, read the pod start-up log to obtain the login 
+To obtain the log in token, first use `kubectl get pods` to locate the pod name
+starting with "jupyter-". Then, read the pod start-up log to obtain the login
 password by replacing $YOUR_POD_NAME with the name of the jupyter pod:
 ```
 kubectl logs $YOUR_POD_NAME
@@ -60,25 +60,24 @@ kubectl desribe nodes
 ```
 and look for the EXTERNAL_IP of any of the nodes.
 
-Finally, you should be able to access your server at 
+Finally, you should be able to access your server at
 http:// $EXTERNAL_IP : $NODE_PORT
 
 ### Using the MySQL MLMD
-The Mysql Service will be used as a [metadata store]
-(https://www.tensorflow.org/tfx/guide/mlmd) for your TFX pipelines. You do not 
-need to interact with it by default, but it may be useful for debugging 
+The Mysql Service will be used as a
+[metadata store](https://www.tensorflow.org/tfx/guide/mlmd) for your TFX pipelines. You do not
+need to interact with it by default, but it may be useful for debugging
 pipeline executions.
 
 To access the service from the command line, use:
 ```
-kubectl run -it --rm --image=mysql:5.6 --restart=Never 
+kubectl run -it --rm --image=mysql:5.6 --restart=Never
 mysql-client -- mysql --host mysql
 ```
 
-To use the mysql instance as a metadata store 
-([example](https://github.com/tensorflow/tfx/blob/master/tfx/
-examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb)), you can 
-initialize a custom interactive context with:
+To use the mysql instance as a metadata store
+([example](https://github.com/tensorflow/tfx/blob/master/tfx/examples/chicago_taxi_pipeline/taxi_pipeline_interactive.ipynb)),
+you can initialize a custom interactive context with:
 
 ```
 _metadata_connection_config = metadata.mysql_metadata_connection_config(
@@ -88,8 +87,8 @@ context = InteractiveContext(metadata_connection_config=_metadata_connection_con
 
 ## Step 3: Build and upload your TFX image
 
-The default container image used for executing TFX pipeline components is 
-`tensorflow/tfx`. If you would like to use a custom container image, modify 
+The default container image used for executing TFX pipeline components is
+`tensorflow/tfx`. If you would like to use a custom container image, modify
 the Dockerfile located in this directory, and build the new image:
 
 ```
