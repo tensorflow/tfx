@@ -59,18 +59,18 @@ class _FakeComponent(base_component.BaseComponent):
 class KubernetesRemoteRunnerTest(tf.test.TestCase):
 
   def setUp(self):
-    component_a = _FakeComponent(
+    self.component_a = _FakeComponent(
         _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
-    component_b = _FakeComponent(
+    self.component_b = _FakeComponent(
         _FakeComponentSpecB(
-            a=component_a.outputs['output'],
+            a=self.component_a.outputs['output'],
             output=types.Channel(type=_ArtifactTypeB)))
     self.test_pipeline = pipeline.Pipeline(
         pipeline_name='x',
         pipeline_root='y',
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[
-            component_a, component_b
+            self.component_a, self.component_b
         ])
 
   def testSerialization(self):
@@ -84,6 +84,10 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
     metadata_connection_config = metadata_store_pb2.ConnectionConfig()
     json_format.Parse(tfx_pipeline['metadata_connection_config'],
                       metadata_connection_config)
+    expected_downstream_ids = json.dumps({
+        self.component_a.id: [self.component_b.id],
+        self.component_b.id: [],
+    })
     self.assertEqual(self.test_pipeline.pipeline_info.pipeline_name,
                      tfx_pipeline['pipeline_name'])
     self.assertEqual(self.test_pipeline.pipeline_info.pipeline_root,
@@ -100,6 +104,11 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
         [component.executor_spec.executor_class for component in components])
     self.assertEqual(self.test_pipeline.metadata_connection_config,
                      metadata_connection_config)
+    self.assertEqual(
+        expected_downstream_ids,
+        tfx_pipeline['downstream_ids']
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()

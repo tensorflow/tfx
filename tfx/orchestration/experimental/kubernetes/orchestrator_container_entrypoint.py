@@ -40,7 +40,6 @@ def main():
   # Pipeline is serialized via a json format.
   # See kubernetes_remote_runner._serialize_pipeline for details.
   parser.add_argument('--serialized_pipeline', type=str, required=True)
-  parser.add_argument('--downstream_ids', type=str, required=True)
   parser.add_argument('--tfx_image', type=str, required=True)
   args = parser.parse_args()
 
@@ -53,12 +52,12 @@ def main():
                     metadata_connection_config)
 
   # Restore component dependencies.
-  downstream_ids = json.loads(args.downstream_ids)
-  if not isinstance(downstream_ids, list):
+  downstream_ids = json.loads(tfx_pipeline['downstream_ids'])
+  if not isinstance(downstream_ids, dict):
     raise RuntimeError("downstream_ids needs to be a 'dict'.")
   if len(downstream_ids) != len(components):
     raise RuntimeError(
-        'Wrong number of elements in downstream_ids. Expected: %s. Actual: %s' %
+        'Wrong number of items in downstream_ids. Expected: %s. Actual: %s' %
         len(components), len(downstream_ids))
 
   id_to_component = {component.id: component for component in components}
@@ -68,10 +67,12 @@ def main():
     component._upstream_nodes = set() # pylint: disable=protected-access
     component._downstream_nodes = set() # pylint: disable=protected-access
 
-  for ind, component in enumerate(components):
-    for downstream_id in downstream_ids[ind]:
-      component.add_downstream_node(id_to_component[downstream_id])
-      id_to_component[downstream_id].add_upstream_node(component)
+  for upstream_id, downstream_id_list in downstream_ids.items():
+    upstream_component = id_to_component[upstream_id]
+    for downstream_id in downstream_id_list:
+      downstream_component = id_to_component[downstream_id]
+      upstream_component.add_downstream_node(downstream_component)
+      downstream_component.add_upstream_node(upstream_component)
 
   absl.logging.set_verbosity(absl.logging.INFO)
   kubernetes_dag_runner.KubernetesDagRunner(

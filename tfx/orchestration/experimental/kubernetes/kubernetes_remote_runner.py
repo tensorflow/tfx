@@ -17,7 +17,7 @@ import absl
 import datetime
 import json
 import time
-from typing import List, Text
+from typing import Dict, List, Text
 
 from tfx.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -42,15 +42,9 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
 
   # TODO(ccy): Look for alternative serialization schemes once available.
   serialized_pipeline = _serialize_pipeline(pipeline)
-  # Extract and pass pipeline graph information which are lost during the
-  # serialization process. The orchestrator container uses downstream_ids
-  # to reconstruct pipeline graph.
-  downstream_ids = json.dumps(_extract_downstream_ids(pipeline.components))
   arguments = [
       '--serialized_pipeline',
       serialized_pipeline,
-      '--downstream_ids',
-      downstream_ids,
       '--tfx_image',
       tfx_image,
   ]
@@ -160,11 +154,16 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   for component in pipeline.components:
     serialized_components.append(
         json_utils.dumps(node_wrapper.NodeWrapper(component)))
+  # Extract and pass pipeline graph information which are lost during the
+  # serialization process. The orchestrator container uses downstream_ids
+  # to reconstruct pipeline graph.
+  downstream_ids = json.dumps(_extract_downstream_ids(pipeline.components))
   return json.dumps({
       'pipeline_name': pipeline.pipeline_info.pipeline_name,
       'pipeline_root': pipeline.pipeline_info.pipeline_root,
       'enable_cache': pipeline.enable_cache,
       'components': serialized_components,
+      'downstream_ids': downstream_ids,
       'metadata_connection_config': json_format.MessageToJson(
           message=pipeline.metadata_connection_config,
           preserving_proto_field_name=True,
@@ -173,18 +172,19 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   })
 
 def _extract_downstream_ids(
-    components: List[base_node.BaseNode]) -> List[List[Text]]:
+    components: List[base_node.BaseNode]) -> Dict[Text, List[Text]]:
   """Extract downstream component ids from a list of components.
 
   Args:
     components: List of TFX Components.
 
   Returns:
-    List of ids of the component's downstream nodes at each list index.
+    Mapping from component id to ids of its downstream components for
+    each component.
   """
 
-  downstream_ids = []
+  downstream_ids = {}
   for component in components:
-    downstream_ids.append([
-        downstream_node.id for downstream_node in component.downstream_nodes])
+    downstream_ids[component.id] = [
+        downstream_node.id for downstream_node in component.downstream_nodes]
   return downstream_ids
