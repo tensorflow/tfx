@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Text, cast
 
