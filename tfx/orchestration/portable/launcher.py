@@ -29,8 +29,10 @@ from tfx.orchestration.portable import outputs_utils
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
+from google.protobuf import message
 from ml_metadata.proto import metadata_store_pb2
 
 # Subclasses of BaseExecutorOperator
@@ -38,7 +40,7 @@ ExecutorOperator = TypeVar(
     'ExecutorOperator', bound=base_executor_operator.BaseExecutorOperator)
 
 DEFAULT_EXECUTOR_OPERATORS = {
-    pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec:
+    local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec:
         python_executor_operator.PythonExecutorOperator
 }
 
@@ -63,34 +65,48 @@ class _PrepareExecutionResult:
 class Launcher(object):
   """Launcher is the main entrance of nodes in TFleX.
 
-     It handles TFX internal details like data resoving, execution triggering
-     and publishing.
+     It handles TFX internal details like artifact resolving, execution
+     triggering and result publishing.
   """
 
-  def __init__(self,
-               pipeline_node: pipeline_pb2.PipelineNode,
-               mlmd_connection: metadata.Metadata,
-               pipeline_info: pipeline_pb2.PipelineInfo,
-               pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
-               custom_executor_operators: Optional[Dict[
-                   Any,
-                   Type[ExecutorOperator]]] = None):
+  def __init__(
+      self,
+      pipeline_node: pipeline_pb2.PipelineNode,
+      mlmd_connection: metadata.Metadata,
+      pipeline_info: pipeline_pb2.PipelineInfo,
+      pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
+      executor_spec: Optional[message.Message] = None,
+      custom_driver_spec: Optional[message.Message] = None,
+      platform_spec: Optional[message.Message] = None,
+      custom_executor_operators: Optional[Dict[Any,
+                                               Type[ExecutorOperator]]] = None):
     """Initializes a Launcher.
 
     Args:
       pipeline_node: The specification of the node that this launcher lauches.
-      mlmd_connection: ML metadata connection. The connection is expected to
-        not be opened before launcher is initiated.
+      mlmd_connection: ML metadata connection. The connection is expected to not
+        be opened before launcher is initiated.
       pipeline_info: The information of the pipeline that this node runs in.
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
-      custom_executor_operators: a map of ExcutorSpec to its ExecutorOperation
+      executor_spec: Specification for the executor of the node. This is
+        expected for all components nodes. This will be used to determine the
+        specific ExecutorOperator class to be used to execute and will be passed
+        into ExecutorOperator.
+      custom_driver_spec: Specification for custom driver. This is expected only
+        for advanced use cases.
+      platform_spec: Platform config that will be used as auxiliary info of the
+        node execution. This will be passed to ExecutorOperator along with the
+        `executor_spec`.
+      custom_executor_operators: a map of ExecutorSpec to its ExecutorOperation
         implementation.
 
     Raises:
       ValueError: when component and component_config are not launchable by the
       launcher.
     """
+    del custom_driver_spec
+
     self._pipeline_node = pipeline_node
     self._mlmd_connection = mlmd_connection
     self._pipeline_info = pipeline_info
@@ -99,20 +115,14 @@ class Launcher(object):
     self._executor_operators.update(DEFAULT_EXECUTOR_OPERATORS)
     self._executor_operators.update(custom_executor_operators or {})
 
-    executor_spec_name = self._pipeline_node.executor.WhichOneof('spec')
-    self._executor_spec = getattr(self._pipeline_node.executor,
-                                  executor_spec_name)
-
-    self._executor_operator = self._executor_operators[type(
-        self._executor_spec)](self._executor_spec)
+    self._executor_operator = self._executor_operators[type(executor_spec)](
+        executor_spec, platform_spec)
     self._output_resolver = outputs_utils.OutputsResolver(
         pipeline_node=self._pipeline_node,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
 
-  def _prepare_execution(
-      self
-  ) -> _PrepareExecutionResult:
+  def _prepare_execution(self) -> _PrepareExecutionResult:
     """Prepare inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
     # between successful pushlish and stateful working dir being clean up.
@@ -160,8 +170,7 @@ class Launcher(object):
           parameters=exec_properties)
       contexts.append(cache_context)
       cached_outputs = cache_utils.get_cached_outputs(
-          metadata_handler=m,
-          cache_context=cache_context)
+          metadata_handler=m, cache_context=cache_context)
 
       # 7. Should cache be used?
       if (self._pipeline_node.execution_options.caching_options.enable_cache and
@@ -212,8 +221,7 @@ class Launcher(object):
       raise
 
   def _publish_successful_execution(
-      self, execution_id: int,
-      contexts: List[metadata_store_pb2.Context],
+      self, execution_id: int, contexts: List[metadata_store_pb2.Context],
       output_dict: Dict[Text, List[types.Artifact]],
       executor_output: execution_result_pb2.ExecutorOutput) -> None:
     """Publishes succeeded execution result to ml metadata."""
@@ -231,12 +239,9 @@ class Launcher(object):
     """Publishes failed execution to ml metadata."""
     with self._mlmd_connection as m:
       execution_publish_utils.publish_failed_execution(
-          metadata_handler=m,
-          execution_id=execution_id,
-          contexts=contexts)
+          metadata_handler=m, execution_id=execution_id, contexts=contexts)
 
-  def _clean_up(self,
-                execution_info: base_executor_operator.ExecutionInfo):
+  def _clean_up(self, execution_info: base_executor_operator.ExecutionInfo):
     tf.io.gfile.remove(execution_info.stateful_working_dir)
 
   def launch(self) -> Optional[metadata_store_pb2.Execution]:
@@ -248,10 +253,10 @@ class Launcher(object):
     """
     logging.debug('Running driver for %s', self._pipeline_node)
     prepare_exeucion_result = self._prepare_execution()
-    (execution_info, contexts, is_execution_needed) = (
-        prepare_exeucion_result.execution_info,
-        prepare_exeucion_result.contexts,
-        prepare_exeucion_result.is_execution_needed)
+    (execution_info, contexts,
+     is_execution_needed) = (prepare_exeucion_result.execution_info,
+                             prepare_exeucion_result.contexts,
+                             prepare_exeucion_result.is_execution_needed)
     if is_execution_needed:
       try:
         executor_output = self._run_executor(execution_info)

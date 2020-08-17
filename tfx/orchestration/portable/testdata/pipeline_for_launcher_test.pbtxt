@@ -250,9 +250,6 @@ nodes {
         }
       }
     }
-    executor {
-      python_class_executor_spec {}
-    }
     execution_options {
       caching_options {
         enable_cache: true

@@ -88,10 +88,10 @@ class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):
       self,
       execution_info: ExecutionInfo,
   ) -> execution_result_pb2.ExecutorOutput:
-    """Invokers executors given input from the Launcher.
+    """Invokes the executor with inputs provided by the Launcher.
 
     Args:
-      execution_info: A wrapper of the details of this execution.
+      execution_info: A wrapper of the info needed by this execution.
 
     Returns:
       The output from executor.
