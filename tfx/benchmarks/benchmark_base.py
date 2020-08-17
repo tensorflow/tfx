@@ -53,9 +53,9 @@ class BenchmarkBase(test.Benchmark):
 
   def _set_flink_on_k8s_operator_options(self):
     self.pipeline_options = PipelineOptions(
-        runner="PortableRunner",
-        job_endpoint="localhost:8099",
-        artifact_endpoint="localhost:8098",
+        runner="FlinkRunner",
+        flink_master="localhost:8081",
+        flink_submit_uber_jar=True,
         environment_type="EXTERNAL",
         environment_config="localhost:50000",
         parallelism=self.num_workers,

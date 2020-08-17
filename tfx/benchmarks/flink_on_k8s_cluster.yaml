@@ -3,22 +3,21 @@ kind: FlinkCluster
 metadata:
   name: flink-on-k8s-cluster
 spec:
-  flinkProperties:
-    taskmanager.numberOfTaskSlots: '1'
   image:
     name: flink:1.8.1
   jobManager:
     resources:
       limits:
-        memory: 1Gi
+        memory: "1Gi"
   taskManager:
     replicas: 2
     resources:
       limits:
-        memory: 2Gi
+        memory: "2Gi"
     sidecars:
-    - args:
-      - --worker_pool
-      image: path_to_image-for-tfx-flink-on-k8s
-      imagePullPolicy: Always
-      name: beam-worker-pool
+      - name: beam-worker-pool
+        image: gcr.io/tfx-keshav/flink-on-k8s-cluster-image:2.22.0
+        imagePullPolicy: Always
+        args: ["--worker_pool"]
+  flinkProperties:
+    taskmanager.numberOfTaskSlots: "1"

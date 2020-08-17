@@ -203,17 +203,12 @@ class BeamPipelineBenchmarkBase(object):
 
       # Apply the kubectl clusters
       subprocess.call("kubectl apply -f " + yaml_path, shell=True)
-      subprocess.call("kubectl apply -f flink_on_k8s_job_server.yaml",
-                      shell=True)
       time.sleep(180)
 
       # Set up port forwarding
       subprocess.call("pkill kubectl -9", shell=True)
       subprocess.Popen(
-          "kubectl port-forward service/flink-on-k8s-job-server 8098:8098",
-          shell=True)
-      subprocess.Popen(
-          "kubectl port-forward service/flink-on-k8s-job-server 8099:8099",
+          "kubectl port-forward service/flink-on-k8s-cluster-jobmanager 8081:8081 > /dev/null 2>&1 &",
           shell=True)
       time.sleep(20)
 
@@ -229,8 +224,6 @@ class BeamPipelineBenchmarkBase(object):
 
       # Cleanup kubectl processes
       subprocess.call("kubectl delete -f " + yaml_path, shell=True)
-      subprocess.call("kubectl delete -f flink_on_k8s_job_server.yaml",
-                      shell=True)
       subprocess.call("pkill kubectl -9", shell=True)
       time.sleep(180)
 
