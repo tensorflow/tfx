@@ -124,8 +124,12 @@ class ExecutorTest(tft_unit.TransformTestCase):
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
       self.assertGreater(
-        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'train')).size(),
-        tf.io.gfile.GFile(os.path.join(self._transformed_examples.uri, 'eval')).size())
+        tf.io.gfile.GFile(
+            os.path.join(self._transformed_examples.uri, 'train',
+                         'transformed_examples-00000-of-00001.gz')).size(),
+        tf.io.gfile.GFile(
+            os.path.join(self._transformed_examples.uri, 'eval',
+                         'transformed_examples-00000-of-00001.gz')).size())
     else:
       # there should not be transformed data under _output_data_dir.
       self.assertEqual(['transformed_graph'],
@@ -154,26 +158,26 @@ class ExecutorTest(tft_unit.TransformTestCase):
     assert len(pipelines) == 1
     return pipelines[0].metrics
 
-  def testDoWithModuleFile(self):
+  def test_do_with_module_file(self):
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def testDoWithPreprocessingFn(self):
+  def test_do_with_preprocessing_fn(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def testDoWithMaterializationDisabled(self):
+  def test_do_with_materialization_disabled(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     del self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY]
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self._verify_transform_outputs(materialize=False)
 
-  def testDoWithPreprocessingFnCustomConfig(self):
+  def test_do_with_preprocessing_fn_custom_config(self):
     self._exec_properties['preprocessing_fn'] = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
@@ -185,7 +189,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def testDoWithPreprocessingFnAndNoneCustomConfig(self):
+  def test_do_with_preprocessing_fn_and_none_custom_config(self):
     self._exec_properties['preprocessing_fn'] = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
         transform_module.preprocessing_fn.__name__)
@@ -194,19 +198,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def testDoWithNoPreprocessingFn(self):
+  def test_do_with_no_preprocessing_fn(self):
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
-  def testDoWithDuplicatePreprocessingFn(self):
+  def test_do_with_duplicate_preprocessing_fn(self):
     self._exec_properties['module_file'] = self._module_file
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     with self.assertRaises(ValueError):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
-  def testDoWithCustomSplits(self):
+  def test_do_with_custom_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(analyze=['train'],
                                    transform=['train', 'eval']),
@@ -216,7 +220,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs()
 
-  def testDoWithEmptyAnalyzeSplits(self):
+  def test_do_with_empty_analyze_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(analyze=[],
                                    transform=['train', 'eval']),
@@ -226,7 +230,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
-  def testDoWithEmptyTransformSplits(self):
+  def test_do_with_empty_transform_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(analyze=['train'],
                                    transform=[]),
@@ -250,7 +254,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def testCounters(self):
+  def test_counters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
     metrics = self._run_pipeline_get_metrics()
 
@@ -284,7 +288,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # specifies.
     self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
-  def testDoWithCache(self):
+  def test_do_with_cache(self):
 
     # First run that creates cache.
     output_cache_artifact = _OutputCache()
@@ -321,7 +325,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
                         len(tf.io.gfile.listdir(output_cache_artifact.uri)))
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
-  def testDoWithCacheDisabledTooManyStages(self):
+  def test_do_with_cache_disabled_too_many_stages(self):
     output_cache_artifact = _OutputCache()
     output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
     self._output_dict['cache_output_path'] = [output_cache_artifact]

@@ -50,7 +50,7 @@ class ComponentTest(tf.test.TestCase):
     else:
       self.assertNotIn('transformed_examples', transform.outputs.keys())
 
-  def testConstructFromModuleFile(self):
+  def test_construct_from_module_file(self):
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
         examples=self.examples,
@@ -60,7 +60,7 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(transform)
     self.assertEqual(module_file, transform.exec_properties['module_file'])
 
-  def testConstructWithParameter(self):
+  def test_construct_with_parameter(self):
     module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
     transform = component.Transform(
         examples=self.examples,
@@ -71,7 +71,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertJsonEqual(
         str(module_file), str(transform.exec_properties['module_file']))
 
-  def testConstructFromPreprocessingFn(self):
+  def test_construct_from_preprocessing_fn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     transform = component.Transform(
         examples=self.examples,
@@ -82,7 +82,7 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(preprocessing_fn,
                      transform.exec_properties['preprocessing_fn'])
 
-  def testConstructWithMaterializationDisabled(self):
+  def test_construct_with_materialization_disabled(self):
     transform = component.Transform(
         examples=self.examples,
         schema=self.schema,
@@ -90,7 +90,7 @@ class ComponentTest(tf.test.TestCase):
         materialize=False)
     self._verify_outputs(transform, materialize=False)
 
-  def testConstructFromPreprocessingFnWithCustomConfig(self):
+  def test_construct_from_preprocessing_fn_with_custom_config(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     custom_config = {'param': 1}
     transform = component.Transform(
@@ -105,14 +105,14 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(json.dumps(custom_config),
                      transform.spec.exec_properties['custom_config'])
 
-  def testConstructMissingUserModule(self):
+  def test_construct_missing_user_module(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
           examples=self.examples,
           schema=self.schema,
       )
 
-  def testConstructDuplicateUserModule(self):
+  def test_construct_duplicate_user_module(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
           examples=self.examples,
@@ -121,7 +121,7 @@ class ComponentTest(tf.test.TestCase):
           preprocessing_fn='path.to.my_preprocessing_fn',
       )
 
-  def testConstructWithSplitsConfig(self):
+  def test_construct_with_splits_config(self):
     splits_config = transform_pb2.SplitsConfig(analyze=['train'],
                                                transform=['eval'])
     module_file = '/path/to/preprocessing.py'
@@ -137,7 +137,7 @@ class ComponentTest(tf.test.TestCase):
                                   preserving_proto_field_name=True),
         transform.exec_properties['splits_config'])
 
-  def testConstructWithMaterializationDisabledButOutputExamples(self):
+  def test_construct_with_materialization_disabled_but_output_examples(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
           examples=self.examples,
