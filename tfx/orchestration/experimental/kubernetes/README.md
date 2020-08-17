@@ -35,8 +35,9 @@ instructions to modify the configurations for your cluster.**
 ### Using the In-Cluster Jupyter Notebook
 The in-cluster Jupyter Notebook allows you to edit files and run pipelines 
 directly from within your Kubernetes cluster. The default Jupyter Notebook 
-resource uses a [Nodeport]
-(https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_nodeport) to expose its service. 
+resource uses a 
+[Nodeport](https://cloud.google.com/kubernetes-engine/docs/how-to/exposing-apps#creating_a_service_of_type_nodeport)
+to expose its service. 
 To log on to your jupyter server, you need the external ip, port and log in 
 token. You may customize a log in password after the first time you log in.
 
