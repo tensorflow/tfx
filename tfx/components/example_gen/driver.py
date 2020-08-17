@@ -55,7 +55,6 @@ class Driver(base_driver.BaseDriver):
     input_base = exec_properties[utils.INPUT_BASE_KEY]
     logging.debug('Processing input %s.', input_base)
 
-    # TODO(jjma): add driver tests for RangeConfig.
     range_config = None
     if utils.RANGE_CONFIG_KEY in exec_properties:
       range_config = range_config_pb2.RangeConfig()
