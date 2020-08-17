@@ -18,8 +18,8 @@ your Kubernetes environment.
 
 ### Creating a Google Kubernetes Engine cluster on Google Cloud Platform
 If you would like to run a managed Kubernetes cluster on Google Cloud, follow 
-the [Google Kubernetes Engine Quickstart Guide](https://cloud.google.com/
-kubernetes-engine/docs/quickstart).
+the [Google Kubernetes Engine Quickstart Guide
+](https://cloud.google.com/kubernetes-engine/docs/quickstart).
 
 ## Step 2: Set up Jupyter Notebook Service and Mysql MLMD
 
