@@ -412,9 +412,17 @@ def _retrieve_latest_span_version(
     # Check parsed span number against range config, if it exists.
     if range_config:
       if range_config.HasField('static_range'):
-        if (match_span_int < range_config.static_range.start_span_number or
-            match_span_int > range_config.static_range.end_span_number):
-          # If span not in static range, skip to next file path.
+        # For ExampleGen, RangeConfig must specify an exact span to look for,
+        # since only one span is processed at a time.
+        start_span_number = range_config.static_range.start_span_number
+        end_span_number = range_config.static_range.end_span_number
+
+        if start_span_number != end_span_number:
+          raise ValueError(
+              'Start and end span numbers for RangeConfig.static_range must '
+              'be equal: (%s, %s)' % (start_span_number, end_span_number))
+
+        if match_span_int != start_span_number:
           continue
 
       if match_span_int in range_config.exclude_span_numbers:

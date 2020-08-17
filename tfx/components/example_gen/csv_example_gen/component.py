@@ -26,6 +26,7 @@ from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
+from tfx.proto import range_config_pb2
 from tfx.types import artifact_utils
 
 

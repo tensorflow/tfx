@@ -581,6 +581,43 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
     self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
 
+  def testBadRangeConfig(self):
+    # Test static range with different endpoints.
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=0,
+                                                  end_span_number=1))
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(
+        ValueError, 'Start and end span numbers for RangeConfig'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits, range_config)
+
+  def testNoSpanInRangeConfig(self):
+    # Test behavior when specified span in RangeConfig does not exist.
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=2,
+                                                  end_span_number=2))
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN}/split1/*')
+    ]
+
+    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits, range_config)
+
   def testSpanAlignWithRangeConfig(self):
     span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
                                 'data')
@@ -588,14 +625,11 @@ class UtilsTest(tf.test.TestCase):
     span2_split1 = os.path.join(self._input_base_path, 'span02', 'split1',
                                 'data')
     io_utils.write_string_file(span2_split1, 'testing21')
-    span3_split1 = os.path.join(self._input_base_path, 'span03', 'split1',
-                                'data')
-    io_utils.write_string_file(span3_split1, 'testing31')
 
     # Test static range in RangeConfig.
     range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(start_span_number=0,
-                                                  end_span_number=2))
+        static_range=range_config_pb2.StaticRange(start_span_number=1,
+                                                  end_span_number=1))
     splits1 = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/split1/*')
@@ -603,12 +637,12 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits1, range_config)
-    self.assertEqual(span, 2)
+    self.assertEqual(span, 1)
     self.assertIsNone(version)
-    self.assertEqual(splits1[0].pattern, 'span02/split1/*')
+    self.assertEqual(splits1[0].pattern, 'span01/split1/*')
 
     # Test excluded span numbers behavior in RangeConfig.
-    range_config = range_config_pb2.RangeConfig(exclude_span_numbers=[3])
+    range_config = range_config_pb2.RangeConfig(exclude_span_numbers=[2])
     splits2 = [
         example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/split1/*')
@@ -616,9 +650,9 @@ class UtilsTest(tf.test.TestCase):
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits2, range_config)
-    self.assertEqual(span, 2)
+    self.assertEqual(span, 1)
     self.assertIsNone(version)
-    self.assertEqual(splits2[0].pattern, 'span02/split1/*')
+    self.assertEqual(splits2[0].pattern, 'span01/split1/*')
 
 if __name__ == '__main__':
   tf.test.main()
