@@ -117,14 +117,9 @@ class ImdbStubPipelineRegressionEndToEndTest(tf.test.TestCase):
 
   def testStubbedImdbPipelineBeam(self):
     # Runs the pipeline and record to self._recorded_output_dir
-    stubbed_component_ids = [component.id
-                             for component in self.imdb_pipeline.components
-                             if not component.id.startswith('ResolverNode')]
-
     stub_component_launcher.StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
-        stubbed_component_ids=stubbed_component_ids,
-        stubbed_component_map={})
+        test_component_ids=[])
 
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
