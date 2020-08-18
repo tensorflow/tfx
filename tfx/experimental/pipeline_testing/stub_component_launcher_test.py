@@ -19,14 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
 
-import absl
 import mock
 import tensorflow as tf
 
-from tfx import types
-from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
