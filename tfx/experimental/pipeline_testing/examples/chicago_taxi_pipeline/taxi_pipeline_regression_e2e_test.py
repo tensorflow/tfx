@@ -88,13 +88,11 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
     BeamDagRunner().run(record_taxi_pipeline)
+
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+        pipeline_name=self._pipeline_name)
 
     # Run pipeline with stub executors.
     taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
@@ -106,20 +104,13 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
-    stubbed_component_ids = [
-        component.id
-        for component in taxi_pipeline.components
-        if component.id != model_resolver_id
-    ]
-
-    stub_launcher = stub_component_launcher.get_stub_launcher_class(
+    stub_component_launcher.StubComponentLauncher.initialize(
         test_data_dir=self._recorded_output_dir,
-        stubbed_component_ids=stubbed_component_ids,
-        stubbed_component_map={})
+        test_component_ids=[])
+
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            stub_launcher,
+            stub_component_launcher.StubComponentLauncher,
         ])
     BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
 
@@ -142,7 +133,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       for execution in executions:
         component_id = execution.properties[
             metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-        if component_id == 'ResolverNode.latest_blessed_model_resolver':
+        if component_id.startswith('ResolverNode'):
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
