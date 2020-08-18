@@ -14,7 +14,7 @@
 """Base class to define how to operator an executor."""
 
 import abc
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional
 
 import attr
 import six
@@ -30,30 +30,31 @@ from ml_metadata.proto import metadata_store_pb2
 # TODO(b/150979622): We should introduce an id that is not changed across
 # retires of the same component run and pass it to executor operators for
 # human-readability purpose.
-@attr.s(auto_attribs=True)
+# TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
+@attr.s
 class ExecutionInfo:
   """A struct to store information for an execution."""
   # The metadata of this execution that is registered in MLMD.
-  execution_metadata: metadata_store_pb2.Execution = None
+  execution_metadata = attr.ib(type=metadata_store_pb2.Execution, default=None)
   # The input map to feed to executor
-  input_dict: Dict[Text, List[types.Artifact]] = None
+  input_dict = attr.ib(type=Dict[str, List[types.Artifact]], default=None)
   # The output map to feed to executor
-  output_dict: Dict[Text, List[types.Artifact]] = None
+  output_dict = attr.ib(type=Dict[str, List[types.Artifact]], default=None)
   # The exec_properties to feed to executor
-  exec_properties: Dict[Text, Any] = None
+  exec_properties = attr.ib(type=Dict[str, Any], default=None)
   # The uri to executor result, note that Executors and Launchers may not run
   # in the same process, so executors should use this uri to "return"
   # ExecutorOutput to the launcher.
-  executor_output_uri: Text = None
+  executor_output_uri = attr.ib(type=str, default=None)
   # Stateful working dir will be deterministic given pipeline, node and run_id.
   # The typical usecase is to restore long running executor's state after
   # eviction. For examples, a Trainer can use this directory to store
   # checkpoints.
-  stateful_working_dir: Text = None
+  stateful_working_dir = attr.ib(type=str, default=None)
   # The config of this Node.
-  pipeline_node: pipeline_pb2.PipelineNode = None
+  pipeline_node = attr.ib(type=pipeline_pb2.PipelineNode, default=None)
   # The config of the pipeline that this node is running in.
-  pipeline_info: pipeline_pb2.PipelineInfo = None
+  pipeline_info = attr.ib(type=pipeline_pb2.PipelineInfo, default=None)
 
 
 class BaseExecutorOperator(six.with_metaclass(abc.ABCMeta, object)):

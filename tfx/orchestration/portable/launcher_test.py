@@ -67,10 +67,14 @@ class LauncherTest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._testdata_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
     # Sets up pipelines
     pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text('pipeline_for_launcher_test.pbtxt', pipeline)
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata',
+            'pipeline_for_launcher_test.pbtxt'), pipeline)
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
     self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (

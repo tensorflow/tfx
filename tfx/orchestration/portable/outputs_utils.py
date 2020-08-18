@@ -38,7 +38,10 @@ def remove_output_dirs(output_dict: Dict[Text, List[types.Artifact]]) -> None:
   """Remove dirs of output artifacts' URI."""
   for _, artifact_list in output_dict.items():
     for artifact in artifact_list:
-      tf.io.gfile.remove(artifact.uri)
+      if tf.io.gfile.isdir(artifact.uri):
+        tf.io.gfile.rmtree(artifact.uri)
+      else:
+        tf.io.gfile.remove(artifact.uri)
 
 
 class OutputsResolver:

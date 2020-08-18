@@ -45,21 +45,23 @@ DEFAULT_EXECUTOR_OPERATORS = {
 }
 
 
-@attr.s(auto_attribs=True)
+# TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
+@attr.s
 class _PrepareExecutionResult:
   """A wrapper class using as the return value of _prepare_execution()."""
 
   # The information used by executor operators.
-  execution_info: Optional[base_executor_operator.ExecutionInfo]
+  execution_info = attr.ib(
+      type=base_executor_operator.ExecutionInfo, default=None)
   # Contexts of the execution, usually used by Publisher.
-  contexts: List[metadata_store_pb2.Context]
+  contexts = attr.ib(type=List[metadata_store_pb2.Context], default=None)
   # TODO(b/156126088): Update the following documentation when this bug is
   # closed.
   # Whether an execution is needed. An execution is not needed when:
   # 1) Not all the required input are ready.
   # 2) The input value doesn't meet the driver's requirement.
   # 3) Cache result is used.
-  is_execution_needed: bool = False
+  is_execution_needed = attr.ib(type=bool, default=False)
 
 
 class Launcher(object):
@@ -241,7 +243,7 @@ class Launcher(object):
           metadata_handler=m, execution_id=execution_id, contexts=contexts)
 
   def _clean_up(self, execution_info: base_executor_operator.ExecutionInfo):
-    tf.io.gfile.remove(execution_info.stateful_working_dir)
+    tf.io.gfile.rmtree(execution_info.stateful_working_dir)
 
   def launch(self) -> Optional[metadata_store_pb2.Execution]:
     """Executes the component, includes driver, executor and publisher.

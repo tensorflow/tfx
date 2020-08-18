@@ -24,6 +24,7 @@ def make_required_install_packages():
       # LINT.IfChange
       'apache-beam[gcp]>=2.22,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
+      'attrs>=19.3.0,<20',
       'click>=7,<8',
       'docker>=4.1,<5',
       'google-api-python-client>=1.7.8,<2',
