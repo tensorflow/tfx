@@ -84,8 +84,7 @@ class Launcher(object):
 
     Args:
       pipeline_node: The specification of the node that this launcher lauches.
-      mlmd_connection: ML metadata connection. The connection is expected to not
-        be opened before launcher is initiated.
+      mlmd_connection: ML metadata connection.
       pipeline_info: The information of the pipeline that this node runs in.
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
