@@ -29,6 +29,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_executor
 
+
 _EXAMPLES = 'examples'
 _SHUFFLED_EXAMPLES = 'shuffled_examples'
 _NUM_LINES = 1000
