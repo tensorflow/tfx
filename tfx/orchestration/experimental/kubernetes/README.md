@@ -56,7 +56,7 @@ The port would by default be some number in the range 30000-32767.
 
 You can use the external ip address of any node in your cluster. Type:
 ```
-kubectl desribe nodes
+kubectl describe nodes
 ```
 and look for the EXTERNAL_IP of any of the nodes.
 
