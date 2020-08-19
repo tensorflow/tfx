@@ -88,7 +88,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
                            (e.reason, e.body))
     time.sleep(1)
 
-  # Transient orchestrator should only have 1 pod
+  # Transient orchestrator should only have 1 pod.
   if len(orchestrator_pods) != 1:
     raise RuntimeError('Expected 1 pod launched by kubernetes job, found %s' %
                        len(orchestrator_pods))
