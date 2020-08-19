@@ -99,6 +99,11 @@
 
 ## Breaking changes
 *   Changed the URIs of the value artifacts to point to files.
+*   De-duplicated the
+    tfx.dsl.component.experimental.executor_specs.CommandLineArgumentType
+    union type in favor of
+    tfx.dsl.component.experimental.placeholders.CommandLineArgumentType
+
 
 ### For pipeline authors
 *   Moved BigQueryExampleGen to `tfx.extensions.google_cloud_big_query`. The
