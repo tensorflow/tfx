@@ -81,6 +81,10 @@ class Compiler(object):
         pipeline_run_context_pb.name.runtime_parameter,
         constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, str)
 
+    component_context_pb = node.contexts.contexts.add()
+    component_context_pb.type.name = constants.COMPONENT_CONTEXT_TYPE_NAME
+    component_context_pb.name.field_value.string_value = node.node_info.id
+
     # Step 3: Node inputs
     for key, value in tfx_node.inputs.items():
       input_spec = node.inputs.inputs[key]

@@ -30,3 +30,6 @@ PIPELINE_CONTEXT_TYPE_NAME = "pipeline"
 
 # The name for pipeline node's pipeline run context.
 PIPELINE_RUN_CONTEXT_TYPE_NAME = "pipeline_run"
+
+# The name for pipeline node's instance context
+COMPONENT_CONTEXT_TYPE_NAME = "component"
