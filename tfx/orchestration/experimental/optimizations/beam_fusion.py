@@ -31,24 +31,37 @@ class BeamFusionOptimizer(object):
   def __init__(self, pipeline: Pipeline):
     self.pipeline = pipeline
 
-  def _topologically_sort(self, components: List[base_node.BaseNode],
-                          sources: List[base_node.BaseNode]):
+  def _topologically_sort(self, components, sources):
+    # Determine the indegree for each component w.r.t the current subgraph
+    in_degrees = {}
+    for component in components:
+      in_degrees[component] = 0
+      for parent in component.upstream_nodes:
+        if parent not in components:
+          continue
+        in_degrees[component] += 1
 
+    # Perform a BFS on nodes that have a current indegree of 0
     sorted_components = []
-    current_layer = [c for c in components if c in sources]
-    visited = set(current_layer)
+    queue = [c for c in components if c in sources]
+    queue = sorted(queue, key=lambda c: c.id)
 
-    # Sorts component in topological order.
-    while current_layer:
-      next_layer = []
-      for component in sorted(current_layer, key=lambda c: c.id):
-        sorted_components.append(component)
-        for child in component.downstream_nodes:
-          if child in components and child not in visited:
-            next_layer.append(child)
-            visited.add(child)
+    while queue:
+      component = queue.pop(0)
+      sorted_components.append(component)
 
-      current_layer = next_layer
+      new_sources = []
+      for child in component.downstream_nodes:
+        if child not in components:
+          continue
+
+        in_degrees[child] -= 1
+        if in_degrees[child] == 0:
+          new_sources.append(child)
+
+      # This extra sorting keeps a consistent topological ordering
+      new_sources = sorted(new_sources, key=lambda c: c.id)
+      queue.extend(new_sources)
 
     return sorted_components
 
@@ -75,84 +88,84 @@ class BeamFusionOptimizer(object):
 
     # Conduct a BFS to ensure none of the child's ancestors (other than its'
     # immediate parents and those parents' ancestors) are in current_subgraph.
-    current_layer = []
+    queue = []
     for parent in child.upstream_nodes:
       if not parent in current_subgraph:
-        current_layer.append(parent)
+        queue.append(parent)
 
-    while(is_fuseable and current_layer):
-      next_layer = []
-      for component in current_layer:
-        for parent in component.upstream_nodes:
-          if parent in current_subgraph:
-            is_fuseable = False
-            break
-          next_layer.append(parent)
+    while(is_fuseable and queue):
+      component = queue.pop(0)
 
-      current_layer = next_layer
+      for parent in component.upstream_nodes:
+        if parent in current_subgraph:
+          is_fuseable = False
+          break
+        queue.append(parent)
 
     return is_fuseable
+
+  def _build_subgraph_from_source(self, source, fuseable_subgraphs, visited):
+    subgraph = []
+
+    if source in visited:
+      return fuseable_subgraphs, visited
+
+    # Conduct a BFS on the candidate source.
+    queue = [source]
+    while queue:
+      component = queue.pop(0)
+
+      if component in visited:
+        continue
+
+      visited.add(component)
+      subgraph.append(component)
+
+      # Iterate through the children to find Beam components
+      for child in component.downstream_nodes:
+        if not self._is_beam_component(child):
+          continue
+
+        # Checks if the child is in an explored subgraph that needs to be
+        # fused into the current subrgaph
+        if child in visited:
+          intersecting_subgraph = self._get_intersecting_subgraph(
+              child, fuseable_subgraphs)
+          if intersecting_subgraph:
+            subgraph.extend(intersecting_subgraph)
+            fuseable_subgraphs.remove(intersecting_subgraph)
+
+        elif self._is_fuseable(child, subgraph):
+          queue.append(child)
+
+    if len(subgraph) > 1:
+      fuseable_subgraphs.append(subgraph)
+
+    return fuseable_subgraphs, visited
 
   def get_fuseable_subgraphs(self):
     """Returns a list of fuseable Beam component subgraphs in topological order.
 
     Conducts multiple BFS searches to build out fuseable Apache Beam component
     subgraphs. Each subgraph S must meet the following correctness constraints:
-    1. Each subgraph must be a directed acyclic graph
-    2. All the components in the subgraph must be Apache Beam Components
-    3. Consider a component in a subgraph being explored. None of the
-       component's ancestors (other than its' immediate parents and those
-       parents' ancestors) should be in the current subgraph being explored.
+    1. Each subgraph must be a directed acyclic graph.
+    2. All the components in the subgraph must be Apache Beam components.
+    3. Consider a component in a subgraph being explored. If the component has
+       parents that are not in the current subgraph, then the ancestors of those
+       parents must not be in the current subgraph.
 
     Additionally, each subrgaph must meet the following optimality constraint:
-    1. There can be no subgraphs such that their union satisfies 1, 2, and 3
+    1. There can be no two subgraphs such that their union satisfies 1, 2, and 3
        as described above.
     """
-
     # Finds subgraphs of fuseable beam components through a BFS of each source.
     candidate_sources = self.get_subgraph_sources(self.pipeline.components)
     fuseable_subgraphs = []
     visited = set()
 
-
-    for source in sorted(candidate_sources, key=lambda c: c.id): # pylint: disable=too-many-nested-blocks
-      if source in visited:
-        continue
-
-      subgraph = []
-      current_layer = [source]
-
-      # Conduct a BFS on the candidate source.
-      while current_layer:
-        next_layer = []
-        for component in current_layer:
-          if component in visited:
-            continue
-
-          visited.add(component)
-          subgraph.append(component)
-
-          # Iterate through the children to find Beam components
-          for child in component.downstream_nodes:
-            if not self._is_beam_component(child):
-              continue
-
-            # Checks if the child is in an explored subgraph that needs to be
-            # fused into the current subrgaph
-            if child in visited:
-              intersecting_subgraph = self._get_intersecting_subgraph(
-                  child, fuseable_subgraphs)
-              if intersecting_subgraph:
-                subgraph.extend(intersecting_subgraph)
-                fuseable_subgraphs.remove(intersecting_subgraph)
-
-            elif self._is_fuseable(child, subgraph):
-              next_layer.append(child)
-
-          current_layer = next_layer
-
-      if len(subgraph) > 1:
-        fuseable_subgraphs.append(subgraph)
+    for source in sorted(candidate_sources, key=lambda c: c.id):
+      fuseable_subgraphs, visited = self._build_subgraph_from_source(
+          source, fuseable_subgraphs, visited)
 
     # Topologically sort all the subgraphs
     for i in range(len(fuseable_subgraphs)): # pylint: disable=consider-using-enumerate
@@ -185,6 +198,9 @@ class BeamFusionOptimizer(object):
     subgraph_sinks = set()
 
     for component in subgraph:
+      if not self._is_beam_component(component):
+        continue
+
       is_sink = True
       for child in component.downstream_nodes:
         if child in subgraph:

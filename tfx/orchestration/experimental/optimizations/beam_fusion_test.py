@@ -469,6 +469,51 @@ class PipelineTest(tf.test.TestCase):
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
 
+  def testPipelineGetFuseableSubgraphsTopologicalSorting(self):
+    component_a = _make_fake_component_instance(
+        'component_a', _OutputTypeA, {}, {}, use_fuseable_beam_executor=True)
+    component_b = _make_fake_component_instance(
+        'component_b', _OutputTypeB, {}, {}, use_fuseable_beam_executor=True)
+    component_c = _make_fake_component_instance(
+        'component_c', _OutputTypeC, {
+            'a': component_a.outputs['output']
+        }, {}, use_fuseable_beam_executor=True)
+    component_d = _make_fake_component_instance(
+        'component_d', _OutputTypeD, {
+            'c': component_c.outputs['output']
+        }, {}, use_fuseable_beam_executor=True)
+    component_e = _make_fake_component_instance(
+        'component_e', _OutputTypeE, {
+            'b': component_b.outputs['output'],
+            'd': component_d.outputs['output']
+        }, {}, use_fuseable_beam_executor=True)
+
+    my_pipeline = pipeline.Pipeline(
+        pipeline_name='my_pipeline',
+        pipeline_root='root',
+        components=[component_e, component_c, component_b, component_d,
+                    component_a],
+        enable_cache=True,
+        metadata_connection_config=self._metadata_connection_config,
+        beam_pipeline_args=['--runner=PortableRunner'],
+        additional_pipeline_args={})
+    optimizer = beam_fusion.BeamFusionOptimizer(my_pipeline)
+
+    actual_subgraphs = optimizer.get_fuseable_subgraphs()
+    actual_sources = []
+    actual_sinks = []
+    for subgraph in actual_subgraphs:
+      actual_sources.append(optimizer.get_subgraph_sources(subgraph))
+      actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
+
+    expected_subgraphs = [[component_a, component_b, component_c, component_d,
+                           component_e]]
+    expected_sources = [{component_a, component_b}]
+    expected_sinks = [{component_e}]
+
+    self.assertEqual(actual_subgraphs, expected_subgraphs)
+    self.assertEqual(actual_sources, expected_sources)
+    self.assertEqual(actual_sinks, expected_sinks)
 
 if __name__ == '__main__':
   tf.test.main()
