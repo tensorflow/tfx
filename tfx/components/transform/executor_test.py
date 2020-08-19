@@ -124,12 +124,12 @@ class ExecutorTest(tft_unit.TransformTestCase):
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
       self.assertGreater(
-        tf.io.gfile.GFile(
-            os.path.join(self._transformed_examples.uri, 'train',
-                         'transformed_examples-00000-of-00001.gz')).size(),
-        tf.io.gfile.GFile(
-            os.path.join(self._transformed_examples.uri, 'eval',
-                         'transformed_examples-00000-of-00001.gz')).size())
+          tf.io.gfile.GFile(
+              os.path.join(self._transformed_examples.uri, 'train',
+                           'transformed_examples-00000-of-00001.gz')).size(),
+          tf.io.gfile.GFile(
+              os.path.join(self._transformed_examples.uri, 'eval',
+                           'transformed_examples-00000-of-00001.gz')).size())
     else:
       # there should not be transformed data under _output_data_dir.
       self.assertEqual(['transformed_graph'],
@@ -222,8 +222,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_empty_analyze_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze=[],
-                                   transform=['train', 'eval']),
+        transform_pb2.SplitsConfig(analyze=[], transform=['train', 'eval']),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     with self.assertRaises(ValueError):
@@ -232,8 +231,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def test_do_with_empty_transform_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
-        transform_pb2.SplitsConfig(analyze=['train'],
-                                   transform=[]),
+        transform_pb2.SplitsConfig(analyze=['train'], transform=[]),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
     self._transformed_examples.split_names = artifact_utils.encode_split_names(
