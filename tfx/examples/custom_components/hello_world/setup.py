@@ -57,7 +57,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     namespace_packages=[],
-    install_requires=['tfx>=0.22.0,<0.23.0.dev'],
+    install_requires=['tfx>=0.23.0,<0.24.0.dev'],
     python_requires='>=3.5,<4',
     packages=find_packages(),
     include_package_data=True,
