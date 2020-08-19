@@ -14,8 +14,7 @@
 """setup.py file required for Cloud Dataflow Beam runners."""
 import setuptools
 
-REQUIRED_PACKAGES = ["tfx",
-                     "google-cloud-storage==1.29.0"]
+REQUIRED_PACKAGES = ["tfx", "apache-beam==2.23"]
 
 setuptools.setup(
     name='cloud_dataflow_pipeline',

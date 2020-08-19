@@ -58,8 +58,7 @@ class BenchmarkBase(test.Benchmark):
         flink_submit_uber_jar=True,
         environment_type="EXTERNAL",
         environment_config="localhost:50000",
-        parallelism=self.num_workers,
-        no_pipeline_type_check=True)
+        save_main_session=True)
 
   def _set_local_scaled_execution_options(self):
     self.pipeline_options = PipelineOptions(

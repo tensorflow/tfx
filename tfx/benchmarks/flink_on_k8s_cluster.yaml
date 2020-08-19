@@ -16,7 +16,7 @@ spec:
         memory: "2Gi"
     sidecars:
       - name: beam-worker-pool
-        image: gcr.io/tfx-keshav/flink-on-k8s-cluster-image:2.22.0
+        image: IMAGE
         imagePullPolicy: Always
         args: ["--worker_pool"]
   flinkProperties:

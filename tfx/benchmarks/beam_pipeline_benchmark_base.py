@@ -192,8 +192,6 @@ class BeamPipelineBenchmarkBase(object):
 
     # Delete any leftover kubectl clusters
     subprocess.call("kubectl delete -f " + yaml_path, shell=True)
-    subprocess.call("kubectl delete -f flink_on_k8s_job_server.yaml",
-                    shell=True)
     time.sleep(180)
 
     while num_workers <= self.max_num_workers:
@@ -208,7 +206,7 @@ class BeamPipelineBenchmarkBase(object):
       # Set up port forwarding
       subprocess.call("pkill kubectl -9", shell=True)
       subprocess.Popen(
-          "kubectl port-forward service/flink-on-k8s-cluster-jobmanager 8081:8081 > /dev/null 2>&1 &",
+          "kubectl port-forward service/flink-on-k8s-cluster-jobmanager 8081:8081", # pylint: disable=line-too-long
           shell=True)
       time.sleep(20)
 
