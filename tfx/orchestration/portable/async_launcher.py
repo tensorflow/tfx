@@ -45,6 +45,8 @@ DEFAULT_EXECUTOR_OPERATORS = {
         python_executor_operator.PythonExecutorOperator
 }
 
+_TIME_BETWEEN_PUBLISHER_AND_DRIVER = 10
+
 
 # TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
 @attr.s
@@ -269,4 +271,5 @@ class Launcher(object):
         self._publish_successful_execution(execution_info.execution_metadata.id,
                                           contexts, execution_info.output_dict,
                                           executor_output)
-        time.sleep(10)
+                                          
+      time.sleep(_TIME_BETWEEN_PUBLISHER_AND_DRIVER)
