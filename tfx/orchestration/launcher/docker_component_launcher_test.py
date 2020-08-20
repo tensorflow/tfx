@@ -23,6 +23,8 @@ import os
 import docker
 import mock
 import tensorflow as tf
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -32,8 +34,6 @@ from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.launcher import docker_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 # TODO(hongyes): add e2e testing to cover docker launcher in beam/airflow.

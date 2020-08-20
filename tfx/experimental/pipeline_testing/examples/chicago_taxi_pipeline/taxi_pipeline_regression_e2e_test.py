@@ -14,14 +14,17 @@
 # limitations under the License.
 """E2E Tests for taxi pipeline beam with stub executors."""
 
-import os
-from typing import Text
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-from absl import logging
+import filecmp
+import os
+
+from typing import Text
 import tensorflow as tf
 
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
-from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import metadata
@@ -56,6 +59,25 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                                        self._pipeline_name, 'metadata.db')
     self._recorded_output_dir = os.path.join(self._test_dir, 'testdata')
 
+  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
+    """Recursively comparing contents of two directories."""
+
+    dir_cmp = filecmp.dircmp(dir1, dir2)
+    self.assertEmpty(dir_cmp.left_only)
+    self.assertEmpty(dir_cmp.right_only)
+    self.assertEmpty(dir_cmp.funny_files)
+
+    _, mismatch, errors = filecmp.cmpfiles(
+        dir1, dir2, dir_cmp.common_files, shallow=False)
+    self.assertEmpty(mismatch)
+    self.assertEmpty(errors)
+
+    for common_dir in dir_cmp.common_dirs:
+      new_dir1 = os.path.join(dir1, common_dir)
+      new_dir2 = os.path.join(dir2, common_dir)
+      self.assertDirectoryEqual(new_dir1, new_dir2)
+
+  def testTaxiPipelineBeam(self):
     # Runs the pipeline and record to self._recorded_output_dir
     record_taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
@@ -65,15 +87,17 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root,
         metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
-
     BeamDagRunner().run(record_taxi_pipeline)
-
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
-        pipeline_name=self._pipeline_name)
+        host=None,
+        port=None,
+        pipeline_name=self._pipeline_name,
+        run_id=None)
 
-    self.taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
+    # Run pipeline with stub executors.
+    taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
         pipeline_name=self._pipeline_name,
         data_root=self._data_root,
         module_file=self._module_file,
@@ -82,47 +106,22 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-  def assertDirectoryEqual(self, dir1: Text, dir2: Text):
-    self.assertTrue(executor_verifier_utils.compare_dirs(dir1, dir2))
+    model_resolver_id = 'ResolverNode.latest_blessed_model_resolver'
+    stubbed_component_ids = [
+        component.id
+        for component in taxi_pipeline.components
+        if component.id != model_resolver_id
+    ]
 
-  def _verify_file_path(self, output_uri: Text, artifact_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.verify_file_dir(output_uri, artifact_uri))
-
-  def _verify_evaluation(self, output_uri: Text, expected_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.compare_eval_results(output_uri, expected_uri,
-                                                     .5))
-
-  def _verify_schema(self, output_uri: Text, expected_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
-                                                   .5))
-
-  def _verify_examples(self, output_uri: Text, expected_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.compare_file_sizes(output_uri, expected_uri,
-                                                   .5))
-
-  def _verify_model(self, output_uri: Text, expected_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.compare_model_file_sizes(
-            output_uri, expected_uri, .5))
-
-  def _verify_anomalies(self, output_uri: Text, expected_uri: Text):
-    self.assertTrue(
-        executor_verifier_utils.compare_anomalies(output_uri, expected_uri))
-
-  def testStubbedTaxiPipelineBeam(self):
-    # Run pipeline with stub executors.
-    stub_component_launcher.StubComponentLauncher.initialize(
-        test_data_dir=self._recorded_output_dir, test_component_ids=[])
-
+    stub_launcher = stub_component_launcher.get_stub_launcher_class(
+        test_data_dir=self._recorded_output_dir,
+        stubbed_component_ids=stubbed_component_ids,
+        stubbed_component_map={})
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[
-            stub_component_launcher.StubComponentLauncher,
+            stub_launcher,
         ])
-    BeamDagRunner(config=stub_pipeline_config).run(self.taxi_pipeline)
+    BeamDagRunner(config=stub_pipeline_config).run(taxi_pipeline)
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
@@ -135,17 +134,15 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
       artifact_count = len(artifacts)
       executions = m.store.get_executions()
       execution_count = len(executions)
-      # Artifact count is greater by 3 due to extra artifacts produced by
-      # Evaluator(blessing and evaluation), Trainer(model and model_run) and
-      # Transform(example, graph, cache) minus Resolver which doesn't generate
-      # new artifact.
-      self.assertEqual(artifact_count, execution_count + 3)
-      self.assertLen(self.taxi_pipeline.components, execution_count)
+      # artifact count is greater by 2 due to two artifacts produced by both
+      # Evaluator(blessing and evaluation) and Trainer(model and model_run)
+      self.assertEqual(artifact_count, execution_count + 2)
+      self.assertLen(taxi_pipeline.components, execution_count)
 
       for execution in executions:
         component_id = execution.properties[
             metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
-        if component_id.startswith('ResolverNode'):
+        if component_id == 'ResolverNode.latest_blessed_model_resolver':
           continue
         eid = [execution.id]
         events = m.store.get_events_by_execution_ids(eid)
@@ -162,38 +159,6 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
                 artifact.uri,
                 os.path.join(self._recorded_output_dir, component_id, name,
                              str(idx)))
-
-    # Calls verifier for pipeline output artifacts, excluding the resolver node.
-    BeamDagRunner().run(self.taxi_pipeline)
-    pipeline_outputs = executor_verifier_utils.get_pipeline_outputs(
-        self.taxi_pipeline.metadata_connection_config,
-        self.taxi_pipeline.pipeline_info)
-
-    verifier_map = {
-        'model': self._verify_model,
-        'model_run': self._verify_model,
-        'examples': self._verify_examples,
-        'schema': self._verify_schema,
-        'anomalies': self._verify_anomalies,
-        'evaluation': self._verify_evaluation
-    }
-
-    # List of components to verify. ResolverNode is ignored because it
-    # doesn't have an executor.
-    verify_component_ids = [
-        component.id
-        for component in self.taxi_pipeline.components
-        if not component.id.startswith('ResolverNode')
-    ]
-
-    for component_id in verify_component_ids:
-      logging.info('Verifying %s', component_id)
-      for key, artifact_dict in pipeline_outputs[component_id].items():
-        for idx, artifact in artifact_dict.items():
-          recorded_uri = os.path.join(self._recorded_output_dir, component_id,
-                                      key, str(idx))
-          verifier_map.get(key, self._verify_file_path)(artifact.uri,
-                                                        recorded_uri)
 
 
 if __name__ == '__main__':

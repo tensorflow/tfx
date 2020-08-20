@@ -22,15 +22,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 import sys
 from typing import List, Text
 
+from google.protobuf import json_format
+from google.protobuf import message
 from tfx.components.base import base_executor
 from tfx.types import channel_utils
 from tfx.utils import import_utils
-
-from google.protobuf import json_format
-from google.protobuf import message
 
 
 def run_component(

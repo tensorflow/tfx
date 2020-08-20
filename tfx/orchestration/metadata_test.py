@@ -21,16 +21,14 @@ from __future__ import print_function
 from typing import Text
 
 # Standard Imports
-
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class MetadataTest(tf.test.TestCase):
@@ -504,13 +502,15 @@ class MetadataTest(tf.test.TestCase):
           output_artifacts=output_artifacts)
 
       # Test previous_run.
-      self.assertIsNone(
+      self.assertEqual(
+          None,
           m.get_cached_outputs(
               input_artifacts={},
               exec_properties=exec_properties,
               pipeline_info=self._pipeline_info,
               component_info=self._component_info))
-      self.assertIsNone(
+      self.assertEqual(
+          None,
           m.get_cached_outputs(
               input_artifacts=input_artifacts,
               exec_properties=exec_properties,
@@ -520,7 +520,8 @@ class MetadataTest(tf.test.TestCase):
                   component_type='a.b.c',
                   pipeline_info=self._pipeline_info)))
       # Having the same set of input artifact ids, but duplicated.
-      self.assertIsNone(
+      self.assertEqual(
+          None,
           m.get_cached_outputs(
               input_artifacts={
                   'input': input_artifacts['input'],

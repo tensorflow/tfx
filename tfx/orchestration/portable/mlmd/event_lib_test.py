@@ -19,12 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 # Standard Imports
-
 import tensorflow as tf
-from tfx.orchestration.portable.mlmd import event_lib
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration.portable.mlmd import event_lib
 
 
 class EventLibTest(tf.test.TestCase):

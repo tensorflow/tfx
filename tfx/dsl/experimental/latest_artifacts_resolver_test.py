@@ -19,15 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 # Standard Imports
-
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class LatestArtifactsResolverTest(tf.test.TestCase):

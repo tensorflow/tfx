@@ -87,7 +87,7 @@ _STRING_VALUE = u'This is a string'
 _BYTE_VALUE = b'This is a string'
 
 # Mock paths for string artifact.
-_VALID_URI = '/tmp/uri/value'
+_VALID_URI = '/tmp/uri'
 _VALID_FILE_URI = _VALID_URI
 
 # Mock invalid paths. _BAD_URI points to a valid dir but there's no file within.

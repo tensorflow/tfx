@@ -49,7 +49,6 @@ function start_flink() {
   local flink_conf=$WORK_DIR/$FLINK_NAME/conf/flink-conf.yaml
   local parallelism=$(get_parallelism)
   sed -i "s/taskmanager.numberOfTaskSlots: [0-9]*/taskmanager.numberOfTaskSlots: $parallelism/g" $flink_conf
-  sed -i "s/#*rest.bind-address: .*/rest.bind-address: localhost/g" $flink_conf
 
   # TODO(FLINK-10672) Remove workaround
   # Increase taskmanager heap size to reduce back pressure

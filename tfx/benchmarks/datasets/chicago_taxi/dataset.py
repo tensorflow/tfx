@@ -23,16 +23,19 @@ import tempfile
 
 from absl import logging
 import apache_beam as beam
+
+from tfx_bsl.coders import csv_decoder
+
 from tfx import components
 from tfx.benchmarks import benchmark_dataset
 from tfx.components.example_gen.csv_example_gen import executor as csv_exgen
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
+
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import trainer_pb2
 from tfx.utils.dsl_utils import external_input
-from tfx_bsl.coders import csv_decoder
 
 
 class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):

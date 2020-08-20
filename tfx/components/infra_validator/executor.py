@@ -23,9 +23,11 @@ import os
 import signal
 import threading
 import time
-from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
+from typing import Any, Dict, List, Optional, Text
+
+from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.infra_validator import error_types
@@ -39,8 +41,6 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
 from tfx.utils.model_paths import tf_serving_flavor
-
-from google.protobuf import json_format
 
 _DEFAULT_NUM_TRIES = 5
 _DEFAULT_POLLING_INTERVAL_SEC = 1

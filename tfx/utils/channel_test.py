@@ -23,10 +23,9 @@ from __future__ import unicode_literals
 
 import mock
 import tensorflow as tf
+from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
 from tfx.types import standard_artifacts
 from tfx.utils import channel
-
-from tensorflow.python.platform import tf_logging  # pylint:disable=g-direct-tensorflow-import
 
 
 class ChannelTest(tf.test.TestCase):

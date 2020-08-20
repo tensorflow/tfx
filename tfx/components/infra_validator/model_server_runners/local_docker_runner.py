@@ -19,11 +19,12 @@ from __future__ import print_function
 
 import os
 import time
-from typing import Any, Dict, Text
 
 from absl import logging
 import docker
 from docker import errors as docker_errors
+from typing import Any, Dict, Text
+
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import serving_bins
 from tfx.components.infra_validator.model_server_runners import base_runner

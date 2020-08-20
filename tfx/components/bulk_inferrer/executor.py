@@ -25,6 +25,9 @@ from typing import Any, Dict, List, Mapping, Text
 from absl import logging
 import apache_beam as beam
 import tensorflow as tf
+
+from google.protobuf import json_format
+from tensorflow_serving.apis import prediction_log_pb2
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import model_utils
@@ -32,9 +35,6 @@ from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-
-from google.protobuf import json_format
-from tensorflow_serving.apis import prediction_log_pb2
 
 
 _PREDICTION_LOGS_DIR_NAME = 'prediction_logs'

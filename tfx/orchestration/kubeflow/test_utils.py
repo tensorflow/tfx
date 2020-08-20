@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import json
 import os
 import re
 import shutil
@@ -60,10 +59,8 @@ from tfx.types import channel_utils
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
-from tfx.utils import kube_utils
 
 
-# TODO(jiyongjung): Merge with kube_utils.PodStatus
 # Various execution status of a KFP pipeline.
 KFP_RUNNING_STATUS = 'running'
 KFP_SUCCESS_STATUS = 'succeeded'
@@ -116,7 +113,7 @@ def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
     # https://github.com/kubeflow/pipelines/issues/3669
     # by wait-and-retry when ApiException is hit.
     try:
-      get_run_response = client.get_run(run_id=run_id)
+      get_run_response = client._run_api.get_run(run_id=run_id)  # pylint: disable=protected-access
     except rest.ApiException as api_err:
       # If get_run failed with ApiException, wait _POLLING_INTERVAL and retry.
       if retry_count < retry_limit:
@@ -145,39 +142,6 @@ def poll_kfp_with_retry(host: Text, run_id: Text, retry_limit: int,
 
     logging.info('Waiting for the job to complete...')
     time.sleep(polling_interval)
-
-
-def print_failure_log_for_run(host: Text, run_id: Text, namespace: Text):
-  """Prints logs of failed components of a run.
-
-  Prints execution logs for failed componentsusing `logging.info`.
-  This resembles the behavior of `argo logs` but uses K8s API directly.
-  Don't print anything if the run was successful.
-
-  Args:
-    host: address of the KFP deployment.
-    run_id: id of the execution of the pipeline.
-    namespace: namespace of K8s cluster.
-  """
-  client = kfp.Client(host=host)
-  run = client.get_run(run_id=run_id)
-  workflow_manifest = json.loads(run.pipeline_runtime.workflow_manifest)
-  if kube_utils.PodPhase(
-      workflow_manifest['status']['phase']) != kube_utils.PodPhase.FAILED:
-    return
-
-  k8s_client = kube_utils.make_core_v1_api()
-  pods = [i for i in workflow_manifest['status']['nodes'] if i['type'] == 'Pod']
-  for pod in pods:
-    if kube_utils.PodPhase(pod['phase']) != kube_utils.PodPhase.FAILED:
-      continue
-    display_name = pod['displayName']
-    pod_id = pod['id']
-
-    log = k8s_client.read_namespaced_pod_log(
-        pod_id, namespace=namespace, container='main')
-    for line in log.splitlines():
-      logging.info('%s:%s', display_name, line)
 
 
 # Custom component definitions for testing purpose.

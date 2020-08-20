@@ -19,13 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import parameterized
+
 import tensorflow as tf
-from tfx.orchestration import metadata
-from tfx.orchestration.portable.mlmd import common_utils
-from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import text_format
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration import metadata
+from tfx.orchestration.portable.mlmd import common_utils
+from tfx.proto.orchestration import pipeline_pb2
 
 
 def _create_type(metadata_type_class):

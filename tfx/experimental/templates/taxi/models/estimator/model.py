@@ -26,11 +26,11 @@ import tensorflow as tf
 import tensorflow_model_analysis as tfma
 import tensorflow_transform as tft
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.experimental.templates.taxi.models import features
 from tfx.experimental.templates.taxi.models.estimator import constants
 from tfx.utils import io_utils
-
-from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 def _gzip_reader_fn(filenames):

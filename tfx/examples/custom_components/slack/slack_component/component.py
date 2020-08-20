@@ -108,7 +108,8 @@ class SlackComponent(base_component.BaseComponent):
         components are declared in the same pipeline.
     """
     slack_blessing = slack_blessing or types.Channel(
-        type=standard_artifacts.ModelBlessing)
+        type=standard_artifacts.ModelBlessing,
+        artifacts=[standard_artifacts.ModelBlessing()])
     spec = SlackComponentSpec(
         slack_token=slack_token,
         slack_channel_id=slack_channel_id,

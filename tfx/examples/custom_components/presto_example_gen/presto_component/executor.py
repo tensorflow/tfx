@@ -25,10 +25,10 @@ import apache_beam as beam
 import prestodb
 from proto import presto_config_pb2
 import tensorflow as tf
-from tfx.components.example_gen import base_example_gen_executor
-from tfx.proto import example_gen_pb2
 
 from google.protobuf import json_format
+from tfx.components.example_gen import base_example_gen_executor
+from tfx.proto import example_gen_pb2
 
 
 @beam.typehints.with_input_types(Text)

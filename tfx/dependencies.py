@@ -20,9 +20,9 @@ def make_required_install_packages():
   # six, and protobuf) with TF.
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
-      'absl-py>=0.7,<0.9',
+      'absl-py>=0.1.6,<0.9',
       # LINT.IfChange
-      'apache-beam[gcp]>=2.23,<3',
+      'apache-beam[gcp]>=2.22,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
       'attrs>=19.3.0,<20',
       'click>=7,<8',
@@ -41,11 +41,11 @@ def make_required_install_packages():
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
-      'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-      'tensorflow-data-validation>=0.23,<0.24',
-      'tensorflow-model-analysis>=0.23,<0.24',
-      'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-      'tensorflow-transform>=0.23,<0.24',
+      'tensorflow>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
+      'tensorflow-data-validation>=0.22.2,<0.23',
+      'tensorflow-model-analysis>=0.22.2,<0.23',
+      'tensorflow-serving-api>=1.15,<3',
+      'tensorflow-transform>=0.22,<0.23',
       'tfx-bsl>=0.23,<0.24',
   ]
 

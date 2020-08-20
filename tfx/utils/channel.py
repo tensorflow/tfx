@@ -21,12 +21,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Dict, Iterable, List, Text, Union
-
-from tfx import types
-from tfx.types import channel_utils
+from typing import Dict, Iterable, List, Union, Text
 
 from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
+from tfx import types
+from tfx.types import channel_utils
 
 
 @deprecation.deprecated(

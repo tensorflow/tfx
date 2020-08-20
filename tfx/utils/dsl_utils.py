@@ -19,12 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any
-
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 # TODO(b/158333888): deprecate external_input function.

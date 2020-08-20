@@ -23,6 +23,8 @@ from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
+from tfx_bsl.version import __version__ as tfx_bsl_version
+
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -44,7 +46,6 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.types.standard_artifacts import Schema
 from tfx.utils.dsl_utils import external_input
-from tfx_bsl.version import __version__ as tfx_bsl_version
 
 _pipeline_name = 'chicago_taxi_importer'
 

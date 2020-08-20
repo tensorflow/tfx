@@ -11,8 +11,6 @@ toc:
   path: /tfx/tutorials/tfx/airflow_workshop
 - title: "Cloud AI Platform Pipelines tutorial"
   path: /tfx/tutorials/tfx/cloud-ai-platform-pipelines
-- title: "Neural Structured Learning in TFX"
-  path: /tfx/tutorials/tfx/neural_structured_learning
 
 - heading: "Data Validation"
 - title: "Get started with TFDV"

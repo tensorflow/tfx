@@ -51,5 +51,5 @@ RUN if [ "${gather_third_party_licenses}" = "true" ]; then \
   /third_party/licenses; \
   fi
 
-# TODO(b/166202742): Consolidate container entrypoint with Kubeflow runner.
+# TODO(b/139532550): Consolidate container entrypoint with Kubeflow runner.
 ENTRYPOINT ["python", "/tfx-src/tfx/scripts/run_executor.py"]

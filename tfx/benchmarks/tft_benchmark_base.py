@@ -35,10 +35,11 @@ from tensorflow_transform.beam import impl as tft_beam_impl
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
+from tfx_bsl.beam import shared
+
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
-from tfx_bsl.beam import shared
 
 
 class _CopySavedModel(beam.PTransform):
@@ -271,9 +272,12 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     with tf.compat.v1.Graph().as_default() as graph:
       session = tf.compat.v1.Session(graph=graph, config=tf_config)
       with session.as_default():
-        inputs, outputs = (
+        # TODO(b/148082271): Revert back to unpacking the result directly once
+        # TFX depends on TFT 0.22.
+        apply_saved_model_result = (
             saved_transform_io.partially_apply_saved_transform_internal(
                 self._dataset.tft_saved_model_path(), {}))
+        inputs, outputs = apply_saved_model_result[:2]
         session.run(tf.compat.v1.global_variables_initializer())
         session.run(tf.compat.v1.tables_initializer())
         graph.finalize()

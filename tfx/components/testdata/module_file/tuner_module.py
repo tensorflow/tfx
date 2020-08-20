@@ -25,11 +25,11 @@ import kerastuner
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow_transform.tf_metadata import schema_utils
+
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer.fn_args_utils import FnArgs
 from tfx.components.tuner.component import TunerFnResult
 from tfx.utils import io_utils
-
-from tensorflow_metadata.proto.v0 import schema_pb2
 
 _FEATURE_KEYS = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
 _LABEL_KEY = 'variety'

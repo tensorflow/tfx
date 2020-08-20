@@ -50,11 +50,3 @@ tfx_py_proto_library(
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],
 )
-
-tfx_py_proto_library(
-    name = "driver_output_py_pb2",
-    srcs = ["driver_output.proto"],
-    deps = [
-        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
-    ],
-)

@@ -19,14 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.common_nodes import resolver_node
 from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class ResolverNodeTest(tf.test.TestCase):

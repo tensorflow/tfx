@@ -60,10 +60,6 @@ def random_id() -> str:
                         ''.join([random.choice(choices) for _ in range(10)]))
 
 
-# Set longer timeout when pushing an image. Default timeout is 60 seconds.
-_DOCKER_TIMEOUT_SECONDS = 60 * 5
-
-
 def build_and_push_docker_image(container_image: str, repo_base: str):
   """Build and push docker image using `tfx/tools/docker/Dockerfile`.
 
@@ -71,7 +67,7 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
     container_image: Docker container image name.
     repo_base: The src path to use to build docker image.
   """
-  client = docker.from_env(timeout=_DOCKER_TIMEOUT_SECONDS)
+  client = docker.from_env()
 
   logging.info('Building image %s', container_image)
   with Timer('BuildingTFXContainerImage'):

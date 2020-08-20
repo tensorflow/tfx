@@ -17,12 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Text
-
 from absl import logging
 import grpc
-from tfx.components.infra_validator import types
-from tfx.components.infra_validator.model_server_clients import base_client
+from typing import Text
 
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import get_model_status_pb2
@@ -31,6 +28,8 @@ from tensorflow_serving.apis import model_service_pb2_grpc
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow_serving.apis import regression_pb2
+from tfx.components.infra_validator import types
+from tfx.components.infra_validator.model_server_clients import base_client
 
 State = get_model_status_pb2.ModelVersionStatus.State
 

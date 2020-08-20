@@ -80,7 +80,7 @@ def _render_text(text: Text, context: Dict[Text, Any]) -> Text:
 
 def _resolve_container_command_line(
     cmd_args: Optional[List[
-        placeholders.CommandlineArgumentType]],
+        executor_specs.CommandlineArgumentType]],
     input_dict: Dict[Text, List[types.Artifact]],
     output_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Dict[Text, Any],
@@ -98,7 +98,7 @@ def _resolve_container_command_line(
   """
 
   def expand_command_line_arg(
-      cmd_arg: placeholders.CommandlineArgumentType,
+      cmd_arg: executor_specs.CommandlineArgumentType,
   ) -> Text:
     """Resolves a single argument."""
     if isinstance(cmd_arg, str):

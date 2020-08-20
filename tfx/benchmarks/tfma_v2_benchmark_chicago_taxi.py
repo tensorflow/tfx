@@ -17,10 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import tfma_v2_benchmark_base
 from tfx.benchmarks.datasets.chicago_taxi import dataset
-
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 
 
 class TFMAV2BenchmarkChicagoTaxi(tfma_v2_benchmark_base.TFMAV2BenchmarkBase):

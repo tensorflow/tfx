@@ -19,7 +19,33 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "artifacts": [],
+        "artifacts": [
+          {
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "Examples",
+            "artifact": {
+              "custom_properties": {
+                "name": {
+                  "string_value": "examples"
+                },
+                "pipeline_name": {
+                  "string_value": "test_pipeline"
+                },
+                "producer_component": {
+                  "string_value": "CsvExampleGen"
+                }
+              }
+            },
+            "artifact_type": {
+              "name": "Examples",
+              "properties": {
+                "span": "INT",
+                "version": "INT",
+                "split_names": "STRING"
+              }
+            }
+          }
+        ],
         "output_key": "examples",
         "producer_component_id": "CsvExampleGen",
         "type": {
@@ -45,7 +71,32 @@
         "__class__": "Channel",
         "__module__": "tfx.types.channel",
         "__tfx_object_type__": "jsonable",
-        "artifacts": [],
+        "artifacts": [
+          {
+            "__artifact_class_module__": "tfx.types.standard_artifacts",
+            "__artifact_class_name__": "ExampleStatistics",
+            "artifact": {
+              "custom_properties": {
+                "name": {
+                  "string_value": "statistics"
+                },
+                "pipeline_name": {
+                  "string_value": "test_pipeline"
+                },
+                "producer_component": {
+                  "string_value": "StatisticsGen.foo"
+                }
+              }
+            },
+            "artifact_type": {
+              "name": "ExampleStatistics",
+              "properties": {
+                "span": "INT",
+                "split_names": "STRING"
+              }
+            }
+          }
+        ],
         "output_key": "statistics",
         "producer_component_id": "StatisticsGen.foo",
         "type": {

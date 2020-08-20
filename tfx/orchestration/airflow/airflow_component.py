@@ -24,14 +24,14 @@ from typing import Any, Dict, List, Text, Type
 
 from airflow import models
 from airflow.operators import python_operator
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import telemetry_utils
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 def _airflow_component_launcher(

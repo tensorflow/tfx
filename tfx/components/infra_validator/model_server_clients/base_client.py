@@ -19,10 +19,11 @@ from __future__ import print_function
 
 import abc
 import time
-from typing import List
 
 from absl import logging
 import six
+from typing import List
+
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import types
 

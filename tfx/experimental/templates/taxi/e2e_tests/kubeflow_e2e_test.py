@@ -63,8 +63,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     random_id = orchestration_test_utils.random_id()
     self._pipeline_name = 'taxi-template-kubeflow-e2e-test-' + random_id
     logging.info('Pipeline: %s', self._pipeline_name)
-    self._namespace = 'kubeflow'
-    self._endpoint = self._get_endpoint(self._namespace)
+    self._endpoint = self._get_endpoint()
     self._kfp_client = kfp.Client(host=self._endpoint)
     logging.info('ENDPOINT: %s', self._endpoint)
 
@@ -94,9 +93,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
     self._cleanup_with_retry(self._delete_caip_model)
-    self._cleanup_with_retry(self._delete_runs)
     self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
+    self._cleanup_with_retry(self._delete_runs)
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
@@ -137,10 +136,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'gcloud', 'container', 'images', 'delete', self._target_container_image
     ])
 
-  def _get_endpoint(self, namespace):
-    cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
-        namespace)
-    output = subprocess.check_output(cmd.split())
+  def _get_endpoint(self):
+    output = subprocess.check_output(
+        'kubectl describe configmap inverse-proxy-config -n kubeflow'.split())
     for line in output.decode('utf-8').split('\n'):
       if line.endswith('googleusercontent.com'):
         return line
@@ -209,10 +207,7 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._endpoint,
     ])
     self.assertEqual(0, result.exit_code)
-    run_id = self._parse_run_id(result.output)
-    self._wait_until_completed(run_id)
-    kubeflow_test_utils.print_failure_log_for_run(self._endpoint, run_id,
-                                                  self._namespace)
+    self._wait_until_completed(self._parse_run_id(result.output))
 
   def _parse_run_id(self, output: str):
     run_id_lines = [
@@ -258,13 +253,6 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
             'BIG_QUERY_QUERY', 'DATAFLOW_BEAM_PIPELINE_ARGS',
             'GCP_AI_PLATFORM_TRAINING_ARGS', 'GCP_AI_PLATFORM_SERVING_ARGS'
         ])
-    self._replaceFileContent(
-        os.path.join('pipeline', 'configs.py'), [
-            ('GOOGLE_CLOUD_REGION = \'\'',
-             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
-            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
-             '\'imageUri\': \'{}\''.format(self._target_container_image)),
-        ])
 
     # Prepare data
     self._prepare_data()
@@ -300,22 +288,15 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._update_pipeline()
     self._run_pipeline()
 
-    # Enable Dataflow
-    self._comment('kubeflow_dag_runner.py', [
-        'beam_pipeline_args=configs\n',
-        '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
-    ])
-    self._uncomment('kubeflow_dag_runner.py', [
-        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    ])
-    logging.info('Added Dataflow to pipeline.')
-    self._update_pipeline()
-    self._run_pipeline()
-
+    # TODO(b/159772838): Add Dataflow step as well.
     # Enable CAIP extension.
-    self._comment('kubeflow_dag_runner.py', [
-        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
-    ])
+    self._replaceFileContent(
+        os.path.join('pipeline', 'configs.py'), [
+            ('GOOGLE_CLOUD_REGION = \'\'',
+             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
+            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
+             '\'imageUri\': \'{}\''.format(self._target_container_image)),
+        ])
     self._uncomment('kubeflow_dag_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',

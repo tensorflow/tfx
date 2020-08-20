@@ -19,12 +19,11 @@ from __future__ import print_function
 
 import os
 from typing import Any, Dict, Text
-
 import absl
-from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration import data_types
+from tfx.orchestration import metadata
 
 _KFP_POD_NAME_ENV_KEY = 'KFP_POD_NAME'
 _KFP_POD_NAME_PROPERTY_KEY = 'kfp_pod_name'

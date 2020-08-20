@@ -21,15 +21,15 @@ from __future__ import print_function
 import datetime
 import random
 import string
+
 from typing import List, Text
 
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.components import CsvExampleGen
 from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components.base.base_component import BaseComponent
 from tfx.utils import dsl_utils
-
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
 def create_e2e_components(csv_input_location: Text,) -> List[BaseComponent]:

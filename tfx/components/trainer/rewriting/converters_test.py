@@ -138,7 +138,7 @@ class RewritingExporterTest(tf.test.TestCase):
     final_path = r_e.export(self._estimator, self._export_path,
                             self._checkpoint_path, self._eval_result,
                             self._is_the_final_export)
-    self.assertIsNone(final_path)
+    self.assertEqual(final_path, None)
     self.assertFalse(tr.rewrite_called)
 
     base_exporter_mock.assert_called_once_with(self._estimator,

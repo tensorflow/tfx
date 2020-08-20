@@ -20,15 +20,16 @@ from __future__ import print_function
 
 import os
 from typing import Any, Dict, List, Text
-
 from absl import logging
+
+from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
-
-from google.protobuf import json_format
+from tfx.types import artifact_utils
+from tfx.types import channel_utils
 
 
 class Driver(base_driver.BaseDriver):
@@ -77,10 +78,15 @@ class Driver(base_driver.BaseDriver):
     """Overrides BaseDriver._prepare_output_artifacts()."""
     del input_artifacts
 
-    example_artifact = output_dict[utils.EXAMPLES_KEY].type()
+    result = channel_utils.unwrap_channel_dict(output_dict)
+    if len(result) != 1:
+      raise RuntimeError('Multiple output artifacts are not supported.')
+
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
 
+    example_artifact = artifact_utils.get_single_instance(
+        result[utils.EXAMPLES_KEY])
     example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, utils.EXAMPLES_KEY, execution_id)
     example_artifact.set_string_custom_property(
@@ -97,4 +103,4 @@ class Driver(base_driver.BaseDriver):
 
     base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
 
-    return {utils.EXAMPLES_KEY: [example_artifact]}
+    return result

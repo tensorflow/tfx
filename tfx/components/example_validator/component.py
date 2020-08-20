@@ -25,6 +25,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.example_validator import executor
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ExampleValidatorSpec
 from tfx.utils import json_utils
@@ -42,6 +43,9 @@ class ExampleValidator(base_component.BaseComponent):
   in the data. It can:
     - perform validity checks by comparing data statistics against a schema that
       codifies expectations of the user.
+    - detect data drift by looking at a series of data.
+    - detect changes in dataset-wide data (i.e., num_examples) across spans or
+      versions.
 
   Schema Based Example Validation
   The ExampleValidator component identifies any anomalies in the example data by
@@ -73,7 +77,9 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A Channel of type `standard_artifacts.ExampleStatistics`.
+      statistics: A Channel of type `standard_artifacts.ExampleStatistics`. This
+        should contain at least 'eval' split. Other splits are currently
+        ignored.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None)
@@ -96,7 +102,8 @@ class ExampleValidator(base_component.BaseComponent):
       logging.info('Excluding no splits because exclude_splits is not set.')
     anomalies = output
     if not anomalies:
-      anomalies = types.Channel(type=standard_artifacts.ExampleAnomalies)
+      anomalies = channel_utils.as_channel(
+          [standard_artifacts.ExampleAnomalies()])
     spec = ExampleValidatorSpec(
         statistics=statistics,
         schema=schema,

@@ -23,18 +23,17 @@ import shutil
 import tarfile
 import tempfile
 from typing import Text
-
 from kfp import onprem
 import tensorflow as tf
+import yaml
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.utils import telemetry_utils
-import yaml
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 # 2-step pipeline under test.

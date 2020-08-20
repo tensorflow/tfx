@@ -29,6 +29,7 @@ from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
+from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import FileBasedExampleGenSpec
 from tfx.types.standard_component_specs import QueryBasedExampleGenSpec
@@ -92,7 +93,8 @@ class QueryBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+      example_artifacts = channel_utils.as_channel(
+          [standard_artifacts.Examples()])
     spec = QueryBasedExampleGenSpec(
         input_config=input_config,
         output_config=output_config,
@@ -177,7 +179,8 @@ class FileBasedExampleGen(base_component.BaseComponent):
     output_config = output_config or utils.make_default_output_config(
         input_config)
     if not example_artifacts:
-      example_artifacts = types.Channel(type=standard_artifacts.Examples)
+      example_artifacts = channel_utils.as_channel(
+          [standard_artifacts.Examples()])
     spec = FileBasedExampleGenSpec(
         input_base=input_base,
         input_config=input_config,

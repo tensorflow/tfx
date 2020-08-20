@@ -46,12 +46,6 @@ message Input {
   //   - This spec matches digits and maps the data into the relevant SPAN
   //     numbers. e.g. 'data_{SPAN}-*.tfrecord' will collect files like
   //     'data_12-a.tfrecord', 'date_12-b.tfrecord'.
-  //   - Optionally, it could be specified with the width of the integers
-  //     when mapped.
-  //     e.g. 'data_{SPAN:2}.file' maps to files like 'data_02.file' and
-  //       'data_27.file' (as inputs for Span-2 and Span-27 respectively),
-  //       however doesn't map to 'data_1.file' nor 'data_123.file'.
-  //     For zero padding digits (e.g., `0012`), the width must be used.
   //   - When SPAN spec is missing, it's assumed to be always Span 0.
   //   - If SPAN is specified, pipeline will process the latest span, and store
   //     the span number in metadata.
@@ -62,28 +56,25 @@ message Input {
   //     once any is specified. Either {SPAN} spec or this set of date specs
   //     can be specified exclusively.
   //   - A calendar date with the year from YYYY, the month from MM, and the
-  //     day of the month from DD is calculated, the the span number is
-  //     calculated as the number of days since unix epoch (i.e. 1970-01-01).
+  //     day of the month from DD is calculated as the number of days since unix
+  //     epoch (i.e. 1970-01-01).
   //     e.g. 'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data'
   //       and consumes it as input for Span-0, and 'log-20170101.data' as
   //       input for Span-17167.
   //
   // [VERSION spec]
   //   - '{VERSION}', for using in pattern below to retrieve version number.
-  //   - This spec matches digits and maps the data to the relevant VERSION
-  //     numbers under the SPAN.
-  //     e.g. 'data_{SPAN}/v{VERSION}/*' matches to files under 'data_0/v1'
-  //       to consume as input for Version-1 of Span-0.
+  //   - This spec matches to non-zero padding digits and maps the data to
+  //     the relvant VERSION numbers under the SPAN.
   //   - When VERSION spec is missing, version is set to be None.
   //   - If SPAN and VERSION are both specified, pipeline will process the
   //     latest version for the latest span, and store the version number in
   //     metadata.
   //   - If VERSION is specified, but not SPAN, an error will be thrown.
-  //   - It could also be optionally specified with the width in the same way
-  //     as SPAN spec. e.g. 'data_span_{SPAN}_version_{VERSION:4}.data-*'.
-  //     For zero padding digits (e.g., `0012`), the width must be used.
   //
   // TODO(b/162622803): add default behavior for when version spec not present.
+  // TODO(jyzhao): support retrieving a specific number of digits in Span and
+  //     Version spec (i.e. {SPAN:2} or {VERSION:4})
   // TODO(jyzhao): support range config for define certain spans to process.
   message Split {
     string name = 1;

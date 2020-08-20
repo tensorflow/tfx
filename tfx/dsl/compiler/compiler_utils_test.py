@@ -20,8 +20,8 @@ from __future__ import division
 from __future__ import print_function
 
 import itertools
-
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components import CsvExampleGen
 from tfx.components import ResolverNode
@@ -32,8 +32,6 @@ from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils.dsl_utils import external_input
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class EmptyComponentSpec(types.ComponentSpec):

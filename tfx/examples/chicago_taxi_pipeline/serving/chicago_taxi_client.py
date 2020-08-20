@@ -26,15 +26,16 @@ import subprocess
 import tempfile
 
 import requests
+
 from tensorflow_transform import coders as tft_coders
 from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import schema_utils
-from tfx.utils import io_utils
 
 from google.protobuf import text_format
 from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.platform import app  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
+from tfx.utils import io_utils
 
 _LOCAL_INFERENCE_TIMEOUT_SECONDS = 5.0
 

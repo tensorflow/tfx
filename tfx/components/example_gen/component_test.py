@@ -19,6 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from google.protobuf import any_pb2
+from google.protobuf import json_format
 from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import base_example_gen_executor
@@ -26,9 +28,6 @@ from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
-
-from google.protobuf import any_pb2
-from google.protobuf import json_format
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -83,6 +82,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
+    artifact_collection = example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
   def testConstructSubclassFileBased(self):
     example_gen = TestFileBasedExampleGenComponent(input_base='path')
@@ -91,6 +92,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
     self.assertIsNone(example_gen.exec_properties.get('custom_config'))
+    artifact_collection = example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
   def testConstructCustomExecutor(self):
     example_gen = component.FileBasedExampleGen(
@@ -100,6 +103,8 @@ class ComponentTest(tf.test.TestCase):
     self.assertEqual(driver.Driver, example_gen.driver_class)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
+    artifact_collection = example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
   def testConstructWithOutputConfig(self):
     output_config = example_gen_pb2.Output(
@@ -112,6 +117,8 @@ class ComponentTest(tf.test.TestCase):
         input_base='path', output_config=output_config)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
+    artifact_collection = example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
     stored_output_config = example_gen_pb2.Output()
     json_format.Parse(example_gen.exec_properties['output_config'],
@@ -128,6 +135,8 @@ class ComponentTest(tf.test.TestCase):
         input_base='path', input_config=input_config)
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      example_gen.outputs['examples'].type_name)
+    artifact_collection = example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
     stored_input_config = example_gen_pb2.Input()
     json_format.Parse(example_gen.exec_properties['input_config'],

@@ -30,6 +30,8 @@ class ComponentTest(tf.test.TestCase):
     big_query_example_gen = component.BigQueryExampleGen(query='query')
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
+    artifact_collection = big_query_example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
   def testConstructWithOutputConfig(self):
     big_query_example_gen = component.BigQueryExampleGen(
@@ -41,6 +43,8 @@ class ComponentTest(tf.test.TestCase):
             ])))
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
+    artifact_collection = big_query_example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
   def testConstructWithInputConfig(self):
     big_query_example_gen = component.BigQueryExampleGen(
@@ -50,6 +54,8 @@ class ComponentTest(tf.test.TestCase):
         ]))
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      big_query_example_gen.outputs['examples'].type_name)
+    artifact_collection = big_query_example_gen.outputs['examples'].get()
+    self.assertEqual(1, len(artifact_collection))
 
 if __name__ == '__main__':
   tf.test.main()

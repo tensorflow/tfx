@@ -21,16 +21,13 @@ import attr
 import tensorflow as tf
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import outputs_utils
-from tfx.orchestration.portable import python_driver_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable.mlmd import context_lib
-from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
@@ -42,18 +39,9 @@ from ml_metadata.proto import metadata_store_pb2
 ExecutorOperator = TypeVar(
     'ExecutorOperator', bound=base_executor_operator.BaseExecutorOperator)
 
-# Subclasses of BaseDriverOperator
-DriverOperator = TypeVar(
-    'DriverOperator', bound=base_driver_operator.BaseDriverOperator)
-
 DEFAULT_EXECUTOR_OPERATORS = {
     local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec:
         python_executor_operator.PythonExecutorOperator
-}
-
-DEFAULT_DRIVER_OPERATORS = {
-    local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec:
-        python_driver_operator.PythonDriverOperator
 }
 
 
@@ -93,9 +81,7 @@ class Launcher(object):
       custom_driver_spec: Optional[message.Message] = None,
       platform_spec: Optional[message.Message] = None,
       custom_executor_operators: Optional[Dict[Any,
-                                               Type[ExecutorOperator]]] = None,
-      custom_driver_operators: Optional[Dict[Any,
-                                             Type[DriverOperator]]] = None):
+                                               Type[ExecutorOperator]]] = None):
     """Initializes a Launcher.
 
     Args:
@@ -113,15 +99,15 @@ class Launcher(object):
       platform_spec: Platform config that will be used as auxiliary info of the
         node execution. This will be passed to ExecutorOperator along with the
         `executor_spec`.
-      custom_executor_operators: a map of ExecutableSpec to its
-        ExecutorOperation implementation.
-      custom_driver_operators: a map of ExecutableSpec to its DriverOperator
+      custom_executor_operators: a map of ExecutorSpec to its ExecutorOperation
         implementation.
 
     Raises:
       ValueError: when component and component_config are not launchable by the
       launcher.
     """
+    del custom_driver_spec
+
     self._pipeline_node = pipeline_node
     self._mlmd_connection = mlmd_connection
     self._pipeline_info = pipeline_info
@@ -129,9 +115,6 @@ class Launcher(object):
     self._executor_operators = {}
     self._executor_operators.update(DEFAULT_EXECUTOR_OPERATORS)
     self._executor_operators.update(custom_executor_operators or {})
-    self._driver_operators = {}
-    self._driver_operators.update(DEFAULT_DRIVER_OPERATORS)
-    self._driver_operators.update(custom_driver_operators or {})
 
     self._executor_operator = self._executor_operators[type(executor_spec)](
         executor_spec, platform_spec)
@@ -140,14 +123,8 @@ class Launcher(object):
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec)
 
-    self._driver_operator = None
-    if custom_driver_spec:
-      self._driver_operator = self._driver_operators[type(custom_driver_spec)](
-          custom_driver_spec, self._mlmd_connection, self._pipeline_info,
-          self._pipeline_node)
-
   def _prepare_execution(self) -> _PrepareExecutionResult:
-    """Prepares inputs, outputs and execution properties for actual execution."""
+    """Prepare inputs, outputs and execution properties for actual execution."""
     # TODO(b/150979622): handle the edge case that the component get evicted
     # between successful pushlish and stateful working dir being clean up.
     # Otherwise following retries will keep failing because of duplicate
@@ -182,16 +159,8 @@ class Launcher(object):
       # 5. Resolve output
       output_artifacts = self._output_resolver.generate_output_artifacts(
           execution.id)
+      # TODO(b/150979622): support custom driver
 
-    # If there is a custom driver, runs it.
-    if self._driver_operator:
-      driver_output = self._driver_operator.run_driver(
-          input_artifacts, output_artifacts, exec_properties)
-      self._update_with_driver_output(driver_output, output_artifacts)
-
-    # We reconnect to MLMD here because the custom driver closes MLMD connection
-    # on returning.
-    with self._mlmd_connection as m:
       # 6. Check cached result
       cache_context = cache_utils.get_cache_context(
           metadata_handler=m,
@@ -275,21 +244,6 @@ class Launcher(object):
 
   def _clean_up(self, execution_info: base_executor_operator.ExecutionInfo):
     tf.io.gfile.rmtree(execution_info.stateful_working_dir)
-
-  def _update_with_driver_output(self,
-                                 driver_output: driver_output_pb2.DriverOutput,
-                                 output_dict: Dict[Text, List[types.Artifact]]):
-    """Updates output_dict with driver output."""
-    for key, artifact_list in driver_output.output_artifacts.items():
-      python_artifact_list = []
-      # We assume the origial output dict must include at least output artifact
-      # and all output artifact shared the same type.
-      artifact_type = output_dict[key][0].artifact_type
-      for proto_artifact in artifact_list.artifacts:
-        python_artifact = types.Artifact(artifact_type)
-        python_artifact.set_mlmd_artifact(proto_artifact)
-        python_artifact_list.append(python_artifact)
-      output_dict[key] = python_artifact_list
 
   def launch(self) -> Optional[metadata_store_pb2.Execution]:
     """Executes the component, includes driver, executor and publisher.

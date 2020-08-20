@@ -21,13 +21,13 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
+
+from google.protobuf import json_format
+from tensorflow_serving.apis import prediction_log_pb2
 from tfx.components.bulk_inferrer import executor
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.protobuf import json_format
-from tensorflow_serving.apis import prediction_log_pb2
 
 
 class ExecutorTest(tf.test.TestCase):

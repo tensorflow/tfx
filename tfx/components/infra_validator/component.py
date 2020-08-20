@@ -111,7 +111,9 @@ class InfraValidator(base_component.BaseComponent):
         InfraValidator.  Required only if multiple InfraValidator components are
         declared in the same pipeline.
     """
-    blessing = blessing or types.Channel(type=standard_artifacts.InfraBlessing)
+    blessing = blessing or types.Channel(
+        type=standard_artifacts.InfraBlessing,
+        artifacts=[standard_artifacts.InfraBlessing()])
     spec = standard_component_specs.InfraValidatorSpec(
         model=model,
         examples=examples,

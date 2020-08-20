@@ -20,18 +20,16 @@ from __future__ import print_function
 
 import os
 import random
-
 import apache_beam as beam
 from apache_beam.testing import util
 import mock
 import tensorflow as tf
+from google.cloud import bigquery
+from google.protobuf import json_format
 from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.cloud import bigquery
-from google.protobuf import json_format
 
 
 @beam.ptransform_fn

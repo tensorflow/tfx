@@ -19,16 +19,16 @@ from __future__ import print_function
 
 import copy
 import os
-from typing import Any, Dict, Text
-
 import mock
 import tensorflow as tf
+from typing import Any, Dict, Text
+
+from google.cloud import bigquery
+
 from tfx.extensions.google_cloud_big_query.pusher.executor import Executor
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import json_utils
-
-from google.cloud import bigquery
 
 
 class ExecutorTest(tf.test.TestCase):

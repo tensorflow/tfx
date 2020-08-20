@@ -28,12 +28,11 @@ import tensorflow_transform as tft
 from tensorflow_transform import beam as tft_beam
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
+from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx.components.trainer import executor as trainer_executor
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-
-from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 class TaxiUtilsTest(tf.test.TestCase):

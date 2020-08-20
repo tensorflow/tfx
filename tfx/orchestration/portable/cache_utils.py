@@ -18,14 +18,14 @@ import hashlib
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Text
 
 import tensorflow as tf
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 def _get_outputs_of_execution(

@@ -18,15 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple
+from typing import List, MutableMapping, Mapping, Optional, Sequence, Text, Tuple
 
 from absl import logging
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 def is_execution_successful(execution: metadata_store_pb2.Execution) -> bool:

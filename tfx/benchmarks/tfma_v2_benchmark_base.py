@@ -22,6 +22,7 @@ import time
 # Standard Imports
 
 import apache_beam as beam
+
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants
@@ -33,10 +34,11 @@ from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
+from tfx_bsl.tfxio import test_util
+
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
-from tfx_bsl.tfxio import test_util
 
 # Maximum number of examples to read from the dataset.
 # TFMA is much slower than TFT, so we may have to read a smaller subset of the

@@ -37,16 +37,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.CsvExampleGen"
-          }
-        }
-      }
     }
     outputs {
       outputs {
@@ -60,12 +50,12 @@ nodes {
                 value: INT
               }
               properties {
-                key: "split_names"
-                value: STRING
-              }
-              properties {
                 key: "version"
                 value: INT
+              }
+              properties {
+                key: "split_names"
+                value: STRING
               }
             }
           }
@@ -141,16 +131,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.ResolverNode.latest_blessed_model_resolver"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -214,16 +194,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.StatisticsGen"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -251,16 +221,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.CsvExampleGen"
                 }
               }
             }
@@ -339,16 +299,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.SchemaGen"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -376,16 +326,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.StatisticsGen"
                 }
               }
             }
@@ -464,16 +404,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.ExampleValidator"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -501,16 +431,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.SchemaGen"
                 }
               }
             }
@@ -548,16 +468,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.StatisticsGen"
                 }
               }
             }
@@ -635,16 +545,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.Trainer"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -672,16 +572,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.CsvExampleGen"
                 }
               }
             }
@@ -719,16 +609,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.SchemaGen"
                 }
               }
             }
@@ -838,16 +718,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.Evaluator"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -875,16 +745,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.ResolverNode.latest_blessed_model_resolver"
                 }
               }
             }
@@ -925,16 +785,6 @@ nodes {
                 }
               }
             }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.CsvExampleGen"
-                }
-              }
-            }
             artifact_query {
               type {
                 name: "Examples"
@@ -969,16 +819,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Trainer"
                 }
               }
             }
@@ -1068,16 +908,6 @@ nodes {
           }
         }
       }
-      contexts {
-        type {
-          name: "node"
-        }
-        name {
-          field_value {
-            string_value: "iris.Pusher"
-          }
-        }
-      }
     }
     inputs {
       inputs {
@@ -1105,16 +935,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Trainer"
                 }
               }
             }
@@ -1152,16 +972,6 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "node"
-              }
-              name {
-                field_value {
-                  string_value: "iris.Evaluator"
                 }
               }
             }

@@ -20,11 +20,10 @@ from __future__ import print_function
 
 import os
 
+from ml_metadata.proto import metadata_store_pb2
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.tools.cli.e2e import test_utils
-
-from ml_metadata.proto import metadata_store_pb2
 
 # The base container image name to use when building the image used in tests.
 _BASE_CONTAINER_IMAGE = os.environ['KFP_E2E_BASE_CONTAINER_IMAGE']

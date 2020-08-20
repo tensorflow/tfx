@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
 import mock
 import tensorflow as tf
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor
@@ -29,8 +29,6 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
@@ -95,9 +93,19 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     launcher.launch()
     mock_publisher.return_value.publish_execution.assert_called_once()
 
-    # Check output paths.
-    self.assertTrue(
-        tf.io.gfile.exists(os.path.join(pipeline_root, example_gen.id)))
+    # Get output paths.
+    examples = example_gen.outputs['examples'].get()[0]
+
+    # Check Avro example gen outputs.
+    train_output_file = os.path.join(examples.uri, 'train',
+                                     'data_tfrecord-00000-of-00001.gz')
+    eval_output_file = os.path.join(examples.uri, 'eval',
+                                    'data_tfrecord-00000-of-00001.gz')
+    self.assertTrue(tf.io.gfile.exists(train_output_file))
+    self.assertTrue(tf.io.gfile.exists(eval_output_file))
+    self.assertGreater(
+        tf.io.gfile.GFile(train_output_file).size(),
+        tf.io.gfile.GFile(eval_output_file).size())
 
 
 if __name__ == '__main__':

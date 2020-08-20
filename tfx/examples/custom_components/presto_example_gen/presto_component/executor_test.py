@@ -28,11 +28,11 @@ from presto_component import executor
 import prestodb
 from proto import presto_config_pb2
 import tensorflow as tf
+
+from google.protobuf import json_format
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.protobuf import json_format
 
 
 class _MockReadPrestoDoFn(beam.DoFn):

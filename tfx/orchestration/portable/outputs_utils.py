@@ -63,7 +63,6 @@ class OutputsResolver:
   def generate_output_artifacts(
       self, execution_id: int) -> Dict[Text, List[types.Artifact]]:
     """Generates output artifacts given execution_id."""
-    # TODO(b/166312308): support ValueArtifact behavior.
     output_artifacts = collections.defaultdict(list)
     for key, output_spec in self._pipeline_node.outputs.outputs.items():
       artifact = types.Artifact(

@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for TFX Runtime Parameters."""
-from typing import Mapping, Optional, cast
-
-from tfx import types
-from tfx.orchestration.portable.mlmd import common_utils
-from tfx.proto.orchestration import pipeline_pb2
+from typing import cast, Mapping, Optional
 
 from google.protobuf import descriptor
 from google.protobuf import message
+from tfx import types
+from tfx.orchestration.portable.mlmd import common_utils
+from tfx.proto.orchestration import pipeline_pb2
 
 
 def _is_type_match(v_type, v):

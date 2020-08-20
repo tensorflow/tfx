@@ -87,12 +87,9 @@ class Trainer(base_component.BaseComponent):
 
   ## Example 2: Training through a cloud provider
   ```
-  from tfx.extensions.google_cloud_ai_platform.trainer import executor as
-  ai_platform_trainer_executor
   # Train using Google Cloud AI Platform.
   trainer = Trainer(
-      custom_executor_spec=executor_spec.ExecutorClassSpec(
-         ai_platform_trainer_executor.Executor)
+      executor_class=ai_platform_trainer_executor.Executor,
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
@@ -220,8 +217,11 @@ class Trainer(base_component.BaseComponent):
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
     examples = examples or transformed_examples
-    output = output or types.Channel(type=standard_artifacts.Model)
-    model_run = model_run or types.Channel(type=standard_artifacts.ModelRun)
+    output = output or types.Channel(
+        type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
+    model_run = model_run or types.Channel(
+        type=standard_artifacts.ModelRun,
+        artifacts=[standard_artifacts.ModelRun()])
     spec = TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,

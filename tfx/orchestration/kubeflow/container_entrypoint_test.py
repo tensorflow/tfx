@@ -21,10 +21,10 @@ from __future__ import print_function
 import os
 
 import tensorflow as tf
-from tfx.orchestration.kubeflow import container_entrypoint
-from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 
 from ml_metadata.proto import metadata_store_pb2
+from tfx.orchestration.kubeflow import container_entrypoint
+from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 
 
 class MLMDConfigTest(tf.test.TestCase):

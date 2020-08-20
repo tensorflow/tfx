@@ -20,10 +20,12 @@ from __future__ import print_function
 import os
 import signal
 import threading
-from typing import Any, Dict, Text
 
 import mock
 import tensorflow as tf
+from typing import Any, Dict, Text
+
+from google.protobuf import json_format
 from tfx.components.infra_validator import error_types
 from tfx.components.infra_validator import executor
 from tfx.components.infra_validator import request_builder
@@ -32,8 +34,6 @@ from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import path_utils
-
-from google.protobuf import json_format
 
 
 def _make_serving_spec(

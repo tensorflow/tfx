@@ -83,11 +83,6 @@ class BaseEndToEndTest(tf.test.TestCase):
     replacements = [('# ' + s, s) for s in expressions]
     return self._replaceFileContent(filepath, replacements)
 
-  def _comment(self, filepath: Text, expressions: Iterable[Text]) -> Text:
-    """Update given file by commenting out the `expression`."""
-    replacements = [(s, '# ' + s) for s in expressions]
-    return self._replaceFileContent(filepath, replacements)
-
   def _replaceFileContent(self, filepath: Text,
                           replacements: Iterable[Tuple[Text, Text]]) -> Text:
     """Update given file using `replacements`."""

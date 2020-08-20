@@ -22,13 +22,13 @@ import abc
 from typing import Any, Dict, Optional, Text, Type
 
 from six import with_metaclass
+
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.base import base_driver
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec as executor_spec_module
 from tfx.types import node_common
 from tfx.utils import json_utils
-
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 def _abstract_property() -> Any:

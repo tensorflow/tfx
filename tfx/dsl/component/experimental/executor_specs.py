@@ -18,10 +18,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Text
+from typing import List, Text, Union
 
 from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental import placeholders
+
+
+CommandlineArgumentType = Union[
+    Text,
+    placeholders.InputValuePlaceholder,
+    placeholders.InputUriPlaceholder,
+    placeholders.OutputUriPlaceholder,
+    placeholders.ConcatPlaceholder,
+]
 
 
 class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
@@ -76,7 +85,7 @@ class TemplatedExecutorContainerSpec(executor_spec.ExecutorSpec):
   def __init__(
       self,
       image: Text,
-      command: List[placeholders.CommandlineArgumentType],
+      command: List[CommandlineArgumentType],
   ):
     self.image = image
     self.command = command

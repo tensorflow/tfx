@@ -21,9 +21,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Dict, List, Optional, Text
-
+from typing import Optional, Text, List, Dict, Any
 import tensorflow_model_analysis as tfma
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -46,8 +47,6 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 def create_pipeline(

@@ -35,11 +35,11 @@ from click import testing as click_testing
 import kfp
 import kfp_server_api
 import tensorflow as tf
+
+from google.cloud import storage
 from tfx.tools.cli import labels
 from tfx.tools.cli.cli_main import cli_group
 from tfx.tools.cli.e2e import test_utils
-
-from google.cloud import storage
 
 
 class CliKubeflowEndToEndTest(tf.test.TestCase):

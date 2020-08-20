@@ -18,25 +18,24 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import enum
 import os
-from typing import Any, Iterable, List, Mapping, Optional, Text
 
 from absl import logging
+import enum
 import six
 import tensorflow as tf
+from typing import Any, Iterable, List, Mapping, Optional, Text
+
+# TODO(b/140306674): Stop using the internal TF API
+from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_serving.apis import classification_pb2
+from tensorflow_serving.apis import predict_pb2
+from tensorflow_serving.apis import regression_pb2
 from tfx import types
 from tfx.components.infra_validator import types as iv_types
 from tfx.proto import infra_validator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import path_utils
-
-from tensorflow.python.saved_model import loader_impl  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_serving.apis import classification_pb2
-from tensorflow_serving.apis import predict_pb2
-from tensorflow_serving.apis import regression_pb2
-
-# TODO(b/140306674): Stop using the internal TF API
 
 _TENSORFLOW_SERVING = 'tensorflow_serving'
 _DEFAULT_NUM_EXAMPLES = 1

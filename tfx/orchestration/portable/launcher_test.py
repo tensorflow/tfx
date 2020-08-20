@@ -12,31 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.launcher."""
-import copy
 import os
-from typing import Any, Dict, List, Text
 
 import tensorflow as tf
 from tfx import types
 from tfx.orchestration import metadata
-from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
-from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
-from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import execution_result_pb2
 from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
-from google.protobuf import text_format
-
 _PYTHON_CLASS_EXECUTABLE_SPEC = local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec
 
 
-class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
+class FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
   SUPPORTED_PLATFORM_SPEC_TYPE = None
@@ -47,8 +40,7 @@ class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
     return execution_result_pb2.ExecutorOutput()
 
 
-class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
-                                   ):
+class FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
   SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
   SUPPORTED_PLATFORM_SPEC_TYPE = None
@@ -57,82 +49,6 @@ class _FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator
       self, execution_info: base_executor_operator.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
     raise RuntimeError()
-
-
-class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
-
-  def __init__(self, mlmd_connection: metadata.Metadata,
-               pipeline_info: pipeline_pb2.PipelineInfo,
-               pipeline_node: pipeline_pb2.PipelineNode):
-    super(_FakeExampleGenLikeDriver,
-          self).__init__(mlmd_connection, pipeline_info, pipeline_node)
-    self._self_output = text_format.Parse(
-        """
-      inputs {
-        key: "examples"
-        value {
-          channels {
-            producer_node_query {
-              id: "my_example_gen"
-            }
-            context_queries {
-              type {
-                name: "pipeline"
-              }
-              name {
-                field_value {
-                  string_value: "my_pipeline"
-                }
-              }
-            }
-            context_queries {
-              type {
-                name: "component"
-              }
-              name {
-                field_value {
-                  string_value: "my_example_gen"
-                }
-              }
-            }
-            artifact_query {
-              type {
-                name: "Examples"
-              }
-            }
-            output_key: "output_examples"
-          }
-          min_count: 1
-        }
-      }""", pipeline_pb2.NodeInputs())
-
-  def run(self, input_dict: Dict[Text, List[types.Artifact]],
-          output_dict: Dict[Text, List[types.Artifact]],
-          exec_properties: Dict[Text, Any]) -> driver_output_pb2.DriverOutput:
-    # Fake a constant span number, which, on prod, is usually calculated based
-    # on date.
-    span = 2
-    with self._mlmd_connection as m:
-      previous_output = inputs_utils.resolve_input_artifacts(
-          m, self._self_output)
-
-      # Version should be the max of existing version + 1 if span exists,
-      # otherwise 0.
-      version = 0
-      if previous_output:
-        version = max([
-            artifact.get_int_custom_property('version')
-            for artifact in previous_output['examples']
-            if artifact.get_int_custom_property('span') == span
-        ] or [-1]) + 1
-
-    output_example = copy.deepcopy(
-        output_dict['output_examples'][0].mlmd_artifact)
-    output_example.custom_properties['span'].int_value = span
-    output_example.custom_properties['version'].int_value = version
-    result = driver_output_pb2.DriverOutput()
-    result.output_artifacts['output_examples'].artifacts.append(output_example)
-    return result
 
 
 class LauncherTest(test_utils.TfxTest):
@@ -175,11 +91,8 @@ class LauncherTest(test_utils.TfxTest):
     self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
     # Fakes an executor operator
     self._test_executor_operators = {
-        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeExecutorOperator
+        _PYTHON_CLASS_EXECUTABLE_SPEC: FakeExecutorOperator
     }
-    # Fakes an custom driver spec
-    self._custom_driver_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
-    self._custom_driver_spec.class_path = 'tfx.orchestration.portable.launcher_test._FakeExampleGenLikeDriver'
 
   @staticmethod
   def fakeUpstreamOutputs(mlmd_connection: metadata.Metadata,
@@ -214,25 +127,6 @@ class LauncherTest(test_utils.TfxTest):
             m, execution.id, contexts, {
                 'transform_graph': [output_transform_graph],
             })
-
-  @staticmethod
-  def fakeExampleGenOutput(mlmd_connection: metadata.Metadata,
-                           example_gen: pipeline_pb2.PipelineNode, span: int,
-                           version: int):
-    with mlmd_connection as m:
-      output_example = types.Artifact(
-          example_gen.outputs.outputs['output_examples'].artifact_spec.type)
-      output_example.set_int_custom_property('span', span)
-      output_example.set_int_custom_property('version', version)
-      output_example.uri = 'my_examples_uri'
-      contexts = context_lib.register_contexts_if_not_exists(
-          m, example_gen.contexts)
-      execution = execution_publish_utils.register_execution(
-          m, example_gen.node_info.type, contexts)
-      execution_publish_utils.publish_succeeded_execution(
-          m, execution.id, contexts, {
-              'output_examples': [output_example],
-          })
 
   def testLauncher_InputNotReady(self):
     # No new execution is triggered and registered if all inputs are not ready.
@@ -315,7 +209,7 @@ class LauncherTest(test_utils.TfxTest):
               'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
-  def testLauncher_PublishingNewArtifactsAndUseCache(self):
+  def testLauncher_PushingNewArtifactsAndUseCache(self):
     # In this test case, there are two executions:
     # In the first one,trainer reads the fake upstream outputs and publish
     # a new output.
@@ -460,7 +354,7 @@ class LauncherTest(test_utils.TfxTest):
     LauncherTest.fakeUpstreamOutputs(self._mlmd_connection, self._example_gen,
                                      self._transform)
     executor_operators = {
-        _PYTHON_CLASS_EXECUTABLE_SPEC: _FakeCrashingExecutorOperator
+        _PYTHON_CLASS_EXECUTABLE_SPEC: FakeCrashingExecutorOperator
     }
     test_launcher = launcher.Launcher(
         pipeline_node=self._trainer,
@@ -488,91 +382,6 @@ class LauncherTest(test_utils.TfxTest):
           executions[-1],
           ignored_fields=[
               'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
-
-  def testLauncher_with_CustomDriver_NewSpan(self):
-    test_launcher = launcher.Launcher(
-        pipeline_node=self._example_gen,
-        mlmd_connection=self._mlmd_connection,
-        pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_driver_spec=self._custom_driver_spec,
-        custom_executor_operators=self._test_executor_operators)
-    _ = test_launcher.launch()
-
-    with self._mlmd_connection as m:
-      [artifact] = m.store.get_artifacts_by_type('Examples')
-      self.assertProtoPartiallyEquals(
-          """
-          id: 1
-          type_id: 5
-          custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_0:my_example_gen:output_examples:0"
-            }
-          }
-          custom_properties {
-            key: "span"
-            value {
-              int_value: 2
-            }
-          }
-          custom_properties {
-            key: "version"
-            value {
-              int_value: 0
-            }
-          }
-          state: LIVE""",
-          artifact,
-          ignored_fields=[
-              'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
-          ])
-
-  def testLauncher_with_CustomDriver_ExistingSpan(self):
-    LauncherTest.fakeExampleGenOutput(self._mlmd_connection, self._example_gen,
-                                      2, 1)
-
-    test_launcher = launcher.Launcher(
-        pipeline_node=self._example_gen,
-        mlmd_connection=self._mlmd_connection,
-        pipeline_info=self._pipeline_info,
-        pipeline_runtime_spec=self._pipeline_runtime_spec,
-        executor_spec=self._trainer_executor_spec,
-        custom_driver_spec=self._custom_driver_spec,
-        custom_executor_operators=self._test_executor_operators)
-    _ = test_launcher.launch()
-
-    with self._mlmd_connection as m:
-      artifact = m.store.get_artifacts_by_type('Examples')[1]
-      self.assertProtoPartiallyEquals(
-          """
-          id: 2
-          type_id: 4
-          custom_properties {
-            key: "name"
-            value {
-              string_value: ":test_run_0:my_example_gen:output_examples:0"
-            }
-          }
-          custom_properties {
-            key: "span"
-            value {
-              int_value: 2
-            }
-          }
-          custom_properties {
-            key: "version"
-            value {
-              int_value: 2
-            }
-          }
-          state: LIVE""",
-          artifact,
-          ignored_fields=[
-              'uri', 'create_time_since_epoch', 'last_update_time_since_epoch'
           ])
 
 

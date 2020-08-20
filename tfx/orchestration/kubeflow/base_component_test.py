@@ -24,6 +24,8 @@ import os
 import absl
 from kfp import dsl
 import tensorflow as tf
+
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.example_gen.csv_example_gen import component as csv_example_gen_component
 from tfx.components.statistics_gen import component as statistics_gen_component
 from tfx.orchestration import data_types
@@ -33,8 +35,6 @@ from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
-
-from ml_metadata.proto import metadata_store_pb2
 
 
 class BaseComponentTest(tf.test.TestCase):

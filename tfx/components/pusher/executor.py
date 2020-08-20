@@ -24,6 +24,8 @@ from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 import tensorflow as tf
+
+from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import model_utils
@@ -31,8 +33,6 @@ from tfx.proto import pusher_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import path_utils
-
-from google.protobuf import json_format
 
 # Aliasing of enum for better readability.
 _Versioning = pusher_pb2.Versioning

@@ -22,10 +22,11 @@ import os
 from typing import Text
 
 import tensorflow as tf
+from tfx_bsl.version import __version__ as tfx_bsl_version
+
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_importer
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
-from tfx_bsl.version import __version__ as tfx_bsl_version
 
 
 class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):

@@ -19,17 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
+from google.protobuf import json_format
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
-
-from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):

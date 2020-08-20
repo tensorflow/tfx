@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Text
 
 import six
+from typing import Text
 
 
 class BaseModelServerRunner(six.with_metaclass(abc.ABCMeta, object)):
