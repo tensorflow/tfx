@@ -105,10 +105,14 @@ class _GenProtoCommand(setuptools.Command):
           'Could not find "bazel" binary. Please visit '
           'https://docs.bazel.build/versions/master/install.html for '
           'installation instruction.')
+    self._additional_build_options = []
+    if os.environ.get('TFX_DEPENDENCY_SELECTOR') == 'GITHUB_MASTER':
+      self._additional_build_options.append('--use_master_branch')
 
   def run(self):
     subprocess.check_call(
-        [self._bazel_cmd, 'run', '//build:gen_proto'],
+        [self._bazel_cmd, 'run'] + self._additional_build_options +
+        ['//build:gen_proto'],
         # Bazel should be invoked in a directory containing bazel WORKSPACE
         # file, which is the root directory.
         cwd=os.path.dirname(os.path.realpath(__file__)),)

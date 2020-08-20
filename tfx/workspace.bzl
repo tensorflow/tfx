@@ -24,11 +24,30 @@ def tf_extended_workspace():
         tf_repo_name = "org_tensorflow",
     )
 
+    # This condition switch is ON if bazel is invoked with
+    # --use_master_branch flag.
+    config_setting(
+        name = "use_master_branch",
+        values = {
+            "use_master_branch": "true",
+        },
+    )
+
     # LINT.IfChange
-    # Fetch MLMD repo from GitHub.
+    # Fetch MLMD repo from GitHub. Do not modify the BEGIN and END comment
+    # below (used for copybara replace).
+    # BEGIN_MLMD_REPO
     git_repository(
         name = "com_github_google_ml_metadata",
-        tag = "v0.23.0",
+        tag = select({
+            ":use_master_branch": None,
+            "//conditions:default": "v0.23.0",
+        }),
+        branch = select({
+            ":use_master_branch": "master",
+            "//conditions:default": None,
+        }),
         remote = "https://github.com/google/ml-metadata.git",
     )
-    # LINT.ThenChange(//tfx/dependencies.py)
+    # END_MLMD_REPO
+    # LINT.ThenChange(../../dependencies.py)
