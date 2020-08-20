@@ -2,3 +2,4 @@ resources:
 - jupyter.yaml
 - mysql.yaml
 - mysql-pv.yaml
+- roles.yaml
