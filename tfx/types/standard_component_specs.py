@@ -143,6 +143,10 @@ class FileBasedExampleGenSpec(ComponentSpec):
       'input_base': 'input',
   }
 
+class FusedComponentSpec(ComponentSpec):
+  PARAMETERS = {}
+  INPUTS = {}
+  OUTPUTS = {}
 
 class InfraValidatorSpec(ComponentSpec):
   """InfraValidator component spec."""

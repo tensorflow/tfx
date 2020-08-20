@@ -36,6 +36,7 @@ from tfx.orchestration import pipeline
 from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
 from tfx.orchestration.experimental.optimizations import beam_fusion
+from fused_component.component import FusedComponent
 
 
 class _OutputArtifact(types.Artifact):
@@ -186,14 +187,29 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_b, component_d, component_e],
                           [component_c, component_f, component_g]]
     expected_sources = [{component_b}, {component_c}]
     expected_sinks = [{component_e}, {component_f, component_g}]
+    expected_pipeline_component_ids = [component_a.id,
+                                       'FusedComponent.subgraph_1',
+                                       'FusedComponent.subgraph_2']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
-    self.assertEqual(expected_sources, actual_sources)
-    self.assertEqual(expected_sinks, actual_sinks)
+    self.assertEqual(actual_sources, expected_sources)
+    self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsNoBeamComponents(self):
     component_a = _make_fake_component_instance(
@@ -223,13 +239,18 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = []
     expected_sources = []
     expected_sinks = []
+    expected_pipeline_components = [component_a, component_b, component_c]
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(actual_pipeline_components, expected_pipeline_components)
 
   def testPipelineGetFuseableSubgraphsNotAllParentsBeamComponent(self):
     component_a = _make_fake_component_instance(
@@ -263,13 +284,27 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_b, component_c, component_d]]
     expected_sources = [{component_b, component_c}]
     expected_sinks = [{component_d}]
+    expected_pipeline_component_ids = [component_a.id,
+                                       'FusedComponent.subgraph_1']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsFusion(self):
     component_a = _make_fake_component_instance(
@@ -308,7 +343,6 @@ class PipelineTest(tf.test.TestCase):
         beam_pipeline_args=['--runner=PortableRunner'],
         additional_pipeline_args={})
 
-
     optimizer = beam_fusion.BeamFusionOptimizer(my_pipeline)
 
     actual_subgraphs = optimizer.get_fuseable_subgraphs()
@@ -318,14 +352,27 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_a, component_b, component_c, component_d,
                            component_e, component_f, component_g]]
     expected_sources = [{component_a, component_b}]
     expected_sinks = [{component_g}]
+    expected_pipeline_component_ids = ['FusedComponent.subgraph_1']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsDiamond(self):
     component_a = _make_fake_component_instance(
@@ -361,13 +408,27 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_a, component_b]]
     expected_sources = [{component_a}]
     expected_sinks = [{component_b}]
+    expected_pipeline_component_ids = ['FusedComponent.subgraph_1',
+                                       component_c.id, component_d.id]
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsUpstreamDependencies(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
@@ -408,14 +469,29 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_a, component_b],
                           [component_d, component_e]]
     expected_sources = [{component_a}, {component_d}]
     expected_sinks = [{component_b}, {component_e}]
+    expected_pipeline_component_ids = ['FusedComponent.subgraph_1',
+                                       component_c.id,
+                                       'FusedComponent.subgraph_2']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsTwoDisjointSubgraphs(self):
     component_a = _make_fake_component_instance(
@@ -460,14 +536,29 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_a, component_f],
                           [component_c, component_d, component_e]]
     expected_sources = [{component_a}, {component_c}]
     expected_sinks = [{component_f}, {component_d, component_e}]
+    expected_pipeline_component_ids = ['FusedComponent.subgraph_1',
+                                       component_b.id,
+                                       'FusedComponent.subgraph_2']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
   def testPipelineGetFuseableSubgraphsTopologicalSorting(self):
     component_a = _make_fake_component_instance(
@@ -506,14 +597,27 @@ class PipelineTest(tf.test.TestCase):
       actual_sources.append(optimizer.get_subgraph_sources(subgraph))
       actual_sinks.append(optimizer.get_subgraph_sinks(subgraph))
 
+    optimizer.modify_pipeline_exeuction_graph(actual_subgraphs)
+    actual_pipeline_components = my_pipeline.components
+
     expected_subgraphs = [[component_a, component_b, component_c, component_d,
                            component_e]]
     expected_sources = [{component_a, component_b}]
     expected_sinks = [{component_e}]
+    expected_pipeline_component_ids = ['FusedComponent.subgraph_1']
 
     self.assertEqual(actual_subgraphs, expected_subgraphs)
     self.assertEqual(actual_sources, expected_sources)
     self.assertEqual(actual_sinks, expected_sinks)
+    self.assertEqual(len(actual_pipeline_components),
+                     len(expected_pipeline_component_ids))
+    subgraph_idx = 0
+    for i, component in enumerate(actual_pipeline_components):
+      self.assertEqual(component.id, expected_pipeline_component_ids[i])
+      if isinstance(component, FusedComponent):
+        self.assertEqual(component.get_subgraph(),
+                         expected_subgraphs[subgraph_idx])
+        subgraph_idx += 1
 
 if __name__ == '__main__':
   tf.test.main()

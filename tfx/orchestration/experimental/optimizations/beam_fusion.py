@@ -19,11 +19,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from typing import List
+from typing import List, Set, Mapping
 
 from tfx.components.base import base_node
 from tfx.components.base import base_executor
 from tfx.orchestration.pipeline import Pipeline
+from fused_component.component import FusedComponent
 
 class BeamFusionOptimizer(object):
   """Optimizer for TFX pipelines, utilizing Beam Fusion"""
@@ -31,7 +32,18 @@ class BeamFusionOptimizer(object):
   def __init__(self, pipeline: Pipeline):
     self.pipeline = pipeline
 
-  def _topologically_sort(self, components, sources):
+  def optimize_pipeline(self):
+    """Optimizes the pipeline execution graph.
+
+    Generates subgraphs of Apache Beam based fuseable components, replaces them
+    with a custom FusedComponent, and then rewires the pipeline execution graph.
+    """
+    fuseable_subgraphs = self.get_fuseable_subgraphs()
+    modify_pipeline_exeuction_graph(fuseable_subgraphs)
+
+  def _topologically_sort(self,
+                          components: List[base_node.BaseNode],
+                          sources: List[base_node.BaseNode]):
     # Determine the indegree for each component w.r.t the current subgraph
     in_degrees = {}
     for component in components:
@@ -65,10 +77,10 @@ class BeamFusionOptimizer(object):
 
     return sorted_components
 
-  def _get_intersecting_subgraph(self,
-                                 intersecting_component: base_node.BaseNode,
-                                 fuseable_subgraphs: (
-                                     List[List[base_node.BaseNode]])):
+  def _get_intersecting_subgraph(
+      self,
+      intersecting_component: base_node.BaseNode,
+      fuseable_subgraphs: List[List[base_node.BaseNode]]):
 
     intersecting_subgraph = None
     for subgraph in fuseable_subgraphs:
@@ -104,7 +116,12 @@ class BeamFusionOptimizer(object):
 
     return is_fuseable
 
-  def _build_subgraph_from_source(self, source, fuseable_subgraphs, visited):
+  def _build_subgraph_from_source(
+      self,
+      source: base_node.BaseNode,
+      fuseable_subgraphs: List[List[base_node.BaseNode]],
+      visited: Set[base_node.BaseNode]):
+
     subgraph = []
 
     if source in visited:
@@ -211,3 +228,119 @@ class BeamFusionOptimizer(object):
         subgraph_sinks.add(component)
 
     return subgraph_sinks
+
+  def _in_fused_component(
+      self,
+      component: base_node.BaseNode,
+      fused_components: List[FusedComponent]):
+
+    for fused_component in fused_components:
+      if fused_component.in_subgraph(component):
+        return True
+
+    return False
+
+  def _get_source_and_sink_maps(
+      self,
+      fused_components: List[FusedComponent],
+      fuseable_subgraphs: List[List[base_node.BaseNode]]):
+
+    sources_map = {}
+    sinks_map = {}
+
+    for i, fused_component in enumerate(fused_components):
+      subgraph = fuseable_subgraphs[i]
+      sources_map[fused_component] = set(self.get_subgraph_sources(subgraph))
+      sinks_map[fused_component] = set(self.get_subgraph_sinks(subgraph))
+
+      # A source in this case will also contain nodes that have upstream
+      # dependencies that are not in the current subgraph/fused_component
+      for component in subgraph:
+        for upstream_node in component.upstream_nodes:
+          if upstream_node not in subgraph:
+            sources_map[fused_component].add(component)
+
+      for component in subgraph:
+        for downstream_node in component.downstream_nodes:
+          if downstream_node not in subgraph:
+            sinks_map[fused_component].add(component)
+
+    return sources_map, sinks_map
+
+  def _rewire_pipeline_graph(
+      self,
+      sources_map: Mapping[FusedComponent, List[base_node.BaseNode]],
+      sinks_map: Mapping[FusedComponent, List[base_node.BaseNode]],
+      fused_components: List[FusedComponent],
+      fuseable_subgraphs: List[List[base_node.BaseNode]]):
+
+    for i, fused_component in enumerate(fused_components):
+      sources = sources_map[fused_component]
+      sinks = sinks_map[fused_component]
+      subgraph = fuseable_subgraphs[i]
+
+      source_parent_pairs = set()
+      for source in sources:
+        for parent in source.upstream_nodes:
+          if parent not in subgraph:
+            source_parent_pairs.add((source, parent))
+
+      for pair in source_parent_pairs:
+        source = pair[0]
+        parent = pair[1]
+        parent.remove_downstream_node(source)
+        parent.add_downstream_node(fused_component)
+
+      sink_child_pairs = set()
+      for sink in sinks:
+        for child in sink.downstream_nodes:
+          if child not in subgraph:
+            sink_child_pairs.add((sink, child))
+
+      for pair in sink_child_pairs:
+        sink = pair[0]
+        child = pair[1]
+        child.remove_upstream_node(sink)
+        child.add_upstream_node(fused_component)
+
+  def modify_pipeline_exeuction_graph(
+      self,
+      fuseable_subgraphs: List[List[base_node.BaseNode]]):
+    """Rewires the pipeline by switching subgraphs for FusedComponents."""
+    # Construct a FusedComponent for each subgraph
+    fused_components = []
+    for i, subgraph in enumerate(fuseable_subgraphs):
+      instance_name = "subgraph_%d" % (i + 1)
+      fused_component = FusedComponent(subgraph, instance_name)
+      fused_components.append(fused_component)
+
+    # Determine the sources and sinks for each FusedComponent
+    sources_map, sinks_map = self._get_source_and_sink_maps(
+        fused_components, fuseable_subgraphs)
+
+    # Rewire the nodes to account for the FusedComponents
+    self._rewire_pipeline_graph(
+        sources_map, sinks_map, fused_components, fuseable_subgraphs)
+
+    # Conduct a BFS to find our new components for the pipeline
+    queue = []
+    for component in self.pipeline.components:
+      if not component.upstream_nodes:
+        if not self._in_fused_component(component, fused_components):
+          queue.append(component)
+
+    for fused_component in fused_components:
+      if not fused_component.upstream_nodes:
+        queue.append(fused_component)
+
+    visited = set()
+    while queue:
+      c = queue.pop(0)
+      visited.add(c)
+
+      for child in c.downstream_nodes:
+        if child not in visited:
+          queue.append(child)
+
+    # Reset the pipeline components accounting for the new FusedComponents
+    self.pipeline.components = list(visited)

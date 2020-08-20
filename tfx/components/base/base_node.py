@@ -171,6 +171,13 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     if self not in upstream_node.downstream_nodes:
       upstream_node.add_downstream_node(self)
 
+  def remove_upstream_node(self, upstream_node):
+    if upstream_node not in self._upstream_nodes:
+      return
+
+    self._upstream_nodes.remove(upstream_node)
+    upstream_node.remove_downstream_node(self)
+
   @property
   def downstream_nodes(self):
     return self._downstream_nodes
@@ -195,3 +202,10 @@ class BaseNode(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
     self._downstream_nodes.add(downstream_node)
     if self not in downstream_node.upstream_nodes:
       downstream_node.add_upstream_node(self)
+
+  def remove_downstream_node(self, downstream_node):
+    if downstream_node not in self.downstream_nodes:
+      return
+
+    self._downstream_nodes.remove(downstream_node)
+    downstream_node.remove_upstream_node(self)
