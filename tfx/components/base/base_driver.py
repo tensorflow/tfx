@@ -36,9 +36,10 @@ def _generate_output_uri(base_output_dir: Text,
                          index: int = 0) -> Text:
   """Generate uri for output artifact."""
   if is_single_artifact:
-    return os.path.join(base_output_dir, name, str(execution_id), '')
+    # TODO(b/145680633): Consider differentiating different types of uris.
+    return os.path.join(base_output_dir, name, str(execution_id))
 
-  return os.path.join(base_output_dir, name, str(execution_id), str(index), '')
+  return os.path.join(base_output_dir, name, str(execution_id), str(index))
 
 
 def _prepare_output_paths(artifact: types.Artifact):
@@ -51,11 +52,16 @@ def _prepare_output_paths(artifact: types.Artifact):
     # idempotent executions is needed.
     return
 
+  if isinstance(artifact, types.ValueArtifact):
+    artifact_dir = os.path.dirname(artifact.uri)
+  else:
+    artifact_dir = artifact.uri
+
   # TODO(zhitaoli): Consider refactoring this out into something
   # which can handle permission bits.
   absl.logging.debug('Creating output artifact uri %s as directory',
-                     artifact.uri)
-  tf.io.gfile.makedirs(artifact.uri)
+                     artifact_dir)
+  tf.io.gfile.makedirs(artifact_dir)
   # TODO(b/147242148): Avoid special-casing the "split_names" property.
   if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
     split_names = artifact_utils.decode_split_names(artifact.split_names)

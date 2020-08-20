@@ -19,12 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 from kubernetes import client
 from kubernetes import config
 import mock
 import tensorflow as tf
-
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
@@ -35,6 +34,16 @@ from tfx.orchestration.launcher import kubernetes_component_launcher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils
 from tfx.utils import kube_utils
+
+from ml_metadata.proto import metadata_store_pb2
+
+_KFP_NAMESPACE = 'ns-1'
+_KFP_PODNAME = 'pod-1'
+
+
+def _mock_current_kfp_pod(cli: client.CoreV1Api) -> client.V1Pod:
+  """Mock method to get KFP pod manifest."""
+  return cli.read_namespaced_pod(name=_KFP_PODNAME, namespace=_KFP_NAMESPACE)
 
 
 class KubernetesComponentLauncherTest(tf.test.TestCase):
@@ -47,15 +56,20 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
         kubernetes_component_launcher.KubernetesComponentLauncher.can_launch(
             executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)))
 
-  @mock.patch.dict(os.environ, {
-      kube_utils.KFP_NAMESPACE: 'ns-1',
-      kube_utils.KFP_POD_NAME: 'pod-1'
-  })
+  @mock.patch.object(kube_utils, 'get_current_kfp_pod', _mock_current_kfp_pod)
+  @mock.patch.object(
+      kube_utils,
+      'get_kfp_namespace',
+      autospec=True,
+      return_value=_KFP_NAMESPACE)
+  @mock.patch.object(
+      kube_utils, 'is_inside_kfp', autospec=True, return_value=True)
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(config, 'load_incluster_config', autospec=True)
   @mock.patch.object(client, 'CoreV1Api', autospec=True)
   def testLaunch_loadInClusterSucceed(self, mock_core_api_cls,
-                                      mock_incluster_config, mock_publisher):
+                                      mock_incluster_config, mock_publisher,
+                                      mock_is_inside_kfp, mock_kfp_namespace):
     mock_publisher.return_value.publish_execution.return_value = {}
     core_api = mock_core_api_cls.return_value
     core_api.read_namespaced_pod.side_effect = [
@@ -79,7 +93,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     core_api.create_namespaced_pod.assert_called_once()
     core_api.read_namespaced_pod_log.assert_called_once()
     _, mock_kwargs = core_api.create_namespaced_pod.call_args
-    self.assertEqual('ns-1', mock_kwargs['namespace'])
+    self.assertEqual(_KFP_NAMESPACE, mock_kwargs['namespace'])
     pod_manifest = mock_kwargs['body']
     self.assertDictEqual(
         {
@@ -160,15 +174,20 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
             }
         }, pod_manifest)
 
-  @mock.patch.dict(os.environ, {
-      'KFP_NAMESPACE': 'ns-1',
-      'KFP_POD_NAME': 'pod-1'
-  })
+  @mock.patch.object(kube_utils, 'get_current_kfp_pod', _mock_current_kfp_pod)
+  @mock.patch.object(
+      kube_utils,
+      'get_kfp_namespace',
+      autospec=True,
+      return_value=_KFP_NAMESPACE)
+  @mock.patch.object(
+      kube_utils, 'is_inside_kfp', autospec=True, return_value=True)
   @mock.patch.object(publisher, 'Publisher', autospec=True)
   @mock.patch.object(config, 'load_incluster_config', autospec=True)
   @mock.patch.object(client, 'CoreV1Api', autospec=True)
   def testLaunch_withComponentConfig(self, mock_core_api_cls,
-                                     mock_incluster_config, mock_publisher):
+                                     mock_incluster_config, mock_publisher,
+                                     mock_is_inside_kfp, mock_kfp_namespace):
     mock_publisher.return_value.publish_execution.return_value = {}
     core_api = mock_core_api_cls.return_value
     core_api.read_namespaced_pod.side_effect = [
@@ -200,7 +219,7 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
     core_api.create_namespaced_pod.assert_called_once()
     core_api.read_namespaced_pod_log.assert_called_once()
     _, mock_kwargs = core_api.create_namespaced_pod.call_args
-    self.assertEqual('ns-1', mock_kwargs['namespace'])
+    self.assertEqual(_KFP_NAMESPACE, mock_kwargs['namespace'])
     pod_manifest = mock_kwargs['body']
     print(pod_manifest)
     self.assertDictEqual(

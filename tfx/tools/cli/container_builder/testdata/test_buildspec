@@ -8,4 +8,4 @@ build:
       dockerfile: Dockerfile
   tagPolicy:
     envTemplate:
-      template: '{{.IMAGE_NAME}}:dev'
+      template: 'dev'

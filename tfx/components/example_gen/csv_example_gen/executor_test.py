@@ -22,12 +22,13 @@ import os
 import apache_beam as beam
 from apache_beam.testing import util
 import tensorflow as tf
-from google.protobuf import json_format
+
 from tfx.components.example_gen import utils
 from tfx.components.example_gen.csv_example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -46,13 +47,37 @@ class ExecutorTest(tf.test.TestCase):
               exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
               split_pattern='csv/*'))
 
-      def check_result(got):
+      def check_results(results):
         # We use Python assertion here to avoid Beam serialization error in
         # pickling tf.test.TestCase.
-        assert (15000 == len(got)), 'Unexpected example count'
-        assert (18 == len(got[0].features.feature)), 'Example not match'
+        assert (15000 == len(results)), 'Unexpected example count.'
+        assert (18 == len(results[0].features.feature)), 'Example not match.'
 
-      util.assert_that(examples, check_result)
+      util.assert_that(examples, check_results)
+
+  def testCsvToExampleWithEmptyColumn(self):
+    with beam.Pipeline() as pipeline:
+      examples = (
+          pipeline
+          | 'ToTFExample' >> executor._CsvToExample(
+              exec_properties={utils.INPUT_BASE_KEY: self._input_data_dir},
+              split_pattern='csv_empty/*'))
+
+      def check_results(results):
+        # We use Python assertion here to avoid Beam serialization error in
+        # pickling tf.test.TestCase.
+        assert (3 == len(results)), 'Unexpected example count.'
+        for example in results:
+          assert (example.features.feature['A'].HasField('int64_list')
+                 ), 'Column A should be int64 type.'
+          assert (not example.features.feature['B'].WhichOneof('kind')
+                 ), 'Column B should be empty.'
+          assert (example.features.feature['C'].HasField('bytes_list')
+                 ), 'Column C should be byte type.'
+          assert (example.features.feature['D'].HasField('float_list')
+                 ), 'Column D should be float type.'
+
+      util.assert_that(examples, check_results)
 
   def testDo(self):
     output_data_dir = os.path.join(
@@ -62,7 +87,6 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {utils.EXAMPLES_KEY: [examples]}
 
     # Create exec proterties.
@@ -90,6 +114,10 @@ class ExecutorTest(tf.test.TestCase):
     # Run executor.
     csv_example_gen = executor.Executor()
     csv_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
 
     # Check CSV example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',

@@ -63,7 +63,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     random_id = orchestration_test_utils.random_id()
     self._pipeline_name = 'taxi-template-kubeflow-e2e-test-' + random_id
     logging.info('Pipeline: %s', self._pipeline_name)
-    self._endpoint = self._get_endpoint()
+    self._namespace = 'kubeflow'
+    self._endpoint = self._get_endpoint(self._namespace)
     self._kfp_client = kfp.Client(host=self._endpoint)
     logging.info('ENDPOINT: %s', self._endpoint)
 
@@ -136,9 +137,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'gcloud', 'container', 'images', 'delete', self._target_container_image
     ])
 
-  def _get_endpoint(self):
-    output = subprocess.check_output(
-        'kubectl describe configmap inverse-proxy-config -n kubeflow'.split())
+  def _get_endpoint(self, namespace):
+    cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
+        namespace)
+    output = subprocess.check_output(cmd.split())
     for line in output.decode('utf-8').split('\n'):
       if line.endswith('googleusercontent.com'):
         return line
@@ -207,7 +209,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._endpoint,
     ])
     self.assertEqual(0, result.exit_code)
-    self._wait_until_completed(self._parse_run_id(result.output))
+    run_id = self._parse_run_id(result.output)
+    self._wait_until_completed(run_id)
+    kubeflow_test_utils.print_failure_log_for_run(self._endpoint, run_id,
+                                                  self._namespace)
 
   def _parse_run_id(self, output: str):
     run_id_lines = [

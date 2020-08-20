@@ -47,6 +47,7 @@ from tfx.orchestration.experimental.interactive import notebook_formatters
 from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.utils import telemetry_utils
 
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
@@ -165,7 +166,15 @@ class InteractiveContext(object):
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component, pipeline_info, driver_args, metadata_connection,
         beam_pipeline_args, additional_pipeline_args)
-    execution_id = launcher.launch().execution_id
+    try:
+      import colab  # pytype: disable=import-error # pylint: disable=g-import-not-at-top, unused-import, unused-variable
+      runner_label = 'interactivecontext-colab'
+    except ImportError:
+      runner_label = 'interactivecontext'
+    with telemetry_utils.scoped_labels({
+        telemetry_utils.LABEL_TFX_RUNNER: runner_label,
+    }):
+      execution_id = launcher.launch().execution_id
 
     return execution_result.ExecutionResult(
         component=component, execution_id=execution_id)

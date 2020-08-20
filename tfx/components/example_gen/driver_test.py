@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-from google.protobuf import json_format
+from tfx.components.base import base_driver
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
@@ -29,6 +29,7 @@ from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.utils import io_utils
+from google.protobuf import json_format
 
 
 class DriverTest(tf.test.TestCase):
@@ -57,37 +58,55 @@ class DriverTest(tf.test.TestCase):
             json_format.MessageToJson(
                 example_gen_pb2.Input(splits=[
                     example_gen_pb2.Input.Split(
-                        name='s1', pattern='span{SPAN}/split1/*'),
+                        name='s1',
+                        pattern='span{SPAN}/version{VERSION}/split1/*'),
                     example_gen_pb2.Input.Split(
-                        name='s2', pattern='span{SPAN}/split2/*')
+                        name='s2',
+                        pattern='span{SPAN}/version{VERSION}/split2/*')
                 ]),
                 preserving_proto_field_name=True),
     }
 
     # Test align of span number.
-    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
-                                'data')
-    io_utils.write_string_file(span1_split1, 'testing11')
-    span1_split2 = os.path.join(self._input_base_path, 'span01', 'split2',
-                                'data')
-    io_utils.write_string_file(span1_split2, 'testing12')
-    span2_split1 = os.path.join(self._input_base_path, 'span02', 'split1',
-                                'data')
-    io_utils.write_string_file(span2_split1, 'testing21')
+    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'version01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span1_v1_split1, 'testing11')
+    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'version01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span1_v1_split2, 'testing12')
+    span2_v1_split1 = os.path.join(self._input_base_path, 'span02', 'version01',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v1_split1, 'testing21')
 
+    # Check that error raised when span does not match.
     with self.assertRaisesRegexp(
         ValueError, 'Latest span should be the same for each split'):
       self._example_gen_driver.resolve_exec_properties(self._exec_properties,
                                                        None, None)
 
-    # Test if latest span is selected when span aligns for each split.
-    span2_split2 = os.path.join(self._input_base_path, 'span02', 'split2',
-                                'data')
-    io_utils.write_string_file(span2_split2, 'testing22')
+    span2_v1_split2 = os.path.join(self._input_base_path, 'span02', 'version01',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v1_split2, 'testing22')
+    span2_v2_split1 = os.path.join(self._input_base_path, 'span02', 'version02',
+                                   'split1', 'data')
+    io_utils.write_string_file(span2_v2_split1, 'testing21')
 
+    # Check that error raised when span matches, but version does not match.
+    with self.assertRaisesRegexp(
+        ValueError, 'Latest version should be the same for each split'):
+      self._example_gen_driver.resolve_exec_properties(self._exec_properties,
+                                                       None, None)
+
+    span2_v2_split2 = os.path.join(self._input_base_path, 'span02', 'version02',
+                                   'split2', 'data')
+    io_utils.write_string_file(span2_v2_split2, 'testing22')
+
+    # Test if latest span and version selected when span and version aligns
+    # for each split.
     self._example_gen_driver.resolve_exec_properties(self._exec_properties,
                                                      None, None)
-    self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], '02')
+    self.assertEqual(self._exec_properties[utils.SPAN_PROPERTY_NAME], 2)
+    self.assertEqual(self._exec_properties[utils.VERSION_PROPERTY_NAME], 2)
     self.assertRegex(
         self._exec_properties[utils.FINGERPRINT_PROPERTY_NAME],
         r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
@@ -95,23 +114,25 @@ class DriverTest(tf.test.TestCase):
     updated_input_config = example_gen_pb2.Input()
     json_format.Parse(self._exec_properties[utils.INPUT_CONFIG_KEY],
                       updated_input_config)
+
     # Check if latest span is selected.
     self.assertProtoEquals(
         """
         splits {
           name: "s1"
-          pattern: "span02/split1/*"
+          pattern: "span02/version02/split1/*"
         }
         splits {
           name: "s2"
-          pattern: "span02/split2/*"
+          pattern: "span02/version02/split2/*"
         }""", updated_input_config)
 
   def testPrepareOutputArtifacts(self):
     examples = standard_artifacts.Examples()
     output_dict = {utils.EXAMPLES_KEY: channel_utils.as_channel([examples])}
     exec_properties = {
-        utils.SPAN_PROPERTY_NAME: '02',
+        utils.SPAN_PROPERTY_NAME: 2,
+        utils.VERSION_PROPERTY_NAME: 1,
         utils.FINGERPRINT_PROPERTY_NAME: 'fp'
     }
 
@@ -126,13 +147,18 @@ class DriverTest(tf.test.TestCase):
         component_info)
     examples = artifact_utils.get_single_instance(
         output_artifacts[utils.EXAMPLES_KEY])
-    self.assertEqual(examples.uri,
-                     os.path.join(self._test_dir, 'cid', 'examples', '1', ''))
+    base_output_dir = os.path.join(self._test_dir, component_info.component_id)
+    expected_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        base_output_dir, 'examples', 1)
+
+    self.assertEqual(examples.uri, expected_uri)
     self.assertEqual(
         examples.get_string_custom_property(utils.FINGERPRINT_PROPERTY_NAME),
         'fp')
     self.assertEqual(
-        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '02')
+        examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
+    self.assertEqual(
+        examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
 
 
 if __name__ == '__main__':

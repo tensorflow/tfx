@@ -42,17 +42,13 @@
                 "producer_component": {
                   "string_value": "CsvExampleGen"
                 }
-              },
-              "properties": {
-                "split_names": {
-                  "string_value": "[\"examples\"]"
-                }
               }
             },
             "artifact_type": {
               "name": "Examples",
               "properties": {
                 "span": "INT",
+                "version": "INT",
                 "split_names": "STRING"
               }
             }
@@ -64,6 +60,7 @@
           "name": "Examples",
           "properties": {
             "span": "INT",
+            "version": "INT",
             "split_names": "STRING"
           }
         }

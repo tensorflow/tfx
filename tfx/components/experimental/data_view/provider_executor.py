@@ -18,17 +18,9 @@ from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.util import udf_utils
 from tfx.components.util import value_utils
-from tfx.utils import import_utils
-import tfx_bsl
-# TODO(b/161449255): clean this up after a release post tfx_bsl 0.22.1.
-if getattr(tfx_bsl, 'HAS_TF_GRAPH_RECORD_DECODER', False):
-  from tfx_bsl.coders import tf_graph_record_decoder  # pylint: disable=g-import-not-at-top
-else:
-  tf_graph_record_decoder = None
-
+from tfx_bsl.coders import tf_graph_record_decoder
 
 # Keys for exec_properties dict.
-_MODULE_FILE_KEY = 'module_file'
 _CREATE_DECODER_FUNC_KEY = 'create_decoder_func'
 
 # Keys for output_dict
@@ -42,15 +34,8 @@ class TfGraphDataViewProviderExecutor(base_executor.BaseExecutor):
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     self._log_startup(input_dict, output_dict, exec_properties)
-    module_file = exec_properties.get(_MODULE_FILE_KEY)
-    if module_file is None:
-      create_decoder_func = udf_utils.get_fn(
-          exec_properties, _CREATE_DECODER_FUNC_KEY)
-    else:
-      create_decoder_func = import_utils.import_func_from_source(
-          module_file,
-          exec_properties.get(_CREATE_DECODER_FUNC_KEY))
+    create_decoder_func = udf_utils.get_fn(exec_properties,
+                                           _CREATE_DECODER_FUNC_KEY)
     tf_graph_record_decoder.save_decoder(
         create_decoder_func(),
         value_utils.GetSoleValue(output_dict, _DATA_VIEW_KEY).uri)
-
