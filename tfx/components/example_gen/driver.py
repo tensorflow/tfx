@@ -56,7 +56,7 @@ class Driver(base_driver.BaseDriver):
     logging.debug('Processing input %s.', input_base)
 
     range_config = None
-    if utils.RANGE_CONFIG_KEY in exec_properties:
+    if exec_properties[utils.RANGE_CONFIG_KEY]:
       range_config = range_config_pb2.RangeConfig()
       json_format.Parse(exec_properties[utils.RANGE_CONFIG_KEY], range_config)
 
