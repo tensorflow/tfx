@@ -389,7 +389,7 @@ def _create_matching_glob_and_regex(
 
       span_regex_replace = span_str
       span_glob_replace = span_str
-      
+
     split_glob_pattern = re.sub(SPAN_FULL_REGEX, span_glob_replace,
                                 split_glob_pattern)
     span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
@@ -402,27 +402,27 @@ def _create_matching_glob_and_regex(
     # Defines a clear number of digits for certain element of date, in order of
     # year, month, and day. This covers cases where date stamps may not have
     # seperators between them.
-    date_regex_replace = ['{4}', '{2}', '{2}']
-    
+    date_regex_replace = ['.{4}', '.{2}', '.{2}']
+
     if range_config and range_config.HasField('static_range'):
       # If using RangeConfig.static_range, replace span spec in patterns
       # with date derived from given span from static range.
       span_int = range_config.static_range.start_span_number
       year, month, day = span_number_to_date(span_int)
       date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
-      
+
       date_glob_replace = date_tokens
       date_regex_replace = date_tokens
-      
+
     for spec, replace in zip(DATE_SPECS, date_glob_replace):
-      split_glob_pattern = split_glob_pattern.replace(spec, '*')
-    
+      split_glob_pattern = split_glob_pattern.replace(spec, replace)
+
     split_regex_pattern = split_regex_pattern.replace(
-        YEAR_SPEC, '(?P<{}>.{})'.format('year', date_regex_replace[0]))
+        YEAR_SPEC, '(?P<{}>{})'.format('year', date_regex_replace[0]))
     split_regex_pattern = split_regex_pattern.replace(
-        MONTH_SPEC, '(?P<{}>.{})'.format('month', date_regex_replace[1]))
+        MONTH_SPEC, '(?P<{}>{})'.format('month', date_regex_replace[1]))
     split_regex_pattern = split_regex_pattern.replace(
-        DAY_SPEC, '(?P<{}>.{})'.format('day', date_regex_replace[2]))
+        DAY_SPEC, '(?P<{}>{})'.format('day', date_regex_replace[2]))
 
   if is_match_version:
     # Check if version spec has any width modifier. Defaults to greedy matching

@@ -774,9 +774,27 @@ class UtilsTest(tf.test.TestCase):
     self.assertIsNone(version)
     self.assertEqual(splits2[0].pattern, 'span01/split1/*')
 
-  # TODO(jjma): Write this.
   def testRangeConfigWithDateSpec(self):
-    pass
+    span1_split1 = os.path.join(self._input_base_path, '19700102', 'split1',
+                                   'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    start_span = utils.date_to_span_number(1970, 1, 2)
+    end_span = utils.date_to_span_number(1970, 1, 2)
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=start_span,
+                                                  end_span_number=end_span))
+    
+    splits = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='{YYYY}{MM}{DD}/split1/*')
+    ]
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits, range_config)
+
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+    self.assertEqual(splits[0].pattern, '19700102/split1/*')
 
 if __name__ == '__main__':
   tf.test.main()
