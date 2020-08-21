@@ -156,6 +156,9 @@ def _build_detection_model():
   detection_model = model_builder.build(
       model_config=model_config, is_training=True)
 
+  # We only restore the weights for backbone and box prediction heads.
+  # We need to train the class prediction head on our own since we are finetuning
+  # on a different dataset than COCO
   fake_box_predictor = tf.compat.v2.train.Checkpoint(
       _prediction_heads={
           'box_encodings':
@@ -318,7 +321,6 @@ def get_model_train_step_function(model, optimizer, vars_to_fine_tune):
       A scalar tensor representing the total loss for the input batch.
     """
     shapes = tf.constant(_TRAIN_BATCH_SIZE*[[300, 300, 3]], dtype=tf.int32)
-    # print(groundtruth_boxes_list[0])
     model.provide_groundtruth(
         groundtruth_boxes_list=groundtruth_boxes_list,
         groundtruth_classes_list=groundtruth_classes_list)
@@ -348,6 +350,7 @@ def run_fn(fn_args: TrainerFnArgs):
   model = _build_detection_model()
 
   # Select variables corresponding to classification head to fine-tune.
+  # Here we only train the weights for class prediction head.
   trainable_variables = model.trainable_variables
   to_fine_tune = []
   prefixes_to_train = ['BoxPredictor/ConvolutionalClassHead']
