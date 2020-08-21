@@ -100,6 +100,9 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3`.
 *   Depends on `tensorflow-transform>=0.23,<0.24`.
 *   Depends on `tfx-bsl>=0.23,<0.24`.
+*   Added execution_result_pb2.ExecutorOutput as an Optional return value of
+    BaseExecutor. This change is backward compatible to all existing executors.
+*   Added executor_output_uri and stateful_working_dir to Executor's context.
 
 ## Breaking changes
 *   Changed the URIs of the value artifacts to point to files.
