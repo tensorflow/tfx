@@ -41,7 +41,7 @@ _CONTAINER_COMMAND = [
 
 # Suffix added to the component id to avoid MLMD conflict when
 # registering this component.
-_WRAPPER_SUFFIX = 'Wrapper'
+_WRAPPER_SUFFIX = '.Wrapper'
 
 _TFX_IMAGE = 'tensorflow/tfx'
 
@@ -258,4 +258,4 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         parameters={},
         image=self._config.tfx_image,
         command=_CONTAINER_COMMAND + arguments
-    )()
+    )(instance_name=component._instance_name + _WRAPPER_SUFFIX) # pylint: disable=protected-access
