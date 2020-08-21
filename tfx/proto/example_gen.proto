@@ -62,16 +62,16 @@ message Input {
   //     once any is specified. Either {SPAN} spec or this set of date specs
   //     can be specified exclusively.
   //   - A calendar date with the year from YYYY, the month from MM, and the
-  //     day of the month from DD is calculated as the number of days since unix
-  //     epoch (i.e. 1970-01-01).
+  //     day of the month from DD is calculated, the the span number is
+  //     calculated as the number of days since unix epoch (i.e. 1970-01-01).
   //     e.g. 'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data'
   //       and consumes it as input for Span-0, and 'log-20170101.data' as
   //       input for Span-17167.
   //
   // [VERSION spec]
   //   - '{VERSION}', for using in pattern below to retrieve version number.
-  //   - This spec matches to non-zero padding digits and maps the data to
-  //     the relvant VERSION numbers under the SPAN.
+  //   - This spec matches digits and maps the data to the relevant VERSION 
+  //     numbers under the SPAN.
   //     e.g. 'data_{SPAN}/v{VERSION}/*' matches to files under 'data_0/v1'
   //       to consume as input for Version-1 of Span-0.
   //   - When VERSION spec is missing, version is set to be None.
