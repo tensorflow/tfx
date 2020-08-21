@@ -74,8 +74,10 @@ class Transform(base_component.BaseComponent):
       transform_graph: Optional[types.Channel] = None,
       transformed_examples: Optional[types.Channel] = None,
       input_data: Optional[types.Channel] = None,
+      analyzer_cache: Optional[types.Channel] = None,
       instance_name: Optional[Text] = None,
       materialize: bool = True,
+      disable_analyzer_cache: bool = False,
       custom_config: Optional[Dict[Text, Any]] = None):
     """Construct a Transform component.
 
@@ -115,10 +117,16 @@ class Transform(base_component.BaseComponent):
         materialized transformed examples, which includes both 'train' and
         'eval' splits.
       input_data: Backwards compatibility alias for the 'examples' argument.
+      analyzer_cache: Optional input 'TransformCache' channel containing
+        cached information from previous Transform runs. When provided,
+        Transform will try use the cached calculation if possible.
       instance_name: Optional unique instance name. Necessary iff multiple
         transform components are declared in the same pipeline.
       materialize: If True, write transformed examples as an output. If False,
         `transformed_examples` must not be provided.
+      disable_analyzer_cache: If False, Transform will use input cache if
+        provided and write cache output. If True, `analyzer_cache` must not be
+        provided.
       custom_config: A dict which contains additional parameters that will be
         passed to preprocessing_fn.
 
@@ -140,6 +148,7 @@ class Transform(base_component.BaseComponent):
     transform_graph = transform_graph or types.Channel(
         type=standard_artifacts.TransformGraph,
         artifacts=[standard_artifacts.TransformGraph()])
+
     if materialize and transformed_examples is None:
       transformed_examples = types.Channel(
           type=standard_artifacts.Examples,
@@ -148,7 +157,18 @@ class Transform(base_component.BaseComponent):
           matching_channel_name='examples')
     elif not materialize and transformed_examples is not None:
       raise ValueError(
-          'must not specify transformed_examples when materialize==False')
+          'Must not specify transformed_examples when materialize is False.')
+
+    if disable_analyzer_cache:
+      updated_analyzer_cache = None
+      if analyzer_cache:
+        raise ValueError(
+            '`analyzer_cache` is set when disable_analyzer_cache is True.')
+    else:
+      updated_analyzer_cache = types.Channel(
+          type=standard_artifacts.TransformCache,
+          artifacts=[standard_artifacts.TransformCache()])
+
     spec = TransformSpec(
         examples=examples,
         schema=schema,
@@ -156,5 +176,7 @@ class Transform(base_component.BaseComponent):
         preprocessing_fn=preprocessing_fn,
         transform_graph=transform_graph,
         transformed_examples=transformed_examples,
+        analyzer_cache=analyzer_cache,
+        updated_analyzer_cache=updated_analyzer_cache,
         custom_config=json.dumps(custom_config))
     super(Transform, self).__init__(spec=spec, instance_name=instance_name)

@@ -39,7 +39,10 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform, materialize=True):
+  def _verify_outputs(self,
+                      transform,
+                      materialize=True,
+                      disable_analyzer_cache=False):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
     if materialize:
@@ -47,6 +50,12 @@ class ComponentTest(tf.test.TestCase):
                        transform.outputs['transformed_examples'].type_name)
     else:
       self.assertNotIn('transformed_examples', transform.outputs.keys())
+
+    if disable_analyzer_cache:
+      self.assertNotIn('updated_analyzer_cache', transform.outputs.keys())
+    else:
+      self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
+                       transform.outputs['updated_analyzer_cache'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/preprocessing.py'
@@ -88,6 +97,14 @@ class ComponentTest(tf.test.TestCase):
         materialize=False)
     self._verify_outputs(transform, materialize=False)
 
+  def testConstructWithCacheDisabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        disable_analyzer_cache=True)
+    self._verify_outputs(transform, disable_analyzer_cache=True)
+
   def testConstructFromPreprocessingFnWithCustomConfig(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     custom_config = {'param': 1}
@@ -128,6 +145,17 @@ class ComponentTest(tf.test.TestCase):
           materialize=False,
           transformed_examples=channel_utils.as_channel(
               [standard_artifacts.Examples()]))
+
+  def testConstructWithCacheDisabledButInputCache(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          disable_analyzer_cache=True,
+          analyzer_cache=channel_utils.as_channel(
+              [standard_artifacts.TransformCache()]))
+
 
 if __name__ == '__main__':
   tf.test.main()

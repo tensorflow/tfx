@@ -63,6 +63,10 @@
 *   Supported custom extractors in Evaluator.
 *   Deprecated tensorflow dependency from MLMD python client.
 *   Supported `Date` spec in input config for file based ExampleGen.
+*   Enabled analyzer cache optimization in the Transform component:
+    *   specify `analyzer_cache` to use the cache generated from a previous run.
+    *   specify parameter `disable_analyzer_cache=True` (False by default) to
+        disable cache (won't generate cache output).
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
