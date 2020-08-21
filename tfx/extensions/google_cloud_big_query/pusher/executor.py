@@ -16,10 +16,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 from typing import Any, Dict, List, Text
-from google.cloud import bigquery
 
+from absl import logging
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.types import artifact_utils
@@ -27,6 +26,8 @@ from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import telemetry_utils
+
+from google.cloud import bigquery
 
 _POLLING_INTERVAL_IN_SECONDS = 30
 

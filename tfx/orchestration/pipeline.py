@@ -25,10 +25,10 @@ import os
 from typing import List, Optional, Text
 
 from absl import logging
-
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
+
+from ml_metadata.proto import metadata_store_pb2
 
 # Argo's workflow name cannot exceed 63 chars:
 # see https://github.com/argoproj/argo/issues/1324.

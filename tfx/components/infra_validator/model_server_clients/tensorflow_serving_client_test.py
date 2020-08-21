@@ -17,18 +17,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Any, Dict, Text
+
 import grpc
 import mock
 import tensorflow as tf
-from typing import Any, Dict, Text
+from tfx.components.infra_validator import error_types
+from tfx.components.infra_validator import types
+from tfx.components.infra_validator.model_server_clients import tensorflow_serving_client
 
 from google.protobuf import json_format
 from tensorflow_serving.apis import classification_pb2
 from tensorflow_serving.apis import get_model_status_pb2
 from tensorflow_serving.apis import regression_pb2
-from tfx.components.infra_validator import error_types
-from tfx.components.infra_validator import types
-from tfx.components.infra_validator.model_server_clients import tensorflow_serving_client
 
 
 def _make_response(
