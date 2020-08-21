@@ -263,7 +263,7 @@ def _verify_split_pattern_specs(
         'Either span spec or date specs must be specified exclusively in %s' %
         split.pattern)
 
-  if is_match_span and split.pattern.count(SPAN_SPEC) != 1:
+  if is_match_span and len(span_matches) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (SPAN_SPEC, split.pattern))
   if is_match_date and not all(
@@ -277,7 +277,7 @@ def _verify_split_pattern_specs(
         'Version spec provided, but Span or Date spec is not present in %s' %
         split.pattern)
 
-  if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
+  if is_match_version and len(version_matches) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (VERSION_SPEC, split.pattern))
 
@@ -505,7 +505,8 @@ def _retrieve_latest_span_version(
       split.pattern = split.pattern.replace(spec, value)
 
   if is_match_version:
-    split.pattern = split.pattern.replace(VERSION_SPEC, latest_version)
+    split.pattern = re.sub(VERSION_FULL_REGEX, latest_version,
+                           split.pattern)
 
   return latest_span_int, latest_version_int
 
