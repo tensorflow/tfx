@@ -417,12 +417,10 @@ def _create_matching_glob_and_regex(
     for spec, replace in zip(DATE_SPECS, date_glob_replace):
       split_glob_pattern = split_glob_pattern.replace(spec, replace)
 
-    split_regex_pattern = split_regex_pattern.replace(
-        YEAR_SPEC, '(?P<{}>{})'.format('year', date_regex_replace[0]))
-    split_regex_pattern = split_regex_pattern.replace(
-        MONTH_SPEC, '(?P<{}>{})'.format('month', date_regex_replace[1]))
-    split_regex_pattern = split_regex_pattern.replace(
-        DAY_SPEC, '(?P<{}>{})'.format('day', date_regex_replace[2]))
+    for spec, replace, spec_name in zip(DATE_SPECS, date_regex_replace,
+                                        ['year', 'month', 'day']):
+      split_regex_pattern = split_regex_pattern.replace(
+        spec, '(?P<{}>{})'.format(spec_name, replace))
 
   if is_match_version:
     # Check if version spec has any width modifier. Defaults to greedy matching
