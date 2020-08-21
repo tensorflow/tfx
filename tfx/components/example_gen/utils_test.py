@@ -688,7 +688,7 @@ class UtilsTest(tf.test.TestCase):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits, range_config)
 
-  def testNoSpanInRangeConfig(self):
+  def testRangeConfigWithNonexistentSpan(self):
     # Test behavior when specified span in RangeConfig does not exist.
     span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
                                 'data')
@@ -699,10 +699,10 @@ class UtilsTest(tf.test.TestCase):
                                                   end_span_number=2))
     splits = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='span{SPAN}/split1/*')
+            name='s1', pattern='span{SPAN:2}/split1/*')
     ]
 
-    with self.assertRaisesRegexp(ValueError, 'Cannot find matching for split'):
+    with self.assertRaises(tf.errors.NotFoundError):
       utils.calculate_splits_fingerprint_span_and_version(
           self._input_base_path, splits, range_config)
 
@@ -720,7 +720,7 @@ class UtilsTest(tf.test.TestCase):
                                                   end_span_number=1))
     splits1 = [
         example_gen_pb2.Input.Split(
-            name='s1', pattern='span{SPAN}/split1/*')
+            name='s1', pattern='span{SPAN:2}/split1/*')
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
@@ -733,9 +733,41 @@ class UtilsTest(tf.test.TestCase):
     range_config = range_config_pb2.RangeConfig(exclude_span_numbers=[2])
     splits2 = [
         example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    _, span, version = utils.calculate_splits_fingerprint_span_and_version(
+        self._input_base_path, splits2, range_config)
+    self.assertEqual(span, 1)
+    self.assertIsNone(version)
+    self.assertEqual(splits2[0].pattern, 'span01/split1/*')
+
+  def testRangeConfigSpanWidthPresence(self):
+    # Test RangeConfig.static_range behavior when span width is not given.
+    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
+                                'data')
+    io_utils.write_string_file(span1_split1, 'testing11')
+
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=1,
+                                                  end_span_number=1))
+    splits1 = [
+        example_gen_pb2.Input.Split(
             name='s1', pattern='span{SPAN}/split1/*')
     ]
 
+    # RangeConfig cannot add zero padding without width modifier.
+    with self.assertRaises(tf.errors.NotFoundError):
+      utils.calculate_splits_fingerprint_span_and_version(
+          self._input_base_path, splits1, range_config)
+
+    splits2 = [
+        example_gen_pb2.Input.Split(
+            name='s1', pattern='span{SPAN:2}/split1/*')
+    ]
+
+    # With width modifier in span spec, RangeConfig.static_range makes
+    # correct zero-padded substitution.
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
         self._input_base_path, splits2, range_config)
     self.assertEqual(span, 1)

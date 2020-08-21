@@ -345,7 +345,8 @@ def _find_matched_span_version_from_path(
 
 def _create_matching_glob_and_regex(
     uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
-    is_match_date: bool, is_match_version: bool) -> Tuple[Text, Text]:
+    is_match_date: bool, is_match_version: bool,
+    range_config: range_config_pb2.RangeConfig) -> Tuple[Text, Text]:
   """Constructs glob and regex patterns for matching span and version."""
   split_pattern = os.path.join(uri, split.pattern)
   split_glob_pattern = split_pattern
@@ -354,21 +355,39 @@ def _create_matching_glob_and_regex(
   if is_match_span:
     # Check if span spec has any width args. Defaults to greedy matching if
     # no width modifiers are present.
-    span_width_regex = '.*'
+    span_glob_replace = '*'
+    span_regex_replace = '.*'
     span_width_str = re.search(SPAN_FULL_REGEX, split.pattern).group('width')
     if span_width_str:
       try:
-        if int(span_width_str) <= 0:
+        span_width_int = int(span_width_str)
+        if span_width_int <= 0:
           raise ValueError('Not a positive integer.')
-        span_width_regex = '.{%s}' % span_width_str
+        span_regex_replace = '.{%s}' % span_width_str
       except ValueError:
         raise ValueError(
             'Width modifier in span spec is not a positive integer: %s' %
             split.pattern)
 
-    split_glob_pattern = re.sub(SPAN_FULL_REGEX, '*', split_glob_pattern)
+    if range_config and range_config.HasField('static_range'):
+      # If using RangeConfig.static_range, replace span spec in patterns
+      # with given span from static range.
+      span_str = str(range_config.static_range.start_span_number)
+      if span_width_str:
+        span_width_int = int(span_width_str)
+        if span_width_int < len(span_str):
+          raise ValueError(
+              'Span spec width is less than number of digits in span: (%s, %s)'
+              % (span_width_int, span_str))
+        span_str = span_str.zfill(span_width_int)
+
+      span_regex_replace = span_str
+      span_glob_replace = span_str
+      
+    split_glob_pattern = re.sub(SPAN_FULL_REGEX, span_glob_replace,
+                                split_glob_pattern)
     span_capture_regex = '(?P<{}>{})'.format(SPAN_PROPERTY_NAME,
-                                             span_width_regex)
+                                             span_regex_replace)
     split_regex_pattern = re.sub(SPAN_FULL_REGEX, span_capture_regex,
                                  split_regex_pattern)
 
@@ -455,7 +474,7 @@ def _retrieve_latest_span_version(
     return (None, None)
 
   split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
-      uri, split, is_match_span, is_match_date, is_match_version)
+      uri, split, is_match_span, is_match_date, is_match_version, range_config)
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
