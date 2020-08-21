@@ -470,7 +470,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
         'Width modifier in span spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testVersionInvalidWidth(self):
     splits = [
@@ -481,7 +481,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
         'Width modifier in version spec is not a positive integer'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
   def testSpanWidth(self):
     split1 = os.path.join(self._input_base_path, 'span1', 'split1', 'data')
@@ -496,7 +496,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
         'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
     splits = [
         example_gen_pb2.Input.Split(
@@ -504,7 +504,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual(span, 1)
     self.assertIsNone(version)
 
@@ -522,7 +522,7 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaisesRegexp(ValueError,
         'Glob pattern does not match regex pattern'):
       utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits)
+          self._input_base_path, splits, None)
 
     splits = [
         example_gen_pb2.Input.Split(
@@ -530,7 +530,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual(span, 1)
     self.assertEqual(version, 1)
 
@@ -545,7 +545,7 @@ class UtilsTest(tf.test.TestCase):
     ]
 
     _, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        self._input_base_path, splits)
+        self._input_base_path, splits, None)
     self.assertEqual(span, 12)
     self.assertEqual(version, 34)
 

@@ -242,7 +242,9 @@ def date_to_span_number(year: int, month: int, day: int) -> int:
 
 
 def _verify_split_pattern_specs(
-    split: example_gen_pb2.Input.Split) -> Tuple[bool, bool, bool]:
+    split: example_gen_pb2.Input.Split,
+    range_config: range_config_pb2.RangeConfig
+) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
   # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
   # span width modifier. Otherwise, the empty string is captured.
@@ -278,6 +280,15 @@ def _verify_split_pattern_specs(
   if is_match_version and split.pattern.count(VERSION_SPEC) != 1:
     raise ValueError('Only one %s is allowed in %s' %
                      (VERSION_SPEC, split.pattern))
+
+  if range_config and range_config.HasField('static_range'):
+    # For ExampleGen, RangeConfig must specify an exact span to look for,
+    # since only one span is processed at a time.
+    if (range_config.static_range.start_span_number != 
+        range_config.static_range.end_span_number):
+      raise ValueError(
+          'Start and end span numbers for RangeConfig.static_range must '
+          'be equal: (%s, %s)' % (start_span_number, end_span_number))
 
   return is_match_span, is_match_date, is_match_version
 
@@ -436,7 +447,7 @@ def _retrieve_latest_span_version(
   """
 
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
-      split)
+      split, range_config)
 
   if not is_match_span and not is_match_date:
     return (None, None)
@@ -464,17 +475,7 @@ def _retrieve_latest_span_version(
     # Check parsed span number against range config, if it exists.
     if range_config:
       if range_config.HasField('static_range'):
-        # For ExampleGen, RangeConfig must specify an exact span to look for,
-        # since only one span is processed at a time.
-        start_span_number = range_config.static_range.start_span_number
-        end_span_number = range_config.static_range.end_span_number
-
-        if start_span_number != end_span_number:
-          raise ValueError(
-              'Start and end span numbers for RangeConfig.static_range must '
-              'be equal: (%s, %s)' % (start_span_number, end_span_number))
-
-        if match_span_int != start_span_number:
+        if match_span_int != range_config_pb2.static_range.start_span_number:
           continue
 
       if match_span_int in range_config.exclude_span_numbers:
