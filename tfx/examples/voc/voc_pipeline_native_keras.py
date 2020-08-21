@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""CIFAR10 image classification with transfer learning example using TFX."""
+"""VOC 2007 object detection example using TFX."""
 
 from __future__ import absolute_import
 from __future__ import division
 
 import os
-from typing import Text
+from typing import Text, List
 
 import absl
 import tensorflow_model_analysis as tfma
@@ -31,19 +31,24 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
+# from tfx.components import ResolverNode
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
+# from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto import example_gen_pb2
+# from tfx.types import Channel
+# from tfx.types.standard_artifacts import Model
+# from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'voc_native_keras'
 
-# This example assumes that CIFAR10 train set data is stored in
+# This example assumes that VOC train set data is stored in
 # ~/voc/data/train, test set data is stored in ~/voc/data/test, and
 # the utility function is in ~/voc. Feel free to customize as needed.
 _voc_root = os.path.join(os.environ['HOME'], 'voc')
@@ -54,8 +59,8 @@ _module_file = os.path.join(_voc_root, 'voc_utils_native_keras.py')
 
 # Path which can be listened to by the model server. Pusher will output the
 # trained model here.
-_serving_model_dir = os.path.join(_voc_root, 'serving_model',
-                                  _pipeline_name)
+_serving_model_dir_lite = os.path.join(_voc_root, 'serving_model',
+                                       _pipeline_name)
 
 # Directory and data locations.  This example assumes all of the images,
 # example code, and metadata library is relative to $HOME, but you can store
@@ -66,12 +71,22 @@ _pipeline_root = os.path.join(_tfx_root, 'pipelines', _pipeline_name)
 _metadata_path = os.path.join(_tfx_root, 'metadata', _pipeline_name,
                               'metadata.db')
 
+# Pipeline arguments for Beam powered Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
 def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
-                     module_file: Text,
-                     serving_model_dir: Text,
+                     module_file: Text, serving_model_dir_lite: Text,
                      metadata_path: Text,
-                     direct_num_workers: int) -> pipeline.Pipeline:
-  """Implements the voc image classification pipeline using TFX."""
+                     beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
+  """Implements the VOC 2007 object detection pipeline using TFX."""
+  # This is needed for datasets with pre-defined splits
+  # Change the pattern argument to train_whole/* and test_whole/* to train
+  # on the whole VOC 2007 dataset
   input_config = example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='train', pattern='train_tiny/*'),
             example_gen_pb2.Input.Split(name='eval', pattern='val_tiny/*')])
@@ -99,44 +114,58 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file)
 
-  def _create_trainer(module_file, instance_name):
-    return Trainer(
-        module_file=module_file,
-        custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
-        examples=transform.outputs['transformed_examples'],
-        transform_graph=transform.outputs['transform_graph'],
-        schema=schema_gen.outputs['schema'],
-        train_args=trainer_pb2.TrainArgs(num_steps=10000),
-        eval_args=trainer_pb2.EvalArgs(num_steps=156),
-        instance_name=instance_name)
+  # Uses user-provided Python function that trains a model.
+  # The configuration below is for training on the dataset we provided in the data folder,
+  # which has 256 train and 100 test samples. The 160 train steps correspond to 20 epochs
+  # on this tiny train set. The number of eval steps doesn't matter here since we will not
+  # do evaluation during training.
+  trainer = Trainer(
+      module_file=module_file,
+      custom_executor_spec=executor_spec.ExecutorClassSpec(GenericExecutor),
+      examples=transform.outputs['transformed_examples'],
+      transform_graph=transform.outputs['transform_graph'],
+      schema=schema_gen.outputs['schema'],
+      train_args=trainer_pb2.TrainArgs(num_steps=160),
+      eval_args=trainer_pb2.EvalArgs(num_steps=4))
 
-  # Uses user-provided Python function that trains a Keras model.
-  trainer = _create_trainer(module_file, 'voc')
+  # Get the latest blessed model for model validation.
+  # model_resolver = ResolverNode(
+  #     instance_name='latest_blessed_model_resolver',
+  #     resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
+  #     model=Channel(type=Model),
+  #     model_blessing=Channel(type=ModelBlessing))
 
   # Uses TFMA to compute an evaluation statistics over features of a model and
-  # performs quality validation of a candidate model.
+  # perform quality validation of a candidate model (compare to a baseline).
+  # We use the custom TFMA Metric CalculateMAP to evaluation the trained detection model,
+  # which is defined in the voc_utils_native_keras.py
   eval_config = tfma.EvalConfig(
-      model_specs=[tfma.ModelSpec(label_key='label')],
+      model_specs=[tfma.ModelSpec(model_type='tf_lite')],
       slicing_specs=[tfma.SlicingSpec()],
       metrics_specs=[
           tfma.MetricsSpec(metrics=[
               tfma.MetricConfig(
-                  class_name='SparseCategoricalAccuracy',
-                  threshold=tfma.config.MetricThreshold(
+                  class_name='CalculateMAP',
+                  module='voc_utils_native_keras',
+                  threshold=tfma.MetricThreshold(
                       value_threshold=tfma.GenericValueThreshold(
-                          lower_bound={'value': 0.8}),
-                      change_threshold=tfma.GenericChangeThreshold(
-                          direction=tfma.MetricDirection.HIGHER_IS_BETTER,
-                          absolute={'value': -1e-10})))
+                          lower_bound={'value': 0.5}))
+              )
           ])
       ])
 
   # Uses TFMA to compute the evaluation statistics over features of a model.
+  # We evaluate using the materialized examples that are output by Transform because
+  # 1. the decoding_png function currently performed within Transform are not
+  # compatible with TFLite.
+  # 2. MLKit requires deserialized (float32) tensor image inputs
+  # Note that for deployment, the same logic that is performed within Transform
+  # must be reproduced client-side.
   evaluator = Evaluator(
-      examples=example_gen.outputs['examples'],
+      examples=transform.outputs['transformed_examples'],
       model=trainer.outputs['model'],
-      eval_config=eval_config,
-      instance_name='voc')
+      # baseline_model=model_resolver.outputs['model'],
+      eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
   # to a file destination if check passed.
@@ -145,29 +174,31 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       model_blessing=evaluator.outputs['blessing'],
       push_destination=pusher_pb2.PushDestination(
           filesystem=pusher_pb2.PushDestination.Filesystem(
-              base_directory=serving_model_dir)),
-      instance_name='voc')
+              base_directory=serving_model_dir_lite)))
+
+  components = [
+      example_gen,
+      statistics_gen,
+      schema_gen,
+      example_validator,
+      transform,
+      trainer,
+      # model_resolver,
+      evaluator,
+      pusher
+  ]
 
   return pipeline.Pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
-      components=[
-          example_gen,
-          statistics_gen,
-          schema_gen,
-          example_validator,
-          transform,
-          trainer,
-          evaluator,
-          pusher,
-      ],
+      components=components,
       enable_cache=True,
       metadata_connection_config=metadata.sqlite_metadata_connection_config(
           metadata_path),
-      # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-  )
+      beam_pipeline_args=beam_pipeline_args)
 
+# To run this pipeline from the python CLI:
+#   $python voc_pipeline_native_keras.py
 if __name__ == '__main__':
   absl.logging.set_verbosity(absl.logging.INFO)
   BeamDagRunner().run(
@@ -176,8 +207,6 @@ if __name__ == '__main__':
           pipeline_root=_pipeline_root,
           data_root=_data_root,
           module_file=_module_file,
-          serving_model_dir=_serving_model_dir,
+          serving_model_dir_lite=_serving_model_dir_lite,
           metadata_path=_metadata_path,
-          # 0 means auto-detect based on the number of CPUs available during
-          # execution time.
-          direct_num_workers=0))
+          beam_pipeline_args=_beam_pipeline_args))
