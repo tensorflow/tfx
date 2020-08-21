@@ -352,7 +352,8 @@ def _find_matched_span_version_from_path(
 def _create_matching_glob_and_regex(
     uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
     is_match_date: bool, is_match_version: bool,
-    range_config: range_config_pb2.RangeConfig) -> Tuple[Text, Text]:
+    range_config: Optional[range_config_pb2.RangeConfig]
+) -> Tuple[Text, Text]:
   """Constructs glob and regex patterns for matching span and version."""
   split_pattern = os.path.join(uri, split.pattern)
   split_glob_pattern = split_pattern
@@ -420,7 +421,7 @@ def _create_matching_glob_and_regex(
     for spec, replace, spec_name in zip(DATE_SPECS, date_regex_replace,
                                         ['year', 'month', 'day']):
       split_regex_pattern = split_regex_pattern.replace(
-        spec, '(?P<{}>{})'.format(spec_name, replace))
+          spec, '(?P<{}>{})'.format(spec_name, replace))
 
   if is_match_version:
     # Check if version spec has any width modifier. Defaults to greedy matching
@@ -450,7 +451,7 @@ def _create_matching_glob_and_regex(
 def _retrieve_latest_span_version(
     uri: Text,
     split: example_gen_pb2.Input.Split,
-    range_config: Optional[range_config_pb2.RangeConfig]
+    range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Optional[int], Optional[int]]:
   """Retrieves the most recent span and version for a given split pattern.
 
@@ -487,13 +488,13 @@ def _retrieve_latest_span_version(
   """
 
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
-      split, range_config)
+      split, range_config=range_config)
 
   if not is_match_span and not is_match_date:
     return (None, None)
 
   split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
-      uri, split, is_match_span, is_match_date, is_match_version, range_config)
+      uri, split, is_match_span, is_match_date, is_match_version, range_config=range_config)
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
@@ -511,15 +512,6 @@ def _retrieve_latest_span_version(
         _find_matched_span_version_from_path(file_path, split_regex_pattern,
                                              is_match_span, is_match_date,
                                              is_match_version))
-
-    # Check parsed span number against range config, if it exists.
-    if range_config:
-      if range_config.HasField('static_range'):
-        if match_span_int != range_config.static_range.start_span_number:
-          continue
-
-      if match_span_int in range_config.exclude_span_numbers:
-        continue
 
     if latest_span_int is None or match_span_int > latest_span_int:
       # Uses str instead of int because of zero padding digits.
@@ -553,7 +545,7 @@ def _retrieve_latest_span_version(
 
 def calculate_splits_fingerprint_span_and_version(
     input_base_uri: Text, splits: Iterable[example_gen_pb2.Input.Split],
-    range_config: Optional[range_config_pb2.RangeConfig]
+    range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Text, int, Optional[int]]:
   """Calculates the fingerprint of files in a URI matching split patterns.
 
@@ -589,7 +581,7 @@ def calculate_splits_fingerprint_span_and_version(
                  select_version)
     # Find most recent span and version for this split.
     latest_span, latest_version = _retrieve_latest_span_version(
-        input_base_uri, split, range_config)
+        input_base_uri, split, range_config=range_config)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
     latest_span = latest_span or 0

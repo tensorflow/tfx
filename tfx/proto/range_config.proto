@@ -34,19 +34,5 @@ message RangeConfig {
     StaticRange static_range = 1;
   }
 
-  // Span numbers to exclude always from the range.
-  // This is used mostly to blackout corrupt or incomplete spans.
-  // Note that excluded_span_numbers are counted towards min_spans in case of
-  // static_range.
-  repeated int32 exclude_span_numbers = 3;
-
-  // Minimum number of desired example spans in the range. Processing will
-  // wait if fewer than the specified number of spans are availible in the
-  // current range.
-  // This field is not relevant to ExampleGen. For all other components, if
-  // min_spans is not set, it defaults to a range-type dependent value:
-  // For StaticRange, defaults to end_span_number - start_span_number + 1.
-  int32 min_spans = 4;
-
-  reserved 2, 5;
+  reserved 2, 3, 4, 5;
 }

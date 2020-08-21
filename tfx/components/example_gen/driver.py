@@ -56,13 +56,14 @@ class Driver(base_driver.BaseDriver):
     logging.debug('Processing input %s.', input_base)
 
     range_config = None
-    if exec_properties[utils.RANGE_CONFIG_KEY]:
+    range_config_entry = exec_properties.get(utils.RANGE_CONFIG_KEY)
+    if range_config_entry:
       range_config = range_config_pb2.RangeConfig()
-      json_format.Parse(exec_properties[utils.RANGE_CONFIG_KEY], range_config)
+      json_format.Parse(range_config_entry, range_config)
 
     # Note that this function updates the input_config.splits.pattern.
     fingerprint, span, version = utils.calculate_splits_fingerprint_span_and_version(
-        input_base, input_config.splits, range_config)
+        input_base, input_config.splits, range_config=range_config)
 
     exec_properties[utils.INPUT_CONFIG_KEY] = json_format.MessageToJson(
         input_config, sort_keys=True, preserving_proto_field_name=True)
