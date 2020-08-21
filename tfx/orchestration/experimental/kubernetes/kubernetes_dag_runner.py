@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definition of kubernetes TFX runner."""
+"""Definition of Kubernetes TFX runner."""
 
 import absl
 import datetime
@@ -102,16 +102,16 @@ class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
   def __init__(
       self,
       tfx_image: Optional[Text] = None,
-      supported_launcher_classes: List[Type[
-          base_component_launcher.BaseComponentLauncher]] = None,
+      supported_launcher_classes: Optional[List[Type[
+          base_component_launcher.BaseComponentLauncher]]] = None,
       **kwargs):
     """Creates a KubernetesDagRunnerConfig object.
 
     Args:
       tfx_image: The TFX container image to use in the pipeline.
-      supported_launcher_classes: A list of component launcher classes that are
-        supported by the current pipeline. List sequence determines the order in
-        which launchers are chosen for each component being run.
+      supported_launcher_classes: Optional list of component launcher classes
+        that are supported by the current pipeline. List sequence determines
+        the order in which launchers are chosen for each component being run.
       **kwargs: keyword args for PipelineConfig.
     """
     supported_launcher_classes = supported_launcher_classes or [
@@ -124,7 +124,7 @@ class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
 
 
 class KubernetesDagRunner(tfx_runner.TfxRunner):
-  """Tfx runner on Kubernetes."""
+  """TFX runner on Kubernetes."""
 
   def __init__(self,
                config: Optional[KubernetesDagRunnerConfig] = None):
@@ -140,7 +140,8 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     super(KubernetesDagRunner, self).__init__(config)
 
   def run(self, pipeline: tfx_pipeline.Pipeline) -> None:
-    """
+    """Deploys given logical pipeline on Kubernetes.
+
     Args:
       pipeline: Logical pipeline containing pipeline args and components.
     """
@@ -210,11 +211,14 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     """Wrapper for container component.
 
     Args:
-    component: Component to be executed.
-    component_launcher_class: The class of the launcher to launch the
-      component.
-    component_config: component config to launch the component.
-    pipeline: Logical pipeline that contains pipeline related information.
+      component: Component to be executed.
+      component_launcher_class: The class of the launcher to launch the
+        component.
+      component_config: component config to launch the component.
+      pipeline: Logical pipeline that contains pipeline related information.
+
+    Returns:
+      A container component that runs the wrapped component upon execution.
     """
 
     component_launcher_class_path = '.'.join([

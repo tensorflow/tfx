@@ -155,11 +155,11 @@ def sanitize_pod_name(pod_name: Text) -> Text:
   return re.sub(r'[-]+', '-', pod_name)
 
 
-def pod_is_not_pending(resp: k8s_client.V1Pod):
+def pod_is_not_pending(resp: k8s_client.V1Pod) -> bool:
   return resp.status.phase != PodPhase.PENDING.value
 
 
-def pod_is_done(resp: k8s_client.V1Pod):
+def pod_is_done(resp: k8s_client.V1Pod) -> bool:
   return PodPhase(resp.status.phase).is_done
 
 
