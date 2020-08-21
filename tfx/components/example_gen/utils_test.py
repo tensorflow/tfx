@@ -774,5 +774,9 @@ class UtilsTest(tf.test.TestCase):
     self.assertIsNone(version)
     self.assertEqual(splits2[0].pattern, 'span01/split1/*')
 
+  # TODO(jjma): Write this.
+  def testRangeConfigWithDateSpec(self):
+    pass
+
 if __name__ == '__main__':
   tf.test.main()

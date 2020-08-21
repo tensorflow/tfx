@@ -241,6 +241,12 @@ def date_to_span_number(year: int, month: int, day: int) -> int:
   return (datetime.datetime(year, month, day) - UNIX_EPOCH_DATE).days
 
 
+def span_number_to_date(span: int) -> Tuple[int, int, int]:
+  """Given a span number, convert it to the corresponding calendar date."""
+  date = UNIX_EPOCH_DATE + datetime.timedelta(span)
+  return date.year, date.month, date.day
+
+
 def _verify_split_pattern_specs(
     split: example_gen_pb2.Input.Split,
     range_config: Optional[range_config_pb2.RangeConfig]
@@ -392,16 +398,31 @@ def _create_matching_glob_and_regex(
                                  split_regex_pattern)
 
   elif is_match_date:
-    for spec in DATE_SPECS:
+    date_glob_replace = ['*', '*', '*']
+    # Defines a clear number of digits for certain element of date, in order of
+    # year, month, and day. This covers cases where date stamps may not have
+    # seperators between them.
+    date_regex_replace = ['{4}', '{2}', '{2}']
+    
+    if range_config and range_config.HasField('static_range'):
+      # If using RangeConfig.static_range, replace span spec in patterns
+      # with date derived from given span from static range.
+      span_int = range_config.static_range.start_span_number
+      year, month, day = span_number_to_date(span_int)
+      date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
+      
+      date_glob_replace = date_tokens
+      date_regex_replace = date_tokens
+      
+    for spec, replace in zip(DATE_SPECS, date_glob_replace):
       split_glob_pattern = split_glob_pattern.replace(spec, '*')
-    # Defines a clear number of digits for certain element of date. This covers
-    # cases where date stamps may not have seperators between them.
+    
     split_regex_pattern = split_regex_pattern.replace(
-        YEAR_SPEC, '(?P<{}>.{{4}})'.format('year'))
+        YEAR_SPEC, '(?P<{}>.{})'.format('year', date_regex_replace[0]))
     split_regex_pattern = split_regex_pattern.replace(
-        MONTH_SPEC, '(?P<{}>.{{2}})'.format('month'))
+        MONTH_SPEC, '(?P<{}>.{})'.format('month', date_regex_replace[1]))
     split_regex_pattern = split_regex_pattern.replace(
-        DAY_SPEC, '(?P<{}>.{{2}})'.format('day'))
+        DAY_SPEC, '(?P<{}>.{})'.format('day', date_regex_replace[2]))
 
   if is_match_version:
     # Check if version spec has any width modifier. Defaults to greedy matching
