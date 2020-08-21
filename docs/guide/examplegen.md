@@ -169,6 +169,11 @@ Span can be retrieved by using '{SPAN}' spec in the
 *   This spec matches digits and maps the data into the relevant SPAN numbers.
     For example, 'data_{SPAN}-*.tfrecord' will collect files like
     'data_12-a.tfrecord', 'date_12-b.tfrecord'.
+*   Optionally, this spec can be specified with the width of the integers
+    when mapped. For example, 'data_{SPAN:2}.file' maps to files like 
+    'data_02.file' and 'data_27.file' (as inputs for Span-2 and Span-27 
+    respectively), but does not map to 'data_1.file' nor 'data_123.file'. 
+    For zero padding digits (e.g., `0012`), the width must be used.
 *   When SPAN spec is missing, it's assumed to be always Span '0'.
 *   If SPAN is specified, pipeline will process the latest span, and store the
     span number in metadata
@@ -219,9 +224,34 @@ Note: Retrieving a certain span is not supported yet. You can only fix the
 pattern for now (for example, 'span-2/eval/*' instead of 'span-{SPAN}/eval/*'),
 but by doing this, span number stored in metadata will be zero.
 
+### Date
+
+Note: this feature is only availible after TFX 0.22.1.
+
+If your data source is organized on your filesystem by date, TFX supports
+mapping dates directly to span numbers. There are three specs to represent 
+mapping from dates to spans: {YYYY}, {MM}, and {DD}. The three specs should 
+be altogether present in the [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) 
+once any is specified. 
+
+*   Either {SPAN} spec or this set of date specs can be specified
+    exclusively.
+*   A calendar date with the year from YYYY, the month from MM, and the
+    day of the month from DD is calculated, then the span number is calculated 
+    as as the number of days since unix epoch (i.e. 1970-01-01). For example,
+    'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data' and 
+    consumes it as input for Span-0, and 'log-20170101.data' as input for 
+    Span-17167.
+
+`TODO(jjma): add example.`
+
+### Range Config
+
+`TODO(jjma): add explanation.`
+
 ### Version
 
-Note: Version is not supported yet
+`TODO(jjma): add explanation.`
 
 ## Custom ExampleGen
 
