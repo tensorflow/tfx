@@ -66,6 +66,7 @@ class DriverTest(tf.test.TestCase):
                         pattern='span{SPAN}/version{VERSION}/split2/*')
                 ]),
                 preserving_proto_field_name=True),
+        utils.RANGE_CONFIG_KEY: None,
     }
 
     # Test align of span number.
@@ -133,10 +134,10 @@ class DriverTest(tf.test.TestCase):
         example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(
                 name='s1',
-                pattern='span{SPAN}/version{VERSION}/split1/*'),
+                pattern='span{SPAN:2}/version{VERSION}/split1/*'),
             example_gen_pb2.Input.Split(
                 name='s2',
-                pattern='span{SPAN}/version{VERSION}/split2/*')
+                pattern='span{SPAN:2}/version{VERSION}/split2/*')
         ]),
         preserving_proto_field_name=True)
 
