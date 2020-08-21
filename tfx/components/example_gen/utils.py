@@ -406,8 +406,8 @@ def _create_matching_glob_and_regex(
     date_regex_replace = ['.{4}', '.{2}', '.{2}']
 
     if range_config and range_config.HasField('static_range'):
-      # If using RangeConfig.static_range, replace span spec in patterns
-      # with date derived from given span from static range.
+      # If using RangeConfig.static_range, replace date specs in patterns
+      # with calendar date derived from given span from static range.
       span_int = range_config.static_range.start_span_number
       year, month, day = span_number_to_date(span_int)
       date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
