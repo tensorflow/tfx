@@ -51,7 +51,7 @@ setup(
     ],
     namespace_packages=[],
     install_requires=[
-        'tfx>=0.22.0,<=0.23.0.dev',
+        'tfx>=0.23.0,<=0.24.0.dev',
         'tflite-support>=0.1.0a1,<0.1.1',
         'flatbuffers>=1.12,<1.13',
         'tensorflowjs>=2.0.1,<2.0.2',

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import hashlib
 import json
 import os
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
@@ -61,6 +62,8 @@ from tensorflow_metadata.proto.v0 import statistics_pb2
 EXAMPLES_KEY = 'examples'
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
+# Key for analyzer cache in executor input_dict.
+ANALYZER_CACHE_KEY = 'analyzer_cache'
 
 # Key for temp path, for internal use only.
 TEMP_PATH_KEY = 'temp_path'
@@ -69,6 +72,8 @@ TEMP_PATH_KEY = 'temp_path'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 # Key for output model in executor output_dict.
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
+# Key for updated analyzer cache in executor output_dict.
+UPDATED_ANALYZER_CACHE_KEY = 'updated_analyzer_cache'
 
 RAW_EXAMPLE_KEY = 'raw_example'
 
@@ -125,11 +130,6 @@ class _Dataset(object):
   It also contains bundle of stages of a single dataset through the transform
   pipeline.
   """
-  # TODO(b/37788560): This seems like a brittle way of creating dataset keys.
-  # In particular there are no guarantees that there won't be colissions.
-  # A better approach might be something like ArtifactID, or perhaps
-  # SHA256(file_pattern) which might also be a lot less verbose (even if it
-  # might not be as self-describing).
   _FILE_PATTERN_SUFFIX_LENGTH = 6
 
   def __init__(self, file_pattern: Text,
@@ -152,7 +152,9 @@ class _Dataset(object):
     self._file_pattern = file_pattern
     file_pattern_suffix = os.path.join(
         *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
-    self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
+    dataset_identifier = file_pattern_suffix + '-' + hashlib.sha256(
+        file_pattern.encode()).hexdigest()
+    self._dataset_key = analyzer_cache.DatasetKey(dataset_identifier)
     self._file_format = file_format
     self._data_format = data_format
     self._data_view_uri = data_view_uri
@@ -293,6 +295,8 @@ class Executor(base_executor.BaseExecutor):
           not provided, this should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
+        - analyzer_cache: Cache input of 'tf.Transform', where cached
+          information for analyzed examples from previous runs will be read.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
@@ -300,6 +304,8 @@ class Executor(base_executor.BaseExecutor):
           includes transform splits as specified in splits_config. If custom
           split is not provided, this should include both 'train' and 'eval'
           splits.
+        - updated_analyzer_cache: Cache output of 'tf.Transform', where
+          cached information for analyzed examples will be written.
       exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
@@ -367,7 +373,7 @@ class Executor(base_executor.BaseExecutor):
         materialize_output_paths.append(transformed_example)
 
     def _GetCachePath(label, params_dict):
-      if label not in params_dict:
+      if params_dict.get(label) is None:
         return None
       else:
         return artifact_utils.get_single_uri(params_dict[label])
@@ -396,7 +402,7 @@ class Executor(base_executor.BaseExecutor):
         labels.CUSTOM_CONFIG:
             exec_properties.get('custom_config', None),
     }
-    cache_input = _GetCachePath('cache_input_path', input_dict)
+    cache_input = _GetCachePath(ANALYZER_CACHE_KEY, input_dict)
     if cache_input is not None:
       label_inputs[labels.CACHE_INPUT_PATH_LABEL] = cache_input
 
@@ -406,7 +412,7 @@ class Executor(base_executor.BaseExecutor):
             materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
-    cache_output = _GetCachePath('cache_output_path', output_dict)
+    cache_output = _GetCachePath(UPDATED_ANALYZER_CACHE_KEY, output_dict)
     if cache_output is not None:
       label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
@@ -586,7 +592,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
-    kwargs = tfdv.utils.batch_util.GetBeamBatchKwargs(
+    kwargs = tfx_bsl.coders.batch_util.GetBatchElementsKwargs(
         tft_beam.Context.get_desired_batch_size())
     return (
         pcoll

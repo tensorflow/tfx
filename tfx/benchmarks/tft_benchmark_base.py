@@ -35,11 +35,10 @@ from tensorflow_transform.beam import impl as tft_beam_impl
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
-from tfx_bsl.beam import shared
-
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
+from tfx_bsl.beam import shared
 
 
 class _CopySavedModel(beam.PTransform):

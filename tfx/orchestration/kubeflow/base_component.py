@@ -32,8 +32,6 @@ from typing import Dict, Optional, Set, Text, Type
 import absl
 from kfp import dsl
 from kubernetes import client as k8s_client
-
-from google.protobuf import json_format
 from tfx.components.base import base_node as tfx_base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.config import base_component_config
@@ -42,6 +40,8 @@ from tfx.orchestration.kubeflow import utils
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import json_utils
+
+from google.protobuf import json_format
 
 _COMMAND = [
     'python', '/tfx-src/tfx/orchestration/kubeflow/container_entrypoint.py'

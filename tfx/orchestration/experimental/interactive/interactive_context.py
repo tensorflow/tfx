@@ -36,8 +36,6 @@ import absl
 import jinja2
 import nbformat
 from six.moves import builtins
-
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
@@ -48,6 +46,8 @@ from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.utils import telemetry_utils
+
+from ml_metadata.proto import metadata_store_pb2
 
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'

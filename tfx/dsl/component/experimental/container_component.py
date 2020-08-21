@@ -19,6 +19,7 @@ from typing import Any, Callable, Dict, List, Text
 from tfx.components.base import base_component
 from tfx.dsl.component.experimental import component_utils
 from tfx.dsl.component.experimental import executor_specs
+from tfx.dsl.component.experimental import placeholders
 from tfx.types import channel_utils
 from tfx.types import component_spec
 
@@ -26,7 +27,7 @@ from tfx.types import component_spec
 def create_container_component(
     name: Text,
     image: Text,
-    command: List[executor_specs.CommandlineArgumentType],
+    command: List[placeholders.CommandlineArgumentType],
     inputs: Dict[Text, Any] = None,
     outputs: Dict[Text, Any] = None,
     parameters: Dict[Text, Any] = None,
