@@ -5,7 +5,7 @@ This example illustrates how to use Tensorflow Object Detection API for object d
 [MediaPipe]([https://google.github.io/mediapipe/](https://google.github.io/mediapipe/))
 
 ## Instruction
-
+### Dependencies
 Create a Python 3 virtual environment for this example and activate the
 `virtualenv`:
 
@@ -16,6 +16,7 @@ source ./voc/bin/activate
 Next, install the dependencies required by the VOC example (appropriate version of TF2 will be installed automatically).
 ```
 pip install tfx
+pip install apache-beam
 ```
 Then, clone the tfx repo and copy voc/ folder to home directory:
 
@@ -30,7 +31,12 @@ Then, add the voc folder to the PYTHONPATH environment variable.
 ```
 export PYTHONPATH=$PYTHONPATH:/path/to/voc/folder
 ```
-
+### Pre-trained Model
+We use pre-trained [SSD MobileNet v2 320x320](http://download.tensorflow.org/models/object_detection/tf2/20200711/ssd_mobilenet_v2_320x320_coco17_tpu-8.tar.gz) provided by Tensorflow Object Detection API's [model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md) in our pipeline. Please download the model checkpoint, unzip it  and copy it to the `model_checkpoints` folder.
+```
+mkdir ~/voc/model_checkpoints
+cp -r ssd_mobilenet_v2_320x320_coco17_tpu-8 ~/voc/model_checkpoints
+```
 ### Dataset
 
 There is a subset of VOC 2007 (256 train images, 100 test images) available in the data folder. To prepare the whole dataset, first create a script and run the following Python
