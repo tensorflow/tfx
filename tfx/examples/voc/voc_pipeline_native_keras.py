@@ -44,7 +44,7 @@ from tfx.utils.dsl_utils import external_input
 _pipeline_name = 'voc_native_keras'
 
 # This example assumes that VOC train set data is stored in
-# ~/voc/data/train, test set data is stored in ~/voc/data/test, and
+# ~/voc/data/train_tiny, test set data is stored in ~/voc/data/val_tiny, and
 # the utility function is in ~/voc. Feel free to customize as needed.
 _voc_root = os.path.join(os.environ['HOME'], 'voc')
 _data_root = os.path.join(_voc_root, 'data')
@@ -80,7 +80,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
                      beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Implements the VOC 2007 object detection pipeline using TFX."""
   # This is needed for datasets with pre-defined splits
-  # Change the pattern argument to train_whole/* and test_whole/* to train
+  # Change the pattern argument to train_whole/* and val_whole/* to train
   # on the whole VOC 2007 dataset
   input_config = example_gen_pb2.Input(splits=[
             example_gen_pb2.Input.Split(name='train', pattern='train_tiny/*'),
@@ -123,8 +123,7 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       train_args=trainer_pb2.TrainArgs(num_steps=160),
       eval_args=trainer_pb2.EvalArgs(num_steps=4))
 
-  # Uses TFMA to compute an evaluation statistics over features of a model and
-  # perform quality validation of a candidate model (compare to a baseline).
+  # Uses TFMA to compute an evaluation statistics over features of a model.
   # We use the custom TFMA Metric CalculateMAP to evaluation the trained detection model,
   # which is defined in the voc_utils_native_keras.py
   eval_config = tfma.EvalConfig(

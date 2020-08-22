@@ -23,6 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import time
 from typing import Text, List, Dict, Iterable
 
 import absl
@@ -35,13 +36,10 @@ from object_detection.builders import model_builder
 from tfx.components.trainer.rewriting import converters
 from tfx.components.trainer.rewriting import rewriter
 from tfx.components.trainer.rewriting import rewriter_factory
-
 from tfx.components.trainer.executor import TrainerFnArgs
 
 import tensorflow_model_analysis as tfma
 import apache_beam as beam
-
-import time
 
 _TRAIN_DATA_SIZE = 256
 _EVAL_DATA_SIZE = 100
@@ -53,6 +51,9 @@ _OBJECT_BOX_KEY = 'objects/bbox'
 _OBJECT_CLASS_KEY = 'objects/label'
 _FILENAME_KEY = 'image/filename'
 
+# TFLite model rewriter will change the keys in detection dict to
+# Identity_{}. Please double check the remapping when using a model
+# that's different from the one in this pipeline.
 _TFLITE_DETECTION_BOX_KEY = 'Identity'
 _TFLITE_DETECTION_CLASS_KEY = 'Identity_1'
 _TFLITE_DETECTION_SCORE_KEY = 'Identity_2'
@@ -157,8 +158,8 @@ def _build_detection_model():
       model_config=model_config, is_training=True)
 
   # We only restore the weights for backbone and box prediction heads.
-  # We need to train the class prediction head on our own since we are finetuning
-  # on a different dataset than COCO
+  # We need to train the class prediction head from scratch since we are finetuning
+  # on a different dataset than COCO.
   fake_box_predictor = tf.compat.v2.train.Checkpoint(
       _prediction_heads={
           'box_encodings':
@@ -212,6 +213,8 @@ def preprocessing_fn(inputs):
                              inputs[_IMAGE_KEY], dtype=tf.float32)
 
   outputs[_transformed_name(_IMAGE_KEY)] = image_features
+  # Note that the object boxes and object labels are Sparse Tensor because
+  # different images have different number of objects annotations.
   outputs[_transformed_name(_OBJECT_BOX_KEY)] = inputs[_OBJECT_BOX_KEY]
   outputs[_transformed_name(_OBJECT_CLASS_KEY)] = inputs[_OBJECT_CLASS_KEY]
   # We will need filename as image identifier for the evaluator in custom TFMA metric
@@ -242,7 +245,8 @@ class _MAPPreprocessor(beam.DoFn):
     groundtruth = {}
     predictions = {}
 
-    # The evaluator in TF Object Detection API needs to take 1-indexed class labels
+    # The evaluator in TF Object Detection API needs to take 1-indexed class labels.
+    # we need to shift the labels by 1.
     label_id_offset = 1
     groundtruth['groundtruth_classes'] = extracts['features'] \
                                           ['objects/label_xf'] + label_id_offset
@@ -348,8 +352,8 @@ def run_fn(fn_args: TrainerFnArgs):
   train_dataset = _input_fn(fn_args.train_files, tf_transform_output, 1)
   model = _build_detection_model()
 
-  # Select variables corresponding to classification head to fine-tune.
-  # Here we only train the weights for class prediction head.
+  # Select variables corresponding to classification heads for fine-tuning.
+  # Here we only train the weights for class prediction heads.
   trainable_variables = model.trainable_variables
   to_fine_tune = []
   prefixes_to_train = ['BoxPredictor/ConvolutionalClassHead']
@@ -389,7 +393,7 @@ def run_fn(fn_args: TrainerFnArgs):
         'epoch {} takes {:.2f} minutes'.format(
             e_idx, (epoch_end_time-epoch_start_time)/60))
 
-  # The model provided by TF Object Detection API is a Keras Layer.
+  # The model provided by TF Object Detection API is a Keras Layer object.
   # we wrap it into a Keras Model.
   keras_inputs = tf.keras.Input(
       shape=(None, None, 3),
