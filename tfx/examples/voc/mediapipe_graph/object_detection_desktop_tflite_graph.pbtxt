@@ -45,8 +45,6 @@ node {
       use_custom_normalization: true,
       custom_div: 1.0,
       custom_sub: 0.0
-      #use_quantized_tensors:true,
-      #zero_center: true
     }
   }
 }
@@ -60,7 +58,7 @@ node {
   output_stream: "TENSORS:detection_tensors"
   node_options: {
     [type.googleapis.com/mediapipe.TfLiteInferenceCalculatorOptions] {
-      model_path: "/usr/local/google/home/jingxiangl/voc/serving_model/voc_native_keras/1598040285/tflite"
+      model_path: "PATH_TO_YOUR_TFLITE_MODEL"
     }
   }
 }
