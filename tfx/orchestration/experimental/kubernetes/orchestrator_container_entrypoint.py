@@ -57,7 +57,7 @@ def main():
     raise RuntimeError("downstream_ids needs to be a 'dict'.")
   if len(downstream_ids) != len(components):
     raise RuntimeError(
-        'Wrong number of items in downstream_ids. Expected: %s. Actual: %s' %
+        'Wrong number of items in downstream_ids. Expected: %s. Actual: %d' %
         len(components), len(downstream_ids))
 
   id_to_component = {component.id: component for component in components}

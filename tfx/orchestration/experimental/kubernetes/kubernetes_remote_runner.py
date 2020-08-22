@@ -32,13 +32,14 @@ _ORCHESTRATOR_COMMAND = [
     'python', '-m', 'tfx.orchestration.experimental.kubernetes.orchestrator_container_entrypoint'
 ]
 
-# Amount of seconds to wait for a Kubernetes job to spawn a pod.
+# Number of seconds to wait for a Kubernetes job to spawn a pod.
 # This is expected to take only a few seconds.
 JOB_CREATION_TIMEOUT = 300
 
+
 def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
                           tfx_image: Text) -> None:
-  """Submits and runs a tfx pipeline from outside the cluster.
+  """Submits and runs a TFX pipeline from outside the cluster.
 
   Args:
     pipeline: Logical pipeline containing pipeline args and components.
@@ -67,7 +68,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
   )
   try:
     batch_api.create_namespaced_job(
-        "default", job, pretty=True)
+        'default', job, pretty=True)
   except client.rest.ApiException as e:
     raise RuntimeError('Failed to submit job! \nReason: %s\nBody: %s' %
                        (e.reason, e.body))
@@ -93,18 +94,17 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
 
   # Transient orchestrator should only have 1 pod.
   if len(orchestrator_pods) != 1:
-    raise RuntimeError('Expected 1 pod launched by kubernetes job, found %s' %
+    raise RuntimeError('Expected 1 pod launched by Kubernetes job, found %d' %
                        len(orchestrator_pods))
   orchestrator_pod = orchestrator_pods.pop()
   pod_name = orchestrator_pod.metadata.name
 
-  cond = kube_utils.pod_is_not_pending
   absl.logging.info('Waiting for pod "default:%s" to start.', pod_name)
   kube_utils.wait_pod(
       core_api,
       pod_name,
       'default',
-      exit_condition_lambda=cond,
+      exit_condition_lambda=kube_utils.pod_is_not_pending,
       condition_description='non-pending status')
 
   # Stream logs from orchestrator pod.
@@ -124,18 +124,18 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
   for log in logs:
     absl.logging.info(log.decode().rstrip('\n'))
 
-  cond = kube_utils.pod_is_done
   resp = kube_utils.wait_pod(
       core_api,
       pod_name,
       'default',
-      exit_condition_lambda=cond,
+      exit_condition_lambda=kube_utils.pod_is_done,
       condition_description='done state',
       exponential_backoff=True)
 
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
     raise RuntimeError('Pod "default:%s" failed with status "%s".' %
                        (pod_name, resp.status))
+
 
 def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   """Serializes a TFX pipeline.
@@ -144,8 +144,8 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   https://github.com/tensorflow/community/pull/271. This serialization
   procedure extracts from the pipeline properties necessary for reconstructing
   the pipeline instance from within the cluster. For properties such as
-  components and metadata config that can not be directly dumped with json,
-  we use NodeWrapper and MessageToJson to serialize them beforhand.
+  components and metadata config that can not be directly dumped with JSON,
+  we use NodeWrapper and MessageToJson to serialize them beforehand.
 
   Args:
     pipeline: Logical pipeline containing pipeline args and components.
@@ -173,6 +173,7 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
       ),
       'beam_pipeline_args': pipeline.beam_pipeline_args,
   })
+
 
 def _extract_downstream_ids(
     components: List[base_node.BaseNode]) -> Dict[Text, List[Text]]:
