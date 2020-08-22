@@ -34,8 +34,8 @@ node: {
 }
 
 # Converts the transformed input image on CPU into an image tensor as a
-# TfLiteTensor. The zero_center option is set to true to normalize the
-# pixel values to [-1.f, 1.f] as opposed to [0.f, 1.f].
+# TfLiteTensor. Here are effectively not doing any normalization because 
+# the normalization is already included in our model and will be executed during inference
 node {
   calculator: "TfLiteConverterCalculator"
   input_stream: "IMAGE:transformed_input_video"
