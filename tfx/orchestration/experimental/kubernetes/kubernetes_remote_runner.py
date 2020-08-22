@@ -32,6 +32,10 @@ _ORCHESTRATOR_COMMAND = [
     'python', '-m', 'tfx.orchestration.experimental.kubernetes.orchestrator_container_entrypoint'
 ]
 
+# Amount of seconds to wait for a Kubernetes job to spawn a pod.
+# This is expected to take only a few seconds.
+JOB_CREATION_TIMEOUT = 300
+
 def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
                           tfx_image: Text) -> None:
   """Submits and runs a tfx pipeline from outside the cluster.
@@ -74,9 +78,8 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
   start_time = datetime.datetime.utcnow()
 
   # Wait for the kubernetes job to launch a pod.
-  # This is expected to only take a few seconds.
   while not orchestrator_pods and (
-      datetime.datetime.utcnow() - start_time).seconds < 300:
+      datetime.datetime.utcnow() - start_time).seconds < JOB_CREATION_TIMEOUT:
     try:
       orchestrator_pods = core_api.list_namespaced_pod(
           namespace='default',
@@ -88,7 +91,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
                            (e.reason, e.body))
     time.sleep(1)
 
-  # Transient orchestrator should only have 1 pod
+  # Transient orchestrator should only have 1 pod.
   if len(orchestrator_pods) != 1:
     raise RuntimeError('Expected 1 pod launched by kubernetes job, found %s' %
                        len(orchestrator_pods))
