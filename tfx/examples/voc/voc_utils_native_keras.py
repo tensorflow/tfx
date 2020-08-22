@@ -287,13 +287,12 @@ class _MAPCombiner(beam.CombineFn):
   def extract_output(self,
                      accumulator: List) -> Dict[tfma.metrics.MetricKey, float]:
     for example in accumulator:
+      # Note: The order of the following two function calss cannot be swapped.
       self.evaluator.add_single_ground_truth_image_info(example['filename'],
                                                         example['groundtruth'])
       self.evaluator.add_single_detected_image_info(example['filename'],
                                                     example['predictions'])
     out = self.evaluator.evaluate()
-    absl.logging.info('The model\'s mAP on validation set is')
-    absl.logging.info(out)
     print('The model\'s mAP on validation set is')
     print(out)
     return {self._metric_key: out['PascalBoxes_Precision/mAP@0.5IOU']}

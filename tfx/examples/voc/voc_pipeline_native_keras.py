@@ -31,19 +31,14 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-# from tfx.components import ResolverNode
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
-# from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto import example_gen_pb2
-# from tfx.types import Channel
-# from tfx.types.standard_artifacts import Model
-# from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'voc_native_keras'
@@ -128,13 +123,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       train_args=trainer_pb2.TrainArgs(num_steps=160),
       eval_args=trainer_pb2.EvalArgs(num_steps=4))
 
-  # Get the latest blessed model for model validation.
-  # model_resolver = ResolverNode(
-  #     instance_name='latest_blessed_model_resolver',
-  #     resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-  #     model=Channel(type=Model),
-  #     model_blessing=Channel(type=ModelBlessing))
-
   # Uses TFMA to compute an evaluation statistics over features of a model and
   # perform quality validation of a candidate model (compare to a baseline).
   # We use the custom TFMA Metric CalculateMAP to evaluation the trained detection model,
@@ -158,13 +146,12 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
   # We evaluate using the materialized examples that are output by Transform because
   # 1. the decoding_png function currently performed within Transform are not
   # compatible with TFLite.
-  # 2. MLKit requires deserialized (float32) tensor image inputs
+  # 2. MediaPipe requires deserialized (float32) tensor image inputs
   # Note that for deployment, the same logic that is performed within Transform
   # must be reproduced client-side.
   evaluator = Evaluator(
       examples=transform.outputs['transformed_examples'],
       model=trainer.outputs['model'],
-      # baseline_model=model_resolver.outputs['model'],
       eval_config=eval_config)
 
   # Checks whether the model passed the validation steps and pushes the model
@@ -183,7 +170,6 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       example_validator,
       transform,
       trainer,
-      # model_resolver,
       evaluator,
       pusher
   ]
