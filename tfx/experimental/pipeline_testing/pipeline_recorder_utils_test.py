@@ -34,7 +34,6 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     self.src_uri = os.path.join(self._base_dir, 'input')
     self.dest_uri = os.path.join(self._base_dir, 'output')
     tf.io.gfile.makedirs(self.src_uri)
-    tf.io.gfile.makedirs(self.dest_uri)
     # Writing a string to test.txt file in src_uri
     self.content = 'pipeline recorded'
     io_utils.write_string_file(

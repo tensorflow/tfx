@@ -66,7 +66,6 @@ class StubComponentLauncherTest(tf.test.TestCase):
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    # test_dir = "/Users/sujipark/tfx/test"
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
@@ -105,13 +104,12 @@ class StubComponentLauncherTest(tf.test.TestCase):
     component_map = \
         {self.component.id: CustomStubExecutor}
 
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=[],
-            stubbed_component_map=component_map)
+    stub_component_launcher.StubComponentLauncher.initialize(
+        test_data_dir=self.record_dir,
+        stubbed_component_ids=[],
+        stubbed_component_map=component_map)
 
-    launcher = my_stub_launcher.create(
+    launcher = stub_component_launcher.StubComponentLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,
@@ -136,13 +134,12 @@ class StubComponentLauncherTest(tf.test.TestCase):
     io_utils.write_string_file(record_file, 'hello world')
     component_ids = [self.component.id]
 
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=component_ids,
-            stubbed_component_map={})
+    stub_component_launcher.StubComponentLauncher.initialize(
+        test_data_dir=self.record_dir,
+        stubbed_component_ids=component_ids,
+        stubbed_component_map={})
 
-    launcher = my_stub_launcher.create(
+    launcher = stub_component_launcher.StubComponentLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,
@@ -165,13 +162,12 @@ class StubComponentLauncherTest(tf.test.TestCase):
     io_utils.write_string_file(
         os.path.join(self.input_dir, 'result.txt'), 'test')
 
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=[],
-            stubbed_component_map={})
+    stub_component_launcher.StubComponentLauncher.initialize(
+        test_data_dir=self.record_dir,
+        stubbed_component_ids=[],
+        stubbed_component_map={})
 
-    launcher = my_stub_launcher.create(
+    launcher = stub_component_launcher.StubComponentLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,

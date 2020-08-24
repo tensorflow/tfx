@@ -172,7 +172,8 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
 
     for src_uri, dest_uri in _get_paths(metadata_connection, executions,
                                         output_dir):
-      if not tf.io.gfile.exists(src_uri):
-        raise FileNotFoundError('{} does not exist'.format(src_uri))
-      io_utils.copy_dir(src_uri, dest_uri)
+      if tf.io.gfile.exists(dest_uri):
+        logging.info('Destination %s already exists.', dest_uri)
+      else:
+        io_utils.copy_dir(src_uri, dest_uri)
     logging.info('Pipeline Recorded at %s', output_dir)
