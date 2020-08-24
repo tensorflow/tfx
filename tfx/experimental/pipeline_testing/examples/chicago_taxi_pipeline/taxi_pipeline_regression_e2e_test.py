@@ -88,13 +88,11 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._recorded_mlmd_path,
         beam_pipeline_args=[])
     BeamDagRunner().run(record_taxi_pipeline)
+
     pipeline_recorder_utils.record_pipeline(
         output_dir=self._recorded_output_dir,
         metadata_db_uri=self._recorded_mlmd_path,
-        host=None,
-        port=None,
-        pipeline_name=self._pipeline_name,
-        run_id=None)
+        pipeline_name=self._pipeline_name)
 
     # Run pipeline with stub executors.
     taxi_pipeline = taxi_pipeline_beam._create_pipeline(  # pylint:disable=protected-access
