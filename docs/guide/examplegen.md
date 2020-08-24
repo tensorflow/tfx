@@ -176,7 +176,7 @@ Span can be retrieved by using '{SPAN}' spec in the
     For zero padding digits (e.g., `0012`), the width must be used.
 *   When SPAN spec is missing, it's assumed to be always Span '0'.
 *   If SPAN is specified, pipeline will process the latest span, and store the
-    span number in metadata
+    span number in metadata.
 
 For example, let's assume there are input data:
 
@@ -203,8 +203,8 @@ when triggering the pipeline, it will process:
 *   '/tmp/span-02/train/data' as train split
 *   '/tmp/span-02/eval/data' as eval split
 
-with span number as '02'. If later on '/tmp/span-03/...' are ready, simply
-trigger the pipeline again and it will pick up span '03' for processing. Below
+with span number as '2'. If later on '/tmp/span-03/...' are ready, simply
+trigger the pipeline again and it will pick up span '3' for processing. Below
 shows the code example for using span spec:
 
 ```python
@@ -228,7 +228,7 @@ but by doing this, span number stored in metadata will be zero.
 
 Note: this feature is only availible after TFX 0.22.1.
 
-If your data source is organized on your filesystem by date, TFX supports
+If your data source is organized on filesystem by date, TFX supports
 mapping dates directly to span numbers. There are three specs to represent 
 mapping from dates to spans: {YYYY}, {MM}, and {DD}. The three specs should 
 be altogether present in the [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) 
@@ -242,16 +242,82 @@ once any is specified.
     'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data' and 
     consumes it as input for Span-0, and 'log-20170101.data' as input for 
     Span-17167.
+*   If this set of date specs is specified, pipeline will process the latest
+    latest date, and store the corresponding span number in metadata.
 
 `TODO(jjma): add example.`
 
 ### Range Config
 
+Note: this feature is only availible after TFX 0.22.1.
+
 `TODO(jjma): add explanation.`
 
 ### Version
 
-`TODO(jjma): add explanation.`
+Note: this feature is only availible after TFX 0.22.1.
+
+Version can be retrieved by using '{VERSION}' spec in the
+[input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
+
+*   This spec matches to non-zero padding digits and maps the data to the 
+    relevant VERSION numbers under the SPAN.
+*   It could also be optionally specified with the width in the same way
+    as SPAN spec. e.g. 'span-{SPAN}/version-{VERSION:4}/data-*'.
+    For zero padding digits (e.g., `0012`), the width must be used.
+*   When VERSION spec is missing, version is set to be None.
+*   If SPAN and VERSION are both specified, pipeline will process the
+    latest version for the latest span, and store the version number in
+    metadata.
+*   If VERSION is specified, but not SPAN, an error will be thrown.
+
+For example, let's assume there are input data:
+
+*   '/tmp/span-01/ver-01/train/data'
+*   '/tmp/span-01/ver-01/eval/data'
+*   '/tmp/span-02/ver-01/train/data'
+*   '/tmp/span-02/ver-01/eval/data'
+*   '/tmp/span-02/ver-02/train/data'
+*   '/tmp/span-02/ver-02/eval/data'
+
+and the input config is shown as below:
+
+```python
+splits {
+  name: 'train'
+  pattern: 'span-{SPAN}/ver-{VERSION}/train/*'
+}
+splits {
+  name: 'eval'
+  pattern: 'span-{SPAN}/ver-{VERSION}/eval/*'
+}
+```
+
+when triggering the pipeline, it will process:
+
+*   '/tmp/span-02/ver-02/train/data' as train split
+*   '/tmp/span-02/ver-02/eval/data' as eval split
+
+with span number as '2' and version number as '2'. If later on 
+'/tmp/span-02/ver-03/...' are ready, simply trigger the pipeline again 
+and it will pick up span '2' and version '3' for processing. Below
+shows the code example for using version spec:
+
+```python
+from  tfx.proto import example_gen_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='span-{SPAN}/ver-{VERSION}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='span-{SPAN}/ver-{VERSION}/eval/*')
+            ])
+examples = csv_input('/tmp')
+example_gen = CsvExampleGen(input=examples, input_config=input)
+```
+
+
+`TODO(jjma): add example.`
 
 ## Custom ExampleGen
 
