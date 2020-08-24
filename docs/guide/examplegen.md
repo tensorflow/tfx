@@ -220,10 +220,6 @@ examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
-Note: Retrieving a certain span is not supported yet. You can only fix the
-pattern for now (for example, 'span-2/eval/*' instead of 'span-{SPAN}/eval/*'),
-but by doing this, span number stored in metadata will be zero.
-
 ### Date
 
 Note: this feature is only availible after TFX 0.22.1.
@@ -232,7 +228,7 @@ If your data source is organized on filesystem by date, TFX supports
 mapping dates directly to span numbers. There are three specs to represent 
 mapping from dates to spans: {YYYY}, {MM}, and {DD}. The three specs should 
 be altogether present in the [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) 
-once any is specified. 
+once any is specified:
 
 *   Either {SPAN} spec or this set of date specs can be specified
     exclusively.
@@ -245,7 +241,47 @@ once any is specified.
 *   If this set of date specs is specified, pipeline will process the latest
     latest date, and store the corresponding span number in metadata.
 
-`TODO(jjma): add example.`
+For example, let's assume there are input data organized by calendar date:
+
+*   '/tmp/1970-01-02/train/data'
+*   '/tmp/1970-01-02/eval/data'
+*   '/tmp/1970-01-03/train/data'
+*   '/tmp/1970-01-03/eval/data'
+
+and the input config is shown as below:
+
+```python
+splits {
+  name: 'train'
+  pattern: '{YYYY}-{MM}-{DD}/train/*'
+}
+splits {
+  name: 'eval'
+  pattern: '{YYYY}-{MM}-{DD}/eval/*'
+}
+```
+
+when triggering the pipeline, it will process:
+
+*   '/tmp/1970-01-03/train/data' as train split
+*   '/tmp/1970-01-03/eval/data' as eval split
+
+with span number as '2'. If later on '/tmp/1970-01-04/...' are ready, simply
+trigger the pipeline again and it will pick up span '3' for processing. Below
+shows the code example for using date spec:
+
+```python
+from  tfx.proto import example_gen_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='{YYYY}-{MM}-{DD}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='{YYYY}-{MM}-{DD}/eval/*')
+            ])
+examples = csv_input('/tmp')
+example_gen = CsvExampleGen(input=examples, input_config=input)
+```
 
 ### Range Config
 
@@ -260,8 +296,9 @@ Note: this feature is only availible after TFX 0.22.1.
 Version can be retrieved by using '{VERSION}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
 
-*   This spec matches to non-zero padding digits and maps the data to the 
-    relevant VERSION numbers under the SPAN.
+*   This spec matches digits and maps the data to the relevant VERSION numbers
+    under the SPAN. Note that the Version spec can be used with either Span or
+    Date spec.
 *   It could also be optionally specified with the width in the same way
     as SPAN spec. e.g. 'span-{SPAN}/version-{VERSION:4}/data-*'.
     For zero padding digits (e.g., `0012`), the width must be used.
@@ -269,7 +306,8 @@ Version can be retrieved by using '{VERSION}' spec in the
 *   If SPAN and VERSION are both specified, pipeline will process the
     latest version for the latest span, and store the version number in
     metadata.
-*   If VERSION is specified, but not SPAN, an error will be thrown.
+*   If VERSION is specified, but not SPAN (or date spec), an error will be
+    thrown.
 
 For example, let's assume there are input data:
 
@@ -315,9 +353,6 @@ input = example_gen_pb2.Input(splits=[
 examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
-
-
-`TODO(jjma): add example.`
 
 ## Custom ExampleGen
 
