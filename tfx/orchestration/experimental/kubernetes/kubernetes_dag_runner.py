@@ -253,7 +253,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
     # Outputs/Parameters fields are not used as they are contained in
     # the serialized component.
     return container_component.create_container_component(
-        name=component.id + _WRAPPER_SUFFIX,
+        name=component.__class__.__name__,
         outputs={},
         parameters={},
         image=self._config.tfx_image,
