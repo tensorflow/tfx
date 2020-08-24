@@ -87,11 +87,12 @@ class Trainer(base_component.BaseComponent):
 
   ## Example 2: Training through a cloud provider
   ```
+  from tfx.extensions.google_cloud_ai_platform.trainer import executor as
+  ai_platform_trainer_executor
   # Train using Google Cloud AI Platform.
-  from tfx.extensions.google_cloud_ai_platform.trainer
   trainer = Trainer(
-      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(
-        ai_platform_trainer_executor.Executor)
+      custom_executor_spec=executor_spec.ExecutorClassSpec(
+         ai_platform_trainer_executor.Executor)
       module_file=module_file,
       transformed_examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
