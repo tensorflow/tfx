@@ -19,14 +19,15 @@ from typing import Any, Dict, List, Text
 from absl import logging
 
 from tfx import types
+from tfx import version
 from tfx.types import artifact_utils
 from tfx.utils import kube_utils
 from kubernetes.client.rest import ApiException
 import kubernetes.client as client
 
-# For maintenance, see:
-# https://gist.github.com/Eric-Le-Ge/a7ef6c5ae66d4af9cc886536d6724175
-_TFX_IMAGE = "gcr.io/tfx-eric/gpu-tfx"
+# Default TFX container image to use in GKE Training. For GPU training,
+# specify a custom image in executor.TRAINING_ARGS_KEY.
+_TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
 _COMMAND = ["python", "-m", "tfx.scripts.run_executor"]
 
@@ -49,6 +50,7 @@ def create_worker_pods(job_args: List[Text],
                        training_inputs: Dict[Text, Any],
                        unique_id: Text):
   """Create worker pods for multi-worker training."""
+  tfx_image = training_inputs.get('tfx_image', _TFX_IMAGE)
   num_workers = training_inputs.get('num_workers', 1)
   num_gpus_per_worker = training_inputs.get('num_gpus_per_worker', 0)
 
@@ -79,7 +81,7 @@ def create_worker_pods(job_args: List[Text],
             containers=[
                 client.V1Container(
                     name='worker-pod',
-                    image=_TFX_IMAGE,
+                    image=tfx_image,
                     command=_COMMAND,
                     args=job_args,
                     security_context=client.V1SecurityContext(
@@ -184,7 +186,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
     training_inputs: Training input argument for GKE.
-      'num_workers', and 'num_gpus_per_worker' will be consumed.
+      'num_workers', 'num_gpus_per_worker' and 'tfx_image' will be consumed.
 
   Returns:
     None
@@ -211,15 +213,15 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
       '--outputs', json_outputs, '--exec-properties', json_exec_properties
   ]
 
-  # launch the services
+  # Launch the ClusterIP services.
   create_worker_services(training_inputs=training_inputs, unique_id=unique_id)
 
-  # launch the worker pods
+  # Launch the worker pods.
   create_worker_pods(job_args=job_args,
                      training_inputs=training_inputs,
                      unique_id=unique_id)
 
-  # wait for finish.
+  # Wait for finish.
   num_workers = training_inputs.get('num_workers', 1)
   pod_names = _build_pod_names(unique_id=unique_id,
                                num_workers=num_workers)
@@ -230,13 +232,14 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                              condition_description='Chief finished',
                              timeout_sec=1200, # wait for autoscaler
                              expotential_backoff=True,)
+
+  # Clean up the ClusterIP services.
+  delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)
+
   if resp.status.phase == kube_utils.PodPhase.FAILED.value:
     raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
                        ('default', pod_names[0], resp.status))
 
-  # clean up
-  delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)
 
   # GKE training complete
-  #logging.info('Job \'%s\' successful.', job_name)
-  logging.info('Job successful')
+  logging.info('Job successful.')

@@ -50,8 +50,8 @@ class GenericExecutor(base_executor.BaseExecutor):
     Returns:
       None
     Raises:
-      ValueError: if gke_training_args is not in exec_properties.custom_config.
-      RuntimeError: if the Google Kubernetes Engine training job failed.
+      ValueError: If gke_training_args is not in exec_properties.custom_config.
+      RuntimeError: If the Google Kubernetes Engine training job failed.
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
