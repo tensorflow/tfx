@@ -220,16 +220,18 @@ examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
+Retrieving a certain span can be done with RangeConfig, which is detailed below.
+
 ### Date
 
 Note: this feature is only availible after TFX 0.22.1.
 
 If your data source is organized on filesystem by date, TFX supports
 mapping dates directly to span numbers. There are three specs to represent 
-mapping from dates to spans: {YYYY}, {MM}, and {DD}. The three specs should 
-be altogether present in the [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) 
-once any is specified:
+mapping from dates to spans: {YYYY}, {MM}, and {DD}:
 
+*   The three specs should be altogether present in the [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto) 
+    once any is specified:
 *   Either {SPAN} spec or this set of date specs can be specified
     exclusively.
 *   A calendar date with the year from YYYY, the month from MM, and the
@@ -283,12 +285,6 @@ examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
 ```
 
-### Range Config
-
-Note: this feature is only availible after TFX 0.22.1.
-
-`TODO(jjma): add explanation.`
-
 ### Version
 
 Note: this feature is only availible after TFX 0.22.1.
@@ -297,9 +293,9 @@ Version can be retrieved by using '{VERSION}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
 
 *   This spec matches digits and maps the data to the relevant VERSION numbers
-    under the SPAN. Note that the Version spec can be used with either Span or
-    Date spec.
-*   It could also be optionally specified with the width in the same way
+    under the SPAN. Note that the Version spec can be used combination with
+    either Span or Date spec.
+*   This spec can also be optionally specified with the width in the same way
     as SPAN spec. e.g. 'span-{SPAN}/version-{VERSION:4}/data-*'.
     For zero padding digits (e.g., `0012`), the width must be used.
 *   When VERSION spec is missing, version is set to be None.
@@ -352,6 +348,86 @@ input = example_gen_pb2.Input(splits=[
             ])
 examples = csv_input('/tmp')
 example_gen = CsvExampleGen(input=examples, input_config=input)
+```
+
+### Range Config
+
+Note: this feature is only available after TFX 0.22.1.
+
+TFX supports retrieval and processing of a specific span in file-based
+ExampleGen using range config, an abstract config used to describe
+ranges for different TFX entities. To retrieve a specific span, set the
+`range_config` for a file-based ExampleGen component. For example, let's assume
+there are input data:
+
+*   '/tmp/span-01/train/data'
+*   '/tmp/span-01/eval/data'
+*   '/tmp/span-02/train/data'
+*   '/tmp/span-02/eval/data'
+
+To specifically retrieve and process data with span '1', we specify a range
+config in addition to the input config:
+
+```python
+from  tfx.proto import example_gen_pb2
+from  tfx.proto import range_config_pb2
+
+# In cases where files have zero-padding, the width modifier in SPAN spec is
+# required so TFX can correctly substitute spec with zero-padded span number.
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='span-{SPAN:2}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='span-{SPAN:2}/eval/*')
+            ])
+# Specify the span number to be processed here using StaticRange.
+# Note that ExampleGen only supports single-span static ranges. Thus,
+# for StaticRange, start_span_number must equal end_span_number.
+range = range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                        start_span_number=1, end_span_number=1)
+            )
+
+examples = csv_input(input_dir)
+example_gen = CsvExampleGen(input=examples, input_config=input,
+                            range_config=range)
+```
+
+Range config can also be used to process specific dates, if the date spec is
+used instead of SPAN spec. For example, let's assume there are input data 
+organized by calendar date:
+
+*   '/tmp/1970-01-02/train/data'
+*   '/tmp/1970-01-02/eval/data'
+*   '/tmp/1970-01-03/train/data'
+*   '/tmp/1970-01-03/eval/data'
+
+To specifically retrieve and process data on January 2nd, 1970, we do the
+following:
+
+```python
+from  tfx.components.example_gen import utils
+from  tfx.proto import example_gen_pb2
+from  tfx.proto import range_config_pb2
+
+input = example_gen_pb2.Input(splits=[
+                example_gen_pb2.Input.Split(name='train',
+                                            pattern='{YYYY}-{MM}-{DD}/train/*'),
+                example_gen_pb2.Input.Split(name='eval',
+                                            pattern='{YYYY}-{MM}-{DD}/eval/*')
+            ])
+# Specify date to be converted to span number to be processed using StaticRange.
+# Note that ExampleGen only supports single-span static ranges. Thus,
+# for StaticRange, start_span_number must equal end_span_number.
+span = utils.date_to_span_number(1970, 1, 2)
+range = range_config_pb2.RangeConfig(
+                static_range=range_config_pb2.StaticRange(
+                        start_span_number=span, end_span_number=span)
+            )
+
+examples = csv_input(input_dir)
+example_gen = CsvExampleGen(input=examples, input_config=input,
+                            range_config=range)
 ```
 
 ## Custom ExampleGen
