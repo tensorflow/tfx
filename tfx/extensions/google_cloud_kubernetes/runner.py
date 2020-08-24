@@ -231,7 +231,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                              exit_condition_lambda=_pod_is_done,
                              condition_description='Chief finished',
                              timeout_sec=1200, # wait for autoscaler
-                             expotential_backoff=True,)
+                             exponential_backoff=True,)
 
   # Clean up the ClusterIP services.
   delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)

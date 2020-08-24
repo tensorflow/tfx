@@ -222,7 +222,7 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
              exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
              condition_description: Text,
              timeout_sec: int = 300,
-             expotential_backoff: bool = False) -> k8s_client.V1Pod:
+             exponential_backoff: bool = False) -> k8s_client.V1Pod:
   """Wait for a POD to meet an exit condition.
 
   Args:
@@ -256,5 +256,5 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
           'Pod "%s:%s" does not reach "%s" within %s seconds.' %
           (namespace, pod_name, condition_description, timeout_sec))
     time.sleep(backoff_interval)
-    if expotential_backoff and backoff_interval < maximum_backoff:
+    if exponential_backoff and backoff_interval < maximum_backoff:
       backoff_interval *= 2
