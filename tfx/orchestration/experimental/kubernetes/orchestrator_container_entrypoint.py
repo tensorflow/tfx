@@ -70,9 +70,7 @@ def main():
   for upstream_id, downstream_id_list in downstream_ids.items():
     upstream_component = id_to_component[upstream_id]
     for downstream_id in downstream_id_list:
-      downstream_component = id_to_component[downstream_id]
-      upstream_component.add_downstream_node(downstream_component)
-      downstream_component.add_upstream_node(upstream_component)
+      upstream_component.add_downstream_node(id_to_component[downstream_id])
 
   absl.logging.set_verbosity(absl.logging.INFO)
   kubernetes_dag_runner.KubernetesDagRunner(
