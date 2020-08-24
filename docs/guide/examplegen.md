@@ -366,8 +366,8 @@ transform = components.Transform(
       examples=example_gen.outputs['examples'],
       schema=schema_gen.outputs['schema'],
       module_file=_taxi_module_file,
-      splits_config=transform_pb2.SplitsConfig(analyze_splits=['train'],
-                                               transform_splits=['train', 'eval']))
+      splits_config=transform_pb2.SplitsConfig(analyze=['train'],
+                                               transform=['train', 'eval']))
 ```
 
 ### Trainer and Tuner
