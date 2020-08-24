@@ -115,7 +115,7 @@ class ExecutorTest(tf.test.TestCase):
             executor.Executor,
             'DeployTFServingDeployment',
         ) as mock_deployment:
-      # Run executor
+      # Run executor.
       self._executor.Do(input_dict,
                         self._output_dict,
                         self._SerializeCustomConfigUnderTest())

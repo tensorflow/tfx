@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom executor to push TFX model to GKE."""
+"""Custom executor to push TFX model to Kubernetes."""
 
 from os import path
 from typing import Any, Dict, List, Text
@@ -38,19 +38,19 @@ TF_SERVING_ARGS_KEY = 'tf_serving_args'
 # Keys for custom_config.
 _CUSTOM_CONFIG_KEY = 'custom_config'
 
-# Number of serving replicas
+# Number of serving replicas.
 NUM_REPLICAS_KEY = 'num_replicas'
 
-# Name of serving model
+# Name of serving model.
 MODEL_NAME_KEY = 'model_name'
 
-# Model uri environment variable key
+# Model uri environment variable key.
 _MODEL_URI_ENV_KEY = 'MODEL_URI'
 
-# Model name environment variable key
+# Model name environment variable key.
 _MODEL_NAME_ENV_KEY = 'MODEL_NAME'
 
-# Model base path environment variable key
+# Model base path environment variable key.
 _MODEL_BASE_PATH_ENV_KEY = 'MODEL_BASE_PATH'
 
 class Executor(tfx_pusher_executor.Executor):
@@ -67,7 +67,7 @@ class Executor(tfx_pusher_executor.Executor):
             body=svc, namespace="default")
         logging.info("Model Service created. status='%s'" % str(resp.status))
       except rest.ApiException:
-        # Since the model service yaml is static, no update is needed
+        # Since the model service yaml is static, no update is needed.
         logging.info("Model Service unchanged.")
 
   def DeployTFServingDeployment(
@@ -82,7 +82,7 @@ class Executor(tfx_pusher_executor.Executor):
       model_name: Name of the model being served, used as part of the local
         model path in the serving container as well as the exposed api endpoint
         to the client.
-      model_uri: URI of the serving model output from which the container
+      model_uri: Uri of the serving model output from which the container
         will download the model.
       num_replicas: Number of serving replicas.
   """
@@ -97,9 +97,9 @@ class Executor(tfx_pusher_executor.Executor):
           {'name': _MODEL_NAME_ENV_KEY, 'value': model_name},
       ]
       spec = dep['spec']
-      # configure the number of replicas
+      # Configure the number of replicas.
       spec['replicas'] = num_replicas
-      # configure the environment variables
+      # Configure the environment variables.
       spec['template']['spec']['containers'][0]['env'] = env_vars
       try:
         resp = client_api.create_namespaced_deployment(
@@ -119,8 +119,8 @@ class Executor(tfx_pusher_executor.Executor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - model_export: exported model from trainer.
-        - model_blessing: model blessing path from evaluator.
+        - model_export: Exported model from trainer.
+        - model_blessing: Model blessing path from evaluator.
       output_dict: Output dict from key to a list of artifacts, including:
         - model_push: A list of 'ModelPushPath' artifact of size one. It will
           include the model in this push execution if the model was pushed.
@@ -151,7 +151,7 @@ class Executor(tfx_pusher_executor.Executor):
     if not tf_serving_args:
       logging.info('\'tf_serving_args\' is missing in \'custom_config\'')
 
-    # parse the number of replicas and model name used as part of serving path
+    # Parse the number of replicas and model name used as part of serving path.
     if not tf_serving_args.get(NUM_REPLICAS_KEY):
       logging.info('\'%s\' not specified in \'tf_serving_args\', using 1',
                    NUM_REPLICAS_KEY)
