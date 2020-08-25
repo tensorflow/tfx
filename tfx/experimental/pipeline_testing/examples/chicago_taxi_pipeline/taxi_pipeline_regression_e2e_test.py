@@ -104,18 +104,8 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
         metadata_path=self._metadata_path,
         beam_pipeline_args=[])
 
-    # ResolverNode is ignored because it doesn't have a executor that can be
-    # replaced with stub.
-    stubbed_component_ids = [
-        component.id
-        for component in taxi_pipeline.components
-        if not component.id.startswith('ResolverNode')
-    ]
-
     stub_component_launcher.StubComponentLauncher.initialize(
-        test_data_dir=self._recorded_output_dir,
-        stubbed_component_ids=stubbed_component_ids,
-        stubbed_component_map={})
+        test_data_dir=self._recorded_output_dir, test_component_ids=[])
 
     stub_pipeline_config = pipeline_config.PipelineConfig(
         supported_launcher_classes=[

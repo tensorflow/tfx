@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text, Type
+from typing import Any, Dict, List, Text
 
 from tfx import types
 from tfx.components.base import base_executor
@@ -38,18 +38,12 @@ class BaseStubComponentLauncher(
   component, i.e. its driver and publisher.
   """
 
-  stubbed_component_map = ...  # type: Dict[Text, Type[base_stub_executor.BaseStubExecutor]]
+  test_component_ids = ...  # type: List[Text]
   test_data_dir = ...  # type: Text
 
   @classmethod
-  def initialize(
-      cls,
-      test_data_dir: Text,
-      stubbed_component_ids: List[Text],
-      stubbed_component_map: Dict[Text,
-                                  Type[base_stub_executor.BaseStubExecutor]]  # pylint: disable=line-too-long
-  ):
-    """Intializes variables in the stub launcher class.
+  def initialize(cls, test_data_dir: Text, test_component_ids: List[Text]):
+    """Initializes variables in the stub launcher class.
 
     For beam pipeline, stub launcher class inheriting this class is defined in
     tfx.experimental.pipeline_testing.stub_component_launcher.py
@@ -61,15 +55,9 @@ class BaseStubComponentLauncher(
 
     For example,
 
-    class MyPusherStubExecutor(base_stub_executor.BaseStubExecutor){...}
-    class MyTransformStubExecutor(base_stub_executor.BaseStubExecutor){...}
-
     stub_component_launcher.StubComponentLauncher.initialize(
-                test_data_dir,
-                stubbed_component_ids = ['CsvExampleGen'],
-                stubbed_component_map = {
-                    'Transform': MyTransformStubExecutor,
-                    'Pusher': MyPusherStubExecutor})
+        test_data_dir,
+        test_component_ids = ['Trainer', 'Transform'])
     PipelineConfig(
         supported_launcher_classes=[
             stub_component_launcher.StubComponentLauncher
@@ -77,26 +65,19 @@ class BaseStubComponentLauncher(
     )
 
     The method initializes the necessary class variables for the
-    BaseStubComponentLauncher class, including stubbed_component_ids and
-    stubbed_component_map holding custom executor classes, which
-    users may define differently per component.
+    BaseStubComponentLauncher class, including test_component_ids.
 
     Args:
       test_data_dir: The directory where pipeline outputs are recorded
         (pipeline_recorder.py).
-      stubbed_component_ids: List of component ids that should be replaced with
-        aBaseStubExecutor.
-      stubbed_component_map: Dictionary holding user-defined stub executor.
-        These user-defined stub executors must inherit from
-        base_stub_executor.BaseStubExecutor.
+      test_component_ids: List of ids of components that are to be tested. In
+        other words, executors of components other than those specified by this
+        list will be replaced with a BaseStubExecutor.
 
     Returns:
       None
     """
-    cls.stubbed_component_map = dict(stubbed_component_map)
-    default_stub_executor = base_stub_executor.BaseStubExecutor
-    for component_id in stubbed_component_ids:
-      cls.stubbed_component_map[component_id] = default_stub_executor
+    cls.test_component_ids = test_component_ids
     cls.test_data_dir = test_data_dir
 
   def _run_executor(self, execution_id: int,
@@ -105,7 +86,7 @@ class BaseStubComponentLauncher(
                     exec_properties: Dict[Text, Any]) -> None:
     """Execute underlying component implementation."""
     component_id = self._component_info.component_id
-    if component_id not in self.stubbed_component_map:
+    if component_id in self.test_component_ids:
       super(BaseStubComponentLauncher,
             self)._run_executor(execution_id, input_dict, output_dict,
                                 exec_properties)
@@ -114,7 +95,7 @@ class BaseStubComponentLauncher(
           beam_pipeline_args=self._beam_pipeline_args,
           tmp_dir=os.path.join(self._pipeline_info.pipeline_root, '.temp', ''),
           unique_id=str(execution_id))
-      executor = self.stubbed_component_map[component_id](component_id,
-                                                          self.test_data_dir,
-                                                          executor_context)
+      executor = base_stub_executor.BaseStubExecutor(component_id,
+                                                     self.test_data_dir,
+                                                     executor_context)
       executor.Do(input_dict, output_dict, exec_properties)
