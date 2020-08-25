@@ -52,6 +52,8 @@ def _prepare_output_paths(artifact: types.Artifact):
     # idempotent executions is needed.
     return
 
+  # TODO(b/147242148): Introduce principled artifact structure (directory
+  # or file) definition.
   if isinstance(artifact, types.ValueArtifact):
     artifact_dir = os.path.dirname(artifact.uri)
   else:
@@ -222,6 +224,10 @@ class BaseDriver(object):
       for i, artifact in enumerate(output_list):
         artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
                                             is_single_artifact, i)
+        # TODO(b/147242148): Introduce principled artifact structure (directory
+        # or file) definition.
+        if isinstance(artifact, types.ValueArtifact):
+          artifact.uri = os.path.join(artifact.uri, 'value')
         _prepare_output_paths(artifact)
 
       result[name] = output_list
