@@ -11,12 +11,7 @@ spec:
     spec:
       containers:
       - name: model-container
-        image: gcr.io/tfx-eric/serving
-        command: ["bin/sh", "-c"]
-        args:
-          - mkdir "$MODEL_BASE_PATH/$MODEL_NAME";
-            gsutil -m cp -r  "$MODEL_URI" "$MODEL_BASE_PATH/$MODEL_NAME";
-            /usr/bin/tf_serving_entrypoint.sh;
+        image: tensorflow/serving
         ports:
         - containerPort: 8500
           name: grpc
