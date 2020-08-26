@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_kubernetes.pusher.executor."""
+"""Tests for tfx.extensions.experimental.kubernetes.pusher.executor."""
 
 
 import copy
@@ -22,15 +22,14 @@ import tensorflow as tf
 from typing import Any, Dict, Text
 
 from tfx.components.pusher import executor
-from tfx.extensions.google_cloud_kubernetes.pusher import executor as k8s_pusher_executor
+from tfx.extensions.experimental.kubernetes.pusher import executor as k8s_pusher_executor
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
 
 
 _TEST_MODEL_NAME = 'TEST_MODEL_NAME'
 _TEST_MODEL_VERSION = 1598000000
-_TEST_MODEL_EXPORT_URI = 'TEST_UNDECLARED_OUTPUTS_DIR' #os.path.join('TEST_UNDECLARED_OUTPUTS_DIR',
-    #_TEST_MODEL_NAME, _TEST_MODEL_VERSION)
+_TEST_MODEL_EXPORT_URI = 'TEST_UNDECLARED_OUTPUTS_DIR'
 _TEST_NUM_REPLICAS = 2
 
 
