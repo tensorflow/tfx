@@ -118,7 +118,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       schema=schema_gen.outputs['schema'],
       module_file=module_file,
       splits_config=transform_pb2.SplitsConfig(analyze=['training'],
-                                               transform=['training', 'evaluating']))
+                                               transform=['training',
+                                                          'evaluating']))
 
   # Tunes the hyperparameters for model training based on user-provided Python
   # function. Note that once the hyperparameters are tuned, you can drop the
