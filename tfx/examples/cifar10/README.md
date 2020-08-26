@@ -35,14 +35,24 @@ pip install git+https://github.com/tensorflow/model-analysis.git#egg=tensorflow_
 
 There is a subset of CIFAR10 (128 images) available in the data folder. To
 prepare the whole dataset, first create a script and run the following Python
-code: `import tensorflow_datasets as tfds ds = tfds.load('cifar10',
-data_dir='./cifar10/data/',split=['train', 'test'])` Then, create sub-folders
-for different dataset splits and move different splits to corresponding folders.
-`cd cifar10/data mkdir train_whole mkdir test_whole mv
-cifar10/3.0.2/cifar10-train.tfrecord-00000-of-00001 train_whole mv
-cifar10/3.0.2/cifar10-test.tfrecord-00000-of-00001 test_whole` You'll find the
-final dataset under `train_whole` and `test_whole` folders. Finally, clean up
-the data folder. `rm -r cifar10`
+code: 
+```
+import tensorflow_datasets as tfds
+ds = tfds.load('cifar10', data_dir='./cifar10/data/',split=['train', 'test'])
+```
+Then, create sub-folders for different dataset splits and move different splits to corresponding folders.
+```
+cd cifar10/data
+mkdir train_whole
+mkdir test_whole
+mv cifar10/3.0.2/cifar10-train.tfrecord-00000-of-00001 train_whole 
+mv cifar10/3.0.2/cifar10-test.tfrecord-00000-of-00001 test_whole
+``` 
+You'll find the final dataset under `train_whole` and `test_whole` folders. Finally, clean up
+the data folder. 
+```
+rm -r cifar10
+```
 
 ### Train the model
 
