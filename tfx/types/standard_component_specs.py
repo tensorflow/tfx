@@ -27,6 +27,7 @@ from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import transform_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
@@ -351,9 +352,14 @@ class TransformSpec(ComponentSpec):
   """Transform component spec."""
 
   PARAMETERS = {
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'preprocessing_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
+      'module_file':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'preprocessing_fn':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'custom_config':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'splits_config':
+          ExecutionParameter(type=transform_pb2.SplitsConfig, optional=True),
   }
   INPUTS = {
       'examples':

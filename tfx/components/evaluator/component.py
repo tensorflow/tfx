@@ -157,13 +157,9 @@ class Evaluator(base_component.BaseComponent):
       logging.warning('feature_slicing_spec is deprecated, please use '
                       'eval_config instead.')
 
-    blessing = blessing or types.Channel(
-        type=standard_artifacts.ModelBlessing,
-        artifacts=[standard_artifacts.ModelBlessing()])
-
+    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     evaluation = output or types.Channel(
-        type=standard_artifacts.ModelEvaluation,
-        artifacts=[standard_artifacts.ModelEvaluation()])
+        type=standard_artifacts.ModelEvaluation)
     spec = EvaluatorSpec(
         examples=examples,
         model=model,
