@@ -76,7 +76,7 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
         pipeline_root=self._pipeline_root,
         metadata_path=self._metadata_path,
         enable_tuning=False,
-        direct_num_workers=1)
+        beam_pipeline_args=[])
 
     BeamDagRunner().run(pipeline)
 
@@ -124,7 +124,7 @@ class IrisPipelineNativeKerasEndToEndTest(tf.test.TestCase):
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
             enable_tuning=True,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))

@@ -29,6 +29,7 @@ from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import TunerSpec
+from tfx.utils import json_utils
 
 # tuner: A BaseTuner that will be used for tuning.
 # fit_kwargs: Args to pass to tuner's run_trial function for fitting the
@@ -60,6 +61,7 @@ class Tuner(base_component.BaseComponent):
                train_args: trainer_pb2.TrainArgs = None,
                eval_args: trainer_pb2.EvalArgs = None,
                tune_args: Optional[tuner_pb2.TuneArgs] = None,
+               custom_config: Optional[Dict[Text, Any]] = None,
                best_hyperparameters: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     """Construct a Tuner component.
@@ -82,11 +84,15 @@ class Tuner(base_component.BaseComponent):
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'tuner_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance, containing args used for
-        training. Current only num_steps is available.
+        training. Currently only splits and num_steps are available. Default
+        behavior (when splits is empty) is train on `train` split.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
-        Current only num_steps is available.
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is evaluate on `eval` split.
       tune_args: A tuner_pb2.TuneArgs instance, containing args used for tuning.
-        Current only num_parallel_trials is available.
+        Currently only num_parallel_trials is available.
+      custom_config: A dict which contains addtional training job parameters
+        that will be passed into user module.
       best_hyperparameters: Optional Channel of type
         `standard_artifacts.HyperParameters` for result of the best hparams.
       instance_name: Optional unique instance name. Necessary if multiple Tuner
@@ -108,5 +114,7 @@ class Tuner(base_component.BaseComponent):
         train_args=train_args,
         eval_args=eval_args,
         tune_args=tune_args,
-        best_hyperparameters=best_hyperparameters)
+        best_hyperparameters=best_hyperparameters,
+        custom_config=json_utils.dumps(custom_config),
+    )
     super(Tuner, self).__init__(spec=spec, instance_name=instance_name)

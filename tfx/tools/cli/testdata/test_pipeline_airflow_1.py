@@ -20,9 +20,12 @@ from __future__ import print_function
 
 import datetime
 import os
+
+# TODO(b/158143615): importing airflow after kerastuner causes issue.
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner  # pylint: disable=g-bad-import-order
+
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
 from tfx.tools.cli.e2e import test_utils
 

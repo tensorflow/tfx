@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Optional, Text
+from typing import List, Text
 
 import kfp
 import tensorflow_model_analysis as tfma
@@ -49,20 +49,25 @@ _pipeline_name = 'taxi_pipeline_with_parameters'
 _pipeline_root = os.path.join('gs://my-bucket', 'tfx_taxi_simple',
                               kfp.dsl.RUN_ID_PLACEHOLDER)
 
+# Pipeline arguments for Beam powered Components.
+_beam_pipeline_args = [
+    '--direct_running_mode=multi_processing',
+    # 0 means auto-detect based on on the number of CPUs available
+    # during execution time.
+    '--direct_num_workers=0',
+]
+
 
 def _create_parameterized_pipeline(
-    pipeline_name: Text,
-    pipeline_root: Optional[Text] = _pipeline_root,
-    enable_cache: Optional[bool] = True,
-    direct_num_workers: Optional[int] = 1) -> pipeline.Pipeline:
+    pipeline_name: Text, pipeline_root: Text, enable_cache: bool,
+    beam_pipeline_args: List[Text]) -> pipeline.Pipeline:
   """Creates a simple TFX pipeline with RuntimeParameter.
 
   Args:
     pipeline_name: The name of the pipeline.
     pipeline_root: The root of the pipeline output.
     enable_cache: Whether to enable cache in this pipeline.
-    direct_num_workers: Number of workers executing the underlying beam pipeline
-      in the executors.
+    beam_pipeline_args: Pipeline arguments for Beam powered Components.
 
   Returns:
     A logical TFX pipeline.Pipeline object.
@@ -182,15 +187,15 @@ def _create_parameterized_pipeline(
           trainer, model_resolver, evaluator, pusher
       ],
       enable_cache=enable_cache,
-      # TODO(b/142684737): The multi-processing API might change.
-      beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
-  )
+      beam_pipeline_args=beam_pipeline_args)
 
 
 if __name__ == '__main__':
-  _enable_cache = True
   pipeline = _create_parameterized_pipeline(
-      _pipeline_name, _pipeline_root, enable_cache=_enable_cache)
+      pipeline_name=_pipeline_name,
+      pipeline_root=_pipeline_root,
+      enable_cache=True,
+      beam_pipeline_args=_beam_pipeline_args)
 
   # This pipeline automatically injects the Kubeflow TFX image if the
   # environment variable 'KUBEFLOW_TFX_IMAGE' is defined. Currently, the tfx

@@ -34,8 +34,8 @@ class TunerTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.transform_graph = channel_utils.as_channel(
         [standard_artifacts.TransformGraph()])
-    self.train_args = trainer_pb2.TrainArgs(num_steps=100)
-    self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
+    self.train_args = trainer_pb2.TrainArgs(splits=['train'], num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(splits=['eval'], num_steps=50)
     self.tune_args = tuner_pb2.TuneArgs(num_parallel_trials=3)
 
   def _verify_output(self, tuner):
@@ -59,6 +59,16 @@ class TunerTest(tf.test.TestCase):
         train_args=self.train_args,
         eval_args=self.eval_args,
         tuner_fn='path.to.tuner_fn')
+    self._verify_output(tuner)
+
+  def testConstructWithCustomConfig(self):
+    tuner = component.Tuner(
+        examples=self.examples,
+        transform_graph=self.transform_graph,
+        train_args=self.train_args,
+        eval_args=self.eval_args,
+        module_file='/path/to/module/file',
+        custom_config={'key': 'value'})
     self._verify_output(tuner)
 
   def testConstructDuplicateUserModule(self):

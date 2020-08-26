@@ -20,14 +20,14 @@ from __future__ import print_function
 
 import inspect
 import json
-
 from typing import Any, Dict, Iterable, Optional, Text, Type
+import absl
 
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
 from tfx.types import artifact_utils
 from tfx.types.artifact import Artifact
 from tfx.utils import json_utils
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 
 
 class Channel(json_utils.Jsonable):
@@ -46,6 +46,7 @@ class Channel(json_utils.Jsonable):
       self,
       type: Optional[Type[Artifact]] = None,  # pylint: disable=redefined-builtin
       artifacts: Optional[Iterable[Artifact]] = None,
+      matching_channel_name: Optional[Text] = None,
       producer_component_id: Optional[Text] = None,
       output_key: Optional[Text] = None):
     """Initialization of Channel.
@@ -54,6 +55,10 @@ class Channel(json_utils.Jsonable):
       type: Subclass of Artifact that represents the type of this Channel.
       artifacts: (Optional) A collection of artifacts as the values that can be
         read from the Channel. This is used to construct a static Channel.
+      matching_channel_name: This targets to the key of an input Channel dict
+        in a Component. The artifacts count of this channel will be decided at
+        runtime in Driver, based on the artifacts count of the target channel.
+        Only one of `artifacts` and `matching_channel_name` should be set.
       producer_component_id: (Optional) Producer component id of the Channel.
       output_key: (Optional) The output key when producer component produces
         the artifacts in this Channel.
@@ -65,6 +70,11 @@ class Channel(json_utils.Jsonable):
 
     self.type = type
     self._artifacts = artifacts or []
+    self.matching_channel_name = matching_channel_name
+    if self.matching_channel_name and self._artifacts:
+      # TODO(b/161548528): change to error after MP support multiple artifacts.
+      absl.logging.warning(
+          'Only one of `artifacts` and `matching_channel_name` should be set.')
     self._validate_type()
     # The following fields will be populated during compilation time.
     self.producer_component_id = producer_component_id

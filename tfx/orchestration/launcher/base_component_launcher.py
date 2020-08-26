@@ -57,7 +57,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         specific driver args.
       metadata_connection: ML metadata connection. The connection is expected to
         not be opened when given to this object.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
       component_config: Optional component specific config to instrument
         launcher on how to launch a component.
@@ -122,7 +122,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         specific driver args.
       metadata_connection: ML metadata connection. The connection is expected to
         not be opened when given to this object.
-      beam_pipeline_args: Beam pipeline args for beam jobs within executor.
+      beam_pipeline_args: Pipeline arguments for Beam powered Components.
       additional_pipeline_args: Additional pipeline args.
       component_config: Optional component specific config to instrument
         launcher on how to launch a component.
@@ -137,7 +137,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         metadata_connection=metadata_connection,
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
-        component_config=component_config)
+        component_config=component_config)  # pytype: disable=not-instantiable
 
   @classmethod
   @abc.abstractmethod

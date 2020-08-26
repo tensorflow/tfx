@@ -1,0 +1,29 @@
+nodes {
+  pipeline_node {
+    contexts {
+      contexts {
+        name {
+          field_value {
+            string_value: "my_context"
+          }
+        }
+        properties {
+          key: "prop_one"
+          value {
+            field_value {
+              int_value: 2
+            }
+          }
+        }
+        properties {
+          key: "prop_two"
+          value {
+            field_value {
+              string_value: "pre_X_post"
+            }
+          }
+        }
+      }
+    }
+  }
+}

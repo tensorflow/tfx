@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -28,6 +27,8 @@ from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ModelValidatorSpec
+
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 class ModelValidator(base_component.BaseComponent):

@@ -27,13 +27,19 @@ from tfx import types
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
-from tfx.types import channel_utils
 
 
-def _generate_output_uri(base_output_dir: Text, name: Text,
-                         execution_id: int) -> Text:
+def _generate_output_uri(base_output_dir: Text,
+                         name: Text,
+                         execution_id: int,
+                         is_single_artifact: bool = True,
+                         index: int = 0) -> Text:
   """Generate uri for output artifact."""
-  return os.path.join(base_output_dir, name, str(execution_id))
+  if is_single_artifact:
+    # TODO(b/145680633): Consider differentiating different types of uris.
+    return os.path.join(base_output_dir, name, str(execution_id))
+
+  return os.path.join(base_output_dir, name, str(execution_id), str(index))
 
 
 def _prepare_output_paths(artifact: types.Artifact):
@@ -46,11 +52,18 @@ def _prepare_output_paths(artifact: types.Artifact):
     # idempotent executions is needed.
     return
 
+  # TODO(b/147242148): Introduce principled artifact structure (directory
+  # or file) definition.
+  if isinstance(artifact, types.ValueArtifact):
+    artifact_dir = os.path.dirname(artifact.uri)
+  else:
+    artifact_dir = artifact.uri
+
   # TODO(zhitaoli): Consider refactoring this out into something
   # which can handle permission bits.
   absl.logging.debug('Creating output artifact uri %s as directory',
-                     artifact.uri)
-  tf.io.gfile.makedirs(artifact.uri)
+                     artifact_dir)
+  tf.io.gfile.makedirs(artifact_dir)
   # TODO(b/147242148): Avoid special-casing the "split_names" property.
   if artifact.type.PROPERTIES and 'split_names' in artifact.type.PROPERTIES:
     split_names = artifact_utils.decode_split_names(artifact.split_names)
@@ -183,19 +196,41 @@ class BaseDriver(object):
 
   def _prepare_output_artifacts(
       self,
+      input_artifacts: Dict[Text, List[types.Artifact]],
       output_dict: Dict[Text, types.Channel],
+      exec_properties: Dict[Text, Any],
       execution_id: int,
       pipeline_info: data_types.PipelineInfo,
       component_info: data_types.ComponentInfo,
   ) -> Dict[Text, List[types.Artifact]]:
     """Prepare output artifacts by assigning uris to each artifact."""
-    result = channel_utils.unwrap_channel_dict(output_dict)
+    del exec_properties
+
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
-    for name, output_list in result.items():
-      for artifact in output_list:
-        artifact.uri = _generate_output_uri(base_output_dir, name, execution_id)
+
+    result = {}
+    for name, channel in output_dict.items():
+      if channel.matching_channel_name:
+        # Decides the artifact count for output Channel at runtime based on the
+        # artifact count in specified input Channel.
+        count = len(input_artifacts[channel.matching_channel_name])
+        output_list = [channel.type() for _ in range(count)]
+      else:
+        # TODO(b/161490287): use `[channel.type()]` explicitly.
+        output_list = list(channel.get())
+
+      is_single_artifact = len(output_list) == 1
+      for i, artifact in enumerate(output_list):
+        artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
+                                            is_single_artifact, i)
+        # TODO(b/147242148): Introduce principled artifact structure (directory
+        # or file) definition.
+        if isinstance(artifact, types.ValueArtifact):
+          artifact.uri = os.path.join(artifact.uri, 'value')
         _prepare_output_paths(artifact)
+
+      result[name] = output_list
 
     return result
 
@@ -275,7 +310,9 @@ class BaseDriver(object):
       absl.logging.debug('Cached results not found, move on to new execution')
       # Step 4a. New execution is needed. Prepare output artifacts.
       output_artifacts = self._prepare_output_artifacts(
+          input_artifacts=input_artifacts,
           output_dict=output_dict,
+          exec_properties=exec_properties,
           execution_id=execution.id,
           pipeline_info=pipeline_info,
           component_info=component_info)

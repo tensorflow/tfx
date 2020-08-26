@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import abc
 import json
-import multiprocessing
 import os
 from typing import Any, Dict, List, Optional, Text, Union, Tuple
 
@@ -32,8 +31,8 @@ from apache_beam.options.pipeline_options import StandardOptions
 from apache_beam.runners.portability import fn_api_runner
 from future.utils import with_metaclass
 import tensorflow as tf
-
 from tfx import types
+from tfx.proto.orchestration import execution_result_pb2
 from tfx.types import artifact_utils
 from tfx.utils import telemetry_utils
 from tfx.utils import dependency_utils
@@ -48,22 +47,39 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
     def __init__(self,
                  beam_pipeline_args: Optional[List[Text]] = None,
                  tmp_dir: Optional[Text] = None,
-                 unique_id: Optional[Text] = None):
+                 unique_id: Optional[Text] = None,
+                 executor_output_uri: Optional[Text] = None,
+                 stateful_working_dir: Optional[Text] = None):
       self.beam_pipeline_args = beam_pipeline_args
       # Base temp directory for the pipeline
       self._tmp_dir = tmp_dir
       # A unique id to distinguish every execution run
       self._unique_id = unique_id
+      # A path for executor to write its output to.
+      self._executor_output_uri = executor_output_uri
+      # A path to store information for stateful run, e.g. checkpoints for
+      # tensorflow trainers.
+      self._stateful_working_dir = stateful_working_dir
 
     def get_tmp_path(self) -> Text:
       if not self._tmp_dir or not self._unique_id:
         raise RuntimeError('Temp path not available')
       return os.path.join(self._tmp_dir, str(self._unique_id), '')
 
+    @property
+    def executor_output_uri(self) -> Text:
+      return self._executor_output_uri
+
+    @property
+    def stateful_working_dir(self) -> Text:
+      return self._stateful_working_dir
+
   @abc.abstractmethod
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
+  def Do(
+      self, input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]], exec_properties: Dict[Text,
+                                                                           Any]
+  ) -> Optional[execution_result_pb2.ExecutorOutput]:
     """Execute underlying component implementation.
 
     Args:
@@ -79,7 +95,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
         possible on these values.
 
     Returns:
-      None.
+      execution_result_pb2.ExecutorOutput or None.
     """
     pass
 
@@ -103,30 +119,21 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
   # into same pipeline.
   def _make_beam_pipeline(self) -> beam.Pipeline:
     """Makes beam pipeline."""
-    # TODO(b/142684737): refactor when beam support multi-processing by args,
-    # possibly starting with apache-beam 2.22.
     pipeline_options = PipelineOptions(self._beam_pipeline_args)
     if pipeline_options.view_as(StandardOptions).runner:
       return beam.Pipeline(argv=self._beam_pipeline_args)
 
-    parallelism = pipeline_options.view_as(DirectOptions).direct_num_workers
-    if parallelism == 0:
-      try:
-        parallelism = multiprocessing.cpu_count()
-      except NotImplementedError as e:
-        absl.logging.warning('Cannot get cpu count: %s' % e)
-        parallelism = 1
+    # TODO(b/159468583): move this warning to Beam.
+    direct_running_mode = pipeline_options.view_as(
+        DirectOptions).direct_running_mode
+    direct_num_workers = pipeline_options.view_as(
+        DirectOptions).direct_num_workers
+    if direct_running_mode == 'in_memory' and direct_num_workers != 1:
+      absl.logging.warning(
+          'If direct_num_workers is not equal to 1, direct_running_mode should '
+          'be `multi_processing` or `multi_threading` instead of `in_memory` '
+          'in order for it to have the desired worker parallelism effect.')
 
-    absl.logging.info('Using %d process(es) for Beam pipeline execution.' %
-                      parallelism)
-
-    pipeline_options.view_as(DirectOptions).direct_num_workers = parallelism
-    # When using default value 'in_memory' and parallelism is great than
-    # one, use 'multi_processing' instead.
-    if parallelism > 1 and pipeline_options.view_as(
-        DirectOptions).direct_running_mode == 'in_memory':
-      pipeline_options.view_as(
-          DirectOptions).direct_running_mode = 'multi_processing'
     return beam.Pipeline(
         options=pipeline_options, runner=fn_api_runner.FnApiRunner())
 

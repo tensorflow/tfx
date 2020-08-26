@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import mock
 import tensorflow as tf
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor
@@ -29,7 +29,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
-from tfx.utils.dsl_utils import external_input
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
@@ -60,7 +61,7 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     example_gen = FileBasedExampleGen(
         custom_executor_spec=executor_spec.ExecutorClassSpec(
             avro_executor.Executor),
-        input=external_input(self.avro_dir_path),
+        input_base=self.avro_dir_path,
         input_config=self.input_config,
         output_config=self.output_config,
         instance_name='AvroExampleGen')

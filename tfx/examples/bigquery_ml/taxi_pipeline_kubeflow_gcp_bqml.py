@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import os
 from typing import Dict, List, Text
-from tfx.components import BigQueryExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ModelValidator
@@ -31,7 +30,8 @@ from tfx.components import Trainer
 from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
-from tfx.extensions.google_cloud_big_query_ml.pusher import executor as bigquery_ml_pusher_executor
+from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
+from tfx.extensions.google_cloud_big_query.pusher import executor as bigquery_pusher_executor
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
 from tfx.proto import evaluator_pb2
@@ -164,7 +164,7 @@ def _create_pipeline(
   """Implements the chicago taxi pipeline with TFX and Kubeflow Pipelines."""
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = BigQueryExampleGen(query=query)
+  example_gen = big_query_example_gen_component.BigQueryExampleGen(query=query)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -214,7 +214,7 @@ def _create_pipeline(
   # to  Google Cloud BigQuery ML if check passed.
   pusher = Pusher(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
-          bigquery_ml_pusher_executor.Executor),
+          bigquery_pusher_executor.Executor),
       model=trainer.outputs['model'],
       model_blessing=model_validator.outputs['blessing'],
       custom_config={'bigquery_serving_args': bigquery_serving_args})

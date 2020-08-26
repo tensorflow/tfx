@@ -24,15 +24,14 @@ import copy
 import enum
 import importlib
 import json
-import os
 from typing import Any, Dict, Optional, Text, Type
 
 import absl
 import tensorflow as tf
 
+from tfx.utils import json_utils
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
-from tfx.utils import json_utils
 
 
 class ArtifactState(object):
@@ -285,8 +284,8 @@ class Artifact(json_utils.Jsonable):
     self._artifact.type_id = artifact_type.id
 
   def __repr__(self):
-    return 'Artifact(type_name: {}, uri: {}, id: {})'.format(
-        self._artifact_type.name, self.uri, str(self.id))
+    return 'Artifact(artifact: {}, artifact_type: {})'.format(
+        str(self._artifact), str(self._artifact_type))
 
   def to_json_dict(self) -> Dict[Text, Any]:
     return {
@@ -474,11 +473,22 @@ class Artifact(json_utils.Jsonable):
     """Get a custom property of int type."""
     return self._artifact.custom_properties[key].int_value
 
+  def copy_from(self, other: 'Artifact'):
+    """Set uri, properties and custom properties from a given Artifact."""
+    assert self.type is other.type, (
+        'Unable to set properties from an artifact of different type: {} vs {}'
+        .format(self.type_name, other.type_name))
+    self.uri = other.uri
+
+    self._artifact.properties.clear()
+    self._artifact.properties.MergeFrom(other._artifact.properties)  # pylint: disable=protected-access
+    self._artifact.custom_properties.clear()
+    self._artifact.custom_properties.MergeFrom(
+        other._artifact.custom_properties)  # pylint: disable=protected-access
+
 
 class ValueArtifact(Artifact):
   """Artifacts of small scalar-values that can be easily loaded into memory."""
-
-  VALUE_FILE = 'value'  # File name storing the actual value under uri.
 
   def __init__(self, *args, **kwargs):
     self._has_value = False
@@ -488,9 +498,9 @@ class ValueArtifact(Artifact):
 
   def read(self):
     if not self._has_value:
-      file_path = os.path.join(self.uri, self.__class__.VALUE_FILE)
+      file_path = self.uri
       # Assert there is a file exists.
-      if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
+      if not tf.io.gfile.exists(file_path):
         raise RuntimeError(
             'Given path does not exist or is not a valid file: %s' % file_path)
 
@@ -501,8 +511,7 @@ class ValueArtifact(Artifact):
 
   def write(self, value):
     serialized_value = self.encode(value)
-    tf.io.gfile.GFile(os.path.join(self.uri, self.__class__.VALUE_FILE),
-                      'wb').write(serialized_value)
+    tf.io.gfile.GFile(self.uri, 'wb').write(serialized_value)
 
   @property
   def value(self):

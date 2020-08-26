@@ -26,8 +26,6 @@ import absl
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
 
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_metadata.proto.v0 import schema_pb2
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import constants
@@ -37,6 +35,9 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
+
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
+from tensorflow_metadata.proto.v0 import schema_pb2
 
 
 def _all_files_pattern(file_pattern: Text) -> Text:
@@ -58,17 +59,17 @@ def _is_chief():
   return task_type == 'chief' or (task_type == 'master' and task_index == 0)
 
 
-class TrainerFnArgs(object):
+class TrainerFnArgs(dict):
   """Wrapper class to help migrate from contrib.HParam to new data structure."""
 
-  def __init__(self, **kwargs):
-    self._data = kwargs
-
-  def __getitem__(self, key):
-    return self._data[key]
-
   def __getattr__(self, key):
-    return self._data[key]
+    if key in self:
+      return self[key]
+    else:
+      raise AttributeError('No such attribute: ' + key)
+
+  def __setattr__(self, key, value):
+    self[key] = value
 
 
 class GenericExecutor(base_executor.BaseExecutor):
@@ -109,7 +110,7 @@ class GenericExecutor(base_executor.BaseExecutor):
     # needed.
     custom_config = json_utils.loads(
         exec_properties.get(constants.CUSTOM_CONFIG_KEY, 'null')) or {}
-    if not isinstance(custom_config, Dict):
+    if not isinstance(custom_config, dict):
       raise ValueError('custom_config in execution properties needs to be a '
                        'dict. Got %s instead.' % type(custom_config))
 
@@ -130,9 +131,12 @@ class GenericExecutor(base_executor.BaseExecutor):
       hyperparameters_config = None
 
     output_path = artifact_utils.get_single_uri(
-        output_dict[constants.OUTPUT_MODEL_KEY])
+        output_dict[constants.MODEL_KEY])
     serving_model_dir = path_utils.serving_model_dir(output_path)
     eval_model_dir = path_utils.eval_model_dir(output_path)
+
+    model_run_dir = artifact_utils.get_single_uri(
+        output_dict[constants.MODEL_RUN_KEY])
 
     # TODO(b/126242806) Use PipelineInputs when it is available in third_party.
     return TrainerFnArgs(
@@ -148,6 +152,8 @@ class GenericExecutor(base_executor.BaseExecutor):
         eval_model_dir=eval_model_dir,
         # A list of uris for eval files.
         eval_files=fn_args.eval_files,
+        # A single uri for the output directory of model training related files.
+        model_run_dir=model_run_dir,
         # A single uri for schema file.
         schema_file=fn_args.schema_path,
         # Number of train steps.
@@ -158,6 +164,9 @@ class GenericExecutor(base_executor.BaseExecutor):
         base_model=base_model,
         # An optional kerastuner.HyperParameters config.
         hyperparameters=hyperparameters_config,
+        # A fn_args_utils.DataAccessor. Contains factories that can create
+        # tf.data.Datasets or other means to access the train/eval data.
+        data_accessor=fn_args.data_accessor,
         # Additional parameters to pass to trainer function.
         **custom_config)
 
@@ -168,16 +177,18 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     The Trainer Executor invokes a run_fn callback function provided by
     the user via the module_file parameter. In this function, user defines the
-    model and train it, then save the model to the provided location.
+    model and trains it, then saves the model and training related files
+    (e.g, Tensorboard logs) to the provided locations.
 
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
         - examples: Examples used for training, must include 'train' and 'eval'
-          splits.
+          if custom splits is not specified in train_args and eval_args.
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -211,8 +222,10 @@ class GenericExecutor(base_executor.BaseExecutor):
     # module's responsibility to export the model only once.
     if not tf.io.gfile.exists(fn_args.serving_model_dir):
       raise RuntimeError('run_fn failed to generate model.')
-    absl.logging.info('Training complete. Model written to %s',
-                      fn_args.serving_model_dir)
+
+    absl.logging.info(
+        'Training complete. Model written to %s. ModelRun written to %s',
+        fn_args.serving_model_dir, fn_args.model_run_dir)
 
 
 class Executor(GenericExecutor):
@@ -240,11 +253,12 @@ class Executor(GenericExecutor):
     Args:
       input_dict: Input dict from input key to a list of ML-Metadata Artifacts.
         - examples: Examples used for training, must include 'train' and 'eval'
-          splits.
+          if custom splits is not specified in train_args and eval_args.
         - transform_output: Optional input transform graph.
         - schema: Schema of the data.
       output_dict: Output dict from output key to a list of Artifacts.
-        - output: Exported model.
+        - model: Exported model.
+        - model_run: Model training related outputs (e.g., Tensorboard logs)
       exec_properties: A dict of execution properties.
         - train_args: JSON string of trainer_pb2.TrainArgs instance, providing
           args for training.
@@ -271,6 +285,17 @@ class Executor(GenericExecutor):
 
     schema = io_utils.parse_pbtxt_file(fn_args.schema_file, schema_pb2.Schema())
 
+    # TODO(b/160795287): Deprecate estimator based executor.
+    # Provide user with a modified fn_args, with model_run given as
+    # the working directory. Executor will then copy user models to
+    # model artifact directory.
+    serving_dest = fn_args.serving_model_dir
+    eval_dest = fn_args.eval_model_dir
+
+    working_dir = fn_args.model_run_dir
+    fn_args.serving_model_dir = path_utils.serving_model_dir(working_dir)
+    fn_args.eval_model_dir = path_utils.eval_model_dir(working_dir)
+
     training_spec = trainer_fn(fn_args, schema)
 
     # Train the model
@@ -278,8 +303,10 @@ class Executor(GenericExecutor):
     tf.estimator.train_and_evaluate(training_spec['estimator'],
                                     training_spec['train_spec'],
                                     training_spec['eval_spec'])
-    absl.logging.info('Training complete.  Model written to %s',
-                      fn_args.serving_model_dir)
+
+    absl.logging.info(
+        'Training complete. Model written to %s. ModelRun written to %s',
+        fn_args.serving_model_dir, fn_args.model_run_dir)
 
     # Export an eval savedmodel for TFMA. If distributed training, it must only
     # be written by the chief worker, as would be done for serving savedmodel.
@@ -292,8 +319,17 @@ class Executor(GenericExecutor):
 
       absl.logging.info('Exported eval_savedmodel to %s.',
                         fn_args.eval_model_dir)
+
+      # TODO(b/160795287): Deprecate estimator based executor.
+      # Copy serving and eval model from model_run to model artifact directory.
+      serving_source = path_utils.serving_model_path(fn_args.model_run_dir)
+      io_utils.copy_dir(serving_source, serving_dest)
+      absl.logging.info('Serving model copied to: %s.', serving_dest)
+
+      eval_source = path_utils.eval_model_path(fn_args.model_run_dir)
+      io_utils.copy_dir(eval_source, eval_dest)
+      absl.logging.info('Eval model copied to: %s.', eval_dest)
+
     else:
       absl.logging.info(
-          'eval_savedmodel export for TFMA is skipped because '
-          'this is not the chief worker.'
-      )
+          'Model export is skipped because this is not the chief worker.')

@@ -48,9 +48,6 @@ def _get_serve_tf_examples_fn(model, tf_transform_output):
     parsed_features = tf.io.parse_example(serialized_tf_examples, feature_spec)
 
     transformed_features = model.tft_layer(parsed_features)
-    # TODO(b/148082271): Remove this line once TFT 0.22 is used.
-    transformed_features.pop(
-        features.transformed_name(features.LABEL_KEY), None)
 
     return model(transformed_features)
 
@@ -168,7 +165,8 @@ def _wide_and_deep_classifier(wide_columns, deep_columns, dnn_hidden_units,
       colname in features.transformed_names(features.CATEGORICAL_FEATURE_KEYS)
   })
 
-  # TODO(b/144500510): SparseFeatures for feature columns + Keras.
+  # TODO(b/161952382): Replace with Keras premade models and
+  # Keras preprocessing layers.
   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
   for numnodes in dnn_hidden_units:
     deep = tf.keras.layers.Dense(numnodes)(deep)
@@ -208,8 +206,14 @@ def run_fn(fn_args):
     model = _build_keras_model(
         hidden_units=constants.HIDDEN_UNITS,
         learning_rate=constants.LEARNING_RATE)
-  # This log path might change in the future.
-  log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  try:
+    log_dir = fn_args.model_run_dir
+  except KeyError:
+    # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+    log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+
+  # Write logs to path
   tensorboard_callback = tf.keras.callbacks.TensorBoard(
       log_dir=log_dir, update_freq='batch')
 

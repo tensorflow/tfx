@@ -276,7 +276,8 @@ _FARE_KEY = 'fare'
 #       for colname in _transformed_names(_CATEGORICAL_FEATURE_KEYS)
 #   })
 #
-#   # TODO(b/144500510): SparseFeatures for feature columns + Keras.
+#   # TODO(b/161952382): Replace with Keras premade models and
+#   # Keras preprocessing layers.
 #   deep = tf.keras.layers.DenseFeatures(deep_columns)(input_layers)
 #   for numnodes in dnn_hidden_units:
 #     deep = tf.keras.layers.Dense(numnodes)(deep)
@@ -322,8 +323,13 @@ _FARE_KEY = 'fare'
 #             for i in range(num_dnn_layers)
 #         ])
 #
-#   # TODO(b/158106209): This log path might change in the future.
-#   log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+#   try:
+#     log_dir = fn_args.model_run_dir
+#   except KeyError:
+#     # TODO(b/158106209): use ModelRun instead of Model artifact for logging.
+#     log_dir = os.path.join(os.path.dirname(fn_args.serving_model_dir), 'logs')
+#
+#   # Write logs to path
 #   tensorboard_callback = tf.keras.callbacks.TensorBoard(
 #       log_dir=log_dir, update_freq='batch')
 #

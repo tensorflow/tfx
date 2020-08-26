@@ -50,7 +50,31 @@ message Input {
   //   - If SPAN is specified, pipeline will process the latest span, and store
   //     the span number in metadata.
   //
-  // TODO(jyzhao): support version and date spec.
+  // [date specs]
+  //   - There are three specs to represent mapping from dates to spans:
+  //     {YYYY}, {MM}, and {DD}. The three specs should be altogether present,
+  //     once any is specified. Either {SPAN} spec or this set of date specs
+  //     can be specified exclusively.
+  //   - A calendar date with the year from YYYY, the month from MM, and the
+  //     day of the month from DD is calculated as the number of days since unix
+  //     epoch (i.e. 1970-01-01).
+  //     e.g. 'log-{YYYY}{MM}{DD}.data' matches to a file 'log-19700101.data'
+  //       and consumes it as input for Span-0, and 'log-20170101.data' as
+  //       input for Span-17167.
+  //
+  // [VERSION spec]
+  //   - '{VERSION}', for using in pattern below to retrieve version number.
+  //   - This spec matches to non-zero padding digits and maps the data to
+  //     the relvant VERSION numbers under the SPAN.
+  //   - When VERSION spec is missing, version is set to be None.
+  //   - If SPAN and VERSION are both specified, pipeline will process the
+  //     latest version for the latest span, and store the version number in
+  //     metadata.
+  //   - If VERSION is specified, but not SPAN, an error will be thrown.
+  //
+  // TODO(b/162622803): add default behavior for when version spec not present.
+  // TODO(jyzhao): support retrieving a specific number of digits in Span and
+  //     Version spec (i.e. {SPAN:2} or {VERSION:4})
   // TODO(jyzhao): support range config for define certain spans to process.
   message Split {
     string name = 1;
@@ -62,6 +86,23 @@ message Input {
 // Optional specified configuration for example gen.
 message CustomConfig {
   google.protobuf.Any custom_config = 1;
+}
+
+// Enum to indicate payload format that ExampleGen produces.
+enum PayloadFormat {
+  // Unknown or unspecified.
+  FORMAT_UNSPECIFIED = 0;
+
+  // Serialized tf.train.Example protocol buffer.
+  FORMAT_TF_EXAMPLE = 6;
+
+  // Serialized tf.train.SequenceExample protocol buffer.
+  FORMAT_TF_SEQUENCE_EXAMPLE = 7;
+
+  // Serialized any protocol buffer.
+  FORMAT_PROTO = 11;
+
+  reserved 1 to 5, 8 to 10, 12 to max;
 }
 
 // Specification of the output of the example gen.
@@ -126,6 +167,8 @@ message SplitConfig {
     // For ready-made ExampleGen implementations:
     //   - If it generates tf.Example, then a "feature" means an entry in
     //     tf.Example.features.feature.
+    //   - If it generates tf.SequenceExample, then a "feature" means an entry
+    //     in tf.SequenceExample.context.feature.
     //   - Only bytes_list and int64_list features are supported.
     string partition_feature_name = 2;
   }

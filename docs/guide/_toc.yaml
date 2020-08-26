@@ -4,6 +4,8 @@ toc:
 
 - heading: "What's New"
   style: divider
+- title: "Automatic Hyperparameter Tuning"
+  path: /tfx/guide/tuner
 - title: "Using Keras with TFX"
   path: /tfx/guide/keras
 - title: "Using TFX in Cloud AI Platform Pipelines"
@@ -34,6 +36,8 @@ toc:
   path: /tfx/guide/transform
 - title: "Trainer"
   path: /tfx/guide/trainer
+- title: "Tuner"
+  path: /tfx/guide/tuner
 - title: "Evaluator"
   path: /tfx/guide/evaluator
 - title: "InfraValidator"

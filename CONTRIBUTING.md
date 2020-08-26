@@ -61,18 +61,33 @@ to end tests (filename ends with `_e2e_test.py`): some of this also runs with
 external environments.
 
 ## Testing local change
-To test local change, you will need to install code into virtualenv in editable
-mode:
+
+To test local change, first you have to install
+[Bazel](https://docs.bazel.build/versions/master/install.html), which powers the
+protobuf stub code generation. Check whether Bazel is installed and executable:
+
+```shell
+bazel --version
+```
+
+After installing Bazel, you can install TFX source code in a virtual
+environment in editable (`-e`) mode, which will pick up your local changes
+immediately without re-installing every time.
 
 ```shell
 pushd <your_source_dir>
 pip install -e .[all]   # the [all] suffix includes additional packages for test
 ```
 
-Note that you have to have protocol buffer compiler `protoc` installed in order
-to be able to install the requirements. Download the latest version
-[here](https://github.com/protocolbuffers/protobuf/releases) and follow the
-instructions in the readme.
+If you have a local change in `.proto` files, you should re-generate the
+protobuf stub code before using it with the following command. (This is
+automatically invoked once when you first install `tfx` in editable mode, but
+further stub generation requires manual invocation of the following command.)
+
+```shell
+# In the tfx root directory
+bazel run //build:gen_proto
+```
 
 ## Running Unit Tests
 
@@ -85,8 +100,26 @@ Each test can just be invoked with `python`. To invoke all unit tests:
 find . -name '*_test.py' | grep -v e2e | xargs -I {} python {}
 ```
 
-By default, only unit tests are executed. Tests marked as `end_to_end` will be
-skipped.
+## Runing pylint
+
+All new / changed code should pass [pylint](https://www.pylint.org/) linter.
+Use pylint to check lint errors before sending a pull request. TFX has a
+dedicated [pylintrc](https://github.com/tensorflow/tfx/blob/master/pylintrc).
+
+```shell
+pylint --rcfile <path_to_pylintrc> some_python.py
+```
+
+If your working directory is root of the tfx repository, you can omit `--rcfile`
+flag. pylintrc in current directory will be used by default.
+
+There are some existing issues especially with the lint tools. Googlers don't
+use external tools like pylint, and the lint rules are a little bit
+different. As a result, some existing code doesn't follow lint rule specified
+in `pylintrc` configuration file. So keep in mind that there might be existing
+issues, and you don't need to fix lint errors in existing code. But don't let
+them grow.
+
 
 # Check Pending Changes
 Each change being worked on internally will have a pending PR, which will be
