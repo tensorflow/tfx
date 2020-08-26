@@ -71,15 +71,15 @@ class GenericExecutor(base_executor.BaseExecutor):
     executor_class_path = '%s.%s' % (executor_class.__module__,
                                      executor_class.__name__)
 
-    if self._context is not None and self._context.unique_id is not None:
-      unique_id = str(self._context.unique_id)
+    if self._context is not None and self._context._unique_id is not None: #pylint: disable=protected-access
+      unique_id = str(self._context._unique_id) #pylint: disable=protected-access
     else:
       absl.logging.warning(
           "Missing unique_id in executor, using a random id instead.")
       unique_id = test_utils.random_id()
 
     # Note: exec_properties['custom_config'] here is a dict.
-    return runner.start_gke_training(input_dict, output_dict, exec_properties,
+    return runnerstart_kubernetes_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
                                      unique_id)
 
