@@ -67,6 +67,8 @@
     *   specify `analyzer_cache` to use the cache generated from a previous run.
     *   specify parameter `disable_analyzer_cache=True` (False by default) to
         disable cache (won't generate cache output).
+*   Added support for width modifiers in Span and Version specs for file based
+    ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
