@@ -140,12 +140,12 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
 def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   """Serializes a TFX pipeline.
 
-  To be replaced with the "portable core" of the unified TFX orchestrator:
-  https://github.com/tensorflow/community/pull/271. This serialization
-  procedure extracts from the pipeline properties necessary for reconstructing
-  the pipeline instance from within the cluster. For properties such as
-  components and metadata config that can not be directly dumped with JSON,
-  we use NodeWrapper and MessageToJson to serialize them beforehand.
+  To be replaced with the the TFX Intermediate Representation:
+  tensorflow/community#271. This serialization procedure extracts from
+  the pipeline properties necessary for reconstructing the pipeline instance
+  from within the cluster. For properties such as components and metadata
+  config that can not be directly dumped with JSON, we use NodeWrapper and
+  MessageToJson to serialize them beforehand.
 
   Args:
     pipeline: Logical pipeline containing pipeline args and components.
@@ -160,7 +160,7 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   # Extract and pass pipeline graph information which are lost during the
   # serialization process. The orchestrator container uses downstream_ids
   # to reconstruct pipeline graph.
-  downstream_ids = json.dumps(_extract_downstream_ids(pipeline.components))
+  downstream_ids = _extract_downstream_ids(pipeline.components)
   return json.dumps({
       'pipeline_name': pipeline.pipeline_info.pipeline_name,
       'pipeline_root': pipeline.pipeline_info.pipeline_root,
