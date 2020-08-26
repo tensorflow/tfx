@@ -53,7 +53,7 @@ _pipeline_name = 'iris_native_keras_custom_splits'
 
 # This example assumes that Iris flowers data is stored in ~/iris/data and the
 # utility function is in ~/iris. Feel free to customize as needed.
-_iris_root = os.path.join(os.environ['HOME'], 'tfx-test/tfx/examples/iris')
+_iris_root = os.path.join(os.environ['HOME'], 'iris')
 _data_root = os.path.join(_iris_root, 'data')
 # Python module file to inject customized logic into the TFX components. The
 # Transform and Trainer both require user-defined functions to run successfully.
