@@ -1,0 +1,1 @@
+{"space": [{"class_name": "Choice", "config": {"name": "learning_rate", "default": 0.01, "values": [0.01, 0.001], "ordered": true}}, {"class_name": "Int", "config": {"name": "num_layers", "default": 2, "min_value": 1, "max_value": 3, "step": 1, "sampling": null}}], "values": {"learning_rate": 0.01, "num_layers": 3}}
