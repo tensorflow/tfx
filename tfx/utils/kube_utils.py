@@ -146,7 +146,7 @@ def make_core_v1_api() -> k8s_client.CoreV1Api:
   return _factory.MakeCoreV1Api()
 
 
-def make_externsions_v1_beta1_api() -> k8s_client.ExtensionsV1beta1Api:
+def make_extensions_v1_beta1_api() -> k8s_client.ExtensionsV1beta1Api:
   """Make a kubernetes ExtensionsV1beta1Api client."""
   return _factory.MakeExtensionsV1beta1Api()
 

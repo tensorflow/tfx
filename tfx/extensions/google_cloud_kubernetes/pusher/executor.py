@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Custom executor to push TFX model to Kubernetes."""
+"""Custom executor to serve on Kubernetes."""
 
 from absl import logging
 from os import path
@@ -19,7 +19,7 @@ import json
 from typing import Any, Dict, List, Text
 import yaml
 
-from google.protobuf import json_format
+from google.protobuf import text_format
 from kubernetes.client import rest
 from tensorflow_serving.config import model_server_config_pb2
 from tensorflow_serving.sources.storage_path import file_system_storage_path_source_pb2
@@ -60,11 +60,10 @@ _MODEL_VERSION_ENV_KEY = 'MODEL_VERSION'
 def _create_model_service_configuration(
     model_name: Text,
     model_uri: Text,
-    model_version: Text,
+    model_version: int,
 ) -> Text:
   """Helper function to create a serialized configuration for serving."""
   # Create the base model config Protobuf definition.
-  model_server_config = model_server_config_pb2.ModelServerConfig()
   config_list = model_server_config_pb2.ModelConfigList()       
   one_config = config_list.config.add()
   one_config.name = model_name
@@ -74,31 +73,16 @@ def _create_model_service_configuration(
   # Create the model version policy Protobuf definition.
   path_config = (file_system_storage_path_source_pb2.
       FileSystemStoragePathSourceConfig)
-  version_policy = path_config.ServableVersionPolicy()
-  version_policy.specific = path_config.ServableVersionPolicy.Specific(
-      versions = [model_version])
+  version_policy = path_config.ServableVersionPolicy(
+    specific=path_config.ServableVersionPolicy.Specific(
+      versions = [model_version]))
 
-  one_config.model_version_policy = version_policy
-  model_server_config.model_config_list.CopyFrom(config_list)
-  return json.dumps(json_format.MessageToJson(model_server_config))
+  one_config.model_version_policy.CopyFrom(version_policy)
+  return text_format.MessageToString(config_list)
 
 
 class Executor(tfx_pusher_executor.Executor):
   """Deploy a model to GKE cluster with Tensorflow Serving."""
-
-  def DeployTFServingService(self) -> None:
-    """Creates the model serving service with TF Serving."""
-    client_api = kube_utils.make_core_v1_api()
-    with open(path.join(path.dirname(__file__),
-                        'yaml', 'serving-service.yaml')) as f:
-      svc = yaml.safe_load(f)
-      try:
-        resp = client_api.create_namespaced_service(
-            body=svc, namespace='default')
-        logging.info('Model Service created. status="%s"' % str(resp.status))
-      except rest.ApiException:
-        # Since the model service yaml is static, no update is needed.
-        logging.info('Model Service unchanged.')
 
   def DeployTFServingDeployment(
       self,
@@ -118,33 +102,47 @@ class Executor(tfx_pusher_executor.Executor):
       model_version: Version of the model being served.
       num_replicas: Number of serving replicas.
   """
-    client_api = kube_utils.make_externsions_v1_beta1_api()
+    client_api = kube_utils.make_extensions_v1_beta1_api()
 
     with open(path.join(path.dirname(__file__),
                         'yaml',
                         'serving-deployment.yaml')) as f:
-      dep = yaml.safe_load(f)
-      args = [
-          'echo "{}" > model.config;'.format(
-              _create_model_service_configuration(
-                  model_name, model_uri, model_version)),
-          '/usr/bin/tf_serving_entrypoint.sh --model_config_file=model.config;'
-      ]
-      spec = dep['spec']
-      # Configure the number of replicas, command and arguments.
-      spec['replicas'] = num_replicas
-      spec['template']['spec']['containers'][0]['command'] = ["bin/sh", "-c"]
-      spec['template']['spec']['containers'][0]['args'] = args
-      try:
-        resp = client_api.create_namespaced_deployment(
-            body=dep, namespace='default')
-        logging.info('Deployment created. status="%s"' % str(resp.status))
-      except rest.ApiException:
-        logging.info(dep)
-        resp = client_api.patch_namespaced_deployment(
-            name=dep['metadata']['name'],
-            body=dep, namespace='default')
-        logging.info('Deployment updated. status="%s"' % str(resp.status))
+      deployment = yaml.safe_load(f)
+    args = [
+        'echo "{}" > model.config;'.format(
+            _create_model_service_configuration(
+                model_name, model_uri, model_version)),
+        '/usr/bin/tf_serving_entrypoint.sh --model_config_file=model.config;'
+    ]
+    spec = deployment['spec']
+    # Configure the number of replicas, command and arguments.
+    spec['replicas'] = num_replicas
+    spec['template']['spec']['containers'][0]['command'] = ["bin/sh", "-c"]
+    spec['template']['spec']['containers'][0]['args'] = args
+    try:
+      response = client_api.create_namespaced_deployment(
+          body=deployment, namespace='default')
+      logging.info('Deployment created. status="%s"' % str(response.status))
+    except rest.ApiException:
+      logging.info(deployment)
+      response = client_api.patch_namespaced_deployment(
+          name=deployment['metadata']['name'],
+          body=deployment, namespace='default')
+      logging.info('Deployment updated. status="%s"' % str(response.status))
+
+  def DeployTFServingService(self) -> None:
+    """Creates the model serving service with TF Serving."""
+    client_api = kube_utils.make_core_v1_api()
+    with open(path.join(path.dirname(__file__),
+                        'yaml', 'serving-service.yaml')) as f:
+      service = yaml.safe_load(f)
+    try:
+      response = client_api.create_namespaced_service(
+          body=service, namespace='default')
+      logging.info('Model Service created. status="%s"' % str(response.status))
+    except rest.ApiException:
+      # Since the model service yaml is static, no update is needed.
+      logging.info('Model Service unchanged.')
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -169,7 +167,7 @@ class Executor(tfx_pusher_executor.Executor):
         if deployment to GKE cluster failed.
     """
     super().Do(input_dict=input_dict, output_dict=output_dict,
-               executor_properties=exec_properties)
+               exec_properties=exec_properties)
     model_push = artifact_utils.get_single_instance(
         output_dict[tfx_pusher_executor.PUSHED_MODEL_KEY])
     if model_push.get_int_custom_property('pushed') == 0:
@@ -191,30 +189,31 @@ class Executor(tfx_pusher_executor.Executor):
                    NUM_REPLICAS_KEY)
     num_replicas = tf_serving_args.get(NUM_REPLICAS_KEY, 1)
 
-    default_model_name = 'model'
-    if not tf_serving_args.get(MODEL_NAME_KEY):
-      logging.info('\'%s\' not specified in \'tf_serving_args\', using %s',
-                   MODEL_NAME_KEY, default_model_name)
-    model_name = tf_serving_args.get(MODEL_NAME_KEY, default_model_name)
+    # default_model_name = 'model'
+    # if not tf_serving_args.get(MODEL_NAME_KEY):
+    #   logging.info('\'%s\' not specified in \'tf_serving_args\', using %s',
+    #                MODEL_NAME_KEY, default_model_name)
+    # model_name = tf_serving_args.get(MODEL_NAME_KEY, default_model_name)
 
+
+    # Tensorflow Serving model path format.
+    # https://www.tensorflow.org/tfx/serving/serving_kubernetes
+    # /base_path/{model_name}/{model_version}
     model_path = model_push.get_string_custom_property(
         tfx_pusher_executor._PUSHED_DESTINATION_KEY)
-    model_version = model_push.get_string_custom_property(_PUSHED_VERSION_KEY)
+    split_path = model_path.split(path.sep)
+    model_base_path = ''.join(split_path[:-2])
+    model_name = split_path[-1]
+    model_version = int(model_push.get_string_custom_property(
+        tfx_pusher_executor._PUSHED_VERSION_KEY))
 
     # Deploy the service and pods.
-    self.DeployTFServingService()
     self.DeployTFServingDeployment(
         model_name=model_name,
         model_uri=model_path,
         model_version=model_version,
         num_replicas=num_replicas,
     )
+    self.DeployTFServingService()
 
-    model_version = path.split(model_path)[1]
-    self._MarkPushed(model_push,
-                     pushed_destination=_TFSERVING_MODEL_VERSION_PATH_FORMAT
-                     .format(
-                         model_name=model_name,
-                         model_version=model_version,
-                     ),
-                     pushed_version=model_version,)
+    logging.info('Push to Kubernetes successful.')
