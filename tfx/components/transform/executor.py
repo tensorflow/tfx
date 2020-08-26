@@ -1061,15 +1061,12 @@ class Executor(base_executor.BaseExecutor):
             # assuming that this pipeline operates on rolling ranges, so those
             # cache entries may also be relevant for future iterations.
             for span_cache_dir in input_analysis_data:
-              # TODO(b/148082271, b/148212028, b/37788560): Remove this
-              # condition when we stop supporting TFT 0.21.2.
-              if isinstance(span_cache_dir, tuple):
-                span_cache_dir = span_cache_dir.key
               full_span_cache_dir = os.path.join(input_cache_dir,
-                                                 span_cache_dir)
+                                                 span_cache_dir.key)
               if tf.io.gfile.isdir(full_span_cache_dir):
-                self._CopyCache(full_span_cache_dir,
-                                os.path.join(output_cache_dir, span_cache_dir))
+                self._CopyCache(
+                    full_span_cache_dir,
+                    os.path.join(output_cache_dir, span_cache_dir.key))
 
           (cache_output
            | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
