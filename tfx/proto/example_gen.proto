@@ -70,7 +70,7 @@ message Input {
   //
   // [VERSION spec]
   //   - '{VERSION}', for using in pattern below to retrieve version number.
-  //   - This spec matches digits and maps the data to the relevant VERSION 
+  //   - This spec matches digits and maps the data to the relevant VERSION
   //     numbers under the SPAN.
   //     e.g. 'data_{SPAN}/v{VERSION}/*' matches to files under 'data_0/v1'
   //       to consume as input for Version-1 of Span-0.
@@ -82,7 +82,7 @@ message Input {
   //   - It could also be optionally specified with the width in the same way
   //     as SPAN spec. e.g. 'data_span_{SPAN}_version_{VERSION:4}.data-*'.
   //     For zero padding digits (e.g., `0012`), the width must be used.
-  // 
+  //
   // TODO(b/162622803): add default behavior for when version spec not present.
   // TODO(jyzhao): support range config for define certain spans to process.
   message Split {

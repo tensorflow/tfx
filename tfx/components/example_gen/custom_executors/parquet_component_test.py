@@ -18,9 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 import mock
 import tensorflow as tf
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import parquet_executor
@@ -29,6 +29,8 @@ from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class ExampleGenComponentWithParquetExecutorTest(tf.test.TestCase):

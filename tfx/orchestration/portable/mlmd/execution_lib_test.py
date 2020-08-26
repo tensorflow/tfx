@@ -96,35 +96,17 @@ class ExecutionLibTest(test_utils.TfxTest):
           """, result)
 
   def testArtifactAndEventPairs(self):
-    model = standard_artifacts.Model()
-    model.uri = 'model'
     example = standard_artifacts.Examples()
     example.uri = 'example'
     example.id = 1
 
-    expected_artifact_one = metadata_store_pb2.Artifact()
-    expected_artifact_two = metadata_store_pb2.Artifact()
-    text_format.Parse("""
-        type_id: 1
-        uri: 'model'""", expected_artifact_one)
+    expected_artifact = metadata_store_pb2.Artifact()
     text_format.Parse(
         """
         id: 1
-        type_id: 2
-        uri: 'example'""", expected_artifact_two)
-    expected_event_one = metadata_store_pb2.Event()
-    expected_event_two = metadata_store_pb2.Event()
-    text_format.Parse(
-        """
-        path {
-          steps {
-            key: 'model'
-          }
-          steps {
-            index: 0
-          }
-        }
-        type: INPUT""", expected_event_one)
+        type_id: 1
+        uri: 'example'""", expected_artifact)
+    expected_event = metadata_store_pb2.Event()
     text_format.Parse(
         """
         path {
@@ -135,18 +117,15 @@ class ExecutionLibTest(test_utils.TfxTest):
             index: 0
           }
         }
-        type: INPUT""", expected_event_two)
+        type: INPUT""", expected_event)
 
     with metadata.Metadata(connection_config=self._connection_config) as m:
       result = execution_lib._create_artifact_and_event_pairs(
           m, {
-              'model': [model],
               'example': [example],
           }, metadata_store_pb2.Event.INPUT)
 
-      self.assertListEqual([(expected_artifact_one, expected_event_one),
-                            (expected_artifact_two, expected_event_two)],
-                           result)
+      self.assertCountEqual([(expected_artifact, expected_event)], result)
 
   def testPutExecutionGraph(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:

@@ -36,14 +36,6 @@ class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
 
-class _InputCache(types.Artifact):
-  TYPE_NAME = 'InputCache'
-
-
-class _OutputCache(types.Artifact):
-  TYPE_NAME = 'OutputCache'
-
-
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
 
@@ -77,14 +69,21 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_graph')
     self._transformed_examples = standard_artifacts.Examples()
-    self._transformed_examples.uri = output_data_dir
+    self._transformed_examples.uri = os.path.join(output_data_dir,
+                                                  'transformed_examples')
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
+    self._updated_analyzer_cache_artifact = standard_artifacts.TransformCache()
+    self._updated_analyzer_cache_artifact.uri = os.path.join(
+        self._output_data_dir, 'CACHE')
 
     self._output_dict = {
         executor.TRANSFORM_GRAPH_KEY: [self._transformed_output],
         executor.TRANSFORMED_EXAMPLES_KEY: [self._transformed_examples],
         executor.TEMP_PATH_KEY: [temp_path_output],
+        executor.UPDATED_ANALYZER_CACHE_KEY: [
+            self._updated_analyzer_cache_artifact
+        ],
     }
 
     # Create exec properties skeleton.
@@ -108,8 +107,17 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Executor for test.
     self._transform_executor = executor.Executor()
 
-  def _verify_transform_outputs(self, materialize=True):
+  def _verify_transform_outputs(self, materialize=True, store_cache=True):
+    expected_outputs = ['transformed_graph']
+
+    if store_cache:
+      expected_outputs.append('CACHE')
+      self.assertNotEqual(
+          0,
+          len(tf.io.gfile.listdir(self._updated_analyzer_cache_artifact.uri)))
+
     if materialize:
+      expected_outputs.append('transformed_examples')
       self.assertNotEqual(
           0,
           len(
@@ -120,16 +128,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
           len(
               tf.io.gfile.listdir(
                   os.path.join(self._transformed_examples.uri, 'eval'))))
-    else:
-      # there should not be transformed data under _output_data_dir.
-      self.assertEqual(['transformed_graph'],
-                       tf.io.gfile.listdir(self._output_data_dir))
+
+    # Depending on `materialize` and `store_cache`, check that
+    # expected outputs are exactly correct. If either flag is False, its
+    # respective output should not be present.
+    self.assertCountEqual(expected_outputs,
+                          tf.io.gfile.listdir(self._output_data_dir))
+
     path_to_saved_model = os.path.join(
         self._transformed_output.uri, tft.TFTransformOutput.TRANSFORM_FN_DIR,
         tf.saved_model.SAVED_MODEL_FILENAME_PB)
     self.assertTrue(tf.io.gfile.exists(path_to_saved_model))
 
-  def _runPipelineGetMetrics(self, inputs, outputs, exec_properties):
+  def _runPipelineGetMetrics(self):
     pipelines = []
 
     def _create_pipeline_wrapper(*_):
@@ -167,6 +178,13 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self._verify_transform_outputs(materialize=False)
 
+  def testDoWithCacheMaterializationDisabled(self):
+    self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
+    del self._output_dict[executor.UPDATED_ANALYZER_CACHE_KEY]
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(store_cache=False)
+
   def testDoWithPreprocessingFnCustomConfig(self):
     self._exec_properties['preprocessing_fn'] = '%s.%s' % (
         transform_module.preprocessing_fn.__module__,
@@ -202,8 +220,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def testCounters(self):
     self._exec_properties['preprocessing_fn'] = self._preprocessing_fn
-    metrics = self._runPipelineGetMetrics(self._input_dict, self._output_dict,
-                                          self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
     # The test data has 10036 instances in the train dataset, and 4964 instances
     # in the eval dataset (obtained by running:
@@ -236,51 +253,43 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self.assertMetricsCounterEqual(metrics, 'analyze_paths_count', 1)
 
   def testDoWithCache(self):
-
     # First run that creates cache.
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
-
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
-
     self._exec_properties['module_file'] = self._module_file
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
-    self._verify_transform_outputs()
-    self.assertNotEqual(0,
-                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
+    metrics = self._runPipelineGetMetrics()
+
+    # The test data has 10036 instances in the train dataset, and 4964 instances
+    # in the eval dataset. Since the analysis dataset (train) is read twice when
+    # no input cache is present (once for analysis and once for transform), the
+    # expected value of the num_instances counter is: 10036 * 2 + 4964 = 25036.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 24909)
+    self._verify_transform_outputs(store_cache=True)
 
     # Second run from cache.
     self._output_data_dir = self._get_output_data_dir('2nd_run')
-    input_cache_artifact = _InputCache()
-    input_cache_artifact.uri = output_cache_artifact.uri
-
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
+    analyzer_cache_artifact = standard_artifacts.TransformCache()
+    analyzer_cache_artifact.uri = self._updated_analyzer_cache_artifact.uri
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
 
-    self._input_dict['cache_input_path'] = [input_cache_artifact]
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
+    self._input_dict[executor.ANALYZER_CACHE_KEY] = [analyzer_cache_artifact]
 
     self._exec_properties['module_file'] = self._module_file
-    self._transform_executor.Do(self._input_dict, self._output_dict,
-                                self._exec_properties)
+    metrics = self._runPipelineGetMetrics()
 
-    self._verify_transform_outputs()
-    self.assertNotEqual(0,
-                        len(tf.io.gfile.listdir(output_cache_artifact.uri)))
+    # Since input cache should now cover all analysis (train) paths, the train
+    # and eval sets are each read exactly once for transform. Thus, the
+    # expected value of the num_instances counter is: 10036 + 4964 = 15000.
+    self.assertMetricsCounterEqual(metrics, 'num_instances', 15000)
+    self._verify_transform_outputs(store_cache=True)
 
   @tft_unit.mock.patch.object(executor, '_MAX_ESTIMATED_STAGES_COUNT', 21)
   def testDoWithCacheDisabledTooManyStages(self):
-    output_cache_artifact = _OutputCache()
-    output_cache_artifact.uri = os.path.join(self._output_data_dir, 'CACHE')
-    self._output_dict['cache_output_path'] = [output_cache_artifact]
     self._exec_properties['module_file'] = self._module_file
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
-    self._verify_transform_outputs()
-    self.assertFalse(tf.io.gfile.exists(output_cache_artifact.uri))
+    self._verify_transform_outputs(store_cache=False)
+    self.assertFalse(
+        tf.io.gfile.exists(self._updated_analyzer_cache_artifact.uri))
 
 
 if __name__ == '__main__':

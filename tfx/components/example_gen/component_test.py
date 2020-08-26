@@ -19,8 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from google.protobuf import any_pb2
-from google.protobuf import json_format
 from tfx.components.base import base_driver
 from tfx.components.base import executor_spec
 from tfx.components.example_gen import base_example_gen_executor
@@ -29,6 +27,9 @@ from tfx.components.example_gen import driver
 from tfx.proto import example_gen_pb2
 from tfx.proto import range_config_pb2
 from tfx.types import standard_artifacts
+
+from google.protobuf import any_pb2
+from google.protobuf import json_format
 
 
 class TestExampleGenExecutor(base_example_gen_executor.BaseExampleGenExecutor):
@@ -159,9 +160,8 @@ class ComponentTest(tf.test.TestCase):
 
   def testConstructWithRangeConfig(self):
     range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(start_span_number=0,
-                                                  end_span_number=5),
-        exclude_span_numbers=[1, 2, 3], min_spans=1)
+        static_range=range_config_pb2.StaticRange(start_span_number=1,
+                                                  end_span_number=1))
     example_gen = component.FileBasedExampleGen(
         input_base='path',
         range_config=range_config,
