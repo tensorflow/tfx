@@ -92,8 +92,6 @@ class ModelValidator(base_component.BaseComponent):
         ModelValidator.  Required only if multiple ModelValidator components are
         declared in the same pipeline.
     """
-    blessing = blessing or types.Channel(
-        type=standard_artifacts.ModelBlessing,
-        artifacts=[standard_artifacts.ModelBlessing()])
+    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, instance_name=instance_name)

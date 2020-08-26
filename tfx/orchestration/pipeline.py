@@ -154,11 +154,6 @@ class Pipeline(object):
         producer_map[output_channel] = component
         output_channel.producer_component_id = component.id
         output_channel.output_key = key
-        # TODO(ruoyu): Remove after switching to context-based resolution.
-        for artifact in output_channel.get():
-          artifact.name = key
-          artifact.pipeline_name = self.pipeline_info.pipeline_name
-          artifact.producer_component = component.id
 
     # Connects nodes based on producer map.
     for component in deduped_components:

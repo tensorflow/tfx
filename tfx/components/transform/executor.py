@@ -358,8 +358,6 @@ class Executor(base_executor.BaseExecutor):
     if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
       transformed_example_artifact = artifact_utils.get_single_instance(
           output_dict[TRANSFORMED_EXAMPLES_KEY])
-      # TODO(b/161490287): move the split_names setting to executor for all
-      # components.
       transformed_example_artifact.split_names = (
           artifact_utils.encode_split_names(list(splits_config.transform)))
 
