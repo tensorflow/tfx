@@ -361,12 +361,11 @@ class Executor(base_executor.BaseExecutor):
     transform_data_paths = []
     materialize_output_paths = []
     if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
-      transformed_example_artifact = artifact_utils.get_single_instance(
-          output_dict[TRANSFORMED_EXAMPLES_KEY])
-      # TODO(b/161490287): move the split_names setting to executor for all
-      # components.
-      transformed_example_artifact.split_names = (
-          artifact_utils.encode_split_names(list(splits_config.transform)))
+      for transformed_example_artifact in output_dict[TRANSFORMED_EXAMPLES_KEY]:
+        # TODO(b/161490287): move the split_names setting to executor for all
+        # components.
+        transformed_example_artifact.split_names = (
+            artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
         data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
