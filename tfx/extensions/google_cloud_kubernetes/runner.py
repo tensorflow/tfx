@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper class to start TFX multi-worker training jobs on GKE."""
+"""Helper class to start TFX multi-worker training jobs on Kubernetes."""
 
 import json
 from typing import Any, Dict, List, Text
@@ -25,8 +25,8 @@ from tfx.utils import kube_utils
 from kubernetes.client.rest import ApiException
 import kubernetes.client as client
 
-# Default TFX container image to use in GKE Training. For GPU training,
-# specify a custom image in executor.TRAINING_ARGS_KEY.
+# Default TFX container image to use in Kubernetes Training. For GPU
+# training, specify a custom image in executor.TRAINING_ARGS_KEY.
 _TFX_IMAGE = 'tensorflow/tfx:%s' % (version.__version__)
 
 _COMMAND = ["python", "-m", "tfx.scripts.run_executor"]
@@ -112,7 +112,7 @@ def create_worker_pods(job_args: List[Text],
       api_instance.create_namespaced_pod(namespace='default', body=pod)
     except ApiException as e:
       logging.error(
-          'Exception when calling CoreV1Api->create_namespaced_pod: %s' % e)
+          'Exception when calling CoreV1Api.create_namespaced_pod: %s' % e)
 
   logging.info('created {} worker pods'.format(num_workers))
 
@@ -148,7 +148,7 @@ def create_worker_services(training_inputs: Dict[Text, Any],
       api_instance.create_namespaced_service(namespace='default', body=service)
     except ApiException as e:
       logging.error(
-          'Exception when calling CoreV1Api->create_namespaced_service: %s' % e)
+          'Exception when calling CoreV1Api.create_namespaced_service: %s' % e)
   logging.info('created {} worker services'.format(num_workers))
 
 
@@ -165,27 +165,27 @@ def delete_worker_services(training_inputs: Dict[Text, Any],
                                              name=service_name)
     except ApiException as e:
       logging.error(
-          'Exception when calling CoreV1Api->delete_namespaced_service: %s' % e)
+          'Exception when calling CoreV1Api.delete_namespaced_service: %s' % e)
   logging.info('Deleted {} worker services'.format(num_workers))
 
 
-def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
-                       output_dict: Dict[Text, List[types.Artifact]],
-                       exec_properties: Dict[Text,
-                                             Any], executor_class_path: Text,
-                       training_inputs: Dict[Text,
-                                             Any], unique_id: Text):
-  """Start a trainer job on Google Kubernetes Engine (GKE).
+def start_kubernetes_training(input_dict: Dict[Text, List[types.Artifact]],
+                              output_dict: Dict[Text, List[types.Artifact]],
+                              exec_properties: Dict[Text, Any],
+                              executor_class_path: Text,
+                              training_inputs: Dict[Text,Any],
+                              unique_id: Text):
+  """Start a trainer job on Kubernetes.
 
   This is done by forwarding the inputs/outputs/exec_properties to the
-  tfx.scripts.run_executor module on a AI Platform training job interpreter.
+  tfx.scripts.run_executor module on a kubernetes pod.
 
   Args:
     input_dict: Passthrough input dict for tfx.components.Trainer.executor.
     output_dict: Passthrough input dict for tfx.components.Trainer.executor.
     exec_properties: Passthrough input dict for tfx.components.Trainer.executor.
     executor_class_path: class path for TFX core default trainer.
-    training_inputs: Training input argument for GKE.
+    training_inputs: Training input argument for Kubernetes.
       'num_workers', 'num_gpus_per_worker' and 'tfx_image' will be consumed.
 
   Returns:
@@ -203,7 +203,7 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
   logging.info('json_exec_properties=\'%s\'.', json_exec_properties)
 
 
-  # We use custom containers to launch training on GKE, which invokes
+  # We use custom containers to launch training on Kubernetes, which invokes
   # the specified image using the container's entrypoint. The default
   # entrypoint for TFX containers is to call scripts/run_executor.py. The
   # arguments below are passed to this run_executor entry to run the executor
@@ -241,5 +241,5 @@ def start_gke_training(input_dict: Dict[Text, List[types.Artifact]],
                        ('default', pod_names[0], resp.status))
 
 
-  # GKE training complete
+  # Kubernetes training complete.
   logging.info('Job successful.')

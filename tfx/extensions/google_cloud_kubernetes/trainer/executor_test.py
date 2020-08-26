@@ -74,7 +74,7 @@ class ExecutorTest(tf.test.TestCase):
     )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_gke_training.assert_called_with(
+    self.mock_runnerstart_kubernetes_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'num_gpus_per_worker': self._num_gpus_per_worker,
@@ -87,7 +87,7 @@ class ExecutorTest(tf.test.TestCase):
     )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runner.start_gke_training.assert_called_with(
+    self.mock_runnerstart_kubernetes_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._generic_executor_class_path, {
             'num_gpus_per_worker': self._num_gpus_per_worker,

@@ -82,7 +82,7 @@ class RunnerTest(tf.test.TestCase):
     mock_kube_utils.wait_pod.return_value = mock.Mock()
     self._set_up_training_mocks()
 
-    runner.start_gke_training(self._inputs, self._outputs,
+    runnerstart_kubernetes_training(self._inputs, self._outputs,
                               self._serialize_custom_config_under_test(),
                               self._executor_class_path,
                               self._training_inputs, self._unique_id)
