@@ -350,8 +350,13 @@ class Executor(base_executor.BaseExecutor):
 
     analyze_data_paths = []
     for split in splits_config.analyze:
-      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
-      analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
+      data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY], split)
+      if len(data_uris) != len(input_dict[EXAMPLES_KEY]):
+        raise ValueError(
+            'Analyze split does not exist over all example artifacts: %s' %
+            split)
+      for data_uri in data_uris:
+        analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
     transform_data_paths = []
     materialize_output_paths = []
@@ -364,13 +369,20 @@ class Executor(base_executor.BaseExecutor):
           artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
-        data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
-        transform_data_paths.append(io_utils.all_files_pattern(data_uri))
-        transformed_example = os.path.join(
-            artifact_utils.get_split_uri(output_dict[TRANSFORMED_EXAMPLES_KEY],
-                                         split),
-            _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
-        materialize_output_paths.append(transformed_example)
+        data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
+                                                  split)
+        if len(data_uris) != len(input_dict[EXAMPLES_KEY]):
+          raise ValueError(
+              'Transform split does not exist over all example artifacts: %s' %
+              split)
+        for data_uri in data_uris:
+          transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+        
+        transformed_example_uris = artifact_utils.get_split_uris(
+            output_dict[TRANSFORMED_EXAMPLES_KEY], split)
+        for output_uri in transformed_example_uris:
+          materialize_output_paths.append(
+              os.path.join(output_uri, _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX))
 
     def _GetCachePath(label, params_dict):
       if params_dict.get(label) is None:
