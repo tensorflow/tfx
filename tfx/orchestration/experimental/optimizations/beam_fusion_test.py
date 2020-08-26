@@ -36,6 +36,7 @@ from tfx.orchestration import pipeline
 from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
 from tfx.orchestration.experimental.optimizations import beam_fusion
+from fused_component.executor import Executor
 from fused_component.component import FusedComponent
 
 

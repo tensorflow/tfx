@@ -39,7 +39,7 @@ class BeamFusionOptimizer(object):
     with a custom FusedComponent, and then rewires the pipeline execution graph.
     """
     fuseable_subgraphs = self.get_fuseable_subgraphs()
-    modify_pipeline_exeuction_graph(fuseable_subgraphs)
+    self.modify_pipeline_exeuction_graph(fuseable_subgraphs)
 
   def _topologically_sort(self,
                           components: List[base_node.BaseNode],
@@ -311,7 +311,9 @@ class BeamFusionOptimizer(object):
     fused_components = []
     for i, subgraph in enumerate(fuseable_subgraphs):
       instance_name = "subgraph_%d" % (i + 1)
-      fused_component = FusedComponent(subgraph, instance_name)
+      fused_component = FusedComponent(
+          subgraph, self.pipeline.beam_pipeline_args,
+          self.pipeline.pipeline_info.pipeline_name, instance_name)
       fused_components.append(fused_component)
 
     # Determine the sources and sinks for each FusedComponent
@@ -343,4 +345,5 @@ class BeamFusionOptimizer(object):
           queue.append(child)
 
     # Reset the pipeline components accounting for the new FusedComponents
+    self.pipeline.connect_nodes = False
     self.pipeline.components = list(visited)

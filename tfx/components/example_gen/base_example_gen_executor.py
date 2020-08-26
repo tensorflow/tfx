@@ -108,21 +108,17 @@ def _InputToSerializedExample(pipeline: beam.Pipeline,
 class BaseExampleGenExecutor(
     with_metaclass(abc.ABCMeta, base_executor.FuseableBeamExecutor)):
   """Generic TFX example gen base executor.
-
   The base ExampleGen executor takes a configuration and converts external data
   sources to TensorFlow Examples (tf.Example).
-
   The common configuration (defined in
   https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto#L44.)
   describes the general properties of input data and shared instructions when
   producing output data.
-
   The conversion is done in `GenerateExamplesByBeam` as a Beam pipeline, which
   validates the configuration, reads the external data sources, converts the
   record in the input source to tf.Example if needed, and splits the examples if
   the output split config is given. Then the executor's `Do` writes the results
   in splits to the output path.
-
   For simple custom ExampleGens, the details of transforming input data
   record(s) to a tf.Example is expected to be given in
   `GetInputSourceToExamplePTransform`, which returns a Beam PTransform with the
@@ -131,24 +127,30 @@ class BaseExampleGenExecutor(
   ExampleGen can override `GenerateExamplesByBeam`.
   """
 
-  def __init__(self):
-    super(BaseExampleGenExecutor, self).__init__()
-    self.input_signature = {}
-    self.output_signature = {}
-
   def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
                         output_dict: Dict[Text, List[types.Artifact]],
                         exec_properties: Dict[Text, Union[int, float, Text]]
                         ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
-    return self.input_signature, self.output_signature
+    # Get input and output split information.
+    input_config = example_gen_pb2.Input()
+    json_format.Parse(exec_properties['input_config'], input_config)
+    output_config = example_gen_pb2.Output()
+    json_format.Parse(exec_properties['output_config'], output_config)
+    split_names = utils.generate_output_split_names(input_config, output_config)
+
+    input_signature = {}
+    output_signature = {}
+    for split in split_names:
+      output_signature[(EXAMPLES_KEY, split)] = tf.train.Example
+
+    return input_signature, output_signature
 
   def read_inputs(self, pipeline: beam.Pipeline,
                   input_dict: Dict[Text, List[types.Artifact]],
                   output_dict: Dict[Text, List[types.Artifact]],
                   exec_properties: Dict[Text, Union[int, float, Text]]
                   ) -> Dict[Text, beam.pvalue.PCollection]:
-    inputs = self.GenerateExamplesByBeam(pipeline, input_dict, exec_properties)
-    return inputs
+    return {}
 
   def run_component(self, pipeline: beam.Pipeline,
                     beam_inputs: Dict[Text, beam.pvalue.PCollection],
@@ -156,7 +158,9 @@ class BaseExampleGenExecutor(
                     output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Union[int, float, Text]]
                     ) -> Dict[Text, beam.pvalue.PCollection]:
-    return beam_inputs
+    outputs = self.GenerateExamplesByBeam(pipeline, input_dict,
+                                          exec_properties)
+    return outputs
 
   def write_outputs(self, pipeline: beam.Pipeline,
                     beam_outputs: Dict[Text, beam.pvalue.PCollection],
@@ -164,21 +168,18 @@ class BaseExampleGenExecutor(
                     output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Union[int, float, Text]]
                     ) -> None:
-    # pylint: disable=expression-not-assigned, no-value-for-parameter
-    for split_name, example_split in beam_outputs.items():
+    # pylint: disable=expression-not-assigned
+    for key, example_split in beam_outputs.items():
+      split_name = key[1]
       (example_split
        | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
            artifact_utils.get_split_uri(output_dict['examples'], split_name)))
-    # pylint: enable=expression-not-assigned, no-value-for-parameter
-
 
   @abc.abstractmethod
   def GetInputSourceToExamplePTransform(self) -> beam.PTransform:
     """Returns PTransform for converting input source to TF examples.
-
     Note that each input split will be transformed by this function separately.
     For complex use case, consider override 'GenerateExamplesByBeam' instead.
-
     Here is an example PTransform:
       @beam.ptransform_fn
       @beam.typehints.with_input_types(beam.Pipeline)
@@ -196,12 +197,10 @@ class BaseExampleGenExecutor(
                                                       List[types.Artifact]],
       exec_properties: Dict[Text, Any]) -> Dict[Text, beam.pvalue.PCollection]:
     """Converts input source to TF example splits based on configs.
-
     Custom ExampleGen executor should provide GetInputSourceToExamplePTransform
     for converting input split to TF Examples. Overriding this
     'GenerateExamplesByBeam' method instead if complex logic is need, e.g.,
     custom spliting logic.
-
     Args:
       pipeline: beam pipeline.
       input_dict: Input dict from input key to a list of Artifacts. Depends on
@@ -212,7 +211,6 @@ class BaseExampleGenExecutor(
           configuration.
         - output: JSON string of example_gen_pb2.Output instance, providing
           output configuration.
-
     Returns:
       Dict of beam PCollection with split name as key, each PCollection is a
       single output split that contains serialized TF Examples.
@@ -263,9 +261,7 @@ class BaseExampleGenExecutor(
 
     result = {}
     for index, example_split in enumerate(example_splits):
-      result[split_names[index]] = example_split
-      self.input_signature[split_names[index]] = tf.train.Example
-      self.output_signature[split_names[index]] = tf.train.Example
+      result[(EXAMPLES_KEY, split_names[index])] = example_split
 
     return result
 
@@ -273,7 +269,6 @@ class BaseExampleGenExecutor(
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
     """Take input data source and generates TF Example splits.
-
     Args:
       input_dict: Input dict from input key to a list of Artifacts. Depends on
         detailed example gen implementation.
@@ -285,7 +280,6 @@ class BaseExampleGenExecutor(
           configuration.
         - output: JSON string of example_gen_pb2.Output instance, providing
           output configuration.
-
     Returns:
       None
     """
@@ -293,8 +287,10 @@ class BaseExampleGenExecutor(
 
     absl.logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
-      beam_outputs = self.read_inputs(
+      beam_inputs = self.read_inputs(
           pipeline, input_dict, output_dict, exec_properties)
+      beam_outputs = self.run_component(
+          pipeline, beam_inputs, input_dict, output_dict, exec_properties)
       self.write_outputs(
           pipeline, beam_outputs, input_dict, output_dict, exec_properties)
 

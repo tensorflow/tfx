@@ -129,6 +129,7 @@ class Pipeline(object):
       with open(pipeline_args_path, 'w') as f:
         json.dump(pipeline_args, f)
 
+    self.connect_nodes = True
     # Calls property setter.
     self.components = components or []
 
@@ -163,11 +164,12 @@ class Pipeline(object):
           artifact.producer_component = component.id
 
     # Connects nodes based on producer map.
-    for component in deduped_components:
-      for i in component.inputs.values():
-        if producer_map.get(i):
-          component.add_upstream_node(producer_map[i])
-          producer_map[i].add_downstream_node(component)
+    if self.connect_nodes:
+      for component in deduped_components:
+        for i in component.inputs.values():
+          if producer_map.get(i):
+            component.add_upstream_node(producer_map[i])
+            producer_map[i].add_downstream_node(component)
 
     self._components = []
     visited = set()

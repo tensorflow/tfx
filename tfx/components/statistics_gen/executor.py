@@ -70,9 +70,8 @@ class Executor(base_executor.FuseableBeamExecutor):
 
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        key = EXAMPLES_KEY + '/' + split
-        input_signature[key] = tf.train.Example
-        output_signature[key] = tf.train.Example
+        input_signature[(EXAMPLES_KEY, split)] = tf.train.Example
+        output_signature[(STATISTICS_KEY, split)] = tf.train.Example
 
     return input_signature, output_signature
 
@@ -91,8 +90,7 @@ class Executor(base_executor.FuseableBeamExecutor):
             file_pattern=input_uri,
             telemetry_descriptors=_TELEMETRY_DESCRIPTORS)
 
-        key = EXAMPLES_KEY + '/' + split
-        inputs[key] = (pipeline
+        inputs[(EXAMPLES_KEY, split)] = (pipeline
                        | 'TFXIORead[{}]'.format(split)
                        >> input_tfxio.BeamSource())
     return inputs
@@ -103,12 +101,31 @@ class Executor(base_executor.FuseableBeamExecutor):
                     output_dict: Dict[Text, List[types.Artifact]],
                     exec_properties: Dict[Text, Union[int, float, Text]]
                     ) -> Dict[Text, beam.pvalue.PCollection]:
+    self._log_startup(input_dict, output_dict, exec_properties)
+
+    self.stats_options = options.StatsOptions()
+    if STATS_OPTIONS_JSON_KEY in exec_properties:
+      stats_options_json = exec_properties[STATS_OPTIONS_JSON_KEY]
+      if stats_options_json:
+        # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
+        # json_utils
+        self.stats_options = options.StatsOptions.from_json(stats_options_json)
+    if input_dict.get(SCHEMA_KEY):
+      if self.stats_options.schema:
+        raise ValueError('A schema was provided as an input and the '
+                         'stats_options exec_property also contains a schema '
+                         'value. At most one of these may be set.')
+      else:
+        schema = io_utils.SchemaReader().read(
+            io_utils.get_only_uri_in_dir(
+                artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
+        self.stats_options.schema = schema
+
     outputs = {}
     for artifact in input_dict[EXAMPLES_KEY]:
       for split in artifact_utils.decode_split_names(artifact.split_names):
-        suffix = '/' + split
-        outputs[STATISTICS_KEY + suffix] = (
-            beam_inputs[EXAMPLES_KEY +suffix]
+        outputs[(STATISTICS_KEY, split)] = (
+            beam_inputs[(EXAMPLES_KEY, split)]
             | 'GenerateStatistics[{}]'.format(split)
             >> stats_api.GenerateStatistics(self.stats_options))
     return outputs
@@ -124,8 +141,7 @@ class Executor(base_executor.FuseableBeamExecutor):
         output_uri = artifact_utils.get_split_uri(output_dict[STATISTICS_KEY],
                                                   split)
         output_path = os.path.join(output_uri, _DEFAULT_FILE_NAME)
-        key = STATISTICS_KEY + '/' + split
-        _ = (beam_outputs[key]
+        _ = (beam_outputs[(STATISTICS_KEY, split)]
              | 'WriteStatsOutput[{}]'.format(split)
              >> stats_api.WriteStatisticsToTFRecord(output_path))
         absl.logging.info('Statistics for split {} written to {}.'.format(
@@ -158,31 +174,6 @@ class Executor(base_executor.FuseableBeamExecutor):
     Returns:
       None
     """
-    self._log_startup(input_dict, output_dict, exec_properties)
-
-    self.stats_options = options.StatsOptions()
-    if STATS_OPTIONS_JSON_KEY in exec_properties:
-      stats_options_json = exec_properties[STATS_OPTIONS_JSON_KEY]
-      if stats_options_json:
-        # TODO(b/150802589): Move jsonable interface to tfx_bsl and use
-        # json_utils
-        self.stats_options = options.StatsOptions.from_json(stats_options_json)
-    if input_dict.get(SCHEMA_KEY):
-      if self.stats_options.schema:
-        raise ValueError('A schema was provided as an input and the '
-                         'stats_options exec_property also contains a schema '
-                         'value. At most one of these may be set.')
-      else:
-        schema = io_utils.SchemaReader().read(
-            io_utils.get_only_uri_in_dir(
-                artifact_utils.get_single_uri(input_dict[SCHEMA_KEY])))
-        self.stats_options.schema = schema
-
-    split_uris = []
-    for artifact in input_dict[EXAMPLES_KEY]:
-      for split in artifact_utils.decode_split_names(artifact.split_names):
-        uri = os.path.join(artifact.uri, split)
-        split_uris.append((split, uri))
     with self._make_beam_pipeline() as p:
       beam_inputs = self.read_inputs(
           p, input_dict, output_dict, exec_properties)
