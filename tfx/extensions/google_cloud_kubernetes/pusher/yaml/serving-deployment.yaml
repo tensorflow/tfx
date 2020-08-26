@@ -12,6 +12,11 @@ spec:
       containers:
       - name: model-container
         image: tensorflow/serving
+        command:
+        - bash
+        - -c
+        args:
+        - 'echo $TF_SERVING_CONFIG > model.config && /usr/bin/tf_serving_entrypoint.sh --model_config_file=model.config'
         ports:
         - containerPort: 8500
           name: grpc

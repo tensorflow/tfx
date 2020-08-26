@@ -30,10 +30,6 @@ from tfx.utils import json_utils
 from tfx.utils import path_utils
 from tfx.utils import kube_utils
 
-# Tensorflow Serving model path format.
-# https://www.tensorflow.org/tfx/serving/serving_kubernetes
-_TFSERVING_MODEL_VERSION_PATH_FORMAT = (
-    '/models/{model_name}/{model_version}')
 
 # Keys to the items in custom_config passed as a part of exec_properties.
 TF_SERVING_ARGS_KEY = 'tf_serving_args'
@@ -44,17 +40,8 @@ _CUSTOM_CONFIG_KEY = 'custom_config'
 # Number of serving replicas.
 NUM_REPLICAS_KEY = 'num_replicas'
 
-# Name of serving model.
-MODEL_NAME_KEY = 'model_name'
-
-# Model name environment variable key.
-_MODEL_NAME_ENV_KEY = 'MODEL_NAME'
-
-# Model base path environment variable key.
-_MODEL_BASE_PATH_ENV_KEY = 'MODEL_BASE_PATH'
-
-# Model version environment variable key.
-_MODEL_VERSION_ENV_KEY = 'MODEL_VERSION'
+# Environment variable key to pass in server config.
+_SERVER_CONFIG_ENV_KEY = 'TF_SERVING_CONFIG'
 
 
 def _create_model_service_configuration(
@@ -64,6 +51,7 @@ def _create_model_service_configuration(
 ) -> Text:
   """Helper function to create a serialized configuration for serving."""
   # Create the base model config Protobuf definition.
+  model_server_config = model_server_config_pb2.ModelServerConfig()
   config_list = model_server_config_pb2.ModelConfigList()       
   one_config = config_list.config.add()
   one_config.name = model_name
@@ -78,7 +66,8 @@ def _create_model_service_configuration(
       versions = [model_version]))
 
   one_config.model_version_policy.CopyFrom(version_policy)
-  return text_format.MessageToString(config_list)
+  model_server_config.model_config_list.CopyFrom(config_list)
+  return text_format.MessageToString(model_server_config)
 
 
 class Executor(tfx_pusher_executor.Executor):
@@ -108,17 +97,15 @@ class Executor(tfx_pusher_executor.Executor):
                         'yaml',
                         'serving-deployment.yaml')) as f:
       deployment = yaml.safe_load(f)
-    args = [
-        'echo "{}" > model.config;'.format(
-            _create_model_service_configuration(
-                model_name, model_uri, model_version)),
-        '/usr/bin/tf_serving_entrypoint.sh --model_config_file=model.config;'
-    ]
+    # Pass through model server configuration protobuf string as an
+    # environment variable.
+    env_vars = [{'name': _SERVER_CONFIG_ENV_KEY,
+                 'value': _create_model_service_configuration(
+                     model_name, model_uri, model_version)}]
     spec = deployment['spec']
-    # Configure the number of replicas, command and arguments.
+    # Configure the number of replicas and environment variables.
     spec['replicas'] = num_replicas
-    spec['template']['spec']['containers'][0]['command'] = ["bin/sh", "-c"]
-    spec['template']['spec']['containers'][0]['args'] = args
+    spec['template']['spec']['containers'][0]['env'] = env_vars
     try:
       response = client_api.create_namespaced_deployment(
           body=deployment, namespace='default')
@@ -189,28 +176,21 @@ class Executor(tfx_pusher_executor.Executor):
                    NUM_REPLICAS_KEY)
     num_replicas = tf_serving_args.get(NUM_REPLICAS_KEY, 1)
 
-    # default_model_name = 'model'
-    # if not tf_serving_args.get(MODEL_NAME_KEY):
-    #   logging.info('\'%s\' not specified in \'tf_serving_args\', using %s',
-    #                MODEL_NAME_KEY, default_model_name)
-    # model_name = tf_serving_args.get(MODEL_NAME_KEY, default_model_name)
-
-
-    # Tensorflow Serving model path format.
-    # https://www.tensorflow.org/tfx/serving/serving_kubernetes
+    # Assume the following Tensorflow Serving model path format:
     # /base_path/{model_name}/{model_version}
+    # See: https://www.tensorflow.org/tfx/serving/serving_kubernetes
     model_path = model_push.get_string_custom_property(
         tfx_pusher_executor._PUSHED_DESTINATION_KEY)
     split_path = model_path.split(path.sep)
-    model_base_path = ''.join(split_path[:-2])
-    model_name = split_path[-1]
+    model_base_path = path.sep.join(split_path[:-1])
+    model_name = split_path[-2]
     model_version = int(model_push.get_string_custom_property(
         tfx_pusher_executor._PUSHED_VERSION_KEY))
 
     # Deploy the service and pods.
     self.DeployTFServingDeployment(
         model_name=model_name,
-        model_uri=model_path,
+        model_uri=model_base_path,
         model_version=model_version,
         num_replicas=num_replicas,
     )
