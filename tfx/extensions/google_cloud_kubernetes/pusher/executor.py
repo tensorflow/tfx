@@ -15,7 +15,6 @@
 
 from absl import logging
 from os import path
-import json
 from typing import Any, Dict, List, Text
 import yaml
 
@@ -27,7 +26,6 @@ from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.types import artifact_utils
 from tfx.utils import json_utils
-from tfx.utils import path_utils
 from tfx.utils import kube_utils
 
 
@@ -52,7 +50,7 @@ def _create_model_service_configuration(
   """Helper function to create a serialized configuration for serving."""
   # Create the base model config Protobuf definition.
   model_server_config = model_server_config_pb2.ModelServerConfig()
-  config_list = model_server_config_pb2.ModelConfigList()       
+  config_list = model_server_config_pb2.ModelConfigList()
   one_config = config_list.config.add()
   one_config.name = model_name
   one_config.base_path = model_uri
@@ -60,10 +58,10 @@ def _create_model_service_configuration(
 
   # Create the model version policy Protobuf definition.
   path_config = (file_system_storage_path_source_pb2.
-      FileSystemStoragePathSourceConfig)
+                 FileSystemStoragePathSourceConfig)
   version_policy = path_config.ServableVersionPolicy(
-    specific=path_config.ServableVersionPolicy.Specific(
-      versions = [model_version]))
+      specific=path_config.ServableVersionPolicy.Specific(
+          versions=[model_version]))
 
   one_config.model_version_policy.CopyFrom(version_policy)
   model_server_config.model_config_list.CopyFrom(config_list)
@@ -180,12 +178,12 @@ class Executor(tfx_pusher_executor.Executor):
     # /base_path/{model_name}/{model_version}
     # See: https://www.tensorflow.org/tfx/serving/serving_kubernetes
     model_path = model_push.get_string_custom_property(
-        tfx_pusher_executor._PUSHED_DESTINATION_KEY)
+        tfx_pusher_executor._PUSHED_DESTINATION_KEY) # pylint: disable=protected-access
     split_path = model_path.split(path.sep)
     model_base_path = path.sep.join(split_path[:-1])
     model_name = split_path[-2]
     model_version = int(model_push.get_string_custom_property(
-        tfx_pusher_executor._PUSHED_VERSION_KEY))
+        tfx_pusher_executor._PUSHED_VERSION_KEY)) # pylint: disable=protected-access
 
     # Deploy the service and pods.
     self.DeployTFServingDeployment(
