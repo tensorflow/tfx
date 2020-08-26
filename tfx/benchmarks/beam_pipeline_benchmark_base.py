@@ -21,7 +21,6 @@ from tfx.benchmarks import constants
 from tfx.benchmarks.datasets.chicago_taxi import dataset
 from tfx.benchmarks.tfma_benchmark_chicago_taxi import TFMABenchmarkChicagoTaxi
 from tfx.benchmarks.tfma_v2_benchmark_chicago_taxi import TFMAV2BenchmarkChicagoTaxi
-from tfx.benchmarks.tft_benchmark_chicago_taxi import TFTBenchmarkChicagoTaxi
 from tfx.benchmarks.big_shuffle_benchmark import BigShuffleBenchmarkBase
 
 import subprocess
@@ -33,13 +32,11 @@ import os
 
 _TFMA = "tfma"
 _TFMA_V2 = "tfma_v2"
-_TFT = "tft"
 _BIG_SHUFFLE = "big_shuffle"
 
 _TFMA_BENCHMARK_MINI_PIPELINE = "TFMABenchmarkChicagoTaxi.benchmarkMiniPipeline"
 _TFMA_V2_BENCHMARK_MINI_PIPELINE_UNBATCHED = "TFMAV2BenchmarkChicagoTaxi.benchmarkMiniPipelineUnbatched"
 _TFMA_V2_BENCHMARK_MINI_PIPELINE_BATCHED = "TFMAV2BenchmarkChicagoTaxi.benchmarkMiniPipelineBatched"
-_TFT_BENCHMARK_ANALYZE_AND_TRANSFORM_DATASET = "TFTBenchmarkChicagoTaxi.benchmarkAnalyzeAndTransformDataset"
 _BIG_SHUFFLE_BENCHMARK = "BigShuffleBenchmarkBase.benchmarkBigShuffle with file size: "
 _BIG_SHUFFLE_EMPTY_PIPELINE_BENCHMARK = "BigShuffleBenchmarkBase.benchmarkEmptyPipeline"
 
@@ -53,7 +50,6 @@ class BeamPipelineBenchmarkBase(object):
     self._wall_times = {}
     self._wall_times[_TFMA] = {}
     self._wall_times[_TFMA_V2] = {}
-    self._wall_times[_TFT] = {}
     self._wall_times[_BIG_SHUFFLE] = {}
 
     self._wall_times_list = []
@@ -99,14 +95,6 @@ class BeamPipelineBenchmarkBase(object):
     self._wall_times[_TFMA_V2][_TFMA_V2_BENCHMARK_MINI_PIPELINE_BATCHED] = (
         tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineBatched())
 
-  def _run_tft_benchmarks(self, num_workers, beam_pipeline_mode):
-    tft_benchmark_chicago_taxi = TFTBenchmarkChicagoTaxi(dataset=self._dataset)
-    self._set_benchmark_class_parameters(tft_benchmark_chicago_taxi,
-                                         num_workers, beam_pipeline_mode)
-
-    self._wall_times[_TFT][_TFT_BENCHMARK_ANALYZE_AND_TRANSFORM_DATASET] = (
-        tft_benchmark_chicago_taxi.benchmarkAnalyzeAndTransformDataset())
-
   def _run_big_shuffle_benchmarks(self, num_workers, beam_pipeline_mode):
     big_shuffle_benchmark = BigShuffleBenchmarkBase(
         input_file=self._big_shuffle_input_file,
@@ -131,7 +119,6 @@ class BeamPipelineBenchmarkBase(object):
   def _run_all_benchmarks(self, num_workers, beam_pipeline_mode):
     self._run_tfma_benchmarks(num_workers, beam_pipeline_mode)
     self._run_tfma_v2_benchmarks(num_workers, beam_pipeline_mode)
-    self._run_tft_benchmarks(num_workers, beam_pipeline_mode)
     self._run_big_shuffle_benchmarks(num_workers, beam_pipeline_mode)
 
   def _post_process(self, num_workers):

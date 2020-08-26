@@ -58,7 +58,7 @@ class BenchmarkBase(test.Benchmark):
         flink_submit_uber_jar=True,
         environment_type="EXTERNAL",
         environment_config="localhost:50000",
-        save_main_session=True)
+        save_main_session=True) # TODO: Remove save_main_session argument once BEAM-10762 is resolved
 
   def _set_local_scaled_execution_options(self):
     self.pipeline_options = PipelineOptions(
