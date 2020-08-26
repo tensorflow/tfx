@@ -224,7 +224,7 @@ Retrieving a certain span can be done with RangeConfig, which is detailed below.
 
 ### Date
 
-Note: this feature is only availible after TFX 0.22.1.
+Note: this feature is only availible after TFX 0.23.0.
 
 If your data source is organized on filesystem by date, TFX supports
 mapping dates directly to span numbers. There are three specs to represent 
@@ -287,7 +287,7 @@ example_gen = CsvExampleGen(input=examples, input_config=input)
 
 ### Version
 
-Note: this feature is only availible after TFX 0.22.1.
+Note: this feature is only availible after TFX 0.23.0.
 
 Version can be retrieved by using '{VERSION}' spec in the
 [input glob pattern](https://github.com/tensorflow/tfx/blob/master/tfx/proto/example_gen.proto):
@@ -352,7 +352,7 @@ example_gen = CsvExampleGen(input=examples, input_config=input)
 
 ### Range Config
 
-Note: this feature is only available after TFX 0.22.1.
+Note: this feature is only available after TFX 0.23.0.
 
 TFX supports retrieval and processing of a specific span in file-based
 ExampleGen using range config, an abstract config used to describe
@@ -366,7 +366,9 @@ there are input data:
 *   '/tmp/span-02/eval/data'
 
 To specifically retrieve and process data with span '1', we specify a range
-config in addition to the input config:
+config in addition to the input config. Note that ExampleGen only supports 
+single-span static ranges. Thus, for StaticRange, start_span_number must equal 
+end_span_number.
 
 ```python
 from  tfx.proto import example_gen_pb2
@@ -381,8 +383,6 @@ input = example_gen_pb2.Input(splits=[
                                             pattern='span-{SPAN:2}/eval/*')
             ])
 # Specify the span number to be processed here using StaticRange.
-# Note that ExampleGen only supports single-span static ranges. Thus,
-# for StaticRange, start_span_number must equal end_span_number.
 range = range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
                         start_span_number=1, end_span_number=1)
@@ -417,8 +417,6 @@ input = example_gen_pb2.Input(splits=[
                                             pattern='{YYYY}-{MM}-{DD}/eval/*')
             ])
 # Specify date to be converted to span number to be processed using StaticRange.
-# Note that ExampleGen only supports single-span static ranges. Thus,
-# for StaticRange, start_span_number must equal end_span_number.
 span = utils.date_to_span_number(1970, 1, 2)
 range = range_config_pb2.RangeConfig(
                 static_range=range_config_pb2.StaticRange(
