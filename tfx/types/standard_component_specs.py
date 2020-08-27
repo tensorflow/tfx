@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import
 from __future__ import division
+from __future__ import google_type_annotations
 from __future__ import print_function
 
 from typing import List, Text
@@ -27,6 +28,7 @@ from tfx.proto import example_gen_pb2
 from tfx.proto import infra_validator_pb2
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
+from tfx.proto import transform_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
@@ -351,19 +353,32 @@ class TransformSpec(ComponentSpec):
   """Transform component spec."""
 
   PARAMETERS = {
-      'module_file': ExecutionParameter(type=(str, Text), optional=True),
-      'preprocessing_fn': ExecutionParameter(type=(str, Text), optional=True),
-      'custom_config': ExecutionParameter(type=(str, Text), optional=True),
+      'module_file':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'preprocessing_fn':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'custom_config':
+          ExecutionParameter(type=(str, Text), optional=True),
+      'splits_config':
+          ExecutionParameter(type=transform_pb2.SplitsConfig, optional=True),
   }
   INPUTS = {
-      'examples': ChannelParameter(type=standard_artifacts.Examples),
-      'schema': ChannelParameter(type=standard_artifacts.Schema),
+      'examples':
+          ChannelParameter(type=standard_artifacts.Examples),
+      'schema':
+          ChannelParameter(type=standard_artifacts.Schema),
+      'analyzer_cache':
+          ChannelParameter(
+              type=standard_artifacts.TransformCache, optional=True),
   }
   OUTPUTS = {
       'transform_graph':
           ChannelParameter(type=standard_artifacts.TransformGraph),
       'transformed_examples':
           ChannelParameter(type=standard_artifacts.Examples, optional=True),
+      'updated_analyzer_cache':
+          ChannelParameter(
+              type=standard_artifacts.TransformCache, optional=True),
   }
   # TODO(b/139281215): these input / output names have recently been renamed.
   # These compatibility aliases are temporarily provided for backwards
