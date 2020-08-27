@@ -13,21 +13,12 @@
 # limitations under the License.
 """Main entrypoint for orchestrator container on Kubernetes."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import argparse
-import json
 import logging
 import sys
-import absl
 
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
-from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
-from tfx.utils import json_utils
+from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
 
 
 def main():
@@ -43,49 +34,10 @@ def main():
   parser.add_argument('--tfx_image', type=str, required=True)
   args = parser.parse_args()
 
-  tfx_pipeline = json.loads(args.serialized_pipeline)
-  components = [
-      json_utils.loads(component) for component in tfx_pipeline['components']
-    ]
-  metadata_connection_config = metadata_store_pb2.ConnectionConfig()
-  json_format.Parse(tfx_pipeline['metadata_connection_config'],
-                    metadata_connection_config)
-
-  # Restore component dependencies.
-  downstream_ids = json.loads(tfx_pipeline['downstream_ids'])
-  if not isinstance(downstream_ids, dict):
-    raise RuntimeError("downstream_ids needs to be a 'dict'.")
-  if len(downstream_ids) != len(components):
-    raise RuntimeError(
-        'Wrong number of items in downstream_ids. Expected: %s. Actual: %d' %
-        len(components), len(downstream_ids))
-
-  id_to_component = {component.id: component for component in components}
-  for component in components:
-    # Since downstream and upstream node attributes are discarded during the
-    # serialization process, we initialize them here.
-    component._upstream_nodes = set() # pylint: disable=protected-access
-    component._downstream_nodes = set() # pylint: disable=protected-access
-
-  for upstream_id, downstream_id_list in downstream_ids.items():
-    upstream_component = id_to_component[upstream_id]
-    for downstream_id in downstream_id_list:
-      upstream_component.add_downstream_node(id_to_component[downstream_id])
-
-  absl.logging.set_verbosity(absl.logging.INFO)
   kubernetes_dag_runner.KubernetesDagRunner(
       config=kubernetes_dag_runner.KubernetesDagRunnerConfig(
           tfx_image=args.tfx_image)
-  ).run(
-      pipeline.Pipeline(
-          pipeline_name=tfx_pipeline['pipeline_name'],
-          pipeline_root=tfx_pipeline['pipeline_root'],
-          components=components,
-          enable_cache=tfx_pipeline['enable_cache'],
-          metadata_connection_config=metadata_connection_config,
-          beam_pipeline_args=tfx_pipeline['beam_pipeline_args'],
-      )
-  )
+  ).run(kubernetes_remote_runner.deserialize_pipeline(args.serialized_pipeline))
 
 
 if __name__ == '__main__':

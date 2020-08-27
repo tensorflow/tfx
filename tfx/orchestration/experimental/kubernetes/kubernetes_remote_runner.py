@@ -19,13 +19,12 @@ import json
 import time
 from typing import Dict, List, Text
 
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.utils import json_utils, kube_utils
-
-from google.protobuf import json_format
-from kubernetes import client
 
 
 _ORCHESTRATOR_COMMAND = [
@@ -137,6 +136,25 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
                        (pod_name, resp.status))
 
 
+def _extract_downstream_ids(
+    components: List[base_node.BaseNode]) -> Dict[Text, List[Text]]:
+  """Extract downstream component ids from a list of components.
+
+  Args:
+    components: List of TFX Components.
+
+  Returns:
+    Mapping from component id to ids of its downstream components for
+    each component.
+  """
+
+  downstream_ids = {}
+  for component in components:
+    downstream_ids[component.id] = [
+        downstream_node.id for downstream_node in component.downstream_nodes]
+  return downstream_ids
+
+
 def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   """Serializes a TFX pipeline.
 
@@ -175,20 +193,56 @@ def _serialize_pipeline(pipeline: tfx_pipeline.Pipeline) -> Text:
   })
 
 
-def _extract_downstream_ids(
-    components: List[base_node.BaseNode]) -> Dict[Text, List[Text]]:
-  """Extract downstream component ids from a list of components.
+def deserialize_pipeline(serialized_pipeline: Text
+                         ) -> tfx_pipeline.Pipeline:
+  """Deserializes a TFX pipeline.
+
+  To be replaced with the the TFX Intermediate Representation:
+  tensorflow/community#271. This deserialization procedure reverses the
+  serialization procedure and reconstructs the pipeline instance.
 
   Args:
-    components: List of TFX Components.
+    serialized_pipeline: Pipeline JSON string serialized with the
+      procedure from _serialize_pipeline.
 
   Returns:
-    Mapping from component id to ids of its downstream components for
-    each component.
+    Original pipeline containing pipeline args and components.
   """
 
-  downstream_ids = {}
+  pipeline = json.loads(serialized_pipeline)
+  components = [
+      json_utils.loads(component) for component in pipeline['components']
+    ]
+  metadata_connection_config = metadata_store_pb2.ConnectionConfig()
+  json_format.Parse(pipeline['metadata_connection_config'],
+                    metadata_connection_config)
+
+  # Restore component dependencies.
+  downstream_ids = pipeline['downstream_ids']
+  if not isinstance(downstream_ids, dict):
+    raise RuntimeError("downstream_ids needs to be a 'dict'.")
+  if len(downstream_ids) != len(components):
+    raise RuntimeError(
+        'Wrong number of items in downstream_ids. Expected: %s. Actual: %d' %
+        len(components), len(downstream_ids))
+
+  id_to_component = {component.id: component for component in components}
   for component in components:
-    downstream_ids[component.id] = [
-        downstream_node.id for downstream_node in component.downstream_nodes]
-  return downstream_ids
+    # Since downstream and upstream node attributes are discarded during the
+    # serialization process, we initialize them here.
+    component._upstream_nodes = set() # pylint: disable=protected-access
+    component._downstream_nodes = set() # pylint: disable=protected-access
+
+  for upstream_id, downstream_id_list in downstream_ids.items():
+    upstream_component = id_to_component[upstream_id]
+    for downstream_id in downstream_id_list:
+      upstream_component.add_downstream_node(id_to_component[downstream_id])
+
+  return tfx_pipeline.Pipeline(
+      pipeline_name=pipeline['pipeline_name'],
+      pipeline_root=pipeline['pipeline_root'],
+      components=components,
+      enable_cache=pipeline['enable_cache'],
+      metadata_connection_config=metadata_connection_config,
+      beam_pipeline_args=pipeline['beam_pipeline_args'],
+  )

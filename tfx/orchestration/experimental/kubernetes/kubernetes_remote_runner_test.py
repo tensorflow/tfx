@@ -22,7 +22,7 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.orchestration import pipeline
+from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
 from tfx.types.component_spec import ChannelParameter
 from tfx.utils import json_utils
@@ -36,6 +36,10 @@ class _ArtifactTypeB(types.Artifact):
   TYPE_NAME = 'ArtifactTypeB'
 
 
+class _ArtifactTypeC(types.Artifact):
+  TYPE_NAME = 'ArtifactTypeC'
+
+
 class _FakeComponentSpecA(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {}
@@ -46,6 +50,14 @@ class _FakeComponentSpecB(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {'a': ChannelParameter(type=_ArtifactTypeA)}
   OUTPUTS = {'output': ChannelParameter(type=_ArtifactTypeB)}
+
+
+class _FakeComponentSpecC(types.ComponentSpec):
+  PARAMETERS = {}
+  INPUTS = {'a': ChannelParameter(type=_ArtifactTypeA),
+            'b': ChannelParameter(type=_ArtifactTypeB)}
+  OUTPUTS = {'output': ChannelParameter(type=_ArtifactTypeC)}
+
 
 class _FakeComponent(base_component.BaseComponent):
   SPEC_CLASS = types.ComponentSpec
@@ -65,37 +77,43 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
         _FakeComponentSpecB(
             a=self.component_a.outputs['output'],
             output=types.Channel(type=_ArtifactTypeB)))
-    self.test_pipeline = pipeline.Pipeline(
+    self.component_c = _FakeComponent(
+        _FakeComponentSpecC(
+            a=self.component_a.outputs['output'],
+            b=self.component_b.outputs['output'],
+            output=types.Channel(type=_ArtifactTypeC)))
+    self.test_pipeline = tfx_pipeline.Pipeline(
         pipeline_name='x',
         pipeline_root='y',
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
         components=[
-            self.component_a, self.component_b
+            self.component_c, self.component_a, self.component_b
         ])
 
   def testSerialization(self):
     serialized_pipeline = kubernetes_remote_runner._serialize_pipeline( # pylint: disable=protected-access
         self.test_pipeline)
 
-    tfx_pipeline = json.loads(serialized_pipeline)
+    pipeline = json.loads(serialized_pipeline)
     components = [
-        json_utils.loads(component) for component in tfx_pipeline['components']
+        json_utils.loads(component) for component in pipeline['components']
     ]
     metadata_connection_config = metadata_store_pb2.ConnectionConfig()
-    json_format.Parse(tfx_pipeline['metadata_connection_config'],
+    json_format.Parse(pipeline['metadata_connection_config'],
                       metadata_connection_config)
-    expected_downstream_ids = json.dumps({
-        self.component_a.id: [self.component_b.id],
-        self.component_b.id: [],
-    })
+    expected_downstream_ids = {
+        "_FakeComponent.a": ["_FakeComponent.b", "_FakeComponent.c"],
+        "_FakeComponent.b": ["_FakeComponent.c"],
+        "_FakeComponent.c": [],
+    }
     self.assertEqual(self.test_pipeline.pipeline_info.pipeline_name,
-                     tfx_pipeline['pipeline_name'])
+                     pipeline['pipeline_name'])
     self.assertEqual(self.test_pipeline.pipeline_info.pipeline_root,
-                     tfx_pipeline['pipeline_root'])
+                     pipeline['pipeline_root'])
     self.assertEqual(self.test_pipeline.enable_cache,
-                     tfx_pipeline['enable_cache'])
+                     pipeline['enable_cache'])
     self.assertEqual(self.test_pipeline.beam_pipeline_args,
-                     tfx_pipeline['beam_pipeline_args'])
+                     pipeline['beam_pipeline_args'])
     self.assertEqual(self.test_pipeline.metadata_connection_config,
                      metadata_connection_config)
     self.assertListEqual(
@@ -104,10 +122,37 @@ class KubernetesRemoteRunnerTest(tf.test.TestCase):
         [component.executor_spec.executor_class for component in components])
     self.assertEqual(self.test_pipeline.metadata_connection_config,
                      metadata_connection_config)
+    # Enforce order of downstream ids for comparison.
+    for downstream_ids in pipeline['downstream_ids'].values():
+      downstream_ids.sort()
     self.assertEqual(
         expected_downstream_ids,
-        tfx_pipeline['downstream_ids']
+        pipeline['downstream_ids']
     )
+
+  def testDeserialization(self):
+    serialized_pipeline = kubernetes_remote_runner._serialize_pipeline( # pylint: disable=protected-access
+        self.test_pipeline)
+    pipeline = kubernetes_remote_runner.deserialize_pipeline(
+        serialized_pipeline)
+
+    self.assertEqual(self.test_pipeline.pipeline_info.pipeline_name,
+                     pipeline.pipeline_info.pipeline_name)
+    self.assertEqual(self.test_pipeline.pipeline_info.pipeline_root,
+                     pipeline.pipeline_info.pipeline_root)
+    self.assertEqual(self.test_pipeline.enable_cache,
+                     pipeline.enable_cache)
+    self.assertEqual(self.test_pipeline.beam_pipeline_args,
+                     pipeline.beam_pipeline_args)
+    self.assertEqual(self.test_pipeline.metadata_connection_config,
+                     pipeline.metadata_connection_config)
+    self.assertListEqual(
+        [component.executor_spec.executor_class for component in
+         self.test_pipeline.components],
+        [component.executor_spec.executor_class for component in
+         pipeline.components])
+    self.assertEqual(self.test_pipeline.metadata_connection_config,
+                     pipeline.metadata_connection_config)
 
 
 if __name__ == '__main__':
