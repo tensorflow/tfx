@@ -36,8 +36,6 @@ import absl
 import jinja2
 import nbformat
 from six.moves import builtins
-
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
@@ -47,6 +45,9 @@ from tfx.orchestration.experimental.interactive import notebook_formatters
 from tfx.orchestration.experimental.interactive import standard_visualizations
 from tfx.orchestration.experimental.interactive import visualizations
 from tfx.orchestration.launcher import in_process_component_launcher
+from tfx.utils import telemetry_utils
+
+from ml_metadata.proto import metadata_store_pb2
 
 _SKIP_FOR_EXPORT_MAGIC = '%%skip_for_export'
 _MAGIC_PREFIX = '%'
@@ -85,7 +86,8 @@ class InteractiveContext(object):
       self,
       pipeline_name: Text = None,
       pipeline_root: Text = None,
-      metadata_connection_config: metadata_store_pb2.ConnectionConfig = None):
+      metadata_connection_config: metadata_store_pb2.ConnectionConfig = None,
+      beam_pipeline_args: Optional[List[Text]] = None):
     """Initialize an InteractiveContext.
 
     Args:
@@ -97,6 +99,8 @@ class InteractiveContext(object):
         instance used to configure connection to a ML Metadata connection. If
         not specified, an ephemeral SQLite MLMD connection contained in the
         pipeline_root directory with file name "metadata.sqlite" will be used.
+      beam_pipeline_args: Optional Beam pipeline args for beam jobs within
+        executor. Executor will use beam DirectRunner as Default.
     """
 
     if not pipeline_name:
@@ -120,6 +124,7 @@ class InteractiveContext(object):
     self.pipeline_name = pipeline_name
     self.pipeline_root = pipeline_root
     self.metadata_connection_config = metadata_connection_config
+    self.beam_pipeline_args = beam_pipeline_args or []
 
     # Register IPython formatters.
     notebook_formatters.register_formatters()
@@ -140,7 +145,8 @@ class InteractiveContext(object):
       component: Component instance to be run.
       enable_cache: whether caching logic should be enabled in the driver.
       beam_pipeline_args: Optional Beam pipeline args for beam jobs within
-        executor. Executor will use beam DirectRunner as Default.
+        executor. Executor will use beam DirectRunner as Default. If provided,
+        will override beam_pipeline_args specified in constructor.
 
     Returns:
       execution_result.ExecutionResult object.
@@ -153,7 +159,7 @@ class InteractiveContext(object):
     driver_args = data_types.DriverArgs(
         enable_cache=enable_cache, interactive_resolution=True)
     metadata_connection = metadata.Metadata(self.metadata_connection_config)
-    beam_pipeline_args = beam_pipeline_args or []
+    beam_pipeline_args = beam_pipeline_args or self.beam_pipeline_args
     additional_pipeline_args = {}
     for name, output in component.outputs.items():
       for artifact in output.get():
@@ -165,7 +171,15 @@ class InteractiveContext(object):
     launcher = in_process_component_launcher.InProcessComponentLauncher.create(
         component, pipeline_info, driver_args, metadata_connection,
         beam_pipeline_args, additional_pipeline_args)
-    execution_id = launcher.launch().execution_id
+    try:
+      import colab  # pytype: disable=import-error # pylint: disable=g-import-not-at-top, unused-import, unused-variable
+      runner_label = 'interactivecontext-colab'
+    except ImportError:
+      runner_label = 'interactivecontext'
+    with telemetry_utils.scoped_labels({
+        telemetry_utils.LABEL_TFX_RUNNER: runner_label,
+    }):
+      execution_id = launcher.launch().execution_id
 
     return execution_result.ExecutionResult(
         component=component, execution_id=execution_id)

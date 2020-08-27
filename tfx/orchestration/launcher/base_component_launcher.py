@@ -137,7 +137,7 @@ class BaseComponentLauncher(with_metaclass(abc.ABCMeta, object)):
         metadata_connection=metadata_connection,
         beam_pipeline_args=beam_pipeline_args,
         additional_pipeline_args=additional_pipeline_args,
-        component_config=component_config)
+        component_config=component_config)  # pytype: disable=not-instantiable
 
   @classmethod
   @abc.abstractmethod

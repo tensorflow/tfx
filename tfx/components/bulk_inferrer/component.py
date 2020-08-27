@@ -83,8 +83,7 @@ class BulkInferrer(base_component.BaseComponent):
         declared in the same pipeline.
     """
     inference_result = inference_result or types.Channel(
-        type=standard_artifacts.InferenceResult,
-        artifacts=[standard_artifacts.InferenceResult()])
+        type=standard_artifacts.InferenceResult)
     spec = BulkInferrerSpec(
         examples=examples,
         model=model,

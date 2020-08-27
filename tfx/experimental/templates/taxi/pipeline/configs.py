@@ -147,7 +147,7 @@ _query_sample_rate = 0.0001  # Generate a 0.01% random sample.
 # https://cloud.google.com/ml-engine/reference/rest/v1/projects.models
 # TODO(step 9): (Optional) Uncomment below to use AI Platform serving.
 # GCP_AI_PLATFORM_SERVING_ARGS = {
-#     'model_name': PIPELINE_NAME,
+#     'model_name': PIPELINE_NAME.replace('-','_'),  # '-' is not allowed.
 #     'project_id': GOOGLE_CLOUD_PROJECT,
 #     # The region to use when serving the model. See available regions here:
 #     # https://cloud.google.com/ml-engine/docs/regions

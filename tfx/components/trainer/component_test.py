@@ -40,12 +40,14 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel([standard_artifacts.Schema()])
     self.hyperparameters = channel_utils.as_channel(
         [standard_artifacts.HyperParameters()])
-    self.train_args = trainer_pb2.TrainArgs(num_steps=100)
-    self.eval_args = trainer_pb2.EvalArgs(num_steps=50)
+    self.train_args = trainer_pb2.TrainArgs(splits=['train'], num_steps=100)
+    self.eval_args = trainer_pb2.EvalArgs(splits=['eval'], num_steps=50)
 
   def _verify_outputs(self, trainer):
     self.assertEqual(standard_artifacts.Model.TYPE_NAME,
                      trainer.outputs['model'].type_name)
+    self.assertEqual(standard_artifacts.ModelRun.TYPE_NAME,
+                     trainer.outputs['model_run'].type_name)
 
   def testConstructFromModuleFile(self):
     module_file = '/path/to/module/file'
@@ -67,8 +69,8 @@ class ComponentTest(tf.test.TestCase):
         transformed_examples=self.examples,
         transform_graph=self.transform_output,
         schema=self.schema,
-        train_args=dict(num_steps=n_steps),
-        eval_args=dict(num_steps=n_steps))
+        train_args=dict(splits=['train'], num_steps=n_steps),
+        eval_args=dict(splits=['eval'], num_steps=n_steps))
     self._verify_outputs(trainer)
     self.assertJsonEqual(
         str(module_file), str(trainer.spec.exec_properties['module_file']))

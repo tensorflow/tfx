@@ -23,13 +23,12 @@ import urllib.request
 from absl import logging
 import kfp
 import tensorflow as tf
-import yaml
-
-from google.cloud import storage
 from tfx.experimental.templates.taxi.e2e_tests import test_utils
 from tfx.orchestration import test_utils as orchestration_test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.utils import telemetry_utils
+import yaml
+from google.cloud import storage
 
 
 class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
@@ -64,7 +63,8 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     random_id = orchestration_test_utils.random_id()
     self._pipeline_name = 'taxi-template-kubeflow-e2e-test-' + random_id
     logging.info('Pipeline: %s', self._pipeline_name)
-    self._endpoint = self._get_endpoint()
+    self._namespace = 'kubeflow'
+    self._endpoint = self._get_endpoint(self._namespace)
     self._kfp_client = kfp.Client(host=self._endpoint)
     logging.info('ENDPOINT: %s', self._endpoint)
 
@@ -93,9 +93,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
   def _cleanup_kfp(self):
     self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
-    # self._cleanup_with_retry(self._delete_pipeline)
+    self._cleanup_with_retry(self._delete_caip_model)
+    self._cleanup_with_retry(self._delete_runs)
+    self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
-    # self._cleanup_with_retry(self._delete_runs)
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
@@ -103,6 +104,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         experiment_name=self._pipeline_name).id
     response = self._kfp_client.list_runs(experiment_id=experiment_id)
     return response.runs
+
+  def _delete_caip_model(self):
+    model_name = self._pipeline_name.replace('-', '_')
+    kubeflow_test_utils.delete_ai_platform_model(model_name)
 
   def _delete_runs(self):
     for run in self._get_kfp_runs():
@@ -132,9 +137,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         'gcloud', 'container', 'images', 'delete', self._target_container_image
     ])
 
-  def _get_endpoint(self):
-    output = subprocess.check_output(
-        'kubectl describe configmap inverse-proxy-config -n kubeflow'.split())
+  def _get_endpoint(self, namespace):
+    cmd = 'kubectl describe configmap inverse-proxy-config -n {}'.format(
+        namespace)
+    output = subprocess.check_output(cmd.split())
     for line in output.decode('utf-8').split('\n'):
       if line.endswith('googleusercontent.com'):
         return line
@@ -203,7 +209,10 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
         self._endpoint,
     ])
     self.assertEqual(0, result.exit_code)
-    self._wait_until_completed(self._parse_run_id(result.output))
+    run_id = self._parse_run_id(result.output)
+    self._wait_until_completed(run_id)
+    kubeflow_test_utils.print_failure_log_for_run(self._endpoint, run_id,
+                                                  self._namespace)
 
   def _parse_run_id(self, output: str):
     run_id_lines = [
@@ -249,6 +258,13 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
             'BIG_QUERY_QUERY', 'DATAFLOW_BEAM_PIPELINE_ARGS',
             'GCP_AI_PLATFORM_TRAINING_ARGS', 'GCP_AI_PLATFORM_SERVING_ARGS'
         ])
+    self._replaceFileContent(
+        os.path.join('pipeline', 'configs.py'), [
+            ('GOOGLE_CLOUD_REGION = \'\'',
+             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
+            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
+             '\'imageUri\': \'{}\''.format(self._target_container_image)),
+        ])
 
     # Prepare data
     self._prepare_data()
@@ -284,15 +300,22 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._update_pipeline()
     self._run_pipeline()
 
-    # TODO(b/159772838): Add Dataflow step as well.
+    # Enable Dataflow
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs\n',
+        '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
+    ])
+    self._uncomment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
+    logging.info('Added Dataflow to pipeline.')
+    self._update_pipeline()
+    self._run_pipeline()
+
     # Enable CAIP extension.
-    self._replaceFileContent(
-        os.path.join('pipeline', 'configs.py'), [
-            ('GOOGLE_CLOUD_REGION = \'\'',
-             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
-            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
-             '\'imageUri\': \'{}\''.format(self._target_container_image)),
-        ])
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
     self._uncomment('kubeflow_dag_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',

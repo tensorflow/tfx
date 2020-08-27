@@ -26,22 +26,24 @@ from typing import List, Text
 from absl import logging
 from grpc import insecure_channel
 import tensorflow as tf
-
-from ml_metadata.proto import metadata_store_pb2
-from ml_metadata.proto import metadata_store_service_pb2
-from ml_metadata.proto import metadata_store_service_pb2_grpc
 from tfx.orchestration import metadata
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.test_pipelines import download_grep_print_pipeline
 from tfx.types import standard_artifacts
 
-# TODO(jxzheng): Change this hard-coded port forwarding address to a dynamic
-# one, perhaps with incrementing-retry logic, in order to guarantee different
-# tests not to step on each other.
+from ml_metadata.proto import metadata_store_pb2
+from ml_metadata.proto import metadata_store_service_pb2
+from ml_metadata.proto import metadata_store_service_pb2_grpc
 
-# The port-forwarding address used by Kubeflow E2E test.
-_KFP_E2E_TEST_FORWARDING_PORT = '8081'
+# The range of port-forwarding addresses used by Kubeflow E2E test.
+# If the current specified address is occupied, the test will scan forward until
+# a unused port is met, or stop at _KFP_E2E_TEST_FORWARDING_PORT_END.
+_KFP_E2E_TEST_FORWARDING_PORT_BEGIN = 8081
+_KFP_E2E_TEST_FORWARDING_PORT_END = 8888
+
+# Number of attempts to bind one port.
+_MAX_ATTEMPTS = 5
 
 
 class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
@@ -76,37 +78,52 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
   def _setup_mlmd_port_forward(cls) -> subprocess.Popen:
     """Uses port forward to talk to MLMD gRPC server."""
     grpc_port = cls._get_grpc_port()
-    grpc_forward_command = [
-        'kubectl', 'port-forward', 'deployment/metadata-grpc-deployment', '-n',
-        'kubeflow', ('%s:%s' % (_KFP_E2E_TEST_FORWARDING_PORT, grpc_port))
-    ]
-    # Begin port forwarding.
-    proc = subprocess.Popen(grpc_forward_command)
-    try:
-      # Wait while port forward to pod is being established
-      poll_grpc_port_command = [
-          'lsof', '-i', ':%s' % _KFP_E2E_TEST_FORWARDING_PORT
-      ]
-      result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
-      max_attempts = 30
-      for _ in range(max_attempts):
-        if result.returncode == 0:
-          break
-        logging.info('Waiting while gRPC port-forward is being established...')
-        time.sleep(5)
-        result = subprocess.run(poll_grpc_port_command)  # pylint: disable=subprocess-run-check
-    except:
-      # Kill the process in case unexpected error occurred.
-      proc.kill()
-      raise
 
-    if result.returncode != 0:
-      raise RuntimeError(
-          'Failed to establish gRPC port-forward to cluster after %s retries. '
-          'See error message: %s' % (max_attempts, result.stderr))
+    is_bind = False
+    forwarded_port = None
+
+    for port in range(_KFP_E2E_TEST_FORWARDING_PORT_BEGIN,
+                      _KFP_E2E_TEST_FORWARDING_PORT_END):
+      grpc_forward_command = [
+          'kubectl', 'port-forward', 'deployment/metadata-grpc-deployment',
+          '-n', 'kubeflow', ('%s:%s' % (port, grpc_port))
+      ]
+      # Begin port forwarding.
+      proc = subprocess.Popen(grpc_forward_command)
+      try:
+        # Wait while port forward to pod is being established
+        poll_grpc_port_command = ['lsof', '-i', ':%s' % port]
+        result = subprocess.run(  # pylint: disable=subprocess-run-check
+            poll_grpc_port_command,
+            stdout=subprocess.PIPE)
+        for _ in range(_MAX_ATTEMPTS):
+          if (result.returncode == 0 and
+              'kubectl' in result.stdout.decode('utf-8')):
+            is_bind = True
+            break
+          logging.info(
+              'Waiting while gRPC port-forward is being established...')
+          time.sleep(5)
+          result = subprocess.run(  # pylint: disable=subprocess-run-check
+              poll_grpc_port_command,
+              stdout=subprocess.PIPE)
+
+      except:  # pylint: disable=bare-except
+        # Kill the process in case unexpected error occurred.
+        proc.kill()
+
+      if is_bind:
+        forwarded_port = port
+        break
+
+    if not is_bind:
+      raise RuntimeError('Failed to establish gRPC port-forward to cluster in '
+                         'the specified range: port %s to %s' %
+                         (_KFP_E2E_TEST_FORWARDING_PORT_BEGIN,
+                          _KFP_E2E_TEST_FORWARDING_PORT_END))
 
     # Establish MLMD gRPC channel.
-    forwarding_channel = insecure_channel('localhost:%s' % (int(grpc_port) + 1))
+    forwarding_channel = insecure_channel('localhost:%s' % forwarded_port)
     cls._stub = metadata_store_service_pb2_grpc.MetadataStoreServiceStub(
         forwarding_channel)
 
@@ -135,14 +152,11 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
   def _get_value_of_string_artifact(
       self, string_artifact: metadata_store_pb2.Artifact) -> Text:
     """Helper function returns the actual value of a ValueArtifact."""
-    file_path = os.path.join(string_artifact.uri,
-                             standard_artifacts.String.VALUE_FILE)
-    # Assert there is a file exists.
-    if (not tf.io.gfile.exists(file_path)) or tf.io.gfile.isdir(file_path):
-      raise RuntimeError(
-          'Given path does not exist or is not a valid file: %s' % file_path)
-    serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-    return standard_artifacts.String().decode(serialized_value)
+
+    string_artifact_obj = standard_artifacts.String()
+    string_artifact_obj.uri = string_artifact.uri
+    string_artifact_obj.read()
+    return string_artifact_obj.value
 
   def _get_executions_by_pipeline_name(
       self, pipeline_name: Text) -> List[metadata_store_pb2.Execution]:

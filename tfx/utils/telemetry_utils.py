@@ -21,6 +21,7 @@ from __future__ import print_function
 import contextlib
 import re
 import sys
+import threading
 from typing import Dict, List, Text
 
 from tfx import version
@@ -34,19 +35,23 @@ _LABEL_TFX_PY_VERSION = 'tfx_py_version'
 # The GKE pod label indicating the SDK environment.
 LABEL_KFP_SDK_ENV = 'pipelines.kubeflow.org/pipeline-sdk-type'
 
-# A list of global labels registered so far.
-_labels = {}
+# Thread local labels registered so far.
+_thread_local_labels_state = threading.local()
+_thread_local_labels_state.dictionary = {}
 
 
 @contextlib.contextmanager
 def scoped_labels(labels: Dict[Text, Text]):
+  """Register thread local labels used in current context."""
+  if getattr(_thread_local_labels_state, 'dictionary', None) is None:
+    _thread_local_labels_state.dictionary = {}
   for key, value in labels.items():
-    _labels[key] = _normalize_label(value)
+    _thread_local_labels_state.dictionary[key] = _normalize_label(value)
   try:
     yield
   finally:
     for key in labels:
-      _labels.pop(key)
+      _thread_local_labels_state.dictionary.pop(key)
 
 
 def _normalize_label(value: Text) -> Text:
@@ -67,7 +72,7 @@ def get_labels_dict() -> Dict[Text, Text]:
               version.__version__,
           _LABEL_TFX_PY_VERSION:
               '%d.%d' % (sys.version_info.major, sys.version_info.minor),
-      }, **_labels)
+      }, **getattr(_thread_local_labels_state, 'dictionary', {}))
   for k, v in result.items():
     result[k] = _normalize_label(v)
   return result

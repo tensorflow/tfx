@@ -164,9 +164,7 @@ def copy_template(flags_dict: Dict[Text, Any]) -> None:
       _IMPORT_FROM_PACKAGE: _IMPORT_FROM_LOCAL_DIR,
       _PLACEHOLDER_PIPELINE_NAME: pipeline_name,
   }
-  _copy_and_replace_placeholder_dir(template_dir,
-                                    destination_dir,
-                                    ignore_paths,
+  _copy_and_replace_placeholder_dir(template_dir, destination_dir, ignore_paths,
                                     replace_dict)
   for additional_file in _ADDITIONAL_FILE_PATHS.get(model, []):
     src_path = os.path.join(_tfx_src_dir(), additional_file.src)
