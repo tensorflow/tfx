@@ -42,3 +42,11 @@ tfx_py_proto_library(
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],
 )
+
+tfx_py_proto_library(
+    name = "local_deployment_config_py_pb2",
+    srcs = ["local_deployment_config.proto"],
+    deps = [
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
+    ],
+)

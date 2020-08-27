@@ -20,6 +20,7 @@ from __future__ import print_function
 import os
 from typing import List, Text
 
+import six
 import tensorflow as tf
 
 from google.protobuf import json_format
@@ -58,6 +59,8 @@ def copy_file(src: Text, dst: Text, overwrite: bool = False):
 
 def copy_dir(src: Text, dst: Text) -> None:
   """Copies the whole directory recursively from source to destination."""
+  src = src.rstrip('/')
+  dst = dst.rstrip('/')
 
   if tf.io.gfile.exists(dst):
     tf.io.gfile.rmtree(dst)
@@ -156,6 +159,17 @@ def generate_fingerprint(split_name: Text, file_pattern: Text) -> Text:
 
   return 'split:%s,num_files:%d,total_bytes:%d,xor_checksum:%d,sum_checksum:%d' % (
       split_name, len(files), total_bytes, xor_checksum, sum_checksum)
+
+
+def read_string_file(file_name: Text) -> Text:
+  """Reads a string from a file."""
+  if not tf.io.gfile.exists(file_name):
+    msg = '{} does not exist'.format(file_name)
+    if six.PY2:
+      raise OSError(msg)
+    else:
+      raise FileNotFoundError(msg)  # pylint: disable=undefined-variable
+  return file_io.read_file_to_string(file_name)
 
 
 class SchemaReader(object):

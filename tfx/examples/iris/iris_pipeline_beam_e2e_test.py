@@ -72,7 +72,7 @@ class IrisPipelineBeamEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))

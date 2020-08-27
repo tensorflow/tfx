@@ -1,4 +1,4 @@
-# Github action definition for ci-test with PRs.
+# Github action definitions for ci-test with PRs.
 
 name: tfx-ci-test
 on:
@@ -19,24 +19,27 @@ jobs:
     - name: Select files to check
       run: |
         # Filter out non-python files.
-        cat $HOME/files_added.txt $HOME/files_modified.txt | tr ' ' '\n' | grep '\.py$' > py_files.txt || true
+        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.py$' > py_files.txt || true
         # Filter out non-test python files and e2e or integration tests.
         cat py_files.txt | grep '_test\.py$' | grep -v _e2e_ | grep -v integration | grep -v 'examples/' > py_test_files.txt || true
         # Select proto files.
-        cat $HOME/files_added.txt $HOME/files_modified.txt | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
+        (cat $HOME/files_added.txt; echo; cat $HOME/files_modified.txt) | tr ' ' '\n' | grep '\.proto$' > proto_files.txt || true
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
-    - name: Install dependencies
-      env:
-        PROTO_VERSION: 3.11.4
-        PROTOC: bin/protoc
+
+    - name: Set up Bazel 3.4.1
       run: |
-        python -m pip install --upgrade pip
-        curl -sSOL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTO_VERSION}/protoc-${PROTO_VERSION}-linux-x86_64.zip
-        unzip protoc-${PROTO_VERSION}-linux-x86_64.zip
+        # Instruction from https://docs.bazel.build/versions/master/install-ubuntu.html
+        curl -sSL https://github.com/bazelbuild/bazel/releases/download/3.4.1/bazel-3.4.1-installer-linux-x86_64.sh -o bazel_installer.sh
+        chmod +x bazel_installer.sh
+        sudo ./bazel_installer.sh
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip wheel
         pip install -e .[all]
 
     - name: Run unit tests

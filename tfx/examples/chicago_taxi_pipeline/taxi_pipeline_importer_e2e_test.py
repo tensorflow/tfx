@@ -22,11 +22,10 @@ import os
 from typing import Text
 
 import tensorflow as tf
-from tfx_bsl.version import __version__ as tfx_bsl_version
-
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_importer
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
+from tfx_bsl.version import __version__ as tfx_bsl_version
 
 
 class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
@@ -77,7 +76,7 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -101,7 +100,7 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     # All executions but Evaluator and Pusher are cached.
     # Note that Resolver will always execute.
@@ -121,7 +120,7 @@ class TaxiPipelineImporterEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:

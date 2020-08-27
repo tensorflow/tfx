@@ -21,6 +21,8 @@ Trainer takes:
     train args and eval args.
 *   (Optional) transform graph produced by an upstream Transform component.
 *   (Optional) pre-trained models used for scenarios such as warmstart.
+*   (Optional) hyperparameters, which will be passed to user module function.
+    Details of the integration with Tuner can be found [here](tuner.md).
 
 Trainer emits: At least one model for inference/serving (typically in SavedModelFormat) and optionally another model for eval (typically an EvalSavedModel).
 

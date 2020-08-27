@@ -224,9 +224,7 @@ class BaseHandler(with_metaclass(abc.ABCMeta, object)):
 
     # Get the latest SchemaGen output.
     component_output_dir = os.path.join(pipeline_root, 'SchemaGen')
-    schema1_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
-        component_output_dir, 'schema', 1)
-    schema_dir = os.path.join(os.path.dirname(schema1_uri), '')
+    schema_dir = os.path.join(component_output_dir, 'schema')
     schemagen_outputs = tf.io.gfile.listdir(schema_dir)
     latest_schema_folder = max(schemagen_outputs, key=int)
 

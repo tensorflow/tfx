@@ -26,13 +26,14 @@ from typing import Any, Dict, List, Optional, Text, Type
 
 from six import with_metaclass
 
-from google.protobuf import json_format
-from google.protobuf import message
 from tfx.types.artifact import Artifact
 from tfx.types.channel import Channel
 from tfx.types.node_common import _PropertyDictWrapper
 from tfx.utils import abc_utils
 from tfx.utils import json_utils
+
+from google.protobuf import json_format
+from google.protobuf import message
 
 
 def _make_default(data: Any) -> Any:
@@ -228,14 +229,13 @@ class ComponentSpec(with_metaclass(abc.ABCMeta, json_utils.Jsonable)):
 
       self.exec_properties[arg_name] = value
 
-    for arg_name, arg in self.INPUTS.items():
-      if arg.optional and not self._raw_args.get(arg_name):
-        continue
-      value = self._raw_args[arg_name]
-      inputs[arg_name] = value
-    for arg_name, arg in self.OUTPUTS.items():
-      value = self._raw_args[arg_name]
-      outputs[arg_name] = value
+    for arg_dict, param_dict in (
+        (self.INPUTS, inputs), (self.OUTPUTS, outputs)):
+      for arg_name, arg in arg_dict.items():
+        if arg.optional and not self._raw_args.get(arg_name):
+          continue
+        value = self._raw_args[arg_name]
+        param_dict[arg_name] = value
 
     # Note: for forwards compatibility, ComponentSpec objects may provide an
     # attribute mapping virtual keys to physical keys in the outputs dictionary,
@@ -378,7 +378,7 @@ class ChannelParameter(_ComponentParameter):
       optional: Optional[bool] = False):
     if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
-          'Argument "type" of Channel constructor must be a subclass of'
+          'Argument "type" of Channel constructor must be a subclass of '
           'tfx.types.Artifact.')
     self.type = type
     self.optional = optional

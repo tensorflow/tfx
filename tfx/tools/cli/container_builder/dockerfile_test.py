@@ -18,20 +18,23 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import filecmp
 import os
 import tempfile
+
 import tensorflow as tf
 
 from tfx import version
 from tfx.tools.cli.container_builder import dockerfile
 from tfx.tools.cli.container_builder import labels
 
+_FAKE_VERSION = '0.23.0'
 
 _test_dockerfile_content = '''FROM tensorflow/tfx:%s
 WORKDIR /pipeline
 COPY ./ ./
-ENV PYTHONPATH="/pipeline:${PYTHONPATH}"''' % version.__version__
+ENV PYTHONPATH="/pipeline:${PYTHONPATH}"''' % _FAKE_VERSION
 
 
 class DockerfileTest(tf.test.TestCase):
@@ -54,11 +57,22 @@ class DockerfileTest(tf.test.TestCase):
     super(DockerfileTest, self).tearDown()
     os.chdir(self._old_working_dir)
 
+  @contextlib.contextmanager
+  def _patchVersion(self, ver):
+    old_version = version.__version__
+    old_base_image = labels.BASE_IMAGE
+    version.__version__ = ver
+    labels.BASE_IMAGE = 'tensorflow/tfx:%s' % ver
+    yield
+    labels.BASE_IMAGE = old_base_image
+    version.__version__ = old_version
+
   def testGenerate(self):
     generated_dockerfile_path = labels.DOCKERFILE_NAME
-    dockerfile.Dockerfile(filename=generated_dockerfile_path)
-    self.assertTrue(
-        filecmp.cmp(self._test_dockerfile, generated_dockerfile_path))
+    with self._patchVersion(_FAKE_VERSION):
+      dockerfile.Dockerfile(filename=generated_dockerfile_path)
+      self.assertTrue(
+          filecmp.cmp(self._test_dockerfile, generated_dockerfile_path))
 
   def testGenerateWithBaseOverride(self):
     generated_dockerfile_path = labels.DOCKERFILE_NAME
@@ -69,6 +83,12 @@ class DockerfileTest(tf.test.TestCase):
         filecmp.cmp(
             os.path.join(self._testdata_dir, 'test_dockerfile_with_base'),
             generated_dockerfile_path))
+
+  def testDevVersionRequirement(self):
+    with self._patchVersion('0.23.0.dev'):
+      with self.assertRaisesRegex(ValueError,
+                                  'Cannot find a base image automatically'):
+        dockerfile.Dockerfile(filename=labels.DOCKERFILE_NAME)
 
 
 if __name__ == '__main__':

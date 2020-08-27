@@ -20,10 +20,10 @@ from __future__ import division
 from __future__ import print_function
 
 import itertools
+
 import tensorflow as tf
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
-from tfx.components import BigQueryExampleGen
+from tfx.components import CsvExampleGen
 from tfx.components import ResolverNode
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -31,6 +31,9 @@ from tfx.components.base import executor_spec
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.proto.orchestration import pipeline_pb2
+from tfx.utils.dsl_utils import external_input
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class EmptyComponentSpec(types.ComponentSpec):
@@ -69,7 +72,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertTrue(compiler_utils.is_resolver(resolver))
 
-    example_gen = BigQueryExampleGen(query="big_query")
+    example_gen = CsvExampleGen(input=external_input("data_path"))
     self.assertFalse(compiler_utils.is_resolver(example_gen))
 
   def testIsComponent(self):
@@ -78,7 +81,7 @@ class CompilerUtilsTest(tf.test.TestCase):
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver)
     self.assertFalse(compiler_utils.is_component(resolver))
 
-    example_gen = BigQueryExampleGen(query="big_query")
+    example_gen = CsvExampleGen(input=external_input("data_path"))
     self.assertTrue(compiler_utils.is_component(example_gen))
 
   def testEnsureTopologicalOrder(self):

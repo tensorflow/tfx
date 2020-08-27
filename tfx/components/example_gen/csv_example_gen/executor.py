@@ -21,16 +21,35 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, Iterable, List, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow as tf
+
+from tfx.components.example_gen import utils
+from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
+from tfx.utils import io_utils
 from tfx_bsl.coders import csv_decoder
 
-from tfx import types
-from tfx.components.example_gen.base_example_gen_executor import BaseExampleGenExecutor
-from tfx.components.example_gen.base_example_gen_executor import INPUT_KEY
-from tfx.types import artifact_utils
-from tfx.utils import io_utils
+
+def _int_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
+  value_list = []
+  if cell:
+    value_list.append(int(cell))
+  return tf.train.Feature(int64_list=tf.train.Int64List(value=value_list))
+
+
+def _float_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
+  value_list = []
+  if cell:
+    value_list.append(float(cell))
+  return tf.train.Feature(float_list=tf.train.FloatList(value=value_list))
+
+
+def _bytes_handler(cell: csv_decoder.CSVCell) -> tf.train.Feature:
+  value_list = []
+  if cell:
+    value_list.append(cell)
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=value_list))
 
 
 @beam.typehints.with_input_types(List[csv_decoder.CSVCell],
@@ -42,30 +61,26 @@ class _ParsedCsvToTfExample(beam.DoFn):
   def __init__(self):
     self._column_handlers = None
 
-  def _process_column_infos(self, column_infos: List[csv_decoder.ColumnInfo]):
-    column_handlers = []
+  def _make_column_handlers(self, column_infos: List[csv_decoder.ColumnInfo]):
+    result = []
     for column_info in column_infos:
       # pylint: disable=g-long-lambda
       if column_info.type == csv_decoder.ColumnType.INT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            int64_list=tf.train.Int64List(value=[int(csv_cell)]))
+        handler_fn = _int_handler
       elif column_info.type == csv_decoder.ColumnType.FLOAT:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            float_list=tf.train.FloatList(value=[float(csv_cell)]))
+        handler_fn = _float_handler
       elif column_info.type == csv_decoder.ColumnType.STRING:
-        handler_fn = lambda csv_cell: tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[csv_cell]))
+        handler_fn = _bytes_handler
       else:
         handler_fn = None
-      column_handlers.append((column_info.name, handler_fn))
-
-    self._column_handlers = column_handlers
+      result.append((column_info.name, handler_fn))
+    return result
 
   def process(
       self, csv_cells: List[csv_decoder.CSVCell],
       column_infos: List[csv_decoder.ColumnInfo]) -> Iterable[tf.train.Example]:
     if not self._column_handlers:
-      self._process_column_infos(column_infos)
+      self._column_handlers = self._make_column_handlers(column_infos)
 
     # skip blank lines.
     if not csv_cells:
@@ -77,14 +92,9 @@ class _ParsedCsvToTfExample(beam.DoFn):
     feature = {}
     for csv_cell, (column_name, handler_fn) in zip(csv_cells,
                                                    self._column_handlers):
-      if not csv_cell:
-        feature[column_name] = tf.train.Feature()
-        continue
-      if not handler_fn:
-        raise ValueError(
-            'Internal error: failed to infer type of column {} while it'
-            'had at least some values {}'.format(column_name, csv_cell))
-      feature[column_name] = handler_fn(csv_cell)
+      feature[column_name] = (
+          handler_fn(csv_cell) if handler_fn else tf.train.Feature())
+
     yield tf.train.Example(features=tf.train.Features(feature=feature))
 
 
@@ -92,9 +102,7 @@ class _ParsedCsvToTfExample(beam.DoFn):
 @beam.typehints.with_input_types(beam.Pipeline)
 @beam.typehints.with_output_types(tf.train.Example)
 def _CsvToExample(  # pylint: disable=invalid-name
-    pipeline: beam.Pipeline,
-    input_dict: Dict[Text, List[types.Artifact]],
-    exec_properties: Dict[Text, Any],  # pylint: disable=unused-argument
+    pipeline: beam.Pipeline, exec_properties: Dict[Text, Any],
     split_pattern: Text) -> beam.pvalue.PCollection:
   """Read CSV files and transform to TF examples.
 
@@ -102,10 +110,8 @@ def _CsvToExample(  # pylint: disable=invalid-name
 
   Args:
     pipeline: beam pipeline.
-    input_dict: Input dict from input key to a list of Artifacts.
-      - input_base: input dir that contains csv data. csv files must have header
-        line.
     exec_properties: A dict of execution properties.
+      - input_base: input dir that contains CSV data. CSV must have header line.
     split_pattern: Split.pattern in Input config, glob relative file pattern
       that maps to input files with root directory given by input_base.
 
@@ -115,10 +121,9 @@ def _CsvToExample(  # pylint: disable=invalid-name
   Raises:
     RuntimeError: if split is empty or csv headers are not equal.
   """
-  input_base_uri = artifact_utils.get_single_uri(input_dict[INPUT_KEY])
+  input_base_uri = exec_properties[utils.INPUT_BASE_KEY]
   csv_pattern = os.path.join(input_base_uri, split_pattern)
-  absl.logging.info(
-      'Processing input csv data {} to TFExample.'.format(csv_pattern))
+  logging.info('Processing input csv data %s to TFExample.', csv_pattern)
 
   csv_files = tf.io.gfile.glob(csv_pattern)
   if not csv_files:

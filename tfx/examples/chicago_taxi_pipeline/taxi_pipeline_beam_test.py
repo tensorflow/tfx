@@ -38,7 +38,6 @@ from tfx.proto import trainer_pb2
 from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 
 class TaxiPipelineBeamTest(tf.test.TestCase):
@@ -57,14 +56,11 @@ class TaxiPipelineBeamTest(tf.test.TestCase):
         module_file=self._test_dir,
         serving_model_dir=self._test_dir,
         metadata_path=self._test_dir,
-        direct_num_workers=1)
+        beam_pipeline_args=[])
     self.assertEqual(9, len(logical_pipeline.components))
 
   def testTaxiPipelineNewStyleCompatibility(self):
-    examples = external_input('/tmp/fake/path')
-    example_gen = CsvExampleGen(input=examples)
-    self.assertIs(example_gen.inputs['input'],
-                  example_gen.inputs['input_base'])
+    example_gen = CsvExampleGen(input_base='/tmp/fake/path')
     statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
     self.assertIs(statistics_gen.inputs['examples'],
                   statistics_gen.inputs['input_data'])

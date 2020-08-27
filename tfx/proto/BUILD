@@ -48,3 +48,13 @@ tfx_py_proto_library(
     name = "trainer_proto_py_pb2",
     srcs = ["trainer.proto"],
 )
+
+tfx_py_proto_library(
+    name = "transform_proto_py_pb2",
+    srcs = ["transform.proto"],
+)
+
+tfx_py_proto_library(
+    name = "tuner_proto_py_pb2",
+    srcs = ["tuner.proto"],
+)

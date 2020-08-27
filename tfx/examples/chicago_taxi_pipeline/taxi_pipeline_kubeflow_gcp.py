@@ -25,7 +25,6 @@ from absl import app
 from absl import flags
 import tensorflow_model_analysis as tfma
 
-from tfx.components import BigQueryExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -38,6 +37,7 @@ from tfx.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
 from tfx.orchestration.kubeflow import kubeflow_dag_runner
@@ -208,7 +208,7 @@ def create_pipeline(
   )
 
   # Brings data into the pipeline or otherwise joins/converts training data.
-  example_gen = BigQueryExampleGen(query=query)
+  example_gen = big_query_example_gen_component.BigQueryExampleGen(query=query)
 
   # Computes statistics over data for visualization and example validation.
   statistics_gen = StatisticsGen(examples=example_gen.outputs['examples'])
@@ -311,7 +311,9 @@ def create_pipeline(
 
   # Checks whether the model passed the validation steps and pushes the model
   # to  Google Cloud AI Platform if check passed.
-  pusher = Pusher(
+  # TODO(b/162451308): Add pusher back to components list once AIP Prediction
+  # Service supports TF>=2.3.
+  _ = Pusher(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
@@ -325,7 +327,7 @@ def create_pipeline(
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, schema_gen, example_validator, transform,
-          trainer, model_resolver, evaluator, pusher
+          trainer, model_resolver, evaluator
       ],
       beam_pipeline_args=beam_pipeline_args,
   )

@@ -21,11 +21,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Optional, Text, List, Dict, Any
-import tensorflow_model_analysis as tfma
+from typing import Any, Dict, List, Optional, Text
 
-from ml_metadata.proto import metadata_store_pb2
-from tfx.components import BigQueryExampleGen  # pylint: disable=unused-import
+import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -40,6 +38,7 @@ from tfx.components.trainer import executor as trainer_executor
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
+from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component  # pylint: disable=unused-import
 from tfx.orchestration import pipeline
 from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
@@ -47,6 +46,8 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 def create_pipeline(
@@ -74,7 +75,8 @@ def create_pipeline(
   # Brings data into the pipeline or otherwise joins/converts training data.
   example_gen = CsvExampleGen(input=external_input(data_path))
   # TODO(step 7): (Optional) Uncomment here to use BigQuery as a data source.
-  # example_gen = BigQueryExampleGen(query=query)
+  # example_gen = big_query_example_gen_component.BigQueryExampleGen(
+  #     query=query)
   components.append(example_gen)
 
   # Computes statistics over data for visualization and example validation.
@@ -195,8 +197,9 @@ def create_pipeline(
       pipeline_name=pipeline_name,
       pipeline_root=pipeline_root,
       components=components,
-      # TODO(step 8): Change this value to control caching of execution results.
-      enable_cache=True,
+      # Change this value to control caching of execution results. Default value
+      # is `False`.
+      # enable_cache=True,
       metadata_connection_config=metadata_connection_config,
       beam_pipeline_args=beam_pipeline_args,
   )

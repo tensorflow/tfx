@@ -18,19 +18,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import json
 import os
 from kerastuner import HyperParameters
 import tensorflow as tf
 
-from google.protobuf import json_format
-from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 from tfx.components.testdata.module_file import tuner_module
 from tfx.components.tuner import executor
 from tfx.proto import trainer_pb2
 from tfx.proto import tuner_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import io_utils
+from google.protobuf import json_format
+from tensorflow.python.lib.io import file_io  # pylint: disable=g-direct-tensorflow-import
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -47,14 +49,20 @@ class ExecutorTest(tf.test.TestCase):
         tmp_dir=self._output_data_dir, unique_id='1')
 
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(self._testdata_dir, 'iris', 'data')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    e1 = standard_artifacts.Examples()
+    e1.uri = os.path.join(self._testdata_dir, 'iris', 'data')
+    e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+
+    e2 = copy.deepcopy(e1)
+
+    self._single_artifact = [e1]
+    self._multiple_artifacts = [e1, e2]
+
     schema = standard_artifacts.Schema()
     schema.uri = os.path.join(self._testdata_dir, 'iris', 'schema')
 
     self._input_dict = {
-        'examples': [examples],
+        'examples': self._single_artifact,
         'schema': [schema],
     }
 
@@ -116,14 +124,62 @@ class ExecutorTest(tf.test.TestCase):
 
   def testTuneArgs(self):
     with self.assertRaises(ValueError):
-      self._exec_properties['tune_args'] = tuner_pb2.TuneArgs(
-          num_parallel_trials=3)
+      self._exec_properties['tune_args'] = json_format.MessageToJson(
+          tuner_pb2.TuneArgs(num_parallel_trials=3),
+          preserving_proto_field_name=True)
 
       tuner = executor.Executor(self._context)
       tuner.Do(
           input_dict=self._input_dict,
           output_dict=self._output_dict,
           exec_properties=self._exec_properties)
+
+  def testDoWithCustomSplits(self):
+    # Update input dict.
+    io_utils.copy_dir(
+        os.path.join(self._testdata_dir, 'iris/data/train'),
+        os.path.join(self._output_data_dir, 'data/training'))
+    io_utils.copy_dir(
+        os.path.join(self._testdata_dir, 'iris/data/eval'),
+        os.path.join(self._output_data_dir, 'data/evaluating'))
+    examples = standard_artifacts.Examples()
+    examples.uri = os.path.join(self._output_data_dir, 'data')
+    examples.split_names = artifact_utils.encode_split_names(
+        ['training', 'evaluating'])
+    self._input_dict['examples'] = [examples]
+
+    # Update exec properties skeleton with custom splits.
+    self._exec_properties['train_args'] = json_format.MessageToJson(
+        trainer_pb2.TrainArgs(splits=['training'], num_steps=1000),
+        preserving_proto_field_name=True)
+    self._exec_properties['eval_args'] = json_format.MessageToJson(
+        trainer_pb2.EvalArgs(splits=['evaluating'], num_steps=500),
+        preserving_proto_field_name=True)
+    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
+                                                        'module_file',
+                                                        'tuner_module.py')
+
+    tuner = executor.Executor(self._context)
+    tuner.Do(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties)
+
+    self._verify_output()
+
+  def testMultipleArtifacts(self):
+    self._input_dict['examples'] = self._multiple_artifacts
+    self._exec_properties['module_file'] = os.path.join(self._testdata_dir,
+                                                        'module_file',
+                                                        'tuner_module.py')
+
+    tuner = executor.Executor(self._context)
+    tuner.Do(
+        input_dict=self._input_dict,
+        output_dict=self._output_dict,
+        exec_properties=self._exec_properties)
+
+    self._verify_output()
 
 
 if __name__ == '__main__':

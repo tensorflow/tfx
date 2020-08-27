@@ -23,6 +23,7 @@ from typing import Text
 
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.examples.iris import iris_pipeline_native_keras_infraval
 from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -56,12 +57,15 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
       self.assertEqual(1, len(execution))
 
   def assertInfraValidatorPassed(self) -> None:
+    infra_validator_path = os.path.join(self._pipeline_root, 'InfraValidator')
     blessing_path = os.path.join(self._pipeline_root, 'InfraValidator',
                                  'blessing')
     executions = tf.io.gfile.listdir(blessing_path)
     self.assertGreaterEqual(len(executions), 1)
     for exec_id in executions:
-      blessed = os.path.join(blessing_path, exec_id, 'INFRA_BLESSED')
+      blessing_uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
+          infra_validator_path, 'blessing', exec_id)
+      blessed = os.path.join(blessing_uri, 'INFRA_BLESSED')
       self.assertTrue(tf.io.gfile.exists(blessed))
 
   def assertPipelineExecution(self) -> None:
@@ -84,7 +88,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
@@ -109,7 +113,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     # All executions but Evaluator and Pusher are cached.
     with metadata.Metadata(metadata_config) as m:
@@ -128,7 +132,7 @@ class IrisPipelineNativeKerasInfravalEndToEndTest(tf.test.TestCase):
             serving_model_dir=self._serving_model_dir,
             pipeline_root=self._pipeline_root,
             metadata_path=self._metadata_path,
-            direct_num_workers=1))
+            beam_pipeline_args=[]))
 
     # Asserts cache execution.
     with metadata.Metadata(metadata_config) as m:
