@@ -69,6 +69,8 @@
         disable cache (won't generate cache output).
 *   Added support for width modifiers in Span and Version specs for file based
     ExampleGen.
+*   Added support for processing specific spans in file-based ExampleGen with
+    range configuration.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
