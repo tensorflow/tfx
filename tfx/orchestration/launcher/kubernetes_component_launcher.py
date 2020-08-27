@@ -108,6 +108,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       pod_manifest['metadata'][
           'ownerReferences'] = container_common.to_swagger_dict(
               launcher_pod.metadata.owner_references)
+    else:
+      pod_manifest['spec']['serviceAccountName'] = 'tfx-service-account'
 
     logging.info('Looking for pod "%s:%s".', namespace, pod_name)
     resp = self._get_pod(core_api, pod_name, namespace)
