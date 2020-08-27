@@ -26,6 +26,7 @@ from tfx.components.base import base_executor
 from tfx.orchestration.pipeline import Pipeline
 from fused_component.component import FusedComponent
 
+
 class BeamFusionOptimizer(object):
   """Optimizer for TFX pipelines, utilizing Beam Fusion"""
 
@@ -71,7 +72,7 @@ class BeamFusionOptimizer(object):
         if in_degrees[child] == 0:
           new_sources.append(child)
 
-      # This extra sorting keeps a consistent topological ordering
+      # This extra sorting keeps a deterministic topological ordering
       new_sources = sorted(new_sources, key=lambda c: c.id)
       queue.extend(new_sources)
 
@@ -98,14 +99,14 @@ class BeamFusionOptimizer(object):
                    current_subgraph: List[base_node.BaseNode]):
     is_fuseable = True
 
-    # Conduct a BFS to ensure none of the child's ancestors (other than its'
-    # immediate parents and those parents' ancestors) are in current_subgraph.
+    # Conducts a BFS to check that every parent not in the subgraph does not
+    # have an ancestor in the subgraph
     queue = []
     for parent in child.upstream_nodes:
       if not parent in current_subgraph:
         queue.append(parent)
 
-    while(is_fuseable and queue):
+    while is_fuseable and queue:
       component = queue.pop(0)
 
       for parent in component.upstream_nodes:
@@ -144,7 +145,7 @@ class BeamFusionOptimizer(object):
           continue
 
         # Checks if the child is in an explored subgraph that needs to be
-        # fused into the current subrgaph
+        # fused into the current subgraph
         if child in visited:
           intersecting_subgraph = self._get_intersecting_subgraph(
               child, fuseable_subgraphs)
@@ -235,7 +236,7 @@ class BeamFusionOptimizer(object):
       fused_components: List[FusedComponent]):
 
     for fused_component in fused_components:
-      if fused_component.in_subgraph(component):
+      if fused_component.subgraph_contains_component(component):
         return True
 
     return False

@@ -91,7 +91,7 @@ class BaseExecutor(with_metaclass(abc.ABCMeta, object)):
       exec_properties: A dict of execution properties. These are inputs to
         pipeline with primitive types (int, string, float) and fully
         materialized when a pipeline is constructed. No dependency to other
-        components or later injection from orchestration systems is necessary or
+        component or later injection from orchestration systems is necessary or
         possible on these values.
 
     Returns:

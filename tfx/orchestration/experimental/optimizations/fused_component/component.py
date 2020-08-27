@@ -18,7 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import itertools
 from typing import Optional, Text, List
 
 from tfx.utils import json_utils
@@ -26,12 +25,9 @@ from tfx.components.base import base_component
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
-from tfx.types import standard_artifacts
-from tfx.types.channel import Channel
-from tfx.types.artifact import Artifact
-from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 from tfx.types.standard_component_specs import FusedComponentSpec
+from tfx.types.component_spec import ComponentSpec
 from tfx.orchestration.kubeflow import node_wrapper
 
 SERIALIZED_SUBGRAPH = 'serialized_subgraph'
@@ -70,7 +66,7 @@ class FusedComponent(base_component.BaseComponent):
     super(FusedComponent, self).__init__(
         spec=spec, instance_name=instance_name)
 
-  def _serialize_subgraph(self):
+  def _serialize_subgraph(self) -> Text:
     serialized_subgraph = []
 
     for component in self.subgraph:
@@ -79,7 +75,7 @@ class FusedComponent(base_component.BaseComponent):
 
     return json.dumps(serialized_subgraph)
 
-  def _find_channel_dependencies(self):
+  def _find_channel_dependencies(self) -> Text:
     channel_map = {}
 
     # Iterate through the subgraph components' inputs to find out if they map
@@ -99,7 +95,8 @@ class FusedComponent(base_component.BaseComponent):
 
     return json.dumps(channel_map)
 
-  def _create_component_spec(self, beam_pipeline_args, pipeline_root):
+  def _create_component_spec(self, beam_pipeline_args: List[Text],
+                             pipeline_root: Text) -> ComponentSpec:
     parameters = {}
     inputs = {}
     outputs = {}
@@ -108,9 +105,8 @@ class FusedComponent(base_component.BaseComponent):
     for component in self.subgraph:
       for k, v in component.exec_properties.items():
         key = component.id + '_PARAMETER_' + k
-        parameters[key] = ExecutionParameter(type=type(v)) # TODO: explain the bug lol write a TODO component.spec.PARAMETERS[k] #
+        parameters[key] = ExecutionParameter(type=type(v))
         spec_kwargs[key] = v
-        # special case by checking if proto message https://github.com/tensorflow/tfx/blob/9f8908346b4afe7741040f2d7241a8750a516003/tfx/types/component_spec.py#L225
 
       for k, v in component.inputs.items():
         key = component.id + '_INPUT_' + k
@@ -140,8 +136,8 @@ class FusedComponent(base_component.BaseComponent):
     spec = DynamicFusedComponentSpec(**spec_kwargs)
     return spec
 
-  def in_subgraph(self, component: base_node.BaseNode):
+  def subgraph_contains_component(self, component: base_node.BaseNode) -> bool:
     return component in self.subgraph
 
-  def get_subgraph(self):
+  def get_subgraph(self) -> List[base_node.BaseNode]:
     return self.subgraph

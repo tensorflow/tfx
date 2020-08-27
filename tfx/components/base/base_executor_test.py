@@ -29,6 +29,7 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_executor
 
+
 _EXAMPLES = 'examples'
 _SHUFFLED_EXAMPLES = 'shuffled_examples'
 _NUM_LINES = 1000
@@ -98,19 +99,20 @@ class _BeamTestExecutor(base_executor.FuseableBeamExecutor):
       self.write_outputs(p, beam_outputs, input_dict, output_dict,
                          exec_properties)
 
+
 class BaseExecutorTest(tf.test.TestCase):
 
   def testBeamSettings(self):
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=['--runner=DirectRunner'])
     executor = _TestExecutor(executor_context)
-    options = executor._make_beam_pipeline().options.view_as(StandardOptions) # pylint: disable=protected-access
+    options = executor._make_beam_pipeline().options.view_as(StandardOptions)
     self.assertEqual('DirectRunner', options.runner)
 
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=['--direct_num_workers=2'])
     executor = _TestExecutor(executor_context)
-    options = executor._make_beam_pipeline().options.view_as(DirectOptions) # pylint: disable=protected-access
+    options = executor._make_beam_pipeline().options.view_as(DirectOptions)
     self.assertEqual(2, options.direct_num_workers)
 
 

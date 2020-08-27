@@ -20,21 +20,13 @@ from __future__ import print_function
 
 import os
 import json
-from typing import Any, Dict, List, Text, Union, Tuple, cast
-
-import absl
-import apache_beam as beam
-import tensorflow as tf
-from tensorflow_data_validation.api import stats_api
-from tensorflow_data_validation.statistics import stats_options as options
-from tfx_bsl.tfxio import tf_example_record
+from typing import Any, Dict, List, Text, Mapping, Tuple, cast
 
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.types import artifact_utils
-from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx.orchestration.kubeflow.node_wrapper import NodeWrapper
 
 SERIALIZED_SUBGRAPH = 'serialized_subgraph'
 BEAM_PIPELINE_ARGS = 'beam_pipeline_args'
@@ -43,37 +35,39 @@ CHANNEL_MAP = 'channel_map'
 
 
 class Executor(base_executor.BaseExecutor):
+  """Executes components in FusedComponent subgraph, performing fusion optimization"""
 
-  def _populate_component_dicts(self, input_dict, output_dict, exec_properties):
+  def _populate_component_dicts(self,
+                                input_dict: Dict[Text, List[types.Artifact]],
+                                output_dict: Dict[Text, List[types.Artifact]],
+                                exec_properties: Dict[Text, Any],
+                                components: List[NodeWrapper]) -> None:
     self.component_input_dicts = {}
     self.component_output_dicts = {}
     self.component_exec_properties = {}
 
-    for k, v in input_dict.items():
-      component_id, input= k.split('_INPUT_')
+    for component in components:
+      self.component_input_dicts[component.id] = {}
+      self.component_output_dicts[component.id] = {}
+      self.component_exec_properties[component.id] = {}
 
-      if not component_id in self.component_input_dicts:
-        self.component_input_dicts[component_id] = {}
-      self.component_input_dicts[component_id][input] = v.get()
+    for k, v in input_dict.items():
+      component_id, input_key = k.split('_INPUT_')
+      self.component_input_dicts[component_id][input_key] = v.get()
 
     for k, v in output_dict.items():
-      component_id, output = k.split('_OUTPUT_')
-
-      if not component_id in self.component_output_dicts:
-        self.component_output_dicts[component_id] = {}
-      self.component_output_dicts[component_id][output] = v.get()
+      component_id, output_key = k.split('_OUTPUT_')
+      self.component_output_dicts[component_id][output_key] = v.get()
 
     for k, v in exec_properties.items():
       if '_PARAMETER_' not in k:
         continue
 
-      component_id, parameter = k.split('_PARAMETER_')
+      component_id, parameter_key = k.split('_PARAMETER_')
+      self.component_exec_properties[component_id][parameter_key] = v
 
-      if not component_id in self.component_exec_properties:
-        self.component_exec_properties[component_id] = {}
-      self.component_exec_properties[component_id][parameter] = v
-
-  def _get_component_executor(self, component, execution_id):
+  def _get_component_executor(self, component: NodeWrapper, execution_id: int
+                              ) -> base_executor.FuseableBeamExecutor:
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=self.beam_pipeline_args,
         tmp_dir=os.path.join(self.pipeline_root, '.temp', ''),
@@ -85,7 +79,8 @@ class Executor(base_executor.BaseExecutor):
     executor = executor_class_spec.executor_class(executor_context)
     return executor
 
-  def _have_matching_beam_io_signatures(self, child, parent):
+  def _have_matching_beam_io_signatures(self, child: NodeWrapper,
+                                        parent: NodeWrapper) -> bool:
     child_input_dict = self.component_input_dicts[child.id]
     child_output_dict = self.component_output_dicts[child.id]
     child_exec_properties = self.component_exec_properties[child.id]
@@ -96,31 +91,31 @@ class Executor(base_executor.BaseExecutor):
     parent_exec_properties = self.component_exec_properties[parent.id]
     parent_executor = self._get_component_executor(parent, -1)
 
-    child_input_sig, _ = child_executor.beam_io_signature(child_input_dict, child_output_dict, child_exec_properties)
-    _, parent_output_sig = parent_executor.beam_io_signature(parent_input_dict, parent_output_dict, parent_exec_properties)
-
+    child_input_sig, _ = child_executor.beam_io_signature(
+        child_input_dict, child_output_dict, child_exec_properties)
+    _, parent_output_sig = parent_executor.beam_io_signature(
+        parent_input_dict, parent_output_dict, parent_exec_properties)
     return child_input_sig == parent_output_sig
 
-  def _get_fuseable_parents(self, exec_properties, component_id_map):
+  def _get_fusion_map(self, exec_properties: Dict[Text, Any],
+                      component_id_map: Mapping[Text, NodeWrapper]
+                      ) -> Mapping[NodeWrapper, NodeWrapper]:
     channel_map = json.loads(exec_properties[CHANNEL_MAP])
-    fuseable_parents = {}
+    fusion_map = {}
 
     for k, v in channel_map.items():
-      child_id, input_key = k.split('_INPUT_CHANNEL_')
-      parent_id, output_key  = v.split('_OUTPUT_CHANNEL_')
-
+      child_id, _ = k.split('_INPUT_CHANNEL_')
+      parent_id, _ = v.split('_OUTPUT_CHANNEL_')
       child = component_id_map[child_id]
       parent = component_id_map[parent_id]
+      fusion_map[child] = parent
 
-      if self._have_matching_beam_io_signatures(child, parent):
-        fuseable_parents[child] = parent
+    return fusion_map
 
-    return fuseable_parents
-
-  def _deserialize_components(self, exec_properties):
+  def _deserialize_components(self, exec_properties: Dict[Text, Any]
+                              ) -> Tuple[List[NodeWrapper],
+                                         Mapping[Text, NodeWrapper]]:
     serialized_components = json.loads(exec_properties[SERIALIZED_SUBGRAPH])
-    # We memoize a mapping of component.id to component for future use in
-    # _deserialize_channel_map() and _run_subgraph()
     components = []
     component_id_map = {}
 
@@ -157,46 +152,44 @@ class Executor(base_executor.BaseExecutor):
     """
     self.beam_pipeline_args = json.loads(exec_properties[BEAM_PIPELINE_ARGS])
     self.pipeline_root = exec_properties[PIPELINE_ROOT]
-    self._populate_component_dicts(input_dict, output_dict, exec_properties)
     components, component_id_map = self._deserialize_components(exec_properties)
-    fuseable_parents = self._get_fuseable_parents(exec_properties, component_id_map)
+    self._populate_component_dicts(
+        input_dict, output_dict, exec_properties, components)
+    fusion_map = self._get_fusion_map(exec_properties, component_id_map)
 
     p = None
     beam_outputs_cache = {}
-    beam_inputs_debug = []
-
     for i, component in enumerate(components):
-
       curr_input_dict = self.component_input_dicts[component.id]
       curr_output_dict = self.component_output_dicts[component.id]
       curr_exec_properties = self.component_exec_properties[component.id]
       executor = self._get_component_executor(component, i)
 
       if not p:
-        p = executor._make_beam_pipeline()
+        p = executor._make_beam_pipeline() # pylint: disable=protected-access
 
-      if component in fuseable_parents:
-        beam_inputs = beam_outputs_cache[fuseable_parents[component]]
+      use_cached_inputs = False
+      if component in fusion_map:
+        parent = fusion_map[component]
+        if self._have_matching_beam_io_signatures(component, parent):
+          use_cached_inputs = False #TODO: Change to True
+
+      if use_cached_inputs:
+        beam_inputs = beam_outputs_cache[fusion_map[component]]
       else:
         beam_inputs = executor.read_inputs(
-           p, curr_input_dict, curr_output_dict, curr_exec_properties)
-
-      # beam_inputs = executor.read_inputs(
-      #     p, curr_input_dict, curr_output_dict, curr_exec_properties)
+            p, curr_input_dict, curr_output_dict, curr_exec_properties)
 
       beam_outputs = executor.run_component(
-          p, beam_inputs, curr_input_dict, curr_output_dict, curr_exec_properties)
+          p, beam_inputs, curr_input_dict, curr_output_dict,
+          curr_exec_properties)
 
-      if component in fuseable_parents.values():
+      if component in fusion_map.values():
         beam_outputs_cache[component] = beam_outputs
 
       executor.write_outputs(
-         p, beam_outputs,  curr_input_dict, curr_output_dict, curr_exec_properties)
+          p, beam_outputs, curr_input_dict, curr_output_dict,
+          curr_exec_properties)
 
-      result = p.run()
-      result.wait_until_finish()
-
-    print("\n")
-    print(fuseable_parents)
-    print("\n")
-    print(beam_outputs_cache)
+    result = p.run()
+    result.wait_until_finish()
