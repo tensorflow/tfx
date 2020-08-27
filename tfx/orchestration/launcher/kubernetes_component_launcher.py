@@ -123,6 +123,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
             'Failed to created container executor pod!\nReason: %s\nBody: %s' %
             (e.reason, e.body))
 
+    # Wait up to 300 seconds for the pod to move from pending to another status.
     logging.info('Waiting for pod "%s:%s" to start.', namespace, pod_name)
     self._wait_pod(
         core_api,
@@ -147,6 +148,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     for log in logs:
       logging.info(log.decode().rstrip('\n'))
 
+    # Wait indefinitely for the pod to complete.
     resp = self._wait_pod(
         core_api,
         pod_name,
@@ -239,7 +241,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
                 namespace: Text,
                 exit_condition_lambda: Callable[[client.V1Pod], bool],
                 condition_description: Text,
-                timeout_sec: int = 300) -> client.V1Pod:
+                timeout_sec: int) -> client.V1Pod:
     """Wait for a POD to meet an exit condition.
 
     Args:
@@ -250,7 +252,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         for a POD to exit. The function returns True to exit.
       condition_description: The description of the exit condition which will be
         set in the error message if the wait times out.
-      timeout_sec: The seconds for the function to wait. Defaults to 300s.
+      timeout_sec: The seconds for the function to wait. Waits indefinitely if
+        value is 0.
 
     Returns:
       The POD object which meets the exit condition.
@@ -264,8 +267,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       logging.info(resp.status.phase)
       if exit_condition_lambda(resp):
         return resp
-      elapse_time = datetime.datetime.utcnow() - start_time
-      if elapse_time.seconds >= timeout_sec:
+      elapsed_time = datetime.datetime.utcnow() - start_time
+      if timeout_sec != 0 and elapsed_time.seconds >= timeout_sec:
         raise RuntimeError(
             'Pod "%s:%s" does not reach "%s" within %s seconds.' %
             (namespace, pod_name, condition_description, timeout_sec))

@@ -311,7 +311,9 @@ def create_pipeline(
 
   # Checks whether the model passed the validation steps and pushes the model
   # to  Google Cloud AI Platform if check passed.
-  pusher = Pusher(
+  # TODO(b/162451308): Add pusher back to components list once AIP Prediction
+  # Service supports TF>=2.3.
+  _ = Pusher(
       custom_executor_spec=executor_spec.ExecutorClassSpec(
           ai_platform_pusher_executor.Executor),
       model=trainer.outputs['model'],
@@ -325,7 +327,7 @@ def create_pipeline(
       pipeline_root=pipeline_root,
       components=[
           example_gen, statistics_gen, schema_gen, example_validator, transform,
-          trainer, model_resolver, evaluator, pusher
+          trainer, model_resolver, evaluator
       ],
       beam_pipeline_args=beam_pipeline_args,
   )

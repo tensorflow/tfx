@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
+
 import mock
 import tensorflow as tf
 
@@ -106,9 +107,7 @@ class _FakeComponent(base_component.BaseComponent):
 
 class AirflowDagRunnerTest(tf.test.TestCase):
 
-  @mock.patch(
-      'tfx.orchestration.airflow.airflow_component.AirflowComponent'
-  )
+  @mock.patch('tfx.orchestration.airflow.airflow_component.AirflowComponent')
   @mock.patch('airflow.models.DAG')
   def testAirflowDagRunner(self, mock_airflow_dag_class,
                            mock_airflow_component_class):

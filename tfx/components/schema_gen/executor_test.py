@@ -23,6 +23,7 @@ import tensorflow as tf
 from tfx.components.schema_gen import executor
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import json_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -34,7 +35,7 @@ class ExecutorTest(tf.test.TestCase):
     statistics_artifact = standard_artifacts.ExampleStatistics()
     statistics_artifact.uri = os.path.join(source_data_dir, 'statistics_gen')
     statistics_artifact.split_names = artifact_utils.encode_split_names(
-        ['train'])
+        ['train', 'eval', 'test'])
 
     output_data_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
@@ -46,11 +47,18 @@ class ExecutorTest(tf.test.TestCase):
     input_dict = {
         executor.STATISTICS_KEY: [statistics_artifact],
     }
+
+    exec_properties = {
+        executor.INFER_FEATURE_SHAPE_KEY:
+            False,
+        # List needs to be serialized before being passed into Do function.
+        executor.EXCLUDE_SPLITS_KEY:
+            json_utils.dumps(['test'])
+    }
+
     output_dict = {
         executor.SCHEMA_KEY: [schema_output],
     }
-
-    exec_properties = {'infer_feature_shape': False}
 
     schema_gen_executor = executor.Executor()
     schema_gen_executor.Do(input_dict, output_dict, exec_properties)

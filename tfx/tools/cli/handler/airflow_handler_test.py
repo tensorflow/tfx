@@ -25,6 +25,7 @@ import click
 import mock
 import tensorflow as tf
 
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.utils import io_utils
@@ -312,7 +313,9 @@ class AirflowHandlerTest(tf.test.TestCase):
     }
     handler = airflow_handler.AirflowHandler(flags_dict)
     # Create fake schema in pipeline root.
-    schema_path = os.path.join(self.pipeline_root, 'SchemaGen', 'schema', '3')
+    component_output_dir = os.path.join(self.pipeline_root, 'SchemaGen')
+    schema_path = base_driver._generate_output_uri(  # pylint: disable=protected-access
+        component_output_dir, 'schema', 3)
     tf.io.gfile.makedirs(schema_path)
     with open(os.path.join(schema_path, 'schema.pbtxt'), 'w') as f:
       f.write('SCHEMA')

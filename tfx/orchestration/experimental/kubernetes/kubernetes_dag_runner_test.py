@@ -16,6 +16,7 @@
 import mock
 import tensorflow as tf
 from ml_metadata.proto import metadata_store_pb2
+from typing import Optional, Text
 
 from tfx import types
 from tfx.components.base import base_component
@@ -49,8 +50,13 @@ class _ArtifactTypeE(types.Artifact):
   TYPE_NAME = 'ArtifactTypeE'
 
 
+def _initialize_executed_components():
+  global _executed_components
+  _executed_components = []
+
+
 def _mock_launch_container_component(component: base_node.BaseNode, *_):
-  _executed_components.append(component.component_id)
+  _executed_components.append(component.id)
 
 
 # We define fake component spec classes below for testing. Note that we can't
@@ -97,15 +103,24 @@ class _FakeComponentSpecE(types.ComponentSpec):
   }
   OUTPUTS = {'output': ChannelParameter(type=_ArtifactTypeE)}
 
+class _FakeComponentSpecF(types.ComponentSpec):
+  PARAMETERS = {}
+  INPUTS = {
+      'a': ChannelParameter(type=_ArtifactTypeA),
+  }
+  OUTPUTS = {}
 
 class _FakeComponent(base_component.BaseComponent):
 
   SPEC_CLASS = types.ComponentSpec
   EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(base_executor.BaseExecutor)
 
-  def __init__(self, spec: types.ComponentSpec):
-    instance_name = spec.__class__.__name__.replace(
-        '_FakeComponentSpec', '').lower()
+  def __init__(self,
+               spec: types.ComponentSpec,
+               instance_name: Optional[Text] = None):
+    if instance_name is None:
+      instance_name = spec.__class__.__name__.replace(
+          '_FakeComponentSpec', '').lower()
     super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
@@ -118,26 +133,27 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
   )
   @mock.patch.object(kubernetes_dag_runner, 'kube_utils')
   def testRun(self, mock_kube_utils):
+    _initialize_executed_components()
     mock_kube_utils.is_inside_cluster.return_value = True
 
     component_a = _FakeComponent(
-        _FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
+        spec=_FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
     component_b = _FakeComponent(
-        _FakeComponentSpecB(
+        spec=_FakeComponentSpecB(
             a=component_a.outputs['output'],
             output=types.Channel(type=_ArtifactTypeB)))
     component_c = _FakeComponent(
-        _FakeComponentSpecC(
+        spec=_FakeComponentSpecC(
             a=component_a.outputs['output'],
             output=types.Channel(type=_ArtifactTypeC)))
     component_c.add_upstream_node(component_b)
     component_d = _FakeComponent(
-        _FakeComponentSpecD(
+        spec=_FakeComponentSpecD(
             b=component_b.outputs['output'],
             c=component_c.outputs['output'],
             output=types.Channel(type=_ArtifactTypeD)))
     component_e = _FakeComponent(
-        _FakeComponentSpecE(
+        spec=_FakeComponentSpecE(
             a=component_a.outputs['output'],
             b=component_b.outputs['output'],
             d=component_d.outputs['output'],
@@ -153,11 +169,43 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
 
     kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
     self.assertEqual(_executed_components, [
-        '_FakeComponent.aWrapper', '_FakeComponent.bWrapper',
-        '_FakeComponent.cWrapper', '_FakeComponent.dWrapper',
-        '_FakeComponent.eWrapper'
+        '_FakeComponent.a.Wrapper', '_FakeComponent.b.Wrapper',
+        '_FakeComponent.c.Wrapper', '_FakeComponent.d.Wrapper',
+        '_FakeComponent.e.Wrapper'
     ])
 
+  @mock.patch.object(
+      kubernetes_dag_runner,
+      'launch_container_component',
+      _mock_launch_container_component,
+  )
+  @mock.patch.object(kubernetes_dag_runner, 'kube_utils')
+  def testRunWithSameSpec(self, mock_kube_utils):
+    _initialize_executed_components()
+    mock_kube_utils.is_inside_cluster.return_value = True
+
+    component_a = _FakeComponent(
+        spec=_FakeComponentSpecA(output=types.Channel(type=_ArtifactTypeA)))
+    component_f1 = _FakeComponent(
+        spec=_FakeComponentSpecF(a=component_a.outputs['output']),
+        instance_name='f1')
+    component_f2 = _FakeComponent(
+        spec=_FakeComponentSpecF(a=component_a.outputs['output']),
+        instance_name='f2')
+    component_f2.add_upstream_node(component_f1)
+
+    test_pipeline = pipeline.Pipeline(
+        pipeline_name='x',
+        pipeline_root='y',
+        metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
+        components=[
+            component_f1, component_f2, component_a
+        ])
+    kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
+    self.assertEqual(_executed_components, [
+        '_FakeComponent.a.Wrapper', '_FakeComponent.f1.Wrapper',
+        '_FakeComponent.f2.Wrapper'
+    ])
 
 if __name__ == '__main__':
   tf.test.main()

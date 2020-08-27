@@ -21,23 +21,29 @@ from __future__ import print_function
 import os
 from typing import Any, Dict, List, Text
 
-import absl
+from absl import logging
 import apache_beam as beam
 import tensorflow_model_analysis as tfma
 from tensorflow_model_analysis import constants as tfma_constants
-from tfx_bsl.tfxio import tensor_adapter
-from tfx_bsl.tfxio import tf_example_record
-
-from google.protobuf import json_format
+# Need to import the following module so that the fairness indicator post-export
+# metric is registered.
+import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=unused-import
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.evaluator import constants
+from tfx.components.util import tfxio_utils
+from tfx.components.util import udf_utils
 from tfx.proto import evaluator_pb2
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
+from tfx.utils import json_utils
 from tfx.utils import path_utils
+from tfx_bsl.tfxio import tensor_adapter
+
+from google.protobuf import json_format
 
 
+_TELEMETRY_DESCRIPTORS = ['Evaluator']
 # TODO(pachristopher): After TFMA is released, make TFXIO as the default path.
 _USE_TFXIO = False
 
@@ -82,6 +88,9 @@ class Executor(base_executor.BaseExecutor):
         - feature_slicing_spec: JSON string of evaluator_pb2.FeatureSlicingSpec
           instance, providing the way to slice the data. Deprecated, use
           eval_config.slicing_specs instead.
+        - example_splits: JSON-serialized list of names of splits on which the
+          metrics are computed. Default behavior (when example_splits is set to
+          None) is using the 'eval' split.
 
     Returns:
       None
@@ -93,14 +102,12 @@ class Executor(base_executor.BaseExecutor):
     if constants.EVALUATION_KEY not in output_dict:
       raise ValueError('EVALUATION_KEY is missing from output dict.')
     if len(input_dict[constants.MODEL_KEY]) > 1:
-      raise ValueError(
-          'There can be only one candidate model, there are {}.'.format(
-              len(input_dict[constants.MODEL_KEY])))
+      raise ValueError('There can be only one candidate model, there are %d.' %
+                       (len(input_dict[constants.MODEL_KEY])))
     if constants.BASELINE_MODEL_KEY in input_dict and len(
         input_dict[constants.BASELINE_MODEL_KEY]) > 1:
-      raise ValueError(
-          'There can be only one baseline model, there are {}.'.format(
-              len(input_dict[constants.BASELINE_MODEL_KEY])))
+      raise ValueError('There can be only one baseline model, there are %d.' %
+                       (len(input_dict[constants.BASELINE_MODEL_KEY])))
 
     self._log_startup(input_dict, output_dict, exec_properties)
 
@@ -109,9 +116,6 @@ class Executor(base_executor.BaseExecutor):
         'fairness_indicator_thresholds', None)
     add_metrics_callbacks = None
     if fairness_indicator_thresholds:
-      # Need to import the following module so that the fairness indicator
-      # post-export metric is registered.
-      import tensorflow_model_analysis.addons.fairness.post_export_metrics.fairness_indicators  # pylint: disable=g-import-not-at-top, unused-variable
       add_metrics_callbacks = [
           tfma.post_export_metrics.fairness_indicators(  # pytype: disable=module-attr
               thresholds=fairness_indicator_thresholds),
@@ -119,6 +123,10 @@ class Executor(base_executor.BaseExecutor):
 
     output_uri = artifact_utils.get_single_uri(
         output_dict[constants.EVALUATION_KEY])
+
+    eval_shared_model_fn = udf_utils.try_get_fn(
+        exec_properties=exec_properties,
+        fn_name='custom_eval_shared_model') or tfma.default_eval_shared_model
 
     run_validation = False
     models = []
@@ -138,8 +146,8 @@ class Executor(base_executor.BaseExecutor):
           eval_config.metrics_specs))
       if len(eval_config.model_specs) > 2:
         raise ValueError(
-            """Cannot support more than two models. There are {} models in this
-             eval_config.""".format(len(eval_config.model_specs)))
+            """Cannot support more than two models. There are %d models in this
+             eval_config.""" % (len(eval_config.model_specs)))
       # Extract model artifacts.
       for model_spec in eval_config.model_specs:
         if model_spec.is_baseline:
@@ -152,13 +160,13 @@ class Executor(base_executor.BaseExecutor):
           model_path = path_utils.eval_model_path(model_uri)
         else:
           model_path = path_utils.serving_model_path(model_uri)
-        absl.logging.info('Using {} as {} model.'.format(
-            model_path, model_spec.name))
-        models.append(tfma.default_eval_shared_model(
-            model_name=model_spec.name,
-            eval_saved_model_path=model_path,
-            add_metrics_callbacks=add_metrics_callbacks,
-            eval_config=eval_config))
+        logging.info('Using %s as %s model.', model_path, model_spec.name)
+        models.append(
+            eval_shared_model_fn(
+                eval_saved_model_path=model_path,
+                model_name=model_spec.name,
+                eval_config=eval_config,
+                add_metrics_callbacks=add_metrics_callbacks))
     else:
       eval_config = None
       assert ('feature_slicing_spec' in exec_properties and
@@ -171,14 +179,14 @@ class Executor(base_executor.BaseExecutor):
           feature_slicing_spec)
       model_uri = artifact_utils.get_single_uri(input_dict[constants.MODEL_KEY])
       model_path = path_utils.eval_model_path(model_uri)
-      absl.logging.info('Using {} for model eval.'.format(model_path))
-      models.append(tfma.default_eval_shared_model(
-          eval_saved_model_path=model_path,
-          add_metrics_callbacks=add_metrics_callbacks))
+      logging.info('Using %s for model eval.', model_path)
+      models.append(
+          eval_shared_model_fn(
+              eval_saved_model_path=model_path,
+              model_name='',
+              eval_config=None,
+              add_metrics_callbacks=add_metrics_callbacks))
 
-    file_pattern = io_utils.all_files_pattern(
-        artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY], 'eval')
-    )
     eval_shared_model = models[0] if len(models) == 1 else models
     schema = None
     if constants.SCHEMA_KEY in input_dict:
@@ -186,48 +194,77 @@ class Executor(base_executor.BaseExecutor):
           io_utils.get_only_uri_in_dir(
               artifact_utils.get_single_uri(input_dict[constants.SCHEMA_KEY])))
 
-    absl.logging.info('Evaluating model.')
+    # Load and deserialize example splits from execution properties.
+    example_splits = json_utils.loads(
+        exec_properties.get(constants.EXAMPLE_SPLITS_KEY, 'null'))
+    if not example_splits:
+      example_splits = ['eval']
+      logging.info("The 'example_splits' parameter is not set, using 'eval' "
+                   'split.')
+
+    logging.info('Evaluating model.')
     with self._make_beam_pipeline() as pipeline:
+      examples_list = []
+      tensor_adapter_config = None
       # pylint: disable=expression-not-assigned
-      if _USE_TFXIO:
-        tensor_adapter_config = None
-        if tfma.is_batched_input(eval_shared_model, eval_config):
-          tfxio = tf_example_record.TFExampleRecord(
-              file_pattern=file_pattern,
-              schema=schema,
-              raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
-          if schema is not None:
-            tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-                arrow_schema=tfxio.ArrowSchema(),
-                tensor_representations=tfxio.TensorRepresentations())
-          data = pipeline | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
-        else:
-          data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-              file_pattern=file_pattern)
-        (data
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec,
-             tensor_adapter_config=tensor_adapter_config))
+      if _USE_TFXIO and tfma.is_batched_input(eval_shared_model, eval_config):
+        tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
+            examples=[
+                artifact_utils.get_single_instance(
+                    input_dict[constants.EXAMPLES_KEY])
+            ],
+            telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+            schema=schema,
+            raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
+        # TODO(b/161935932): refactor after TFXIO supports multiple patterns.
+        for split in example_splits:
+          file_pattern = io_utils.all_files_pattern(
+              artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                           split))
+          tfxio = tfxio_factory(file_pattern)
+          data = (
+              pipeline
+              | 'ReadFromTFRecordToArrow[%s]' % split >> tfxio.BeamSource())
+          examples_list.append(data)
+        if schema is not None:
+          # Use last tfxio as TensorRepresentations and ArrowSchema are fixed.
+          tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+              arrow_schema=tfxio.ArrowSchema(),
+              tensor_representations=tfxio.TensorRepresentations())
       else:
-        data = pipeline | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
-            file_pattern=file_pattern)
-        (data
-         | 'ExtractEvaluateAndWriteResults' >>
-         tfma.ExtractEvaluateAndWriteResults(
-             eval_shared_model=models[0] if len(models) == 1 else models,
-             eval_config=eval_config,
-             output_path=output_uri,
-             slice_spec=slice_spec))
-    absl.logging.info(
-        'Evaluation complete. Results written to {}.'.format(output_uri))
+        for split in example_splits:
+          file_pattern = io_utils.all_files_pattern(
+              artifact_utils.get_split_uri(input_dict[constants.EXAMPLES_KEY],
+                                           split))
+          data = (
+              pipeline
+              | 'ReadFromTFRecord[%s]' % split >>
+              beam.io.ReadFromTFRecord(file_pattern=file_pattern))
+          examples_list.append(data)
+
+      custom_extractors = udf_utils.try_get_fn(
+          exec_properties=exec_properties, fn_name='custom_extractors')
+      extractors = None
+      if custom_extractors:
+        extractors = custom_extractors(
+            eval_shared_model=eval_shared_model,
+            eval_config=eval_config,
+            tensor_adapter_config=tensor_adapter_config)
+
+      (examples_list | 'FlattenExamples' >> beam.Flatten()
+       |
+       'ExtractEvaluateAndWriteResults' >> tfma.ExtractEvaluateAndWriteResults(
+           eval_shared_model=models[0] if len(models) == 1 else models,
+           eval_config=eval_config,
+           extractors=extractors,
+           output_path=output_uri,
+           slice_spec=slice_spec,
+           tensor_adapter_config=tensor_adapter_config))
+    logging.info('Evaluation complete. Results written to %s.', output_uri)
 
     if not run_validation:
       # TODO(jinhuang): delete the BLESSING_KEY from output_dict when supported.
-      absl.logging.info('No threshold configured, will not validate model.')
+      logging.info('No threshold configured, will not validate model.')
       return
     # Set up blessing artifact
     blessing = artifact_utils.get_single_instance(
@@ -249,7 +286,7 @@ class Executor(base_executor.BaseExecutor):
       blessing.set_string_custom_property(
           'component_id', exec_properties['current_component_id'])
     # Check validation result and write BLESSED file accordingly.
-    absl.logging.info('Checking validation results.')
+    logging.info('Checking validation results.')
     validation_result = tfma.load_validation_result(output_uri)
     if validation_result.validation_ok:
       io_utils.write_string_file(
@@ -261,5 +298,5 @@ class Executor(base_executor.BaseExecutor):
           os.path.join(blessing.uri, constants.NOT_BLESSED_FILE_NAME), '')
       blessing.set_int_custom_property(constants.ARTIFACT_PROPERTY_BLESSED_KEY,
                                        constants.NOT_BLESSED_VALUE)
-    absl.logging.info('Blessing result {} written to {}.'.format(
-        validation_result.validation_ok, blessing.uri))
+    logging.info('Blessing result %s written to %s.',
+                 validation_result.validation_ok, blessing.uri)

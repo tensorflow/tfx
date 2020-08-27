@@ -18,24 +18,26 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import json
 import os
-import re
 import subprocess
 from typing import Text
 
 import click
+import docker
 
+from tfx.tools.cli.container_builder import buildspec
 from tfx.tools.cli.container_builder import labels
 
 
 class SkaffoldCli(object):
   """Skaffold CLI."""
 
-  def __init__(self, cmd=labels.SKAFFOLD_COMMAND):
+  def __init__(self, cmd: Text = labels.SKAFFOLD_COMMAND):
     self._cmd = cmd or labels.SKAFFOLD_COMMAND
     try:
-      subprocess.run(['which', self._cmd], check=True)
+      subprocess.run(['which', self._cmd],
+                     check=True,
+                     stdout=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
       click.echo('No executable %s' % self._cmd)
       click.echo('please refer to '
@@ -43,16 +45,21 @@ class SkaffoldCli(object):
                  'for installation instructions.')
       raise RuntimeError
 
-  def build(self, buildspec_filename: Text = labels.BUILD_SPEC_FILENAME):
+  def build(self, spec: buildspec.BuildSpec) -> Text:
     """Builds an image and return the image SHA."""
-    if not os.path.exists(buildspec_filename):
-      raise ValueError('Build spec: %s does not exist.' % buildspec_filename)
-    output = subprocess.check_output([
-        self._cmd, 'build', '-q', '--output={{json .}}', '-f',
-        buildspec_filename
-    ]).decode('utf-8')
-    full_image_name_with_tag = json.loads(output)['builds'][0]['tag']
-    m = re.search(r'sha256:[0-9a-f]{64}', full_image_name_with_tag)
-    if m is None:
-      raise RuntimeError('SkaffoldCli: built image SHA is not found.')
-    return m.group(0)
+    if not os.path.exists(spec.filename):
+      raise ValueError('Build spec: %s does not exist.' % spec.filename)
+
+    proc = subprocess.Popen([
+        self._cmd, 'build', '-f', spec.filename
+    ], bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    for line in proc.stdout:
+      click.echo('[Skaffold] %s' % line.decode('utf-8').rstrip())
+    proc.communicate()  # wait until the child process exit. No output expected.
+    if proc.returncode != 0:
+      raise RuntimeError('skaffold failed to build an image with {}.'.format(
+          spec.filename))
+
+    docker_client = docker.from_env()
+    return docker_client.images.get_registry_data(spec.target_image + ':' +
+                                                  spec.target_image_tag).id

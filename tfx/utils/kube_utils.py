@@ -12,7 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Utilities for the kubernetes related functions."""
+"""Utilities for the kubernetes related functions.
+
+Internal interface: no backwards compatibility guarantees.
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -37,9 +40,6 @@ ARGO_MAIN_CONTAINER_NAME = 'main'
 # Set of environment variables that are set in the KubeFlow Pipelines pods.
 KFP_POD_NAME = 'KFP_POD_NAME'
 KFP_NAMESPACE = 'KFP_NAMESPACE'
-
-# Enum variable indicating unlimited time out seconds, used in wait_pod
-UNLIMITED_TIMEOUT = -1
 
 
 class PodPhase(enum.Enum):
@@ -155,11 +155,11 @@ def sanitize_pod_name(pod_name: Text) -> Text:
   return re.sub(r'[-]+', '-', pod_name)
 
 
-def pod_is_not_pending(resp: k8s_client.V1Pod):
+def pod_is_not_pending(resp: k8s_client.V1Pod) -> bool:
   return resp.status.phase != PodPhase.PENDING.value
 
 
-def pod_is_done(resp: k8s_client.V1Pod):
+def pod_is_done(resp: k8s_client.V1Pod) -> bool:
   return PodPhase(resp.status.phase).is_done
 
 
@@ -290,7 +290,7 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
              namespace: Text,
              exit_condition_lambda: Callable[[k8s_client.V1Pod], bool],
              condition_description: Text,
-             timeout_sec: int = UNLIMITED_TIMEOUT,
+             timeout_sec: int = 0,
              exponential_backoff: bool = False) -> k8s_client.V1Pod:
   """Wait for a Pod to meet an exit condition.
   Args:
@@ -301,7 +301,8 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
       for a Pod to exit. The function returns True to exit.
     condition_description: The description of the exit condition which will be
       set in the error message if the wait times out.
-    timeout_sec: The seconds for the function to wait. Defaults to unlimited.
+    timeout_sec: Timeout in seconds to wait for pod to reach exit condition,
+      or 0 to wait for an unlimited duration. Defaults to unlimited.
     exponential_backoff: Whether to use exponential back off for polling.
       Defaults to False.
   Returns:
@@ -320,7 +321,7 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
     if exit_condition_lambda(resp):
       return resp
     elapse_time = datetime.datetime.utcnow() - start_time
-    if elapse_time.seconds >= timeout_sec and timeout_sec != UNLIMITED_TIMEOUT:
+    if elapse_time.seconds >= timeout_sec and timeout_sec != 0:
       raise RuntimeError(
           'Pod "%s:%s" does not reach "%s" within %s seconds.' %
           (namespace, pod_name, condition_description, timeout_sec))

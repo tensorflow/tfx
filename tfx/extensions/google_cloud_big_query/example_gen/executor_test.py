@@ -20,22 +20,22 @@ from __future__ import print_function
 
 import os
 import random
+
 import apache_beam as beam
 from apache_beam.testing import util
 import mock
 import tensorflow as tf
-from google.cloud import bigquery
-from google.protobuf import json_format
 from tfx.extensions.google_cloud_big_query.example_gen import executor
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 
-_test_project = 'test-project'
+from google.cloud import bigquery
+from google.protobuf import json_format
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = []
   for i in range(10000):
     mock_query_result = {
@@ -48,7 +48,7 @@ def _MockReadFromBigQuery(pipeline, query, project, use_bigquery_source):  # pyl
 
 
 @beam.ptransform_fn
-def _MockReadFromBigQuery2(pipeline, query, project, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
+def _MockReadFromBigQuery2(pipeline, query, use_bigquery_source):  # pylint: disable=invalid-name, unused-argument
   mock_query_results = [{
       'i': 1,
       'i2': [2, 3],
@@ -88,9 +88,7 @@ class ExecutorTest(tf.test.TestCase):
     with beam.Pipeline() as pipeline:
       examples = (
           pipeline | 'ToTFExample' >> executor._BigQueryToExample(
-              exec_properties={
-                  '_beam_pipeline_args': ['--project=' + _test_project],
-              },
+              exec_properties={'_beam_pipeline_args': []},
               split_pattern='SELECT i, i2, b, f, f2, s, s2 FROM `fake`'))
 
       feature = {}
@@ -128,7 +126,6 @@ class ExecutorTest(tf.test.TestCase):
     # Create output dict.
     examples = standard_artifacts.Examples()
     examples.uri = output_data_dir
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     output_dict = {'examples': [examples]}
 
     # Create exe properties.
@@ -155,6 +152,10 @@ class ExecutorTest(tf.test.TestCase):
     # Run executor.
     big_query_example_gen = executor.Executor()
     big_query_example_gen.Do({}, output_dict, exec_properties)
+
+    self.assertEqual(
+        artifact_utils.encode_split_names(['train', 'eval']),
+        examples.split_names)
 
     # Check BigQuery example gen outputs.
     train_output_file = os.path.join(examples.uri, 'train',

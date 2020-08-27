@@ -129,14 +129,21 @@ class PipelineTest(tf.test.TestCase):
                                   tempfile.mkstemp(prefix='cli_tmp_')[1])
     self._tmp_dir = os.path.join(tmp_dir, self._testMethodName,
                                  tempfile.mkdtemp(prefix='cli_tmp_')[1])
+    # Back up the environmental variable.
     self._original_tmp_value = os.environ.get(
-        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH', '')
+        'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
     self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
         os.path.join(self._tmp_dir, 'metadata'))
 
   def tearDown(self):
     super(PipelineTest, self).tearDown()
-    os.environ['TFX_TMP_DIR'] = self._original_tmp_value
+    # Restore the environmental variable. None means it was unset.
+    if self._original_tmp_value is None:
+      if 'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH' in os.environ:
+        del os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH']
+    else:
+      os.environ[
+          'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._original_tmp_value
 
   def testPipeline(self):
     component_a = _make_fake_component_instance('component_a', _OutputTypeA, {},
@@ -250,50 +257,6 @@ class PipelineTest(tf.test.TestCase):
           pipeline_root='b',
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
-
-  def testPipelineWithArtifactInfo(self):
-    artifacts_collection = [_ArtifactTypeOne()]
-    channel_one = types.Channel(
-        type=_ArtifactTypeOne, artifacts=artifacts_collection)
-    component_a = _make_fake_component_instance(
-        name='component_a',
-        output_type=_OutputTypeA,
-        inputs={},
-        outputs={'one': channel_one})
-    component_b = _make_fake_component_instance(
-        name='component_b',
-        output_type=_OutputTypeB,
-        inputs={
-            'a': component_a.outputs['one'],
-        },
-        outputs={})
-
-    my_pipeline = pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        components=[component_b, component_a],
-        metadata_connection_config=self._metadata_connection_config)
-    expected_artifact = _ArtifactTypeOne()
-    expected_artifact.name = 'one'
-    expected_artifact.pipeline_name = 'a'
-    expected_artifact.producer_component = 'component_a'
-    self.assertCountEqual(my_pipeline.components, [component_a, component_b])
-    self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,
-                     'a')
-    self.assertEqual(
-        component_a.outputs['one']._artifacts[0].producer_component,
-        component_a.id)
-    self.assertEqual(component_a.outputs['one']._artifacts[0].name, 'one')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].pipeline_name, 'a')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].producer_component,
-                     component_a.id)
-    self.assertEqual(component_b.inputs['a']._artifacts[0].name, 'one')
-    self.assertEqual(component_a.outputs['one'].producer_component_id,
-                     component_a.id)
-    self.assertEqual(component_a.outputs['one'].output_key, 'one')
-    self.assertEqual(component_b.inputs['a'].producer_component_id,
-                     component_a.id)
-    self.assertEqual(component_b.inputs['a'].output_key, 'one')
 
   def testPipelineSavePipelineArgs(self):
     os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file

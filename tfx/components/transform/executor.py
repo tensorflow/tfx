@@ -18,6 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
+import hashlib
+import json
 import os
 from typing import Any, Dict, Generator, Iterable, List, Mapping, Optional, Sequence, Set, Text, Tuple, Union
 
@@ -36,26 +39,30 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import dataset_schema
 from tensorflow_transform.tf_metadata import metadata_io
 from tensorflow_transform.tf_metadata import schema_utils
-import tfx_bsl
-from tfx_bsl.tfxio import raw_tf_record
-from tfx_bsl.tfxio import tf_example_record
-from tfx_bsl.tfxio import tfxio
-from tensorflow_metadata.proto.v0 import schema_pb2
-from tensorflow_metadata.proto.v0 import statistics_pb2
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.transform import labels
 from tfx.components.transform import stats_options as transform_stats_options
-from tfx.components.transform import messages
+from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
+from tfx.proto import example_gen_pb2
+from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
+import tfx_bsl
+from tfx_bsl.tfxio import tfxio as tfxio_module
+from google.protobuf import json_format
+
+from tensorflow_metadata.proto.v0 import schema_pb2
+from tensorflow_metadata.proto.v0 import statistics_pb2
 
 # Key for examples in executor input_dict.
 EXAMPLES_KEY = 'examples'
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
+# Key for analyzer cache in executor input_dict.
+ANALYZER_CACHE_KEY = 'analyzer_cache'
 
 # Key for temp path, for internal use only.
 TEMP_PATH_KEY = 'temp_path'
@@ -64,6 +71,8 @@ TEMP_PATH_KEY = 'temp_path'
 TRANSFORM_GRAPH_KEY = 'transform_graph'
 # Key for output model in executor output_dict.
 TRANSFORMED_EXAMPLES_KEY = 'transformed_examples'
+# Key for updated analyzer cache in executor output_dict.
+UPDATED_ANALYZER_CACHE_KEY = 'updated_analyzer_cache'
 
 RAW_EXAMPLE_KEY = 'raw_example'
 
@@ -82,6 +91,11 @@ _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX = 'transformed_examples'
 _TEMP_DIR_IN_TRANSFORM_OUTPUT = '.temp_path'
 
 _TRANSFORM_COMPONENT_DESCRIPTOR = 'Transform'
+_TELEMETRY_DESCRIPTORS = [_TRANSFORM_COMPONENT_DESCRIPTOR]
+
+# TODO(b/37788560): Increase this max, based on results of experimentation with
+# many non-packable analyzers on our benchmarks.
+_MAX_ESTIMATED_STAGES_COUNT = 20000
 
 
 # TODO(b/122478841): Move it to a common place that is shared across components.
@@ -115,16 +129,12 @@ class _Dataset(object):
   It also contains bundle of stages of a single dataset through the transform
   pipeline.
   """
-  # TODO(b/37788560): This seems like a brittle way of creating dataset keys.
-  # In particular there are no guarantees that there won't be colissions.
-  # A better approach might be something like ArtifactID, or perhaps
-  # SHA256(file_pattern) which might also be a lot less verbose (even if it
-  # might not be as self-describing).
   _FILE_PATTERN_SUFFIX_LENGTH = 6
 
   def __init__(self, file_pattern: Text,
                file_format: Union[Text, int],
-               data_format: Union[Text, int],
+               data_format: int,
+               data_view_uri: Optional[Text],
                stats_output_path: Optional[Text] = None,
                materialize_output_path: Optional[Text] = None):
     """Initialize a Dataset.
@@ -132,26 +142,24 @@ class _Dataset(object):
     Args:
       file_pattern: The file pattern of the dataset.
       file_format: The file format of the dataset.
-      data_format: The data format of the dataset.
+      data_format: The data format of the dataset. One of the enums from
+        example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView used to parse the data.
       stats_output_path: The file path where to write stats for the dataset.
       materialize_output_path: The file path where to write the dataset.
     """
     self._file_pattern = file_pattern
     file_pattern_suffix = os.path.join(
         *file_pattern.split(os.sep)[-self._FILE_PATTERN_SUFFIX_LENGTH:])
-    # TODO(b/148082271, b/148212028, b/37788560): Just use
-    # analyzer_cache.DatasetKey when we stop supporting TFT 0.21.2.
-    if hasattr(analyzer_cache, 'DatasetKey'):
-      self._dataset_key = analyzer_cache.DatasetKey(file_pattern_suffix)
-    else:
-      self._dataset_key = analyzer_cache.make_dataset_key(file_pattern_suffix)
+    dataset_identifier = file_pattern_suffix + '-' + hashlib.sha256(
+        file_pattern.encode()).hexdigest()
+    self._dataset_key = analyzer_cache.DatasetKey(dataset_identifier)
     self._file_format = file_format
     self._data_format = data_format
+    self._data_view_uri = data_view_uri
     self._stats_output_path = stats_output_path
     self._materialize_output_path = materialize_output_path
     self._index = None
-    self._serialized = None
-    self._decoded = None
     self._standardized = None
     self._transformed = None
     self._transformed_and_serialized = None
@@ -189,19 +197,13 @@ class _Dataset(object):
     return self._data_format
 
   @property
+  def data_view_uri(self):
+    return self._data_view_uri
+
+  @property
   def file_format(self):
     assert self._file_format
     return self._file_format
-
-  @property
-  def serialized(self):
-    assert self._serialized is not None
-    return self._serialized
-
-  @property
-  def decoded(self):
-    assert self._decoded is not None
-    return self._decoded
 
   @property
   def standardized(self):
@@ -231,14 +233,6 @@ class _Dataset(object):
   @index.setter
   def index(self, val):
     self._index = val
-
-  @serialized.setter
-  def serialized(self, val):
-    self._serialized = val
-
-  @decoded.setter
-  def decoded(self, val):
-    self._decoded = val
 
   @standardized.setter
   def standardized(self, val):
@@ -295,42 +289,89 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - input_data: A list of type `standard_artifacts.Examples` which
-          should contain two splits 'train' and 'eval'.
+        - input_data: A list of type `standard_artifacts.Examples` which should
+          contain custom splits specified in splits_config. If custom split is
+          not provided, this should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
+        - analyzer_cache: Cache input of 'tf.Transform', where cached
+          information for analyzed examples from previous runs will be read.
       output_dict: Output dict from key to a list of artifacts, including:
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
-          includes both 'train' and 'eval' splits.
-      exec_properties: A dict of execution properties, including either one of:
+          includes transform splits as specified in splits_config. If custom
+          split is not provided, this should include both 'train' and 'eval'
+          splits.
+        - updated_analyzer_cache: Cache output of 'tf.Transform', where
+          cached information for analyzed examples will be written.
+      exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
-          implements 'preprocessing_fn'.
+          implements 'preprocessing_fn'. Exactly one of 'module_file' and
+          'preprocessing_fn' should be set.
+        - splits_config: A transform_pb2.SplitsConfig instance, providing splits
+          that should be analyzed and splits that should be transformed. Note
+          analyze and transform splits can have overlap. Default behavior (when
+          splits_config is not set) is analyze the 'train' split and transform
+          all splits. If splits_config is set, analyze cannot be empty.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
-    train_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                  'train')
-    eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                 'eval')
+
+    splits_config = transform_pb2.SplitsConfig()
+    if exec_properties.get('splits_config', None):
+      json_format.Parse(exec_properties['splits_config'], splits_config)
+      if not splits_config.analyze:
+        raise ValueError('analyze cannot be empty when splits_config is set.')
+    else:
+      splits_config.analyze.append('train')
+      splits_config.transform.extend(
+          artifact_utils.decode_split_names(
+              artifact_utils.get_single_instance(
+                  input_dict[EXAMPLES_KEY]).split_names))
+      absl.logging.info(
+          "Analyze the 'train' split and transform all splits when "
+          'splits_config is not set.')
+
+    payload_format, data_view_uri = (
+        tfxio_utils.resolve_payload_format_and_data_view_uri(
+            input_dict[EXAMPLES_KEY]))
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
         output_dict[TRANSFORM_GRAPH_KEY])
-    transformed_train_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
-    transformed_eval_output = artifact_utils.get_split_uri(
-        output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
+
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
+    analyze_data_paths = []
+    for split in splits_config.analyze:
+      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+      analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
+
+    transform_data_paths = []
+    materialize_output_paths = []
+    if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
+      transformed_example_artifact = artifact_utils.get_single_instance(
+          output_dict[TRANSFORMED_EXAMPLES_KEY])
+      transformed_example_artifact.split_names = (
+          artifact_utils.encode_split_names(list(splits_config.transform)))
+
+      for split in splits_config.transform:
+        data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+        transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+        transformed_example = os.path.join(
+            artifact_utils.get_split_uri(output_dict[TRANSFORMED_EXAMPLES_KEY],
+                                         split),
+            _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+        materialize_output_paths.append(transformed_example)
+
     def _GetCachePath(label, params_dict):
-      if label not in params_dict:
+      if params_dict.get(label) is None:
         return None
       else:
         return artifact_utils.get_single_uri(params_dict[label])
@@ -341,41 +382,35 @@ class Executor(base_executor.BaseExecutor):
         labels.SCHEMA_PATH_LABEL:
             schema_file,
         labels.EXAMPLES_DATA_FORMAT_LABEL:
-            labels.FORMAT_TF_EXAMPLE,
+            payload_format,
+        labels.DATA_VIEW_LABEL:
+            data_view_uri,
         labels.ANALYZE_DATA_PATHS_LABEL:
-            io_utils.all_files_pattern(train_data_uri),
-        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            labels.FORMAT_TFRECORD,
-        labels.TRANSFORM_DATA_PATHS_LABEL: [
-            io_utils.all_files_pattern(train_data_uri),
-            io_utils.all_files_pattern(eval_data_uri)
-        ],
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [
-            labels.FORMAT_TFRECORD, labels.FORMAT_TFRECORD
-        ],
+            analyze_data_paths,
+        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
+                                                 len(analyze_data_paths),
+        labels.TRANSFORM_DATA_PATHS_LABEL:
+            transform_data_paths,
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
+                                                   len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
             exec_properties.get('preprocessing_fn', None),
-        # TODO(b/149754658): switch to True once the TFXIO integration is
-        # complete.
-        labels.USE_TFXIO_LABEL: False,
+        labels.CUSTOM_CONFIG:
+            exec_properties.get('custom_config', None),
     }
-    cache_input = _GetCachePath('cache_input_path', input_dict)
+    cache_input = _GetCachePath(ANALYZER_CACHE_KEY, input_dict)
     if cache_input is not None:
       label_inputs[labels.CACHE_INPUT_PATH_LABEL] = cache_input
 
     label_outputs = {
         labels.TRANSFORM_METADATA_OUTPUT_PATH_LABEL: transform_output,
-        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL: [
-            os.path.join(transformed_train_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-            os.path.join(transformed_eval_output,
-                         _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-        ],
+        labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL:
+            materialize_output_paths,
         labels.TEMP_OUTPUT_LABEL: str(temp_path),
     }
-    cache_output = _GetCachePath('cache_output_path', output_dict)
+    cache_output = _GetCachePath(UPDATED_ANALYZER_CACHE_KEY, output_dict)
     if cache_output is not None:
       label_outputs[labels.CACHE_OUTPUT_PATH_LABEL] = cache_output
     status_file = 'status_file'  # Unused
@@ -419,37 +454,6 @@ class Executor(base_executor.BaseExecutor):
 
   @staticmethod
   @beam.ptransform_fn
-  @beam.typehints.with_input_types(beam.Pipeline)
-  # TODO(b/38376110): Obviate the first bytes (ie the key part).
-  @beam.typehints.with_output_types(Tuple[None, bytes])
-  def _ReadExamples(
-      pipeline: beam.Pipeline, dataset: _Dataset,
-      input_dataset_metadata: dataset_metadata.DatasetMetadata
-  ) -> beam.pvalue.PCollection:
-    """Reads examples from the given `dataset`.
-
-    Args:
-      pipeline: beam pipeline.
-      dataset: A `_Dataset` object that represents the data to read.
-      input_dataset_metadata: A `dataset_metadata.DatasetMetadata`. Not used.
-
-    Returns:
-      A PCollection containing KV pairs of bytes.
-    """
-    del input_dataset_metadata
-    assert dataset.file_format == labels.FORMAT_TFRECORD, dataset.file_format
-
-    return (
-        pipeline
-        | 'Read' >> beam.io.ReadFromTFRecord(
-            dataset.file_pattern,
-            coder=beam.coders.BytesCoder(),
-            # TODO(b/114938612): Eventually remove this override.
-            validate=False)
-        | 'AddKey' >> beam.Map(lambda x: (None, x)))
-
-  @staticmethod
-  @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
   @beam.typehints.with_output_types(beam.pvalue.PDone)
   def _WriteExamples(pcoll: beam.pvalue.PCollection, file_format: Text,
@@ -485,12 +489,13 @@ class Executor(base_executor.BaseExecutor):
     schema_reader = io_utils.SchemaReader()
     return schema_reader.read(schema_path)
 
-  def _ReadMetadata(self, data_format: Text,
+  def _ReadMetadata(self, data_format: int,
                     schema_path: Text) -> dataset_metadata.DatasetMetadata:
     """Returns a dataset_metadata.DatasetMetadata for the input data.
 
     Args:
-      data_format: name of the input data format.
+      data_format: The data format of the dataset. One of the enums from
+        example_gen_pb2.PayloadFormat.
       schema_path: path to schema file.
 
     Returns:
@@ -498,7 +503,8 @@ class Executor(base_executor.BaseExecutor):
           columns.
     """
 
-    if self._ShouldDecodeAsRawExample(data_format):
+    if (self._IsDataFormatSequenceExample(data_format) or
+        self._IsDataFormatProto(data_format)):
       return dataset_metadata.DatasetMetadata(_RAW_EXAMPLE_SCHEMA)
     schema_proto = self._GetSchema(schema_path)
     # For compatibility with tensorflow_transform 0.13 and 0.14, we create and
@@ -546,8 +552,6 @@ class Executor(base_executor.BaseExecutor):
         | 'GenerateStatistics' >> tfdv.GenerateStatistics(stats_options)
         | 'WriteStats' >> Executor._WriteStats(stats_output_path))
 
-  # TODO(b/150456345): Obviate this once TFXIO-in-Transform rollout is
-  # completed.
   @beam.typehints.with_input_types(List[bytes])
   @beam.typehints.with_output_types(pa.RecordBatch)
   class _ToArrowRecordBatchesFn(beam.DoFn):
@@ -565,7 +569,11 @@ class Executor(base_executor.BaseExecutor):
     def process(self, element: List[bytes]) -> Iterable[pa.RecordBatch]:
       yield self._decoder.DecodeBatch(element)
 
-  # TODO(zhuo): Obviate this once TFXIO is used.
+  # TODO(b/160799442, b/130807807): Two code paths are still using this:
+  # 1) post-transform stats (we convert from tf.example to recordbatch)
+  # 2) sequence example pre-transform stats (we decode sequence example as
+  # tf.example).
+  # Once 1) and 2) are addressed this can be removed.
   @staticmethod
   @beam.ptransform_fn
   @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
@@ -582,7 +590,7 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       PCollection of `DatasetFeatureStatisticsList`.
     """
-    kwargs = tfdv.utils.batch_util.GetBeamBatchKwargs(
+    kwargs = tfx_bsl.coders.batch_util.GetBatchElementsKwargs(
         tft_beam.Context.get_desired_batch_size())
     return (
         pcoll
@@ -617,35 +625,6 @@ class Executor(base_executor.BaseExecutor):
         coder=beam.coders.ProtoCoder(
             statistics_pb2.DatasetFeatureStatisticsList)))
 
-  @staticmethod
-  @beam.ptransform_fn
-  @beam.typehints.with_input_types(Tuple[Optional[bytes], bytes])
-  @beam.typehints.with_output_types(Dict[Text, Any])
-  def _DecodeInputs(pcoll: beam.pvalue.PCollection,
-                    decode_fn: Any) -> beam.pvalue.PCollection:
-    """Decodes the given PCollection while handling KV data.
-
-    Args:
-      pcoll: PCollection of data.
-      decode_fn: Function used to decode data.
-
-    Returns:
-      PCollection of decoded data.
-    """
-
-    def decode_example(kv: Tuple[Optional[bytes], bytes]) -> Dict[Text, Any]:  # pylint: disable=invalid-name
-      """Decodes a single example."""
-      (key, value) = kv
-      result = decode_fn(value)
-      if _TRANSFORM_INTERNAL_FEATURE_FOR_KEY in result:
-        raise ValueError('"{}" is a reserved feature name, '
-                         'it should not be present in the dataset.'.format(
-                             _TRANSFORM_INTERNAL_FEATURE_FOR_KEY))
-      result[_TRANSFORM_INTERNAL_FEATURE_FOR_KEY] = key
-      return result
-
-    return pcoll | 'ApplyDecodeFn' >> beam.Map(decode_example)
-
   @beam.typehints.with_input_types(Dict[Text, Any], schema=schema_pb2.Schema)
   @beam.typehints.with_output_types(Tuple[Optional[bytes], bytes])
   class _EncodeAsSerializedExamples(beam.DoFn):
@@ -675,14 +654,14 @@ class Executor(base_executor.BaseExecutor):
                  input_cache_dir: Text,
                  output_cache_dir: Text,
                  analyze_data_list: List[_Dataset],
-                 feature_spec_or_typespec: Mapping[Text, Any],
+                 typespecs: Mapping[Text, tf.TypeSpec],
                  preprocessing_fn: Any,
                  cache_source: beam.PTransform):
       # pyformat: enable
       self._input_cache_dir = input_cache_dir
       self._output_cache_dir = output_cache_dir
       self._analyze_data_list = analyze_data_list
-      self._feature_spec_or_typespec = feature_spec_or_typespec
+      self._feature_spec_or_typespec = typespecs
       self._preprocessing_fn = preprocessing_fn
       self._cache_source = cache_source
 
@@ -702,11 +681,27 @@ class Executor(base_executor.BaseExecutor):
       dataset_keys_list = [
           dataset.dataset_key for dataset in self._analyze_data_list
       ]
+      # TODO(b/37788560): Remove this restriction when a greater number of
+      # stages can be handled efficiently.
+      cache_entry_keys = (
+          tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
+              self._preprocessing_fn, self._feature_spec_or_typespec,
+              dataset_keys_list))
+      # We estimate the number of stages in the pipeline to be roughly:
+      # analyzers * analysis_paths * 10.
+      if (len(cache_entry_keys) * len(dataset_keys_list) * 10 >
+          _MAX_ESTIMATED_STAGES_COUNT):
+        absl.logging.warning(
+            'Disabling cache because otherwise the number of stages might be '
+            'too high ({} analyzers, {} analysis paths)'.format(
+                len(cache_entry_keys), len(dataset_keys_list)))
+        # Returning None as the input cache here disables both input and output
+        # cache.
+        return ({d.dataset_key: d for d in self._analyze_data_list}, None)
+
       if self._input_cache_dir is not None:
-        cache_entry_keys = (
-            tft_beam.analysis_graph_builder.get_analysis_cache_entry_keys(
-                self._preprocessing_fn, self._feature_spec_or_typespec,
-                dataset_keys_list))
+        absl.logging.info('Reading the following analysis cache entry keys: %s',
+                          cache_entry_keys)
         input_cache = (
             pipeline
             | 'ReadCache' >> analyzer_cache.ReadAnalysisCacheFromFS(
@@ -744,12 +739,15 @@ class Executor(base_executor.BaseExecutor):
                           unused_outputs: Mapping[Text, Any]) -> Any:
     """Returns a user defined preprocessing_fn.
 
+    If a custom config is provided in inputs, and also needed in
+    preprocessing_fn, bind it to preprocessing_fn.
+
     Args:
       inputs: A dictionary of labelled input values.
       unused_outputs: A dictionary of labelled output values.
 
     Returns:
-      User defined function.
+      User defined function, optionally bound with a custom config.
 
     Raises:
       ValueError: When neither or both of MODULE_FILE and PREPROCESSING_FN
@@ -766,15 +764,26 @@ class Executor(base_executor.BaseExecutor):
           'supplied in inputs.')
 
     if has_module_file:
-      return import_utils.import_func_from_source(
+      fn = import_utils.import_func_from_source(
           value_utils.GetSoleValue(inputs, labels.MODULE_FILE),
           'preprocessing_fn')
+    else:
+      preprocessing_fn_path_split = value_utils.GetSoleValue(
+          inputs, labels.PREPROCESSING_FN).split('.')
+      fn = import_utils.import_func_from_module(
+          '.'.join(preprocessing_fn_path_split[0:-1]),
+          preprocessing_fn_path_split[-1])
 
-    preprocessing_fn_path_split = value_utils.GetSoleValue(
-        inputs, labels.PREPROCESSING_FN).split('.')
-    return import_utils.import_func_from_module(
-        '.'.join(preprocessing_fn_path_split[0:-1]),
-        preprocessing_fn_path_split[-1])
+    # For compatibility, only bind custom config if it's in the signature.
+    if value_utils.FunctionHasArg(fn, labels.CUSTOM_CONFIG):
+      custom_config_json = value_utils.GetSoleValue(inputs,
+                                                    labels.CUSTOM_CONFIG)
+      custom_config = (json.loads(
+          custom_config_json) if custom_config_json else {}) or {}
+      result = functools.partial(fn, custom_config=custom_config)
+    else:
+      result = fn
+    return result
 
   # TODO(b/122478841): Refine this API in following cls.
   # Note: This API is up to change.
@@ -789,7 +798,8 @@ class Executor(base_executor.BaseExecutor):
       inputs: A dictionary of labelled input values, including:
         - labels.COMPUTE_STATISTICS_LABEL: Whether compute statistics.
         - labels.SCHEMA_PATH_LABEL: Path to schema file.
-        - labels.EXAMPLES_DATA_FORMAT_LABEL: Example data format.
+        - labels.EXAMPLES_DATA_FORMAT_LABEL: Example data format, one of the
+            enums from example_gen_pb2.PayloadFormat.
         - labels.ANALYZE_DATA_PATHS_LABEL: Paths or path patterns to analyze
           data.
         - labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: File formats of paths to
@@ -802,7 +812,10 @@ class Executor(base_executor.BaseExecutor):
           preprocessing_fn, optional.
         - labels.PREPROCESSING_FN: Path to a Python function that implements
           preprocessing_fn, optional.
-        - labels.USE_TFXIO_LABEL: Whether use the TFXIO-based TFT APIs.
+        - labels.CUSTOM_CONFIG: Dictionary of additional parameters for
+          preprocessing_fn, optional.
+        - labels.DATA_VIEW_LABEL: DataView to be used to read the Example,
+          optional
       outputs: A dictionary of labelled output values, including:
         - labels.PER_SET_STATS_OUTPUT_PATHS_LABEL: Paths to statistics output,
           optional.
@@ -829,7 +842,6 @@ class Executor(base_executor.BaseExecutor):
     schema = value_utils.GetSoleValue(inputs, labels.SCHEMA_PATH_LABEL)
     input_dataset_metadata = self._ReadMetadata(raw_examples_data_format,
                                                 schema)
-    use_tfxio = value_utils.GetSoleValue(inputs, labels.USE_TFXIO_LABEL)
     materialize_output_paths = value_utils.GetValues(
         outputs, labels.TRANSFORM_MATERIALIZE_OUTPUT_PATHS_LABEL)
     preprocessing_fn = self._GetPreprocessingFn(inputs, outputs)
@@ -850,6 +862,8 @@ class Executor(base_executor.BaseExecutor):
     per_set_stats_output_paths = value_utils.GetValues(
         outputs, labels.PER_SET_STATS_OUTPUT_PATHS_LABEL)
     temp_path = value_utils.GetSoleValue(outputs, labels.TEMP_OUTPUT_LABEL)
+    data_view_uri = value_utils.GetSoleValue(
+        inputs, labels.DATA_VIEW_LABEL, strict=False)
 
     absl.logging.debug('Analyze data patterns: %s',
                        list(enumerate(analyze_data_paths)))
@@ -874,6 +888,7 @@ class Executor(base_executor.BaseExecutor):
     analyze_data_list = self._MakeDatasetList(analyze_data_paths,
                                               analyze_paths_file_formats,
                                               raw_examples_data_format,
+                                              data_view_uri,
                                               can_process_analysis_jointly)
     if not analyze_data_list:
       raise ValueError('Analyze data list must not be empty.')
@@ -883,33 +898,21 @@ class Executor(base_executor.BaseExecutor):
     transform_data_list = self._MakeDatasetList(transform_data_paths,
                                                 transform_paths_file_formats,
                                                 raw_examples_data_format,
+                                                data_view_uri,
                                                 can_process_transform_jointly,
                                                 per_set_stats_output_paths,
                                                 materialize_output_paths)
 
-    if use_tfxio:
-      all_datasets = analyze_data_list + transform_data_list
-      for d in all_datasets:
-        d.tfxio = self._CreateTFXIO(d, input_dataset_metadata.schema)
-      self._AssertSameTFXIOSchema(all_datasets)
-      feature_spec_or_typespecs = (
-          all_datasets[0].tfxio.TensorAdapter().OriginalTypeSpecs())
-    else:
-      feature_spec_or_typespecs = schema_utils.schema_as_feature_spec(
-          _GetSchemaProto(input_dataset_metadata)).feature_spec
-
-      # NOTE: We disallow an empty schema, which we detect by testing the
-      # number of columns.  While in principal an empty schema is valid, in
-      # practice this is a sign of a user error, and this is a convenient
-      # place to catch that error.
-      if (not feature_spec_or_typespecs and
-          not self._ShouldDecodeAsRawExample(raw_examples_data_format)):
-        raise ValueError(messages.SCHEMA_EMPTY)
+    all_datasets = analyze_data_list + transform_data_list
+    for d in all_datasets:
+      d.tfxio = self._CreateTFXIO(d, input_dataset_metadata.schema)
+    self._AssertSameTFXIOSchema(all_datasets)
+    typespecs = all_datasets[0].tfxio.TensorAdapter().OriginalTypeSpecs()
 
     # Inspecting the preprocessing_fn even if we know we need a full pass in
     # order to fail faster if it fails.
     analyze_input_columns = tft.get_analyze_input_columns(
-        preprocessing_fn, feature_spec_or_typespecs)
+        preprocessing_fn, typespecs)
 
     if not compute_statistics and not materialize_output_paths:
       if analyze_input_columns:
@@ -923,13 +926,13 @@ class Executor(base_executor.BaseExecutor):
             'it does not materialize transformed data, and the configured '
             'preprocessing_fn appears to not require analyzing the data.')
         self._RunInPlaceImpl(preprocessing_fn, input_dataset_metadata,
-                             feature_spec_or_typespecs, transform_output_path)
+                             typespecs, transform_output_path)
         # TODO(b/122478841): Writes status to status file.
         return
 
     materialization_format = (
         transform_paths_file_formats[-1] if materialize_output_paths else None)
-    self._RunBeamImpl(use_tfxio, analyze_data_list, transform_data_list,
+    self._RunBeamImpl(analyze_data_list, transform_data_list,
                       preprocessing_fn, input_dataset_metadata,
                       transform_output_path, raw_examples_data_format,
                       temp_path, input_cache_dir, output_cache_dir,
@@ -937,10 +940,10 @@ class Executor(base_executor.BaseExecutor):
                       materialization_format, len(analyze_data_paths))
   # TODO(b/122478841): Writes status to status file.
 
-  def _RunBeamImpl(self, use_tfxio: bool, analyze_data_list: List[_Dataset],
+  def _RunBeamImpl(self, analyze_data_list: List[_Dataset],
                    transform_data_list: List[_Dataset], preprocessing_fn: Any,
                    input_dataset_metadata: dataset_metadata.DatasetMetadata,
-                   transform_output_path: Text, raw_examples_data_format: Text,
+                   transform_output_path: Text, raw_examples_data_format: int,
                    temp_path: Text, input_cache_dir: Optional[Text],
                    output_cache_dir: Optional[Text], compute_statistics: bool,
                    per_set_stats_output_paths: Sequence[Text],
@@ -949,13 +952,13 @@ class Executor(base_executor.BaseExecutor):
     """Perform data preprocessing with TFT.
 
     Args:
-      use_tfxio: if True, use the TFXIO-based TFT APIs.
       analyze_data_list: List of datasets for analysis.
       transform_data_list: List of datasets for transform.
       preprocessing_fn: The tf.Transform preprocessing_fn.
       input_dataset_metadata: A DatasetMetadata object for the input data.
       transform_output_path: An absolute path to write the output to.
-      raw_examples_data_format: A string describing the raw data format.
+      raw_examples_data_format: The data format of the raw examples. One of the
+        enums from example_gen_pb2.PayloadFormat.
       temp_path: A path to a temporary dir.
       input_cache_dir: A dir containing the input analysis cache. May be None.
       output_cache_dir: A dir to write the analysis cache to. May be None.
@@ -970,20 +973,14 @@ class Executor(base_executor.BaseExecutor):
     Returns:
       Status of the execution.
     """
-    if use_tfxio:
-      self._AssertSameTFXIOSchema(analyze_data_list)
-      feature_spec_or_typespec = (
-          analyze_data_list[0].tfxio.TensorAdapter().OriginalTypeSpecs())
-    else:
-      feature_spec_or_typespec = schema_utils.schema_as_feature_spec(
-          _GetSchemaProto(input_dataset_metadata)).feature_spec
+    self._AssertSameTFXIOSchema(analyze_data_list)
+    unprojected_typespecs = (
+        analyze_data_list[0].tfxio.TensorAdapter().OriginalTypeSpecs())
 
-    # TODO(zhuo): no need to convert the return values to list once TFT post
-    # 0.21.2 is released.
-    analyze_input_columns = list(tft.get_analyze_input_columns(
-        preprocessing_fn, feature_spec_or_typespec))
-    transform_input_columns = list(tft.get_transform_input_columns(
-        preprocessing_fn, feature_spec_or_typespec))
+    analyze_input_columns = tft.get_analyze_input_columns(
+        preprocessing_fn, unprojected_typespecs)
+    transform_input_columns = tft.get_transform_input_columns(
+        preprocessing_fn, unprojected_typespecs)
     # Use the same dataset (same columns) for AnalyzeDataset and computing
     # pre-transform stats so that the data will only be read once for these
     # two operations.
@@ -991,59 +988,38 @@ class Executor(base_executor.BaseExecutor):
       analyze_input_columns = list(
           set(list(analyze_input_columns) + list(transform_input_columns)))
 
-    if use_tfxio:
-      for d in analyze_data_list:
-        d.tfxio = d.tfxio.Project(analyze_input_columns)
-      for d in transform_data_list:
-        d.tfxio = d.tfxio.Project(transform_input_columns)
-      analyze_data_tensor_adapter_config = (
-          analyze_data_list[0].tfxio.TensorAdapterConfig())
-    else:
-      if input_dataset_metadata.schema is _RAW_EXAMPLE_SCHEMA:
-        analyze_input_dataset_metadata = input_dataset_metadata
-        transform_input_dataset_metadata = input_dataset_metadata
-      else:
-        analyze_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-            schema_utils.schema_from_feature_spec({
-                feature: feature_spec_or_typespec[feature]
-                for feature in analyze_input_columns
-            }))
-        transform_input_dataset_metadata = dataset_metadata.DatasetMetadata(
-            schema_utils.schema_from_feature_spec({
-                feature: feature_spec_or_typespec[feature]
-                for feature in transform_input_columns
-            }))
+    for d in analyze_data_list:
+      d.tfxio = d.tfxio.Project(analyze_input_columns)
+
+    self._AssertSameTFXIOSchema(analyze_data_list)
+    analyze_data_tensor_adapter_config = (
+        analyze_data_list[0].tfxio.TensorAdapterConfig())
+
+    for d in transform_data_list:
+      d.tfxio = d.tfxio.Project(transform_input_columns)
 
     desired_batch_size = self._GetDesiredBatchSize(raw_examples_data_format)
 
-    # Build a kwargs dict instead of passing the keyword arguments directly
-    # to tft_beam.Context() because older TFT version doesn't not have the
-    # argument `use_tfxio`.
-    beam_context_kwargs = {
-        'temp_dir': temp_path,
-        'desired_batch_size': desired_batch_size,
-        'passthrough_keys': {_TRANSFORM_INTERNAL_FEATURE_FOR_KEY},
-        'use_deep_copy_optimization': True
-    }
-    if use_tfxio:
-      beam_context_kwargs['passthrough_keys'] = self._GetTFXIOPassthroughKeys()  # pylint: disable=assignment-from-none
-      beam_context_kwargs['use_tfxio'] = True
-
     with self._CreatePipeline(transform_output_path) as pipeline:
-      with tft_beam.Context(**beam_context_kwargs):
+      with tft_beam.Context(
+          temp_dir=temp_path,
+          desired_batch_size=desired_batch_size,
+          passthrough_keys=self._GetTFXIOPassthroughKeys(),
+          use_deep_copy_optimization=True,
+          use_tfxio=True):
         # pylint: disable=expression-not-assigned
         # pylint: disable=no-value-for-parameter
         _ = (
             pipeline
             | 'IncrementPipelineMetrics' >> self._IncrementPipelineMetrics(
-                len(feature_spec_or_typespec), len(analyze_input_columns),
+                len(unprojected_typespecs), len(analyze_input_columns),
                 len(transform_input_columns), analyze_paths_count))
 
         (new_analyze_data_dict, input_cache) = (
             pipeline
             | 'OptimizeRun' >> self._OptimizeRun(
                 input_cache_dir, output_cache_dir, analyze_data_list,
-                feature_spec_or_typespec, preprocessing_fn,
+                unprojected_typespecs, preprocessing_fn,
                 self._GetCacheSource()))
 
         if input_cache:
@@ -1069,57 +1045,19 @@ class Executor(base_executor.BaseExecutor):
 
         for dataset in analyze_data_list:
           infix = 'AnalysisIndex{}'.format(dataset.index)
-          if use_tfxio:
-            dataset.standardized = (
-                pipeline
-                | 'TFXIOReadAndDecode[{}]'.format(infix) >>
-                dataset.tfxio.BeamSource(desired_batch_size))
-          else:
-            dataset.serialized = (
-                pipeline
-                | 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(
-                    dataset, analyze_input_dataset_metadata))
-
-        if not use_tfxio:
-          analyze_decode_fn = (
-              self._GetDecodeFunction(raw_examples_data_format,
-                                      analyze_input_dataset_metadata.schema))
+          dataset.standardized = (
+              pipeline
+              | 'TFXIOReadAndDecode[{}]'.format(infix) >>
+              dataset.tfxio.BeamSource(desired_batch_size))
 
         input_analysis_data = {}
         for key, dataset in new_analyze_data_dict.items():
-          if dataset is None:
-            input_analysis_data[key] = None
-          else:
-            infix = 'AnalysisIndex{}'.format(dataset.index)
-            if use_tfxio:
-              input_analysis_data[key] = dataset.standardized
-            else:
-              dataset.decoded = (
-                  dataset.serialized
-                  | 'Decode[{}]'.format(infix) >>
-                  self._DecodeInputs(analyze_decode_fn))
-              input_analysis_data[key] = dataset.decoded
+          input_analysis_data[key] = (
+              None if dataset is None else dataset.standardized)
 
-        analyze_input_metadata = (
-            analyze_data_tensor_adapter_config
-            if use_tfxio else input_dataset_metadata)
-        if not hasattr(tft_beam.analyzer_cache, 'DatasetKey'):
-          # TODO(b/148082271, b/148212028, b/37788560): Remove this when we stop
-          # supporting TFT 0.21.2.
-          flat_input_analysis_data = (
-              [
-                  dataset for dataset in input_analysis_data.values()
-                  if dataset is not None
-              ]
-              | 'FlattenAnalysisDatasetsBecauseItIsRequired' >>
-              beam.Flatten(pipeline=pipeline))
-          analysis_inputs = (flat_input_analysis_data, input_analysis_data,
-                             input_cache, analyze_input_metadata)
-        else:
-          analysis_inputs = (input_analysis_data, input_cache,
-                             analyze_input_metadata)
         transform_fn, cache_output = (
-            analysis_inputs
+            (input_analysis_data, input_cache,
+             analyze_data_tensor_adapter_config)
             | 'Analyze' >> tft_beam.AnalyzeDatasetWithCache(
                 preprocessing_fn, pipeline=pipeline))
 
@@ -1144,15 +1082,12 @@ class Executor(base_executor.BaseExecutor):
             # assuming that this pipeline operates on rolling ranges, so those
             # cache entries may also be relevant for future iterations.
             for span_cache_dir in input_analysis_data:
-              # TODO(b/148082271, b/148212028, b/37788560): Remove this
-              # condition when we stop supporting TFT 0.21.2.
-              if isinstance(span_cache_dir, tuple):
-                span_cache_dir = span_cache_dir.key
               full_span_cache_dir = os.path.join(input_cache_dir,
-                                                 span_cache_dir)
+                                                 span_cache_dir.key)
               if tf.io.gfile.isdir(full_span_cache_dir):
-                self._CopyCache(full_span_cache_dir,
-                                os.path.join(output_cache_dir, span_cache_dir))
+                self._CopyCache(
+                    full_span_cache_dir,
+                    os.path.join(output_cache_dir, span_cache_dir.key))
 
           (cache_output
            | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(
@@ -1175,20 +1110,9 @@ class Executor(base_executor.BaseExecutor):
             if self._IsDataFormatSequenceExample(raw_examples_data_format):
               schema_proto = None
             else:
-              schema_proto = _GetSchemaProto(
-                  input_dataset_metadata
-                  if use_tfxio else analyze_input_dataset_metadata)
+              schema_proto = _GetSchemaProto(input_dataset_metadata)
 
-            if not use_tfxio:
-              for dataset in analyze_data_list:
-                infix = 'AnalysisIndex{}'.format(dataset.index)
-                dataset.standardized = (
-                    dataset.serialized
-                    | 'ToArrowRecordBatches[{}]'.format(infix)
-                    >> self._ToArrowRecordBatches(schema_proto))
-
-            if use_tfxio and self._IsDataFormatSequenceExample(
-                raw_examples_data_format):
+            if self._IsDataFormatSequenceExample(raw_examples_data_format):
               def _ExtractRawExampleBatches(record_batch):
                 return record_batch.column(
                     record_batch.schema.get_field_index(
@@ -1223,29 +1147,12 @@ class Executor(base_executor.BaseExecutor):
           # prevent certain beam runner from doing large temp materialization.
           for dataset in transform_data_list:
             infix = 'TransformIndex{}'.format(dataset.index)
-            if use_tfxio:
-              dataset.standardized = (
-                  pipeline | 'TFXIOReadAndDecode[{}]'.format(infix) >>
-                  dataset.tfxio.BeamSource(desired_batch_size))
-            else:
-              transform_decode_fn = (
-                  self._GetDecodeFunction(
-                      raw_examples_data_format,
-                      transform_input_dataset_metadata.schema))
-              dataset.serialized = (
-                  pipeline
-                  | 'ReadDataset[{}]'.format(infix) >> self._ReadExamples(
-                      dataset, transform_input_dataset_metadata))
-              dataset.decoded = (
-                  dataset.serialized
-                  | 'Decode[{}]'.format(infix)
-                  >> self._DecodeInputs(transform_decode_fn))
-            tft_transform_input_metadata = (
-                dataset.tfxio.TensorAdapterConfig() if use_tfxio else
-                transform_input_dataset_metadata)
-            data = dataset.standardized if use_tfxio else dataset.decoded
+            dataset.standardized = (
+                pipeline | 'TFXIOReadAndDecode[{}]'.format(infix) >>
+                dataset.tfxio.BeamSource(desired_batch_size))
             (dataset.transformed, metadata) = (
-                ((data, tft_transform_input_metadata), transform_fn)
+                ((dataset.standardized, dataset.tfxio.TensorAdapterConfig()),
+                 transform_fn)
                 | 'Transform[{}]'.format(infix) >> tft_beam.TransformDataset())
 
             dataset.transformed_and_serialized = (
@@ -1312,14 +1219,14 @@ class Executor(base_executor.BaseExecutor):
   def _RunInPlaceImpl(
       self, preprocessing_fn: Any,
       metadata: dataset_metadata.DatasetMetadata,
-      feature_spec_or_typespecs: Dict[Text, Any],
+      typespecs: Dict[Text, tf.TypeSpec],
       transform_output_path: Text) -> _Status:
     """Runs a transformation iteration in-place without looking at the data.
 
     Args:
       preprocessing_fn: The tf.Transform preprocessing_fn.
       metadata: A DatasetMetadata object for the input data.
-      feature_spec_or_typespecs: a Dict[Text, Union[FeatureSpec, tf.TypeSpec]]
+      typespecs: a Dict[Text, tf.TypeSpec]
       transform_output_path: An absolute path to write the output to.
 
     Returns:
@@ -1384,10 +1291,11 @@ class Executor(base_executor.BaseExecutor):
       self,
       file_patterns: Sequence[Union[Text, int]],
       file_formats: Sequence[Union[Text, int]],
-      data_format: Text,
+      data_format: int,
+      data_view_uri: Optional[Text],
       can_process_jointly: bool,
       stats_output_paths: Optional[Sequence[Text]] = None,
-      materialize_output_paths: Optional[Sequence[Text]] = None
+      materialize_output_paths: Optional[Sequence[Text]] = None,
   ) -> List[_Dataset]:
     """Makes a list of Dataset from the given `file_patterns`.
 
@@ -1396,7 +1304,9 @@ class Executor(base_executor.BaseExecutor):
         one `_Dataset`.
       file_formats: A list of file format where each format corresponds to one
         `_Dataset`. Must have the same size as `file_patterns`.
-      data_format: The data format of the datasets.
+      data_format: The data format of the datasets. One of the enums from
+        example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView to be used to parse the data.
       can_process_jointly: Whether paths can be processed jointly, unused.
       stats_output_paths: The statistics output paths, if applicable.
       materialize_output_paths: The materialization output paths, if applicable.
@@ -1415,7 +1325,7 @@ class Executor(base_executor.BaseExecutor):
       materialize_output_paths = [None] * len(file_patterns)
 
     datasets = [
-        _Dataset(p, f, data_format, s, m)
+        _Dataset(p, f, data_format, data_view_uri, s, m)
         for p, f, s, m in zip(file_patterns, file_formats, stats_output_paths,
                               materialize_output_paths)
     ]
@@ -1424,50 +1334,49 @@ class Executor(base_executor.BaseExecutor):
       dataset.index = index
     return result
 
-  def _ShouldDecodeAsRawExample(self, data_format: Union[Text, int]) -> bool:
+  def _ShouldDecodeAsRawExample(self, data_format: int,
+                                data_view_uri: Optional[Text]) -> bool:
     """Returns true if data format should be decoded as raw example.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
+      data_view_uri: URI to the DataView to be used to parse the data.
 
     Returns:
       True if data format should be decoded as raw example.
     """
     return (self._IsDataFormatSequenceExample(data_format) or
-            self._IsDataFormatProto(data_format))
+            (self._IsDataFormatProto(data_format) and data_view_uri is None))
 
   @staticmethod
-  def _IsDataFormatSequenceExample(data_format: Union[Text, int]) -> bool:
+  def _IsDataFormatSequenceExample(data_format: int) -> bool:
     """Returns true if data format is sequence example.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       True if data format is sequence example.
     """
-    assert not isinstance(data_format, int), data_format
-    return data_format == labels.FORMAT_TF_SEQUENCE_EXAMPLE
+    return data_format == example_gen_pb2.FORMAT_TF_SEQUENCE_EXAMPLE
 
   @staticmethod
-  def _IsDataFormatProto(data_format: Union[Text, int]) -> bool:
+  def _IsDataFormatProto(data_format: int) -> bool:
     """Returns true if data format is protocol buffer.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       True if data format is protocol buffer.
     """
-    assert not isinstance(data_format, int), data_format
-    return data_format == labels.FORMAT_PROTO
+    return data_format == example_gen_pb2.FORMAT_PROTO
 
-  def _GetDesiredBatchSize(
-      self, data_format: Union[Text, int]) -> Optional[int]:
+  def _GetDesiredBatchSize(self, data_format: int) -> Optional[int]:
     """Returns batch size.
 
     Args:
-      data_format: name of data format.
+      data_format: One of the enums from example_gen_pb2.PayloadFormat.
 
     Returns:
       Batch size or None.
@@ -1475,28 +1384,6 @@ class Executor(base_executor.BaseExecutor):
     if self._IsDataFormatSequenceExample(data_format):
       return 1
     return None
-
-  def _GetDecodeFunction(self, data_format: Union[Text, int],
-                         schema: dataset_schema.Schema) -> Any:
-    """Returns the decode function for `data_format`.
-
-    Args:
-      data_format: name of data format.
-      schema: a dataset_schema.Schema for the data.
-
-    Returns:
-      Function for decoding examples.
-    """
-    if self._ShouldDecodeAsRawExample(data_format):
-      if self._IsDataFormatSequenceExample(data_format):
-        absl.logging.warning(
-            'TFX Transform doesn\'t officially support tf.SequenceExample, '
-            'follow b/38235367 to track official support progress. We do not '
-            'guarantee not to break your pipeline if you use Transform with a '
-            'tf.SequenceExample data type. Use at your own risk.')
-      return lambda x: {RAW_EXAMPLE_KEY: x}
-    else:
-      return tft.coders.ExampleProtoCoder(schema, serialized=True).decode
 
   @staticmethod
   def _GetCacheSource():
@@ -1512,19 +1399,17 @@ class Executor(base_executor.BaseExecutor):
     io_utils.copy_dir(src, dst)
 
   def _CreateTFXIO(self, dataset: _Dataset,
-                   schema: schema_pb2.Schema) -> tfxio.TFXIO:
+                   schema: schema_pb2.Schema) -> tfxio_module.TFXIO:
     """Creates a TFXIO instance for `dataset`."""
-    if self._ShouldDecodeAsRawExample(dataset.data_format):
-      return raw_tf_record.RawTfRecordTFXIO(
-          file_pattern=dataset.file_pattern,
-          raw_record_column_name=RAW_EXAMPLE_KEY,
-          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR])
-    else:
-      return tf_example_record.TFExampleRecord(
-          file_pattern=dataset.file_pattern,
-          validate=False,
-          telemetry_descriptors=[_TRANSFORM_COMPONENT_DESCRIPTOR],
-          schema=schema)
+    read_as_raw_records = self._ShouldDecodeAsRawExample(
+        dataset.data_format, dataset.data_view_uri)
+    return tfxio_utils.make_tfxio(
+        file_pattern=dataset.file_pattern,
+        telemetry_descriptors=_TELEMETRY_DESCRIPTORS,
+        payload_format=dataset.data_format,
+        data_view_uri=dataset.data_view_uri,
+        schema=schema,
+        read_as_raw_records=read_as_raw_records)
 
   def _AssertSameTFXIOSchema(self, datasets: Sequence[_Dataset]) -> None:
     if not datasets:

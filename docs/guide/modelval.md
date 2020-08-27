@@ -22,7 +22,7 @@ model_validator = ModelValidator(
       model=trainer.outputs['model'])
 ```
 
-For those that would like to migrate the confiugraiotn to the Evaluator, a
+For those that would like to migrate the configuration to the Evaluator, a
 similar configuration for the Evaluator would look as follows:
 
 ```python
