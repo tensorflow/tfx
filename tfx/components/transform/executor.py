@@ -896,17 +896,22 @@ class Executor(base_executor.BaseExecutor):
           'transform_paths_file_formats do not match: {} v.s {}'.format(
               len(transform_data_paths), len(transform_paths_file_formats)))
 
+    can_process_analysis_jointly = not bool(output_cache_dir)
     analyze_data_list = self._MakeDatasetList(analyze_data_paths,
                                               analyze_paths_file_formats,
                                               raw_examples_data_format,
-                                              data_view_uri)
+                                              data_view_uri,
+                                              can_process_analysis_jointly)
     if not analyze_data_list:
       raise ValueError('Analyze data list must not be empty.')
 
+    can_process_transform_jointly = not bool(per_set_stats_output_paths or
+                                             materialize_output_paths)
     transform_data_list = self._MakeDatasetList(transform_data_paths,
                                                 transform_paths_file_formats,
                                                 raw_examples_data_format,
                                                 data_view_uri,
+                                                can_process_transform_jointly,
                                                 per_set_stats_output_paths,
                                                 materialize_output_paths)
 
@@ -1293,12 +1298,14 @@ class Executor(base_executor.BaseExecutor):
     """
     return self._make_beam_pipeline()
 
+  # TODO(b/114444977): Remove the unused can_process_jointly argument.
   def _MakeDatasetList(
       self,
       file_patterns: Sequence[Union[Text, int]],
       file_formats: Sequence[Union[Text, int]],
       data_format: int,
       data_view_uri: Optional[Text],
+      can_process_jointly: bool,
       stats_output_paths: Optional[Sequence[Text]] = None,
       materialize_output_paths: Optional[Sequence[Text]] = None,
   ) -> List[_Dataset]:
@@ -1312,6 +1319,7 @@ class Executor(base_executor.BaseExecutor):
       data_format: The data format of the datasets. One of the enums from
         example_gen_pb2.PayloadFormat.
       data_view_uri: URI to the DataView to be used to parse the data.
+      can_process_jointly: Whether paths can be processed jointly, unused.
       stats_output_paths: The statistics output paths, if applicable.
       materialize_output_paths: The materialization output paths, if applicable.
 
