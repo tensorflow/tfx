@@ -34,12 +34,13 @@ import tensorflow_transform.beam as tft_beam
 from tensorflow_transform.beam import impl as tft_beam_impl
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
-from tensorflow_transform.tf_metadata import schema_util
+from tensorflow_transform.tf_metadata import schema_utils
 
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
 from tfx.benchmarks import constants
+from tfx_bsl.beam import test_util
 from tfx_bsl.beam import shared
 
 
