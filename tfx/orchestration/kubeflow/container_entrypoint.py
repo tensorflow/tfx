@@ -27,9 +27,6 @@ import textwrap
 from typing import Dict, List, Text, Union
 
 import absl
-
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
@@ -40,6 +37,9 @@ from tfx.types import channel
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
+
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 
 
 def _get_config_value(config_value: kubeflow_pb2.ConfigValue) -> Text:
