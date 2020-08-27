@@ -1,55 +1,100 @@
-# Copyright 2020 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-package(default_visibility = ["//tfx:__subpackages__"])
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])  # Apache 2.0
 
-exports_files(["LICENSE"])
-
-load("//tfx:tfx.bzl", "tfx_py_proto_library")
-
-tfx_py_proto_library(
-    name = "bulk_inferrer_proto_py_pb2",
+proto_library(
+    name = "bulk_inferrer_proto",
     srcs = ["bulk_inferrer.proto"],
+    cc_api_version = 2,
 )
 
-tfx_py_proto_library(
-    name = "evaluator_proto_py_pb2",
+py_proto_library(
+    name = "bulk_inferrer_proto_py_pb2",
+    api_version = 2,
+    deps = [":bulk_inferrer_proto"],
+)
+
+proto_library(
+    name = "evaluator_proto",
     srcs = ["evaluator.proto"],
+    cc_api_version = 2,
 )
 
-tfx_py_proto_library(
-    name = "example_gen_proto_py_pb2",
+py_proto_library(
+    name = "evaluator_proto_py_pb2",
+    api_version = 2,
+    deps = [":evaluator_proto"],
+)
+
+proto_library(
+    name = "example_gen_proto",
     srcs = ["example_gen.proto"],
+    cc_api_version = 2,
+    deps = ["//google/protobuf:any"],
 )
 
-tfx_py_proto_library(
-    name = "infra_validator_py_pb2",
+py_proto_library(
+    name = "example_gen_proto_py_pb2",
+    api_version = 2,
+    deps = [":example_gen_proto"],
+)
+
+proto_library(
+    name = "infra_validator_proto",
     srcs = ["infra_validator.proto"],
+    cc_api_version = 2,
 )
 
-tfx_py_proto_library(
-    name = "pusher_proto_py_pb2",
+py_proto_library(
+    name = "infra_validator_py_pb2",
+    api_version = 2,
+    deps = [":infra_validator_proto"],
+)
+
+proto_library(
+    name = "pusher_proto",
     srcs = ["pusher.proto"],
+    cc_api_version = 2,
 )
 
-tfx_py_proto_library(
-    name = "trainer_proto_py_pb2",
+py_proto_library(
+    name = "pusher_proto_py_pb2",
+    api_version = 2,
+    deps = [":pusher_proto"],
+)
+
+proto_library(
+    name = "trainer_proto",
     srcs = ["trainer.proto"],
+    cc_api_version = 2,
 )
 
-tfx_py_proto_library(
-    name = "tuner_proto_py_pb2",
+py_proto_library(
+    name = "trainer_proto_py_pb2",
+    api_version = 2,
+    deps = [":trainer_proto"],
+)
+
+proto_library(
+    name = "transform_proto",
+    srcs = ["transform.proto"],
+    cc_api_version = 2,
+)
+
+py_proto_library(
+    name = "transform_proto_py_pb2",
+    api_version = 2,
+    deps = [":transform_proto"],
+)
+
+proto_library(
+    name = "tuner_proto",
     srcs = ["tuner.proto"],
+    cc_api_version = 2,
+)
+
+py_proto_library(
+    name = "tuner_proto_py_pb2",
+    api_version = 2,
+    deps = [":tuner_proto"],
 )
