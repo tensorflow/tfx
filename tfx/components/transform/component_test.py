@@ -151,7 +151,7 @@ class ComponentTest(tf.test.TestCase):
     self._verify_outputs(transform)
     self.assertEqual(
         json_format.MessageToJson(
-            splits_config, preserving_proto_field_name=True),
+            splits_config, sort_keys=True, preserving_proto_field_name=True),
         transform.exec_properties['splits_config'])
 
   def test_construct_with_materialization_disabled_but_output_examples(self):
