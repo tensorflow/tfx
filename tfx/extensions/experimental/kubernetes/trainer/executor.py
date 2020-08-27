@@ -20,7 +20,7 @@ import absl
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.trainer import executor as tfx_trainer_executor
-from tfx.extensions.google_cloud_kubernetes import runner
+from tfx.extensions.experimental.kubernetes import runner
 from tfx.orchestration import test_utils
 from tfx.utils import json_utils
 
@@ -49,6 +49,7 @@ class GenericExecutor(base_executor.BaseExecutor):
 
     Returns:
       None
+
     Raises:
       ValueError: If gke_training_args is not in exec_properties.custom_config.
       RuntimeError: If the Google Kubernetes Engine training job failed.
@@ -75,11 +76,11 @@ class GenericExecutor(base_executor.BaseExecutor):
       unique_id = str(self._context._unique_id) #pylint: disable=protected-access
     else:
       absl.logging.warning(
-          "Missing unique_id in executor, using a random id instead.")
+          'Missing unique_id in executor, using a random id instead.')
       unique_id = test_utils.random_id()
 
     # Note: exec_properties['custom_config'] here is a dict.
-    return runnerstart_kubernetes_training(input_dict, output_dict, exec_properties,
+    return runner.start_kubernetes_training(input_dict, output_dict, exec_properties,
                                      executor_class_path, training_inputs,
                                      unique_id)
 

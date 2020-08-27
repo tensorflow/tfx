@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_kubernetes.trainer.executor."""
+"""Tests for tfx.extensions.experimental.kubernetes.trainer.executor."""
 
 
 import copy
@@ -22,7 +22,7 @@ import mock
 import tensorflow as tf
 
 from tfx.components.trainer import executor as tfx_trainer_executor
-from tfx.extensions.google_cloud_kubernetes.trainer import executor as gke_trainer_executor
+from tfx.extensions.experimental.kubernetes.trainer import executor as gke_trainer_executor
 from tfx.utils import json_utils
 
 
@@ -59,7 +59,7 @@ class ExecutorTest(tf.test.TestCase):
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(
-        'tfx.extensions.google_cloud_kubernetes.trainer.executor.runner'
+        'tfx.extensions.experimental.kubernetes.trainer.executor.runner'
     ).start()
 
   def _serialize_custom_config_under_test(self) -> Dict[Text, Any]:
@@ -74,7 +74,7 @@ class ExecutorTest(tf.test.TestCase):
     )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runnerstart_kubernetes_training.assert_called_with(
+    self.mock_runner.start_kubernetes_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._executor_class_path, {
             'num_gpus_per_worker': self._num_gpus_per_worker,
@@ -87,7 +87,7 @@ class ExecutorTest(tf.test.TestCase):
     )
     executor.Do(self._inputs, self._outputs,
                 self._serialize_custom_config_under_test())
-    self.mock_runnerstart_kubernetes_training.assert_called_with(
+    self.mock_runner.start_kubernetes_training.assert_called_with(
         self._inputs, self._outputs, self._serialize_custom_config_under_test(),
         self._generic_executor_class_path, {
             'num_gpus_per_worker': self._num_gpus_per_worker,

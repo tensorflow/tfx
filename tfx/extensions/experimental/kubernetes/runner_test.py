@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.extensions.google_cloud_kubernetes.runner."""
+"""Tests for tfx.extensions.experimental.kubernetes.runner."""
 
 import copy
 import os
@@ -20,8 +20,8 @@ from typing import Any, Dict, Text, List
 import mock
 import tensorflow as tf
 
-from tfx.extensions.google_cloud_kubernetes import runner
-from tfx.extensions.google_cloud_kubernetes.trainer import executor
+from tfx.extensions.experimental.kubernetes import runner
+from tfx.extensions.experimental.kubernetes.trainer import executor
 from tfx.utils import json_utils
 
 
@@ -73,8 +73,8 @@ class RunnerTest(tf.test.TestCase):
     return result
 
   @mock.patch.object(runner, '_build_service_names', mock_build_service_names)
-  @mock.patch('tfx.extensions.google_cloud_kubernetes.runner.client')
-  @mock.patch('tfx.extensions.google_cloud_kubernetes.runner.kube_utils')
+  @mock.patch('tfx.extensions.experimental.kubernetes.runner.client')
+  @mock.patch('tfx.extensions.experimental.kubernetes.runner.kube_utils')
   def testStartKubernetesTraining(self, mock_kube_utils, mock_client):
     mock_client.V1Pod.return_value = self._mock_pod
     mock_client.V1Service.return_value = self._mock_service
@@ -82,18 +82,18 @@ class RunnerTest(tf.test.TestCase):
     mock_kube_utils.wait_pod.return_value = mock.Mock()
     self._set_up_training_mocks()
 
-    runnerstart_kubernetes_training(self._inputs, self._outputs,
+    runner.start_kubernetes_training(self._inputs, self._outputs,
                               self._serialize_custom_config_under_test(),
                               self._executor_class_path,
                               self._training_inputs, self._unique_id)
 
     self._mock_api_client.create_namespaced_service.assert_called_with(
         namespace='default',
-        body=self._mock_service,)
+        body=self._mock_service)
 
     self._mock_api_client.create_namespaced_pod.assert_called_with(
         namespace='default',
-        body=self._mock_pod,)
+        body=self._mock_pod)
 
     expected_service_names = mock_build_service_names(self._num_workers,
                                                       self._unique_id)

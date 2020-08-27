@@ -111,9 +111,7 @@ def create_worker_pods(job_args: List[Text],
     try:
       api_instance.create_namespaced_pod(namespace='default', body=pod)
     except ApiException as e:
-      logging.error(
-          'Exception when calling CoreV1Api.create_namespaced_pod: %s' % e)
-
+      raise RuntimeError('Worker pod creation failed.') from e
   logging.info('created {} worker pods'.format(num_workers))
 
 
@@ -147,8 +145,7 @@ def create_worker_services(training_inputs: Dict[Text, Any],
     try:
       api_instance.create_namespaced_service(namespace='default', body=service)
     except ApiException as e:
-      logging.error(
-          'Exception when calling CoreV1Api.create_namespaced_service: %s' % e)
+      raise RuntimeError('Worker service creation failed.') from e
   logging.info('created {} worker services'.format(num_workers))
 
 
@@ -190,6 +187,7 @@ def start_kubernetes_training(input_dict: Dict[Text, List[types.Artifact]],
 
   Returns:
     None
+
   Raises:
     RuntimeError: if the Google Kubernetes Engine training job failed/cancelled.
   """
@@ -204,10 +202,10 @@ def start_kubernetes_training(input_dict: Dict[Text, List[types.Artifact]],
 
 
   # We use custom containers to launch training on Kubernetes, which invokes
-  # the specified image using the container's entrypoint. The default
-  # entrypoint for TFX containers is to call scripts/run_executor.py. The
-  # arguments below are passed to this run_executor entry to run the executor
-  # specified in `executor_class_path`.
+  # the specified image using the container's entrypoint. The entrypoint used
+  # for the worker conatiner is to call scripts/run_executor.py. The arguments
+  # below are passed to this run_executor entry to run the executor specified
+  # in `executor_class_path`.
   job_args = [
       '--executor_class_path', executor_class_path, '--inputs', json_inputs,
       '--outputs', json_outputs, '--exec-properties', json_exec_properties
@@ -221,7 +219,7 @@ def start_kubernetes_training(input_dict: Dict[Text, List[types.Artifact]],
                      training_inputs=training_inputs,
                      unique_id=unique_id)
 
-  # Wait for finish.
+  # Wait indefinitely until training finishes.
   num_workers = training_inputs.get('num_workers', 1)
   pod_names = _build_pod_names(unique_id=unique_id,
                                num_workers=num_workers)
@@ -230,8 +228,7 @@ def start_kubernetes_training(input_dict: Dict[Text, List[types.Artifact]],
                              namespace='default',
                              exit_condition_lambda=_pod_is_done,
                              condition_description='Chief finished',
-                             timeout_sec=1200, # wait for autoscaler
-                             exponential_backoff=True,)
+                             exponential_backoff=True)
 
   # Clean up the ClusterIP services.
   delete_worker_services(training_inputs=training_inputs, unique_id=unique_id)
