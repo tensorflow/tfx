@@ -375,7 +375,7 @@ class Executor(base_executor.BaseExecutor):
               split)
         for data_uri in data_uris:
           transform_data_paths.append(io_utils.all_files_pattern(data_uri))
-        
+
         transformed_example_uris = artifact_utils.get_split_uris(
             output_dict[TRANSFORMED_EXAMPLES_KEY], split)
         for output_uri in transformed_example_uris:

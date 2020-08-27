@@ -63,7 +63,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     self._single_artifact = [e1]
     self._multiple_artifacts = [e1, e2]
-    self._input_artifacts = self._single_artifact
 
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
@@ -123,7 +122,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transform_executor = executor.Executor()
 
   def _verify_transform_outputs(self, materialize=True, store_cache=True,
-                                multiple_output=False):
+                                multiple_transform=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -133,7 +132,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
           len(tf.io.gfile.listdir(self._updated_analyzer_cache_artifact.uri)))
 
     transformed_example_artifacts = self._single_transform
-    if multiple_output:
+    if multiple_transform:
       transformed_example_artifacts = self._multiple_transform
 
     if materialize:
@@ -251,7 +250,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
         self._multiple_transform)
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
-    self._verify_transform_outputs(multiple_output=True)
+    self._verify_transform_outputs(multiple_transform=True)
 
   def test_do_with_custom_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
