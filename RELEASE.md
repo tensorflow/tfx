@@ -70,6 +70,8 @@
         disable cache (won't generate cache output).
 *   Added support for width modifiers in Span and Version specs for file based
     ExampleGen.
+*   Supported multiple artifacts for Transform's input example and output
+    transformed example channels.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.

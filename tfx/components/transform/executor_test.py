@@ -152,7 +152,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
             eval_files, compression_type='GZIP')
         eval_count = sum(1 for record in eval_dataset)
 
-      self.assertGreater(train_count, eval_count)
+        self.assertGreater(train_count, eval_count)
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
