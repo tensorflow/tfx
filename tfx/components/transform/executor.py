@@ -331,8 +331,7 @@ class Executor(base_executor.BaseExecutor):
       splits_config.analyze.append('train')
       splits_config.transform.extend(
           artifact_utils.decode_split_names(
-              artifact_utils.get_single_instance(
-                  input_dict[EXAMPLES_KEY]).split_names))
+              input_dict[EXAMPLES_KEY][0].split_names))
       absl.logging.info(
           "Analyze the 'train' split and transform all splits when "
           'splits_config is not set.')

@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import json
 import os
 import tempfile
@@ -55,14 +56,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   def _make_base_do_params(self, source_data_dir, output_data_dir):
     # Create input dict.
-    examples = standard_artifacts.Examples()
-    examples.uri = os.path.join(source_data_dir, 'csv_example_gen')
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    e1 = standard_artifacts.Examples()
+    e1.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
+    e2 = copy.deepcopy(e1)
+
+    self._single_artifact = [e1]
+    self._multiple_artifacts = [e1, e2]
+    self._input_artifacts = self._single_artifact
+
     schema_artifact = standard_artifacts.Schema()
     schema_artifact.uri = os.path.join(source_data_dir, 'schema_gen')
 
     self._input_dict = {
-        executor.EXAMPLES_KEY: [examples],
+        executor.EXAMPLES_KEY: self._single_artifact,
         executor.SCHEMA_KEY: [schema_artifact],
     }
 
@@ -70,9 +77,14 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_output = standard_artifacts.TransformGraph()
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_graph')
-    self._transformed_examples = standard_artifacts.Examples()
-    self._transformed_examples.uri = os.path.join(output_data_dir,
-                                                  'transformed_examples')
+    te1 = standard_artifacts.Examples()
+    te1.uri = os.path.join(output_data_dir, 'transformed_examples', '1')
+    te2 = standard_artifacts.Examples()
+    te2.uri = os.path.join(output_data_dir, 'transformed_examples', '2')
+
+    self._single_transform = [te1]
+    self._multiple_transform = [te1, te2]
+
     temp_path_output = _TempPath()
     temp_path_output.uri = tempfile.mkdtemp()
     self._updated_analyzer_cache_artifact = standard_artifacts.TransformCache()
@@ -81,7 +93,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     self._output_dict = {
         executor.TRANSFORM_GRAPH_KEY: [self._transformed_output],
-        executor.TRANSFORMED_EXAMPLES_KEY: [self._transformed_examples],
+        executor.TRANSFORMED_EXAMPLES_KEY: self._single_transform,
         executor.TEMP_PATH_KEY: [temp_path_output],
         executor.UPDATED_ANALYZER_CACHE_KEY: [
             self._updated_analyzer_cache_artifact
@@ -110,7 +122,8 @@ class ExecutorTest(tft_unit.TransformTestCase):
     # Executor for test.
     self._transform_executor = executor.Executor()
 
-  def _verify_transform_outputs(self, materialize=True, store_cache=True):
+  def _verify_transform_outputs(self, materialize=True, store_cache=True,
+                                multiple_output=False):
     expected_outputs = ['transformed_graph']
 
     if store_cache:
@@ -119,22 +132,26 @@ class ExecutorTest(tft_unit.TransformTestCase):
           0,
           len(tf.io.gfile.listdir(self._updated_analyzer_cache_artifact.uri)))
 
+    transformed_example_artifacts = self._single_transform
+    if multiple_output:
+      transformed_example_artifacts = self._multiple_transform
+
     if materialize:
       expected_outputs.append('transformed_examples')
+      for transformed_example in transformed_example_artifacts:
+        train_pattern = os.path.join(transformed_example.uri, 'train', '*')
+        train_files = tf.io.gfile.glob(train_pattern)
+        self.assertNotEqual(0, len(train_files))
+        train_dataset = tf.data.TFRecordDataset(
+            train_files, compression_type='GZIP')
+        train_count = sum(1 for record in train_dataset)
 
-      train_pattern = os.path.join(self._transformed_examples.uri, 'train', '*')
-      train_files = tf.io.gfile.glob(train_pattern)
-      self.assertNotEqual(0, len(train_files))
-      train_dataset = tf.data.TFRecordDataset(
-          train_files, compression_type='GZIP')
-      train_count = sum(1 for record in train_dataset)
-
-      eval_pattern = os.path.join(self._transformed_examples.uri, 'eval', '*')
-      eval_files = tf.io.gfile.glob(eval_pattern)
-      self.assertNotEqual(0, len(eval_files))
-      eval_dataset = tf.data.TFRecordDataset(
-          eval_files, compression_type='GZIP')
-      eval_count = sum(1 for record in eval_dataset)
+        eval_pattern = os.path.join(transformed_example.uri, 'eval', '*')
+        eval_files = tf.io.gfile.glob(eval_pattern)
+        self.assertNotEqual(0, len(eval_files))
+        eval_dataset = tf.data.TFRecordDataset(
+            eval_files, compression_type='GZIP')
+        eval_count = sum(1 for record in eval_dataset)
 
       self.assertGreater(train_count, eval_count)
 
@@ -227,6 +244,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
       self._transform_executor.Do(self._input_dict, self._output_dict,
                                   self._exec_properties)
 
+  def test_do_with_multiple_artifacts(self):
+    self._exec_properties['module_file'] = self._module_file
+    self._input_dict[executor.EXAMPLES_KEY] = self._multiple_artifacts
+    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
+        self._multiple_transform)
+    self._transform_executor.Do(self._input_dict, self._output_dict,
+                                self._exec_properties)
+    self._verify_transform_outputs(multiple_output=True)
+
   def test_do_with_custom_splits(self):
     self._exec_properties['splits_config'] = json_format.MessageToJson(
         transform_pb2.SplitsConfig(
@@ -251,20 +277,19 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transform_pb2.SplitsConfig(analyze=['train'], transform=[]),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
-    self._transformed_examples.split_names = artifact_utils.encode_split_names(
-        [])
-    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = [
-        self._transformed_examples
-    ]
+    self._single_transform[0].split_names = (
+        artifact_utils.encode_split_names([]))
+    self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
+        self._single_transform)
 
     self._transform_executor.Do(self._input_dict, self._output_dict,
                                 self._exec_properties)
     self.assertFalse(
         tf.io.gfile.exists(
-            os.path.join(self._transformed_examples.uri, 'train')))
+            os.path.join(self._single_transform[0].uri, 'train')))
     self.assertFalse(
         tf.io.gfile.exists(
-            os.path.join(self._transformed_examples.uri, 'eval')))
+            os.path.join(self._single_transform[0].uri, 'eval')))
     path_to_saved_model = os.path.join(self._transformed_output.uri,
                                        tft.TFTransformOutput.TRANSFORM_FN_DIR,
                                        tf.saved_model.SAVED_MODEL_FILENAME_PB)
