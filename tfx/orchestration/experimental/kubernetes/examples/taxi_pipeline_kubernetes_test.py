@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.examples.chicago_taxi_pipeline.taxi_pipeline_kubernetes."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Tests for tfx.orchestration.experimental.kubernetes.examples.taxi_pipeline_kubernetes."""
 
 import os
 import tensorflow as tf
-from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_kubernetes
+from tfx.orchestration.experimental.kubernetes.examples import taxi_pipeline_kubernetes
 
 
 class TaxiPipelineKubernetesTest(tf.test.TestCase):

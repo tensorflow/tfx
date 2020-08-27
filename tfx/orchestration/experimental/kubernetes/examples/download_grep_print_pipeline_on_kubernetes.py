@@ -20,6 +20,8 @@ from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.orchestration.test_pipelines.download_grep_print_pipeline import create_pipeline_component_instances
 
 _pipeline_name = 'download_grep_print_pipeline'
+
+# Directory and data locations (uses Google Cloud Storage).
 _pipeline_root = "gs://my-bucket"
 
 absl.logging.set_verbosity(absl.logging.INFO)

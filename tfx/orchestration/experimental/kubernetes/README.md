@@ -88,15 +88,20 @@ context = InteractiveContext(metadata_connection_config=_metadata_connection_con
 ## Step 3: Build and upload your TFX image
 
 The default container image used for executing TFX pipeline components is
-`tensorflow/tfx`. If you would like to use a custom container image, modify
-the Dockerfile located in this directory, and build the new image:
+`tensorflow/tfx`. If you would like to use a custom container image, you can
+start by creating and a custom Dockerfile, for example:
+```
+FROM python:3.7
+RUN pip install tfx # Add your dependencies here.
+```
 
+Once you have created your Dockerfile, you can build it while tagging your
+image name:
 ```
 docker build -t $YOUR_IMAGE_NAME .
 ```
 
 Then, upload the image to your cloud container registry:
-
 ```
-docker push $YOUR_IMAGE_NAME .
+docker push $YOUR_IMAGE_NAME
 ```
