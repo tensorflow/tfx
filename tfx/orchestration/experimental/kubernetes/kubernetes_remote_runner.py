@@ -64,6 +64,7 @@ def run_as_kubernetes_job(pipeline: tfx_pipeline.Pipeline,
       pod_labels={
           'job-name': pod_label,
       },
+      service_account_name=kube_utils.TFX_SERVICE_ACCOUNT,
   )
   try:
     batch_api.create_namespaced_job(

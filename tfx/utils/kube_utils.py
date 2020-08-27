@@ -41,6 +41,9 @@ ARGO_MAIN_CONTAINER_NAME = 'main'
 KFP_POD_NAME = 'KFP_POD_NAME'
 KFP_NAMESPACE = 'KFP_NAMESPACE'
 
+# Service account with edit ClusterRoleBinding for native orchestration.
+TFX_SERVICE_ACCOUNT = 'tfx-service-account'
+
 
 class PodPhase(enum.Enum):
   """Phase of the Kubernetes Pod.
@@ -180,6 +183,7 @@ def make_job_object(
     namespace: Text = 'default',
     container_name: Text = 'jobcontainer',
     pod_labels: Dict[Text, Text] = None,
+    service_account_name: Text = 'default',
 ) -> k8s_client.V1Job:
   """Make a kubernetes Job object.
 
@@ -208,6 +212,8 @@ def make_job_object(
                           command=command,
                       ),
                   ],
+                  service_account=service_account_name,
+                  service_account_name=service_account_name,
                   restart_policy=RestartPolicy.NEVER.value,
               ),
           )
