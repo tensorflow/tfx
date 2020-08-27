@@ -319,13 +319,9 @@ def run_fn(fn_args: TrainerFnArgs):
   with multi_worker_strategy.scope():
 
     train_dataset = _input_fn(fn_args.train_files, tf_transform_output,
-    #                          is_train=True, batch_size=num_workers*_TRAIN_BATCH_SIZE)
                               is_train=True, batch_size=_TRAIN_BATCH_SIZE)
     eval_dataset = _input_fn(fn_args.eval_files, tf_transform_output,
-    #                         is_train=False, batch_size=num_workers*_EVAL_BATCH_SIZE)
                               is_train=False, batch_size=_EVAL_BATCH_SIZE)
-    # train_dataset = multi_worker_strategy.experimental_distribute_dataset(train_dataset)
-    # eval_dataset = multi_worker_strategy.experimental_distribute_dataset(eval_dataset)
 
     model, base_model = _build_keras_model()
 

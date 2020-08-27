@@ -24,9 +24,6 @@ version of TF2 will be installed automatically).
 
 ```
 pip install -e cifar10/
-# The following is needed until tensorflow-model-analysis 0.23.0 is released
-pip uninstall tensorflow-model-analysis
-pip install git+https://github.com/tensorflow/model-analysis.git#egg=tensorflow_model_analysis
 ```
 
 ### Dataset
