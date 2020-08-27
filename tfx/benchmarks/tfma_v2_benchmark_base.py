@@ -38,6 +38,7 @@ import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
 from tfx.benchmarks import constants
+from tfx_bsl.beam import share
 from tfx_bsl.tfxio import test_util
 
 # Maximum number of examples to read from the dataset.
