@@ -42,11 +42,11 @@ class _TempPath(types.Artifact):
 
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
-  
+
   @classmethod
-  def setUpClass(self):
-    self._temp_data_dir = tempfile.mkdtemp()
-    
+  def setUpClass(cls):
+    cls._temp_data_dir = tempfile.mkdtemp()
+
     source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
@@ -55,26 +55,26 @@ class ExecutorTest(tft_unit.TransformTestCase):
     source_module_dir = os.path.join(source_data_dir, 'module_file')
 
     io_utils.copy_dir(source_schema_dir,
-                      os.path.join(self._temp_data_dir, 'schema_gen'))
+                      os.path.join(cls._temp_data_dir, 'schema_gen'))
     io_utils.copy_dir(source_module_dir,
-                      os.path.join(self._temp_data_dir, 'module_file'))
+                      os.path.join(cls._temp_data_dir, 'module_file'))
 
-    self._artifact1_uri = os.path.join(self._temp_data_dir, 'csv_example_gen1')
-    io_utils.copy_dir(source_example_dir, self._artifact1_uri)
-    self._artifact2_uri = os.path.join(self._temp_data_dir, 'csv_example_gen2')
-    io_utils.copy_dir(source_example_dir, self._artifact2_uri)
-    
+    cls._artifact1_uri = os.path.join(cls._temp_data_dir, 'csv_example_gen1')
+    io_utils.copy_dir(source_example_dir, cls._artifact1_uri)
+    cls._artifact2_uri = os.path.join(cls._temp_data_dir, 'csv_example_gen2')
+    io_utils.copy_dir(source_example_dir, cls._artifact2_uri)
+
     # Duplicate the number of train and eval records such that
     # second artifact has twice as many as first.
-    artifact2_train_dir = os.path.join(self._artifact2_uri, 'train')
+    artifact2_train_dir = os.path.join(cls._artifact2_uri, 'train')
     for filename in tf.io.gfile.listdir(artifact2_train_dir):
-      io_utils.copy_file(os.path.join(artifact2_train_dir, filename), 
-          os.path.join(artifact2_train_dir, 'dup_' + filename))
+      io_utils.copy_file(os.path.join(artifact2_train_dir, filename),
+                         os.path.join(artifact2_train_dir, 'dup_' + filename))
 
-    artifact2_eval_dir = os.path.join(self._artifact2_uri, 'eval')
+    artifact2_eval_dir = os.path.join(cls._artifact2_uri, 'eval')
     for filename in tf.io.gfile.listdir(artifact2_eval_dir):
-      io_utils.copy_file(os.path.join(artifact2_eval_dir, filename), 
-          os.path.join(artifact2_eval_dir, 'dup_' + filename))
+      io_utils.copy_file(os.path.join(artifact2_eval_dir, filename),
+                         os.path.join(artifact2_eval_dir, 'dup_' + filename))
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
@@ -172,22 +172,42 @@ class ExecutorTest(tft_unit.TransformTestCase):
       expected_outputs.append('transformed_examples')
       for example, transformed_example in zip(
           example_artifacts, transformed_example_artifacts):
-        # TODO(jjma): add tests to compare tf.records of exmaples and transform example
-        train_pattern = os.path.join(transformed_example.uri, 'train', '*')
-        train_files = tf.io.gfile.glob(train_pattern)
-        self.assertNotEqual(0, len(train_files))
-        train_dataset = tf.data.TFRecordDataset(
-            train_files, compression_type='GZIP')
-        train_count = sum(1 for record in train_dataset)
+        examples_train_pattern = os.path.join(example.uri, 'train', '*')
+        examples_train_files = tf.io.gfile.glob(examples_train_pattern)
+        transformed_train_pattern = os.path.join(transformed_example.uri,
+                                                 'train', '*')
+        transformed_train_files = tf.io.gfile.glob(transformed_train_pattern)
+        self.assertNotEqual(0, len(transformed_train_files))
 
-        eval_pattern = os.path.join(transformed_example.uri, 'eval', '*')
-        eval_files = tf.io.gfile.glob(eval_pattern)
-        self.assertNotEqual(0, len(eval_files))
-        eval_dataset = tf.data.TFRecordDataset(
-            eval_files, compression_type='GZIP')
-        eval_count = sum(1 for record in eval_dataset)
+        examples_train_dataset = tf.data.TFRecordDataset(
+            examples_train_files, compression_type='GZIP')
+        examples_train_count = sum(1 for record in examples_train_dataset)
 
-        self.assertGreater(train_count, eval_count)
+        transformed_train_dataset = tf.data.TFRecordDataset(
+            transformed_train_files, compression_type='GZIP')
+        transformed_train_count = sum(1 for record in transformed_train_dataset)
+
+        examples_eval_pattern = os.path.join(example.uri, 'eval', '*')
+        examples_eval_files = tf.io.gfile.glob(examples_eval_pattern)
+        transformed_eval_pattern = os.path.join(transformed_example.uri, 'eval',
+                                                '*')
+        transformed_eval_files = tf.io.gfile.glob(transformed_eval_pattern)
+        self.assertNotEqual(0, len(transformed_eval_files))
+
+        examples_eval_dataset = tf.data.TFRecordDataset(
+            examples_eval_files, compression_type='GZIP')
+        examples_eval_count = sum(1 for record in examples_eval_dataset)
+
+        transformed_eval_dataset = tf.data.TFRecordDataset(
+            transformed_eval_files, compression_type='GZIP')
+        transformed_eval_count = sum(1 for record in transformed_eval_dataset)
+
+        # Check for each split that it contains the same number of records in
+        # the input artifact as in the output artifact (i.e 1-to-1 mapping is
+        # preserved).
+        self.assertEqual(examples_train_count, transformed_train_count)
+        self.assertEqual(examples_eval_count, transformed_eval_count)
+        self.assertGreater(transformed_train_count, transformed_eval_count)
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its

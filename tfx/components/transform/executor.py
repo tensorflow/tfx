@@ -331,7 +331,7 @@ class Executor(base_executor.BaseExecutor):
       splits_config.analyze.append('train')
       split_names = artifact_utils.decode_split_names(
           input_dict[EXAMPLES_KEY][0].split_names)
-      
+
       # Verify that all input artifacts have the same set of split names.
       split_names_set = set(split_names)
       for artifact in input_dict[EXAMPLES_KEY]:
@@ -341,7 +341,7 @@ class Executor(base_executor.BaseExecutor):
           raise ValueError(
               "Not all input artifacts have the same split names: (%s, %s)"
               % (split_names, artifact_split_names))
-      
+
       splits_config.transform.extend(split_names)
       absl.logging.info(
           "Analyze the 'train' split and transform all splits when "
