@@ -5,8 +5,10 @@ consumes external files/services to generate Examples which will be read by
 other TFX components. It also provides consistent and configurable partition,
 and shuffles the dataset for ML best practice.
 
-*   Consumes: Data from external data sources such as CSV, `TFRecord` and BigQuery
-*   Emits: `tf.Example` records
+*   Consumes: Data from external data sources such as CSV, `TFRecord`, Avro,
+    Parquet and BigQuery
+*   Emits: `tf.Example` records, `tf.SequenceExample` records, or proto format,
+    depends on the payload format.
 
 ## ExampleGen and Other Components
 
@@ -19,10 +21,10 @@ library, and ultimately to deployment targets during inference.
 
 ## How to use an ExampleGen Component
 
-For supported data sources (currently, CSV files, TFRecord files with TF Example
-data format, and results of BigQuery queries) the ExampleGen pipeline component
-is typically very easy to deploy and requires little customization. Typical code
-looks like this:
+For supported data sources (currently, CSV files, TFRecord files with
+`tf.Example`, `tf.SequenceExample` and proto format, and results of BigQuery
+queries) the ExampleGen pipeline component can be used directly in deploy and
+requires little customization. For example:
 
 ```python
 from tfx.utils.dsl_utils import csv_input
@@ -32,7 +34,7 @@ examples = csv_input(os.path.join(base_dir, 'data/simple'))
 example_gen = CsvExampleGen(input=examples)
 ```
 
-or like below for importing external tf Examples directly:
+or like below for importing external TFRecord with `tf.Example` directly:
 
 ```python
 from tfx.utils.dsl_utils import tfrecord_input
@@ -283,4 +285,130 @@ from tfx.examples.custom_components.presto_example_gen.presto_component.componen
 
 presto_config = presto_config_pb2.PrestoConnConfig(host='localhost', port=8080)
 example_gen = PrestoExampleGen(presto_config, query='SELECT * FROM chicago_taxi_trips')
+```
+
+## ExampleGen Downstream Components
+
+Custom split configuration is supported for downstream components.
+
+### StatisticsGen
+
+Default behavior is to perform stats generation for all splits.
+
+To exclude any splits, set the `exclude_splits` for StatisticsGen component. For
+example:
+
+```python
+from tfx import components
+
+...
+
+# Exclude the 'eval' split.
+statistics_gen = components.StatisticsGen(
+             examples=example_gen.outputs['examples'],
+             exclude_splits=['eval'])
+```
+
+### SchemaGen
+
+Default behavior is to generate a schema based on all splits.
+
+To exclude any splits, set the `exclude_splits` for SchemaGen component. For
+example:
+
+```python
+from tfx import components
+
+...
+
+# Exclude the 'eval' split.
+schema_gen = components.SchemaGen(
+             statistics=statistics_gen.outputs['statistics'],
+             exclude_splits=['eval'])
+```
+
+### ExampleValidator
+
+Default behavior is to validate the statistics of all splits on input examples
+against a schema.
+
+To exclude any splits, set the `exclude_splits` for ExampleValidator component.
+For example:
+
+```python
+from tfx import components
+
+...
+
+# Exclude the 'eval' split.
+example_validator = components.ExampleValidator(
+             statistics=statistics_gen.outputs['statistics'],
+             schema=schema_gen.outputs['schema'],
+             exclude_splits=['eval'])
+```
+
+### Transform
+
+Default behavior is analyze and produce the metadata from the 'train' split and
+transform all splits.
+
+To specify the analyze splits and transform splits, set the `splits_config` for
+Transform component. For example:
+
+```python
+from tfx import components
+from  tfx.proto import transform_pb2
+
+...
+
+# Analyze the 'train' split and transform all splits.
+transform = components.Transform(
+      examples=example_gen.outputs['examples'],
+      schema=schema_gen.outputs['schema'],
+      module_file=_taxi_module_file,
+      splits_config=transform_pb2.SplitsConfig(analyze=['train'],
+                                               transform=['train', 'eval']))
+```
+
+### Trainer and Tuner
+
+Default behavior is train on the 'train' split and evaluate on the 'eval' split.
+
+To specify the train splits and evaluate splits, set the `train_args` and
+`eval_args` for Trainer component. For example:
+
+```python
+from tfx import components
+from  tfx.proto import trainer_pb2
+
+...
+
+# Train on the 'train' split and evaluate on the 'eval' split.
+Trainer = components.Trainer(
+      module_file=_taxi_module_file,
+      examples=transform.outputs['transformed_examples'],
+      schema=schema_gen.outputs['schema'],
+      transform_graph=transform.outputs['transform_graph'],
+      train_args=trainer_pb2.TrainArgs(splits=['train'], num_steps=10000),
+      eval_args=trainer_pb2.EvalArgs(splits=['eval'], num_steps=5000))
+```
+
+### Evaluator
+
+Default behavior is provide metrics computed on the 'eval' split.
+
+To compute a evaluation statistics on custom splits, set the `example_splits`
+for Evaluator component. For example:
+
+```python
+from tfx import components
+from  tfx.proto import evaluator_pb2
+
+...
+
+# Compute metrics on the 'eval1' split and the 'eval2' split.
+Trainer = components.Evaluator(
+      examples=example_gen.outputs['examples'],
+      model=trainer.outputs['model'],
+      example_splits=['eval1', 'eval2'])
 ```

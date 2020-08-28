@@ -12,24 +12,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.components.example_gen.csv_example_gen.component."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import tensorflow as tf
-from tfx.components.example_gen.csv_example_gen import component
-from tfx.types import standard_artifacts
-
-
-class ComponentTest(tf.test.TestCase):
-
-  def testConstruct(self):
-    csv_example_gen = component.CsvExampleGen(input_base='path')
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     csv_example_gen.outputs['examples'].type_name)
-
-
-if __name__ == '__main__':
-  tf.test.main()

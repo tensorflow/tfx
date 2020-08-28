@@ -132,7 +132,10 @@ class Pipeline(object):
       with open(pipeline_args_path, 'w') as f:
         json.dump(pipeline_args, f)
 
-    # TODO(kshivvy): please remove this.
+    # TODO(ccy): Currently, this option is used by the Beam fusion optimization
+    # since it connects upstream and downstream nodes manually. We should
+    # remove this flag (defaulting to the True behavior) once we are able to
+    # more comprehensively rewrite all inputs and outputs in a clean way.
     self.connect_nodes = True  # pylint: disable=g-missing-from-attributes
     # Calls property setter.
     self.components = components or []
@@ -162,7 +165,6 @@ class Pipeline(object):
         output_channel.producer_component_id = component.id
         output_channel.output_key = key
 
-    # TODO(kshivvy): please remove this.
     # Connects nodes based on producer map.
     if self.connect_nodes:
       for component in deduped_components:

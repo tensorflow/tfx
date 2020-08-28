@@ -83,9 +83,7 @@ class TfGraphDataViewProvider(base_component.BaseComponent):
         transform components are declared in the same pipeline.
     """
     if data_view is None:
-      data_view = types.Channel(
-          type=standard_artifacts.DataView,
-          artifacts=[standard_artifacts.DataView()])
+      data_view = types.Channel(type=standard_artifacts.DataView)
     spec = _TfGraphDataViewProviderSpec(
         module_file=module_file,
         create_decoder_func=create_decoder_func,
