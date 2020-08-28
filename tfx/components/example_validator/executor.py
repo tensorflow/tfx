@@ -167,8 +167,6 @@ class Executor(base_executor.BaseExecutor):
         inputs, labels.SERVING_STATISTICS, strict=False)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
-    # The mismatch between serving_statistics and serving_statistics is
-    # intentional.
     anomalies = tfdv.validate_statistics(
         stats, schema, serving_statistics=serving_statistics)
     io_utils.write_pbtxt_file(
