@@ -24,7 +24,7 @@ from typing import List, Set, Mapping
 from tfx.components.base import base_node
 from tfx.components.base import base_executor
 from tfx.orchestration.pipeline import Pipeline
-from fused_component.component import FusedComponent
+from tfx.orchestration.experimental.optimizations.fused_component.component import FusedComponent
 
 
 class BeamFusionOptimizer(object):

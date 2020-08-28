@@ -35,7 +35,6 @@ from tfx.components.example_gen import utils
 from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
-import tfx_bsl
 
 from google.protobuf import json_format
 
@@ -98,19 +97,25 @@ def _PartitionFn(
 @beam.ptransform_fn
 @beam.typehints.with_input_types(Union[tf.train.Example,
                                        tf.train.SequenceExample, bytes])
+@beam.typehints.with_output_types(bytes)
+def _MaybeSerialize(example_split: beam.pvalue.PCollection):
+  def _MaybeSerializeFn(x):
+    if isinstance(x, (tf.train.Example, tf.train.SequenceExample)):
+      return x.SerializeToString()
+    return x
+
+  return example_split | 'MaybeSerialize' >> beam.Map(_MaybeSerializeFn)
+
+
+@beam.ptransform_fn
+@beam.typehints.with_input_types(bytes)
 @beam.typehints.with_output_types(beam.pvalue.PDone)
 def _WriteSplit(example_split: beam.pvalue.PCollection,
                 output_split_path: Text) -> beam.pvalue.PDone:
   """Shuffles and writes output split as serialized records in TFRecord."""
 
-  def _MaybeSerialize(x):
-    if isinstance(x, (tf.train.Example, tf.train.SequenceExample)):
-      return x.SerializeToString()
-    return x
-
   return (example_split
           # TODO(jyzhao): make shuffle optional.
-          | 'MaybeSerialize' >> beam.Map(_MaybeSerialize)
           | 'Shuffle' >> beam.transforms.Reshuffle()
           # TODO(jyzhao): multiple output format.
           | 'Write' >> beam.io.WriteToTFRecord(
@@ -226,21 +231,26 @@ class BaseExampleGenExecutor(
       for split in output_config.split_config.splits:
         total_buckets += split.hash_buckets
         buckets.append(total_buckets)
-      example_splits = (
+      example_splits_unserialized = (
           pipeline
           | 'InputToRecord' >>
           # pylint: disable=no-value-for-parameter
           input_to_record(exec_properties, input_config.splits[0].pattern)
           | 'SplitData' >> beam.Partition(_PartitionFn, len(buckets), buckets,
                                           output_config.split_config))
+      for i, pcoll in enumerate(example_splits_unserialized):
+        example_splits.append(
+            pcoll
+            | 'MaybeSerialize[{}]'.format(i) >> _MaybeSerialize())
     else:
       # Use input splits.
       for split in input_config.splits:
         examples = (
             pipeline
-            | 'InputToRecord[{}]'.format(split.name) >>
-            # pylint: disable=no-value-for-parameter
-            input_to_record(exec_properties, split.pattern))
+            | ('InputToRecord[{}]'.format(split.name) >>
+               # pylint: disable=no-value-for-parameter
+               input_to_record(exec_properties, split.pattern))
+            | 'MaybeSerialize[{}]'.format(split.name) >> _MaybeSerialize())
         example_splits.append(examples)
 
     result = {}
@@ -262,7 +272,7 @@ class BaseExampleGenExecutor(
     input_signature = {}
     output_signature = {}
     for split in split_names:
-      output_signature[(EXAMPLES_KEY, 'batched:%s' % split)] = beam.PTransform
+      output_signature[(EXAMPLES_KEY, split)] = bytes
 
     return input_signature, output_signature
 
@@ -298,12 +308,6 @@ class BaseExampleGenExecutor(
     beam_outputs = {}
     for split_name, pcoll in example_splits.items():
       beam_outputs[(EXAMPLES_KEY, split_name)] = pcoll
-    #   beam_outputs[(EXAMPLES_KEY, 'batched:%s' % split_name)] = (
-    #     pcoll
-    #     | 'TFXIOConvert_%s' % split_name >> tfx_bsl.tfxio.raw_tf_record.RawBeamRecordTFXIO(
-    #           physical_format='tfrecord',
-    #           raw_record_column_name='raw_example',
-    #           telemetry_descriptors=[]).RawRecordToRecordBatch())
     return beam_outputs
 
   def write_outputs(self, pipeline: beam.Pipeline,
@@ -315,8 +319,6 @@ class BaseExampleGenExecutor(
     # pylint: disable=expression-not-assigned, no-value-for-parameter
     for key, example_split in beam_outputs.items():
       split_name = key[1]
-      if split_name.startswith('batched:'):
-        continue
       (example_split
        | 'WriteSplit[{}]'.format(split_name) >> _WriteSplit(
            artifact_utils.get_split_uri(output_dict[utils.EXAMPLES_KEY],

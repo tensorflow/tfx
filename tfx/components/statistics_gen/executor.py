@@ -19,6 +19,7 @@ from absl import logging
 import apache_beam as beam
 from tensorflow_data_validation.api import stats_api
 from tensorflow_data_validation.statistics import stats_options as options
+from tensorflow_metadata.proto.v0 import statistics_pb2
 
 from tfx import types
 from tfx.components.base import base_executor
@@ -26,6 +27,7 @@ from tfx.components.util import tfxio_utils
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
+from tfx_bsl.tfxio.raw_tf_record import RawBeamRecordTFXIO
 from tfx_bsl.tfxio.tfxio import TFXIO
 
 # TODO(b/162532479): switch to support List[Text] exclusively, once tfx-bsl
@@ -118,8 +120,8 @@ class Executor(base_executor.FuseableBeamExecutor):
     split_and_tfxio = self._get_split_and_tfxio(
         input_dict, output_dict, exec_properties)
     for split, _ in split_and_tfxio:
-      input_signature[(EXAMPLES_KEY, 'batched:%s' % split)] = beam.PTransform
-      output_signature[(STATISTICS_KEY, split)] = beam.pvalue.PCollection
+      input_signature[(EXAMPLES_KEY, split)] = bytes
+      output_signature[(STATISTICS_KEY, split)] = statistics_pb2.DatasetFeatureStatisticsList
 
     return input_signature, output_signature
 
@@ -133,9 +135,10 @@ class Executor(base_executor.FuseableBeamExecutor):
         input_dict, output_dict, exec_properties)
     for split, tfxio in split_and_tfxio:
       logging.info('Generating statistics for split %s.', split)
-      beam_inputs[(EXAMPLES_KEY, 'batched:%s' % split)] = (
+      beam_inputs[(EXAMPLES_KEY, split)] = None
+      beam_inputs[(EXAMPLES_KEY, 'pyarrow_records:%s' % split)] = (
           pipeline
-          | 'TFXIORead[%s]' % split >> tfxio.BeamSource())
+          | 'TFXIORead[{}]'.format(split) >> tfxio.BeamSource())
 
     return beam_inputs
 
@@ -168,8 +171,27 @@ class Executor(base_executor.FuseableBeamExecutor):
     split_and_tfxio = self._get_split_and_tfxio(
         input_dict, output_dict, exec_properties)
     for split, _ in split_and_tfxio:
+      # TODO(ccy): Currently, a workaround is needed here to allow for
+      # PCollection fusion with an upstream ExampleGen instance. The upstream
+      # PCollection is a PCollection of byte-encoded TFRecords, but our
+      # input here provided by tfxio's BeamSource does not produce an
+      # intermediate PCollection of bytes that can substitute directly. The
+      # workaround right now is to special-case the input here, so that the
+      # PCollection of PyArrow batches of TFRecords directly when this
+      # component is not fused.
+      passthrough_key = 'pyarrow_records:%s' % split
+      if (EXAMPLES_KEY, passthrough_key) in beam_inputs:
+        input_pcoll = beam_inputs[(EXAMPLES_KEY, passthrough_key)]
+      else:
+        input_pcoll = (beam_inputs[(EXAMPLES_KEY, split)]
+                       | 'TFXIOConvert_%s' % split >> (
+                           RawBeamRecordTFXIO(
+                               physical_format='tfrecord',
+                               raw_record_column_name='raw_example',
+                               telemetry_descriptors=_TELEMETRY_DESCRIPTORS
+                               ).RawRecordToRecordBatch()))
       beam_outputs[(STATISTICS_KEY, split)] = (
-          beam_inputs[(EXAMPLES_KEY, 'batched:%s' % split)]
+          input_pcoll
           | 'GenerateStatistics[%s]' % split >>
           stats_api.GenerateStatistics(stats_options))
     return beam_outputs

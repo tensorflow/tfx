@@ -172,7 +172,7 @@ class Executor(base_executor.BaseExecutor):
       if component in fusion_map:
         parent = fusion_map[component]
         if self._have_matching_beam_io_signatures(component, parent):
-          use_cached_inputs = False #TODO: Change to True
+          use_cached_inputs = True
 
       if use_cached_inputs:
         beam_inputs = beam_outputs_cache[fusion_map[component]]
