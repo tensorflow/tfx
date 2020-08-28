@@ -21,14 +21,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import enum
 import datetime
+import enum
 import os
 import re
 import time
-from absl import logging
 from typing import Callable, Dict, List, Optional, Text
 
+from absl import logging
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
 
@@ -185,15 +185,26 @@ def make_job_object(
     pod_labels: Dict[Text, Text] = None,
     service_account_name: Text = 'default',
 ) -> k8s_client.V1Job:
-  """Make a kubernetes Job object.
+  """Make a Kubernetes Job object with a single pod.
 
   See
   https://kubernetes.io/docs/concepts/workloads/controllers/job/#writing-a-job-spec
+
+  Args:
+    name: Name of job.
+    container_image: Name of container image.
+    command: Command to run.
+    namespace: Kubernetes namespace to contain this Job.
+    container_name: Name of the container.
+    pod_labels: Dictionary of metadata labels for the pod.
+
+  Returns:
+    `kubernetes.client.V1Job` object.
   """
   pod_labels = pod_labels or {}
   return k8s_client.V1Job(
-      api_version="batch/v1",
-      kind="Job",
+      api_version='batch/v1',
+      kind='Job',
       metadata=k8s_client.V1ObjectMeta(
           namespace=namespace,
           name=sanitize_pod_name(name),
@@ -201,9 +212,7 @@ def make_job_object(
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
           template=k8s_client.V1PodTemplateSpec(
-              metadata=k8s_client.V1ObjectMeta(
-                  labels=pod_labels,
-              ),
+              metadata=k8s_client.V1ObjectMeta(labels=pod_labels,),
               spec=k8s_client.V1PodSpec(
                   containers=[
                       k8s_client.V1Container(
@@ -216,8 +225,7 @@ def make_job_object(
                   service_account_name=service_account_name,
                   restart_policy=RestartPolicy.NEVER.value,
               ),
-          )
-      ),
+          )),
   )
 
 
@@ -248,7 +256,8 @@ def get_kfp_namespace() -> Text:
   try:
     return os.environ[KFP_NAMESPACE]
   except KeyError:
-    raise RuntimeError('Cannot determine KFP namespace from the environment.')
+    raise RuntimeError(
+        'Cannot determine KFP namespace from the environment.')
 
 
 def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
@@ -273,10 +282,12 @@ def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
 def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
             namespace: Text) -> Optional[k8s_client.V1Pod]:
   """Get a pod from Kubernetes metadata API.
+
   Args:
     core_api: Client of Core V1 API of Kubernetes API.
     pod_name: The name of the Pod.
     namespace: The namespace of the Pod.
+
   Returns:
     The found Pod object. None if it's not found.
   Raises:
@@ -299,18 +310,20 @@ def wait_pod(core_api: k8s_client.CoreV1Api,
              timeout_sec: int = 0,
              exponential_backoff: bool = False) -> k8s_client.V1Pod:
   """Wait for a Pod to meet an exit condition.
+
   Args:
     core_api: Client of Core V1 API of Kubernetes API.
     pod_name: The name of the Pod.
     namespace: The namespace of the Pod.
-    exit_condition_lambda: A lambda which will be called intervally to wait
-      for a Pod to exit. The function returns True to exit.
+    exit_condition_lambda: A lambda which will be called intervally to wait for
+      a Pod to exit. The function returns True to exit.
     condition_description: The description of the exit condition which will be
       set in the error message if the wait times out.
-    timeout_sec: Timeout in seconds to wait for pod to reach exit condition,
-      or 0 to wait for an unlimited duration. Defaults to unlimited.
+    timeout_sec: Timeout in seconds to wait for pod to reach exit condition, or
+      0 to wait for an unlimited duration. Defaults to unlimited.
     exponential_backoff: Whether to use exponential back off for polling.
       Defaults to False.
+
   Returns:
     The Pod object which meets the exit condition.
   Raises:

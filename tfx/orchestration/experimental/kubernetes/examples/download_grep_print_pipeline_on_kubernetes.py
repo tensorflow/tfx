@@ -22,12 +22,13 @@ from tfx.orchestration.test_pipelines.download_grep_print_pipeline import create
 _pipeline_name = 'download_grep_print_pipeline'
 
 # Directory and data locations (uses Google Cloud Storage).
-_pipeline_root = "gs://my-bucket"
+_pipeline_root = 'gs://my-bucket'
 
 absl.logging.set_verbosity(absl.logging.INFO)
 
 
 def _create_pipeline() -> pipeline_module.Pipeline:
+  """Create sample container component pipeline."""
 
   pipeline_name = _pipeline_name
   pipeline_root = _pipeline_root

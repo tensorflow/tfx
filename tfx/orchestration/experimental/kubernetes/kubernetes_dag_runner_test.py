@@ -13,11 +13,10 @@
 # limitations under the License.
 """Tests for tfx.orchestration.kubernetes.kubernetes_dag_runner."""
 
-import mock
-import tensorflow as tf
-from ml_metadata.proto import metadata_store_pb2
 from typing import Optional, Text
 
+import mock
+import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
@@ -26,6 +25,8 @@ from tfx.components.base import executor_spec
 from tfx.orchestration import pipeline
 from tfx.orchestration.experimental.kubernetes import kubernetes_dag_runner
 from tfx.types.component_spec import ChannelParameter
+
+from ml_metadata.proto import metadata_store_pb2
 
 _executed_components = []
 
@@ -103,12 +104,14 @@ class _FakeComponentSpecE(types.ComponentSpec):
   }
   OUTPUTS = {'output': ChannelParameter(type=_ArtifactTypeE)}
 
+
 class _FakeComponentSpecF(types.ComponentSpec):
   PARAMETERS = {}
   INPUTS = {
       'a': ChannelParameter(type=_ArtifactTypeA),
   }
   OUTPUTS = {}
+
 
 class _FakeComponent(base_component.BaseComponent):
 
@@ -119,8 +122,8 @@ class _FakeComponent(base_component.BaseComponent):
                spec: types.ComponentSpec,
                instance_name: Optional[Text] = None):
     if instance_name is None:
-      instance_name = spec.__class__.__name__.replace(
-          '_FakeComponentSpec', '').lower()
+      instance_name = spec.__class__.__name__.replace('_FakeComponentSpec',
+                                                      '').lower()
     super(_FakeComponent, self).__init__(spec=spec, instance_name=instance_name)
 
 
@@ -198,14 +201,13 @@ class KubernetesDagRunnerTest(tf.test.TestCase):
         pipeline_name='x',
         pipeline_root='y',
         metadata_connection_config=metadata_store_pb2.ConnectionConfig(),
-        components=[
-            component_f1, component_f2, component_a
-        ])
+        components=[component_f1, component_f2, component_a])
     kubernetes_dag_runner.KubernetesDagRunner().run(test_pipeline)
     self.assertEqual(_executed_components, [
         '_FakeComponent.a.Wrapper', '_FakeComponent.f1.Wrapper',
         '_FakeComponent.f2.Wrapper'
     ])
+
 
 if __name__ == '__main__':
   tf.test.main()
