@@ -21,7 +21,7 @@ from __future__ import print_function
 import abc
 import json
 import os
-from typing import Any, Dict, List, Optional, Text
+from typing import Any, Dict, List, Optional, Text, Tuple, Type, Union
 
 import absl
 import apache_beam as beam
@@ -166,4 +166,129 @@ class EmptyExecutor(BaseExecutor):
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
          exec_properties: Dict[Text, Any]) -> None:
+    pass
+
+
+class FuseableBeamExecutor(BaseExecutor):
+  """Abstract TFX executor class for handling Beam-related logic.
+
+  Experimental: no backwards compatability guarantees.
+  """
+
+  @abc.abstractmethod
+  def beam_io_signature(
+      self,
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Tuple[Dict[Text, Type], Dict[Text, Type]]:  # pylint: disable=g-bare-generic
+    """Provides type signatures for component input and output PCollections.
+
+    Args:
+      input_dict: Input dict from input key to a list of Artifacts. These are
+        often outputs of another component in the pipeline and passed to the
+        component by the orchestration system.
+      output_dict: Output dict from output key to a list of Artifacts. These are
+        often consumed by a dependent component.
+      exec_properties: A dict of execution properties. These are inputs to
+        pipeline with primitive types (int, string, float) and fully
+        materialized when a pipeline is constructed. No dependency to other
+        components or later injection from orchestration systems is necessary or
+        possible on these values.
+
+    Returns:
+      A first dict from input artifact name/split key to the return type of
+      reading the inputs. A second dict from output artifact name/split key to
+      the return type of executing underlying component logic.
+    """
+    pass
+
+  @abc.abstractmethod
+  def read_inputs(
+      self,
+      pipeline: beam.Pipeline,
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
+    """Executes reads for underlying component implementation.
+
+    Args:
+      pipeline: Beam pipeline to use.
+      input_dict: Input dict from input key to a list of Artifacts. These are
+        often outputs of another component in the pipeline and passed to the
+        component by the orchestration system.
+      output_dict: Output dict from output key to a list of Artifacts. These are
+        often consumed by a dependent component.
+      exec_properties: A dict of execution properties. These are inputs to
+        pipeline with primitive types (int, string, float) and fully
+        materialized when a pipeline is constructed. No dependency to other
+        components or later injection from orchestration systems is necessary or
+        possible on these values.
+
+    Returns:
+      A dict from input artifact name/split key to PCollections from reads for
+      underlying component execution logic.
+    """
+    pass
+
+  @abc.abstractmethod
+  def run_component(
+      self, pipeline: beam.Pipeline,
+      beam_inputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
+    """Executes underlying component implementation, except for reads/writes.
+
+    Args:
+      pipeline: Beam pipeline to use.
+      beam_inputs: A Beam input dict from input key to PCollections. Output of
+        self.read_inputs().
+      input_dict: Input dict from input key to a list of Artifacts. These are
+        often outputs of another component in the pipeline and passed to the
+        component by the orchestration system.
+      output_dict: Output dict from output key to a list of Artifacts. These are
+        often consumed by a dependent component.
+      exec_properties: A dict of execution properties. These are inputs to
+        pipeline with primitive types (int, string, float) and fully
+        materialized when a pipeline is constructed. No dependency to other
+        components or later injection from orchestration systems is necessary or
+        possible on these values.
+
+    Returns:
+      A dict from output artifact name/split key to PCollections from underlying
+      component execution logic (not including reads/writes).
+    """
+    pass
+
+  @abc.abstractmethod
+  def write_outputs(
+      self,
+      pipeline: beam.Pipeline,
+      beam_outputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]) -> None:
+    """Executes writes for underlying component implementation.
+
+    Args:
+      pipeline: Beam pipeline to use.
+      beam_outputs: A Beam output dict from input key to PCollections. Output of
+        self.run_component().
+      input_dict: Input dict from input key to a list of Artifacts. These are
+        often outputs of another component in the pipeline and passed to the
+        component by the orchestration system.
+      output_dict: Output dict from output key to a list of Artifacts. These are
+        often consumed by a dependent component.
+      exec_properties: A dict of execution properties. These are inputs to
+        pipeline with primitive types (int, string, float) and fully
+        materialized when a pipeline is constructed. No dependency to other
+        components or later injection from orchestration systems is necessary or
+        possible on these values.
+
+    Returns:
+      None
+    """
     pass
