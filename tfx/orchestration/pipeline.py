@@ -27,6 +27,7 @@ from typing import List, Optional, Text
 from absl import logging
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
+from tfx.proto.orchestration import pipeline_pb2
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -38,7 +39,6 @@ MAX_PIPELINE_NAME_LENGTH = 63
 
 # Name of pipeline_root parameter.
 _PIPELINE_ROOT = 'pipeline-root'
-
 
 # Pipeline root is by default specified as a RuntimeParameter when runnning on
 # KubeflowDagRunner. This constant offers users an easy access to the pipeline
@@ -68,6 +68,8 @@ class Pipeline(object):
       properties of the pipeline.
     enable_cache: Whether or not cache is enabled for this run.
     metadata_connection_config: The config to connect to ML metadata.
+    execution_mode: Execution mode of the pipeline. Currently only support
+      synchronous execution mode.
     beam_pipeline_args: Pipeline arguments for Beam powered Components.
     additional_pipeline_args: Other pipeline args.
   """
@@ -103,6 +105,9 @@ class Pipeline(object):
         pipeline_name=pipeline_name, pipeline_root=pipeline_root)
     self.enable_cache = enable_cache
     self.metadata_connection_config = metadata_connection_config
+    # TODO(b/166125012): Remove this hardcoded once we support asynchronous
+    # execution mode.
+    self.execution_mode = pipeline_pb2.Pipeline.ExecutionMode.SYNC
 
     self.beam_pipeline_args = beam_pipeline_args or []
 
@@ -127,7 +132,8 @@ class Pipeline(object):
       with open(pipeline_args_path, 'w') as f:
         json.dump(pipeline_args, f)
 
-    self.connect_nodes = True
+    # TODO(kshivvy): please remove this.
+    self.connect_nodes = True  # pylint: disable=g-missing-from-attributes
     # Calls property setter.
     self.components = components or []
 
@@ -155,12 +161,8 @@ class Pipeline(object):
         producer_map[output_channel] = component
         output_channel.producer_component_id = component.id
         output_channel.output_key = key
-        # TODO(ruoyu): Remove after switching to context-based resolution.
-        for artifact in output_channel.get():
-          artifact.name = key
-          artifact.pipeline_name = self.pipeline_info.pipeline_name
-          artifact.producer_component = component.id
 
+    # TODO(kshivvy): please remove this.
     # Connects nodes based on producer map.
     if self.connect_nodes:
       for component in deduped_components:

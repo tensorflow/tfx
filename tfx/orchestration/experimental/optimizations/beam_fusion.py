@@ -21,14 +21,14 @@ from __future__ import unicode_literals
 
 from typing import List, Set, Mapping
 
-from tfx.components.base import base_node
 from tfx.components.base import base_executor
-from tfx.orchestration.pipeline import Pipeline
+from tfx.components.base import base_node
 from tfx.orchestration.experimental.optimizations.fused_component.component import FusedComponent
+from tfx.orchestration.pipeline import Pipeline
 
 
 class BeamFusionOptimizer(object):
-  """Optimizer for TFX pipelines, utilizing Beam Fusion"""
+  """Optimizer for TFX pipelines, utilizing Beam Fusion."""
 
   def __init__(self, pipeline: Pipeline):
     self.pipeline = pipeline
@@ -42,9 +42,9 @@ class BeamFusionOptimizer(object):
     fuseable_subgraphs = self.get_fuseable_subgraphs()
     self.modify_pipeline_exeuction_graph(fuseable_subgraphs)
 
-  def _topologically_sort(self,
-                          components: List[base_node.BaseNode],
+  def _topologically_sort(self, components: List[base_node.BaseNode],
                           sources: List[base_node.BaseNode]):
+    """Topologically sort a list of components."""
     # Determine the indegree for each component w.r.t the current subgraph
     in_degrees = {}
     for component in components:
@@ -79,10 +79,9 @@ class BeamFusionOptimizer(object):
     return sorted_components
 
   def _get_intersecting_subgraph(
-      self,
-      intersecting_component: base_node.BaseNode,
+      self, intersecting_component: base_node.BaseNode,
       fuseable_subgraphs: List[List[base_node.BaseNode]]):
-
+    """Get subgraph containing given component, if any."""
     intersecting_subgraph = None
     for subgraph in fuseable_subgraphs:
       if intersecting_component in subgraph:
@@ -97,13 +96,14 @@ class BeamFusionOptimizer(object):
 
   def _is_fuseable(self, child: base_node.BaseNode,
                    current_subgraph: List[base_node.BaseNode]):
+    """Determine if node is fusable to a given subgraph."""
     is_fuseable = True
 
     # Conducts a BFS to check that every parent not in the subgraph does not
     # have an ancestor in the subgraph
     queue = []
     for parent in child.upstream_nodes:
-      if not parent in current_subgraph:
+      if parent not in current_subgraph:
         queue.append(parent)
 
     while is_fuseable and queue:
@@ -118,11 +118,10 @@ class BeamFusionOptimizer(object):
     return is_fuseable
 
   def _build_subgraph_from_source(
-      self,
-      source: base_node.BaseNode,
+      self, source: base_node.BaseNode,
       fuseable_subgraphs: List[List[base_node.BaseNode]],
       visited: Set[base_node.BaseNode]):
-
+    """Build subgraph from a given source node."""
     subgraph = []
 
     if source in visited:
@@ -186,13 +185,13 @@ class BeamFusionOptimizer(object):
           source, fuseable_subgraphs, visited)
 
     # Topologically sort all the subgraphs
-    for i in range(len(fuseable_subgraphs)): # pylint: disable=consider-using-enumerate
+    for i in range(len(fuseable_subgraphs)):  # pylint: disable=consider-using-enumerate
       fuseable_subgraphs[i] = self._topologically_sort(fuseable_subgraphs[i],
                                                        candidate_sources)
     return fuseable_subgraphs
 
   def get_subgraph_sources(self, subgraph: List[base_node.BaseNode]):
-    """Finds sources (components with no parents that are Apache Beam based components)"""
+    """Finds sources (components with no parents that are Beam components)."""
     subgraph_sources = set()
 
     for component in subgraph:
@@ -230,10 +229,8 @@ class BeamFusionOptimizer(object):
 
     return subgraph_sinks
 
-  def _in_fused_component(
-      self,
-      component: base_node.BaseNode,
-      fused_components: List[FusedComponent]):
+  def _in_fused_component(self, component: base_node.BaseNode,
+                          fused_components: List[FusedComponent]):
 
     for fused_component in fused_components:
       if fused_component.subgraph_contains_component(component):
@@ -242,9 +239,9 @@ class BeamFusionOptimizer(object):
     return False
 
   def _get_source_and_sink_maps(
-      self,
-      fused_components: List[FusedComponent],
+      self, fused_components: List[FusedComponent],
       fuseable_subgraphs: List[List[base_node.BaseNode]]):
+    """Get map of source and sink nodes."""
 
     sources_map = {}
     sinks_map = {}
@@ -269,11 +266,11 @@ class BeamFusionOptimizer(object):
     return sources_map, sinks_map
 
   def _rewire_pipeline_graph(
-      self,
-      sources_map: Mapping[FusedComponent, List[base_node.BaseNode]],
+      self, sources_map: Mapping[FusedComponent, List[base_node.BaseNode]],
       sinks_map: Mapping[FusedComponent, List[base_node.BaseNode]],
       fused_components: List[FusedComponent],
       fuseable_subgraphs: List[List[base_node.BaseNode]]):
+    """Rewire the pipeline graph."""
 
     for i, fused_component in enumerate(fused_components):
       sources = sources_map[fused_component]
@@ -305,8 +302,7 @@ class BeamFusionOptimizer(object):
         child.add_upstream_node(fused_component)
 
   def modify_pipeline_exeuction_graph(
-      self,
-      fuseable_subgraphs: List[List[base_node.BaseNode]]):
+      self, fuseable_subgraphs: List[List[base_node.BaseNode]]):
     """Rewires the pipeline by switching subgraphs for FusedComponents."""
     # Construct a FusedComponent for each subgraph
     fused_components = []
@@ -322,8 +318,8 @@ class BeamFusionOptimizer(object):
         fused_components, fuseable_subgraphs)
 
     # Rewire the nodes to account for the FusedComponents
-    self._rewire_pipeline_graph(
-        sources_map, sinks_map, fused_components, fuseable_subgraphs)
+    self._rewire_pipeline_graph(sources_map, sinks_map, fused_components,
+                                fuseable_subgraphs)
 
     # Conduct a BFS to find our new components for the pipeline
     queue = []

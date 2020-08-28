@@ -21,7 +21,7 @@ from __future__ import print_function
 import abc
 import json
 import os
-from typing import Any, Dict, List, Optional, Text, Union, Tuple
+from typing import Any, Dict, List, Optional, Text, Tuple, Type, Union
 
 import absl
 import apache_beam as beam
@@ -170,17 +170,19 @@ class EmptyExecutor(BaseExecutor):
 
 
 class FuseableBeamExecutor(BaseExecutor):
-  """ Abstract TFX executor class for handling Beam-related logic.
-      Experimental: no backwards compatability guarantees.
+  """Abstract TFX executor class for handling Beam-related logic.
+
+  Experimental: no backwards compatability guarantees.
   """
 
   @abc.abstractmethod
-  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
-                        output_dict: Dict[Text, List[types.Artifact]],
-                        exec_properties: Dict[Text, Union[int, float, Text]]
-                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
-    """Provides input and output signatures for the input_dict and output_dict
-       of the underlying component.
+  def beam_io_signature(
+      self,
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Tuple[Dict[Text, Type], Dict[Text, Type]]:  # pylint: disable=g-bare-generic
+    """Provides type signatures for component input and output PCollections.
 
     Args:
       input_dict: Input dict from input key to a list of Artifacts. These are
@@ -202,14 +204,17 @@ class FuseableBeamExecutor(BaseExecutor):
     pass
 
   @abc.abstractmethod
-  def read_inputs(self, pipeline: beam.Pipeline,
-                  input_dict: Dict[Text, List[types.Artifact]],
-                  output_dict: Dict[Text, List[types.Artifact]],
-                  exec_properties: Dict[Text, Union[int, float, Text]]
-                  ) -> Dict[Text, beam.pvalue.PCollection]:
+  def read_inputs(
+      self,
+      pipeline: beam.Pipeline,
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
     """Executes reads for underlying component implementation.
 
     Args:
+      pipeline: Beam pipeline to use.
       input_dict: Input dict from input key to a list of Artifacts. These are
         often outputs of another component in the pipeline and passed to the
         component by the orchestration system.
@@ -228,17 +233,19 @@ class FuseableBeamExecutor(BaseExecutor):
     pass
 
   @abc.abstractmethod
-  def run_component(self, pipeline: beam.Pipeline,
-                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> Dict[Text, beam.pvalue.PCollection]:
+  def run_component(
+      self, pipeline: beam.Pipeline,
+      beam_inputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
     """Executes underlying component implementation, except for reads/writes.
 
     Args:
-      beam_inputs: A Beam input dict from input key to PCollections. Output
-        of self.read_inputs().
+      pipeline: Beam pipeline to use.
+      beam_inputs: A Beam input dict from input key to PCollections. Output of
+        self.read_inputs().
       input_dict: Input dict from input key to a list of Artifacts. These are
         often outputs of another component in the pipeline and passed to the
         component by the orchestration system.
@@ -257,17 +264,19 @@ class FuseableBeamExecutor(BaseExecutor):
     pass
 
   @abc.abstractmethod
-  def write_outputs(self, pipeline: beam.Pipeline,
-                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> None:
+  def write_outputs(
+      self,
+      pipeline: beam.Pipeline,
+      beam_outputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]) -> None:
     """Executes writes for underlying component implementation.
 
     Args:
-      beam_outputs: A Beam output dict from input key to PCollections. Output
-        of self.run_component().
+      pipeline: Beam pipeline to use.
+      beam_outputs: A Beam output dict from input key to PCollections. Output of
+        self.run_component().
       input_dict: Input dict from input key to a list of Artifacts. These are
         often outputs of another component in the pipeline and passed to the
         component by the orchestration system.
