@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.mlmd.context_lib."""
+import os
 import tensorflow as tf
+
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
@@ -26,10 +28,14 @@ class ContextLibTest(test_utils.TfxTest):
     super().setUp()
     self._connection_config = metadata_store_pb2.ConnectionConfig()
     self._connection_config.sqlite.SetInParent()
+    self._testdata_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), 'testdata')
 
   def testRegisterContexts(self):
     node_contexts = pipeline_pb2.NodeContexts()
-    self.load_proto_from_text('node_context_spec.pbtxt', node_contexts)
+    self.load_proto_from_text(
+        os.path.join(self._testdata_dir, 'node_context_spec.pbtxt'),
+        node_contexts)
     with metadata.Metadata(connection_config=self._connection_config) as m:
       context_lib.register_contexts_if_not_exists(
           metadata_handler=m, node_contexts=node_contexts)

@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Compiles a TFX pipeline or a component into a uDSL IR proto."""
-
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import re
 
@@ -38,8 +31,10 @@ from tfx.proto.orchestration import pipeline_pb2
 class _CompilerContext(object):
   """Encapsulates resources needed to compile a pipeline."""
 
-  def __init__(self, pipeline_info: data_types.PipelineInfo):
+  def __init__(self, pipeline_info: data_types.PipelineInfo,
+               execution_mode: pipeline_pb2.Pipeline.ExecutionMode):
     self.pipeline_info = pipeline_info
+    self.execution_mode = execution_mode
     self.node_pbs = {}
 
 
@@ -71,15 +66,25 @@ class Compiler(object):
     node.node_info.id = tfx_node.id
 
     # Step 2: Node Context
+    # Context for the pipeline, across pipeline runs.
     pipeline_context_pb = node.contexts.contexts.add()
     pipeline_context_pb.type.name = constants.PIPELINE_CONTEXT_TYPE_NAME
     pipeline_context_pb.name.field_value.string_value = compile_context.pipeline_info.pipeline_context_name
 
-    pipeline_run_context_pb = node.contexts.contexts.add()
-    pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
-    compiler_utils.set_runtime_parameter_pb(
-        pipeline_run_context_pb.name.runtime_parameter,
-        constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, str)
+    # Context for the current pipeline run.
+    if (compile_context.execution_mode ==
+        pipeline_pb2.Pipeline.ExecutionMode.SYNC):
+      pipeline_run_context_pb = node.contexts.contexts.add()
+      pipeline_run_context_pb.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
+      compiler_utils.set_runtime_parameter_pb(
+          pipeline_run_context_pb.name.runtime_parameter,
+          constants.PIPELINE_RUN_CONTEXT_TYPE_NAME, str)
+
+    # Context for the node, across pipeline runs.
+    node_context_pb = node.contexts.contexts.add()
+    node_context_pb.type.name = constants.NODE_CONTEXT_TYPE_NAME
+    node_context_pb.name.field_value.string_value = "{}.{}".format(
+        compile_context.pipeline_info.pipeline_context_name, node.node_info.id)
 
     # Step 3: Node inputs
     for key, value in tfx_node.inputs.items():
@@ -201,16 +206,19 @@ class Compiler(object):
     Returns:
       A Pipeline proto that encodes all necessary information of the pipeline.
     """
-    context = _CompilerContext(tfx_pipeline.pipeline_info)
+    context = _CompilerContext(tfx_pipeline.pipeline_info,
+                               tfx_pipeline.execution_mode)
     pipeline_pb = pipeline_pb2.Pipeline()
     pipeline_pb.pipeline_info.id = context.pipeline_info.pipeline_name
+    pipeline_pb.execution_mode = tfx_pipeline.execution_mode
     compiler_utils.set_runtime_parameter_pb(
         pipeline_pb.runtime_spec.pipeline_root.runtime_parameter,
         constants.PIPELINE_ROOT_PARAMETER_NAME, str,
         context.pipeline_info.pipeline_root)
-    compiler_utils.set_runtime_parameter_pb(
-        pipeline_pb.runtime_spec.pipeline_run_id.runtime_parameter,
-        constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
+    if pipeline_pb.execution_mode == pipeline_pb2.Pipeline.ExecutionMode.SYNC:
+      compiler_utils.set_runtime_parameter_pb(
+          pipeline_pb.runtime_spec.pipeline_run_id.runtime_parameter,
+          constants.PIPELINE_RUN_ID_PARAMETER_NAME, str)
 
     assert compiler_utils.ensure_topological_order(tfx_pipeline.components), (
         "Pipeline components are not topologically sorted.")
@@ -227,6 +235,4 @@ class Compiler(object):
       context.node_pbs[node.id] = node_pb
 
     pipeline_pb.deployment_config.Pack(deployment_config)
-    # Currently only synchronous mode is supported
-    pipeline_pb.execution_mode = pipeline_pb2.Pipeline.ExecutionMode.SYNC
     return pipeline_pb

@@ -21,7 +21,6 @@ from typing import Any, Callable, Dict, Text
 
 from tfx.components.base import base_component
 from tfx.dsl.component.experimental import container_component
-from tfx.dsl.component.experimental import executor_specs
 from tfx.dsl.component.experimental import placeholders
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types import standard_artifacts
@@ -101,8 +100,8 @@ def _convert_target_fields_to_kv_pair(parsed_dict: Dict[Text, Any]) -> None:
 
 def _get_command_line_argument_type(
     command: kfp_component_spec_pb2.StringOrPlaceholder
-) -> executor_specs.CommandlineArgumentType:
-  """Converts a container command to the corresponding type under executor_specs.CommandlineArgumentType.
+) -> placeholders.CommandlineArgumentType:
+  """Converts a container command to the corresponding type.
 
   Args:
     command: StringOrPlaceholder which encodes a container command.

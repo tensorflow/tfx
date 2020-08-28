@@ -19,14 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, Dict, List, Text
 
-import absl
 import mock
 import tensorflow as tf
 
-from tfx import types
-from tfx.experimental.pipeline_testing import base_stub_executor
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
@@ -38,27 +34,6 @@ from tfx.utils import io_utils
 from ml_metadata.proto import metadata_store_pb2
 
 
-class CustomStubExecutor(base_stub_executor.BaseStubExecutor):
-  """Example of custom stub executor.
-
-  This is intended to test whether custom component's Do() is executed.
-  At success, this executor would save a file "result.txt" containing
-  a string "custom component" in the output artifacts' uri. We don't
-  rely on the default behavior of base class `BaseStubExecutor` which
-  copies test data to the output artifact.
-  """
-
-  def Do(self, input_dict: Dict[Text, List[types.Artifact]],
-         output_dict: Dict[Text, List[types.Artifact]],
-         exec_properties: Dict[Text, Any]) -> None:
-    # Don't call super().Do() to skip copying.
-    absl.logging.info('Running CustomStubExecutor')
-    for artifact_list in output_dict.values():
-      for artifact in artifact_list:
-        custom_output_path = os.path.join(artifact.uri, 'result.txt')
-        io_utils.write_string_file(custom_output_path, 'custom component')
-
-
 class StubComponentLauncherTest(tf.test.TestCase):
 
   def setUp(self):
@@ -66,7 +41,6 @@ class StubComponentLauncherTest(tf.test.TestCase):
     test_dir = os.path.join(
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
-    # test_dir = "/Users/sujipark/tfx/test"
 
     connection_config = metadata_store_pb2.ConnectionConfig()
     connection_config.sqlite.SetInParent()
@@ -98,35 +72,6 @@ class StubComponentLauncherTest(tf.test.TestCase):
         pipeline_name='Test', pipeline_root=self.pipeline_root, run_id='123')
 
   @mock.patch.object(publisher, 'Publisher')
-  def testCustomStubExecutor(self, mock_publisher):
-    # verify whether custom stub executor substitution works
-    mock_publisher.return_value.publish_execution.return_value = {}
-
-    component_map = \
-        {self.component.id: CustomStubExecutor}
-
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=[],
-            stubbed_component_map=component_map)
-
-    launcher = my_stub_launcher.create(
-        component=self.component,
-        pipeline_info=self.pipeline_info,
-        driver_args=self.driver_args,
-        metadata_connection=self.metadata_connection,
-        beam_pipeline_args=[],
-        additional_pipeline_args={})
-    launcher.launch()
-
-    output_path = self.component.outputs[self.output_key].get()[0].uri
-    generated_file = os.path.join(output_path, 'result.txt')
-    self.assertTrue(tf.io.gfile.exists(generated_file))
-    contents = io_utils.read_string_file(generated_file)
-    self.assertEqual('custom component', contents)
-
-  @mock.patch.object(publisher, 'Publisher')
   def testStubExecutor(self, mock_publisher):
     # verify whether base stub executor substitution works
     mock_publisher.return_value.publish_execution.return_value = {}
@@ -134,15 +79,11 @@ class StubComponentLauncherTest(tf.test.TestCase):
     record_file = os.path.join(self.record_dir, self.component.id,
                                self.output_key, '0', 'recorded.txt')
     io_utils.write_string_file(record_file, 'hello world')
-    component_ids = [self.component.id]
 
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=component_ids,
-            stubbed_component_map={})
+    stub_component_launcher.StubComponentLauncher.initialize(
+        test_data_dir=self.record_dir, test_component_ids=[])
 
-    launcher = my_stub_launcher.create(
+    launcher = stub_component_launcher.StubComponentLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,
@@ -165,13 +106,10 @@ class StubComponentLauncherTest(tf.test.TestCase):
     io_utils.write_string_file(
         os.path.join(self.input_dir, 'result.txt'), 'test')
 
-    my_stub_launcher = \
-        stub_component_launcher.get_stub_launcher_class(
-            test_data_dir=self.record_dir,
-            stubbed_component_ids=[],
-            stubbed_component_map={})
+    stub_component_launcher.StubComponentLauncher.initialize(
+        test_data_dir=self.record_dir, test_component_ids=[self.component.id])
 
-    launcher = my_stub_launcher.create(
+    launcher = stub_component_launcher.StubComponentLauncher.create(
         component=self.component,
         pipeline_info=self.pipeline_info,
         driver_args=self.driver_args,

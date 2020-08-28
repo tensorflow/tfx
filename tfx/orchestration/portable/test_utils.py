@@ -34,10 +34,9 @@ class TfxTest(tf.test.TestCase):
         self._testMethodName)
     tf.io.gfile.makedirs(self.tmp_dir)
 
-  def load_proto_from_text(self, file_name: Text,
+  def load_proto_from_text(self, path: Text,
                            proto_message: message.Message) -> message.Message:
     """Loads proto message from serialized text."""
-    path = os.path.join(os.path.dirname(__file__), 'testdata', file_name)
     return io_utils.parse_pbtxt_file(path, proto_message)
 
   def assertProtoPartiallyEquals(

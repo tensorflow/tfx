@@ -23,14 +23,15 @@ from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import execution_result_pb2
+from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
+
+_PYTHON_CLASS_EXECUTABLE_SPEC = local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec
 
 
 class FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
-  SUPPORTED_EXECUTOR_SPEC_TYPE = [
-      pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec
-  ]
+  SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
   SUPPORTED_PLATFORM_SPEC_TYPE = None
 
   def run_executor(
@@ -41,9 +42,7 @@ class FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
 class FakeCrashingExecutorOperator(base_executor_operator.BaseExecutorOperator):
 
-  SUPPORTED_EXECUTOR_SPEC_TYPE = [
-      pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec
-  ]
+  SUPPORTED_EXECUTOR_SPEC_TYPE = [_PYTHON_CLASS_EXECUTABLE_SPEC]
   SUPPORTED_PLATFORM_SPEC_TYPE = None
 
   def run_executor(
@@ -60,7 +59,7 @@ class LauncherTest(test_utils.TfxTest):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self.id())
 
-    # Make sure multiple connections within a test always connect to the same
+    # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
     connection_config = metadata.sqlite_metadata_connection_config(
@@ -68,10 +67,14 @@ class LauncherTest(test_utils.TfxTest):
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
+    self._testdata_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
-    # Setup pipelines
+    # Sets up pipelines
     pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text('pipeline_for_launcher_test.pbtxt', pipeline)
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata',
+            'pipeline_for_launcher_test.pbtxt'), pipeline)
     self._pipeline_info = pipeline.pipeline_info
     self._pipeline_runtime_spec = pipeline.runtime_spec
     self._pipeline_runtime_spec.pipeline_root.field_value.string_value = (
@@ -79,14 +82,16 @@ class LauncherTest(test_utils.TfxTest):
     self._pipeline_runtime_spec.pipeline_run_id.field_value.string_value = (
         'test_run_0')
 
-    # Extract components
+    # Extracts components
     self._example_gen = pipeline.nodes[0].pipeline_node
     self._transform = pipeline.nodes[1].pipeline_node
     self._trainer = pipeline.nodes[2].pipeline_node
 
-    # Fake an executor operator
+    # Fakes an ExecutorSpec for Trainer
+    self._trainer_executor_spec = _PYTHON_CLASS_EXECUTABLE_SPEC()
+    # Fakes an executor operator
     self._test_executor_operators = {
-        pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec: FakeExecutorOperator
+        _PYTHON_CLASS_EXECUTABLE_SPEC: FakeExecutorOperator
     }
 
   @staticmethod
@@ -130,6 +135,7 @@ class LauncherTest(test_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
     execution_metadata = test_launcher.launch()
 
@@ -147,6 +153,7 @@ class LauncherTest(test_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
 
     with self._mlmd_connection as m:
@@ -169,6 +176,7 @@ class LauncherTest(test_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
     execution_metadata = test_launcher.launch()
 
@@ -214,6 +222,7 @@ class LauncherTest(test_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
     execution_metadata = test_launcher.launch()
 
@@ -275,6 +284,7 @@ class LauncherTest(test_utils.TfxTest):
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=self._test_executor_operators)
     execution_metadata = test_launcher.launch()
 
@@ -344,14 +354,14 @@ class LauncherTest(test_utils.TfxTest):
     LauncherTest.fakeUpstreamOutputs(self._mlmd_connection, self._example_gen,
                                      self._transform)
     executor_operators = {
-        pipeline_pb2.ExecutorSpec.PythonClassExecutorSpec:
-            FakeCrashingExecutorOperator
+        _PYTHON_CLASS_EXECUTABLE_SPEC: FakeCrashingExecutorOperator
     }
     test_launcher = launcher.Launcher(
         pipeline_node=self._trainer,
         mlmd_connection=self._mlmd_connection,
         pipeline_info=self._pipeline_info,
         pipeline_runtime_spec=self._pipeline_runtime_spec,
+        executor_spec=self._trainer_executor_spec,
         custom_executor_operators=executor_operators)
 
     try:

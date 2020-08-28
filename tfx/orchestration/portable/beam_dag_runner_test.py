@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.beam_dag_runner."""
-
+import os
 import mock
 import tensorflow as tf
+
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import beam_dag_runner
 from tfx.orchestration.portable import test_utils
@@ -46,8 +47,10 @@ class BeamDagRunnerTest(test_utils.TfxTest):
     super(BeamDagRunnerTest, self).setUp()
     # Setup pipelines
     self._pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text('pipeline_for_launcher_test.pbtxt',
-                              self._pipeline)
+    self.load_proto_from_text(
+        os.path.join(
+            os.path.dirname(__file__), 'testdata',
+            'pipeline_for_launcher_test.pbtxt'), self._pipeline)
 
   @mock.patch.multiple(
       beam_dag_runner,

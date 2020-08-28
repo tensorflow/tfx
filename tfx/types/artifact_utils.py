@@ -23,14 +23,13 @@ import itertools
 import json
 import os
 import re
-
 from typing import Dict, List, Optional, Text, Type
 
 import absl
-
-from ml_metadata.proto import metadata_store_pb2
 from tfx.types.artifact import _ArtifactType
 from tfx.types.artifact import Artifact
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 # TODO(ruoyu): Deprecate this function since it is no longer needed.

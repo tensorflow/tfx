@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for tfx.orchestration.portable.inputs_utils."""
+import os
 import tensorflow as tf
 
 from tfx import types
@@ -27,6 +28,10 @@ from ml_metadata.proto import metadata_store_pb2
 
 
 class InputsUtilsTest(test_utils.TfxTest):
+
+  def setUp(self):
+    super().setUp()
+    self._testdata_dir = os.path.join(os.path.dirname(__file__), 'testdata')
 
   def testResolveParameters(self):
     parameters = pipeline_pb2.NodeParameters()
@@ -65,8 +70,9 @@ class InputsUtilsTest(test_utils.TfxTest):
 
   def testResolverInputsArtifacts(self):
     pipeline = pipeline_pb2.Pipeline()
-    self.load_proto_from_text('pipeline_for_input_resolver_test.pbtxt',
-                              pipeline)
+    self.load_proto_from_text(
+        os.path.join(self._testdata_dir,
+                     'pipeline_for_input_resolver_test.pbtxt'), pipeline)
     my_example_gen = pipeline.nodes[0].pipeline_node
     another_example_gen = pipeline.nodes[1].pipeline_node
     my_transform = pipeline.nodes[2].pipeline_node
