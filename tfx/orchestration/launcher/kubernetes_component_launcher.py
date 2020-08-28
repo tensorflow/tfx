@@ -114,7 +114,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           'serviceAccountName'] = kube_utils.TFX_SERVICE_ACCOUNT
 
     logging.info('Looking for pod "%s:%s".', namespace, pod_name)
-    resp = self._get_pod(core_api, pod_name, namespace)
+    resp = kube_utils.get_pod(core_api, pod_name, namespace)
     if not resp:
       logging.info('Pod "%s:%s" does not exist. Creating it...',
                    namespace, pod_name)
@@ -129,7 +129,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
 
     # Wait up to 300 seconds for the pod to move from pending to another status.
     logging.info('Waiting for pod "%s:%s" to start.', namespace, pod_name)
-    self._wait_pod(
+    kube_utils.wait_pod(
         core_api,
         pod_name,
         namespace,
@@ -154,13 +154,12 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
       logging.info(log.decode().rstrip('\n'))
 
     # Wait indefinitely for the pod to complete.
-    resp = self._wait_pod(
+    resp = kube_utils.wait_pod(
         core_api,
         pod_name,
         namespace,
         exit_condition_lambda=kube_utils.pod_is_done,
-        condition_description='done state',
-        timeout_sec=0)
+        condition_description='done state')
 
     if resp.status.phase == kube_utils.PodPhase.FAILED.value:
       raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
@@ -218,68 +217,6 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
     })
     return pod_manifest
 
-  def _get_pod(self, core_api: client.CoreV1Api, pod_name: Text,
-               namespace: Text) -> Optional[client.V1Pod]:
-    """Get a pod from Kubernetes metadata API.
-
-    Args:
-      core_api: Client of Core V1 API of Kubernetes API.
-      pod_name: The name of the POD.
-      namespace: The namespace of the POD.
-
-    Returns:
-      The found POD object. None if it's not found.
-
-    Raises:
-      RuntimeError: When it sees unexpected errors from Kubernetes API.
-    """
-    try:
-      return core_api.read_namespaced_pod(name=pod_name, namespace=namespace)
-    except client.rest.ApiException as e:
-      if e.status != 404:
-        raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                           (e.reason, e.body))
-      return None
-
-  def _wait_pod(self,
-                core_api: client.CoreV1Api,
-                pod_name: Text,
-                namespace: Text,
-                exit_condition_lambda: Callable[[client.V1Pod], bool],
-                condition_description: Text,
-                timeout_sec: int) -> client.V1Pod:
-    """Wait for a POD to meet an exit condition.
-
-    Args:
-      core_api: Client of Core V1 API of Kubernetes API.
-      pod_name: The name of the POD.
-      namespace: The namespace of the POD.
-      exit_condition_lambda: A lambda which will be called intervally to wait
-        for a POD to exit. The function returns True to exit.
-      condition_description: The description of the exit condition which will be
-        set in the error message if the wait times out.
-      timeout_sec: The seconds for the function to wait. Waits indefinitely if
-        value is 0.
-
-    Returns:
-      The POD object which meets the exit condition.
-
-    Raises:
-      RuntimeError: when the function times out.
-    """
-    start_time = datetime.datetime.utcnow()
-    while True:
-      resp = self._get_pod(core_api, pod_name, namespace)
-      logging.info(resp.status.phase)
-      if exit_condition_lambda(resp):
-        return resp
-      elapsed_time = datetime.datetime.utcnow() - start_time
-      if timeout_sec != 0 and elapsed_time.seconds >= timeout_sec:
-        raise RuntimeError(
-            'Pod "%s:%s" does not reach "%s" within %s seconds.' %
-            (namespace, pod_name, condition_description, timeout_sec))
-      # TODO(hongyes): add exponential backoff here.
-      time.sleep(1)
 
   def _build_pod_name(self, execution_id: int) -> Text:
     if self._pipeline_info.run_id:
