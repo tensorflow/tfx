@@ -18,9 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import datetime
-import time
-from typing import Any, Callable, Dict, List, Optional, Text, cast
+from typing import Any, Dict, List, Optional, Text, cast
 
 from absl import logging
 from kubernetes import client
@@ -216,7 +214,6 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         'args': container_spec.args,
     })
     return pod_manifest
-
 
   def _build_pod_name(self, execution_id: int) -> Text:
     if self._pipeline_info.run_id:

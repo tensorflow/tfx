@@ -13,7 +13,6 @@
 # limitations under the License.
 """Chicago taxi example using TFX Kubernetes Orchestrator."""
 
-
 import os
 from typing import Text
 
@@ -39,16 +38,15 @@ from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
-
 _pipeline_name = 'chicago_taxi_beam'
 
 # Directory and data locations (uses Google Cloud Storage).
 _input_bucket = 'gs://my-bucket'
 _output_bucket = 'gs://my-bucket'
 
-# This example assumes that the taxi data is stored in a google cloud storage bucket
-# named taxi under gs://${_input_bucket}/data and the taxi utility function
-# is stored at # gs://${_input_bucket}/taxi_utils.py.
+# This example assumes that the taxi data is stored in a google cloud storage
+# bucket named taxi under `gs://${_input_bucket}/data` and the taxi utility
+# function is stored at `gs://${_input_bucket}/taxi_utils.py`.
 # Feel free to customize this as needed.
 _data_root = os.path.join(_input_bucket, 'data')
 _module_file = os.path.join(_input_bucket, 'taxi_utils.py')

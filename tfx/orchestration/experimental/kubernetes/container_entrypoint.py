@@ -23,15 +23,15 @@ import json
 import logging
 import sys
 
-from google.protobuf import json_format
-from ml_metadata.proto import metadata_store_pb2
-
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 from tfx.utils import telemetry_utils
+
+from google.protobuf import json_format
+from ml_metadata.proto import metadata_store_pb2
 
 
 def main():
@@ -45,8 +45,7 @@ def main():
   parser.add_argument('--run_id', type=str, required=True)
   parser.add_argument('--metadata_config', type=str, required=True)
   parser.add_argument('--beam_pipeline_args', type=str, required=True)
-  parser.add_argument(
-      '--additional_pipeline_args', type=str, required=True)
+  parser.add_argument('--additional_pipeline_args', type=str, required=True)
   parser.add_argument(
       '--component_launcher_class_path', type=str, required=True)
   parser.add_argument('--enable_cache', action='store_true')
