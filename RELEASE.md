@@ -4,6 +4,7 @@
 
 *   Added experimental work-in-progress KubernetesDagRunner for orchestrating
     TFX pipelines directly on a Kubernetes cluster.
+*   Supported split configuration for Transform.
 
 ## Bug fixes and other changes
 
@@ -40,7 +41,6 @@
 *   Supported multiple artifacts for Trainer and Tuner's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
 *   Supported split configuration for Evaluator.
-*   Supported split configuration for Transform.
 *   Supported split configuration for StatisticsGen, SchemaGen and
     ExampleValidator. SchemaGen will now use all splits to generate schema
     instead of just using `train` split. ExampleValidator will now validate all
