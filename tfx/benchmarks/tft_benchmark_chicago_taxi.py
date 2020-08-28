@@ -25,9 +25,9 @@ from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorfl
 
 class TFTBenchmarkChicagoTaxi(tft_benchmark_base.TFTBenchmarkBase):
 
-  def __init__(self, dataset=chicago_taxi_dataset.get_dataset(), **kwargs):
-    super(TFTBenchmarkChicagoTaxi, self).__init__(
-        dataset=dataset, **kwargs)
+  def __init__(self, dataset=None, **kwargs):
+    dataset = dataset or chicago_taxi_dataset.get_dataset()
+    super(TFTBenchmarkChicagoTaxi, self).__init__(dataset=dataset, **kwargs)
 
 
 if __name__ == "__main__":

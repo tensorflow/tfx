@@ -35,12 +35,10 @@ from tensorflow_transform.beam import impl as tft_beam_impl
 from tensorflow_transform.saved import saved_transform_io
 from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
-
 import tfx
 from tfx.benchmarks import benchmark_utils
-from tfx.benchmarks import benchmark_base
 from tfx.benchmarks import constants
-from tfx_bsl.beam import test_util
+from tfx.benchmarks import benchmark_base
 from tfx_bsl.beam import shared
 
 
@@ -196,15 +194,17 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     # it must be injected by an external script.
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
-    kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID",
-                                             tft.version)
+    kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID", tft.version)
     super(TFTBenchmarkBase, self).report_benchmark(**kwargs)
 
-  def benchmarkAnalyzeAndTransformDataset(self):
+  def benchmark_analyze_and_transform_dataset(self):
     """Benchmark AnalyzeAndTransformDataset.
 
     Runs AnalyzeAndTransformDataset in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     common_variables = _get_common_variables(self._dataset)
 
