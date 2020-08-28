@@ -14,11 +14,10 @@
 """setup.py file required for Cloud Dataflow Beam runners."""
 import setuptools
 
-REQUIRED_PACKAGES = ["tfx", "apache-beam==2.23"]
+REQUIRED_PACKAGES = ['tfx', 'apache-beam==2.23']
 
 setuptools.setup(
     name='cloud_dataflow_pipeline',
     version='0.0.0',
     install_requires=REQUIRED_PACKAGES,
-    packages=setuptools.find_packages()
-)
+    packages=setuptools.find_packages())

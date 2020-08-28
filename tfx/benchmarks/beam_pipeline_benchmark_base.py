@@ -17,18 +17,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from tfx.benchmarks import constants
-from tfx.benchmarks.datasets.chicago_taxi import dataset
-from tfx.benchmarks.tfma_benchmark_chicago_taxi import TFMABenchmarkChicagoTaxi
-from tfx.benchmarks.tfma_v2_benchmark_chicago_taxi import TFMAV2BenchmarkChicagoTaxi
-from tfx.benchmarks.big_shuffle_benchmark import BigShuffleBenchmarkBase
-
+import csv
+import os
 import subprocess
 import tempfile
 import time
+
+from tfx.benchmarks import constants
+from tfx.benchmarks.big_shuffle_benchmark import BigShuffleBenchmarkBase
+from tfx.benchmarks.datasets.chicago_taxi import dataset
+from tfx.benchmarks.tfma_benchmark_chicago_taxi import TFMABenchmarkChicagoTaxi
+from tfx.benchmarks.tfma_v2_benchmark_chicago_taxi import TFMAV2BenchmarkChicagoTaxi
 import yaml
-import csv
-import os
 
 _TFMA = "tfma"
 _TFMA_V2 = "tfma_v2"
@@ -37,7 +37,8 @@ _BIG_SHUFFLE = "big_shuffle"
 _TFMA_BENCHMARK_MINI_PIPELINE = "TFMABenchmarkChicagoTaxi.benchmarkMiniPipeline"
 _TFMA_V2_BENCHMARK_MINI_PIPELINE_UNBATCHED = "TFMAV2BenchmarkChicagoTaxi.benchmarkMiniPipelineUnbatched"
 _TFMA_V2_BENCHMARK_MINI_PIPELINE_BATCHED = "TFMAV2BenchmarkChicagoTaxi.benchmarkMiniPipelineBatched"
-_BIG_SHUFFLE_BENCHMARK = "BigShuffleBenchmarkBase.benchmarkBigShuffle with file size: "
+_BIG_SHUFFLE_BENCHMARK = ("BigShuffleBenchmarkBase.benchmarkBigShuffle with "
+                          "file size: ")
 _BIG_SHUFFLE_EMPTY_PIPELINE_BENCHMARK = "BigShuffleBenchmarkBase.benchmarkEmptyPipeline"
 
 
@@ -70,7 +71,7 @@ class BeamPipelineBenchmarkBase(object):
     benchmark_class.set_num_workers(num_workers)
     benchmark_class.set_beam_pipeline_mode(beam_pipeline_mode)
     if beam_pipeline_mode == constants.CLOUD_DATAFLOW_MODE:
-      assert  self.cloud_dataflow_project
+      assert self.cloud_dataflow_project
       assert self.cloud_dataflow_temp_loc
       benchmark_class.set_cloud_dataflow_temp_loc(self.cloud_dataflow_temp_loc)
       benchmark_class.set_cloud_dataflow_project(self.cloud_dataflow_project)
@@ -96,14 +97,15 @@ class BeamPipelineBenchmarkBase(object):
         tfma_v2_benchmark_chicago_taxi.benchmarkMiniPipelineBatched())
 
   def _run_big_shuffle_benchmarks(self, num_workers, beam_pipeline_mode):
+    """Run BigShuffle benchmarks."""
     big_shuffle_benchmark = BigShuffleBenchmarkBase(
         input_file=self._big_shuffle_input_file,
         output_file=self._big_shuffle_output_file)
-    self._set_benchmark_class_parameters(big_shuffle_benchmark,
-                                         num_workers, beam_pipeline_mode)
+    self._set_benchmark_class_parameters(big_shuffle_benchmark, num_workers,
+                                         beam_pipeline_mode)
 
-    min_file_size = 1e6 # 1 MB
-    max_file_size = 1e9 # 1 GB
+    min_file_size = 1e6  # 1 MB
+    max_file_size = 1e9  # 1 GB
     file_size = min_file_size
 
     while file_size <= max_file_size:
@@ -122,8 +124,9 @@ class BeamPipelineBenchmarkBase(object):
     self._run_big_shuffle_benchmarks(num_workers, beam_pipeline_mode)
 
   def _post_process(self, num_workers):
+    """Post-process benchmark results into CSV lines."""
     # Add test names if dataset is empty
-    if self._wall_times_list == []:
+    if not self._wall_times_list:
       test_names = ["Number of Replicas"]
       for base_file in self._wall_times:
         for test in self._wall_times[base_file]:
@@ -140,6 +143,7 @@ class BeamPipelineBenchmarkBase(object):
     self._wall_times_list.append(row)
 
   def _generate_temp_yaml(self):
+    """Write temporary YAML file."""
     yaml_tf = tempfile.NamedTemporaryFile(
         suffix=".yaml", mode="w+t", delete=False)
     yaml_path = yaml_tf.name
@@ -158,8 +162,8 @@ class BeamPipelineBenchmarkBase(object):
       yaml.dump(yaml_file, yaml_tf)
 
   def _write_to_csv(self, csv_filename):
-    with open(csv_filename, "w+") as  my_csv:
-      csv_writer = csv.writer(my_csv, delimiter=',')
+    with open(csv_filename, "w+") as my_csv:
+      csv_writer = csv.writer(my_csv, delimiter=",")
       csv_writer.writerows(self._wall_times_list)
 
   def _increment_num_workers(self, num_workers):
@@ -170,8 +174,8 @@ class BeamPipelineBenchmarkBase(object):
 
     return num_workers
 
-  def benchmarkFlinkOnK8s(self):
-    """Utilizes the flink-on-k8s-operator to run Beam pipelines"""
+  def benchmark_flink_on_k8s(self):
+    """Benchmark the flink-on-k8s-operator for running Beam pipelines."""
 
     beam_pipeline_mode = constants.FLINK_ON_K8S_MODE
     num_workers = self.min_num_workers
@@ -193,7 +197,7 @@ class BeamPipelineBenchmarkBase(object):
       # Set up port forwarding
       subprocess.call("pkill kubectl -9", shell=True)
       subprocess.Popen(
-          "kubectl port-forward service/flink-on-k8s-cluster-jobmanager 8081:8081", # pylint: disable=line-too-long
+          "kubectl port-forward service/flink-on-k8s-cluster-jobmanager 8081:8081",  # pylint: disable=line-too-long
           shell=True)
       time.sleep(20)
 
@@ -202,8 +206,8 @@ class BeamPipelineBenchmarkBase(object):
       self._post_process(num_workers)
 
       # Write to csv
-      self._write_to_csv(csv_filename=
-                         "beam_pipeline_benchmark_results_flink_on_k8s.csv")
+      self._write_to_csv(
+          csv_filename="beam_pipeline_benchmark_results_flink_on_k8s.csv")
 
       num_workers = self._increment_num_workers(num_workers)
 
@@ -215,8 +219,8 @@ class BeamPipelineBenchmarkBase(object):
     yaml_tf.close()
     os.remove(yaml_path)
 
-  def benchmarkLocalScaled(self):
-    """Utilizes the local machine to run Beam pipelines"""
+  def benchmark_local_scaled(self):
+    """Benchmark usage of the local machine for running Beam pipelines."""
 
     beam_pipeline_mode = constants.LOCAL_SCALED_EXECUTION_MODE
     num_workers = self.min_num_workers
@@ -227,14 +231,14 @@ class BeamPipelineBenchmarkBase(object):
 
       # Write to csv
       self._post_process(num_workers)
-      self._write_to_csv(csv_filename=
-                         "beam_pipeline_benchmark_results_local.csv")
+      self._write_to_csv(
+          csv_filename="beam_pipeline_benchmark_results_local.csv")
 
       num_workers = self._increment_num_workers(num_workers)
 
-  def benchmarkCloudDataflow(self, cloud_dataflow_project,
-                             cloud_dataflow_temp_loc):
-    """Utilizes Cloud Dataflow to run Beam pipelines"""
+  def benchmark_cloud_dataflow(self, cloud_dataflow_project,
+                               cloud_dataflow_temp_loc):
+    """Benchmark usage of Cloud Dataflow for running Beam pipelines."""
 
     self.cloud_dataflow_project = cloud_dataflow_project
     self.cloud_dataflow_temp_loc = cloud_dataflow_temp_loc
@@ -243,12 +247,12 @@ class BeamPipelineBenchmarkBase(object):
     num_workers = self.min_num_workers
 
     while num_workers <= self.max_num_workers:
-      # Run the benchmarks
+      # Run the benchmarks.
       self._run_all_benchmarks(num_workers, beam_pipeline_mode)
 
-      # Write to csv
+      # Write results to CSV.
       self._post_process(num_workers)
-      self._write_to_csv(csv_filename=
-                         "beam_pipeline_benchmark_results_cloud_dataflow.csv")
+      self._write_to_csv(
+          csv_filename="beam_pipeline_benchmark_results_cloud_dataflow.csv")
 
       num_workers = self._increment_num_workers(num_workers)

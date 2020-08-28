@@ -20,8 +20,9 @@ from __future__ import print_function
 from absl import flags
 import apache_beam as beam
 from apache_beam.pipeline import PipelineOptions
-from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 from tfx.benchmarks import constants
+
+from tensorflow.python.platform import test  # pylint: disable=g-direct-tensorflow-import
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -31,7 +32,7 @@ flags.DEFINE_string(
 
 
 class BenchmarkBase(test.Benchmark):
-  """Base class for running Beam pipelines on various runners"""
+  """Base class for running Beam pipelines on various runners."""
 
   def __init__(self):
     super(BenchmarkBase, self).__init__()
@@ -58,7 +59,10 @@ class BenchmarkBase(test.Benchmark):
         flink_submit_uber_jar=True,
         environment_type="EXTERNAL",
         environment_config="localhost:50000",
-        save_main_session=True) # TODO: Remove save_main_session argument once BEAM-10762 is resolved
+        # TODO(b/165621277): Remove save_main_session argument once BEAM-10762
+        # is resolved.
+        save_main_session=True
+    )
 
   def _set_local_scaled_execution_options(self):
     self.pipeline_options = PipelineOptions(
@@ -68,7 +72,7 @@ class BenchmarkBase(test.Benchmark):
         no_pipeline_type_check=True)
 
   def set_beam_pipeline_mode(self, beam_pipeline_mode):
-    assert beam_pipeline_mode in constants.modes
+    assert beam_pipeline_mode in constants.EXECUTION_MODES
     self.beam_pipeline_mode = beam_pipeline_mode
 
   def set_num_workers(self, num_workers):
@@ -92,13 +96,10 @@ class BenchmarkBase(test.Benchmark):
   def _create_beam_pipeline(self):
     if self.beam_pipeline_mode == constants.LOCAL_SCALED_EXECUTION_MODE:
       self._set_local_scaled_execution_options()
-
     elif self.beam_pipeline_mode == constants.CLOUD_DATAFLOW_MODE:
       self._set_cloud_dataflow_options()
-
     elif self.beam_pipeline_mode == constants.FLINK_ON_K8S_MODE:
       self._set_flink_on_k8s_operator_options()
-
     else:
       return self._create_beam_pipeline_options()
 

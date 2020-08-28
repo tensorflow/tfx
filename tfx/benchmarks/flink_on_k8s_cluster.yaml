@@ -16,7 +16,7 @@ spec:
         memory: "2Gi"
     sidecars:
       - name: beam-worker-pool
-        image: IMAGE
+        image: apache/beam_python3.7_sdk:2.23.0
         imagePullPolicy: Always
         args: ["--worker_pool"]
   flinkProperties:

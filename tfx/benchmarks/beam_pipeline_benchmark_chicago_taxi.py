@@ -17,13 +17,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import beam_pipeline_benchmark_base
 import os
 
+import beam_pipeline_benchmark_base
 
+
+# TODO(ccy): Refactor arguments as flags rather than environmental arguments.
 class BeamPipelineBenchmarkChicagoTaxi(
     beam_pipeline_benchmark_base.BeamPipelineBenchmarkBase):
-  """Runs Beam pipeline benchmarks on various runners"""
+  """Runs Beam pipeline benchmarks on various runners."""
 
   def __init__(self, **kwargs):
 
@@ -32,20 +34,26 @@ class BeamPipelineBenchmarkChicagoTaxi(
     big_shuffle_output_file = os.environ['BIG_SHUFFLE_OUTPUT_FILE']
 
     super(BeamPipelineBenchmarkChicagoTaxi, self).__init__(
-        min_num_workers=1, max_num_workers=32,
+        min_num_workers=1,
+        max_num_workers=32,
         base_dir=base_dir,
         big_shuffle_input_file=big_shuffle_input_file,
         big_shuffle_output_file=big_shuffle_output_file,
         **kwargs)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
+  # Create pipeline benchmark.
   beam_pipeline_benchmark_chicago_taxi = BeamPipelineBenchmarkChicagoTaxi()
 
-  beam_pipeline_benchmark_chicago_taxi.benchmarkLocalScaled()
+  # Run local benchmarks.
+  beam_pipeline_benchmark_chicago_taxi.benchmark_local_scaled()
 
+  # Run Cloud Dataflow benchmarks.
   cloud_dataflow_project = os.environ['CLOUD_DATAFLOW_PROJECT']
   cloud_dataflow_temp_loc = os.environ['CLOUD_DATAFLOW_TEMP_LOC']
-  beam_pipeline_benchmark_chicago_taxi.benchmarkCloudDataflow(
+  beam_pipeline_benchmark_chicago_taxi.benchmark_cloud_dataflow(
       cloud_dataflow_project, cloud_dataflow_temp_loc)
 
-  beam_pipeline_benchmark_chicago_taxi.benchmarkFlinkOnK8s()
+  # Run Flink on Kubernetes benchmarks.
+  beam_pipeline_benchmark_chicago_taxi.benchmark_flink_on_k8s()

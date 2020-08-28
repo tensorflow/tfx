@@ -15,32 +15,38 @@
 
 from __future__ import absolute_import
 
-import time
+import os
 import random
 import string
-import os
 import tempfile
-import apache_beam as beam
-from google.cloud import storage
+import time
 
+import apache_beam as beam
 from tfx.benchmarks import benchmark_base
+
+from google.cloud import storage
 
 
 class BigShuffleBenchmarkBase(benchmark_base.BenchmarkBase):
-  """Contains standalone Beam pipeline benchmarks, not dependent on outside
-     datasets and tensorflow dependencies."""
+  """Contains standalone Beam pipeline benchmarks.
 
-  def __init__(self, file_size=1e6, input_file="input.txt",
-               output_file="output.txt"):
+  This benchmark is not dependent on outside datasets or Tensorflow
+  dependencies.
+  """
+
+  def __init__(self,
+               file_size=1e6,
+               input_file='input.txt',
+               output_file='output.txt'):
     super(BigShuffleBenchmarkBase, self).__init__()
     self._input_file = input_file
     self._output_file = output_file
-    self.file_size = file_size # 1e8 bytes = 100 MB
+    self.file_size = file_size  # 1e8 bytes = 100 MB
 
     self._chars_per_line = 100
 
     self._read_write_to_cloud = False
-    if self._input_file.startswith("gs://"):
+    if self._input_file.startswith('gs://'):
       self._read_write_to_cloud = True
 
   def regenerate_data(self, file_size=None):
@@ -70,32 +76,34 @@ class BigShuffleBenchmarkBase(benchmark_base.BenchmarkBase):
     file_to_open = self._input_file
 
     if self._read_write_to_cloud:
-      file_to_open = tempfile.NamedTemporaryFile(suffix=".txt").name
+      file_to_open = tempfile.NamedTemporaryFile(suffix='.txt').name
 
-    with open(file_to_open, "w") as f:
+    with open(file_to_open, 'w') as f:
       letters = string.ascii_lowercase
       num_lines = int(self.file_size / self._chars_per_line)
 
       for _ in range(0, num_lines):
-        line = ''.join(random.choice(letters) for i in range(self._chars_per_line)) + '\n'
+        line = ''.join(
+            random.choice(letters) for i in range(self._chars_per_line)) + '\n'
         f.write(line)
 
     if self._read_write_to_cloud:
       self._upload_tmp_file_to_bucket(file_to_open)
 
-  def benchmarkBigShuffle(self):
-    """Creates a large file and sorts it by splitting lines into key value pairs"""
+  def benchmark_big_shuffle(self):
+    """Run the BigShuffle benchmark."""
     p = self._create_beam_pipeline()
 
     # Read the text file
     lines = p | beam.io.textio.ReadFromText(file_pattern=self._input_file)
 
     # Count the occurrences of each word.
-    output = (lines
-              | beam.Map(str.strip)
-              | beam.Map(lambda x: (x[:5], x[5:99]))
-              | beam.GroupByKey('group')
-              | beam.FlatMap(lambda kv: ['%s%s' % (kv[0], kv[1]) for val in kv[1]]))
+    output = (
+        lines
+        | beam.Map(str.strip)
+        | beam.Map(lambda x: (x[:5], x[5:99]))
+        | beam.GroupByKey('group')
+        | beam.FlatMap(lambda kv: ['%s%s' % (kv[0], kv[1]) for val in kv[1]]))
 
     # Write the output
     _ = output | beam.io.textio.WriteToText(self._output_file)
@@ -109,8 +117,8 @@ class BigShuffleBenchmarkBase(benchmark_base.BenchmarkBase):
 
     return delta
 
-  def benchmarkEmptyPipeline(self):
-    """Creates an empty pipeline with no data or transformations to run as a baseline"""
+  def benchmark_empty_pipeline(self):
+    """Creates an empty pipeline to run as a baseline."""
     p = self._create_beam_pipeline()
 
     # Run the pipeline.

@@ -33,11 +33,10 @@ from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
-
 import tfx
 from tfx.benchmarks import benchmark_utils
-from tfx.benchmarks import benchmark_base
 from tfx.benchmarks import constants
+from tfx.benchmarks import benchmark_base
 from tfx_bsl.tfxio import test_util
 
 # Maximum number of examples to read from the dataset.
@@ -89,6 +88,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     self._init_model()
     pipeline = self._create_beam_pipeline()
@@ -132,6 +134,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     self._init_model()
     pipeline = self._create_beam_pipeline()
@@ -224,9 +229,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1, wall_time=delta, extras={"num_examples": len(records)})
 
   def _run_metrics_and_plots_evaluator_manual_actuation(
-      self,
-      with_confidence_intervals,
-      metrics_specs=None):
+      self, with_confidence_intervals, metrics_specs=None):
     """Benchmark MetricsAndPlotsEvaluatorV2 "manually"."""
     self._init_model()
     if not metrics_specs:
@@ -339,21 +342,14 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
         with_confidence_intervals=False,
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
-                name="auc",
-                num_thresholds=10000
-            ),
-            tf.keras.metrics.AUC(
-                name="auc_precison_recall",
-                curve="PR",
-                num_thresholds=10000
-            ),
+                name="auc_precison_recall", curve="PR", num_thresholds=10000),
             tf.keras.metrics.Precision(name="precision"),
             tf.keras.metrics.Recall(name="recall"),
             tfma.metrics.MeanLabel(name="mean_label"),
             tfma.metrics.MeanPrediction(name="mean_prediction"),
             tfma.metrics.Calibration(name="calibration"),
-            tfma.metrics.ConfusionMatrixPlot(
-                name="confusion_matrix_plot"),
+            tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
         ]))

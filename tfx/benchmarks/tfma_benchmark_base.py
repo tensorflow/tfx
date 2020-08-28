@@ -60,6 +60,9 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     pipeline = self._create_beam_pipeline()
     raw_data = (
