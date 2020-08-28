@@ -114,7 +114,7 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           'serviceAccountName'] = kube_utils.TFX_SERVICE_ACCOUNT
 
     logging.info('Looking for pod "%s:%s".', namespace, pod_name)
-    resp = self._get_pod(core_api, pod_name, namespace)
+    resp = kube_utils.get_pod(core_api, pod_name, namespace)
     if not resp:
       logging.info('Pod "%s:%s" does not exist. Creating it...',
                    namespace, pod_name)
