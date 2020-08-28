@@ -42,9 +42,6 @@ class ExampleValidator(base_component.BaseComponent):
   in the data. It can:
     - perform validity checks by comparing data statistics against a schema that
       codifies expectations of the user.
-    - detect data drift by looking at a series of data.
-    - detect changes in dataset-wide data (i.e., num_examples) across spans or
-      versions.
 
   Schema Based Example Validation
   The ExampleValidator component identifies any anomalies in the example data by
@@ -76,9 +73,7 @@ class ExampleValidator(base_component.BaseComponent):
     """Construct an ExampleValidator component.
 
     Args:
-      statistics: A Channel of type `standard_artifacts.ExampleStatistics`. This
-        should contain at least 'eval' split. Other splits are currently
-        ignored.
+      statistics: A Channel of type `standard_artifacts.ExampleStatistics`.
       schema: A Channel of type `standard_artifacts.Schema`. _required_
       exclude_splits: Names of splits that the example validator should not
         validate. Default behavior (when exclude_splits is set to None)
