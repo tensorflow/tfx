@@ -109,8 +109,13 @@ class ExampleValidatorSpec(ComponentSpec):
       'exclude_splits': ExecutionParameter(type=(str, Text), optional=True),
   }
   INPUTS = {
-      'statistics': ChannelParameter(type=standard_artifacts.ExampleStatistics),
-      'schema': ChannelParameter(type=standard_artifacts.Schema),
+      'statistics':
+          ChannelParameter(type=standard_artifacts.ExampleStatistics),
+      'schema':
+          ChannelParameter(type=standard_artifacts.Schema),
+      'training_statistics':
+          ChannelParameter(
+              type=standard_artifacts.ExampleStatistics, optional=True),
   }
   OUTPUTS = {
       'anomalies': ChannelParameter(type=standard_artifacts.ExampleAnomalies),

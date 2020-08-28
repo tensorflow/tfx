@@ -35,6 +35,7 @@ from tfx.utils import json_utils
 
 # Key for statistics in executor input_dict.
 STATISTICS_KEY = 'statistics'
+
 # Key for schema in executor input_dict.
 SCHEMA_KEY = 'schema'
 
@@ -46,6 +47,9 @@ ANOMALIES_KEY = 'anomalies'
 
 # Default file name for anomalies output.
 DEFAULT_FILE_NAME = 'anomalies.pbtxt'
+
+# Key for serving_statistics in executor input_dict.
+SERVING_STATISTICS_KEY = 'serving_statistics'
 
 
 class Executor(base_executor.BaseExecutor):
@@ -114,6 +118,12 @@ class Executor(base_executor.BaseExecutor):
           labels.SCHEMA:
               schema
       }
+      if labels.SERVING_STATISTICS in input_dict.keys():
+        label_inputs[labels.SERVING_STATISTICS] = tfdv.load_statistics(
+            io_utils.get_only_uri_in_dir(
+                artifact_utils.get_single_uri(
+                    input_dict[SERVING_STATISTICS_KEY])))
+
       output_uri = artifact_utils.get_split_uri(output_dict[ANOMALIES_KEY],
                                                 split)
       label_outputs = {labels.SCHEMA_DIFF_PATH: output_uri}
@@ -146,13 +156,20 @@ class Executor(base_executor.BaseExecutor):
           validation.
         - (Optional) labels.EXTERNAL_CONFIG_VERSION: the version number of
           external config file.
+        - (Optional) labels.SERVING_STATISTICS: Serving statistics to detect
+          skew against.
       outputs: A dictionary of labeled output values, including:
           - labels.SCHEMA_DIFF_PATH: the path to write the schema diff to
     """
     schema = value_utils.GetSoleValue(inputs, labels.SCHEMA)
     stats = value_utils.GetSoleValue(inputs, labels.STATS)
+    serving_statistics = value_utils.GetSoleValue(
+        inputs, labels.SERVING_STATISTICS, strict=False)
     schema_diff_path = value_utils.GetSoleValue(
         outputs, labels.SCHEMA_DIFF_PATH)
-    anomalies = tfdv.validate_statistics(stats, schema)
+    # The mismatch between serving_statistics and serving_statistics is
+    # intentional.
+    anomalies = tfdv.validate_statistics(
+        stats, schema, serving_statistics=serving_statistics)
     io_utils.write_pbtxt_file(
         os.path.join(schema_diff_path, DEFAULT_FILE_NAME), anomalies)
