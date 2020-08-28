@@ -247,8 +247,9 @@ def get_kfp_namespace() -> Text:
   """
   try:
     return os.environ[KFP_NAMESPACE]
-  except KeyError:
-    raise RuntimeError('Cannot determine KFP namespace from the environment.')
+  except KeyError as e:
+    raise RuntimeError(
+        'Cannot determine KFP namespace from the environment.') from e
 
 
 def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
@@ -266,8 +267,9 @@ def get_current_kfp_pod(client: k8s_client.CoreV1Api) -> k8s_client.V1Pod:
     namespace = os.environ[KFP_NAMESPACE]
     pod_name = os.environ[KFP_POD_NAME]
     return client.read_namespaced_pod(name=pod_name, namespace=namespace)
-  except KeyError:
-    raise RuntimeError('Cannot determine KFP pod from the environment.')
+  except KeyError as e:
+    raise RuntimeError(
+        'Cannot determine KFP pod from the environment.') from e
 
 
 def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
@@ -287,7 +289,7 @@ def get_pod(core_api: k8s_client.CoreV1Api, pod_name: Text,
   except k8s_client.rest.ApiException as e:
     if e.status != 404:
       raise RuntimeError('Unknown error! \nReason: %s\nBody: %s' %
-                         (e.reason, e.body))
+                         (e.reason, e.body)) from e
     return None
 
 

@@ -109,7 +109,9 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
           'ownerReferences'] = container_common.to_swagger_dict(
               launcher_pod.metadata.owner_references)
     else:
-      pod_manifest['spec']['serviceAccountName'] = 'tfx-service-account'
+      pod_manifest['spec']['serviceAccount'] = kube_utils.TFX_SERVICE_ACCOUNT
+      pod_manifest['spec'][
+          'serviceAccountName'] = kube_utils.TFX_SERVICE_ACCOUNT
 
     logging.info('Looking for pod "%s:%s".', namespace, pod_name)
     resp = self._get_pod(core_api, pod_name, namespace)
@@ -132,7 +134,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         pod_name,
         namespace,
         exit_condition_lambda=kube_utils.pod_is_not_pending,
-        condition_description='non-pending status')
+        condition_description='non-pending status',
+        timeout_sec=300)
 
     logging.info('Start log streaming for pod "%s:%s".', namespace, pod_name)
     try:
@@ -156,7 +159,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         pod_name,
         namespace,
         exit_condition_lambda=kube_utils.pod_is_done,
-        condition_description='done state')
+        condition_description='done state',
+        timeout_sec=0)
 
     if resp.status.phase == kube_utils.PodPhase.FAILED.value:
       raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
