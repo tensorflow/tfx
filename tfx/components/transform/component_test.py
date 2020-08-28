@@ -18,13 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 from typing import Text
 import tensorflow as tf
 from tfx.components.transform import component
 from tfx.orchestration import data_types
+from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from google.protobuf import json_format
 
 
 class ComponentTest(tf.test.TestCase):
@@ -38,13 +41,25 @@ class ComponentTest(tf.test.TestCase):
     self.schema = channel_utils.as_channel(
         [standard_artifacts.Schema()])
 
-  def _verify_outputs(self, transform):
+  def _verify_outputs(self,
+                      transform,
+                      materialize=True,
+                      disable_analyzer_cache=False):
     self.assertEqual(standard_artifacts.TransformGraph.TYPE_NAME,
                      transform.outputs['transform_graph'].type_name)
-    self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
-                     transform.outputs['transformed_examples'].type_name)
+    if materialize:
+      self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
+                       transform.outputs['transformed_examples'].type_name)
+    else:
+      self.assertNotIn('transformed_examples', transform.outputs.keys())
 
-  def testConstructFromModuleFile(self):
+    if disable_analyzer_cache:
+      self.assertNotIn('updated_analyzer_cache', transform.outputs.keys())
+    else:
+      self.assertEqual(standard_artifacts.TransformCache.TYPE_NAME,
+                       transform.outputs['updated_analyzer_cache'].type_name)
+
+  def test_construct_from_module_file(self):
     module_file = '/path/to/preprocessing.py'
     transform = component.Transform(
         examples=self.examples,
@@ -52,9 +67,9 @@ class ComponentTest(tf.test.TestCase):
         module_file=module_file,
     )
     self._verify_outputs(transform)
-    self.assertEqual(module_file, transform.spec.exec_properties['module_file'])
+    self.assertEqual(module_file, transform.exec_properties['module_file'])
 
-  def testConstructWithParameter(self):
+  def test_construct_with_parameter(self):
     module_file = data_types.RuntimeParameter(name='module-file', ptype=Text)
     transform = component.Transform(
         examples=self.examples,
@@ -63,9 +78,9 @@ class ComponentTest(tf.test.TestCase):
     )
     self._verify_outputs(transform)
     self.assertJsonEqual(
-        str(module_file), str(transform.spec.exec_properties['module_file']))
+        str(module_file), str(transform.exec_properties['module_file']))
 
-  def testConstructFromPreprocessingFn(self):
+  def test_construct_from_preprocessing_fn(self):
     preprocessing_fn = 'path.to.my_preprocessing_fn'
     transform = component.Transform(
         examples=self.examples,
@@ -74,16 +89,47 @@ class ComponentTest(tf.test.TestCase):
     )
     self._verify_outputs(transform)
     self.assertEqual(preprocessing_fn,
-                     transform.spec.exec_properties['preprocessing_fn'])
+                     transform.exec_properties['preprocessing_fn'])
 
-  def testConstructMissingUserModule(self):
+  def test_construct_with_materialization_disabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        materialize=False)
+    self._verify_outputs(transform, materialize=False)
+
+  def test_construct_with_cache_disabled(self):
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn='my_preprocessing_fn',
+        disable_analyzer_cache=True)
+    self._verify_outputs(transform, disable_analyzer_cache=True)
+
+  def test_construct_from_preprocessing_fn_with_custom_config(self):
+    preprocessing_fn = 'path.to.my_preprocessing_fn'
+    custom_config = {'param': 1}
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        preprocessing_fn=preprocessing_fn,
+        custom_config=custom_config,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(preprocessing_fn,
+                     transform.spec.exec_properties['preprocessing_fn'])
+    self.assertEqual(json.dumps(custom_config),
+                     transform.spec.exec_properties['custom_config'])
+
+  def test_construct_missing_user_module(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
           examples=self.examples,
           schema=self.schema,
       )
 
-  def testConstructDuplicateUserModule(self):
+  def test_construct_duplicate_user_module(self):
     with self.assertRaises(ValueError):
       _ = component.Transform(
           examples=self.examples,
@@ -91,6 +137,42 @@ class ComponentTest(tf.test.TestCase):
           module_file='/path/to/preprocessing.py',
           preprocessing_fn='path.to.my_preprocessing_fn',
       )
+
+  def test_construct_with_splits_config(self):
+    splits_config = transform_pb2.SplitsConfig(
+        analyze=['train'], transform=['eval'])
+    module_file = '/path/to/preprocessing.py'
+    transform = component.Transform(
+        examples=self.examples,
+        schema=self.schema,
+        module_file=module_file,
+        splits_config=splits_config,
+    )
+    self._verify_outputs(transform)
+    self.assertEqual(
+        json_format.MessageToJson(
+            splits_config, sort_keys=True, preserving_proto_field_name=True),
+        transform.exec_properties['splits_config'])
+
+  def test_construct_with_materialization_disabled_but_output_examples(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          materialize=False,
+          transformed_examples=channel_utils.as_channel(
+              [standard_artifacts.Examples()]))
+
+  def test_construct_with_cache_disabled_but_input_cache(self):
+    with self.assertRaises(ValueError):
+      _ = component.Transform(
+          examples=self.examples,
+          schema=self.schema,
+          preprocessing_fn='my_preprocessing_fn',
+          disable_analyzer_cache=True,
+          analyzer_cache=channel_utils.as_channel(
+              [standard_artifacts.TransformCache()]))
 
 
 if __name__ == '__main__':

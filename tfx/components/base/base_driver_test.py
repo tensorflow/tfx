@@ -21,12 +21,12 @@ from __future__ import print_function
 import os
 import mock
 import tensorflow as tf
-from ml_metadata.proto import metadata_store_pb2
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.orchestration import data_types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
+from ml_metadata.proto import metadata_store_pb2
 
 # Mock value for string artifact.
 _STRING_VALUE = u'This is a string'
@@ -56,7 +56,6 @@ class BaseDriverTest(tf.test.TestCase):
   def setUp(self):
     super(BaseDriverTest, self).setUp()
     self._mock_metadata = tf.compat.v1.test.mock.Mock()
-    self._string_artifact = standard_artifacts.String()
     self._input_dict = {
         'input_data':
             types.Channel(
@@ -67,9 +66,12 @@ class BaseDriverTest(tf.test.TestCase):
         'input_string':
             types.Channel(
                 type=standard_artifacts.String,
-                artifacts=[self._string_artifact],
+                artifacts=[
+                    standard_artifacts.String(),
+                    standard_artifacts.String()
+                ],
                 producer_component_id='c2',
-                output_key='k2')
+                output_key='k2'),
     }
     input_dir = os.path.join(
         os.environ.get('TEST_TMP_DIR', self.get_temp_dir()),
@@ -83,7 +85,10 @@ class BaseDriverTest(tf.test.TestCase):
         tf.io.gfile.makedirs(uri)
     self._output_dict = {
         'output_data':
-            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()])
+            types.Channel(type=_OutputArtifact, artifacts=[_OutputArtifact()]),
+        'output_multi_data':
+            types.Channel(
+                type=_OutputArtifact, matching_channel_name='input_string')
     }
     self._input_artifacts = channel_utils.unwrap_channel_dict(self._input_dict)
     self._output_artifacts = channel_utils.unwrap_channel_dict(
@@ -111,9 +116,6 @@ class BaseDriverTest(tf.test.TestCase):
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())
-    self._mock_metadata.get_artifacts_by_info.side_effect = list(
-        self._input_dict['input_data'].get()) + list(
-            self._input_dict['input_string'].get())
     self._mock_metadata.register_execution.side_effect = [self._execution]
     self._mock_metadata.get_cached_outputs.side_effect = [None]
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
@@ -137,6 +139,13 @@ class BaseDriverTest(tf.test.TestCase):
         os.path.join(self._pipeline_info.pipeline_root,
                      self._component_info.component_id, 'output_data',
                      str(self._execution_id)))
+    self.assertLen(execution_decision.output_dict['output_multi_data'], 2)
+    for i in range(2):
+      self.assertEqual(
+          execution_decision.output_dict['output_multi_data'][i].uri,
+          os.path.join(self._pipeline_info.pipeline_root,
+                       self._component_info.component_id, 'output_multi_data',
+                       str(self._execution_id), str(i)))
     self.assertEqual(execution_decision.input_dict['input_string'][0].value,
                      _STRING_VALUE)
 
@@ -146,9 +155,6 @@ class BaseDriverTest(tf.test.TestCase):
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(
         self._input_dict['input_string'].get())
-    self._mock_metadata.get_artifacts_by_info.side_effect = list(
-        self._input_dict['input_data'].get()) + list(
-            self._input_dict['input_string'].get())
     self._mock_metadata.register_run_context_if_not_exists.side_effect = [
         metadata_store_pb2.Context()
     ]

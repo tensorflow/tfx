@@ -36,8 +36,10 @@ from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration.experimental.interactive import interactive_context
 from tfx.orchestration.experimental.interactive import standard_visualizations
+from tfx.orchestration.launcher.in_process_component_launcher import InProcessComponentLauncher
 from tfx.types import component_spec
 from tfx.types import standard_artifacts
+from tfx.utils import telemetry_utils
 
 
 class InteractiveContextTest(tf.test.TestCase):
@@ -215,6 +217,48 @@ class InteractiveContextTest(tf.test.TestCase):
         types.Channel(
             type=standard_artifacts.ExampleAnomalies, artifacts=[artifact]))
     mock_object.assert_called_with(artifact)
+
+  @mock.patch('tfx.orchestration.launcher.in_process_component_launcher.'
+              'InProcessComponentLauncher.create')
+  def testTelemetry(self, mock_launcher_create):
+
+    class _FakeLauncher(object):
+
+      def __init__(self):
+        self.recorded_labels = []
+
+      def launch(self):
+        self.recorded_labels = telemetry_utils.make_beam_labels_args()
+        return mock.MagicMock()
+
+    class _FakeComponentSpec(types.ComponentSpec):
+      PARAMETERS = {}
+      INPUTS = {}
+      OUTPUTS = {}
+
+    class _FakeExecutor(base_executor.BaseExecutor):
+
+      def Do(self, input_dict: Dict[Text, List[types.Artifact]],
+             output_dict: Dict[Text, List[types.Artifact]],
+             exec_properties: Dict[Text, Any]) -> None:
+        pass
+
+    class _FakeComponent(base_component.BaseComponent):
+      SPEC_CLASS = _FakeComponentSpec
+      EXECUTOR_SPEC = executor_spec.ExecutorClassSpec(_FakeExecutor)
+
+      def __init__(self):
+        super(_FakeComponent, self).__init__(spec=_FakeComponentSpec())
+
+    # Set up fake on launcher.
+    fake_launcher = _FakeLauncher()
+    mock_launcher_create.side_effect = [fake_launcher]
+    InProcessComponentLauncher.create = mock_launcher_create
+
+    context = interactive_context.InteractiveContext()
+    context.run(_FakeComponent())
+    self.assertIn('--labels tfx_runner=interactivecontext',
+                  ' '.join(fake_launcher.recorded_labels))
 
 
 if __name__ == '__main__':

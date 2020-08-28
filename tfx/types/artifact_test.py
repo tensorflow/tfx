@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import json
-import os
 from typing import Text
 
 # Standard Imports
@@ -88,22 +87,21 @@ _STRING_VALUE = u'This is a string'
 _BYTE_VALUE = b'This is a string'
 
 # Mock paths for string artifact.
-_VALID_URI = '/tmp/uri'
-_VALID_FILE_URI = os.path.join(_VALID_URI, artifact.ValueArtifact.VALUE_FILE)
+_VALID_URI = '/tmp/uri/value'
+_VALID_FILE_URI = _VALID_URI
 
 # Mock invalid paths. _BAD_URI points to a valid dir but there's no file within.
 _BAD_URI = '/tmp/to/a/bad/dir'
-_BAD_FILE_URI = os.path.join(_BAD_URI, artifact.ValueArtifact.VALUE_FILE)
 
 
 def fake_exist(path: Text) -> bool:
   """Mock behavior of tf.io.gfile.exists."""
-  return path in [_VALID_URI, _VALID_FILE_URI, _BAD_URI]
+  return path in [_VALID_URI, _VALID_FILE_URI]
 
 
 def fake_isdir(path: Text) -> bool:
   """Mock behavior of tf.io.gfile.isdir."""
-  return path in [_VALID_URI, _BAD_URI]
+  return path in [_VALID_URI]
 
 
 class ArtifactTest(tf.test.TestCase):
