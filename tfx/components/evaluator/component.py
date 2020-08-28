@@ -116,7 +116,7 @@ class Evaluator(base_component.BaseComponent):
       example_splits: Names of splits on which the metrics are computed.
         Default behavior (when example_splits is set to None or Empty) is using
         the 'eval' split.
-      output: Channel of `ModelEvalPath` to store the evaluation results.
+      output: Channel of `ModelEvaluation` to store the evaluation results.
       model_exports: Backwards compatibility alias for the `model` argument.
       instance_name: Optional name assigned to this specific instance of
         Evaluator. Required only if multiple Evaluator components are declared
@@ -125,7 +125,7 @@ class Evaluator(base_component.BaseComponent):
       eval_config: Instance of tfma.EvalConfig containg configuration settings
         for running the evaluation. This config has options for both estimator
         and Keras.
-      blessing: Output channel of 'ModelBlessingPath' that contains the
+      blessing: Output channel of 'ModelBlessing' that contains the
         blessing result.
       schema: A `Schema` channel to use for TFXIO.
       module_file: A path to python module file containing UDFs for Evaluator

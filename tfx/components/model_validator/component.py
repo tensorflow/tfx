@@ -86,8 +86,8 @@ class ModelValidator(base_component.BaseComponent):
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
         _required_
-      blessing: Output channel of 'ModelBlessingPath' that contains the
-        validation result.
+      blessing: Output channel of type `standard_artifacts.ModelBlessing`
+        that contains the validation result.
       instance_name: Optional name assigned to this specific instance of
         ModelValidator.  Required only if multiple ModelValidator components are
         declared in the same pipeline.
