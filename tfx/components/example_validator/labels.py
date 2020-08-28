@@ -23,7 +23,7 @@ PREV_VERSION_FEATURE_STATISTICS = 'prev_version_feature_statistics'
 FEATURES_NEEDED = 'features_needed'
 VALIDATION_CONFIG = 'validation_config'
 EXTERNAL_CONFIG_VERSION = 'external_config_version'
-TRAINING_STATISTICS = 'training_statistics'
+SERVING_STATISTICS = 'serving_statistics'
 
 # Output labels
 SCHEMA_DIFF_PATH = 'schema_diff_path'
