@@ -32,6 +32,7 @@ from tfx.components.transform import executor
 from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
+from tfx.utils import io_utils
 from google.protobuf import json_format
 
 
@@ -41,10 +42,39 @@ class _TempPath(types.Artifact):
 
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
-
-  def _get_source_data_dir(self):
-    return os.path.join(
+  
+  @classmethod
+  def setUpClass(self):
+    self._temp_data_dir = tempfile.mkdtemp()
+    
+    source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
+
+    source_example_dir = os.path.join(source_data_dir, 'csv_example_gen')
+    source_schema_dir = os.path.join(source_data_dir, 'schema_gen')
+    source_module_dir = os.path.join(source_data_dir, 'module_file')
+
+    io_utils.copy_dir(source_schema_dir,
+                      os.path.join(self._temp_data_dir, 'schema_gen'))
+    io_utils.copy_dir(source_module_dir,
+                      os.path.join(self._temp_data_dir, 'module_file'))
+
+    self._artifact1_uri = os.path.join(self._temp_data_dir, 'csv_example_gen1')
+    io_utils.copy_dir(source_example_dir, self._artifact1_uri)
+    self._artifact2_uri = os.path.join(self._temp_data_dir, 'csv_example_gen2')
+    io_utils.copy_dir(source_example_dir, self._artifact2_uri)
+    
+    # Duplicate the number of train and eval records such that
+    # second artifact has twice as many as first.
+    artifact2_train_dir = os.path.join(self._artifact2_uri, 'train')
+    for filename in tf.io.gfile.listdir(artifact2_train_dir):
+      io_utils.copy_file(os.path.join(artifact2_train_dir, filename), 
+          os.path.join(artifact2_train_dir, 'dup_' + filename))
+
+    artifact2_eval_dir = os.path.join(self._artifact2_uri, 'eval')
+    for filename in tf.io.gfile.listdir(artifact2_eval_dir):
+      io_utils.copy_file(os.path.join(artifact2_eval_dir, filename), 
+          os.path.join(artifact2_eval_dir, 'dup_' + filename))
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
@@ -57,9 +87,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def _make_base_do_params(self, source_data_dir, output_data_dir):
     # Create input dict.
     e1 = standard_artifacts.Examples()
-    e1.uri = os.path.join(source_data_dir, 'csv_example_gen')
+    e1.uri = self._artifact1_uri
     e1.split_names = artifact_utils.encode_split_names(['train', 'eval'])
     e2 = copy.deepcopy(e1)
+    e2.uri = self._artifact2_uri
 
     self._single_artifact = [e1]
     self._multiple_artifacts = [e1, e2]
@@ -105,7 +136,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
 
-    self._source_data_dir = self._get_source_data_dir()
+    self._source_data_dir = self._temp_data_dir
     self._output_data_dir = self._get_output_data_dir()
 
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
@@ -131,13 +162,17 @@ class ExecutorTest(tft_unit.TransformTestCase):
           0,
           len(tf.io.gfile.listdir(self._updated_analyzer_cache_artifact.uri)))
 
+    example_artifacts = self._single_artifact
     transformed_example_artifacts = self._single_transform
     if multiple_transform:
+      example_artifacts = self._multiple_artifacts
       transformed_example_artifacts = self._multiple_transform
 
     if materialize:
       expected_outputs.append('transformed_examples')
-      for transformed_example in transformed_example_artifacts:
+      for example, transformed_example in zip(
+          example_artifacts, transformed_example_artifacts):
+        # TODO(jjma): add tests to compare tf.records of exmaples and transform example
         train_pattern = os.path.join(transformed_example.uri, 'train', '*')
         train_files = tf.io.gfile.glob(train_pattern)
         self.assertNotEqual(0, len(train_files))
