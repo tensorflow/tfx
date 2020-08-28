@@ -10,6 +10,7 @@ Below are the current and past TFX RFCs and their current status.
 
 Title | Date | Status |
 ----- | ---- | ------ |
+[TFX DSL Data Model and IR](https://github.com/tensorflow/community/pull/271) | 2020-07-24 | Open |
 [**Advanced TFX DSL semantics**](https://github.com/tensorflow/community/blob/102bc5f3beb6ff756d147e7cbf88ffb5422a9f5c/rfcs/20200601-tfx-udsl-semantics.md) | **2020-04-08** | **Accepted** |
 [TFX Tuner Component](https://github.com/tensorflow/community/blob/master/rfcs/20200420-tfx-tuner-component.md) | 2020-04-20 | Accepted |
 [Combining ModelValidator with Evaluator](https://github.com/tensorflow/community/blob/master/rfcs/20200117-tfx-combining-model-validator-with-evaluator.md) | 2020-01-17 | Implemented |
