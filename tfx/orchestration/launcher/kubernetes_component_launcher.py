@@ -134,7 +134,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         pod_name,
         namespace,
         exit_condition_lambda=kube_utils.pod_is_not_pending,
-        condition_description='non-pending status')
+        condition_description='non-pending status',
+        timeout_sec=300)
 
     logging.info('Start log streaming for pod "%s:%s".', namespace, pod_name)
     try:
@@ -158,7 +159,8 @@ class KubernetesComponentLauncher(base_component_launcher.BaseComponentLauncher
         pod_name,
         namespace,
         exit_condition_lambda=kube_utils.pod_is_done,
-        condition_description='done state')
+        condition_description='done state',
+        timeout_sec=0)
 
     if resp.status.phase == kube_utils.PodPhase.FAILED.value:
       raise RuntimeError('Pod "%s:%s" failed with status "%s".' %
