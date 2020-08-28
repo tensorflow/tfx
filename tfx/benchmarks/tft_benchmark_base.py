@@ -37,6 +37,7 @@ from tensorflow_transform.tf_metadata import dataset_metadata
 from tensorflow_transform.tf_metadata import schema_utils
 import tfx
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import constants
 from tfx.benchmarks import benchmark_base
 from tfx_bsl.beam import shared
 
@@ -45,6 +46,7 @@ class _CopySavedModel(beam.PTransform):
   """Copies the TFT SavedModel to another directory."""
 
   def __init__(self, dest_path):
+    super(_CopySavedModel, self).__init__()
     self._dest_path = dest_path
 
   def expand(self, transform_fn):
@@ -82,6 +84,7 @@ class _AnalyzeAndTransformDataset(beam.PTransform):
         intermediate outputs (just the TFT SavedModel for now) necessary for
         other benchmarks.
     """
+    super(_AnalyzeAndTransformDataset, self).__init__()
     self._dataset = dataset
     self._tf_metadata_schema = tf_metadata_schema
     self._preprocessing_fn = preprocessing_fn
@@ -122,9 +125,7 @@ CommonVariablesTuple = collections.namedtuple("CommonVariablesTuple", [
 
 def _get_common_variables(dataset):
   """Returns metadata schema, preprocessing fn, input dataset metadata."""
-
-  tf_metadata_schema = benchmark_utils.read_schema(
-      dataset.tf_metadata_schema_path())
+  tf_metadata_schema = benchmark_utils.read_schema(constants.SCHEMA_PATH)
 
   preprocessing_fn = dataset.tft_preprocessing_fn()
 
@@ -193,15 +194,17 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
     # it must be injected by an external script.
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
-    kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID",
-                                             tft.__version__)
+    kwargs["extras"]["commit_tft"] = getattr(tft, "GIT_COMMIT_ID", tft.version)
     super(TFTBenchmarkBase, self).report_benchmark(**kwargs)
 
-  def benchmarkAnalyzeAndTransformDataset(self):
+  def benchmark_analyze_and_transform_dataset(self):
     """Benchmark AnalyzeAndTransformDataset.
 
     Runs AnalyzeAndTransformDataset in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     common_variables = _get_common_variables(self._dataset)
 
@@ -220,6 +223,8 @@ class TFTBenchmarkBase(benchmark_base.BenchmarkBase):
         iters=1,
         wall_time=delta,
         extras={"num_examples": self._dataset.num_examples()})
+
+    return delta
 
   def benchmarkRunMetaGraphDoFnManualActuation(self):
     """Benchmark RunMetaGraphDoFn "manually".

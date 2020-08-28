@@ -24,7 +24,7 @@ import time
 import apache_beam as beam
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis import constants
+from tensorflow_model_analysis import constants as tfma_constants
 from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
@@ -35,6 +35,7 @@ from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 import tfx
 from tfx.benchmarks import benchmark_utils
+from tfx.benchmarks import constants
 from tfx.benchmarks import benchmark_base
 from tfx_bsl.tfxio import test_util
 
@@ -79,7 +80,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
     kwargs["extras"]["commit_tfma"] = getattr(tfma, "GIT_COMMIT_ID",
-                                              tfma.__version__)
+                                              tfma.version)
     super(TFMAV2BenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkMiniPipelineUnbatched(self):
@@ -87,6 +88,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     self._init_model()
     pipeline = self._create_beam_pipeline()
@@ -123,18 +127,22 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
 
+    return delta
+
   def benchmarkMiniPipelineBatched(self):
     """Benchmark a batched "mini" TFMA - predict, slice and compute metrics.
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     self._init_model()
     pipeline = self._create_beam_pipeline()
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=benchmark_utils.read_schema(
-            self._dataset.tf_metadata_schema_path()),
-        raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        schema=benchmark_utils.read_schema(constants.SCHEMA_PATH),
+        raw_record_column_name=tfma_constants.ARROW_INPUT_COLUMN)
     raw_data = (
         pipeline
         | "Examples" >> beam.Create(
@@ -171,7 +179,9 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
 
-  def _readDatasetIntoExtracts(self):
+    return delta
+
+  def _read_dataset_into_extracts(self):
     """Read the raw dataset and massage examples into Extracts."""
     records = []
     # No limit here, the microbenchmarks are relatively fast.
@@ -183,7 +193,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def benchmarkInputExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
     self._init_model()
-    records = self._readDatasetIntoExtracts()
+    records = self._read_dataset_into_extracts()
     extracts = []
 
     start = time.time()
@@ -197,7 +207,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
   def benchmarkPredictExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
     self._init_model()
-    records = self._readDatasetIntoExtracts()
+    records = self._read_dataset_into_extracts()
     extracts = []
     for elem in records:
       extracts.append(input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
@@ -218,15 +228,14 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self.report_benchmark(
         iters=1, wall_time=delta, extras={"num_examples": len(records)})
 
-  def _runMetricsAndPlotsEvaluatorManualActuation(self,
-                                                  with_confidence_intervals,
-                                                  metrics_specs=None):
+  def _run_metrics_and_plots_evaluator_manual_actuation(
+      self, with_confidence_intervals, metrics_specs=None):
     """Benchmark MetricsAndPlotsEvaluatorV2 "manually"."""
     self._init_model()
     if not metrics_specs:
       metrics_specs = self._eval_config.metrics_specs
 
-    records = self._readDatasetIntoExtracts()
+    records = self._read_dataset_into_extracts()
     extracts = []
     for elem in records:
       extracts.append(input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
@@ -313,41 +322,34 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
 
   def benchmarkMetricsAndPlotsEvaluatorManualActuationNoConfidenceIntervals(
       self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._run_metrics_and_plots_evaluator_manual_actuation(
         with_confidence_intervals=False)
 
   def benchmarkMetricsAndPlotsEvaluatorManualActuationWithConfidenceIntervals(
       self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._run_metrics_and_plots_evaluator_manual_actuation(
         with_confidence_intervals=True)
 
   def benchmarkMetricsAndPlotsEvaluatorAUC10k(self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._run_metrics_and_plots_evaluator_manual_actuation(
         with_confidence_intervals=False,
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
         ]))
 
   def benchmarkMetricsAndPlotsEvaluatorBinaryClassification(self):
-    self._runMetricsAndPlotsEvaluatorManualActuation(
+    self._run_metrics_and_plots_evaluator_manual_actuation(
         with_confidence_intervals=False,
         metrics_specs=metric_specs.specs_from_metrics([
             tf.keras.metrics.BinaryAccuracy(name="accuracy"),
+            tf.keras.metrics.AUC(name="auc", num_thresholds=10000),
             tf.keras.metrics.AUC(
-                name="auc",
-                num_thresholds=10000
-            ),
-            tf.keras.metrics.AUC(
-                name="auc_precison_recall",
-                curve="PR",
-                num_thresholds=10000
-            ),
+                name="auc_precison_recall", curve="PR", num_thresholds=10000),
             tf.keras.metrics.Precision(name="precision"),
             tf.keras.metrics.Recall(name="recall"),
             tfma.metrics.MeanLabel(name="mean_label"),
             tfma.metrics.MeanPrediction(name="mean_prediction"),
             tfma.metrics.Calibration(name="calibration"),
-            tfma.metrics.ConfusionMatrixPlot(
-                name="confusion_matrix_plot"),
+            tfma.metrics.ConfusionMatrixPlot(name="confusion_matrix_plot"),
             tfma.metrics.CalibrationPlot(name="calibration_plot"),
         ]))

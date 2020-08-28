@@ -52,7 +52,7 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
     kwargs["extras"]["commit_tfx"] = getattr(tfx, "GIT_COMMIT_ID",
                                              tfx.__version__)
     kwargs["extras"]["commit_tfma"] = getattr(tfma, "GIT_COMMIT_ID",
-                                              tfma.__version__)
+                                              tfma.version)
     super(TFMABenchmarkBase, self).report_benchmark(**kwargs)
 
   def benchmarkMiniPipeline(self):
@@ -60,6 +60,9 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
 
     Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
     taken for the whole pipeline.
+
+    Returns:
+      Wall time spent running the pipeline.
     """
     pipeline = self._create_beam_pipeline()
     raw_data = (
@@ -92,6 +95,8 @@ class TFMABenchmarkBase(benchmark_base.BenchmarkBase):
         extras={
             "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
         })
+
+    return delta
 
   def benchmarkPredict(self):
     """Benchmark the predict and aggregate combine stages "manually".
