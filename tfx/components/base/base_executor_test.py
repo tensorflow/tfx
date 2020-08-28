@@ -47,46 +47,54 @@ class _TestExecutor(base_executor.BaseExecutor):
 class _BeamTestExecutor(base_executor.FuseableBeamExecutor):
   """Fake FuseableBeamExecutor for testing purpose only."""
 
-  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
-                        output_dict: Dict[Text, List[types.Artifact]],
-                        exec_properties: Dict[Text, Union[int, float, Text]]
-                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
+  def beam_io_signature(
+      self, input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Tuple[Dict[Text, type], Dict[Text, type]]:  # pylint: disable=g-bare-generic
     input_signature = {_EXAMPLES: Text}
     output_signature = {_SHUFFLED_EXAMPLES: int}
     return input_signature, output_signature
 
-  def read_inputs(self, pipeline: beam.Pipeline,
-                  input_dict: Dict[Text, List[types.Artifact]],
-                  output_dict: Dict[Text, List[types.Artifact]],
-                  exec_properties: Dict[Text, Union[int, float, Text]]
-                  ) -> Dict[Text, beam.pvalue.PCollection]:
+  def read_inputs(
+      self, pipeline: beam.Pipeline, input_dict: Dict[Text,
+                                                      List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Text, beam.pvalue.PCollection]:
     input_dir = input_dict[_EXAMPLES].uri
-    beam_inputs = ({_EXAMPLES: (pipeline
-                                | beam.io.textio.ReadFromText(
-                                    input_dir).with_output_types(Text))})
+    beam_inputs = ({
+        _EXAMPLES:
+            (pipeline
+             | beam.io.textio.ReadFromText(input_dir).with_output_types(Text))
+    })
     return beam_inputs
 
-  def run_component(self, pipeline: beam.Pipeline,
-                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> Dict[Text, beam.pvalue.PCollection]:
-    beam_outputs = {_SHUFFLED_EXAMPLES: (beam_inputs[_EXAMPLES]
-                                         | beam.Map(str.strip)
-                                         | beam.Map(int)
-                                         | beam.CombineGlobally(sum))}
+  def run_component(
+      self, pipeline: beam.Pipeline, beam_inputs: Dict[Text,
+                                                       beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Text, beam.pvalue.PCollection]:
+    beam_outputs = {
+        _SHUFFLED_EXAMPLES: (beam_inputs[_EXAMPLES]
+                             | beam.Map(str.strip)
+                             | beam.Map(int)
+                             | beam.CombineGlobally(sum))
+    }
     return beam_outputs
 
-  def write_outputs(self, pipeline: beam.Pipeline,
-                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> None:
+  def write_outputs(
+      self, pipeline: beam.Pipeline,
+      beam_outputs: Dict[Text, beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]) -> None:
     output_dir = output_dict[_SHUFFLED_EXAMPLES].uri
-    _ = (beam_outputs[_SHUFFLED_EXAMPLES]
-         | beam.io.textio.WriteToText(output_dir))
+    _ = (
+        beam_outputs[_SHUFFLED_EXAMPLES]
+        | beam.io.textio.WriteToText(output_dir))
 
   def Do(self, input_dict: Dict[Text, List[types.Artifact]],
          output_dict: Dict[Text, List[types.Artifact]],
@@ -94,8 +102,8 @@ class _BeamTestExecutor(base_executor.FuseableBeamExecutor):
     with self._make_beam_pipeline() as p:
       beam_inputs = self.read_inputs(p, input_dict, output_dict,
                                      exec_properties)
-      beam_outputs = self.run_component(p, beam_inputs, input_dict,
-                                        output_dict, exec_properties)
+      beam_outputs = self.run_component(p, beam_inputs, input_dict, output_dict,
+                                        exec_properties)
       self.write_outputs(p, beam_outputs, input_dict, output_dict,
                          exec_properties)
 
@@ -121,11 +129,13 @@ class BeamExecutorTest(tf.test.TestCase):
   def setUp(self):
     super(BeamExecutorTest, self).setUp()
     self._input_data_path = (
-        os.path.join(os.environ.get(
-            'TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()), 'input.txt'))
+        os.path.join(
+            os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+            'input.txt'))
     output_data_path = (
-        os.path.join(os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR',
-                                    self.get_temp_dir()), 'output.txt'))
+        os.path.join(
+            os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
+            'output.txt'))
     self._full_output_data_path = output_data_path + '-00000-of-00001'
 
     self._generate_data(self._input_data_path)
@@ -141,7 +151,7 @@ class BeamExecutorTest(tf.test.TestCase):
     self._output_dict = {_SHUFFLED_EXAMPLES: shuffled_examples}
 
   def _generate_data(self, file_path):
-    with open(file_path, "w+") as f:
+    with open(file_path, 'w+') as f:
       for i in range(_NUM_LINES):
         line = str(i) + '\n'
         f.write(line)
@@ -149,8 +159,8 @@ class BeamExecutorTest(tf.test.TestCase):
   def testFuseableBeamExecutorBeamIoSignature(self):
     beam_test_executor = _BeamTestExecutor()
     input_signature, output_signature = (
-        beam_test_executor.beam_io_signature(
-            self._input_dict, self._output_dict, {}))
+        beam_test_executor.beam_io_signature(self._input_dict,
+                                             self._output_dict, {}))
 
     self.assertEqual(input_signature[_EXAMPLES], Text)
     self.assertEqual(output_signature[_SHUFFLED_EXAMPLES], int)
@@ -167,6 +177,7 @@ class BeamExecutorTest(tf.test.TestCase):
       actual_sum = int(f.read())
 
     self.assertEqual(expected_sum, actual_sum)
+
 
 if __name__ == '__main__':
   tf.test.main()

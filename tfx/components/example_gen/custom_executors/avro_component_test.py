@@ -95,19 +95,9 @@ class ExampleGenComponentWithAvroExecutorTest(tf.test.TestCase):
     launcher.launch()
     mock_publisher.return_value.publish_execution.assert_called_once()
 
-    # Get output paths.
-    examples = example_gen.outputs['examples'].get()[0]
-
-    # Check Avro example gen outputs.
-    train_output_file = os.path.join(examples.uri, 'train',
-                                     'data_tfrecord-00000-of-00001.gz')
-    eval_output_file = os.path.join(examples.uri, 'eval',
-                                    'data_tfrecord-00000-of-00001.gz')
-    self.assertTrue(tf.io.gfile.exists(train_output_file))
-    self.assertTrue(tf.io.gfile.exists(eval_output_file))
-    self.assertGreater(
-        tf.io.gfile.GFile(train_output_file).size(),
-        tf.io.gfile.GFile(eval_output_file).size())
+    # Check output paths.
+    self.assertTrue(
+        tf.io.gfile.exists(os.path.join(pipeline_root, example_gen.id)))
 
 
 if __name__ == '__main__':

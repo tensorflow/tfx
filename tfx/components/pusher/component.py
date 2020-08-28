@@ -111,9 +111,7 @@ class Pusher(base_component.BaseComponent):
           'been renamed to "model" and is deprecated. Please update your '
           'usage as support for this argument will be removed soon.')
       model = model_export
-    output = output or types.Channel(
-        type=standard_artifacts.PushedModel,
-        artifacts=[standard_artifacts.PushedModel()])
+    output = output or types.Channel(type=standard_artifacts.PushedModel)
     if push_destination is None and not custom_executor_spec:
       raise ValueError('push_destination is required unless a '
                        'custom_executor_spec is supplied that does not require '

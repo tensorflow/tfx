@@ -2,6 +2,9 @@
 
 ## Major Features and Improvements
 
+*   Added experimental work-in-progress KubernetesDagRunner for orchestrating
+    TFX pipelines directly on a Kubernetes cluster.
+
 ## Bug fixes and other changes
 
 ## Breaking changes
@@ -37,6 +40,7 @@
 *   Supported multiple artifacts for Trainer and Tuner's input example Channel.
 *   Supported split configuration for Trainer and Tuner.
 *   Supported split configuration for Evaluator.
+*   Supported split configuration for Transform.
 *   Supported split configuration for StatisticsGen, SchemaGen and
     ExampleValidator. SchemaGen will now use all splits to generate schema
     instead of just using `train` split. ExampleValidator will now validate all
@@ -67,6 +71,8 @@
     *   specify `analyzer_cache` to use the cache generated from a previous run.
     *   specify parameter `disable_analyzer_cache=True` (False by default) to
         disable cache (won't generate cache output).
+*   Added support for width modifiers in Span and Version specs for file based
+    ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.

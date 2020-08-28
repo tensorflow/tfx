@@ -22,7 +22,7 @@ import abc
 import bisect
 import hashlib
 import os
-from typing import Any, Dict, List, Text, Union, Tuple
+from typing import Any, Dict, List, Text, Tuple, Type, Union
 
 from absl import logging
 import apache_beam as beam
@@ -42,6 +42,7 @@ from google.protobuf import json_format
 DEFAULT_FILE_NAME = 'data_tfrecord'
 # Key for output examples in executor output_dict.
 EXAMPLES_KEY = 'examples'
+
 
 def _GeneratePartitionKey(record: Union[tf.train.Example,
                                         tf.train.SequenceExample, bytes],
@@ -99,6 +100,8 @@ def _PartitionFn(
                                        tf.train.SequenceExample, bytes])
 @beam.typehints.with_output_types(bytes)
 def _MaybeSerialize(example_split: beam.pvalue.PCollection):
+  """PTransform that converts inputs to bytes, serializing if necessary."""
+
   def _MaybeSerializeFn(x):
     if isinstance(x, (tf.train.Example, tf.train.SequenceExample)):
       return x.SerializeToString()
@@ -241,16 +244,17 @@ class BaseExampleGenExecutor(
       for i, pcoll in enumerate(example_splits_unserialized):
         example_splits.append(
             pcoll
-            | 'MaybeSerialize[{}]'.format(i) >> _MaybeSerialize())
+            | 'MaybeSerialize[{}]'.format(i) >> _MaybeSerialize())  # pylint: disable=no-value-for-parameter
     else:
       # Use input splits.
       for split in input_config.splits:
         examples = (
             pipeline
-            | ('InputToRecord[{}]'.format(split.name) >>
-               # pylint: disable=no-value-for-parameter
-               input_to_record(exec_properties, split.pattern))
-            | 'MaybeSerialize[{}]'.format(split.name) >> _MaybeSerialize())
+            | (
+                'InputToRecord[{}]'.format(split.name) >>
+                # pylint: disable=no-value-for-parameter
+                input_to_record(exec_properties, split.pattern))
+            | 'MaybeSerialize[{}]'.format(split.name) >> _MaybeSerialize())  # pylint: disable=no-value-for-parameter
         example_splits.append(examples)
 
     result = {}
@@ -258,10 +262,12 @@ class BaseExampleGenExecutor(
       result[split_names[index]] = example_split
     return result
 
-  def beam_io_signature(self, input_dict: Dict[Text, List[types.Artifact]],
-                        output_dict: Dict[Text, List[types.Artifact]],
-                        exec_properties: Dict[Text, Union[int, float, Text]]
-                        ) -> Tuple[Dict[Text, type], Dict[Text, type]]:
+  def beam_io_signature(
+      self,
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Tuple[Dict[Tuple[Text, Text], Type], Dict[Tuple[Text, Text], Type]]:  # pylint: disable=g-bare-generic
     # Get input and output split information.
     input_config = example_gen_pb2.Input()
     json_format.Parse(exec_properties['input_config'], input_config)
@@ -276,20 +282,22 @@ class BaseExampleGenExecutor(
 
     return input_signature, output_signature
 
-
-  def read_inputs(self, pipeline: beam.Pipeline,
-                  input_dict: Dict[Text, List[types.Artifact]],
-                  output_dict: Dict[Text, List[types.Artifact]],
-                  exec_properties: Dict[Text, Union[int, float, Text]]
-                  ) -> Dict[Text, beam.pvalue.PCollection]:
+  def read_inputs(
+      self, pipeline: beam.Pipeline, input_dict: Dict[Text,
+                                                      List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
     return {}
 
-  def run_component(self, pipeline: beam.Pipeline,
-                    beam_inputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> Dict[Text, beam.pvalue.PCollection]:
+  def run_component(
+      self,
+      pipeline: beam.Pipeline,
+      beam_inputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]
+  ) -> Dict[Tuple[Text, Text], beam.pvalue.PCollection]:
     self._log_startup(input_dict, output_dict, exec_properties)
 
     input_config = example_gen_pb2.Input()
@@ -310,12 +318,12 @@ class BaseExampleGenExecutor(
       beam_outputs[(EXAMPLES_KEY, split_name)] = pcoll
     return beam_outputs
 
-  def write_outputs(self, pipeline: beam.Pipeline,
-                    beam_outputs: Dict[Text, beam.pvalue.PCollection],
-                    input_dict: Dict[Text, List[types.Artifact]],
-                    output_dict: Dict[Text, List[types.Artifact]],
-                    exec_properties: Dict[Text, Union[int, float, Text]]
-                    ) -> None:
+  def write_outputs(
+      self, pipeline: beam.Pipeline,
+      beam_outputs: Dict[Tuple[Text, Text], beam.pvalue.PCollection],
+      input_dict: Dict[Text, List[types.Artifact]],
+      output_dict: Dict[Text, List[types.Artifact]],
+      exec_properties: Dict[Text, Union[int, float, Text]]) -> None:
     # pylint: disable=expression-not-assigned, no-value-for-parameter
     for key, example_split in beam_outputs.items():
       split_name = key[1]
@@ -327,8 +335,8 @@ class BaseExampleGenExecutor(
     output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
       for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-        examples_utils.set_payload_format(
-            output_examples_artifact, output_payload_format)
+        examples_utils.set_payload_format(output_examples_artifact,
+                                          output_payload_format)
     logging.info('Examples generated.')
 
   def Do(
@@ -365,9 +373,9 @@ class BaseExampleGenExecutor(
       None
     """
     with self._make_beam_pipeline() as pipeline:
-      beam_inputs = self.read_inputs(
-          pipeline, input_dict, output_dict, exec_properties)
-      beam_outputs = self.run_component(
-          pipeline, beam_inputs, input_dict, output_dict, exec_properties)
-      self.write_outputs(
-          pipeline, beam_outputs, input_dict, output_dict, exec_properties)
+      beam_inputs = self.read_inputs(pipeline, input_dict, output_dict,
+                                     exec_properties)
+      beam_outputs = self.run_component(pipeline, beam_inputs, input_dict,
+                                        output_dict, exec_properties)
+      self.write_outputs(pipeline, beam_outputs, input_dict, output_dict,
+                         exec_properties)

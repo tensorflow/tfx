@@ -20,15 +20,15 @@ from __future__ import print_function
 import json
 from typing import Optional, Text, List
 
-from tfx.utils import json_utils
 from tfx.components.base import base_component
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.components.statistics_gen import executor
+from tfx.orchestration.kubeflow import node_wrapper
+from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
 from tfx.types.standard_component_specs import FusedComponentSpec
-from tfx.types.component_spec import ComponentSpec
-from tfx.orchestration.kubeflow import node_wrapper
+from tfx.utils import json_utils
 
 SERIALIZED_SUBGRAPH = 'serialized_subgraph'
 BEAM_PIPELINE_ARGS = 'beam_pipeline_args'
@@ -55,16 +55,17 @@ class FusedComponent(base_component.BaseComponent):
     """Construct a FusedComponent.
 
     Args:
-      components: logical components of this FusedComponent, in topological
+      subgraph: logical components of this FusedComponent, in topological
         order.
+      beam_pipeline_args: Beam pipeline arguments.
+      pipeline_root: Path to the pipeline root.
       instance_name: Optional name assigned to this specific instance of
         FusedComponent.  Required only if multiple FusedComponents are declared
         in the same pipeline.
     """
     self.subgraph = subgraph
     spec = self._create_component_spec(beam_pipeline_args, pipeline_root)
-    super(FusedComponent, self).__init__(
-        spec=spec, instance_name=instance_name)
+    super(FusedComponent, self).__init__(spec=spec, instance_name=instance_name)
 
   def _serialize_subgraph(self) -> Text:
     serialized_subgraph = []

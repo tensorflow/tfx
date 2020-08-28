@@ -18,15 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 import json
+import os
 from typing import Any, Dict, List, Text, Mapping, Tuple, cast
 
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
-from tfx.utils import json_utils
 from tfx.orchestration.kubeflow.node_wrapper import NodeWrapper
+from tfx.utils import json_utils
 
 SERIALIZED_SUBGRAPH = 'serialized_subgraph'
 BEAM_PIPELINE_ARGS = 'beam_pipeline_args'
@@ -35,10 +35,10 @@ CHANNEL_MAP = 'channel_map'
 
 
 class Executor(base_executor.BaseExecutor):
-  """Executes components in FusedComponent subgraph, performing fusion optimization"""
+  """Executes components in FusedComponent subgraph with fusion optimization."""
 
-  def _populate_component_dicts(self,
-                                input_dict: Dict[Text, List[types.Artifact]],
+  def _populate_component_dicts(self, input_dict: Dict[Text,
+                                                       List[types.Artifact]],
                                 output_dict: Dict[Text, List[types.Artifact]],
                                 exec_properties: Dict[Text, Any],
                                 components: List[NodeWrapper]) -> None:
@@ -66,8 +66,9 @@ class Executor(base_executor.BaseExecutor):
       component_id, parameter_key = k.split('_PARAMETER_')
       self.component_exec_properties[component_id][parameter_key] = v
 
-  def _get_component_executor(self, component: NodeWrapper, execution_id: int
-                              ) -> base_executor.FuseableBeamExecutor:
+  def _get_component_executor(
+      self, component: NodeWrapper,
+      execution_id: int) -> base_executor.FuseableBeamExecutor:
     executor_context = base_executor.BaseExecutor.Context(
         beam_pipeline_args=self.beam_pipeline_args,
         tmp_dir=os.path.join(self.pipeline_root, '.temp', ''),
@@ -97,9 +98,11 @@ class Executor(base_executor.BaseExecutor):
         parent_input_dict, parent_output_dict, parent_exec_properties)
     return child_input_sig == parent_output_sig
 
-  def _get_fusion_map(self, exec_properties: Dict[Text, Any],
-                      component_id_map: Mapping[Text, NodeWrapper]
-                      ) -> Mapping[NodeWrapper, NodeWrapper]:
+  def _get_fusion_map(
+      self, exec_properties: Dict[Text,
+                                  Any], component_id_map: Mapping[Text,
+                                                                  NodeWrapper]
+  ) -> Mapping[NodeWrapper, NodeWrapper]:
     channel_map = json.loads(exec_properties[CHANNEL_MAP])
     fusion_map = {}
 
@@ -112,9 +115,9 @@ class Executor(base_executor.BaseExecutor):
 
     return fusion_map
 
-  def _deserialize_components(self, exec_properties: Dict[Text, Any]
-                              ) -> Tuple[List[NodeWrapper],
-                                         Mapping[Text, NodeWrapper]]:
+  def _deserialize_components(
+      self, exec_properties: Dict[Text, Any]
+  ) -> Tuple[List[NodeWrapper], Mapping[Text, NodeWrapper]]:
     serialized_components = json.loads(exec_properties[SERIALIZED_SUBGRAPH])
     components = []
     component_id_map = {}
@@ -153,8 +156,8 @@ class Executor(base_executor.BaseExecutor):
     self.beam_pipeline_args = json.loads(exec_properties[BEAM_PIPELINE_ARGS])
     self.pipeline_root = exec_properties[PIPELINE_ROOT]
     components, component_id_map = self._deserialize_components(exec_properties)
-    self._populate_component_dicts(
-        input_dict, output_dict, exec_properties, components)
+    self._populate_component_dicts(input_dict, output_dict, exec_properties,
+                                   components)
     fusion_map = self._get_fusion_map(exec_properties, component_id_map)
 
     p = None
@@ -166,7 +169,7 @@ class Executor(base_executor.BaseExecutor):
       executor = self._get_component_executor(component, i)
 
       if not p:
-        p = executor._make_beam_pipeline() # pylint: disable=protected-access
+        p = executor._make_beam_pipeline()  # pylint: disable=protected-access
 
       use_cached_inputs = False
       if component in fusion_map:
@@ -177,19 +180,18 @@ class Executor(base_executor.BaseExecutor):
       if use_cached_inputs:
         beam_inputs = beam_outputs_cache[fusion_map[component]]
       else:
-        beam_inputs = executor.read_inputs(
-            p, curr_input_dict, curr_output_dict, curr_exec_properties)
+        beam_inputs = executor.read_inputs(p, curr_input_dict, curr_output_dict,
+                                           curr_exec_properties)
 
-      beam_outputs = executor.run_component(
-          p, beam_inputs, curr_input_dict, curr_output_dict,
-          curr_exec_properties)
+      beam_outputs = executor.run_component(p, beam_inputs, curr_input_dict,
+                                            curr_output_dict,
+                                            curr_exec_properties)
 
       if component in fusion_map.values():
         beam_outputs_cache[component] = beam_outputs
 
-      executor.write_outputs(
-          p, beam_outputs, curr_input_dict, curr_output_dict,
-          curr_exec_properties)
+      executor.write_outputs(p, beam_outputs, curr_input_dict, curr_output_dict,
+                             curr_exec_properties)
 
     result = p.run()
     result.wait_until_finish()
