@@ -73,7 +73,7 @@ class ExampleValidator(base_component.BaseComponent):
                output: Optional[types.Channel] = None,
                stats: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None,
-               training_statistics: Optional[types.Channel] = None):
+               serving_statistics: Optional[types.Channel] = None):
     """Construct an ExampleValidator component.
 
     Args:
@@ -90,9 +90,9 @@ class ExampleValidator(base_component.BaseComponent):
         ExampleValidator. Required only if multiple ExampleValidator components
         are declared in the same pipeline.  Either `stats` or `statistics` must
         be present in the arguments.
-      training_statistics: Optional Channel of type
-        `standard_artifacts.ExampleStatistics` used for training-serving
-        skew detection.
+      serving_statistics: Optional Channel of type
+        `standard_artifacts.ExampleStatistics` containing serving statistics
+        for use in training-serving skew detection.
     """
     if stats:
       logging.warning(
@@ -111,6 +111,6 @@ class ExampleValidator(base_component.BaseComponent):
         schema=schema,
         exclude_splits=json_utils.dumps(exclude_splits),
         anomalies=anomalies,
-        training_statistics=training_statistics)
+        serving_statistics=serving_statistics)
     super(ExampleValidator, self).__init__(
         spec=spec, instance_name=instance_name)

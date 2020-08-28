@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import shutil
 import tempfile
-import tensorflow as tf
-import pandas as pd
 
-from tfx import components
+import pandas as pd
+import tensorflow as tf
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
 from tfx.components.example_validator import executor
+from tfx.components.schema_gen.component import SchemaGen
+from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
@@ -35,11 +35,14 @@ from tfx.types import standard_artifacts
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils.dsl_utils import external_input
+
+from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import anomalies_pb2
 from tensorflow_metadata.proto.v0 import schema_pb2
-from google.protobuf import text_format
+
 
 class ExecutorTest(tf.test.TestCase):
+
   def setUp(self):
     super(ExecutorTest, self).setUp()
     self.source_data_dir = os.path.join(
@@ -49,11 +52,10 @@ class ExecutorTest(tf.test.TestCase):
         os.environ.get('TEST_UNDECLARED_OUTPUTS_DIR', self.get_temp_dir()),
         self._testMethodName)
 
-
   def testDo(self):
     eval_stats_artifact = standard_artifacts.ExampleStatistics()
-    eval_stats_artifact.uri = os.path.join(
-        self.source_data_dir, 'statistics_gen')
+    eval_stats_artifact.uri = os.path.join(self.source_data_dir,
+                                           'statistics_gen')
     eval_stats_artifact.split_names = artifact_utils.encode_split_names(
         ['train', 'eval', 'test'])
 
@@ -106,7 +108,8 @@ class ExecutorTest(tf.test.TestCase):
     # TODO(zhitaoli): Add comparison to expected anomolies.
 
   def testDoSkewDetection(self):
-    # Read in the Chicago Taxi data.csv and intentionally skew it to keep only Cash trips
+    # Read in the Chicago Taxi data.csv and intentionally skew it to keep only
+    # Cash trips (simulating a skewed serving dataset).
     original_csv_path = os.path.join(self.source_data_dir,
                                      'external/csv/data.csv')
     skewed_data = pd.read_csv(original_csv_path)
@@ -119,12 +122,13 @@ class ExecutorTest(tf.test.TestCase):
     skewed_path = os.path.join(skewed_dir, 'skewed_data.csv')
     skewed_data.to_csv(skewed_path)
 
-    # TFX pipeline components to generate a schema and tfrecords file for the skewed data
+    # TFX pipeline components to generate a schema and tfrecords file for the
+    # simulated skewed serving data.
     examples = external_input(skewed_dir)
     example_gen = CsvExampleGen(input=examples)
-    statistics_gen = components.StatisticsGen(
+    statistics_gen = StatisticsGen(
         examples=example_gen.outputs['examples'])
-    schema_gen = components.SchemaGen(
+    schema_gen = SchemaGen(
         statistics=statistics_gen.outputs['statistics'],
         infer_feature_shape=False)
 
@@ -151,26 +155,26 @@ class ExecutorTest(tf.test.TestCase):
     tmp_schema_pbtxt_path = os.path.join(tmp_schema_pbtxt_dir, 'schema.pbtxt')
     original_schema_pbtxt_path = os.path.join(schema_artifact.uri,
                                               'schema.pbtxt')
-    shutil.copy2(original_schema_pbtxt_path, tmp_schema_pbtxt_path)
+    tf.io.gfile.copy(original_schema_pbtxt_path, tmp_schema_pbtxt_path)
 
-    with open(tmp_schema_pbtxt_path, "r") as f:
+    with open(tmp_schema_pbtxt_path, 'r') as f:
       contents = f.read()
       proto_contents = text_format.Parse(contents, schema_pb2.Schema())
 
       for feature in proto_contents.feature:
-        if feature.name == "payment_type":
+        if feature.name == 'payment_type':
           feature.skew_comparator.infinity_norm.threshold = 0.001
 
       contents = text_format.MessageToString(proto_contents)
 
-    with open(tmp_schema_pbtxt_path, "w") as f:
+    with open(tmp_schema_pbtxt_path, 'w') as f:
       f.write(contents)
 
     schema_artifact.uri = tmp_schema_pbtxt_dir
 
     eval_stats_artifact = standard_artifacts.ExampleStatistics()
-    eval_stats_artifact.uri = os.path.join(
-        self.source_data_dir, 'statistics_gen')
+    eval_stats_artifact.uri = os.path.join(self.source_data_dir,
+                                           'statistics_gen')
     eval_stats_artifact.split_names = artifact_utils.encode_split_names(
         ['eval'])
 
@@ -180,7 +184,7 @@ class ExecutorTest(tf.test.TestCase):
     input_dict = {
         executor.STATISTICS_KEY: [eval_stats_artifact],
         executor.SCHEMA_KEY: [schema_artifact],
-        executor.TRAINING_STATISTICS_KEY: [skewed_statistics],
+        executor.SERVING_STATISTICS_KEY: [skewed_statistics],
     }
 
     output_dict = {
@@ -199,7 +203,8 @@ class ExecutorTest(tf.test.TestCase):
     self.assertNotEqual(0, len(anomalies.anomaly_info))
     self.assertIn('COMPARATOR_L_INFTY_HIGH', str(anomalies.anomaly_info))
 
-    shutil.rmtree(tmp_dir)
+    tf.io.gfile.rmtree(tmp_dir)
+
 
 if __name__ == '__main__':
   tf.test.main()
