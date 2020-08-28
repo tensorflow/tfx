@@ -13,13 +13,14 @@
 # limitations under the License.
 """Definition of Kubernetes TFX runner."""
 
-import absl
 import datetime
+import json
 from typing import Optional, List, Text, Type
 
-from ml_metadata.proto import metadata_store_pb2
-from tfx.dsl.component.experimental import container_component
+import absl
+
 from tfx.components.base import base_node
+from tfx.dsl.component.experimental import container_component
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as tfx_pipeline
@@ -32,12 +33,15 @@ from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import kubernetes_component_launcher
-from tfx.utils import json_utils, kube_utils
+from tfx.utils import json_utils
+from tfx.utils import kube_utils
+
 from google.protobuf import json_format
-import json
+from ml_metadata.proto import metadata_store_pb2
 
 _CONTAINER_COMMAND = [
-    'python', '-m', 'tfx.orchestration.experimental.kubernetes.container_entrypoint'
+    'python', '-m',
+    'tfx.orchestration.experimental.kubernetes.container_entrypoint'
 ]
 
 # Suffix added to the component id to avoid MLMD conflict when
@@ -67,22 +71,20 @@ def get_default_kubernetes_metadata_config(
 
 def launch_container_component(
     component: base_node.BaseNode,
-    component_launcher_class:
-        Type[base_component_launcher.BaseComponentLauncher],
+    component_launcher_class: Type[
+        base_component_launcher.BaseComponentLauncher],
     component_config: base_component_config.BaseComponentConfig,
     pipeline: tfx_pipeline.Pipeline):
   """Use the kubernetes component launcher to launch the component.
 
   Args:
     component: Container component to be executed.
+    component_launcher_class: The class of the launcher to launch the component.
     component_config: component config to launch the component.
-    component_launcher_class: The class of the launcher to launch the
-      component.
     pipeline: Logical pipeline that contains pipeline related information.
   """
   driver_args = data_types.DriverArgs(enable_cache=pipeline.enable_cache)
-  metadata_connection = metadata.Metadata(
-      pipeline.metadata_connection_config)
+  metadata_connection = metadata.Metadata(pipeline.metadata_connection_config)
 
   component_launcher = component_launcher_class.create(
       component=component,
@@ -100,19 +102,18 @@ def launch_container_component(
 class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
   """Runtime configuration parameters specific to execution on Kubernetes."""
 
-  def __init__(
-      self,
-      tfx_image: Optional[Text] = None,
-      supported_launcher_classes: Optional[List[Type[
-          base_component_launcher.BaseComponentLauncher]]] = None,
-      **kwargs):
+  def __init__(self,
+               tfx_image: Optional[Text] = None,
+               supported_launcher_classes: Optional[List[Type[
+                   base_component_launcher.BaseComponentLauncher]]] = None,
+               **kwargs):
     """Creates a KubernetesDagRunnerConfig object.
 
     Args:
       tfx_image: The TFX container image to use in the pipeline.
       supported_launcher_classes: Optional list of component launcher classes
-        that are supported by the current pipeline. List sequence determines
-        the order in which launchers are chosen for each component being run.
+        that are supported by the current pipeline. List sequence determines the
+        order in which launchers are chosen for each component being run.
       **kwargs: keyword args for PipelineConfig.
     """
     supported_launcher_classes = supported_launcher_classes or [
@@ -127,8 +128,7 @@ class KubernetesDagRunnerConfig(pipeline_config.PipelineConfig):
 class KubernetesDagRunner(tfx_runner.TfxRunner):
   """TFX runner on Kubernetes."""
 
-  def __init__(self,
-               config: Optional[KubernetesDagRunnerConfig] = None):
+  def __init__(self, config: Optional[KubernetesDagRunnerConfig] = None):
     """Initializes KubernetesDagRunner as a TFX orchestrator.
 
     Args:
@@ -172,10 +172,8 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       # Check if the component is launchable as a container component.
       if kubernetes_component_launcher.KubernetesComponentLauncher.can_launch(
           component.executor_spec, component_config):
-        launch_container_component(component,
-                                   component_launcher_class,
-                                   component_config,
-                                   pipeline)
+        launch_container_component(component, component_launcher_class,
+                                   component_config, pipeline)
       # Otherwise, the component should be launchable with the in process
       # component launcher. wrap the component to a container component.
       elif in_process_component_launcher.InProcessComponentLauncher.can_launch(
@@ -184,8 +182,7 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
             component=component,
             component_launcher_class=component_launcher_class,
             component_config=component_config,
-            pipeline=pipeline
-        )
+            pipeline=pipeline)
 
         # Component launch info is updated by wrapping the component into a
         # container component. Therefore, these properties need to be reloaded.
@@ -195,19 +192,17 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
 
         launch_container_component(wrapped_component,
                                    wrapped_component_launcher_class,
-                                   wrapped_component_config,
-                                   pipeline)
+                                   wrapped_component_config, pipeline)
       else:
-        raise ValueError("Can not find suitable launcher for component.")
+        raise ValueError('Can not find suitable launcher for component.')
 
       ran_components.add(component)
-
 
   def _wrap_container_component(
       self,
       component: base_node.BaseNode,
-      component_launcher_class:
-      Type[base_component_launcher.BaseComponentLauncher],
+      component_launcher_class: Type[
+          base_component_launcher.BaseComponentLauncher],
       component_config: Optional[base_component_config.BaseComponentConfig],
       pipeline: tfx_pipeline.Pipeline,
   ) -> base_node.BaseNode:
@@ -260,5 +255,5 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
         outputs={},
         parameters={},
         image=self._config.tfx_image,
-        command=_CONTAINER_COMMAND + arguments
-    )(instance_name=component._instance_name + _WRAPPER_SUFFIX) # pylint: disable=protected-access
+        command=_CONTAINER_COMMAND + arguments)(
+            instance_name=component._instance_name + _WRAPPER_SUFFIX)  # pylint: disable=protected-access
