@@ -20,12 +20,10 @@ from __future__ import division
 from __future__ import print_function
 
 import itertools
-from absl.testing import parameterized
 
 import tensorflow as tf
 from tfx import types
 from tfx.components import CsvExampleGen
-from tfx.components import ImporterNode
 from tfx.components import ResolverNode
 from tfx.dsl.compiler import compiler_utils
 from tfx.dsl.components.base import base_component
@@ -33,7 +31,6 @@ from tfx.dsl.components.base import base_executor
 from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.proto.orchestration import pipeline_pb2
-from tfx.types import standard_artifacts
 from tfx.utils.dsl_utils import external_input
 
 from ml_metadata.proto import metadata_store_pb2
@@ -55,26 +52,13 @@ class EmptyComponent(base_component.BaseComponent):
         spec=EmptyComponentSpec(), instance_name=name)
 
 
-class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ("IntValue", 42, metadata_store_pb2.Value(int_value=42)),
-      ("FloatValue", 42.0, metadata_store_pb2.Value(double_value=42.0)),
-      ("StrValue", "42", metadata_store_pb2.Value(string_value="42")))
-  def testSetFieldValuePb(self, value, expected_pb):
-    pb = metadata_store_pb2.Value()
-    compiler_utils.set_field_value_pb(pb, value)
-    self.assertEqual(pb, expected_pb)
-
-  def testSetFieldValuePbUnsupportedType(self):
-    pb = metadata_store_pb2.Value()
-    with self.assertRaises(ValueError):
-      compiler_utils.set_field_value_pb(pb, True)
+class CompilerUtilsTest(tf.test.TestCase):
 
   def testSetRuntimeParameterPb(self):
     pb = pipeline_pb2.RuntimeParameter()
     compiler_utils.set_runtime_parameter_pb(pb, "test_name", str,
                                             "test_default_value")
+    print("testSetRuntimeParameterPb", pb)
     expected_pb = pipeline_pb2.RuntimeParameter(
         name="test_name",
         type=pipeline_pb2.RuntimeParameter.Type.STRING,
@@ -90,16 +74,6 @@ class CompilerUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
     example_gen = CsvExampleGen(input=external_input("data_path"))
     self.assertFalse(compiler_utils.is_resolver(example_gen))
-
-  def testIsImporter(self):
-    importer = ImporterNode(
-        instance_name="import_schema",
-        source_uri="uri/to/schema",
-        artifact_type=standard_artifacts.Schema)
-    self.assertTrue(compiler_utils.is_importer(importer))
-
-    example_gen = CsvExampleGen(input=external_input("data_path"))
-    self.assertFalse(compiler_utils.is_importer(example_gen))
 
   def testEnsureTopologicalOrder(self):
     a = EmptyComponent(name="a")

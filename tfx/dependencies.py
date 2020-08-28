@@ -101,7 +101,7 @@ def make_required_install_packages():
   ]
 
 
-def make_required_test_packages():
+def make_extra_packages_test():
   """Prepare extra packages needed for running unit tests."""
   # Note: It is okay to pin packages to exact verions in this list to minimize
   # conflicts.
@@ -144,10 +144,10 @@ def make_extra_packages_examples():
   ]
 
 
-def make_all_dependency_packages():
+def make_extra_packages_all():
   # All extra dependencies.
   return [
-      *make_required_test_packages(),
+      *make_extra_packages_test(),
       *make_extra_packages_tfjs(),
       *make_extra_packages_examples(),
   ]

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utilities to evaluate and resolve Placeholders."""
 
-import re
+import operator
 from typing import Any, Callable, Dict, Mapping, Sequence
 
 import attr
@@ -23,13 +23,13 @@ from tfx.types import artifact_utils
 from tfx.types import value_artifact
 
 from google.protobuf import descriptor_pool
-from google.protobuf import json_format
 from google.protobuf import message
 from google.protobuf import message_factory
 from google.protobuf import text_format
 
 
-@attr.s(auto_attribs=True, frozen=True)
+# TODO(b/165359991): Restore 'auto_attribs=True' once we drop Python3.5 support.
+@attr.s
 class ResolutionContext:
   """A struct to store information for needed for resolution.
 
@@ -41,15 +41,17 @@ class ResolutionContext:
     exec_properties: A mapping from execution property key to other execution
       properties, to help resolve output artifact related placeholders.
   """
-  input_dict: Mapping[str, Sequence[artifact.Artifact]] = None
-  output_dict: Mapping[str, Sequence[artifact.Artifact]] = None
-  exec_properties: Mapping[str, Any] = None
+  input_dict = attr.ib(
+      type=Mapping[str, Sequence[artifact.Artifact]], default=None)
+  output_dict = attr.ib(
+      type=Mapping[str, Sequence[artifact.Artifact]], default=None)
+  exec_properties = attr.ib(type=Mapping[str, Any], default=None)
   # TODO(b/168139972): Add context for Context-type placeholder.
 
 
 def resolve_placeholder_expression(
     expression: placeholder_pb2.PlaceholderExpression,
-    context: ResolutionContext) -> Any:
+    context: ResolutionContext) -> str:
   """Evaluates a placeholder expression using the given context.
 
   Args:
@@ -59,7 +61,7 @@ def resolve_placeholder_expression(
   Returns:
     Resolved expression value.
   """
-  return _ExpressionResolver(context).resolve(expression)
+  return str(_ExpressionResolver(context).resolve(expression))
 
 
 # Dictionary of registered placeholder operators,
@@ -189,23 +191,10 @@ class _ExpressionResolver:
         op.proto_schema.message_type)
     factory = message_factory.MessageFactory(pool)
     message_type = factory.GetPrototype(message_descriptor)
-    value = message_type()
-    json_format.Parse(raw_message, value, descriptor_pool=pool)
+    value = message_type.FromString(raw_message)
 
     if op.proto_field_path:
-      for field in op.proto_field_path:
-        if field.startswith("."):
-          value = getattr(value, field[1:])
-          continue
-        map_key = re.findall(r"\[['\"](.+)['\"]\]", field)
-        if len(map_key) == 1:
-          value = value[map_key[0]]
-          continue
-        index = re.findall(r"\[(\d+)\]", field)
-        if len(index) == 1 and str.isdecimal(index[0]):
-          value = value[int(index[0])]
-          continue
-        raise ValueError(f"Got unsupported proto field path: {field}")
+      value = operator.attrgetter(op.proto_field_path)(value)
       if not isinstance(value, message.Message):
-        return value
+        return str(value)
     return text_format.MessageToString(value)

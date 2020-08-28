@@ -21,6 +21,10 @@ from tfx.types import artifact_utils
 from ml_metadata.proto import metadata_store_pb2
 from ml_metadata.proto import metadata_store_service_pb2
 
+PORTABLE_LAUNCHER_PACKAGE = ('test/learning/tfx/tflex/pluggable_orchestrator/'
+                             'python_executor_binary')
+PORTABLE_LAUNCHER_BINARY = 'python_executor_binary.par'
+
 
 def _build_artifact_dict(proto_dict):
   """Build ExecutionInfo input/output artifact dicts."""

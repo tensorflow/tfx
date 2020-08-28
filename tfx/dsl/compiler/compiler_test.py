@@ -26,7 +26,6 @@ import tensorflow_model_analysis as tfma
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
-from tfx.components import ImporterNode
 from tfx.components import Pusher
 from tfx.components import ResolverNode
 from tfx.components import SchemaGen
@@ -42,7 +41,8 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import Channel
-from tfx.types import standard_artifacts
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
 
 from google.protobuf import text_format
@@ -71,18 +71,6 @@ class CompilerTest(tf.test.TestCase):
 
     statistics_gen = StatisticsGen(examples=example_gen.outputs["examples"])
 
-    importer = ImporterNode(
-        instance_name="my_importer",
-        source_uri="m/y/u/r/i",
-        properties={
-            "split_names": "['train', 'eval']",
-        },
-        custom_properties={
-            "int_custom_property": 42,
-            "str_custom_property": "42",
-        },
-        artifact_type=standard_artifacts.Examples)
-
     schema_gen = SchemaGen(
         statistics=statistics_gen.outputs["statistics"],
         infer_feature_shape=True)
@@ -110,8 +98,8 @@ class CompilerTest(tf.test.TestCase):
     model_resolver = ResolverNode(
         instance_name="latest_blessed_model_resolver",
         resolver_class=latest_blessed_model_resolver.LatestBlessedModelResolver,
-        model=Channel(type=standard_artifacts.Model),
-        model_blessing=Channel(type=standard_artifacts.ModelBlessing))
+        model=Channel(type=Model),
+        model_blessing=Channel(type=ModelBlessing))
 
     eval_config = tfma.EvalConfig(
         model_specs=[tfma.ModelSpec(signature_name="eval")],
@@ -147,7 +135,6 @@ class CompilerTest(tf.test.TestCase):
         components=[
             example_gen,
             statistics_gen,
-            importer,
             schema_gen,
             example_validator,
             trainer,
