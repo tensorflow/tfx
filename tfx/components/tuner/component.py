@@ -84,11 +84,13 @@ class Tuner(base_component.BaseComponent):
         'module_file' for the required signature of the UDF. Exactly one of
         'module_file' or 'tuner_fn' must be supplied.
       train_args: A trainer_pb2.TrainArgs instance, containing args used for
-        training. Current only num_steps is available.
+        training. Currently only splits and num_steps are available. Default
+        behavior (when splits is empty) is train on `train` split.
       eval_args: A trainer_pb2.EvalArgs instance, containing args used for eval.
-        Current only num_steps is available.
+        Currently only splits and num_steps are available. Default behavior
+        (when splits is empty) is evaluate on `eval` split.
       tune_args: A tuner_pb2.TuneArgs instance, containing args used for tuning.
-        Current only num_parallel_trials is available.
+        Currently only num_parallel_trials is available.
       custom_config: A dict which contains addtional training job parameters
         that will be passed into user module.
       best_hyperparameters: Optional Channel of type
@@ -101,8 +103,7 @@ class Tuner(base_component.BaseComponent):
           "Exactly one of 'module_file' or 'tuner_fn' must be supplied")
 
     best_hyperparameters = best_hyperparameters or types.Channel(
-        type=standard_artifacts.HyperParameters,
-        artifacts=[standard_artifacts.HyperParameters()])
+        type=standard_artifacts.HyperParameters)
     spec = TunerSpec(
         examples=examples,
         schema=schema,

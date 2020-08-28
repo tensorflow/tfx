@@ -19,7 +19,6 @@ import os
 
 from typing import Any, Dict, Text
 import mock
-# TODO(b/160252429): Clearn up lint warining.
 import tensorflow as tf
 
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
@@ -52,8 +51,8 @@ class ExecutorTest(tf.test.TestCase):
         },
     }
     self._executor_class_path = '%s.%s' % (
-        ai_platform_tuner_executor._Executor.__module__,
-        ai_platform_tuner_executor._Executor.__name__)
+        ai_platform_tuner_executor._WorkerExecutor.__module__,
+        ai_platform_tuner_executor._WorkerExecutor.__name__)
 
     self.addCleanup(mock.patch.stopall)
     self.mock_runner = mock.patch(
@@ -130,8 +129,6 @@ class ExecutorTest(tf.test.TestCase):
             'workerCount': 5,
         },
         mock.ANY)
-
-  # TODO(b/143900133): Add test coverage to _Executor class.
 
 
 if __name__ == '__main__':

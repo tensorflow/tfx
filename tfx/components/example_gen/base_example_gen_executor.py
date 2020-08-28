@@ -29,12 +29,14 @@ import apache_beam as beam
 from six import with_metaclass
 import tensorflow as tf
 
-from google.protobuf import json_format
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.example_gen import utils
+from tfx.components.util import examples_utils
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
+
+from google.protobuf import json_format
 
 # Default file name for TFRecord output file prefix.
 DEFAULT_FILE_NAME = 'data_tfrecord'
@@ -206,7 +208,7 @@ class BaseExampleGenExecutor(
     # Make beam_pipeline_args available in exec_properties since certain
     # example_gen executors need this information.
     # TODO(b/155441037): Revisit necessity of this when BigQueryExampleGen
-    # does not branch on project or runner anymore.
+    # does not branch on runner anymore.
     exec_properties['_beam_pipeline_args'] = self._beam_pipeline_args or []
 
     example_splits = []
@@ -279,6 +281,16 @@ class BaseExampleGenExecutor(
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
+    input_config = example_gen_pb2.Input()
+    output_config = example_gen_pb2.Output()
+    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY], input_config)
+    json_format.Parse(exec_properties[utils.OUTPUT_CONFIG_KEY], output_config)
+
+    examples_artifact = artifact_utils.get_single_instance(
+        output_dict[utils.EXAMPLES_KEY])
+    examples_artifact.split_names = artifact_utils.encode_split_names(
+        utils.generate_output_split_names(input_config, output_config))
+
     logging.info('Generating examples.')
     with self._make_beam_pipeline() as pipeline:
       example_splits = self.GenerateExamplesByBeam(pipeline, exec_properties)
@@ -294,7 +306,6 @@ class BaseExampleGenExecutor(
     output_payload_format = exec_properties.get(utils.OUTPUT_DATA_FORMAT_KEY)
     if output_payload_format:
       for output_examples_artifact in output_dict[utils.EXAMPLES_KEY]:
-        output_examples_artifact.set_string_custom_property(
-            utils.PAYLOAD_FORMAT_PROPERTY_NAME,
-            example_gen_pb2.PayloadFormat.Name(output_payload_format))
+        examples_utils.set_payload_format(
+            output_examples_artifact, output_payload_format)
     logging.info('Examples generated.')

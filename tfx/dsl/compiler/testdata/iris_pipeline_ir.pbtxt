@@ -37,6 +37,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.CsvExampleGen"
+          }
+        }
+      }
     }
     outputs {
       outputs {
@@ -52,6 +62,10 @@ nodes {
               properties {
                 key: "split_names"
                 value: STRING
+              }
+              properties {
+                key: "version"
+                value: INT
               }
             }
           }
@@ -92,11 +106,6 @@ nodes {
         }
       }
     }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-      }
-    }
     downstream_nodes: "Evaluator"
     downstream_nodes: "StatisticsGen"
     downstream_nodes: "Trainer"
@@ -129,6 +138,16 @@ nodes {
           runtime_parameter {
             name: "pipeline_run"
             type: STRING
+          }
+        }
+      }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.ResolverNode.latest_blessed_model_resolver"
           }
         }
       }
@@ -195,6 +214,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.StatisticsGen"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -222,6 +251,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
                 }
               }
             }
@@ -255,9 +294,14 @@ nodes {
         }
       }
     }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.statistics_gen.executor.Executor"
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
       }
     }
     upstream_nodes: "CsvExampleGen"
@@ -295,6 +339,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.SchemaGen"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -325,6 +379,16 @@ nodes {
                 }
               }
             }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.StatisticsGen"
+                }
+              }
+            }
             artifact_query {
               type {
                 name: "ExampleStatistics"
@@ -349,17 +413,20 @@ nodes {
     }
     parameters {
       parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
+      }
+      parameters {
         key: "infer_feature_shape"
         value {
           field_value {
             int_value: 1
           }
         }
-      }
-    }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.schema_gen.executor.Executor"
       }
     }
     upstream_nodes: "StatisticsGen"
@@ -397,6 +464,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.ExampleValidator"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -424,6 +501,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.SchemaGen"
                 }
               }
             }
@@ -464,6 +551,16 @@ nodes {
                 }
               }
             }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.StatisticsGen"
+                }
+              }
+            }
             artifact_query {
               type {
                 name: "ExampleStatistics"
@@ -485,14 +582,23 @@ nodes {
                 key: "span"
                 value: INT
               }
+              properties {
+                key: "split_names"
+                value: STRING
+              }
             }
           }
         }
       }
     }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.example_validator.executor.Executor"
+    parameters {
+      parameters {
+        key: "exclude_splits"
+        value {
+          field_value {
+            string_value: "[]"
+          }
+        }
       }
     }
     upstream_nodes: "SchemaGen"
@@ -529,6 +635,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Trainer"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -556,6 +672,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
                 }
               }
             }
@@ -593,6 +719,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.SchemaGen"
                 }
               }
             }
@@ -666,11 +802,6 @@ nodes {
         }
       }
     }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.trainer.executor.GenericExecutor"
-      }
-    }
     upstream_nodes: "CsvExampleGen"
     upstream_nodes: "SchemaGen"
     downstream_nodes: "Evaluator"
@@ -707,6 +838,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Evaluator"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -734,6 +875,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.ResolverNode.latest_blessed_model_resolver"
                 }
               }
             }
@@ -774,6 +925,16 @@ nodes {
                 }
               }
             }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.CsvExampleGen"
+                }
+              }
+            }
             artifact_query {
               type {
                 name: "Examples"
@@ -808,6 +969,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
                 }
               }
             }
@@ -852,10 +1023,13 @@ nodes {
           }
         }
       }
-    }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.evaluator.executor.Executor"
+      parameters {
+        key: "example_splits"
+        value {
+          field_value {
+            string_value: "null"
+          }
+        }
       }
     }
     upstream_nodes: "CsvExampleGen"
@@ -894,6 +1068,16 @@ nodes {
           }
         }
       }
+      contexts {
+        type {
+          name: "node"
+        }
+        name {
+          field_value {
+            string_value: "iris.Pusher"
+          }
+        }
+      }
     }
     inputs {
       inputs {
@@ -921,6 +1105,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Trainer"
                 }
               }
             }
@@ -958,6 +1152,16 @@ nodes {
                 runtime_parameter {
                   name: "pipeline_run"
                   type: STRING
+                }
+              }
+            }
+            context_queries {
+              type {
+                name: "node"
+              }
+              name {
+                field_value {
+                  string_value: "iris.Evaluator"
                 }
               }
             }
@@ -1001,11 +1205,6 @@ nodes {
         }
       }
     }
-    executor {
-      python_class_executor_spec {
-        class_path: "tfx.components.pusher.executor.Executor"
-      }
-    }
     upstream_nodes: "Evaluator"
     upstream_nodes: "Trainer"
   }
@@ -1028,3 +1227,87 @@ runtime_spec {
   }
 }
 execution_mode: SYNC
+deployment_config {
+  [type.googleapis.com/tfx.orchestration.IntermediateDeploymentConfig] {
+    executor_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Evaluator"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.evaluator.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "ExampleValidator"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.example_validator.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Pusher"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.pusher.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "SchemaGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.schema_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "StatisticsGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.statistics_gen.executor.Executor"
+          }
+        }
+      }
+    }
+    executor_specs {
+      key: "Trainer"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.trainer.executor.GenericExecutor"
+          }
+        }
+      }
+    }
+    custom_driver_specs {
+      key: "CsvExampleGen"
+      value {
+        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
+          python_class_executable_spec {
+            class_path: "tfx.components.example_gen.driver.Driver"
+          }
+        }
+      }
+    }
+  }
+}

@@ -34,6 +34,8 @@ from tfx.types.artifact import ValueArtifact
 
 # Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)
+# Version for an artifact.
+VERSION_PROPERTY = Property(type=PropertyType.INT)
 # Comma separated of splits for an artifact. Empty string means artifact
 # has no split.
 SPLIT_NAMES_PROPERTY = Property(type=PropertyType.STRING)
@@ -45,6 +47,7 @@ class Examples(Artifact):
   TYPE_NAME = 'Examples'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
+      'version': VERSION_PROPERTY,
       'split_names': SPLIT_NAMES_PROPERTY,
   }
 
@@ -53,6 +56,7 @@ class ExampleAnomalies(Artifact):
   TYPE_NAME = 'ExampleAnomalies'
   PROPERTIES = {
       'span': SPAN_PROPERTY,
+      'split_names': SPLIT_NAMES_PROPERTY,
   }
 
 
@@ -99,6 +103,10 @@ class PushedModel(Artifact):
 
 class Schema(Artifact):
   TYPE_NAME = 'Schema'
+
+
+class TransformCache(Artifact):
+  TYPE_NAME = 'TransformCache'
 
 
 class Bytes(ValueArtifact):
@@ -198,6 +206,10 @@ class TransformGraph(Artifact):
   TYPE_NAME = 'TransformGraph'
 
 
-# Still WIP and subject to change.
 class HyperParameters(Artifact):
   TYPE_NAME = 'HyperParameters'
+
+
+# WIP and subject to change.
+class DataView(Artifact):
+  TYPE_NAME = 'DataView'
