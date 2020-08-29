@@ -34,6 +34,23 @@ from tfx.types import standard_artifacts
 from google.protobuf import json_format
 
 
+def _get_tensor_value(tensor_or_eager_tensor):
+  if tf.executing_eagerly():
+    return tensor_or_eager_tensor.numpy()
+  else:
+    with tf.compat.v1.Session():
+      return tensor_or_eager_tensor.eval()
+
+
+def _get_dataset_size(dataset):
+
+  def reduce_fn(accum, elem):
+    return tf.size(elem, tf.int64) + accum
+
+  return _get_tensor_value(
+      dataset.batch(tf.int32.max).reduce(tf.constant(0, tf.int64), reduce_fn))
+
+
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
@@ -127,16 +144,15 @@ class ExecutorTest(tft_unit.TransformTestCase):
       self.assertNotEqual(0, len(train_files))
       train_dataset = tf.data.TFRecordDataset(
           train_files, compression_type='GZIP')
-      train_count = sum(1 for record in train_dataset)
 
       eval_pattern = os.path.join(self._transformed_examples.uri, 'eval', '*')
       eval_files = tf.io.gfile.glob(eval_pattern)
       self.assertNotEqual(0, len(eval_files))
       eval_dataset = tf.data.TFRecordDataset(
           eval_files, compression_type='GZIP')
-      eval_count = sum(1 for record in eval_dataset)
 
-      self.assertGreater(train_count, eval_count)
+      self.assertGreater(
+          _get_dataset_size(train_dataset), _get_dataset_size(eval_dataset))
 
     # Depending on `materialize` and `store_cache`, check that
     # expected outputs are exactly correct. If either flag is False, its
