@@ -13,7 +13,9 @@ from tfx.utils.dsl_utils import external_input
 def _create_pipeline(root_dir: str):
   root_path = os.path.join(root_dir, "tfx")
   csv_content = ["a,b,c,d", "1,s,3,d"]
-  with open(os.path.join(root_path, "csv", "test.csv"), "w+") as f:
+  csv_folder = os.path.join(root_path, "csv")
+  os.makedirs(csv_folder)
+  with open(os.path.join(csv_folder, "test.csv"), "w+") as f:
     f.writelines(csv_content)
   example_gen = CsvExampleGen(
     input=external_input(os.path.join(root_path, "csv")))
