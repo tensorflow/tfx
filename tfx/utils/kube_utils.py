@@ -183,6 +183,7 @@ def make_job_object(
     namespace: Text = 'default',
     container_name: Text = 'jobcontainer',
     pod_labels: Dict[Text, Text] = None,
+    service_account_name: Text = 'default',
 ) -> k8s_client.V1Job:
   """Make a Kubernetes Job object with a single pod.
 
@@ -196,6 +197,7 @@ def make_job_object(
     namespace: Kubernetes namespace to contain this Job.
     container_name: Name of the container.
     pod_labels: Dictionary of metadata labels for the pod.
+    service_account_name: Name of the service account for this Job.
 
   Returns:
     `kubernetes.client.V1Job` object.
@@ -211,7 +213,7 @@ def make_job_object(
       status=k8s_client.V1JobStatus(),
       spec=k8s_client.V1JobSpec(
           template=k8s_client.V1PodTemplateSpec(
-              metadata=k8s_client.V1ObjectMeta(labels=pod_labels,),
+              metadata=k8s_client.V1ObjectMeta(labels=pod_labels),
               spec=k8s_client.V1PodSpec(
                   containers=[
                       k8s_client.V1Container(
@@ -220,6 +222,7 @@ def make_job_object(
                           command=command,
                       ),
                   ],
+                  service_account_name=service_account_name,
                   restart_policy=RestartPolicy.NEVER.value,
               ),
           )),

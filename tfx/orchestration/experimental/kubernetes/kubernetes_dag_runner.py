@@ -28,6 +28,7 @@ from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.experimental.kubernetes import kubernetes_remote_runner
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.orchestration.launcher import in_process_component_launcher
@@ -149,8 +150,9 @@ class KubernetesDagRunner(tfx_runner.TfxRunner):
       pipeline.pipeline_info.run_id = datetime.datetime.now().isoformat()
 
     if not kube_utils.is_inside_cluster():
-      raise NotImplementedError('Out of cluster execution not yet supported.')
-
+      kubernetes_remote_runner.run_as_kubernetes_job(
+          pipeline=pipeline, tfx_image=self._config.tfx_image)
+      return
     # TODO(ericlege): Support running components in parallel.
     ran_components = set()
 
