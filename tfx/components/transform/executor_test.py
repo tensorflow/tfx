@@ -45,23 +45,14 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls._temp_data_dir = tempfile.mkdtemp()
-
-    source_data_dir = os.path.join(
+    cls._temp_example_dir = tempfile.mkdtemp()
+    cls._source_data_dir = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), 'testdata')
+    source_example_dir = os.path.join(cls._source_data_dir, 'csv_example_gen')
 
-    source_example_dir = os.path.join(source_data_dir, 'csv_example_gen')
-    source_schema_dir = os.path.join(source_data_dir, 'schema_gen')
-    source_module_dir = os.path.join(source_data_dir, 'module_file')
-
-    io_utils.copy_dir(source_schema_dir,
-                      os.path.join(cls._temp_data_dir, 'schema_gen'))
-    io_utils.copy_dir(source_module_dir,
-                      os.path.join(cls._temp_data_dir, 'module_file'))
-
-    cls._artifact1_uri = os.path.join(cls._temp_data_dir, 'csv_example_gen1')
+    cls._artifact1_uri = os.path.join(cls._temp_example_dir, 'csv_example_gen1')
     io_utils.copy_dir(source_example_dir, cls._artifact1_uri)
-    cls._artifact2_uri = os.path.join(cls._temp_data_dir, 'csv_example_gen2')
+    cls._artifact2_uri = os.path.join(cls._temp_example_dir, 'csv_example_gen2')
     io_utils.copy_dir(source_example_dir, cls._artifact2_uri)
 
     # Duplicate the number of train and eval records such that
@@ -136,9 +127,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
   def setUp(self):
     super(ExecutorTest, self).setUp()
 
-    self._source_data_dir = self._temp_data_dir
     self._output_data_dir = self._get_output_data_dir()
-
     self._make_base_do_params(self._source_data_dir, self._output_data_dir)
 
     # Create exec properties skeleton.
