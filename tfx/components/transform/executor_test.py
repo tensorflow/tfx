@@ -36,6 +36,23 @@ from tfx.utils import io_utils
 from google.protobuf import json_format
 
 
+def _get_tensor_value(tensor_or_eager_tensor):
+  if tf.executing_eagerly():
+    return tensor_or_eager_tensor.numpy()
+  else:
+    with tf.compat.v1.Session():
+      return tensor_or_eager_tensor.eval()
+
+
+def _get_dataset_size(dataset):
+
+  def reduce_fn(accum, elem):
+    return tf.size(elem, tf.int64) + accum
+
+  return _get_tensor_value(
+      dataset.batch(tf.int32.max).reduce(tf.constant(0, tf.int64), reduce_fn))
+
+
 class _TempPath(types.Artifact):
   TYPE_NAME = 'TempPath'
 
@@ -168,14 +185,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transformed_train_files = tf.io.gfile.glob(transformed_train_pattern)
         self.assertNotEqual(0, len(transformed_train_files))
 
-        examples_train_dataset = tf.data.TFRecordDataset(
-            examples_train_files, compression_type='GZIP')
-        examples_train_count = sum(1 for record in examples_train_dataset)
-
-        transformed_train_dataset = tf.data.TFRecordDataset(
-            transformed_train_files, compression_type='GZIP')
-        transformed_train_count = sum(1 for record in transformed_train_dataset)
-
         examples_eval_pattern = os.path.join(example.uri, 'eval', '*')
         examples_eval_files = tf.io.gfile.glob(examples_eval_pattern)
         transformed_eval_pattern = os.path.join(transformed_example.uri, 'eval',
@@ -183,13 +192,20 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transformed_eval_files = tf.io.gfile.glob(transformed_eval_pattern)
         self.assertNotEqual(0, len(transformed_eval_files))
 
+        # Construct datasets and count number of records in each split.
+        examples_train_dataset = tf.data.TFRecordDataset(
+            examples_train_files, compression_type='GZIP')
+        transformed_train_dataset = tf.data.TFRecordDataset(
+            transformed_train_files, compression_type='GZIP')
         examples_eval_dataset = tf.data.TFRecordDataset(
             examples_eval_files, compression_type='GZIP')
-        examples_eval_count = sum(1 for record in examples_eval_dataset)
-
         transformed_eval_dataset = tf.data.TFRecordDataset(
             transformed_eval_files, compression_type='GZIP')
-        transformed_eval_count = sum(1 for record in transformed_eval_dataset)
+        
+        examples_train_count = _get_dataset_size(examples_train_dataset)
+        examples_eval_count = _get_dataset_size(examples_eval_dataset)
+        transformed_train_count = _get_dataset_size(transformed_train_dataset)
+        transformed_eval_count = _get_dataset_size(transformed_eval_dataset)
 
         # Check for each split that it contains the same number of records in
         # the input artifact as in the output artifact (i.e 1-to-1 mapping is

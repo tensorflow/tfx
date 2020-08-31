@@ -217,11 +217,12 @@ class BaseDriver(object):
         count = len(input_artifacts[channel.matching_channel_name])
         output_list = [channel.type() for _ in range(count)]
       else:
-        # TODO(b/161490287): use `[channel.type()]` explicitly.
-        output_list = list(channel.get())
+        output_list = [channel.type()]
 
       is_single_artifact = len(output_list) == 1
       for i, artifact in enumerate(output_list):
+        artifact.name = name
+        artifact.producer_component = component_info.component_id
         artifact.uri = _generate_output_uri(base_output_dir, name, execution_id,
                                             is_single_artifact, i)
         # TODO(b/147242148): Introduce principled artifact structure (directory

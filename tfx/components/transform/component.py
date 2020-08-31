@@ -156,14 +156,11 @@ class Transform(base_component.BaseComponent):
       )
 
     transform_graph = transform_graph or types.Channel(
-        type=standard_artifacts.TransformGraph,
-        artifacts=[standard_artifacts.TransformGraph()])
+        type=standard_artifacts.TransformGraph)
 
     if materialize and transformed_examples is None:
       transformed_examples = types.Channel(
           type=standard_artifacts.Examples,
-          # TODO(b/161548528): remove the hardcode artifact.
-          artifacts=[standard_artifacts.Examples()],
           matching_channel_name='examples')
     elif not materialize and transformed_examples is not None:
       raise ValueError(
@@ -176,8 +173,7 @@ class Transform(base_component.BaseComponent):
             '`analyzer_cache` is set when disable_analyzer_cache is True.')
     else:
       updated_analyzer_cache = types.Channel(
-          type=standard_artifacts.TransformCache,
-          artifacts=[standard_artifacts.TransformCache()])
+          type=standard_artifacts.TransformCache)
 
     spec = TransformSpec(
         examples=examples,
