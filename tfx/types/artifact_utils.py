@@ -98,7 +98,12 @@ def get_split_uris(artifact_list: List[Artifact], split: Text) -> List[Text]:
     split_names = decode_split_names(artifact.split_names)
     if split in split_names:
       matching_artifacts.append(artifact)
-  return [os.path.join(artifact.uri, split) for artifact in matching_artifacts]
+  split_uris = [os.path.join(artifact.uri, split) 
+                for artifact in matching_artifacts]
+  if len(split_uris) != len(artifact_list):
+      raise ValueError(
+          'Split does not exist over all example artifacts: %s' % split)
+  return split_uris
 
 
 def get_split_uri(artifact_list: List[Artifact], split: Text) -> Text:

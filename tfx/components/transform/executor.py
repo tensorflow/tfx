@@ -361,10 +361,6 @@ class Executor(base_executor.BaseExecutor):
     analyze_data_paths = []
     for split in splits_config.analyze:
       data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY], split)
-      if len(data_uris) != len(input_dict[EXAMPLES_KEY]):
-        raise ValueError(
-            'Analyze split does not exist over all example artifacts: %s' %
-            split)
       for data_uri in data_uris:
         analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
@@ -372,18 +368,12 @@ class Executor(base_executor.BaseExecutor):
     materialize_output_paths = []
     if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
       for transformed_example_artifact in output_dict[TRANSFORMED_EXAMPLES_KEY]:
-        # TODO(b/161490287): move the split_names setting to executor for all
-        # components.
         transformed_example_artifact.split_names = (
             artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
         data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
                                                   split)
-        if len(data_uris) != len(input_dict[EXAMPLES_KEY]):
-          raise ValueError(
-              'Transform split does not exist over all example artifacts: %s' %
-              split)
         for data_uri in data_uris:
           transform_data_paths.append(io_utils.all_files_pattern(data_uri))
 
