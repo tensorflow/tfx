@@ -201,7 +201,7 @@ class ExecutorTest(tft_unit.TransformTestCase):
             examples_eval_files, compression_type='GZIP')
         transformed_eval_dataset = tf.data.TFRecordDataset(
             transformed_eval_files, compression_type='GZIP')
-        
+
         examples_train_count = _get_dataset_size(examples_train_dataset)
         examples_eval_count = _get_dataset_size(examples_eval_dataset)
         transformed_train_count = _get_dataset_size(transformed_train_dataset)
