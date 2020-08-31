@@ -74,15 +74,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
 
     # Duplicate the number of train and eval records such that
     # second artifact has twice as many as first.
-    artifact2_train_dir = os.path.join(cls._artifact2_uri, 'train')
-    for filename in tf.io.gfile.listdir(artifact2_train_dir):
-      io_utils.copy_file(os.path.join(artifact2_train_dir, filename),
-                         os.path.join(artifact2_train_dir, 'dup_' + filename))
-
-    artifact2_eval_dir = os.path.join(cls._artifact2_uri, 'eval')
-    for filename in tf.io.gfile.listdir(artifact2_eval_dir):
-      io_utils.copy_file(os.path.join(artifact2_eval_dir, filename),
-                         os.path.join(artifact2_eval_dir, 'dup_' + filename))
+    artifact2_pattern = os.path.join(cls._artifact2_uri, '*', '*')
+    artifact2_files = tf.io.gfile.glob(artifact2_pattern)
+    for filepath in artifact2_files:
+      directory, filename = os.path.split(filepath)
+      io_utils.copy_file(filepath, os.path.join(directory, 'dup_' + filename))
 
   def _get_output_data_dir(self, sub_dir=None):
     test_dir = self._testMethodName
