@@ -85,8 +85,11 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     for _ in range(max_num_trial):
       try:
         method()
+      except subprocess.CalledProcessError as err:
+        logging.info('STDOUT:\n%s', err.stdout)
+        logging.info('STDERR:\n%s', err.stderr)
       except Exception as err:  # pylint:disable=broad-except
-        logging.info(err)
+        logging.info(err, exc_info=True)
       else:
         break
 
