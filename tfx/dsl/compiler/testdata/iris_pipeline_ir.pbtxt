@@ -1232,80 +1232,64 @@ deployment_config {
     executor_specs {
       key: "CsvExampleGen"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.csv_example_gen.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "Evaluator"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.evaluator.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.evaluator.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "ExampleValidator"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.example_validator.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_validator.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "Pusher"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.pusher.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.pusher.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "SchemaGen"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.schema_gen.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.schema_gen.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "StatisticsGen"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.statistics_gen.executor.Executor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.statistics_gen.executor.Executor"
         }
       }
     }
     executor_specs {
       key: "Trainer"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.trainer.executor.GenericExecutor"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.trainer.executor.GenericExecutor"
         }
       }
     }
     custom_driver_specs {
       key: "CsvExampleGen"
       value {
-        [type.googleapis.com/tfx.orchestration.local_deployment_config.ExecutableSpec] {
-          python_class_executable_spec {
-            class_path: "tfx.components.example_gen.driver.Driver"
-          }
+        [type.googleapis.com/tfx.orchestration.executable_spec.PythonClassExecutableSpec] {
+          class_path: "tfx.components.example_gen.driver.Driver"
         }
       }
     }

@@ -20,8 +20,8 @@ import tensorflow as tf
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.orchestration.portable import base_executor_operator
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
 
@@ -65,9 +65,7 @@ def _populate_exec_properties(
 class PythonExecutorOperator(base_executor_operator.BaseExecutorOperator):
   """PythonExecutorOperator handles python class based executor's init and execution."""
 
-  SUPPORTED_EXECUTOR_SPEC_TYPE = [
-      local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec
-  ]
+  SUPPORTED_EXECUTOR_SPEC_TYPE = [executable_spec_pb2.PythonClassExecutableSpec]
   SUPPORTED_PLATFORM_SPEC_TYPE = []
 
   def __init__(self,
