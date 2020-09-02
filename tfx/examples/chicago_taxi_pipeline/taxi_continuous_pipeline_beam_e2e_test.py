@@ -214,6 +214,8 @@ class TaxiContinuousPipelineBeamEndToEndTest(tf.test.TestCase):
                           example_ids and
                           e.type == metadata_store_pb2.Event.Type.INPUT]))
 
+    # TODO(jjma): work out story for e2e testing for TransformCache PR.
+
   def testTaxiContinuousPipelineResolver(self):
     example_gen_pipeline = _create_example_pipeline(
         pipeline_name=self._pipeline_name,
