@@ -157,43 +157,62 @@ class TaxiContinuousPipelineBeamEndToEndTest(tf.test.TestCase):
     self.assertTrue(
         tf.io.gfile.exists(path_utils.serving_model_path(working_dir)))
 
-    # # TODO(jjma): Fix this MLMD query test.
-    # # Query MLMD to see if trainer and resolver_node worked properly.
-    # connection_config = metadata_store_pb2.ConnectionConfig()
-    # connection_config.sqlite.filename_uri = self._metadata_path
-    # connection_config.sqlite.connection_mode = \
-    #     metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
-    # store = metadata_store.MetadataStore(connection_config)
+    # Query MLMD to see if trainer and resolver_node worked properly.
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.filename_uri = self._metadata_path
+    connection_config.sqlite.connection_mode = \
+        metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+    store = metadata_store.MetadataStore(connection_config)
 
-    # # Get example artifact ids.
-    # example_ids = [e.id for e in store.get_artifacts_by_type('Examples')]
+    # Get example artifact ids.
+    example_ids = [e.id for e in store.get_artifacts_by_type('Examples')]
 
-    # # Get latest example resolver execution information.
-    # all_resolvers = store.get_executions_by_type(
-    #     'tfx.components.common_nodes.resolver_node.ResolverNode')
-    # resolve_exec = [e for e in all_resolvers
-    #                 if e.properties['component_id'] == metadata_store_pb2.Value(
-    #                 string_value='ResolverNode.latest_examples_resolver')][0]
+    # Get latest example resolver execution information.
+    all_resolvers = store.get_executions_by_type(
+        'tfx.components.common_nodes.resolver_node.ResolverNode')
+    resolve_exec = [e for e in all_resolvers
+                    if e.properties['component_id'] == metadata_store_pb2.Value(
+                    string_value='ResolverNode.latest_examples_resolver')][0]
 
-    # # Check if window size is exactly equal to number of examples
-    # # appearing in output events from example resolver.
-    # resolve_events = store.get_events_by_execution_ids([resolve_exec.id])
-    # self.assertEqual(self._window_size,
-    #                  len([e for e in resolve_events if e.artifact_id in
-    #                       example_ids and
-    #                       e.type == metadata_store_pb2.Event.Type.OUTPUT]))
+    # Check if window size is exactly equal to number of examples
+    # appearing in output events from example resolver.
+    resolve_events = store.get_events_by_execution_ids([resolve_exec.id])
+    self.assertEqual(self._window_size,
+                     len([e for e in resolve_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.OUTPUT]))
 
-    # # Get trainer component execution information.
-    # trainer_exec = store.get_executions_by_type(
-    #     'tfx.components.trainer.component.Trainer')[0]
+    # Get transform component execution information.
+    tansform_exec = store.get_executions_by_type(
+        'tfx.components.transform.component.Transform')[0]
 
-    # # Check if window size is exactly equal to number of examples
-    # # appearing in input events to Trainer.
-    # train_events = store.get_events_by_execution_ids([trainer_exec.id])
-    # self.assertEqual(self._window_size,
-    #                  len([e for e in train_events if e.artifact_id in
-    #                       example_ids and
-    #                       e.type == metadata_store_pb2.Event.Type.INPUT]))
+    # Check if window size is exactly equal to number of examples
+    # appearing in input events to Transform.
+    transform_events = store.get_events_by_execution_ids([tansform_exec.id])
+    self.assertEqual(self._window_size,
+                     len([e for e in transform_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.INPUT]))
+
+    # Check if window size is exactly equal to number of examples
+    # appearing in output events from Transform.
+    transform_events = store.get_events_by_execution_ids([tansform_exec.id])
+    self.assertEqual(self._window_size,
+                     len([e for e in transform_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.OUTPUT]))
+
+    # Get trainer component execution information.
+    trainer_exec = store.get_executions_by_type(
+        'tfx.components.trainer.component.Trainer')[0]
+
+    # Check if window size is exactly equal to number of examples
+    # appearing in input events to Transform.
+    trainer_events = store.get_events_by_execution_ids([trainer_exec.id])
+    self.assertEqual(self._window_size,
+                     len([e for e in trainer_events if e.artifact_id in
+                          example_ids and
+                          e.type == metadata_store_pb2.Event.Type.INPUT]))
 
   def testTaxiContinuousPipelineResolver(self):
     example_gen_pipeline = _create_example_pipeline(
