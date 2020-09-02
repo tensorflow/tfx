@@ -288,18 +288,21 @@ def _verify_split_pattern_specs(
     raise ValueError('Only one %s is allowed in %s' %
                      (VERSION_SPEC, split.pattern))
 
-  if range_config:
-    if range_config.HasField('static_range'):
-      # For ExampleGen, RangeConfig must specify an exact span to look for,
-      # since only one span is processed at a time.
-      start_span_number = range_config.static_range.start_span_number
-      end_span_number = range_config.static_range.end_span_number
-      if start_span_number != end_span_number:
-        raise ValueError(
-            'Start and end span numbers for RangeConfig.static_range must '
-            'be equal: (%s, %s)' % (start_span_number, end_span_number))
-
   return is_match_span, is_match_date, is_match_version
+
+
+def _verify_range_config(
+    range_config: Optional[range_config_pb2.RangeConfig]) -> None:
+  """Varify RangeConfig contents for ExampleGen."""
+  if range_config and range_config.HasField('static_range'):
+    # For ExampleGen, RangeConfig must specify an exact span to look for,
+    # since only one span is processed at a time.
+    start_span_number = range_config.static_range.start_span_number
+    end_span_number = range_config.static_range.end_span_number
+    if start_span_number != end_span_number:
+      raise ValueError(
+          'Start and end span numbers for RangeConfig.static_range must '
+          'be equal: (%s, %s)' % (start_span_number, end_span_number))
 
 
 def _find_matched_span_version_from_path(
@@ -350,6 +353,24 @@ def _find_matched_span_version_from_path(
           matched_version_int)
 
 
+def _get_spec_width(spec_full_regex: Text, spec_name: Text,
+                    split: example_gen_pb2.Input.Split) -> Optional[Text]:
+  """Returns width modifier of a spec, if it exists."""
+  result = re.search(spec_full_regex, split.pattern)
+  assert result, 'No %s found in split %s' % (spec_name, split.pattern)
+  width_str = result.group('width')
+  if width_str:
+    try:
+      width_int = int(width_str)
+      if width_int <= 0:
+        raise ValueError('Not a positive integer.')
+    except ValueError:
+      raise ValueError(
+          'Width modifier in %s spec is not a positive integer: %s' %
+          (spec_name, split.pattern))
+  return width_str
+
+
 def _create_matching_glob_and_regex(
     uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
     is_match_date: bool, is_match_version: bool,
@@ -365,19 +386,11 @@ def _create_matching_glob_and_regex(
     # no width modifiers are present.
     span_glob_replace = '*'
     span_regex_replace = '.*'
-    result = re.search(SPAN_FULL_REGEX, split.pattern)
-    assert result, 'No Span found in Split %s' % split.pattern
-    span_width_str = result.group('width')
+
+    span_width_str = _get_spec_width(SPAN_FULL_REGEX, SPAN_PROPERTY_NAME,
+                                     split)
     if span_width_str:
-      try:
-        span_width_int = int(span_width_str)
-        if span_width_int <= 0:
-          raise ValueError('Not a positive integer.')
-        span_regex_replace = '.{%s}' % span_width_str
-      except ValueError:
-        raise ValueError(
-            'Width modifier in span spec is not a positive integer: %s' %
-            split.pattern)
+      span_regex_replace = '.{%s}' % span_width_str
 
     if range_config and range_config.HasField('static_range'):
       # If using RangeConfig.static_range, replace span spec in patterns
@@ -430,18 +443,11 @@ def _create_matching_glob_and_regex(
     # Check if version spec has any width modifier. Defaults to greedy matching
     # if no width modifiers are present.
     version_width_regex = '.*'
-    result = re.search(VERSION_FULL_REGEX, split.pattern)
-    assert result, 'No Version found in Split %s' % split.pattern
-    version_width_str = result.group('width')
+
+    version_width_str = _get_spec_width(VERSION_FULL_REGEX,
+                                        VERSION_PROPERTY_NAME, split)
     if version_width_str:
-      try:
-        if int(version_width_str) <= 0:
-          raise ValueError('Not a positive integer.')
-        version_width_regex = '.{%s}' % version_width_str
-      except ValueError:
-        raise ValueError(
-            'Width modifier in version spec is not a positive integer: %s' %
-            split.pattern)
+      version_width_regex = '.{%s}' % version_width_str
 
     split_glob_pattern = re.sub(VERSION_FULL_REGEX, '*', split_glob_pattern)
     version_capture_regex = '(?P<{}>{})'.format(VERSION_PROPERTY_NAME,
@@ -452,7 +458,7 @@ def _create_matching_glob_and_regex(
   return split_glob_pattern, split_regex_pattern
 
 
-def _retrieve_latest_span_version(
+def _get_target_span_version(
     uri: Text,
     split: example_gen_pb2.Input.Split,
     range_config: Optional[range_config_pb2.RangeConfig] = None
@@ -490,7 +496,7 @@ def _retrieve_latest_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-
+  _verify_range_config(range_config)
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
       split, range_config=range_config)
 
@@ -583,23 +589,23 @@ def calculate_splits_fingerprint_span_and_version(
     logging.info('select span and version = (%s, %s)', select_span,
                  select_version)
     # Find most recent span and version for this split.
-    latest_span, latest_version = _retrieve_latest_span_version(
+    target_span, target_version = _get_target_span_version(
         input_base_uri, split, range_config=range_config)
 
     # TODO(b/162622803): add default behavior for when version spec not present.
-    latest_span = latest_span or 0
+    target_span = target_span or 0
 
-    logging.info('latest span and version = (%s, %s)', latest_span,
-                 latest_version)
+    logging.info('latest span and version = (%s, %s)', target_span,
+                 target_version)
 
     if select_span == 0 and select_version is None:
-      select_span = latest_span
-      select_version = latest_version
+      select_span = target_span
+      select_version = target_version
 
     # Check if latest span and version are the same over all splits.
-    if select_span != latest_span:
+    if select_span != target_span:
       raise ValueError('Latest span should be the same for each split')
-    if select_version != latest_version:
+    if select_version != target_version:
       raise ValueError('Latest version should be the same for each split')
 
     # Calculate fingerprint.

@@ -1,4 +1,4 @@
-// Copyright 2019 Google LLC. All Rights Reserved.
+// Copyright 2020 Google LLC. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,9 +26,8 @@ message StaticRange {
 }
 
 // RangeConfig is an abstract proto which can be used to describe ranges
-// for different entities in TFX Pipeline, organized under directories.
-// All indices corespond to increasing span numbers starting from the initial
-// span at index 0.
+// for different entities in TFX Pipeline. All indices corespond to increasing
+// span numbers starting from the initial span at index 0.
 message RangeConfig {
   oneof range {
     StaticRange static_range = 1;
