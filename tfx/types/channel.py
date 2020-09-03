@@ -48,7 +48,9 @@ class Channel(json_utils.Jsonable):
       artifacts: Optional[Iterable[Artifact]] = None,
       matching_channel_name: Optional[Text] = None,
       producer_component_id: Optional[Text] = None,
-      output_key: Optional[Text] = None):
+      output_key: Optional[Text] = None,
+      run_id: Optional[Text] = None,
+  ):
     """Initialization of Channel.
 
     Args:
@@ -62,6 +64,7 @@ class Channel(json_utils.Jsonable):
       producer_component_id: (Optional) Producer component id of the Channel.
       output_key: (Optional) The output key when producer component produces
         the artifacts in this Channel.
+      run_id: (Optional) Run id as context_query in this Channel.
     """
     if not (inspect.isclass(type) and issubclass(type, Artifact)):  # pytype: disable=wrong-arg-types
       raise ValueError(
@@ -78,6 +81,7 @@ class Channel(json_utils.Jsonable):
     # The following fields will be populated during compilation time.
     self.producer_component_id = producer_component_id
     self.output_key = output_key
+    self.run_id = run_id
 
   @property
   def type_name(self):
@@ -118,6 +122,7 @@ class Channel(json_utils.Jsonable):
             (self.producer_component_id if self.producer_component_id else None
             ),
         'output_key': (self.output_key if self.output_key else None),
+        'run_id': (self.run_id if self.run_id else None),
     }
 
   @classmethod
@@ -128,8 +133,10 @@ class Channel(json_utils.Jsonable):
     artifacts = list(Artifact.from_json_dict(a) for a in dict_data['artifacts'])
     producer_component_id = dict_data.get('producer_component_id', None)
     output_key = dict_data.get('output_key', None)
+    run_id = dict_data.get('run_id', None)
     return Channel(
         type=type_cls,
         artifacts=artifacts,
         producer_component_id=producer_component_id,
-        output_key=output_key)
+        output_key=output_key,
+        run_id=run_id)

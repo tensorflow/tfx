@@ -105,6 +105,11 @@ class Compiler(object):
             context_query.type.CopyFrom(producer_context.type)
             context_query.name.CopyFrom(producer_context.name)
 
+      if value.run_id:
+        context_query = channel.context_queries.add()
+        context_query.type.name = constants.PIPELINE_RUN_CONTEXT_TYPE_NAME
+        context_query.name.field_value.string_value = value.run_id
+
       artifact_type = value.type._get_artifact_type()  # pylint: disable=protected-access
       channel.artifact_query.type.CopyFrom(artifact_type)
       channel.artifact_query.type.ClearField("properties")

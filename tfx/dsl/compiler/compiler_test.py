@@ -41,6 +41,7 @@ from tfx.proto import pusher_pb2
 from tfx.proto import trainer_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import Channel
+from tfx.types import standard_artifacts
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
@@ -155,6 +156,55 @@ class CompilerTest(tf.test.TestCase):
     c = compiler.Compiler()
     compiled_pb = c.compile(self._pipeline)
     self.assertProtoEquals(self._pipeline_pb, compiled_pb)
+
+  def testCompileChannelWithRunId(self):
+    """Test compiling the channel with RunId."""
+    pipeline_name = "iris"
+    iris_root = "iris_root"
+    serving_model_dir = os.path.join(iris_root, "serving_model", pipeline_name)
+    tfx_root = "tfx_root"
+    pipeline_root = os.path.join(tfx_root, "pipelines", pipeline_name)
+    c = compiler.Compiler()
+    pusher = Pusher(
+        model=Channel(
+            type=standard_artifacts.Model,
+            run_id=".".join([pipeline_name, "19920101"])),
+        push_destination=pusher_pb2.PushDestination(
+            filesystem=pusher_pb2.PushDestination.Filesystem(
+                base_directory=serving_model_dir)))
+    compiled_pb = c.compile(
+        pipeline.Pipeline(
+            pipeline_name=pipeline_name,
+            pipeline_root=pipeline_root,
+            components=[
+                pusher,
+            ]))
+    self.assertProtoEquals(
+        compiled_pb.nodes[0].pipeline_node.inputs,
+        text_format.Parse(
+            """
+            inputs {
+              key: "model"
+              value {
+                channels {
+                  context_queries {
+                    type {
+                      name: "pipeline_run"
+                    }
+                    name {
+                      field_value {
+                        string_value: "iris.19920101"
+                      }
+                    }
+                  }
+                  artifact_query {
+                    type {
+                      name: "Model"
+                    }
+                  }
+                }
+              }
+            }""", pipeline_pb2.NodeInputs()))
 
 
 if __name__ == "__main__":
