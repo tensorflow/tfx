@@ -371,6 +371,37 @@ def _get_spec_width(spec_full_regex: Text, spec_name: Text,
   return width_str
 
 
+def _get_span_replace_glob_and_regex(
+    range_config: range_config_pb2.RangeConfig,
+    is_match_span: bool, is_match_date: bool, span_width_str: Optional[Text]
+) -> Union[Text, List[Text]]:
+  """Replace span or date spec if static range RangeConfig is provided."""
+  if range_config.HasField('static_range'):
+    if is_match_span:
+      # If using RangeConfig.static_range, replace span spec in patterns
+      # with given span from static range.
+      span_str = str(range_config.static_range.start_span_number)
+      if span_width_str:
+        span_width_int = int(span_width_str)
+        if span_width_int < len(span_str):
+          raise ValueError(
+              'Span spec width is less than number of digits in span: (%s, %s)'
+              % (span_width_int, span_str))
+        span_str = span_str.zfill(span_width_int)
+      return span_str
+
+    elif is_match_date:
+      # If using RangeConfig.static_range, replace date specs in patterns
+      # with calendar date derived from given span from static range.
+      span_int = range_config.static_range.start_span_number
+      year, month, day = span_number_to_date(span_int)
+      date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
+      return date_tokens
+
+  else:
+    raise ValueError("Only static_range in RangeConfig is supported.")
+
+
 def _create_matching_glob_and_regex(
     uri: Text, split: example_gen_pb2.Input.Split, is_match_span: bool,
     is_match_date: bool, is_match_version: bool,
@@ -392,18 +423,9 @@ def _create_matching_glob_and_regex(
     if span_width_str:
       span_regex_replace = '.{%s}' % span_width_str
 
-    if range_config and range_config.HasField('static_range'):
-      # If using RangeConfig.static_range, replace span spec in patterns
-      # with given span from static range.
-      span_str = str(range_config.static_range.start_span_number)
-      if span_width_str:
-        span_width_int = int(span_width_str)
-        if span_width_int < len(span_str):
-          raise ValueError(
-              'Span spec width is less than number of digits in span: (%s, %s)'
-              % (span_width_int, span_str))
-        span_str = span_str.zfill(span_width_int)
-
+    if range_config:
+      span_str = _get_span_replace_glob_and_regex(range_config, is_match_span,
+                                                  is_match_date, span_width_str)
       span_regex_replace = span_str
       span_glob_replace = span_str
 
@@ -421,13 +443,9 @@ def _create_matching_glob_and_regex(
     # seperators between them.
     date_regex_replace = ['.{4}', '.{2}', '.{2}']
 
-    if range_config and range_config.HasField('static_range'):
-      # If using RangeConfig.static_range, replace date specs in patterns
-      # with calendar date derived from given span from static range.
-      span_int = range_config.static_range.start_span_number
-      year, month, day = span_number_to_date(span_int)
-      date_tokens = [str(year).zfill(4), str(month).zfill(2), str(day).zfill(2)]
-
+    if range_config:
+      date_tokens = _get_span_replace_glob_and_regex(range_config,
+          is_match_span, is_match_date, None)
       date_glob_replace = date_tokens
       date_regex_replace = date_tokens
 
