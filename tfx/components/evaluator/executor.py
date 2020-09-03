@@ -44,8 +44,6 @@ from google.protobuf import json_format
 
 
 _TELEMETRY_DESCRIPTORS = ['Evaluator']
-# TODO(pachristopher): After TFMA is released, make TFXIO as the default path.
-_USE_TFXIO = False
 
 
 class Executor(base_executor.BaseExecutor):
@@ -207,7 +205,7 @@ class Executor(base_executor.BaseExecutor):
       examples_list = []
       tensor_adapter_config = None
       # pylint: disable=expression-not-assigned
-      if _USE_TFXIO and tfma.is_batched_input(eval_shared_model, eval_config):
+      if tfma.is_batched_input(eval_shared_model, eval_config):
         tfxio_factory = tfxio_utils.get_tfxio_factory_from_artifact(
             examples=[
                 artifact_utils.get_single_instance(

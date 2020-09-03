@@ -30,7 +30,7 @@ import absl
 from tfx.types.artifact import Artifact
 from tfx.types.artifact import Property
 from tfx.types.artifact import PropertyType
-from tfx.types.artifact import ValueArtifact
+from tfx.types.value_artifact import ValueArtifact
 
 # Span for an artifact.
 SPAN_PROPERTY = Property(type=PropertyType.INT)

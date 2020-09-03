@@ -45,6 +45,9 @@ _KFP_E2E_TEST_FORWARDING_PORT_END = 8888
 # Number of attempts to bind one port.
 _MAX_ATTEMPTS = 5
 
+# Context name of pipeline contexts.
+_CONTEXT_TYPE_PIPELINE = 'pipeline'
+
 
 class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
@@ -129,24 +132,27 @@ class KubeflowEndToEndTest(kubeflow_test_utils.BaseKubeflowTest):
 
     return proc
 
-  def _get_artifacts_with_type(
-      self, type_name: Text) -> List[metadata_store_pb2.Artifact]:
-    """Helper function returns artifacts with given type."""
-    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
-        type_name=type_name)
-    return self._stub.GetArtifactsByType(request).artifacts
-
   def _get_artifacts_with_type_and_pipeline(
       self, type_name: Text,
       pipeline_name: Text) -> List[metadata_store_pb2.Artifact]:
     """Helper function returns artifacts of specified pipeline and type."""
-    request = metadata_store_service_pb2.GetArtifactsByTypeRequest(
+    # 1. Find the pipeline context according to its name.
+    request = metadata_store_service_pb2.GetContextByTypeAndNameRequest(
+        type_name=_CONTEXT_TYPE_PIPELINE, context_name=pipeline_name)
+    pipeline_context = self._stub.GetContextByTypeAndName(request)
+    # 2. Find the artifacts associated with the pipeline context.
+    request = metadata_store_service_pb2.GetArtifactsByContextRequest(
+        context_id=pipeline_context.context.id)
+    artifacts_response = self._stub.GetArtifactsByContext(request)
+    # 3. Find the specified artifact type id.
+    artifact_type_request = metadata_store_service_pb2.GetArtifactTypeRequest(
         type_name=type_name)
-    all_artifacts = self._stub.GetArtifactsByType(request).artifacts
+    artifact_type = self._stub.GetArtifactType(
+        artifact_type_request).artifact_type
+    # 4. Filter the returned artifacts according to their types and return.
     return [
-        artifact for artifact in all_artifacts
-        if artifact.custom_properties['pipeline_name'].string_value ==
-        pipeline_name
+        artifact for artifact in artifacts_response.artifacts
+        if artifact.type_id == artifact_type.id
     ]
 
   def _get_value_of_string_artifact(

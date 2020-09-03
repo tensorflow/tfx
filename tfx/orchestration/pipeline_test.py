@@ -258,50 +258,6 @@ class PipelineTest(tf.test.TestCase):
           components=[component_c, component_b, component_a],
           metadata_connection_config=self._metadata_connection_config)
 
-  def testPipelineWithArtifactInfo(self):
-    artifacts_collection = [_ArtifactTypeOne()]
-    channel_one = types.Channel(
-        type=_ArtifactTypeOne, artifacts=artifacts_collection)
-    component_a = _make_fake_component_instance(
-        name='component_a',
-        output_type=_OutputTypeA,
-        inputs={},
-        outputs={'one': channel_one})
-    component_b = _make_fake_component_instance(
-        name='component_b',
-        output_type=_OutputTypeB,
-        inputs={
-            'a': component_a.outputs['one'],
-        },
-        outputs={})
-
-    my_pipeline = pipeline.Pipeline(
-        pipeline_name='a',
-        pipeline_root='b',
-        components=[component_b, component_a],
-        metadata_connection_config=self._metadata_connection_config)
-    expected_artifact = _ArtifactTypeOne()
-    expected_artifact.name = 'one'
-    expected_artifact.pipeline_name = 'a'
-    expected_artifact.producer_component = 'component_a'
-    self.assertCountEqual(my_pipeline.components, [component_a, component_b])
-    self.assertEqual(component_a.outputs['one']._artifacts[0].pipeline_name,
-                     'a')
-    self.assertEqual(
-        component_a.outputs['one']._artifacts[0].producer_component,
-        component_a.id)
-    self.assertEqual(component_a.outputs['one']._artifacts[0].name, 'one')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].pipeline_name, 'a')
-    self.assertEqual(component_b.inputs['a']._artifacts[0].producer_component,
-                     component_a.id)
-    self.assertEqual(component_b.inputs['a']._artifacts[0].name, 'one')
-    self.assertEqual(component_a.outputs['one'].producer_component_id,
-                     component_a.id)
-    self.assertEqual(component_a.outputs['one'].output_key, 'one')
-    self.assertEqual(component_b.inputs['a'].producer_component_id,
-                     component_a.id)
-    self.assertEqual(component_b.inputs['a'].output_key, 'one')
-
   def testPipelineSavePipelineArgs(self):
     os.environ['TFX_JSON_EXPORT_PIPELINE_ARGS_PATH'] = self._tmp_file
     pipeline.Pipeline(
