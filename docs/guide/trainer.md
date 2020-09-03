@@ -51,7 +51,7 @@ trainer = Trainer(
       module_file=module_file,
       examples=transform.outputs['transformed_examples'],
       schema=infer_schema.outputs['schema'],
-      base_models=latest_model_resolver.outputs['latest_model'],
+      base_model=latest_model_resolver.outputs['latest_model'],
       transform_graph=transform.outputs['transform_graph'],
       train_args=trainer_pb2.TrainArgs(num_steps=10000),
       eval_args=trainer_pb2.EvalArgs(num_steps=5000))
@@ -114,8 +114,8 @@ def trainer_fn(trainer_fn_args, schema):
       save_checkpoints_steps=999, keep_checkpoint_max=1)
 
   run_config = run_config.replace(model_dir=trainer_fn_args.serving_model_dir)
-  warm_start_from = trainer_fn_args.base_models[
-      0] if trainer_fn_args.base_models else None
+  warm_start_from = trainer_fn_args.base_model[
+      0] if trainer_fn_args.base_model else None
 
   estimator = _build_estimator(
       # Construct layers sizes with exponetial decay
