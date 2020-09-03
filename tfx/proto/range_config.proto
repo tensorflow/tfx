@@ -52,7 +52,8 @@ message RollingRange {
 message RangeConfig {
   oneof range {
     StaticRange static_range = 1;
+    RollingRange rolling_range = 2;
   }
 
-  reserved 2, 3, 4, 5;
+  reserved 3, 4, 5;
 }

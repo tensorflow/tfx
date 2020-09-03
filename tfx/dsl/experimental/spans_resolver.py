@@ -87,7 +87,7 @@ class SpansResolver(base_resolver.BaseResolver):
           resolve_state_dict[k] = (
               len(artifacts_dict[k]) == (upper_bound - lower_bound + 1))
 
-        elif self._range_config.HasFeld('rolling_range'):
+        elif self._range_config.HasField('rolling_range'):
           start_span = self._range_config.rolling_range.start_span_number
           num_spans = self._range_config.rolling_range.num_spans
           num_skip = self._range_config.rolling_range.skip_num_recent_spans

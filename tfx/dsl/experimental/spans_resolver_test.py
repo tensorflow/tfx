@@ -194,7 +194,7 @@ class SpansResolverTest(tf.test.TestCase):
                       output_key='key')
           })
 
-      # Currently, only Span-1 exists, so resolver result is incomplete.
+      # Rolling range starts at Span-2, so only Span-2 is resolved.
       self.assertFalse(resolve_result.has_complete_result)
       self.assertEqual([
           artifact.uri
@@ -216,7 +216,8 @@ class SpansResolverTest(tf.test.TestCase):
           component_info=self._component_info,
           output_artifacts={'key': [artifact_three]})
 
-      # Resolve latest two spans, looking only at spans no earlier than Span-0.
+      # Resolve second and third latest spans, looking only at spans no
+      # earlier than Span-0.
       resolver = spans_resolver.SpansResolver(
           range_config=range_config_pb2.RangeConfig(
              rolling_range=range_config_pb2.RollingRange(
