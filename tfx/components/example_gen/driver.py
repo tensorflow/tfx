@@ -86,15 +86,10 @@ class Driver(base_driver.BaseDriver):
     """Overrides BaseDriver._prepare_output_artifacts()."""
     del input_artifacts
 
-    result = channel_utils.unwrap_channel_dict(output_dict)
-    if len(result) != 1:
-      raise RuntimeError('Multiple output artifacts are not supported.')
-
+    example_artifact = output_dict[utils.EXAMPLES_KEY].type()
     base_output_dir = os.path.join(pipeline_info.pipeline_root,
                                    component_info.component_id)
 
-    example_artifact = artifact_utils.get_single_instance(
-        result[utils.EXAMPLES_KEY])
     example_artifact.uri = base_driver._generate_output_uri(  # pylint: disable=protected-access
         base_output_dir, utils.EXAMPLES_KEY, execution_id)
     example_artifact.set_string_custom_property(
@@ -111,4 +106,4 @@ class Driver(base_driver.BaseDriver):
 
     base_driver._prepare_output_paths(example_artifact)  # pylint: disable=protected-access
 
-    return result
+    return {utils.EXAMPLES_KEY: [example_artifact]}

@@ -29,19 +29,23 @@ from tensorflow_model_analysis.evaluators import metrics_and_plots_evaluator_v2
 from tensorflow_model_analysis.extractors import batched_input_extractor
 from tensorflow_model_analysis.extractors import batched_predict_extractor_v2
 from tensorflow_model_analysis.extractors import input_extractor
-from tensorflow_model_analysis.extractors import predict_extractor_v2
 from tensorflow_model_analysis.extractors import unbatch_extractor
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 import tfx
 from tfx.benchmarks import benchmark_utils
 from tfx.benchmarks import benchmark_base
+from tfx_bsl.coders import example_coder
+from tfx_bsl.tfxio import record_based_tfxio
 from tfx_bsl.tfxio import test_util
 
 # Maximum number of examples to read from the dataset.
 # TFMA is much slower than TFT, so we may have to read a smaller subset of the
 # dataset.
 MAX_NUM_EXAMPLES = 100000
+
+# Maximum number of examples within a record batch.
+_BATCH_SIZE = 1000
 
 
 # TODO(b/147827582): Also add "TF-level" Keras benchmarks for how TFMAv2
@@ -81,47 +85,6 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     kwargs["extras"]["commit_tfma"] = getattr(tfma, "GIT_COMMIT_ID",
                                               tfma.__version__)
     super(TFMAV2BenchmarkBase, self).report_benchmark(**kwargs)
-
-  def benchmarkMiniPipelineUnbatched(self):
-    """Benchmark an unbatched "mini" TFMA - predict, slice and compute metrics.
-
-    Runs a "mini" version of TFMA in a Beam pipeline. Records the wall time
-    taken for the whole pipeline.
-    """
-    self._init_model()
-    pipeline = self._create_beam_pipeline()
-    raw_data = (
-        pipeline
-        | "Examples" >> beam.Create(
-            self._dataset.read_raw_dataset(
-                deserialize=False, limit=MAX_NUM_EXAMPLES))
-        | "InputsToExtracts" >> tfma.InputsToExtracts())
-
-    _ = (
-        raw_data
-        | "InputExtractor" >>
-        input_extractor.InputExtractor(eval_config=self._eval_config).ptransform
-        | "V2PredictExtractor" >> predict_extractor_v2.PredictExtractor(
-            eval_config=self._eval_config,
-            eval_shared_model=self._eval_shared_model).ptransform
-        | "SliceKeyExtractor" >> tfma.extractors.SliceKeyExtractor().ptransform
-        | "V2ComputeMetricsAndPlots" >>
-        metrics_and_plots_evaluator_v2.MetricsAndPlotsEvaluator(
-            eval_config=self._eval_config,
-            eval_shared_model=self._eval_shared_model).ptransform)
-
-    start = time.time()
-    result = pipeline.run()
-    result.wait_until_finish()
-    end = time.time()
-    delta = end - start
-
-    self.report_benchmark(
-        iters=1,
-        wall_time=delta,
-        extras={
-            "num_examples": self._dataset.num_examples(limit=MAX_NUM_EXAMPLES)
-        })
 
   def benchmarkMiniPipelineBatched(self):
     """Benchmark a batched "mini" TFMA - predict, slice and compute metrics.
@@ -179,6 +142,26 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
       records.append({tfma.INPUT_KEY: x, tfma.SLICE_KEY_TYPES_KEY: ()})
     return records
 
+  def _readDatasetIntoBatchedExtracts(self):
+    """Read the raw dataset and massage examples into batched Extracts."""
+    # No limit here, the microbenchmarks are relatively fast.
+    serialized_examples = list(
+        self._dataset.read_raw_dataset(deserialize=False))
+
+    # TODO(b/153996019): Once the TFXIO interface that returns an iterator of
+    # RecordBatch is available, clean this up.
+    coder = example_coder.ExamplesToRecordBatchDecoder(
+        schema=benchmark_utils.read_schema(
+            self._dataset.tf_metadata_schema_path()))
+    batches = []
+    for i in range(0, len(serialized_examples), _BATCH_SIZE):
+      example_batch = serialized_examples[i:i + _BATCH_SIZE]
+      record_batch = record_based_tfxio.AppendRawRecordColumn(
+          coder.DecodeBatch(example_batch), constants.ARROW_INPUT_COLUMN,
+          example_batch, False)
+      batches.append({constants.ARROW_RECORD_BATCH_KEY: record_batch})
+    return batches
+
   # "Manual" micro-benchmarks
   def benchmarkInputExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
@@ -194,29 +177,46 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     self.report_benchmark(
         iters=1, wall_time=delta, extras={"num_examples": len(records)})
 
-  def benchmarkPredictExtractorManualActuation(self):
+  # "Manual" micro-benchmarks
+  def benchmarkBatchedInputExtractorManualActuation(self):
     """Benchmark PredictExtractorV2 "manually"."""
     self._init_model()
-    records = self._readDatasetIntoExtracts()
-    extracts = []
-    for elem in records:
-      extracts.append(input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
+    extracts = self._readDatasetIntoBatchedExtracts()
+    num_examples = sum(
+        [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
+    result = []
+    start = time.time()
+    for e in extracts:
+      result.append(batched_input_extractor._ExtractInputs(  # pylint: disable=protected-access
+          e, self._eval_config))
+    end = time.time()
+    delta = end - start
+    self.report_benchmark(
+        iters=1, wall_time=delta, extras={"num_examples": num_examples})
 
-    prediction_do_fn = predict_extractor_v2._PredictionDoFn(  # pylint: disable=protected-access
+  def benchmarkBatchedPredictExtractorManualActuation(self):
+    """Benchmark BatchedPredictExtractorV2 "manually"."""
+    self._init_model()
+    extracts = self._readDatasetIntoBatchedExtracts()
+    num_examples = sum(
+        [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
+    extracts = [batched_input_extractor._ExtractInputs(e, self._eval_config)  # pylint: disable=protected-access
+                for e in extracts]
+
+    prediction_do_fn = batched_predict_extractor_v2._BatchedPredictionDoFn(  # pylint: disable=protected-access
         eval_config=self._eval_config,
         eval_shared_models={"": self._eval_shared_model})
     prediction_do_fn.setup()
 
     start = time.time()
     predict_result = []
-    predict_batch_size = 1000
-    for batch in benchmark_utils.batched_iterator(extracts, predict_batch_size):
-      predict_result.extend(prediction_do_fn.process(batch))
+    for e in extracts:
+      predict_result.extend(prediction_do_fn.process(e))
 
     end = time.time()
     delta = end - start
     self.report_benchmark(
-        iters=1, wall_time=delta, extras={"num_examples": len(records)})
+        iters=1, wall_time=delta, extras={"num_examples": num_examples})
 
   def _runMetricsAndPlotsEvaluatorManualActuation(self,
                                                   with_confidence_intervals,
@@ -226,21 +226,30 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     if not metrics_specs:
       metrics_specs = self._eval_config.metrics_specs
 
-    records = self._readDatasetIntoExtracts()
-    extracts = []
-    for elem in records:
-      extracts.append(input_extractor._ParseExample(elem, self._eval_config))  # pylint: disable=protected-access
+    extracts = self._readDatasetIntoBatchedExtracts()
+    num_examples = sum(
+        [e[constants.ARROW_RECORD_BATCH_KEY].num_rows for e in extracts])
+    extracts = [batched_input_extractor._ExtractInputs(e, self._eval_config)  # pylint: disable=protected-access
+                for e in extracts]
 
-    prediction_do_fn = predict_extractor_v2._PredictionDoFn(  # pylint: disable=protected-access
+    prediction_do_fn = batched_predict_extractor_v2._BatchedPredictionDoFn(  # pylint: disable=protected-access
         eval_config=self._eval_config,
         eval_shared_models={"": self._eval_shared_model})
     prediction_do_fn.setup()
 
     # Have to predict first
     predict_result = []
-    predict_batch_size = 1000
-    for batch in benchmark_utils.batched_iterator(extracts, predict_batch_size):
-      predict_result.extend(prediction_do_fn.process(batch))
+    for e in extracts:
+      predict_result.extend(prediction_do_fn.process(e))
+
+    # Unbatch extracts
+    unbatched_extarcts = []
+    for e in predict_result:
+      unbatched_extarcts.extend(unbatch_extractor._ExtractUnbatchedInputs(e))  # pylint: disable=protected-access
+
+    # Add global slice key.
+    for e in unbatched_extarcts:
+      e[tfma.SLICE_KEY_TYPES_KEY] = ()
 
     # Now Evaluate
     inputs_per_accumulator = 1000
@@ -252,7 +261,7 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
                 metrics_specs, eval_config=self._eval_config)))
 
     processed = []
-    for elem in predict_result:
+    for elem in unbatched_extarcts:
       processed.append(
           next(
               metrics_and_plots_evaluator_v2._PreprocessorDoFn(  # pylint: disable=protected-access
@@ -290,8 +299,8 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     if with_confidence_intervals:
       # If we're computing using confidence intervals, the example count will
       # not be exact.
-      lower_bound = int(0.9 * len(records))
-      upper_bound = int(1.1 * len(records))
+      lower_bound = int(0.9 * num_examples)
+      upper_bound = int(1.1 * num_examples)
       if example_count < lower_bound or example_count > upper_bound:
         raise ValueError("example count out of bounds: expecting "
                          "%d < example_count < %d, but got %d" %
@@ -299,16 +308,16 @@ class TFMAV2BenchmarkBase(benchmark_base.BenchmarkBase):
     else:
       # If we're not using confidence intervals, we expect the example count to
       # be exact.
-      if example_count != len(records):
+      if example_count != num_examples:
         raise ValueError("example count mismatch: expecting %d got %d" %
-                         (len(records), example_count))
+                         (num_examples, example_count))
 
     self.report_benchmark(
         iters=1,
         wall_time=delta,
         extras={
             "inputs_per_accumulator": inputs_per_accumulator,
-            "num_examples": len(records)
+            "num_examples": num_examples
         })
 
   def benchmarkMetricsAndPlotsEvaluatorManualActuationNoConfidenceIntervals(

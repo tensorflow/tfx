@@ -1,6 +1,11 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
+*   Use TFXIO and batched extractors by default in Evaluator.
+
+*   Added experimental work-in-progress KubernetesDagRunner for orchestrating
+    TFX pipelines directly on a Kubernetes cluster.
+*   Supported split configuration for Transform.
 
 ## Bug fixes and other changes
 

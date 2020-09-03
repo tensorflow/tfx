@@ -18,7 +18,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import abc
 import builtins
 import copy
 import enum
@@ -26,10 +25,9 @@ import importlib
 import json
 from typing import Any, Dict, Optional, Text, Type
 
-import absl
-import tensorflow as tf
-
+from absl import logging
 from tfx.utils import json_utils
+
 from google.protobuf import json_format
 from ml_metadata.proto import metadata_store_pb2
 
@@ -324,11 +322,11 @@ class Artifact(json_utils.Jsonable):
       if artifact_cls != Artifact:
         result = artifact_cls()
     except (AttributeError, ImportError, ValueError):
-      absl.logging.warning((
+      logging.warning((
           'Could not load artifact class %s.%s; using fallback deserialization '
           'for the relevant artifact. Please make sure that any artifact '
-          'classes can be imported within your container or environment.') %
-                           (module_name, class_name))
+          'classes can be imported within your container or environment.'),
+                      module_name, class_name)
     if not result:
       result = Artifact(mlmd_artifact_type=artifact_type)
     result.set_mlmd_artifact_type(artifact_type)
@@ -485,59 +483,6 @@ class Artifact(json_utils.Jsonable):
     self._artifact.custom_properties.clear()
     self._artifact.custom_properties.MergeFrom(
         other._artifact.custom_properties)  # pylint: disable=protected-access
-
-
-class ValueArtifact(Artifact):
-  """Artifacts of small scalar-values that can be easily loaded into memory."""
-
-  def __init__(self, *args, **kwargs):
-    self._has_value = False
-    self._modified = False
-    self._value = None
-    super(ValueArtifact, self).__init__(*args, **kwargs)
-
-  def read(self):
-    if not self._has_value:
-      file_path = self.uri
-      # Assert there is a file exists.
-      if not tf.io.gfile.exists(file_path):
-        raise RuntimeError(
-            'Given path does not exist or is not a valid file: %s' % file_path)
-
-      serialized_value = tf.io.gfile.GFile(file_path, 'rb').read()
-      self._has_value = True
-      self._value = self.decode(serialized_value)
-    return self._value
-
-  def write(self, value):
-    serialized_value = self.encode(value)
-    tf.io.gfile.GFile(self.uri, 'wb').write(serialized_value)
-
-  @property
-  def value(self):
-    if not self._has_value:
-      raise ValueError('The artifact value has not yet been read from storage.')
-    return self._value
-
-  @value.setter
-  def value(self, value):
-    self._modified = True
-    self._value = value
-    self.write(value)
-
-  # Note: behavior of decode() method should not be changed to provide
-  # backward/forward compatibility.
-  @abc.abstractmethod
-  def decode(self, serialized_value) -> bytes:
-    """Method decoding the file content. Implemented by subclasses."""
-    pass
-
-  # Note: behavior of encode() method should not be changed to provide
-  # backward/forward compatibility.
-  @abc.abstractmethod
-  def encode(self, value) -> Any:
-    """Method encoding the file content. Implemented by subclasses."""
-    pass
 
 
 def _ArtifactType(  # pylint: disable=invalid-name

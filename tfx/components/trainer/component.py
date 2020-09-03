@@ -220,11 +220,8 @@ class Trainer(base_component.BaseComponent):
       raise ValueError("If 'transformed_examples' is supplied, "
                        "'transform_graph' must be supplied too.")
     examples = examples or transformed_examples
-    output = output or types.Channel(
-        type=standard_artifacts.Model, artifacts=[standard_artifacts.Model()])
-    model_run = model_run or types.Channel(
-        type=standard_artifacts.ModelRun,
-        artifacts=[standard_artifacts.ModelRun()])
+    output = output or types.Channel(type=standard_artifacts.Model)
+    model_run = model_run or types.Channel(type=standard_artifacts.ModelRun)
     spec = TrainerSpec(
         examples=examples,
         transform_graph=transform_graph,

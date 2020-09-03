@@ -68,12 +68,15 @@ class SpansResolver(base_resolver.BaseResolver):
               a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value),
           reverse=True)
 
+      artifacts_dict[k] = []
+      resolve_state_dict[k] = False
+
       if self._range_config:
         if self._range_config.HasField('static_range'):
           # TODO(jjma): Optimize this by sending a more specific MLMD query.
-          artifacts_dict[k] = []
           lower_bound = self._range_config.static_range.start_span_number
           upper_bound = self._range_config.static_range.end_span_number
+
           for a in previous_artifacts:
             span = int(
                 a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
@@ -84,9 +87,23 @@ class SpansResolver(base_resolver.BaseResolver):
           resolve_state_dict[k] = (
               len(artifacts_dict[k]) == (upper_bound - lower_bound + 1))
 
-        # TODO(jjma): Add rolling range support after adding RollingRange.
+        elif self._range_config.HasFeld('rolling_range'):
+          start_span = self._range_config.rolling_range.start_span_number
+          num_spans = self._range_config.rolling_range.num_spans
+          num_skip = self._range_config.rolling_range.skip_num_recent_spans
 
-      else:
+          for i, a in enumerate(previous_artifacts[num_skip:]):
+            span = int(
+                a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
+            if span >= start_span and i < num_spans:
+              artifacts_dict[k].append(
+                  artifact_utils.deserialize_artifact(a.type, a.artifact))
+            else:
+              break
+          
+          resolve_state_dict[k] = len(artifacts_dict[k]) == num_spans
+
+      elif len(previous_artifacts) > 0:
         # Default behavior is to fetch single latest span artifact.
         latest_artifact = previous_artifacts[0]
         artifacts_dict[k] = [
