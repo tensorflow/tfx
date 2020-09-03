@@ -30,8 +30,8 @@ from tfx.types import artifact_utils
 from tfx.types.standard_artifacts import Examples
 
 
-class LatestSpansResolver(base_resolver.BaseResolver):
-  """Resolver that return the latest n spans in a given Examples channel.
+class SpansResolver(base_resolver.BaseResolver):
+  """Resolver that returns a range of spans in a given Examples channel.
 
   Note that this Resolver is experimental and is subject to change in terms of
   both interface and implementation.
@@ -53,7 +53,7 @@ class LatestSpansResolver(base_resolver.BaseResolver):
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
     for k, c in source_channels.items():
-      if c.type_name != Examples.TYPE_NAME
+      if c.type_name != Examples.TYPE_NAME:
         raise ValueError('Resolving non-Example artifacts is not supported.')
 
       candidate_artifacts = metadata_handler.get_qualified_artifacts(
@@ -64,16 +64,19 @@ class LatestSpansResolver(base_resolver.BaseResolver):
 
       previous_artifacts = sorted(
           candidate_artifacts, 
-          key=lambda a: int(a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME]),
+          key=lambda a: int(
+              a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value),
           reverse=True)
 
-      if range_config:
-        if range_config.HasField('static_range'):
+      if self._range_config:
+        if self._range_config.HasField('static_range'):
+          # TODO(jjma): Optimize this by sending a more specific MLMD query.
           artifacts_dict[k] = []
-          lower_bound = range_config.static_range.start_span_number
-          upper_bound = range_config.static_range.end_span_number
+          lower_bound = self._range_config.static_range.start_span_number
+          upper_bound = self._range_config.static_range.end_span_number
           for a in previous_artifacts:
-            span = int(a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME])
+            span = int(
+                a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
             if lower_bound <= span and span <= upper_bound:
               artifacts_dict[k].append(
                   artifact_utils.deserialize_artifact(a.type, a.artifact))
