@@ -38,8 +38,10 @@ class SpansResolver(base_resolver.BaseResolver):
   """
 
   def __init__(self, 
-               range_config: Optional[range_config_pb2.RangeConfig] = None):
+               range_config: Optional[range_config_pb2.RangeConfig] = None,
+               merge_same_artifact_type: bool = False):
     self._range_config = range_config
+    self._merge_same_artifact_type = merge_same_artifact_type
 
   def resolve(
       self,
@@ -49,12 +51,23 @@ class SpansResolver(base_resolver.BaseResolver):
   ) -> base_resolver.ResolveResult:
     artifacts_dict = {}
     resolve_state_dict = {}
+
+    # Verifies that duplicate spans are not added to output, specifically for 
+    # when `merge_same_artifact_type` is set to True.
+    total_processed_spans = set()
+
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
     for k, c in source_channels.items():
       if c.type_name != Examples.TYPE_NAME:
-        raise ValueError('Resolving non-Example artifacts is not supported.')
+        raise ValueError('Channel does not contain Example artifacts: %s' % k)
+
+      processed_spans = set()
+      if self._merge_same_artifact_type:
+        # If flag is true, only one output channel, with a name of 'Examples'.
+        k = Examples.TYPE_NAME
+        processed_spans = total_processed_spans
 
       candidate_artifacts = metadata_handler.get_qualified_artifacts(
           contexts=[pipeline_context],
@@ -62,13 +75,21 @@ class SpansResolver(base_resolver.BaseResolver):
           producer_component_id=c.producer_component_id,
           output_key=c.output_key)
 
+      # TODO(jjma): This is a quick fix to incorporate version into this
+      # ordering. Sorting by artifact id makes sure that newer versions
+      # are a head of older versions, then sorting by span makes sure that
+      # artifacts are ordered first by latest span, then by latest version.
       previous_artifacts = sorted(
-          candidate_artifacts, 
+          candidate_artifacts, key=lambda a: a.artifact.id, reverse=True)
+      previous_artifacts = sorted(
+          previous_artifacts, 
           key=lambda a: int(
               a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value),
           reverse=True)
 
-      artifacts_dict[k] = []
+      # Create new list of artifacts or get list already at key, if merging
+      # multiple channels into one.
+      artifacts_dict[k] = artifacts_dict.get(k, [])
       resolve_state_dict[k] = False
 
       if self._range_config:
@@ -80,9 +101,11 @@ class SpansResolver(base_resolver.BaseResolver):
           for a in previous_artifacts:
             span = int(
                 a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
-            if lower_bound <= span and span <= upper_bound:
+            if span not in processed_spans and (lower_bound <= span and 
+                                                span <= upper_bound):
               artifacts_dict[k].append(
                   artifact_utils.deserialize_artifact(a.type, a.artifact))
+              processed_spans.add(span)
         
           resolve_state_dict[k] = (
               len(artifacts_dict[k]) == (upper_bound - lower_bound + 1))
@@ -95,9 +118,11 @@ class SpansResolver(base_resolver.BaseResolver):
           for i, a in enumerate(previous_artifacts[num_skip:]):
             span = int(
                 a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
-            if span >= start_span and i < num_spans:
+            if span not in processed_spans and (span >= start_span and
+                                                i < num_spans):
               artifacts_dict[k].append(
                   artifact_utils.deserialize_artifact(a.type, a.artifact))
+              processed_spans.add(span)
             else:
               break
           
@@ -106,11 +131,23 @@ class SpansResolver(base_resolver.BaseResolver):
       elif len(previous_artifacts) > 0:
         # Default behavior is to fetch single latest span artifact.
         latest_artifact = previous_artifacts[0]
-        artifacts_dict[k] = [
+        artifacts_dict[k].append(
             artifact_utils.deserialize_artifact(
-                latest_artifact.type, latest_artifact.artifact)
-        ]
+                latest_artifact.type, latest_artifact.artifact))
         resolve_state_dict[k] = True
+
+    if self._merge_same_artifact_type:
+      if self._range_config:
+        if self._range_config.HasField('static_range'):
+          resolve_state_dict[Examples.TYPE_NAME] = (
+              len(artifacts_dict[Examples.TYPE_NAME]) == (
+                  self._range_config.static_range.end_span_number - 
+                  self._range_config.static_range.start_span_number + 1)
+              )
+        elif self._range_config.HasField('rolling_range'):
+          resolve_state_dict[Examples.TYPE_NAME] = (
+              len(artifacts_dict[Examples.TYPE_NAME]) == (
+                  self._range_config.rolling_range.num_spans))
 
     return base_resolver.ResolveResult(
         per_key_resolve_result=artifacts_dict,
