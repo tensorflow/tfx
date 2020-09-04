@@ -52,8 +52,8 @@ class SpansResolver(base_resolver.BaseResolver):
     artifacts_dict = {}
     resolve_state_dict = {}
 
-    # Verifies that duplicate spans are not added to output, specifically for 
-    # when `merge_same_artifact_type` is set to True.
+    # Verifies that duplicate spans are not added to output over multiple
+    # channels; specifically for when `merge_same_artifact_type` is set to True.
     total_processed_spans = set()
 
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
@@ -63,6 +63,7 @@ class SpansResolver(base_resolver.BaseResolver):
       if c.type_name != Examples.TYPE_NAME:
         raise ValueError('Channel does not contain Example artifacts: %s' % k)
 
+      # Make sure that same spans are not added to output.
       processed_spans = set()
       if self._merge_same_artifact_type:
         # If flag is true, only one output channel, with a name of 'Examples'.
@@ -77,8 +78,10 @@ class SpansResolver(base_resolver.BaseResolver):
 
       # TODO(jjma): This is a quick fix to incorporate version into this
       # ordering. Sorting by artifact id makes sure that newer versions
-      # are a head of older versions, then sorting by span makes sure that
-      # artifacts are ordered first by latest span, then by latest version.
+      # are ahead of older versions (since newer versions logically have
+      # later execution ids than old versions). Then sorting by span makes
+      # sure that artifacts are ordered first by latest span, then by latest 
+      # version.
       previous_artifacts = sorted(
           candidate_artifacts, key=lambda a: a.artifact.id, reverse=True)
       previous_artifacts = sorted(
@@ -137,13 +140,13 @@ class SpansResolver(base_resolver.BaseResolver):
         resolve_state_dict[k] = True
 
     if self._merge_same_artifact_type:
+      # Update resolver_state_dict properly if merging into one channel.
       if self._range_config:
         if self._range_config.HasField('static_range'):
           resolve_state_dict[Examples.TYPE_NAME] = (
               len(artifacts_dict[Examples.TYPE_NAME]) == (
                   self._range_config.static_range.end_span_number - 
-                  self._range_config.static_range.start_span_number + 1)
-              )
+                  self._range_config.static_range.start_span_number + 1))
         elif self._range_config.HasField('rolling_range'):
           resolve_state_dict[Examples.TYPE_NAME] = (
               len(artifacts_dict[Examples.TYPE_NAME]) == (
