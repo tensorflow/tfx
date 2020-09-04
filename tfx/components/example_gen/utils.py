@@ -407,7 +407,40 @@ def _create_matching_glob_and_regex(
     is_match_date: bool, is_match_version: bool,
     range_config: Optional[range_config_pb2.RangeConfig]
 ) -> Tuple[Text, Text]:
-  """Constructs glob and regex patterns for matching span and version."""
+  """Constructs glob and regex patterns for matching span and version.
+  
+  Construct a glob and regex pattern for matching files and capturing span and
+  version information. By default, this method replaces the span, date, and
+  or version specs in the split pattern with wildcard characters to get a
+  glob pattern and with greedy named capture groups to get a regex pattern.
+  
+  If a static range `range_config` is specified, this method replaces the span
+  spec (if `is_match_span`) in both the glob and regex pattern with the span
+  number corresponding to the provided static range. If a span width modifier
+  is specified, this substitution is also made with zero padding. Similarly, if
+  `is_match_date`, the provided span number from the static range is converted
+  is mapped back into a calendar date, which is then used to replace the date
+  specs in the glob and regex patterns.
+
+  Args:
+    uri: The base path from which files will be searched.
+    split: An example_gen_pb2.Input.Split object which contains a split pattern,
+      to be searched on.
+    is_match_span: Flag set to True if span spec is present, False otherwise.
+    is_match_date: Flag set to True if date specs are present, False 
+      otherwise.
+    is_match_version: Flag set to True if version spec is presen, False
+      otherwise.
+    range_config: An instance of range_config_pb2.RangeConfig, which specifies
+      which spans to consider when finding the most recent span and version. If
+      unset, search for latest span number with no restrictions.
+  
+  Returns:
+    Tuple of two strings, first of which is a glob pattern to identify relevant
+    files for process, the second of which is a regex pattern containing capture
+    groups, for span, date, and/or version (if their respective matching flags
+    are set).
+  """
   split_pattern = os.path.join(uri, split.pattern)
   split_glob_pattern = split_pattern
   split_regex_pattern = _glob_to_regex(split_pattern)
@@ -481,11 +514,11 @@ def _get_target_span_version(
     split: example_gen_pb2.Input.Split,
     range_config: Optional[range_config_pb2.RangeConfig] = None
 ) -> Tuple[Optional[int], Optional[int]]:
-  """Retrieves the most recent span and version for a given split pattern.
+  """Retrieves a  target span and version for a given split pattern.
 
   If both Span and Version spec occur in the split pattern, searches for and
-  returns both the latest Span and Version. If only Span exists in the split
-  pattern, searches for the latest Span, and Version is returned as None.
+  returns both the target Span and Version. If only Span exists in the split
+  pattern, searches for the target Span, and Version is returned as None.
   If Version is present, but not Span, an error is raised. If neither Span
   nor Version is present, returns both as None.
 
@@ -578,7 +611,7 @@ def calculate_splits_fingerprint_span_and_version(
 
   If a pattern has the {SPAN} placeholder or the Date spec placeholders, {YYYY},
   {MM}, and {DD}, and optionally, the {VERSION} placeholder, attempts to find
-  aligned values that results in all splits having the most recent span and most
+  aligned values that results in all splits having the target span and most
   recent version for that span.
 
   Args:
