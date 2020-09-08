@@ -51,7 +51,6 @@ message Input {
   //     e.g. 'data_{SPAN:2}.file' maps to files like 'data_02.file' and
   //       'data_27.file' (as inputs for Span-2 and Span-27 respectively),
   //       however doesn't map to 'data_1.file' nor 'data_123.file'.
-  //     For zero padding digits (e.g., `0012`), the width must be used.
   //   - When SPAN spec is missing, it's assumed to be always Span 0.
   //   - If SPAN is specified, pipeline will process the latest span, and store
   //     the span number in metadata.
@@ -81,7 +80,6 @@ message Input {
   //   - If VERSION is specified, but not SPAN, an error will be thrown.
   //   - It could also be optionally specified with the width in the same way
   //     as SPAN spec. e.g. 'data_span_{SPAN}_version_{VERSION:4}.data-*'.
-  //     For zero padding digits (e.g., `0012`), the width must be used.
   //
   // TODO(b/162622803): add default behavior for when version spec not present.
   // TODO(jyzhao): support range config for define certain spans to process.
