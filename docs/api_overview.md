@@ -25,3 +25,7 @@
 ## ML Metadata
 
 *   [ML Metadata](ml_metadata/api_docs/python/mlmd)
+
+## TFX Basic Shared Libraries (`tfx_bsl`)
+
+*   [tfx_bsl](tfx_bsl/api_docs/python/tfx_bsl/public)
