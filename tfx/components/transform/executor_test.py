@@ -59,7 +59,7 @@ class _TempPath(types.Artifact):
 
 # TODO(b/122478841): Add more detailed tests.
 class ExecutorTest(tft_unit.TransformTestCase):
-  
+
   _TEMP_EXAMPLE_DIR = tempfile.mkdtemp()
   _SOURCE_DATA_DIR = os.path.join(
       os.path.dirname(os.path.dirname(__file__)), 'testdata')
@@ -112,9 +112,11 @@ class ExecutorTest(tft_unit.TransformTestCase):
     self._transformed_output.uri = os.path.join(output_data_dir,
                                                 'transformed_graph')
     transformed1 = standard_artifacts.Examples()
-    transformed1.uri = os.path.join(output_data_dir, 'transformed_examples', '1')
+    transformed1.uri = os.path.join(output_data_dir, 'transformed_examples',
+                                    '1')
     transformed2 = standard_artifacts.Examples()
-    transformed2.uri = os.path.join(output_data_dir, 'transformed_examples', '2')
+    transformed2.uri = os.path.join(output_data_dir, 'transformed_examples',
+                                    '2')
 
     self._transformed_example_artifacts = [transformed1, transformed2]
 
@@ -332,8 +334,6 @@ class ExecutorTest(tft_unit.TransformTestCase):
         transform_pb2.SplitsConfig(analyze=['train'], transform=[]),
         preserving_proto_field_name=True)
     self._exec_properties['module_file'] = self._module_file
-    self._input_dict[EXAMPLES_KEY][0].split_names = (
-        artifact_utils.encode_split_names([]))
     self._output_dict[executor.TRANSFORMED_EXAMPLES_KEY] = (
         self._transformed_example_artifacts[:1])
 
@@ -341,10 +341,10 @@ class ExecutorTest(tft_unit.TransformTestCase):
                                 self._exec_properties)
     self.assertFalse(
         tf.io.gfile.exists(
-            os.path.join(self._example_artifacts[0].uri, 'train')))
+            os.path.join(self._transformed_example_artifacts[0].uri, 'train')))
     self.assertFalse(
         tf.io.gfile.exists(
-            os.path.join(self._example_artifacts[0].uri, 'eval')))
+            os.path.join(self._transformed_example_artifacts[0].uri, 'eval')))
     path_to_saved_model = os.path.join(self._transformed_output.uri,
                                        tft.TFTransformOutput.TRANSFORM_FN_DIR,
                                        tf.saved_model.SAVED_MODEL_FILENAME_PB)

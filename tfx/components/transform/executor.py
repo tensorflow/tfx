@@ -334,7 +334,7 @@ class Executor(base_executor.BaseExecutor):
       split_names = artifact_utils.decode_split_names(
           value_utils.GetValues(input_dict, EXAMPLES_KEY)[0].split_names)
       split_names_set = set(split_names)
-      
+
       for artifact in value_utils.GetValues(input_dict, EXAMPLES_KEY):
         artifact_split_names = artifact_utils.decode_split_names(
             artifact.split_names)
