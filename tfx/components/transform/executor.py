@@ -329,12 +329,13 @@ class Executor(base_executor.BaseExecutor):
         raise ValueError('analyze cannot be empty when splits_config is set.')
     else:
       splits_config.analyze.append('train')
-      split_names = artifact_utils.decode_split_names(
-          input_dict[EXAMPLES_KEY][0].split_names)
 
-      # Verify that all input artifacts have the same set of split names.
+      # All input artifacts should have the same set of split names.
+      split_names = artifact_utils.decode_split_names(
+          value_utils.GetValues(input_dict, EXAMPLES_KEY)[0].split_names)
       split_names_set = set(split_names)
-      for artifact in input_dict[EXAMPLES_KEY]:
+      
+      for artifact in value_utils.GetValues(input_dict, EXAMPLES_KEY):
         artifact_split_names = artifact_utils.decode_split_names(
             artifact.split_names)
         if split_names_set != set(artifact_split_names):
@@ -349,7 +350,7 @@ class Executor(base_executor.BaseExecutor):
 
     payload_format, data_view_uri = (
         tfxio_utils.resolve_payload_format_and_data_view_uri(
-            input_dict[EXAMPLES_KEY]))
+            value_utils.GetValues(input_dict, EXAMPLES_KEY)))
     schema_file = io_utils.get_only_uri_in_dir(
         artifact_utils.get_single_uri(input_dict[SCHEMA_KEY]))
     transform_output = artifact_utils.get_single_uri(
@@ -360,7 +361,8 @@ class Executor(base_executor.BaseExecutor):
 
     analyze_data_paths = []
     for split in splits_config.analyze:
-      data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY], split)
+      data_uris = artifact_utils.get_split_uris(
+          value_utils.GetValues(input_dict, EXAMPLES_KEY), split)
       for data_uri in data_uris:
         analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
 
@@ -372,8 +374,8 @@ class Executor(base_executor.BaseExecutor):
             artifact_utils.encode_split_names(list(splits_config.transform)))
 
       for split in splits_config.transform:
-        data_uris = artifact_utils.get_split_uris(input_dict[EXAMPLES_KEY],
-                                                  split)
+        data_uris = artifact_utils.get_split_uris(
+            value_utils.GetValues(input_dict, EXAMPLES_KEY), split)
         for data_uri in data_uris:
           transform_data_paths.append(io_utils.all_files_pattern(data_uri))
 
