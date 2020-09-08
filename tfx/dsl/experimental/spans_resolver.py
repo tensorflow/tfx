@@ -63,7 +63,7 @@ class SpansResolver(base_resolver.BaseResolver):
       if c.type_name != Examples.TYPE_NAME:
         raise ValueError('Channel does not contain Example artifacts: %s' % k)
 
-      # Make sure that same spans are not added to output.
+      # Make sure that artifacts with the same span are not both resolved.
       processed_spans = set()
       if self._merge_same_artifact_type:
         # If flag is true, only one output channel, with a name of 'Examples'.
@@ -77,13 +77,14 @@ class SpansResolver(base_resolver.BaseResolver):
           output_key=c.output_key)
 
       # TODO(jjma): This is a quick fix to incorporate version into this
-      # ordering. Sorting by artifact id makes sure that newer versions
-      # are ahead of older versions (since newer versions logically have
-      # later execution ids than old versions). Then sorting by span makes
+      # ordering. Sorting by last update times makes sure that newer versions
+      # are ahead of older versions (since newer versions logically are 
+      # processed more recently than old versions). Then sorting by span makes
       # sure that artifacts are ordered first by latest span, then by latest 
       # version.
       previous_artifacts = sorted(
-          candidate_artifacts, key=lambda a: a.artifact.id, reverse=True)
+          candidate_artifacts,
+          key=lambda a: a.artifact.last_update_time_since_epoch, reverse=True)
       previous_artifacts = sorted(
           previous_artifacts, 
           key=lambda a: int(

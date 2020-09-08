@@ -45,6 +45,20 @@ class SpansResolverTest(tf.test.TestCase):
         component_id='my_component',
         pipeline_info=self._pipeline_info)
 
+  def testWithNonExampleChannels(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
+      resolver = spans_resolver.SpansResolver()
+
+      with self.assertRaisesRegexp(ValueError, 
+          'Channel does not contain Example artifacts'):
+        resolve_result = resolver.resolve(
+            pipeline_info=self._pipeline_info,
+            metadata_handler=m,
+            source_channels={
+                'input': types.Channel(type=standard_artifacts.Model)
+            })
+
   def testStaticRangeConfig(self):
     with metadata.Metadata(connection_config=self._connection_config) as m:
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
