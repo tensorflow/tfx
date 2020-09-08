@@ -172,8 +172,7 @@ Span can be retrieved by using '{SPAN}' spec in the
 *   Optionally, this spec can be specified with the width of the integers
     when mapped. For example, 'data_{SPAN:2}.file' maps to files like 
     'data_02.file' and 'data_27.file' (as inputs for Span-2 and Span-27 
-    respectively), but does not map to 'data_1.file' nor 'data_123.file'. 
-    For zero padding digits (e.g., `0012`), the width must be used.
+    respectively), but does not map to 'data_1.file' nor 'data_123.file'.
 *   When SPAN spec is missing, it's assumed to be always Span '0'.
 *   If SPAN is specified, pipeline will process the latest span, and store the
     span number in metadata.
@@ -297,7 +296,6 @@ Version can be retrieved by using '{VERSION}' spec in the
     either Span or Date spec.
 *   This spec can also be optionally specified with the width in the same way
     as SPAN spec. e.g. 'span-{SPAN}/version-{VERSION:4}/data-*'.
-    For zero padding digits (e.g., `0012`), the width must be used.
 *   When VERSION spec is missing, version is set to be None.
 *   If SPAN and VERSION are both specified, pipeline will process the
     latest version for the latest span, and store the version number in
@@ -367,8 +365,11 @@ there are input data:
 
 To specifically retrieve and process data with span '1', we specify a range
 config in addition to the input config. Note that ExampleGen only supports 
-single-span static ranges. Thus, for StaticRange, start_span_number must equal 
-end_span_number.
+single-span static ranges (to specify processing of specific individual spans).
+Thus, for StaticRange, start_span_number must equal end_span_number. Using the
+provided span, and the span width information (if provided) for zero-padding,
+ExampleGen will replace the SPAN spec in the provided split patterns with the 
+desired span number. An example of usage is shown below:
 
 ```python
 from  tfx.proto import example_gen_pb2
@@ -388,6 +389,8 @@ range = range_config_pb2.RangeConfig(
                         start_span_number=1, end_span_number=1)
             )
 
+# After substitution, the train and eval split patterns will be
+# 'input_dir/span-01/train/*' and 'input_dir/span-01/eval/*', respectively.
 examples = csv_input(input_dir)
 example_gen = CsvExampleGen(input=examples, input_config=input,
                             range_config=range)
@@ -423,6 +426,9 @@ range = range_config_pb2.RangeConfig(
                         start_span_number=span, end_span_number=span)
             )
 
+# After substitution, the train and eval split patterns will be
+# 'input_dir/1970-01-02/train/*' and 'input_dir/1970-01-02/eval/*',
+# respectively.
 examples = csv_input(input_dir)
 example_gen = CsvExampleGen(input=examples, input_config=input,
                             range_config=range)
