@@ -6,6 +6,7 @@
 *   Added experimental work-in-progress KubernetesDagRunner for orchestrating
     TFX pipelines directly on a Kubernetes cluster.
 *   Supported split configuration for Transform.
+*   Add examples of get_* API usage to our Get Started tutorial.
 
 ## Bug fixes and other changes
 

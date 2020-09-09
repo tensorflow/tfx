@@ -159,7 +159,14 @@ model_type.properties["name"] = metadata_store_pb2.STRING
 model_type_id = store.put_artifact_type(model_type)
 ```
 
-2) Before executions can be recorded, ExecutionTypes have to be registered for
+2) Query to see the registered Artifact types.
+
+```python
+artifact_types_list = store.get_artifact_types()
+print(artifact_types_list)
+```
+
+3) Before executions can be recorded, ExecutionTypes have to be registered for
 all steps in our ML workflow.
 
 ```python
@@ -170,7 +177,14 @@ trainer_type.properties["state"] = metadata_store_pb2.STRING
 trainer_type_id = store.put_execution_type(trainer_type)
 ```
 
-3) Once types are registered, we create a DataSet Artifact.
+4) Query the registered Execution type with the returned id.
+
+```python
+execution_types_list = store.get_execution_types_by_id([trainer_type_id])
+print(execution_types_list)
+```
+
+5) Once types are registered, we create a DataSet Artifact.
 
 ```python
 # Declare input artifact of type DataSet
@@ -182,8 +196,22 @@ data_artifact.type_id = data_type_id
 data_artifact_id = store.put_artifacts([data_artifact])[0]
 ```
 
-4) With the DataSet Artifact created, we can create the Execution for a Trainer
-run
+6) Similar to querying Artifact/Execution types, we can query the regiserted
+Artifacts.
+
+```python
+artifact_list = store.get_artifacts()
+print(artifact_list)
+
+# Plus, there are many ways to query the same Artifact
+example_artifact = artifact_list[0]
+assert example_artifact == \
+       store.get_artifacts_by_id([example_artifact.id])[0] == \
+       store.get_artifacts_by_uri(example_artifact.uri)[0]
+```
+
+7) With the DataSet Artifact created, we can create the Execution for a Trainer
+run.
 
 ```python
 # Register the Execution of a Trainer run
@@ -193,7 +221,14 @@ trainer_run.properties["state"].string_value = "RUNNING"
 run_id = store.put_executions([trainer_run])[0]
 ```
 
-5) Declare input event and read data.
+8) Similar to querying an Artifact, we can query the regiserted Execution too.
+
+```python
+execution_list = store.get_executions_by_id([run_id])
+print(execution_list)
+```
+
+9) Declare input event and read data.
 
 ```python
 # Declare the input event
@@ -206,7 +241,7 @@ input_event.type = metadata_store_pb2.Event.DECLARED_INPUT
 store.put_events([input_event])
 ```
 
-6) Now that the input is read, we declare the output artifact.
+10) Now that the input is read, we declare the output artifact.
 
 ```python
 # Declare output artifact of type SavedModel
@@ -218,7 +253,7 @@ model_artifact.type_id = model_type_id
 model_artifact_id = store.put_artifacts([model_artifact])[0]
 ```
 
-7) With the Model Artifact created, we can record the output event.
+11) With the Model Artifact created, we can record the output event.
 
 ```python
 # Declare the output event
@@ -231,7 +266,7 @@ output_event.type = metadata_store_pb2.Event.DECLARED_OUTPUT
 store.put_events([output_event])
 ```
 
-8) Now that everything is recorded, the Execution can be marked as completed.
+12) Now that everything is recorded, the Execution can be marked as completed.
 
 ```python
 trainer_run.id = run_id
@@ -239,7 +274,7 @@ trainer_run.properties["state"].string_value = "COMPLETED"
 store.put_executions([trainer_run])
 ```
 
-9) Then the artifacts and executions can be grouped to a Context (e.g.,
+13) Then the artifacts and executions can be grouped to a Context (e.g.,
 experiment).
 
 ```python
@@ -266,6 +301,15 @@ association.execution_id = run_id
 association.context_id = experiment_id
 
 store.put_attributions_and_associations([attribution], [association])
+```
+
+14) After Artifacts and Executions are grouped to a Context, we can get them by
+the Context Id.
+
+```python
+print("Grouped Artifacts.\n\n", store.get_artifacts_by_context(experiment_id))
+print("\n")
+print("Grouped Executions.\n\n", store.get_executions_by_context(experiment_id))
 ```
 
 ### With remote grpc server
