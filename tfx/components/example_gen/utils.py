@@ -291,20 +291,6 @@ def _verify_split_pattern_specs(
   return is_match_span, is_match_date, is_match_version
 
 
-def _verify_range_config(
-    range_config: Optional[range_config_pb2.RangeConfig]) -> None:
-  """Varify RangeConfig contents for ExampleGen."""
-  if range_config and range_config.HasField('static_range'):
-    # For ExampleGen, RangeConfig must specify an exact span to look for,
-    # since only one span is processed at a time.
-    start_span_number = range_config.static_range.start_span_number
-    end_span_number = range_config.static_range.end_span_number
-    if start_span_number != end_span_number:
-      raise ValueError(
-          'Start and end span numbers for RangeConfig.static_range must '
-          'be equal: (%s, %s)' % (start_span_number, end_span_number))
-
-
 def _find_matched_span_version_from_path(
     file_path: Text, split_regex_pattern: Text, is_match_span: bool,
     is_match_date: bool, is_match_version: bool
@@ -547,7 +533,6 @@ def _get_target_span_version(
       - If Span or Version found is not an integer.
       - If a matching cannot be found for split pattern provided.
   """
-  _verify_range_config(range_config)
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
       split, range_config=range_config)
 

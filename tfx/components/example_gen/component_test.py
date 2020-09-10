@@ -148,7 +148,7 @@ class ComponentTest(tf.test.TestCase):
                       stored_custom_config)
     self.assertEqual(custom_config, stored_custom_config)
 
-  def testConstructWithRangeConfig(self):
+  def testConstructWithStaticRangeConfig(self):
     range_config = range_config_pb2.RangeConfig(
         static_range=range_config_pb2.StaticRange(start_span_number=1,
                                                   end_span_number=1))
@@ -161,6 +161,18 @@ class ComponentTest(tf.test.TestCase):
     json_format.Parse(example_gen.exec_properties['range_config'],
                       stored_range_config)
     self.assertEqual(range_config, stored_range_config)
+
+  def testConstructWithBadStaticRangeConfig(self):
+    range_config = range_config_pb2.RangeConfig(
+        static_range=range_config_pb2.StaticRange(start_span_number=1,
+                                                  end_span_number=2))
+    with self.assertRaisesRegexp(ValueError, 
+        'Start and end span numbers for RangeConfig.static_range'):
+      example_gen = component.FileBasedExampleGen(
+          input_base='path',
+          range_config=range_config,
+          custom_executor_spec=executor_spec.ExecutorClassSpec(
+              TestExampleGenExecutor))
 
 if __name__ == '__main__':
   tf.test.main()

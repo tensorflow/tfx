@@ -182,6 +182,18 @@ class FileBasedExampleGen(base_component.BaseComponent):
     input_config = input_config or utils.make_default_input_config()
     output_config = output_config or utils.make_default_output_config(
         input_config)
+        
+    # Verify range config.
+    if range_config and range_config.HasField('static_range'):
+      # For ExampleGen, StaticRange must specify an exact span to look for,
+      # since only one span is processed at a time.
+      start_span_number = range_config.static_range.start_span_number
+      end_span_number = range_config.static_range.end_span_number
+      if start_span_number != end_span_number:
+        raise ValueError(
+            'Start and end span numbers for RangeConfig.static_range must '
+            'be equal: (%s, %s)' % (start_span_number, end_span_number))
+
     if not example_artifacts:
       example_artifacts = types.Channel(type=standard_artifacts.Examples)
     spec = FileBasedExampleGenSpec(

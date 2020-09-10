@@ -666,25 +666,6 @@ class UtilsTest(tf.test.TestCase):
     self.assertEqual(splits[0].pattern, '19700103/ver02/split1/*')
     self.assertEqual(splits[1].pattern, '19700103/ver02/split2/*')
 
-  def testBadRangeConfig(self):
-    # Test static range with different endpoints.
-    span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',
-                                'data')
-    io_utils.write_string_file(span1_split1, 'testing11')
-
-    range_config = range_config_pb2.RangeConfig(
-        static_range=range_config_pb2.StaticRange(start_span_number=0,
-                                                  end_span_number=1))
-    splits = [
-        example_gen_pb2.Input.Split(
-            name='s1', pattern='span{SPAN}/split1/*')
-    ]
-
-    with self.assertRaisesRegexp(
-        ValueError, 'Start and end span numbers for RangeConfig'):
-      utils.calculate_splits_fingerprint_span_and_version(
-          self._input_base_path, splits, range_config=range_config)
-
   def testRangeConfigWithNonexistentSpan(self):
     # Test behavior when specified span in RangeConfig does not exist.
     span1_split1 = os.path.join(self._input_base_path, 'span01', 'split1',

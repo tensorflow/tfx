@@ -16,9 +16,7 @@ syntax = "proto3";
 package tfx.configs;
 
 // Describes a static window within the specified span numbers
-// [start_span_number, end_span_number]. If not all spans in the
-// range are available, processing may continue on a partial range as long as 
-// RangeConfig.min_spans are availiable.
+// [start_span_number, end_span_number].
 // Note that both numbers should be specified for StaticRange.
 message StaticRange {
   int32 start_span_number = 1;
