@@ -41,7 +41,6 @@ class SpansResolver(base_resolver.BaseResolver):
                range_config: Optional[range_config_pb2.RangeConfig] = None,
                merge_same_artifact_type: bool = False):
     self._range_config = range_config
-    self._merge_same_artifact_type = merge_same_artifact_type
 
   def resolve(
       self,
@@ -52,24 +51,19 @@ class SpansResolver(base_resolver.BaseResolver):
     artifacts_dict = {}
     resolve_state_dict = {}
 
-    # Verifies that duplicate spans are not added to output over multiple
-    # channels; specifically for when `merge_same_artifact_type` is set to True.
-    total_processed_spans = set()
-
     pipeline_context = metadata_handler.get_pipeline_context(pipeline_info)
     if pipeline_context is None:
       raise RuntimeError('Pipeline context absent for %s' % pipeline_context)
+    if len(source_channels) != 1:
+      raise ValueError('Resolver must have exactly one source channel: %s'
+                       % len(source_channels))
+
     for k, c in source_channels.items():
       if c.type_name != Examples.TYPE_NAME:
         raise ValueError('Channel does not contain Example artifacts: %s' % k)
 
       # Make sure that artifacts with the same span are not both resolved.
       processed_spans = set()
-      if self._merge_same_artifact_type:
-        # If flag is true, only one output channel, with a name of 'Examples'.
-        k = Examples.TYPE_NAME
-        processed_spans = total_processed_spans
-
       candidate_artifacts = metadata_handler.get_qualified_artifacts(
           contexts=[pipeline_context],
           type_name=c.type_name,
@@ -91,9 +85,7 @@ class SpansResolver(base_resolver.BaseResolver):
               a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value),
           reverse=True)
 
-      # Create new list of artifacts or get list already at key, if merging
-      # multiple channels into one.
-      artifacts_dict[k] = artifacts_dict.get(k, [])
+      artifacts_dict[k] = []
       resolve_state_dict[k] = False
 
       if self._range_config:
@@ -119,14 +111,14 @@ class SpansResolver(base_resolver.BaseResolver):
           num_spans = self._range_config.rolling_range.num_spans
           num_skip = self._range_config.rolling_range.skip_num_recent_spans
 
-          for i, a in enumerate(previous_artifacts[num_skip:]):
+          for a in previous_artifacts[num_skip:]:
             span = int(
                 a.artifact.custom_properties[utils.SPAN_PROPERTY_NAME].string_value)
-            if span not in processed_spans and (span >= start_span and
-                                                i < num_spans):
-              artifacts_dict[k].append(
-                  artifact_utils.deserialize_artifact(a.type, a.artifact))
-              processed_spans.add(span)
+            if (span >= start_span and len(processed_spans) < num_spans):
+              if span not in processed_spans:
+                artifacts_dict[k].append(
+                    artifact_utils.deserialize_artifact(a.type, a.artifact))
+                processed_spans.add(span)
             else:
               break
           
@@ -139,19 +131,6 @@ class SpansResolver(base_resolver.BaseResolver):
             artifact_utils.deserialize_artifact(
                 latest_artifact.type, latest_artifact.artifact))
         resolve_state_dict[k] = True
-
-    if self._merge_same_artifact_type:
-      # Update resolver_state_dict properly if merging into one channel.
-      if self._range_config:
-        if self._range_config.HasField('static_range'):
-          resolve_state_dict[Examples.TYPE_NAME] = (
-              len(artifacts_dict[Examples.TYPE_NAME]) == (
-                  self._range_config.static_range.end_span_number - 
-                  self._range_config.static_range.start_span_number + 1))
-        elif self._range_config.HasField('rolling_range'):
-          resolve_state_dict[Examples.TYPE_NAME] = (
-              len(artifacts_dict[Examples.TYPE_NAME]) == (
-                  self._range_config.rolling_range.num_spans))
 
     return base_resolver.ResolveResult(
         per_key_resolve_result=artifacts_dict,
