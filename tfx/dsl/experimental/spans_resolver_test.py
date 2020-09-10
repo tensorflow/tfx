@@ -64,7 +64,7 @@ class SpansResolverTest(tf.test.TestCase):
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
 
       artifact_one = standard_artifacts.Examples()
-      artifact_one.uri = 'uri_one'
+      artifact_one.uri = 'span1'
       artifact_one.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '1')
       m.publish_artifacts([artifact_one])
 
@@ -103,7 +103,7 @@ class SpansResolverTest(tf.test.TestCase):
       self.assertFalse(resolve_result.per_key_resolve_state['input'])
 
       artifact_two = standard_artifacts.Examples()
-      artifact_two.uri = 'uri_two'
+      artifact_two.uri = 'span2'
       artifact_two.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '2')
       m.publish_artifacts([artifact_two])
 
@@ -136,7 +136,7 @@ class SpansResolverTest(tf.test.TestCase):
       self.assertTrue(resolve_result.per_key_resolve_state['input'])
 
       artifact_three = standard_artifacts.Examples()
-      artifact_three.uri = 'uri_three'
+      artifact_three.uri = 'span3hree'
       artifact_three.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '3')
       m.publish_artifacts([artifact_three])
 
@@ -173,10 +173,10 @@ class SpansResolverTest(tf.test.TestCase):
       contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)
 
       artifact_one = standard_artifacts.Examples()
-      artifact_one.uri = 'uri_one'
+      artifact_one.uri = 'span1'
       artifact_one.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '1')
       artifact_two = standard_artifacts.Examples()
-      artifact_two.uri = 'uri_two'
+      artifact_two.uri = 'span2'
       artifact_two.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '2')
       m.publish_artifacts([artifact_one, artifact_two])
 
@@ -217,7 +217,7 @@ class SpansResolverTest(tf.test.TestCase):
       self.assertFalse(resolve_result.per_key_resolve_state['input'])
 
       artifact_three = standard_artifacts.Examples()
-      artifact_three.uri = 'uri_three'
+      artifact_three.uri = 'span3hree'
       artifact_three.set_string_custom_property(utils.SPAN_PROPERTY_NAME, '3')
       m.publish_artifacts([artifact_three])
 
@@ -257,6 +257,23 @@ class SpansResolverTest(tf.test.TestCase):
           for artifact in resolve_result.per_key_resolve_result['input']
       ], [artifact_two.uri, artifact_one.uri])
       self.assertTrue(resolve_result.per_key_resolve_state['input'])
+
+  def testFailOnMultipleChannels(self):
+    with metadata.Metadata(connection_config=self._connection_config) as m:
+      contexts = m.register_pipeline_contexts_if_not_exists(self._pipeline_info)  
+      resolver = spans_resolver.SpansResolver()
+    
+      with self.assertRaisesRegexp(ValueError,
+          'Resolver must have exactly one source channel'):
+        resolve_result = resolver.resolve(
+            pipeline_info=self._pipeline_info,
+            metadata_handler=m,
+            source_channels={
+                'input1':
+                    types.Channel(type=standard_artifacts.Examples),
+                'input2':
+                    types.Channel(type=standard_artifacts.Examples)
+            })
 
 if __name__ == '__main__':
   tf.test.main()

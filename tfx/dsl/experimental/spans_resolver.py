@@ -70,7 +70,7 @@ class SpansResolver(base_resolver.BaseResolver):
           producer_component_id=c.producer_component_id,
           output_key=c.output_key)
 
-      # TODO(jjma): This is a quick fix to incorporate version into this
+      # TODO(jjma): This is a current fix to incorporate version into this
       # ordering. Sorting by last update times makes sure that newer versions
       # are ahead of older versions (since newer versions logically are 
       # processed more recently than old versions). Then sorting by span makes
