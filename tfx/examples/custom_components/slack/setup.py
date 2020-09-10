@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,6 @@
 # limitations under the License.
 """Package Setup script for slack custom component."""
 
-from __future__ import print_function
-
 from setuptools import find_packages
 from setuptools import setup
 
@@ -25,7 +23,7 @@ def _make_required_install_packages():
   # six, and protobuf) with TF.
   return [
       'slackclient>=2.0.0,<2.0.1',
-      'tfx>=0.23.0,<=0.24.0.dev',
+      'tfx',
       'websocket-client>=0.56,<0.60',
   ]
 
