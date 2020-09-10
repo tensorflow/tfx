@@ -9,6 +9,9 @@
 
 ## Bug fixes and other changes
 
+*   Depends on `tensorflow-model-analysis>=0.24,<0.25`.
+*   Depends on `tfx-bsl>=0.24,<0.25`.
+
 ## Breaking changes
 
 ### For pipeline authors

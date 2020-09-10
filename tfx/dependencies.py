@@ -44,10 +44,10 @@ def make_required_install_packages():
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-data-validation>=0.23,<0.24',
-      'tensorflow-model-analysis>=0.23,<0.24',
+      'tensorflow-model-analysis>=0.24,<0.25',
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
       'tensorflow-transform>=0.23,<0.24',
-      'tfx-bsl>=0.23,<0.24',
+      'tfx-bsl>=0.24,<0.25',
   ]
 
 
