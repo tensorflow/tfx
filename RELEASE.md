@@ -9,6 +9,7 @@
 
 ## Bug fixes and other changes
 
+*   Supported CAIP Runtime 2.2 for online prediction pusher.
 *   Depends on `tensorflow-model-analysis>=0.24,<0.25`.
 *   Depends on `tfx-bsl>=0.24,<0.25`.
 
