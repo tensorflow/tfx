@@ -29,7 +29,6 @@ from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils
-from tfx.utils import telemetry_utils
 
 
 class ExecutorTest(tf.test.TestCase):
@@ -92,27 +91,20 @@ class ExecutorTest(tf.test.TestCase):
     self.assertDirectoryEmpty(self._model_push.uri)
     self.assertEqual(0, self._model_push.get_int_custom_property('pushed'))
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery')
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testDoBlessed(self, mock_runner, _):
+  def testDoBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/blessed')
     self._model_blessing.set_int_custom_property('blessed', 1)
-    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
     executor_class_path = '%s.%s' % (self._executor.__class__.__module__,
                                      self._executor.__class__.__name__)
-    with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
     mock_runner.deploy_model_for_aip_prediction.assert_called_once_with(
-        mock.ANY,
         self._model_push.uri,
         mock.ANY,
         mock.ANY,
-        job_labels,
+        executor_class_path,
     )
     self.assertPushed()
     version = self._model_push.get_string_custom_property('pushed_version')
@@ -120,14 +112,11 @@ class ExecutorTest(tf.test.TestCase):
         self._model_push.get_string_custom_property('pushed_destination'),
         'projects/project_id/models/model_name/versions/{}'.format(version))
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery')
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testDoNotBlessed(self, mock_runner, _):
+  def testDoNotBlessed(self, mock_runner):
     self._model_blessing.uri = os.path.join(self._source_data_dir,
                                             'model_validator/not_blessed')
     self._model_blessing.set_int_custom_property('blessed', 0)
-    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
     self._executor.Do(self._input_dict, self._output_dict,
                       self._serialize_custom_config_under_test())
     self.assertNotPushed()

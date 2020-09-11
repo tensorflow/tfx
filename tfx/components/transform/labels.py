@@ -30,6 +30,7 @@ DATA_VIEW_LABEL = 'data_view_uri'
 # This label is currently not used externally.
 EXAMPLES_METADATA_LABEL = 'examples_metadata'
 CACHE_INPUT_PATH_LABEL = 'cache_input_path'
+FORCE_TF_COMPAT_V1_LABEL = 'force_tf_compat_v1'
 
 # Output labels.
 # TODO(b/72214804): Ideally per-set stats and materialization output paths

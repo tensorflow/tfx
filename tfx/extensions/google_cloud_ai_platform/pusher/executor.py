@@ -20,7 +20,6 @@ from __future__ import print_function
 import time
 from typing import Any, Dict, List, Text
 
-from googleapiclient import discovery
 from tfx import types
 from tfx.components.pusher import executor as tfx_pusher_executor
 from tfx.extensions.google_cloud_ai_platform import runner
@@ -28,7 +27,6 @@ from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils
 from tfx.utils import path_utils
-from tfx.utils import telemetry_utils
 
 # Google Cloud AI Platform's ModelVersion resource path format.
 # https://cloud.google.com/ai-platform/prediction/docs/reference/rest/v1/projects.models.versions/get
@@ -88,8 +86,6 @@ class Executor(tfx_pusher_executor.Executor):
     if not ai_platform_serving_args:
       raise ValueError(
           '\'ai_platform_serving_args\' is missing in \'custom_config\'')
-    service_name, api_version = runner.get_service_name_and_api_version(
-        ai_platform_serving_args)
     # Deploy the model.
     io_utils.copy_dir(
         src=path_utils.serving_model_path(model_export.uri), dst=model_push.uri)
@@ -101,15 +97,11 @@ class Executor(tfx_pusher_executor.Executor):
     model_version = 'v{}'.format(int(time.time()))
     executor_class_path = '%s.%s' % (self.__class__.__module__,
                                      self.__class__.__name__)
-    with telemetry_utils.scoped_labels(
-        {telemetry_utils.LABEL_TFX_EXECUTOR: executor_class_path}):
-      job_labels = telemetry_utils.get_labels_dict()
     runner.deploy_model_for_aip_prediction(
-        discovery.build(service_name, api_version),
         model_path,
         model_version,
         ai_platform_serving_args,
-        job_labels,
+        executor_class_path,
     )
 
     self._MarkPushed(

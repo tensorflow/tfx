@@ -73,12 +73,8 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
     self.assertExecutedOnce('Trainer')
     self.assertExecutedOnce('Transform')
 
-  @mock.patch(
-      'tfx.extensions.google_cloud_ai_platform.pusher.executor.discovery'
-  )
   @mock.patch.object(executor, 'runner', autospec=True)
-  def testIrisPipelineSklearn(self, mock_runner, _):
-    mock_runner.get_service_name_and_api_version.return_value = ('ml', 'v1')
+  def testIrisPipelineSklearn(self, mock_runner):
     BeamDagRunner().run(
         iris_pipeline_sklearn._create_pipeline(
             pipeline_name=self._pipeline_name,
