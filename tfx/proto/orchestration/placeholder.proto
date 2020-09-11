@@ -103,11 +103,10 @@ message ProtoOperator {
   ProtoSchema proto_schema = 2;
 
   // Optional. Access a field inside the proto, using proto notations.
-  // If provided, the value at the proto_field_path is a scalar value type
-  // (https://developers.google.com/protocol-buffers/docs/proto3#scalar), it
-  // will be rendered directly.
+  // If provided, the value at the proto_field_path is a non-message type,
+  // it will be rendered directly by converting to a string.
   // If this field is not provided, or the proto_field_path points to a
-  // non-scalar value type, that value will be rendered using text_format.
+  // sub-message, that value will be rendered to a string using text_format.
   //
   // For example: proto_field_path="a.b" is equivalent to accessing
   // p.a.b, where p is the proto evaluated from the above expression.
