@@ -21,7 +21,7 @@ def _github_archive_url(org, repo, ref):
 def _tfx_github_archive(ctx):
     if "/" not in ctx.attr.repo:
         fail("repo must be <org_or_username>/<repo_name> format")
-    if bool(ctx.attr.branch) + bool(ctx.attr.tag) + bool(ctx.attr.commit) != 1:
+    if int(bool(ctx.attr.branch)) + int(bool(ctx.attr.tag)) + int(bool(ctx.attr.commit)) != 1:
         fail("Exactly one of 'branch', 'tag', or 'commit' should be specified.")
 
     org, repo = ctx.attr.repo.split("/")
