@@ -548,7 +548,7 @@ class BaseKubeflowTest(tf.test.TestCase):
       subprocess.run(run_command, check=True)
       # Wait in the loop while pipeline is running.
       status = 'Running'
-      while status == 'Running':
+      while status in ('Running', 'Pending'):
         time.sleep(self._POLLING_INTERVAL_IN_SECONDS)
         status = self._get_argo_pipeline_status(workflow_name)
 
