@@ -56,7 +56,7 @@ class Executor(base_executor.BaseExecutor):
          exec_properties: Dict[Text, Any]) -> None:
     """TensorFlow ExampleValidator executor entrypoint.
 
-    This validates the statistics on the 'eval' split against the schema.
+    This validates statistics against the schema.
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:

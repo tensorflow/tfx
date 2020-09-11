@@ -20,7 +20,6 @@ from __future__ import print_function
 
 from typing import Optional, Text
 
-from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
@@ -28,6 +27,8 @@ from tfx.components.model_validator import driver
 from tfx.components.model_validator import executor
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import ModelValidatorSpec
+
+from tensorflow.python.util import deprecation  # pylint: disable=g-direct-tensorflow-import
 
 
 class ModelValidator(base_component.BaseComponent):
@@ -85,14 +86,12 @@ class ModelValidator(base_component.BaseComponent):
       model: A Channel of type `standard_artifacts.Model`, usually produced by
         a [Trainer](https://www.tensorflow.org/tfx/guide/trainer) component.
         _required_
-      blessing: Output channel of 'ModelBlessingPath' that contains the
-        validation result.
+      blessing: Output channel of type `standard_artifacts.ModelBlessing`
+        that contains the validation result.
       instance_name: Optional name assigned to this specific instance of
         ModelValidator.  Required only if multiple ModelValidator components are
         declared in the same pipeline.
     """
-    blessing = blessing or types.Channel(
-        type=standard_artifacts.ModelBlessing,
-        artifacts=[standard_artifacts.ModelBlessing()])
+    blessing = blessing or types.Channel(type=standard_artifacts.ModelBlessing)
     spec = ModelValidatorSpec(examples=examples, model=model, blessing=blessing)
     super(ModelValidator, self).__init__(spec=spec, instance_name=instance_name)

@@ -14,7 +14,6 @@
 """Tests for tfx.components.data_view.binder_component."""
 import tensorflow as tf  # pylint: disable=g-explicit-tensorflow-version-import
 from tfx.components.experimental.data_view import binder_component
-from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 
@@ -27,17 +26,11 @@ class BinderComponentTest(tf.test.TestCase):
 
   def testConstruct(self):
     examples = standard_artifacts.Examples()
-    examples.split_names = artifact_utils.encode_split_names(['train', 'eval'])
-    examples.span = 1
     binder = binder_component.DataViewBinder(
         input_examples=channel_utils.as_channel([examples]),
         data_view=channel_utils.as_channel([standard_artifacts.DataView()])
     )
-    output_examples = binder.outputs['output_examples']
-    self.assertIsNotNone(output_examples)
-    output_examples = output_examples.get()
-    self.assertLen(output_examples, 1)
-    self._assert_example_artifact_equal(output_examples[0], examples)
+    self.assertIsNotNone(binder.outputs['output_examples'])
 
 
 if __name__ == '__main__':

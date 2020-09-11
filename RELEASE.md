@@ -1,8 +1,17 @@
 # Current Version(Still in Development)
 
 ## Major Features and Improvements
+*   Use TFXIO and batched extractors by default in Evaluator.
+
+*   Added experimental work-in-progress KubernetesDagRunner for orchestrating
+    TFX pipelines directly on a Kubernetes cluster.
+*   Supported split configuration for Transform.
 
 ## Bug fixes and other changes
+
+*   Supported CAIP Runtime 2.2 for online prediction pusher.
+*   Depends on `tensorflow-model-analysis>=0.24,<0.25`.
+*   Depends on `tfx-bsl>=0.24,<0.25`.
 
 ## Breaking changes
 
@@ -67,6 +76,8 @@
     *   specify `analyzer_cache` to use the cache generated from a previous run.
     *   specify parameter `disable_analyzer_cache=True` (False by default) to
         disable cache (won't generate cache output).
+*   Added support for width modifiers in Span and Version specs for file based
+    ExampleGen.
 
 ## Bug fixes and other changes
 *   Added Tuner component to Iris e2e example.
@@ -100,6 +111,9 @@
 *   Depends on `tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3`.
 *   Depends on `tensorflow-transform>=0.23,<0.24`.
 *   Depends on `tfx-bsl>=0.23,<0.24`.
+*   Added execution_result_pb2.ExecutorOutput as an Optional return value of
+    BaseExecutor. This change is backward compatible to all existing executors.
+*   Added executor_output_uri and stateful_working_dir to Executor's context.
 
 ## Breaking changes
 *   Changed the URIs of the value artifacts to point to files.

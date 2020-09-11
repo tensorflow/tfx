@@ -34,7 +34,6 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
     self.src_uri = os.path.join(self._base_dir, 'input')
     self.dest_uri = os.path.join(self._base_dir, 'output')
     tf.io.gfile.makedirs(self.src_uri)
-    tf.io.gfile.makedirs(self.dest_uri)
     # Writing a string to test.txt file in src_uri
     self.content = 'pipeline recorded'
     io_utils.write_string_file(
@@ -58,11 +57,9 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
         return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(
           output_dir=self._base_dir,
-          metadata_db_uri=None,
           host=self.host,
           port=self.port,
-          pipeline_name=self.pipeline_name,
-          run_id=None)
+          pipeline_name=self.pipeline_name)
       mock_get_paths.assert_called()
       mock_get_latest_executions.assert_called()
 
@@ -81,10 +78,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
                           return_value=self.paths) as mock_get_paths:
       pipeline_recorder_utils.record_pipeline(
           output_dir=self._base_dir,
-          metadata_db_uri=None,
           host=self.host,
           port=self.port,
-          pipeline_name=None,
           run_id=self.run_id)
 
       mock_get_execution_dict.assert_called()
@@ -109,10 +104,7 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       pipeline_recorder_utils.record_pipeline(
           output_dir=self._base_dir,
           metadata_db_uri=self.metadata_db_uri,
-          host=None,
-          port=None,
-          pipeline_name=self.pipeline_name,
-          run_id=None)
+          pipeline_name=self.pipeline_name)
 
       mock_config.assert_called_with(self.metadata_db_uri)
       mock_metadata.assert_called()
@@ -139,9 +131,6 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
       pipeline_recorder_utils.record_pipeline(
           output_dir=self._base_dir,
           metadata_db_uri=self.metadata_db_uri,
-          host=None,
-          port=None,
-          pipeline_name=None,
           run_id=self.run_id)
 
       mock_config.assert_called_with(self.metadata_db_uri)

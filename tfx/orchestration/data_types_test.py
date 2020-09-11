@@ -20,9 +20,8 @@ from __future__ import print_function
 
 import json
 from typing import Dict, List, Text
-import tensorflow as tf
 
-from google.protobuf.json_format import ParseError
+import tensorflow as tf
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
 from tfx.types.artifact import Artifact
@@ -30,6 +29,8 @@ from tfx.types.channel import Channel
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
 from tfx.types.component_spec import ExecutionParameter
+
+from google.protobuf.json_format import ParseError
 
 
 class _InputArtifact(Artifact):

@@ -19,11 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow as tf
 
-from ml_metadata.proto import metadata_store_pb2
+import tensorflow as tf
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
+
+from ml_metadata.proto import metadata_store_pb2
 
 
 class KubeflowMetadataAdapterTest(tf.test.TestCase):

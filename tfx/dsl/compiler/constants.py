@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 # Copyright 2020 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +13,19 @@
 # limitations under the License.
 """Constant values for DSL Compiler."""
 
-# TODO(b/149535307): Remove __future__ imports
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # The parameter name for pipeline root in PipelineRuntimeSpec.
 PIPELINE_ROOT_PARAMETER_NAME = "pipeline_root"
 
 # The parameter name for pipeline run id in PipelineRuntimeSpec.
 PIPELINE_RUN_ID_PARAMETER_NAME = "pipeline_run_id"
 
-# The name for pipeline node's pipeline context.
+# The type name for the contexts representing different pipelines.
 PIPELINE_CONTEXT_TYPE_NAME = "pipeline"
 
-# The name for pipeline node's pipeline run context.
+# The type name for the contexts representing different pipeline runs.
 PIPELINE_RUN_CONTEXT_TYPE_NAME = "pipeline_run"
+
+# The type name for the contexts representing different nodes. Note that a
+# context of this type only covers node runs within a pipeline domain but not
+# across pipelines.
+NODE_CONTEXT_TYPE_NAME = "node"

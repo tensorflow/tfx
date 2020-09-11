@@ -23,7 +23,6 @@ import os
 from typing import Iterable, List, Mapping, Optional, Text, Tuple
 
 from absl import logging
-import tensorflow as tf
 from tfx.orchestration import metadata
 from tfx.utils import io_utils
 
@@ -120,10 +119,12 @@ def _get_latest_executions(
   return metadata_connection.store.get_executions_by_context(latest_context.id)
 
 
-def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
-                    host: Optional[Text], port: Optional[int],
-                    pipeline_name: Optional[Text],
-                    run_id: Optional[Text]) -> None:
+def record_pipeline(output_dir: Text,
+                    metadata_db_uri: Optional[Text] = None,
+                    host: Optional[Text] = None,
+                    port: Optional[int] = None,
+                    pipeline_name: Optional[Text] = None,
+                    run_id: Optional[Text] = None) -> None:
   """Record pipeline run with run_id to output_dir.
 
   For the beam pipeline, metadata_db_uri is required. For KFP pipeline,
@@ -172,7 +173,5 @@ def record_pipeline(output_dir: Text, metadata_db_uri: Optional[Text],
 
     for src_uri, dest_uri in _get_paths(metadata_connection, executions,
                                         output_dir):
-      if not tf.io.gfile.exists(src_uri):
-        raise FileNotFoundError('{} does not exist'.format(src_uri))
       io_utils.copy_dir(src_uri, dest_uri)
     logging.info('Pipeline Recorded at %s', output_dir)

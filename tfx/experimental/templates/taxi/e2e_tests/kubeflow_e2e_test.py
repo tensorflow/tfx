@@ -94,9 +94,9 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._cleanup_with_retry(self._delete_base_container_image)
     self._cleanup_with_retry(self._delete_target_container_image)
     self._cleanup_with_retry(self._delete_caip_model)
+    self._cleanup_with_retry(self._delete_runs)
     self._cleanup_with_retry(self._delete_pipeline)
     self._cleanup_with_retry(self._delete_pipeline_data)
-    self._cleanup_with_retry(self._delete_runs)
 
   def _get_kfp_runs(self):
     # CLI uses experiment_name which is the same as pipeline_name.
@@ -258,6 +258,13 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
             'BIG_QUERY_QUERY', 'DATAFLOW_BEAM_PIPELINE_ARGS',
             'GCP_AI_PLATFORM_TRAINING_ARGS', 'GCP_AI_PLATFORM_SERVING_ARGS'
         ])
+    self._replaceFileContent(
+        os.path.join('pipeline', 'configs.py'), [
+            ('GOOGLE_CLOUD_REGION = \'\'',
+             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
+            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
+             '\'imageUri\': \'{}\''.format(self._target_container_image)),
+        ])
 
     # Prepare data
     self._prepare_data()
@@ -293,15 +300,22 @@ class TaxiTemplateKubeflowE2ETest(test_utils.BaseEndToEndTest):
     self._update_pipeline()
     self._run_pipeline()
 
-    # TODO(b/159772838): Add Dataflow step as well.
+    # Enable Dataflow
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs\n',
+        '.BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS',
+    ])
+    self._uncomment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
+    logging.info('Added Dataflow to pipeline.')
+    self._update_pipeline()
+    self._run_pipeline()
+
     # Enable CAIP extension.
-    self._replaceFileContent(
-        os.path.join('pipeline', 'configs.py'), [
-            ('GOOGLE_CLOUD_REGION = \'\'',
-             'GOOGLE_CLOUD_REGION = \'{}\''.format(self._GCP_REGION)),
-            ('\'imageUri\': \'gcr.io/\' + GOOGLE_CLOUD_PROJECT + \'/tfx-pipeline\'',
-             '\'imageUri\': \'{}\''.format(self._target_container_image)),
-        ])
+    self._comment('kubeflow_dag_runner.py', [
+        'beam_pipeline_args=configs.DATAFLOW_BEAM_PIPELINE_ARGS',
+    ])
     self._uncomment('kubeflow_dag_runner.py', [
         'ai_platform_training_args=configs.GCP_AI_PLATFORM_TRAINING_ARGS,',
         'ai_platform_serving_args=configs.GCP_AI_PLATFORM_SERVING_ARGS,',

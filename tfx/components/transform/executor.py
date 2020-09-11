@@ -46,12 +46,13 @@ from tfx.components.transform import stats_options as transform_stats_options
 from tfx.components.util import tfxio_utils
 from tfx.components.util import value_utils
 from tfx.proto import example_gen_pb2
-from tfx.types import artifact
+from tfx.proto import transform_pb2
 from tfx.types import artifact_utils
 from tfx.utils import import_utils
 from tfx.utils import io_utils
 import tfx_bsl
 from tfx_bsl.tfxio import tfxio as tfxio_module
+from google.protobuf import json_format
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 from tensorflow_metadata.proto.v0 import statistics_pb2
@@ -288,8 +289,9 @@ class Executor(base_executor.BaseExecutor):
 
     Args:
       input_dict: Input dict from input key to a list of artifacts, including:
-        - input_data: A list of type `standard_artifacts.Examples` which
-          should contain two splits 'train' and 'eval'.
+        - input_data: A list of type `standard_artifacts.Examples` which should
+          contain custom splits specified in splits_config. If custom split is
+          not provided, this should contain two splits 'train' and 'eval'.
         - schema: A list of type `standard_artifacts.Schema` which should
           contain a single schema artifact.
         - analyzer_cache: Cache input of 'tf.Transform', where cached
@@ -298,24 +300,43 @@ class Executor(base_executor.BaseExecutor):
         - transform_output: Output of 'tf.Transform', which includes an exported
           Tensorflow graph suitable for both training and serving;
         - transformed_examples: Materialized transformed examples, which
-          includes both 'train' and 'eval' splits.
+          includes transform splits as specified in splits_config. If custom
+          split is not provided, this should include both 'train' and 'eval'
+          splits.
         - updated_analyzer_cache: Cache output of 'tf.Transform', where
           cached information for analyzed examples will be written.
-      exec_properties: A dict of execution properties, including either one of:
+      exec_properties: A dict of execution properties, including:
         - module_file: The file path to a python module file, from which the
           'preprocessing_fn' function will be loaded.
         - preprocessing_fn: The module path to a python function that
-          implements 'preprocessing_fn'.
+          implements 'preprocessing_fn'. Exactly one of 'module_file' and
+          'preprocessing_fn' should be set.
+        - splits_config: A transform_pb2.SplitsConfig instance, providing splits
+          that should be analyzed and splits that should be transformed. Note
+          analyze and transform splits can have overlap. Default behavior (when
+          splits_config is not set) is analyze the 'train' split and transform
+          all splits. If splits_config is set, analyze cannot be empty.
 
     Returns:
       None
     """
     self._log_startup(input_dict, output_dict, exec_properties)
 
-    train_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                  'train')
-    eval_data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY],
-                                                 'eval')
+    splits_config = transform_pb2.SplitsConfig()
+    if exec_properties.get('splits_config', None):
+      json_format.Parse(exec_properties['splits_config'], splits_config)
+      if not splits_config.analyze:
+        raise ValueError('analyze cannot be empty when splits_config is set.')
+    else:
+      splits_config.analyze.append('train')
+      splits_config.transform.extend(
+          artifact_utils.decode_split_names(
+              artifact_utils.get_single_instance(
+                  input_dict[EXAMPLES_KEY]).split_names))
+      absl.logging.info(
+          "Analyze the 'train' split and transform all splits when "
+          'splits_config is not set.')
+
     payload_format, data_view_uri = (
         tfxio_utils.resolve_payload_format_and_data_view_uri(
             input_dict[EXAMPLES_KEY]))
@@ -327,24 +348,27 @@ class Executor(base_executor.BaseExecutor):
     temp_path = os.path.join(transform_output, _TEMP_DIR_IN_TRANSFORM_OUTPUT)
     absl.logging.debug('Using temp path %s for tft.beam', temp_path)
 
+    analyze_data_paths = []
+    for split in splits_config.analyze:
+      data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+      analyze_data_paths.append(io_utils.all_files_pattern(data_uri))
+
+    transform_data_paths = []
     materialize_output_paths = []
     if output_dict.get(TRANSFORMED_EXAMPLES_KEY) is not None:
       transformed_example_artifact = artifact_utils.get_single_instance(
           output_dict[TRANSFORMED_EXAMPLES_KEY])
-      # TODO(b/161490287): move the split_names setting to executor for all
-      # components.
       transformed_example_artifact.split_names = (
-          artifact_utils.encode_split_names(artifact.DEFAULT_EXAMPLE_SPLITS))
-      transformed_train_output = artifact_utils.get_split_uri(
-          output_dict[TRANSFORMED_EXAMPLES_KEY], 'train')
-      transformed_eval_output = artifact_utils.get_split_uri(
-          output_dict[TRANSFORMED_EXAMPLES_KEY], 'eval')
-      materialize_output_paths = [
-          os.path.join(transformed_train_output,
-                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX),
-          os.path.join(transformed_eval_output,
-                       _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
-      ]
+          artifact_utils.encode_split_names(list(splits_config.transform)))
+
+      for split in splits_config.transform:
+        data_uri = artifact_utils.get_split_uri(input_dict[EXAMPLES_KEY], split)
+        transform_data_paths.append(io_utils.all_files_pattern(data_uri))
+        transformed_example = os.path.join(
+            artifact_utils.get_split_uri(output_dict[TRANSFORMED_EXAMPLES_KEY],
+                                         split),
+            _DEFAULT_TRANSFORMED_EXAMPLES_PREFIX)
+        materialize_output_paths.append(transformed_example)
 
     def _GetCachePath(label, params_dict):
       if params_dict.get(label) is None:
@@ -362,16 +386,13 @@ class Executor(base_executor.BaseExecutor):
         labels.DATA_VIEW_LABEL:
             data_view_uri,
         labels.ANALYZE_DATA_PATHS_LABEL:
-            io_utils.all_files_pattern(train_data_uri),
-        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL:
-            labels.FORMAT_TFRECORD,
-        labels.TRANSFORM_DATA_PATHS_LABEL: [
-            io_utils.all_files_pattern(train_data_uri),
-            io_utils.all_files_pattern(eval_data_uri)
-        ],
-        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [
-            labels.FORMAT_TFRECORD, labels.FORMAT_TFRECORD
-        ],
+            analyze_data_paths,
+        labels.ANALYZE_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
+                                                 len(analyze_data_paths),
+        labels.TRANSFORM_DATA_PATHS_LABEL:
+            transform_data_paths,
+        labels.TRANSFORM_PATHS_FILE_FORMATS_LABEL: [labels.FORMAT_TFRECORD] *
+                                                   len(transform_data_paths),
         labels.MODULE_FILE:
             exec_properties.get('module_file', None),
         labels.PREPROCESSING_FN:
@@ -1061,15 +1082,12 @@ class Executor(base_executor.BaseExecutor):
             # assuming that this pipeline operates on rolling ranges, so those
             # cache entries may also be relevant for future iterations.
             for span_cache_dir in input_analysis_data:
-              # TODO(b/148082271, b/148212028, b/37788560): Remove this
-              # condition when we stop supporting TFT 0.21.2.
-              if isinstance(span_cache_dir, tuple):
-                span_cache_dir = span_cache_dir.key
               full_span_cache_dir = os.path.join(input_cache_dir,
-                                                 span_cache_dir)
+                                                 span_cache_dir.key)
               if tf.io.gfile.isdir(full_span_cache_dir):
-                self._CopyCache(full_span_cache_dir,
-                                os.path.join(output_cache_dir, span_cache_dir))
+                self._CopyCache(
+                    full_span_cache_dir,
+                    os.path.join(output_cache_dir, span_cache_dir.key))
 
           (cache_output
            | 'WriteCache' >> analyzer_cache.WriteAnalysisCacheToFS(

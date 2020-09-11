@@ -24,7 +24,7 @@ from typing import List, Text, Type
 from six import with_metaclass
 
 from tfx.components.base import base_executor
-from tfx.proto.orchestration import local_deployment_config_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.utils import import_utils
 from tfx.utils import json_utils
 
@@ -90,8 +90,8 @@ class ExecutorClassSpec(ExecutorSpec):
     return ExecutorClassSpec(executor_class)
 
   def encode(self) -> message.Message:
-    result = local_deployment_config_pb2.ExecutableSpec()
-    result.python_class_executable_spec.class_path = self.class_path
+    result = executable_spec_pb2.PythonClassExecutableSpec()
+    result.class_path = self.class_path
     return result
 
 

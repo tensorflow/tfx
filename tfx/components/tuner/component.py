@@ -103,8 +103,7 @@ class Tuner(base_component.BaseComponent):
           "Exactly one of 'module_file' or 'tuner_fn' must be supplied")
 
     best_hyperparameters = best_hyperparameters or types.Channel(
-        type=standard_artifacts.HyperParameters,
-        artifacts=[standard_artifacts.HyperParameters()])
+        type=standard_artifacts.HyperParameters)
     spec = TunerSpec(
         examples=examples,
         schema=schema,

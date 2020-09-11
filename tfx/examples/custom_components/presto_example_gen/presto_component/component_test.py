@@ -51,8 +51,6 @@ class ComponentTest(tf.test.TestCase):
             presto_example_gen.exec_properties['custom_config']))
     self.assertEqual(standard_artifacts.Examples.TYPE_NAME,
                      presto_example_gen.outputs['examples'].type_name)
-    artifact_collection = presto_example_gen.outputs['examples'].get()
-    self.assertEqual(1, len(artifact_collection))
 
   def testBadConstruction(self):
     empty_config = presto_config_pb2.PrestoConnConfig()

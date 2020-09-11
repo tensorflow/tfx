@@ -23,8 +23,6 @@ import os
 
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
-
-from google.protobuf import text_format
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -46,6 +44,8 @@ from tfx.types import Channel
 from tfx.types.standard_artifacts import Model
 from tfx.types.standard_artifacts import ModelBlessing
 from tfx.utils.dsl_utils import external_input
+
+from google.protobuf import text_format
 
 
 class CompilerTest(tf.test.TestCase):

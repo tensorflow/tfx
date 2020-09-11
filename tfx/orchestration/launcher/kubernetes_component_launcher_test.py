@@ -165,6 +165,10 @@ class KubernetesComponentLauncherTest(tf.test.TestCase):
             'spec': {
                 'restartPolicy':
                     'Never',
+                'serviceAccount':
+                    'tfx-service-account',
+                'serviceAccountName':
+                    'tfx-service-account',
                 'containers': [{
                     'name': 'main',
                     'image': 'gcr://test',

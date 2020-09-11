@@ -24,10 +24,10 @@ from typing import Text
 # Standard Imports
 
 import tensorflow as tf
-
 from tfx.dsl.component.experimental import annotations
 from tfx.types import artifact
 from tfx.types import standard_artifacts
+from tfx.types import value_artifact
 
 
 class AnnotationsTest(tf.test.TestCase):
@@ -46,7 +46,7 @@ class AnnotationsTest(tf.test.TestCase):
     # Error: type hint with abstract Artifact subclass.
     with self.assertRaisesRegexp(ValueError,
                                  'expects .* a concrete subclass of'):
-      _ = annotations._ArtifactGeneric[artifact.ValueArtifact]
+      _ = annotations._ArtifactGeneric[value_artifact.ValueArtifact]
 
     # OK.
     _ = annotations._ArtifactGeneric[standard_artifacts.Examples]

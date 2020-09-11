@@ -27,6 +27,7 @@ import absl
 import mock
 import tensorflow as tf
 from tfx.types import artifact
+from tfx.types import value_artifact
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -71,7 +72,7 @@ json_format.Parse(
 _MyArtifact3 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  # pylint: disable=invalid-name
 
 
-class _MyValueArtifact(artifact.ValueArtifact):
+class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
   def encode(self, value: Text):
@@ -87,7 +88,7 @@ _STRING_VALUE = u'This is a string'
 _BYTE_VALUE = b'This is a string'
 
 # Mock paths for string artifact.
-_VALID_URI = '/tmp/uri'
+_VALID_URI = '/tmp/uri/value'
 _VALID_FILE_URI = _VALID_URI
 
 # Mock invalid paths. _BAD_URI points to a valid dir but there's no file within.

@@ -18,8 +18,6 @@ from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
 from tfx.components.experimental.data_view import binder_executor
-from tfx.types import artifact_utils
-from tfx.types import channel_utils
 from tfx.types import standard_artifacts
 from tfx.types.component_spec import ChannelParameter
 from tfx.types.component_spec import ComponentSpec
@@ -75,10 +73,7 @@ class DataViewBinder(base_component.BaseComponent):
                output_examples: Optional[types.Channel] = None,
                instance_name: Optional[Text] = None):
     if not output_examples:
-      output_artifact = standard_artifacts.Examples()
-      output_artifact.copy_from(
-          artifact_utils.get_single_instance(list(input_examples.get())))
-      output_examples = channel_utils.as_channel([output_artifact])
+      output_examples = types.Channel(type=standard_artifacts.Examples)
 
     spec = _DataViewBinderComponentSpec(
         input_examples=input_examples,
