@@ -27,13 +27,13 @@ from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import text_format
 
-_PYTHON_CLASS_EXECUTABLE_SPEC = local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec
+_PYTHON_CLASS_EXECUTABLE_SPEC = executable_spec_pb2.PythonClassExecutableSpec
 
 
 class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):

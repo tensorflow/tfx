@@ -44,9 +44,15 @@ tfx_py_proto_library(
 )
 
 tfx_py_proto_library(
+    name = "executable_spec_py_pb2",
+    srcs = ["executable_spec.proto"],
+)
+
+tfx_py_proto_library(
     name = "local_deployment_config_py_pb2",
     srcs = ["local_deployment_config.proto"],
     deps = [
+        ":executable_spec_py_pb2",
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],
 )
@@ -54,6 +60,14 @@ tfx_py_proto_library(
 tfx_py_proto_library(
     name = "driver_output_py_pb2",
     srcs = ["driver_output.proto"],
+    deps = [
+        "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
+    ],
+)
+
+tfx_py_proto_library(
+    name = "placeholder_py_pb2",
+    srcs = ["placeholder.proto"],
     deps = [
         "@com_github_google_ml_metadata//ml_metadata/proto:metadata_store_py_pb2",
     ],

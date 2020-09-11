@@ -19,7 +19,7 @@ from tfx import types
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.proto.orchestration import driver_output_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import import_utils
 
@@ -30,7 +30,7 @@ class PythonDriverOperator(base_driver_operator.BaseDriverOperator):
   """PythonDriverOperator handles python class based driver's init and execution."""
 
   SUPPORTED_EXECUTABLE_SPEC_TYPE = [
-      local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec
+      executable_spec_pb2.PythonClassExecutableSpec
   ]
 
   def __init__(self, driver_spec: message.Message,

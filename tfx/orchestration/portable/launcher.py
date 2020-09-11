@@ -31,8 +31,8 @@ from tfx.orchestration.portable import python_driver_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable.mlmd import context_lib
 from tfx.proto.orchestration import driver_output_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 from google.protobuf import message
@@ -47,12 +47,12 @@ DriverOperator = TypeVar(
     'DriverOperator', bound=base_driver_operator.BaseDriverOperator)
 
 DEFAULT_EXECUTOR_OPERATORS = {
-    local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec:
+    executable_spec_pb2.PythonClassExecutableSpec:
         python_executor_operator.PythonExecutorOperator
 }
 
 DEFAULT_DRIVER_OPERATORS = {
-    local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec:
+    executable_spec_pb2.PythonClassExecutableSpec:
         python_driver_operator.PythonDriverOperator
 }
 

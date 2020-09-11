@@ -13,18 +13,14 @@
 // limitations under the License.
 syntax = "proto3";
 
-package tfx.orchestration.local_deployment_config;
+package tfx.orchestration.deployment_config;
 
 import "ml_metadata/proto/metadata_store.proto";
+import "tfx/proto/orchestration/executable_spec.proto";
 
 message ExecutableSpec {
-  // Specification for Python-class based executables.
-  message PythonClassExecutableSpec {
-    // The full class path of the executable.
-    string class_path = 1;
-  }
   oneof spec {
-    PythonClassExecutableSpec python_class_executable_spec = 1;
+    tfx.orchestration.executable_spec.PythonClassExecutableSpec python_class_executable_spec = 1;
   }
 }
 // Definition for local deployment configs.

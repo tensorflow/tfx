@@ -24,7 +24,7 @@ from tfx.dsl.experimental import latest_artifacts_resolver
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
 from tfx.orchestration import pipeline
-from tfx.proto.orchestration import local_deployment_config_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import pipeline_pb2
 
 
@@ -174,8 +174,8 @@ class Compiler(object):
       if tfx_node.driver_class != base_driver.BaseDriver:
         driver_class_path = "{}.{}".format(tfx_node.driver_class.__module__,
                                            tfx_node.driver_class.__name__)
-        driver_spec = local_deployment_config_pb2.ExecutableSpec()
-        driver_spec.python_class_executable_spec.class_path = driver_class_path
+        driver_spec = executable_spec_pb2.PythonClassExecutableSpec()
+        driver_spec.class_path = driver_class_path
         deployment_config.custom_driver_specs[tfx_node.id].Pack(driver_spec)
 
     # Step 7: Upstream/Downstream nodes

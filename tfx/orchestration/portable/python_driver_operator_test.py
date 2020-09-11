@@ -20,7 +20,7 @@ from tfx import types
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import python_driver_operator
 from tfx.proto.orchestration import driver_output_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
+from tfx.proto.orchestration import executable_spec_pb2
 
 _DEFAULT_DRIVER_OUTPUT = driver_output_pb2.DriverOutput()
 
@@ -36,8 +36,7 @@ class _FakeNoopDriver(base_driver.BaseDriver):
 class PythonDriverOperatorTest(tf.test.TestCase):
 
   def succeed(self):
-    custom_driver_spec = (
-        local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec())
+    custom_driver_spec = (executable_spec_pb2.PythonClassExecutableSpec())
     custom_driver_spec.class_path = 'tfx.orchestration.portable.python_driver_operator._FakeNoopDriver'
     driver_operator = python_driver_operator.PythonDriverOperator(
         custom_driver_spec, None, None, None)

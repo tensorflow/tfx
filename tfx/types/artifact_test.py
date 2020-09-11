@@ -27,6 +27,7 @@ import absl
 import mock
 import tensorflow as tf
 from tfx.types import artifact
+from tfx.types import value_artifact
 from tfx.utils import json_utils
 
 from google.protobuf import json_format
@@ -71,7 +72,7 @@ json_format.Parse(
 _MyArtifact3 = artifact._ArtifactType(mlmd_artifact_type=_mlmd_artifact_type)  # pylint: disable=invalid-name
 
 
-class _MyValueArtifact(artifact.ValueArtifact):
+class _MyValueArtifact(value_artifact.ValueArtifact):
   TYPE_NAME = 'MyValueTypeName'
 
   def encode(self, value: Text):

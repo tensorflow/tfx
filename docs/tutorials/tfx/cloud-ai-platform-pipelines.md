@@ -767,9 +767,6 @@ gcloud services enable dataflow.googleapis.com
 `configs.py`**. Uncomment the definition of `GOOGLE_CLOUD_REGION`, and
 `DATAFLOW_BEAM_PIPELINE_ARGS`.
 
-**Double-click to open `pipeline.py`**. Change the value of `enable_cache` to
-`False`.
-
 **Change directory one level up.** Click the name of the directory above the
 file list. The name of the directory is the name of the pipeline which is
 `my_pipeline` if you didn't change.
@@ -777,10 +774,6 @@ file list. The name of the directory is the name of the pipeline which is
 **Double-click to open `kubeflow_dag_runner.py`**. Uncomment
 `beam_pipeline_args`. (Also make sure to comment out current
 `beam_pipeline_args` that you added in Step 7.)
-
->Note that we deliberately disabled caching. Because we have already run the
-pipeline successfully, we will get cached execution result for all components
-if cache is enabled.
 
 #### Update the pipeline and re-run it
 
@@ -795,11 +788,6 @@ if cache is enabled.
 
 You can find your Dataflow jobs in
 [Dataflow in Cloud Console](http://console.cloud.google.com/dataflow).
-
-Please reset `enable_cache` to `True` to benefit from caching execution results.
-
-**Double-click to open `pipeline.py`**. Reset the value of `enable_cache` to
-`True`.
 
 ### Try Cloud AI Platform Training and Prediction with KFP
 

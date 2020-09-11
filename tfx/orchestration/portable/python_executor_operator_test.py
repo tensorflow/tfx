@@ -22,8 +22,8 @@ from tfx.components.base import base_executor
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import python_executor_operator
 from tfx.orchestration.portable import test_utils
+from tfx.proto.orchestration import executable_spec_pb2
 from tfx.proto.orchestration import execution_result_pb2
-from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.types import standard_artifacts
 
 from google.protobuf import text_format
@@ -75,7 +75,7 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     executor_sepc = text_format.Parse(
         """
       class_path: "tfx.orchestration.portable.python_executor_operator_test.InprocessExecutor"
-    """, local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec())
+    """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}
@@ -108,7 +108,7 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     executor_sepc = text_format.Parse(
         """
       class_path: "tfx.orchestration.portable.python_executor_operator_test.NotInprocessExecutor"
-    """, local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec())
+    """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}
@@ -141,7 +141,7 @@ class PythonExecutorOperatorTest(test_utils.TfxTest):
     executor_sepc = text_format.Parse(
         """
       class_path: "tfx.orchestration.portable.python_executor_operator_test.InplaceUpdateExecutor"
-    """, local_deployment_config_pb2.ExecutableSpec.PythonClassExecutableSpec())
+    """, executable_spec_pb2.PythonClassExecutableSpec())
     operator = python_executor_operator.PythonExecutorOperator(executor_sepc)
     input_dict = {'input_key': [standard_artifacts.Examples()]}
     output_dict = {'output_key': [standard_artifacts.Model()]}

@@ -47,7 +47,7 @@ def _get_tensor_value(tensor_or_eager_tensor):
 def _get_dataset_size(dataset):
 
   def reduce_fn(accum, elem):
-    return tf.size(elem, tf.int64) + accum
+    return tf.size(elem, out_type=tf.int64) + accum
 
   return _get_tensor_value(
       dataset.batch(tf.int32.max).reduce(tf.constant(0, tf.int64), reduce_fn))
