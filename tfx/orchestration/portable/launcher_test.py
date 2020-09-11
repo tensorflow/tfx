@@ -44,6 +44,7 @@ class _FakeExecutorOperator(base_executor_operator.BaseExecutorOperator):
   def run_executor(
       self, execution_info: base_executor_operator.ExecutionInfo
   ) -> execution_result_pb2.ExecutorOutput:
+    self._exec_properties = execution_info.exec_properties
     return execution_result_pb2.ExecutorOutput()
 
 
@@ -132,6 +133,9 @@ class _FakeExampleGenLikeDriver(base_driver.BaseDriver):
     output_example.custom_properties['version'].int_value = version
     result = driver_output_pb2.DriverOutput()
     result.output_artifacts['output_examples'].artifacts.append(output_example)
+
+    result.exec_properties['span'].int_value = span
+    result.exec_properties['version'].int_value = version
     return result
 
 
@@ -544,6 +548,10 @@ class LauncherTest(test_utils.TfxTest):
         custom_driver_spec=self._custom_driver_spec,
         custom_executor_operators=self._test_executor_operators)
     _ = test_launcher.launch()
+    self.assertEqual(test_launcher._executor_operator._exec_properties, {
+        'span': 2,
+        'version': 2
+    })
 
     with self._mlmd_connection as m:
       artifact = m.store.get_artifacts_by_type('Examples')[1]

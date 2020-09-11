@@ -187,7 +187,8 @@ class Launcher(object):
     if self._driver_operator:
       driver_output = self._driver_operator.run_driver(
           input_artifacts, output_artifacts, exec_properties)
-      self._update_with_driver_output(driver_output, output_artifacts)
+      self._update_with_driver_output(
+          driver_output, exec_properties, output_artifacts)
 
     # We reconnect to MLMD here because the custom driver closes MLMD connection
     # on returning.
@@ -278,6 +279,7 @@ class Launcher(object):
 
   def _update_with_driver_output(self,
                                  driver_output: driver_output_pb2.DriverOutput,
+                                 exec_properties: Dict[Text, Any],
                                  output_dict: Dict[Text, List[types.Artifact]]):
     """Updates output_dict with driver output."""
     for key, artifact_list in driver_output.output_artifacts.items():
@@ -290,6 +292,9 @@ class Launcher(object):
         python_artifact.set_mlmd_artifact(proto_artifact)
         python_artifact_list.append(python_artifact)
       output_dict[key] = python_artifact_list
+
+    for key, value in driver_output.exec_properties.items():
+      exec_properties[key] = getattr(value, value.WhichOneof('value'))
 
   def launch(self) -> Optional[metadata_store_pb2.Execution]:
     """Executes the component, includes driver, executor and publisher.
