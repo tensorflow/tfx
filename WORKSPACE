@@ -56,9 +56,9 @@ http_archive(
 )
 
 # Please add all new TFX dependencies in workspace.bzl.
-load("//tfx:workspace.bzl", "tfx_workspace")
+load("//tfx:workspace.bzl", "tf_extended_workspace")
 
-tfx_workspace()
+tf_extended_workspace()
 
 # Specify the minimum required bazel version.
 load("@org_tensorflow//tensorflow:version_check.bzl", "check_bazel_version_at_least")

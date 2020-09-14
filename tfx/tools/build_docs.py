@@ -25,7 +25,8 @@ pip install git+https://github.com/tensorflow/docs
 Run the script:
 
 ```shell
-python build_docs.py
+python build_docs.py \
+--output_dir=/tmp/tfx_api
 ```
 
 Note:
@@ -33,6 +34,12 @@ Note:
   denylisting them via the `private_map` argument below. Or
   `api_generator.doc_controls`
 """
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+# Standard Imports
 from absl import app
 from absl import flags
 
@@ -44,9 +51,7 @@ from tensorflow_docs.api_generator import generate_lib
 import tfx
 # pylint: disable=unused-import
 from tfx import components
-from tfx import extensions
 from tfx import orchestration
-
 import tfx.version
 # pylint: enable=unused-import
 
@@ -89,7 +94,6 @@ def main(_):
   # These make up for the empty __init__.py files.
   api_generator.utils.recursive_import(tfx.orchestration)
   api_generator.utils.recursive_import(tfx.components)
-  api_generator.utils.recursive_import(tfx.extensions)
 
   do_not_generate_docs_for = []
   for name in ["utils", "proto", "dependencies", "version"]:

@@ -36,6 +36,5 @@ sh_binary(
         "//tfx/proto/orchestration:executor_invocation_pb2.py",
         "//tfx/proto/orchestration:local_deployment_config_pb2.py",
         "//tfx/proto/orchestration:pipeline_pb2.py",
-        "//tfx/proto/orchestration:placeholder_pb2.py",
     ],
 )

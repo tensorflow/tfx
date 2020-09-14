@@ -22,6 +22,7 @@ from typing import Dict, Optional, Text
 
 from tfx import types
 from tfx.dsl.resolvers import base_resolver
+from tfx.dsl.resolvers import resolver_result
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.types import artifact_utils
@@ -69,6 +70,6 @@ class LatestArtifactsResolver(base_resolver.BaseResolver):
         ]
         resolve_state_dict[k] = False
 
-    return base_resolver.ResolveResult(
+    return resolver_result.ResolveResult(
         per_key_resolve_result=artifacts_dict,
         per_key_resolve_state=resolve_state_dict)

@@ -12,15 +12,14 @@ Here is short summary of the example codes, status and known restrictions:
 *   The dataset included in this example consists of a selection of 1000 records
     from the MNIST dataset, converted to tfrecord format. Each record is
     a tf.Example with 2 columns of data: 'image_floats' representing
-    the 28x28 image as 784 float values in the range [-0.5, 0.5], and
-    'image_class' representing the label with values [0-9] corresponding to
-    decimal digit in the image.
+    the 28x28 image as 784 float values, and 'image_class' representing
+    the label with values [0-9] corresponding to decimal digit in the image.
 
     For a detailed description of tf.Example and TFRecord see
     https://www.tensorflow.org/tutorials/load_data/tfrecord. Several
     independently written tools can be used to generate the tfrecords from
     images. See [Preparing MNIST
-    data](https://docs.databricks.com/_static/notebooks/deep-learning/mnist-tensorflow-to-tfrecords.html)
+    data](https://docs.databricks.com/applications/deep-learning/data-prep/tensorflow-to-tfrecords.html#prepare-mnist-data-for-distributed-dl-notebook)
     from one such publicly available set of instructions.
 
 ## Instruction

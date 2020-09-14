@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Package Setup script for TFX CIFAR10 example."""
+
+from __future__ import print_function
 
 from setuptools import find_packages
 from setuptools import setup
@@ -49,7 +51,7 @@ setup(
     ],
     namespace_packages=[],
     install_requires=[
-        'tfx',
+        'tfx>=0.23.0,<=0.24.0.dev',
         'tflite-support>=0.1.0a1,<0.1.1',
         'flatbuffers>=1.12,<1.13',
         'tensorflowjs>=2.0.1,<2.0.2',

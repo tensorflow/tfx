@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ setup(
     namespace_packages=[],
     install_requires=[
         'presto-python-client>=0.7,<0.8',
-        'tfx',
+        'tfx>=0.23.0,<=0.24.0.dev',
     ],
     python_requires='>=3.5,<4',
     packages=find_packages(),

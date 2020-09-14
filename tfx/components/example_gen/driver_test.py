@@ -25,7 +25,6 @@ from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
 from tfx.proto import example_gen_pb2
-from tfx.proto.orchestration import pipeline_pb2
 from tfx.types import artifact_utils
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -160,85 +159,6 @@ class DriverTest(tf.test.TestCase):
         examples.get_string_custom_property(utils.SPAN_PROPERTY_NAME), '2')
     self.assertEqual(
         examples.get_string_custom_property(utils.VERSION_PROPERTY_NAME), '1')
-
-  def testRun(self):
-    # Create input dir.
-    self._input_base_path = os.path.join(self._test_dir, 'input_base')
-    tf.io.gfile.makedirs(self._input_base_path)
-
-    # Create PipelineInfo and PipelineNode
-    pipeline_info = pipeline_pb2.PipelineInfo()
-    pipeline_node = pipeline_pb2.PipelineNode()
-
-    # Fake previous outputs
-    span1_v1_split1 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                   'split1', 'data')
-    io_utils.write_string_file(span1_v1_split1, 'testing11')
-    span1_v1_split2 = os.path.join(self._input_base_path, 'span01', 'version01',
-                                   'split2', 'data')
-    io_utils.write_string_file(span1_v1_split2, 'testing12')
-
-    ir_driver = driver.Driver(self._mock_metadata, pipeline_info, pipeline_node)
-    example = standard_artifacts.Examples()
-
-    # Prepare output_dic
-    example.uri = 'my_uri'  # Will verify that this uri is not changed.
-    output_dic = {utils.EXAMPLES_KEY: [example]}
-
-    # Prepare output_dic exec_proterties.
-    exec_properties = {
-        utils.INPUT_BASE_KEY:
-            self._input_base_path,
-        utils.INPUT_CONFIG_KEY:
-            json_format.MessageToJson(
-                example_gen_pb2.Input(splits=[
-                    example_gen_pb2.Input.Split(
-                        name='s1',
-                        pattern='span{SPAN}/version{VERSION}/split1/*'),
-                    example_gen_pb2.Input.Split(
-                        name='s2',
-                        pattern='span{SPAN}/version{VERSION}/split2/*')
-                ]),
-                preserving_proto_field_name=True),
-    }
-    result = ir_driver.run(None, output_dic, exec_properties)
-    print(result)
-    # Assert exec_properties' values
-    exec_properties = result.exec_properties
-    self.assertEqual(exec_properties[utils.SPAN_PROPERTY_NAME].int_value, 1)
-    self.assertEqual(exec_properties[utils.VERSION_PROPERTY_NAME].int_value, 1)
-    updated_input_config = example_gen_pb2.Input()
-    json_format.Parse(exec_properties[utils.INPUT_CONFIG_KEY].string_value,
-                      updated_input_config)
-    self.assertProtoEquals(
-        """
-        splits {
-          name: "s1"
-          pattern: "span01/version01/split1/*"
-        }
-        splits {
-          name: "s2"
-          pattern: "span01/version01/split2/*"
-        }""", updated_input_config)
-    self.assertRegex(
-        exec_properties[utils.FINGERPRINT_PROPERTY_NAME].string_value,
-        r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
-    )
-    # Assert output_artifacts' values
-    self.assertLen(result.output_artifacts[utils.EXAMPLES_KEY].artifacts, 1)
-    output_example = result.output_artifacts[utils.EXAMPLES_KEY].artifacts[0]
-    self.assertEqual(output_example.uri, example.uri)
-    self.assertEqual(
-        output_example.custom_properties[utils.SPAN_PROPERTY_NAME].string_value,
-        '1')
-    self.assertEqual(
-        output_example.custom_properties[
-            utils.VERSION_PROPERTY_NAME].string_value, '1')
-    self.assertRegex(
-        output_example.custom_properties[
-            utils.FINGERPRINT_PROPERTY_NAME].string_value,
-        r'split:s1,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*\nsplit:s2,num_files:1,total_bytes:9,xor_checksum:.*,sum_checksum:.*'
-    )
 
 
 if __name__ == '__main__':

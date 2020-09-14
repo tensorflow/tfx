@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,6 @@ from __future__ import print_function
 
 import os
 import subprocess
-import sys
 
 import setuptools
 from setuptools import find_packages
@@ -35,32 +34,6 @@ from distutils.command import build
 from tfx import dependencies
 from tfx import version
 from tfx.tools import resolve_deps
-from wheel import bdist_wheel
-
-
-class _BdistWheelCommand(bdist_wheel.bdist_wheel):
-  """Overrided bdist_wheel command.
-
-  Inject some custom command line arguments and flags that can be used in the
-  subcommands. This command class covers:
-    - pip wheel --build-option="--local-mlmd-repo=${MLMD_OUTPUT_DIR}"
-    - python setup.py bdist_wheel --local-mlmd-repo="${MLMD_OUTPUT_DIR}"
-  """
-  user_options = bdist_wheel.bdist_wheel.user_options + [
-      ('local-mlmd-repo=', None, 'Path to the local MLMD repository to use '
-       'instead of the Bazel com_github_google_ml_metadata remote repository.')
-  ]
-
-  def initialize_options(self):
-    # Run super().initialize_options. Command is an old-style class (i.e.
-    # doesn't inherit object) and super() fails in python 2.
-    bdist_wheel.bdist_wheel.initialize_options(self)
-    self.local_mlmd_repo = None
-
-  def finalize_options(self):
-    bdist_wheel.bdist_wheel.finalize_options(self)
-    gen_proto = self.distribution.get_command_obj('gen_proto')
-    gen_proto.local_mlmd_repo = self.local_mlmd_repo
 
 
 class _BuildCommand(build.build):
@@ -121,13 +94,9 @@ class _GenProtoCommand(setuptools.Command):
   Running this command will populate foo_pb2.py file next to your foo.proto
   file.
   """
-  user_options = [
-      ('local-mlmd-repo=', None, 'Path to the local MLMD repository to use '
-       'instead of the Bazel com_github_google_ml_metadata remote repository.')
-  ]
 
   def initialize_options(self):
-    self.local_mlmd_repo = None
+    pass
 
   def finalize_options(self):
     self._bazel_cmd = spawn.find_executable('bazel')
@@ -138,26 +107,11 @@ class _GenProtoCommand(setuptools.Command):
           'installation instruction.')
 
   def run(self):
-    bazel_args = ['--compilation_mode', 'opt']
-    if self.local_mlmd_repo:
-      # If local MLMD repo is given, override com_github_google_ml_metadata
-      # remote repository with the local path. This is required to use the
-      # local developmental version of MLMD during tests.
-      # https://docs.bazel.build/versions/master/command-line-reference.html
-      bazel_args.append(
-          '--override_repository={}={}'.format(
-              'com_github_google_ml_metadata',
-              self.local_mlmd_repo))
-    cmd = [self._bazel_cmd, 'run',
-           *bazel_args,
-           '//build:gen_proto']
-    print('Running Bazel command', cmd, file=sys.stderr)
     subprocess.check_call(
-        cmd,
+        [self._bazel_cmd, 'run', '//build:gen_proto'],
         # Bazel should be invoked in a directory containing bazel WORKSPACE
         # file, which is the root directory.
-        cwd=os.path.dirname(os.path.realpath(__file__)),
-        env=os.environ)
+        cwd=os.path.dirname(os.path.realpath(__file__)),)
 
 
 # Get the long description from the README file.
@@ -209,7 +163,6 @@ setup(
         'clikit>=0.4.3,<0.5',  # Required for ResolveDeps command.
     ],
     cmdclass={
-        'bdist_wheel': _BdistWheelCommand,
         'build': _BuildCommand,
         'develop': _DevelopCommand,
         'gen_proto': _GenProtoCommand,

@@ -19,32 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from typing import Dict, List, Text
+from typing import Dict, Text
 
 from six import with_metaclass
 
 from tfx import types
+from tfx.dsl.resolvers import resolver_result
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
-
-
-class ResolveResult(object):
-  """The data structure to hold results from Resolver.
-
-  Attributes:
-    per_key_resolve_result: a key -> List[Artifact] dict containing the resolved
-      artifacts for each source channel with the key as tag.
-    per_key_resolve_state: a key -> bool dict containing whether or not the
-      resolved artifacts for the channel are considered complete.
-    has_complete_result: bool value indicating whether all desired artifacts
-      have been resolved.
-  """
-
-  def __init__(self, per_key_resolve_result: Dict[Text, List[types.Artifact]],
-               per_key_resolve_state: Dict[Text, bool]):
-    self.per_key_resolve_result = per_key_resolve_result
-    self.per_key_resolve_state = per_key_resolve_state
-    self.has_complete_result = all([s for s in per_key_resolve_state.values()])
 
 
 class BaseResolver(with_metaclass(abc.ABCMeta, object)):
@@ -62,7 +44,7 @@ class BaseResolver(with_metaclass(abc.ABCMeta, object)):
       pipeline_info: data_types.PipelineInfo,
       metadata_handler: metadata.Metadata,
       source_channels: Dict[Text, types.Channel],
-  ) -> ResolveResult:
+  ) -> resolver_result.ResolveResult:
     """Resolves artifacts from channels by querying MLMD.
 
     Args:

@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Package Setup script for HelloComponent."""
+
+from __future__ import print_function
 
 from setuptools import find_packages
 from setuptools import setup
@@ -55,7 +57,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     namespace_packages=[],
-    install_requires=['tfx'],
+    install_requires=['tfx>=0.23.0,<0.24.0.dev'],
     python_requires='>=3.5,<4',
     packages=find_packages(),
     include_package_data=True,

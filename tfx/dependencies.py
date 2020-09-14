@@ -1,4 +1,4 @@
-# Lint as: python3
+# Lint as: python2, python3
 # Copyright 2019 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,42 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Package dependencies for TFX.
-
-tfx and family libraries (such as tensorflow-model-analysis) adopts environment
-variable (TFX_DEPENDENCY_SELECTOR) based dependency version selection. This
-dependency will be baked in to the wheel, in other words you cannot change
-dependency string once wheel is built.
-
-- UNCONSTRAINED uses dependency without any version constraint string, which is
-  useful when you manually build wheels of parent library (e.g. tfx-bsl) of
-  arbitrary version, and install it without dependency constraints conflict.
-- NIGHTLY uses x.(y+1).0.dev version as a lower version constraint. tfx nightly
-  will transitively depend on nightly versions of other TFX family libraries,
-  and this version constraint is required.
-- GIT_MASTER uses github master branch URL of the dependency, which is useful
-  during development, or when depending on the github master HEAD version of
-  tfx. This is because tfx github master HEAD version is actually using github
-  master HEAD version of parent libraries.
-  Caveat: URL dependency is not upgraded with --upgrade flag, and you have to
-  specify --force-reinstall flag to fetch the latest change from each master
-  branch HEAD.
-- For the release, we use a range of version, which is also used as a default.
-"""
-import os
-
-
-def select_constraint(default, nightly=None, git_master=None):
-  """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
-  selector = os.environ.get('TFX_DEPENDENCY_SELECTOR')
-  if selector == 'UNCONSTRAINED':
-    return ''
-  elif selector == 'NIGHTLY' and nightly is not None:
-    return nightly
-  elif selector == 'GIT_MASTER' and git_master is not None:
-    return git_master
-  else:
-    return default
+"""Package dependencies for TFX."""
 
 
 def make_required_install_packages():
@@ -70,34 +35,19 @@ def make_required_install_packages():
       'jinja2>=2.7.3,<3',
       'keras-tuner>=1,<2',
       'kubernetes>=10.0.1,<12',
-      'ml-metadata' + select_constraint(
-          # LINT.IfChange
-          default='>=0.23,<0.24',
-          # LINT.ThenChange(opensource_only/build/tfx.workspace.bzl)
-          nightly='>=0.24.0.dev',
-          git_master='@git+https://github.com/google/ml-metadata@master'),
+      # LINT.IfChange
+      'ml-metadata>=0.23,<0.24',
+      # LINT.ThenChange(//tfx/workspace.bzl)
       'protobuf>=3.7,<4',
       'pyarrow>=0.17,<0.18',
       'pyyaml>=3.12,<6',
       'six>=1.10,<2',
       'tensorflow>=1.15.2,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-      'tensorflow-data-validation' + select_constraint(
-          default='>=0.23,<0.24',
-          nightly='>=0.24.0.dev',
-          git_master='@git+https://github.com/tensorflow/data-validation@master'),  # pylint: disable=line-too-long
-      'tensorflow-model-analysis' + select_constraint(
-          default='>=0.24,<0.25',
-          nightly='>=0.25.0.dev',
-          git_master='@git+https://github.com/tensorflow/model-analysis@master'),  # pylint: disable=line-too-long
+      'tensorflow-data-validation>=0.23,<0.24',
+      'tensorflow-model-analysis>=0.23,<0.24',
       'tensorflow-serving-api>=1.15,!=2.0.*,!=2.1.*,!=2.2.*,<3',
-      'tensorflow-transform' + select_constraint(
-          default='>=0.23,<0.24',
-          nightly='>=0.24.0.dev',
-          git_master='@git+https://github.com/tensorflow/transform@master'),
-      'tfx-bsl' + select_constraint(
-          default='>=0.24,<0.25',
-          nightly='>=0.25.0.dev',
-          git_master='@git+https://github.com/tensorflow/tfx-bsl@master'),
+      'tensorflow-transform>=0.23,<0.24',
+      'tfx-bsl>=0.23,<0.24',
   ]
 
 

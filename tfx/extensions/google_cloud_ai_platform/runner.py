@@ -48,10 +48,10 @@ _TF_COMPATIBILITY_OVERRIDE = {
     # CAIP pusher. See:
     # https://cloud.google.com/ai-platform/prediction/docs/runtime-version-list
     '2.0': '1.15',
-    # TODO(b/168249383) Remove this once CAIP model support TF 2.3 runtime.
-    '2.3': '2.2',
-    '2.4': '2.2',
-    '2.5': '2.2',
+    # TODO(b/157039850) Remove this once CAIP model support TF 2.2 runtime.
+    '2.2': '2.1',
+    '2.3': '2.1',
+    '2.4': '2.1'
 }
 
 
