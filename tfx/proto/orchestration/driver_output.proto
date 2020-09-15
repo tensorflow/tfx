@@ -18,14 +18,14 @@ package tfx.orchestration;
 
 import "ml_metadata/proto/metadata_store.proto";
 
-message ArtifactList {
-  repeated ml_metadata.Artifact artifacts = 1;
-}
-
 message DriverOutput {
-  // Users use this map to store the proposed change to output artifacts of the
+  message ArtifactList {
+    repeated ml_metadata.Artifact artifacts = 1;
+  }
+  // Users use this map to store the proposed change to output artifacts for the
   // upcoming execution.
   map<string, ArtifactList> output_artifacts = 1;
-  // TODO(b/166314342): Investigate the necessity to add exec_properties before
-  // adding it.
+  // Users use this map to store the proposed change to exec_properties
+  // artifacts for the upcoming execution.
+  map<string, ml_metadata.Value> exec_properties = 2;
 }

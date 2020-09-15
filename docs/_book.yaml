@@ -23,13 +23,13 @@ upper_tabs:
       - title: TFX API
         path: /tfx/api_overview
       - heading: TFX
-      - include: /tfx/api_docs/python/_toc.yaml
+      - include: /tfx/api_docs/python/tfx/_toc.yaml
       - heading: Data Validation
-      - include: /tfx/data_validation/api_docs/python/_toc.yaml
+      - include: /tfx/data_validation/api_docs/python/tfdv/_toc.yaml
       - heading: Transform
-      - include: /tfx/transform/api_docs/python/_toc.yaml
+      - include: /tfx/transform/api_docs/python/tfx/tft/_toc.yaml
       - heading: Model Analysis
-      - include: /tfx/model_analysis/api_docs/python/_toc.yaml
+      - include: /tfx/model_analysis/api_docs/python/tfma/_toc.yaml
       - heading: Serving
       - title: Client API (REST)
         path: /tfx/serving/api_rest/
@@ -42,7 +42,9 @@ upper_tabs:
           path: /tfx/serving/api_docs/cc/
         - include: /tfx/serving/api_docs/cc/_doxygen.yaml
       - heading: ML Metadata
-      - include: /tfx/ml_metadata/api_docs/python/_toc.yaml
+      - include: /tfx/ml_metadata/api_docs/python/tfx/mlmd/_toc.yaml
+      - heading: tfx_bsl
+      - include: /tfx/tfx_bsl/api_docs/python/tfx/tfx_bsl/_toc.yaml
 
 - include: /api_docs/_upper_tabs_api.yaml
 - include: /resources/_upper_tabs_resources.yaml

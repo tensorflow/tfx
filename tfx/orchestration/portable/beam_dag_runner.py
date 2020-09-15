@@ -14,17 +14,18 @@
 """Definition of Beam TFX runner."""
 
 import os
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 from absl import logging
 import apache_beam as beam
 from tfx.orchestration import metadata
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import tfx_runner
+from tfx.proto.orchestration import local_deployment_config_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import telemetry_utils
 
-from ml_metadata.proto import metadata_store_pb2
+from google.protobuf import message
 
 
 # TODO(jyzhao): confirm it's re-executable, add test case.
@@ -37,7 +38,9 @@ class _PipelineNodeAsDoFn(beam.DoFn):
                pipeline_node: pipeline_pb2.PipelineNode,
                mlmd_connection: metadata.Metadata,
                pipeline_info: pipeline_pb2.PipelineInfo,
-               pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec):
+               pipeline_runtime_spec: pipeline_pb2.PipelineRuntimeSpec,
+               executor_spec: Optional[message.Message],
+               custom_driver_spec: Optional[message.Message]):
     """Initializes the _PipelineNodeAsDoFn.
 
     Args:
@@ -47,12 +50,20 @@ class _PipelineNodeAsDoFn(beam.DoFn):
       pipeline_info: The information of the pipeline that this node runs in.
       pipeline_runtime_spec: The runtime information of the pipeline that this
         node runs in.
+      executor_spec: Specification for the executor of the node. This is
+        expected for all components nodes. This will be used to determine the
+        specific ExecutorOperator class to be used to execute and will be passed
+        into ExecutorOperator.
+      custom_driver_spec: Specification for custom driver. This is expected only
+        for advanced use cases.
     """
     self._launcher = launcher.Launcher(
         pipeline_node=pipeline_node,
         mlmd_connection=mlmd_connection,
         pipeline_info=pipeline_info,
-        pipeline_runtime_spec=pipeline_runtime_spec)
+        pipeline_runtime_spec=pipeline_runtime_spec,
+        executor_spec=executor_spec,
+        custom_driver_spec=custom_driver_spec)
     self._component_id = pipeline_node.node_info.id
 
   def process(self, element: Any, *signals: Iterable[Any]) -> None:
@@ -79,6 +90,46 @@ class BeamDagRunner(tfx_runner.TfxRunner):
     """Initializes BeamDagRunner as a TFX orchestrator.
     """
 
+  def _extract_deployment_config(
+      self,
+      pipeline: pipeline_pb2.Pipeline
+  ) -> local_deployment_config_pb2.LocalDeploymentConfig:
+    """Extracts the proto.Any pipeline.deployment_config to LocalDeploymentConfig."""
+
+    if not pipeline.deployment_config:
+      raise ValueError('deployment_config is not available in the pipeline.')
+
+    result = local_deployment_config_pb2.LocalDeploymentConfig()
+    if pipeline.deployment_config.Unpack(result):
+      return result
+
+    raise ValueError("deployment_config's type {} is not supported".format(
+        type(pipeline.deployment_config)))
+
+  def _extract_executor_spec(
+      self,
+      deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
+      component_id: str
+  ) -> Optional[message.Message]:
+    return self._unwrap_executable_spec(
+        deployment_config.executor_specs.get(component_id))
+
+  def _extract_custom_driver_spec(
+      self,
+      deployment_config: local_deployment_config_pb2.LocalDeploymentConfig,
+      component_id: str
+  ) -> Optional[message.Message]:
+    return self._unwrap_executable_spec(
+        deployment_config.custom_driver_specs.get(component_id))
+
+  def _unwrap_executable_spec(
+      self,
+      executable_spec: Optional[local_deployment_config_pb2.ExecutableSpec]
+  ) -> Optional[message.Message]:
+    """Unwraps the one of spec from ExecutableSpec."""
+    return (getattr(executable_spec, executable_spec.WhichOneof('spec'))
+            if executable_spec else None)
+
   def run(self, pipeline: pipeline_pb2.Pipeline) -> None:
     """Deploys given logical pipeline on Beam.
 
@@ -91,9 +142,8 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       return
 
     # TODO(b/163003901): Support beam DAG runner args through IR.
-    # TODO(b/163003901): MLMD connection config should be passed in via IR.
-    connection_config = metadata_store_pb2.ConnectionConfig()
-    connection_config.sqlite.SetInParent()
+    deployment_config = self._extract_deployment_config(pipeline)
+    connection_config = deployment_config.metadata_connection_config
     mlmd_connection = metadata.Metadata(
         connection_config=connection_config)
 
@@ -110,6 +160,10 @@ class BeamDagRunner(tfx_runner.TfxRunner):
           # TODO(b/160882349): Support subpipeline
           pipeline_node = node.pipeline_node
           component_id = pipeline_node.node_info.id
+          executor_spec = self._extract_executor_spec(
+              deployment_config, component_id)
+          custom_driver_spec = self._extract_custom_driver_spec(
+              deployment_config, component_id)
 
           # Signals from upstream components.
           signals_to_wait = []
@@ -126,9 +180,13 @@ class BeamDagRunner(tfx_runner.TfxRunner):
           signal_map[component_id] = (
               root
               | 'Run[%s]' % component_id >> beam.ParDo(
-                  _PipelineNodeAsDoFn(pipeline_node, mlmd_connection,
-                                      pipeline.pipeline_info,
-                                      pipeline.runtime_spec), *
+                  _PipelineNodeAsDoFn(
+                      pipeline_node=pipeline_node,
+                      mlmd_connection=mlmd_connection,
+                      pipeline_info=pipeline.pipeline_info,
+                      pipeline_runtime_spec=pipeline.runtime_spec,
+                      executor_spec=executor_spec,
+                      custom_driver_spec=custom_driver_spec), *
                   [beam.pvalue.AsIter(s) for s in signals_to_wait]))
           # LINT.ThenChange(../beam/beam_dag_runner.py)
           logging.info('Component %s is scheduled.', component_id)

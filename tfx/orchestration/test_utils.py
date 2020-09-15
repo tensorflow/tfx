@@ -79,10 +79,6 @@ def build_and_push_docker_image(container_image: str, repo_base: str):
         path=repo_base,
         dockerfile='tfx/tools/docker/Dockerfile',
         tag=container_image,
-        buildargs={
-            # Skip license gathering for tests.
-            'gather_third_party_licenses': 'false',
-        },
     )
 
   logging.info('Pushing image %s', container_image)

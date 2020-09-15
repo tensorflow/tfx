@@ -248,8 +248,7 @@ def span_number_to_date(span: int) -> Tuple[int, int, int]:
 
 
 def _verify_split_pattern_specs(
-    split: example_gen_pb2.Input.Split,
-    range_config: Optional[range_config_pb2.RangeConfig]
+    split: example_gen_pb2.Input.Split
 ) -> Tuple[bool, bool, bool]:
   """Verify and identify specs to be matched in split pattern."""
   # Match occurences of pattern '{SPAN}|{SPAN:*}'. If it exists, capture
@@ -394,12 +393,12 @@ def _create_matching_glob_and_regex(
     range_config: Optional[range_config_pb2.RangeConfig]
 ) -> Tuple[Text, Text]:
   """Constructs glob and regex patterns for matching span and version.
-  
+
   Construct a glob and regex pattern for matching files and capturing span and
   version information. By default, this method replaces the span, date, and
   or version specs in the split pattern with wildcard characters to get a
   glob pattern and with greedy named capture groups to get a regex pattern.
-  
+
   If a static range `range_config` is specified, this method replaces the span
   spec (if `is_match_span`) in both the glob and regex pattern with the span
   number corresponding to the provided static range. If a span width modifier
@@ -413,14 +412,14 @@ def _create_matching_glob_and_regex(
     split: An example_gen_pb2.Input.Split object which contains a split pattern,
       to be searched on.
     is_match_span: Flag set to True if span spec is present, False otherwise.
-    is_match_date: Flag set to True if date specs are present, False 
+    is_match_date: Flag set to True if date specs are present, False
       otherwise.
     is_match_version: Flag set to True if version spec is presen, False
       otherwise.
     range_config: An instance of range_config_pb2.RangeConfig, which specifies
       which spans to consider when finding the most recent span and version. If
       unset, search for latest span number with no restrictions.
-  
+
   Returns:
     Tuple of two strings, first of which is a glob pattern to identify relevant
     files for process, the second of which is a regex pattern containing capture
@@ -534,13 +533,14 @@ def _get_target_span_version(
       - If a matching cannot be found for split pattern provided.
   """
   is_match_span, is_match_date, is_match_version = _verify_split_pattern_specs(
-      split, range_config=range_config)
+      split)
 
   if not is_match_span and not is_match_date:
     return (None, None)
 
   split_glob_pattern, split_regex_pattern = _create_matching_glob_and_regex(
-      uri, split, is_match_span, is_match_date, is_match_version, range_config=range_config)
+      uri, split, is_match_span, is_match_date, is_match_version,
+      range_config=range_config)
 
   logging.info('Glob pattern for split %s: %s', split.name, split_glob_pattern)
   logging.info('Regex pattern for split %s: %s', split.name,
