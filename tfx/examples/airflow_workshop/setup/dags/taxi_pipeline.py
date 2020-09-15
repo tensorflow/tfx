@@ -26,6 +26,7 @@ import os
 from typing import List, Text
 
 
+from tfx import orchestration as metadata
 from tfx.components import CsvExampleGen
 
 # from tfx.components import StatisticsGen # Step 3
@@ -48,7 +49,6 @@ from tfx.components import CsvExampleGen
 
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
@@ -190,8 +190,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           # pusher, # Step 7
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
 

@@ -15,7 +15,7 @@
 import os
 import tensorflow as tf
 
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable import cache_utils
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import test_utils

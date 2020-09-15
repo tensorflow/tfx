@@ -24,12 +24,12 @@ from airflow import models
 import mock
 
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration.airflow import airflow_component
 from tfx.types import component_spec
 
@@ -69,7 +69,7 @@ class AirflowComponentTest(tf.test.TestCase):
             output=types.Channel(type=_ArtifactTypeB)))
     self._pipeline_info = data_types.PipelineInfo('name', 'root')
     self._driver_args = data_types.DriverArgs(True)
-    self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
+    self._metadata_connection_config = metadata.Metadata.sqlite_metadata_connection_config(
         os.path.join(
             os.environ.get('TEST_TMP_DIR', self.get_temp_dir()), 'metadata'))
     self._parent_dag = models.DAG(

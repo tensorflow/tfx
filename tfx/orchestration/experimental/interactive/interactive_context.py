@@ -36,10 +36,10 @@ import absl
 import jinja2
 import nbformat
 from six.moves import builtins
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration.experimental.interactive import execution_result
 from tfx.orchestration.experimental.interactive import notebook_formatters
 from tfx.orchestration.experimental.interactive import standard_visualizations
@@ -116,7 +116,7 @@ class InteractiveContext(object):
       # in tfx/orchestration/...
       metadata_sqlite_path = os.path.join(pipeline_root,
                                           self._DEFAULT_SQLITE_FILENAME)
-      metadata_connection_config = metadata.sqlite_metadata_connection_config(
+      metadata_connection_config = metadata.Metadata.sqlite_metadata_connection_config(
           metadata_sqlite_path)
       absl.logging.warning(
           'InteractiveContext metadata_connection_config not provided: using '

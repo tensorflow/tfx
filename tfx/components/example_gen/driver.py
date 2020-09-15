@@ -23,11 +23,11 @@ import os
 from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.example_gen import utils
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver as ir_base_driver
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto import example_gen_pb2

@@ -13,7 +13,7 @@
 # limitations under the License.
 """Tests for tfx.orchestration.portable.execution_publish_utils."""
 import tensorflow as tf
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import context_lib

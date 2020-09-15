@@ -22,9 +22,8 @@ import argparse
 import json
 import logging
 import sys
-
+from tfx import orchestration as metadata
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration.launcher import base_component_launcher
 from tfx.utils import import_utils
 from tfx.utils import json_utils

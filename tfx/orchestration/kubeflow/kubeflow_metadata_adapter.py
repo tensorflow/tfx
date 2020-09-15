@@ -21,9 +21,8 @@ import os
 from typing import Any, Dict, Text
 
 import absl
+from tfx import orchestration as metadata
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
-
 from ml_metadata.proto import metadata_store_pb2
 
 _KFP_POD_NAME_ENV_KEY = 'KFP_POD_NAME'

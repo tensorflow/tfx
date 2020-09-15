@@ -22,10 +22,9 @@ from typing import Any, Dict, List, Text
 
 import absl
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 
 

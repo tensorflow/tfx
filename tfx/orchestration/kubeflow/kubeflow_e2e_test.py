@@ -26,7 +26,7 @@ from typing import List, Text
 from absl import logging
 from grpc import insecure_channel
 import tensorflow as tf
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration import test_utils
 from tfx.orchestration.kubeflow import test_utils as kubeflow_test_utils
 from tfx.orchestration.test_pipelines import download_grep_print_pipeline

@@ -27,7 +27,7 @@ import unittest
 import six
 
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
@@ -37,7 +37,6 @@ from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import _SimpleComponent
 from tfx.dsl.component.experimental.decorators import component
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.types import component_spec
@@ -186,7 +185,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         d=instance_1.outputs['d'])
     instance_3 = _verify(e=instance_2.outputs['e'], f=instance_2.outputs['f'])  # pylint: disable=assignment-from-no-return
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     test_pipeline = pipeline.Pipeline(
         pipeline_name='test_pipeline_1',
@@ -207,7 +206,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
     # Swapped 'e' and 'f'.
     instance_3 = _verify(e=instance_2.outputs['f'], f=instance_2.outputs['e'])  # pylint: disable=assignment-from-no-return
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     test_pipeline = pipeline.Pipeline(
         pipeline_name='test_pipeline_1',
@@ -236,7 +235,7 @@ class ComponentDecoratorTest(tf.test.TestCase):
         g=999.0,
         optional_examples_1=instance_1.outputs['examples'])
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     test_pipeline = pipeline.Pipeline(
         pipeline_name='test_pipeline_1',

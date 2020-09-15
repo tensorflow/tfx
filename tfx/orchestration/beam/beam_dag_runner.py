@@ -24,10 +24,9 @@ from typing import Any, Iterable, List, Optional, Text, Type
 
 import absl
 import apache_beam as beam
-
+from tfx import orchestration as metadata
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration import tfx_runner
 from tfx.orchestration.config import base_component_config

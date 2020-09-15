@@ -23,7 +23,7 @@ import os
 from typing import List, Text
 
 import tensorflow_model_analysis as tfma
-
+from tfx import orchestration as metadata
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -36,7 +36,6 @@ from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
@@ -180,8 +179,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           pusher,
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
 

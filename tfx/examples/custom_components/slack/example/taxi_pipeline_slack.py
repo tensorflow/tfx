@@ -29,7 +29,7 @@ import datetime
 import os
 
 from slack_component.component import SlackComponent
-
+from tfx import orchestration as metadata
 from tfx.components import CsvExampleGen
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
@@ -39,7 +39,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_runner import BeamRunner
 from tfx.proto import evaluator_pb2
@@ -154,8 +153,8 @@ def _create_pipeline():
           trainer, evaluator, model_validator, slack_validator, pusher
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          _metadata_db_root),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(_metadata_db_root),
   )
 
 

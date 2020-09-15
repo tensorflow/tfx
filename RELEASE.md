@@ -14,7 +14,6 @@
 *   Depends on `absl-py>=0.9,<0.11`.
 *   Depends on `tensorflow-model-analysis>=0.24,<0.25`.
 *   Depends on `tfx-bsl>=0.24,<0.25`.
-*   Depends on `absl-py>=0.9,<0.11`.
 
 ## Breaking changes
 

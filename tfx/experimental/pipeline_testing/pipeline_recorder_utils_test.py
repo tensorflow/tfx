@@ -92,8 +92,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
           self.content)
 
-  @mock.patch('tfx.orchestration.metadata.sqlite_metadata_connection_config')
-  @mock.patch('tfx.orchestration.metadata.Metadata')
+  @mock.patch('tfx.orchestration.Metadata.sqlite_metadata_connection_config')
+  @mock.patch('tfx.orchestration.Metadata')
   @mock.patch.object(pipeline_recorder_utils, '_get_latest_executions')
   def testRecordLatestBeamPipeline(self, mock_get_latest_executions,
                                    mock_metadata, mock_config):
@@ -118,8 +118,8 @@ class PipelineRecorderUtilsTest(tf.test.TestCase):
           io_utils.read_string_file(os.path.join(self.dest_uri, files[0])),
           self.content)
 
-  @mock.patch('tfx.orchestration.metadata.sqlite_metadata_connection_config')
-  @mock.patch('tfx.orchestration.metadata.Metadata')
+  @mock.patch('tfx.orchestration.Metadata.sqlite_metadata_connection_config')
+  @mock.patch('tfx.orchestration.Metadata')
   def testRecordBeamPipelineRunId(self, mock_metadata, mock_config):
     # Tests recording Beam pipeline outputs given a run_id.
     with mock.patch.object(pipeline_recorder_utils, '_get_execution_dict',

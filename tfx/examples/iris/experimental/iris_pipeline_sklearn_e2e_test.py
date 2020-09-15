@@ -23,10 +23,9 @@ from typing import Text
 
 import mock
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.examples.iris.experimental import iris_pipeline_sklearn
 from tfx.extensions.google_cloud_ai_platform.pusher import executor
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
@@ -90,7 +89,7 @@ class IrisPipelineSklearnEndToEndTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
     mock_runner.deploy_model_for_aip_prediction.assert_called_once()
     expected_execution_count = 8  # 8 components
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())

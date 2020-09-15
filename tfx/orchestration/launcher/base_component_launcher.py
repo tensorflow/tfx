@@ -23,12 +23,11 @@ from typing import Any, Dict, List, Optional, Text
 
 import absl
 from six import with_metaclass
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import base_component_config
 

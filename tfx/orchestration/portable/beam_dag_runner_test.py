@@ -17,7 +17,7 @@ from typing import Optional
 
 import mock
 import tensorflow as tf
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable import beam_dag_runner
 from tfx.orchestration.portable import test_utils
 from tfx.proto.orchestration import executable_spec_pb2

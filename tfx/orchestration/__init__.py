@@ -12,3 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Init module for tfx.orchestration."""
+
+from tfx.orchestration.metadata import Metadata
+
+EXECUTION_STATE_CACHED = Metadata.EXECUTION_STATE_CACHED
+EXECUTION_STATE_COMPLETE = Metadata.EXECUTION_STATE_COMPLETE
+EXECUTION_STATE_NEW = Metadata.EXECUTION_STATE_NEW
+FINAL_EXECUTION_STATES = Metadata.FINAL_EXECUTION_STATES

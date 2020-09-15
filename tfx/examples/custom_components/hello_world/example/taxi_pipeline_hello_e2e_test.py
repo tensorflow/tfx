@@ -24,7 +24,7 @@ from typing import Text
 import taxi_pipeline_hello
 import tensorflow as tf
 
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
@@ -66,7 +66,7 @@ class TaxiPipelineHelloEndToEndTest(tf.test.TestCase):
             metadata_path=self._metadata_path))
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())

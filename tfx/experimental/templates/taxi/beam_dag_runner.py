@@ -20,10 +20,9 @@ from __future__ import print_function
 
 import os
 from absl import logging
-
+from tfx import orchestration as metadata
 from tfx.experimental.templates.taxi.pipeline import configs
 from tfx.experimental.templates.taxi.pipeline import pipeline
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import trainer_pb2
 
@@ -77,8 +76,8 @@ def run():
           #               config for BigQuery with Beam DirectRunner.
           # beam_pipeline_args=configs.
           # BIG_QUERY_WITH_DIRECT_RUNNER_BEAM_PIPELINE_ARGS,
-          metadata_connection_config=metadata.sqlite_metadata_connection_config(
-              METADATA_PATH)))
+          metadata_connection_config=metadata.Metadata
+          .sqlite_metadata_connection_config(METADATA_PATH)))
 
 
 if __name__ == '__main__':

@@ -24,10 +24,10 @@ import tempfile
 from absl import logging
 import apache_beam as beam
 from tfx import components
+from tfx import orchestration as metadata
 from tfx.benchmarks import benchmark_dataset
 from tfx.components.example_gen.csv_example_gen import executor as csv_exgen
 from tfx.examples.chicago_taxi_pipeline import taxi_utils
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import trainer_pb2
@@ -160,8 +160,8 @@ class ChicagoTaxiDataset(benchmark_dataset.BenchmarkDataset):
             example_gen, statistics_gen, schema_gen, transform, trainer
         ],
         enable_cache=True,
-        metadata_connection_config=metadata.sqlite_metadata_connection_config(
-            metadata_path))
+        metadata_connection_config=metadata.Metadata
+        .sqlite_metadata_connection_config(metadata_path))
     BeamDagRunner().run(p)
 
     def join_unique_subdir(path):

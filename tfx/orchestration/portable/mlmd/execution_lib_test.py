@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable import test_utils
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import context_lib

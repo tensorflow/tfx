@@ -21,8 +21,8 @@ from __future__ import print_function
 from typing import List, Mapping, MutableMapping, Optional, Sequence, Text, Tuple
 
 from absl import logging
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 

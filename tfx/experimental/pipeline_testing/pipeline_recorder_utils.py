@@ -23,7 +23,9 @@ import os
 from typing import Iterable, List, Mapping, Optional, Text, Tuple
 
 from absl import logging
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
+from tfx.orchestration.metadata import _CONTEXT_TYPE_PIPELINE_RUN  # pylint: disable=protected-access
+from tfx.orchestration.metadata import _EXECUTION_TYPE_KEY_COMPONENT_ID  # pylint: disable=protected-access
 from tfx.utils import io_utils
 
 from ml_metadata.proto import metadata_store_pb2
@@ -51,7 +53,7 @@ def _get_paths(metadata_connection: metadata.Metadata,
   """
   for execution in executions:
     component_id = execution.properties[
-        metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
+        _EXECUTION_TYPE_KEY_COMPONENT_ID].string_value
     # ResolverNode is ignored because it doesn't have a executor that can be
     # replaced with stub.
     if component_id.startswith('ResolverNode'):
@@ -111,7 +113,7 @@ def _get_latest_executions(
   """
   pipeline_run_contexts = [
       c for c in metadata_connection.store.get_contexts_by_type(
-          metadata._CONTEXT_TYPE_PIPELINE_RUN)  # pylint: disable=protected-access
+          _CONTEXT_TYPE_PIPELINE_RUN)
       if c.properties['pipeline_name'].string_value == pipeline_name
   ]
   latest_context = max(
@@ -150,7 +152,7 @@ def record_pipeline(output_dir: Text,
     metadata_config = metadata_store_pb2.MetadataStoreClientConfig(
         host=host, port=port)
   elif metadata_db_uri is not None:
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         metadata_db_uri)
   else:
     raise ValueError('For KFP, host and port are required. '

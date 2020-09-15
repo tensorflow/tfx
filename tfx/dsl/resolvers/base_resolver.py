@@ -22,10 +22,9 @@ import abc
 from typing import Dict, List, Text
 
 from six import with_metaclass
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 
 
 class ResolveResult(object):

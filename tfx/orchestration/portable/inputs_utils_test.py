@@ -14,9 +14,8 @@
 """Tests for tfx.orchestration.portable.inputs_utils."""
 import os
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable import execution_publish_utils
 from tfx.orchestration.portable import inputs_utils
 from tfx.orchestration.portable import test_utils

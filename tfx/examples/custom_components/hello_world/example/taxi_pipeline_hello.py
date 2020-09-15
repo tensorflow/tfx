@@ -23,10 +23,9 @@ from typing import Text
 
 import absl
 from hello_component import component
-
+from tfx import orchestration as metadata
 from tfx.components import CsvExampleGen
 from tfx.components import StatisticsGen
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -64,8 +63,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=[example_gen, hello, statistics_gen],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path))
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path))
 
 
 # To run this pipeline from the python CLI:

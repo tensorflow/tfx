@@ -20,12 +20,11 @@ from __future__ import print_function
 from typing import Any, Dict, Optional, Text, Type, Union
 
 import absl
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import channel_utils
 from tfx.types import node_common
 

@@ -13,9 +13,8 @@
 # limitations under the License.
 """Portable library for registering and publishing executions."""
 from typing import Mapping, MutableMapping, Optional, Sequence
-
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import execution_lib
 from tfx.proto.orchestration import execution_result_pb2
 

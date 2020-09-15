@@ -21,10 +21,10 @@ from __future__ import print_function
 from typing import Text
 
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.common_nodes import importer_node
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.utils import json_utils

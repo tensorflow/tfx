@@ -46,13 +46,6 @@ _MAX_INIT_RETRY = 10
 
 # Maximum number of executions we look at for previous result.
 MAX_EXECUTIONS_FOR_CACHE = 100
-# Execution state constant. We should replace this with MLMD enum once that is
-# ready.
-EXECUTION_STATE_CACHED = 'cached'
-EXECUTION_STATE_COMPLETE = 'complete'
-EXECUTION_STATE_NEW = 'new'
-FINAL_EXECUTION_STATES = frozenset(
-    (EXECUTION_STATE_CACHED, EXECUTION_STATE_COMPLETE))
 # Context type, the following three types of contexts are supported:
 #  - pipeline level context is shared within one pipeline, across multiple
 #    pipeline runs.
@@ -81,52 +74,60 @@ _EXECUTION_TYPE_RESERVED_KEYS = frozenset(
 _ARTIFACT_TYPE_KEY_STATE = 'state'
 
 
-def sqlite_metadata_connection_config(
-    metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
-  """Convenience function to create file based metadata connection config.
-
-  Args:
-    metadata_db_uri: uri to metadata db.
-
-  Returns:
-    A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
-  """
-  tf.io.gfile.makedirs(os.path.dirname(metadata_db_uri))
-  connection_config = metadata_store_pb2.ConnectionConfig()
-  connection_config.sqlite.filename_uri = metadata_db_uri
-  connection_config.sqlite.connection_mode = \
-    metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
-  return connection_config
-
-
-def mysql_metadata_connection_config(
-    host: Text, port: int, database: Text, username: Text,
-    password: Text) -> metadata_store_pb2.ConnectionConfig:
-  """Convenience function to create mysql-based metadata connection config.
-
-  Args:
-    host: The name or network address of the instance of MySQL to connect to.
-    port: The port MySQL is using to listen for connections.
-    database: The name of the database to use.
-    username: The MySQL login account being used.
-    password: The password for the MySQL account being used.
-
-  Returns:
-    A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
-  """
-  return metadata_store_pb2.ConnectionConfig(
-      mysql=metadata_store_pb2.MySQLDatabaseConfig(
-          host=host,
-          port=port,
-          database=database,
-          user=username,
-          password=password))
-
-
 # TODO(ruoyu): Figure out the story mutable UDFs. We should not reuse previous
 # run when having different UDFs.
 class Metadata(object):
   """Helper class to handle metadata I/O."""
+
+  # Execution state constant. We should replace this with MLMD enum once that is
+  # ready.
+  EXECUTION_STATE_CACHED = 'cached'
+  EXECUTION_STATE_COMPLETE = 'complete'
+  EXECUTION_STATE_NEW = 'new'
+  FINAL_EXECUTION_STATES = frozenset(
+      (EXECUTION_STATE_CACHED, EXECUTION_STATE_COMPLETE))
+
+  @classmethod
+  def sqlite_metadata_connection_config(
+      cls, metadata_db_uri: Text) -> metadata_store_pb2.ConnectionConfig:
+    """Convenience function to create file based metadata connection config.
+
+    Args:
+      metadata_db_uri: uri to metadata db.
+
+    Returns:
+      A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
+    """
+    tf.io.gfile.makedirs(os.path.dirname(metadata_db_uri))
+    connection_config = metadata_store_pb2.ConnectionConfig()
+    connection_config.sqlite.filename_uri = metadata_db_uri
+    connection_config.sqlite.connection_mode = \
+      metadata_store_pb2.SqliteMetadataSourceConfig.READWRITE_OPENCREATE
+    return connection_config
+
+  @classmethod
+  def mysql_metadata_connection_config(
+      cls, host: Text, port: int, database: Text, username: Text,
+      password: Text) -> metadata_store_pb2.ConnectionConfig:
+    """Convenience function to create mysql-based metadata connection config.
+
+    Args:
+      host: The name or network address of the instance of MySQL to connect to.
+      port: The port MySQL is using to listen for connections.
+      database: The name of the database to use.
+      username: The MySQL login account being used.
+      password: The password for the MySQL account being used.
+
+    Returns:
+      A metadata_store_pb2.ConnectionConfig based on given metadata db uri.
+    """
+    return metadata_store_pb2.ConnectionConfig(
+        mysql=metadata_store_pb2.MySQLDatabaseConfig(
+            host=host,
+            port=port,
+            database=database,
+            user=username,
+            password=password))
 
   def __init__(
       self,
@@ -636,8 +637,9 @@ class Metadata(object):
     """
     input_artifacts = input_artifacts or {}
     exec_properties = exec_properties or {}
-    execution = self._prepare_execution(EXECUTION_STATE_NEW, exec_properties,
-                                        pipeline_info, component_info)
+    execution = self._prepare_execution(self.EXECUTION_STATE_NEW,
+                                        exec_properties, pipeline_info,
+                                        component_info)
     artifacts_and_events = self._artifact_and_event_pairs(
         artifact_dict=input_artifacts,
         event_type=metadata_store_pb2.Event.INPUT)
@@ -701,14 +703,14 @@ class Metadata(object):
     contexts = [ctx for ctx in contexts if ctx is not None]
     # If execution state is already in final state, skips publishing.
     if execution.properties[
-        _EXECUTION_TYPE_KEY_STATE].string_value in FINAL_EXECUTION_STATES:
+        _EXECUTION_TYPE_KEY_STATE].string_value in self.FINAL_EXECUTION_STATES:
       return
     self.update_execution(
         execution=execution,
         component_info=component_info,
         output_artifacts=output_artifacts,
         exec_properties=exec_properties,
-        execution_state=EXECUTION_STATE_COMPLETE,
+        execution_state=self.EXECUTION_STATE_COMPLETE,
         artifact_state=ArtifactState.PUBLISHED,
         contexts=contexts)
 
@@ -806,7 +808,7 @@ class Metadata(object):
     #   - Is in complete state
     # The maximum number of candidates is capped by MAX_EXECUTIONS_FOR_CACHE.
     expected_previous_execution = self._prepare_execution(
-        EXECUTION_STATE_COMPLETE,
+        self.EXECUTION_STATE_COMPLETE,
         exec_properties,
         pipeline_info=pipeline_info,
         component_info=component_info)

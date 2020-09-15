@@ -14,9 +14,8 @@
 """A class to define how to operator an python based driver."""
 
 from typing import Any, Dict, List, Text, cast
-
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import executable_spec_pb2

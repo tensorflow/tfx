@@ -23,9 +23,8 @@ import os
 from typing import Text
 
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.examples.mnist import mnist_pipeline_native_keras
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
@@ -91,7 +90,7 @@ class MNISTPipelineNativeKerasEndToEndTest(tf.test.TestCase):
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir_lite))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     expected_execution_count = 11
     with metadata.Metadata(metadata_config) as m:

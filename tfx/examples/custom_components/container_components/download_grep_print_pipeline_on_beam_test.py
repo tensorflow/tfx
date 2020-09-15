@@ -18,9 +18,8 @@ import os
 
 import absl
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.examples.custom_components.container_components import download_grep_print_pipeline
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline as pipeline_module
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
@@ -49,8 +48,8 @@ def create_pipeline():
       pipeline_root=pipeline_root,
       components=component_instances,
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
   )
   return pipeline
 

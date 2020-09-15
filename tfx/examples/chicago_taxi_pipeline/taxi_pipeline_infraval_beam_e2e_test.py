@@ -22,10 +22,9 @@ import os
 from typing import Text
 
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.components.base import base_driver
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_infraval_beam
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 
 
@@ -93,7 +92,7 @@ class TaxiPipelineInfravalBeamEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(tf.io.gfile.exists(self._serving_model_dir))
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       artifact_count = len(m.store.get_artifacts())

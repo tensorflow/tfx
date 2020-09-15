@@ -22,10 +22,9 @@ import os
 
 import mock
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.experimental.pipeline_testing import stub_component_launcher
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import test_utils
 from tfx.types import channel_utils

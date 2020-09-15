@@ -19,12 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Dict, Text
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.evaluator import constants as evaluator
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 

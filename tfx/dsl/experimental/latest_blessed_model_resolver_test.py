@@ -21,11 +21,11 @@ from __future__ import print_function
 # Standard Imports
 
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.model_validator import constants as model_validator
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import standard_artifacts
 
 from ml_metadata.proto import metadata_store_pb2

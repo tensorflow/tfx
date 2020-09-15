@@ -19,14 +19,14 @@ from typing import Text
 
 from absl import logging
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.examples.chicago_taxi_pipeline import taxi_pipeline_beam
 from tfx.experimental.pipeline_testing import executor_verifier_utils
 from tfx.experimental.pipeline_testing import pipeline_recorder_utils
 from tfx.experimental.pipeline_testing import stub_component_launcher
-from tfx.orchestration import metadata
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.orchestration.config import pipeline_config
+from tfx.orchestration.metadata import _EXECUTION_TYPE_KEY_COMPONENT_ID  # pylint:disable=protected-access
 
 from ml_metadata.proto import metadata_store_pb2
 
@@ -126,7 +126,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
     self.assertTrue(tf.io.gfile.exists(self._metadata_path))
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
 
     # Verify that recorded files are successfully copied to the output uris.
@@ -144,7 +144,7 @@ class TaxiPipelineRegressionEndToEndTest(tf.test.TestCase):
 
       for execution in executions:
         component_id = execution.properties[
-            metadata._EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
+            _EXECUTION_TYPE_KEY_COMPONENT_ID].string_value  # pylint: disable=protected-access
         if component_id.startswith('ResolverNode'):
           continue
         eid = [execution.id]

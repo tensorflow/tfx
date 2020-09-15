@@ -20,12 +20,12 @@ from __future__ import print_function
 
 from typing import Text
 
-# Standard Imports
-
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
+from tfx.orchestration.metadata import _CONTEXT_TYPE_PIPELINE  # pylint: disable=protected-access
+from tfx.orchestration.metadata import _CONTEXT_TYPE_PIPELINE_RUN  # pylint: disable=protected-access
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts
 from tfx.types.artifact import ArtifactState
@@ -74,7 +74,7 @@ class MetadataTest(tf.test.TestCase):
                     pipeline_name: Text):
     result = []
     for context in metadata_handler.store.get_contexts_by_type(
-        metadata._CONTEXT_TYPE_PIPELINE_RUN):
+        _CONTEXT_TYPE_PIPELINE_RUN):
       if context.properties['pipeline_name'].string_value == pipeline_name:
         result.append(context.properties['run_id'].string_value)
     return result
@@ -82,8 +82,7 @@ class MetadataTest(tf.test.TestCase):
   def _get_execution_states(self, metadata_handler: metadata.Metadata,
                             pipeline_info: data_types.PipelineInfo):
     pipeline_run_context = metadata_handler.store.get_context_by_type_and_name(
-        metadata._CONTEXT_TYPE_PIPELINE_RUN,
-        pipeline_info.pipeline_run_context_name)
+        _CONTEXT_TYPE_PIPELINE_RUN, pipeline_info.pipeline_run_context_name)
     result = {}
     if not pipeline_run_context:
       return result
@@ -788,7 +787,7 @@ class MetadataTest(tf.test.TestCase):
             key: "pipeline_name"
             value: STRING
           }
-          """, m.store.get_context_type(metadata._CONTEXT_TYPE_PIPELINE))
+          """, m.store.get_context_type(_CONTEXT_TYPE_PIPELINE))
       self.assertProtoEquals(
           """
           id: 2
@@ -801,17 +800,17 @@ class MetadataTest(tf.test.TestCase):
             key: "run_id"
             value: STRING
           }
-          """, m.store.get_context_type(metadata._CONTEXT_TYPE_PIPELINE_RUN))
+          """, m.store.get_context_type(_CONTEXT_TYPE_PIPELINE_RUN))
       self.assertEqual(len(contexts), 2)
       self.assertEqual(
           contexts[0],
           m.store.get_context_by_type_and_name(
-              metadata._CONTEXT_TYPE_PIPELINE,
+              _CONTEXT_TYPE_PIPELINE,
               self._pipeline_info.pipeline_context_name))
       self.assertEqual(
           contexts[1],
           m.store.get_context_by_type_and_name(
-              metadata._CONTEXT_TYPE_PIPELINE_RUN,
+              _CONTEXT_TYPE_PIPELINE_RUN,
               self._pipeline_info.pipeline_run_context_name))
 
   def testInvalidConnection(self):

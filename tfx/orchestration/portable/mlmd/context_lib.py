@@ -22,7 +22,7 @@ from typing import List, Text
 
 from absl import logging
 
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.proto.orchestration import pipeline_pb2
 import ml_metadata as mlmd

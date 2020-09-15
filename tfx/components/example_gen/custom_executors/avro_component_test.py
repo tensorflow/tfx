@@ -21,11 +21,11 @@ import os
 
 import mock
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx.components.base import executor_spec
 from tfx.components.example_gen.component import FileBasedExampleGen
 from tfx.components.example_gen.custom_executors import avro_executor
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.proto import example_gen_pb2

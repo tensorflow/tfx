@@ -24,7 +24,7 @@ import os
 # TODO(b/158143615): importing airflow after kerastuner causes issue.
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner  # pylint: disable=g-bad-import-order
 
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
 from tfx.tools.cli.e2e import test_utils
@@ -60,8 +60,8 @@ def _create_pipeline():
       pipeline_root=_pipeline_root,
       components=test_utils.create_e2e_components(_data_root),
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          _metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(_metadata_path),
   )
 
 

@@ -22,8 +22,8 @@ import os
 
 import mock
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.launcher import in_process_component_launcher
 from tfx.orchestration.launcher import test_utils

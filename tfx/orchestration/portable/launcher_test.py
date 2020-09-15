@@ -17,8 +17,8 @@ import os
 from typing import Any, Dict, List, Text
 
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import execution_publish_utils
@@ -150,7 +150,7 @@ class LauncherTest(test_utils.TfxTest):
     # Makes sure multiple connections within a test always connect to the same
     # MLMD instance.
     metadata_path = os.path.join(pipeline_root, 'metadata', 'metadata.db')
-    connection_config = metadata.sqlite_metadata_connection_config(
+    connection_config = metadata.Metadata.sqlite_metadata_connection_config(
         metadata_path)
     connection_config.sqlite.SetInParent()
     self._mlmd_connection = metadata.Metadata(

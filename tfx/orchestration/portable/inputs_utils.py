@@ -16,8 +16,8 @@ import collections
 from typing import Dict, List, Optional, Sequence
 
 from absl import logging
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable.mlmd import common_utils
 from tfx.orchestration.portable.mlmd import event_lib
 from tfx.orchestration.portable.mlmd import execution_lib

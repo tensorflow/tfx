@@ -22,9 +22,9 @@ from typing import Any, Dict, List, Optional, Text
 
 from absl import logging
 
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 
 
 class Publisher(object):

@@ -23,10 +23,10 @@ import os
 import docker
 import mock
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx.components.base import base_executor
 from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.orchestration import publisher
 from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.launcher import docker_component_launcher

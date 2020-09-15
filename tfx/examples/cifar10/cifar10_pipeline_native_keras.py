@@ -28,7 +28,7 @@ from typing import List, Text
 
 import absl
 import tensorflow_model_analysis as tfma
-
+from tfx import orchestration as metadata
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ImportExampleGen
@@ -41,7 +41,6 @@ from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.dsl.experimental import latest_blessed_model_resolver
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import example_gen_pb2
@@ -201,8 +200,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=components,
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       beam_pipeline_args=beam_pipeline_args)
 
 

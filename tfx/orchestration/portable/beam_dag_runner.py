@@ -18,7 +18,7 @@ from typing import Any, Iterable, Optional
 
 from absl import logging
 import apache_beam as beam
-from tfx.orchestration import metadata
+from tfx import orchestration as metadata
 from tfx.orchestration.portable import launcher
 from tfx.orchestration.portable import tfx_runner
 from tfx.proto.orchestration import local_deployment_config_pb2

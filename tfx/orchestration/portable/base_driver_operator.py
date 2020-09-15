@@ -17,8 +17,8 @@ import abc
 from typing import Any, Dict, List, Text
 
 import six
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.proto.orchestration import driver_output_pb2
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils import abc_utils

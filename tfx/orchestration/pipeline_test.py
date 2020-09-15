@@ -25,13 +25,12 @@ import tempfile
 from typing import Any, Dict, Text, Type
 
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_component
 from tfx.components.base import base_executor
 from tfx.components.base import base_node
 from tfx.components.base import executor_spec
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.types import node_common
 from tfx.types.component_spec import ChannelParameter
@@ -132,7 +131,7 @@ class PipelineTest(tf.test.TestCase):
     # Back up the environmental variable.
     self._original_tmp_value = os.environ.get(
         'TFX_JSON_EXPORT_PIPELINE_ARGS_PATH')
-    self._metadata_connection_config = metadata.sqlite_metadata_connection_config(
+    self._metadata_connection_config = metadata.Metadata.sqlite_metadata_connection_config(
         os.path.join(self._tmp_dir, 'metadata'))
 
   def tearDown(self):

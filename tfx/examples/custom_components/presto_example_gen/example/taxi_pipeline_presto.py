@@ -24,7 +24,7 @@ from typing import Text
 import absl
 from presto_component.component import PrestoExampleGen
 from proto import presto_config_pb2
-
+from tfx import orchestration as metadata
 from tfx.components import Evaluator
 from tfx.components import ExampleValidator
 from tfx.components import ModelValidator
@@ -33,7 +33,6 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import evaluator_pb2
@@ -133,8 +132,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text,
           trainer, evaluator, model_validator, pusher
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
   )
 
 

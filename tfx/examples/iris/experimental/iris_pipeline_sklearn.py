@@ -22,7 +22,7 @@ import os
 from typing import Dict, Optional, Text
 
 import absl
-
+from tfx import orchestration as metadata
 from tfx.components import CsvExampleGen
 from tfx.components import ExampleValidator
 from tfx.components import Pusher
@@ -33,7 +33,6 @@ from tfx.components import Transform
 from tfx.components.base import executor_spec
 from tfx.components.trainer.executor import GenericExecutor
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.proto import pusher_pb2
@@ -177,8 +176,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
           cloud_pusher,
       ],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       # TODO(b/142684737): The multi-processing API might change.
       beam_pipeline_args=['--direct_num_workers=%d' % direct_num_workers],
   )

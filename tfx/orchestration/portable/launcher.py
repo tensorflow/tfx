@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional, Text, Type, TypeVar
 from absl import logging
 import attr
 import tensorflow as tf
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.orchestration.portable import base_driver_operator
 from tfx.orchestration.portable import base_executor_operator
 from tfx.orchestration.portable import cache_utils

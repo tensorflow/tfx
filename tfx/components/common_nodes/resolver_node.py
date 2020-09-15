@@ -18,13 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, Text, Type
-
+from tfx import orchestration as metadata
 from tfx import types
 from tfx.components.base import base_driver
 from tfx.components.base import base_node
 from tfx.dsl.resolvers import base_resolver
 from tfx.orchestration import data_types
-from tfx.orchestration import metadata
 from tfx.types import node_common
 from tfx.utils import json_utils
 

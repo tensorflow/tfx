@@ -19,10 +19,9 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-
+from tfx import orchestration as metadata
 from tfx.components.base import base_component
 from tfx.components.base import executor_spec
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner
 from tfx.orchestration.config import docker_component_config
@@ -68,8 +67,8 @@ def _create_pipeline(
       pipeline_root=pipeline_root,
       components=[hello_world],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       additional_pipeline_args={},
   )
 
@@ -104,7 +103,7 @@ class DockerComponentLauncherE2eTest(tf.test.TestCase):
                     metadata_path=self._metadata_path,
                     name='docker_e2e_test_in_beam'))
 
-    metadata_config = metadata.sqlite_metadata_connection_config(
+    metadata_config = metadata.Metadata.sqlite_metadata_connection_config(
         self._metadata_path)
     with metadata.Metadata(metadata_config) as m:
       self.assertEqual(1, len(m.store.get_executions()))

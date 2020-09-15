@@ -22,9 +22,8 @@ import os
 from typing import Text
 
 import absl
-
+from tfx import orchestration as metadata
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
-from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam.beam_dag_runner import BeamDagRunner
 from tfx.utils.dsl_utils import external_input
@@ -53,8 +52,8 @@ def _create_pipeline(pipeline_name: Text, pipeline_root: Text, data_root: Text,
       pipeline_root=pipeline_root,
       components=[example_gen],
       enable_cache=True,
-      metadata_connection_config=metadata.sqlite_metadata_connection_config(
-          metadata_path),
+      metadata_connection_config=metadata.Metadata
+      .sqlite_metadata_connection_config(metadata_path),
       additional_pipeline_args={},
   )
 

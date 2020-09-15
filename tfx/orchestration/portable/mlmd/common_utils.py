@@ -20,9 +20,8 @@ from __future__ import print_function
 from typing import Text, TypeVar, Union
 
 from absl import logging
-
+from tfx import orchestration as metadata
 from tfx import types
-from tfx.orchestration import metadata
 from tfx.proto.orchestration import pipeline_pb2
 import ml_metadata as mlmd
 from ml_metadata.proto import metadata_store_pb2
