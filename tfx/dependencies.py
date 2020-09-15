@@ -55,7 +55,7 @@ def make_required_install_packages():
   # six, and protobuf) with TF.
   # TODO(b/130767399): add flask once the frontend is exposed externally.
   return [
-      'absl-py>=0.7,<0.9',
+      'absl-py>=0.9,<0.11',
       # LINT.IfChange
       'apache-beam[gcp]>=2.23,<3',
       # LINT.ThenChange(examples/chicago_taxi_pipeline/setup/setup_beam.sh)
@@ -107,9 +107,6 @@ def make_required_test_packages():
   # conflicts.
   return [
       'apache-airflow[mysql]>=1.10.10,<2',
-      # TODO(b/157208532): Remove pinned version of Werkzeug when we don't
-      # support Python 3.5.
-      'Werkzeug==0.16.1; python_version == "3.5"',
       # TODO(b/157033885): Remove pinned version of WTForms after newer version
       # of Apache Airflow.
       'WTForms==2.2.1',
