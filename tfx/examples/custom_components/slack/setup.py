@@ -22,7 +22,7 @@ def _make_required_install_packages():
   # Make sure to sync the versions of common dependencies (absl-py, numpy,
   # six, and protobuf) with TF.
   return [
-      'slackclient>=2.0.0,<2.0.1',
+      'slackclient>=2.8.2,<3',
       'tfx',
       'websocket-client>=0.56,<0.60',
   ]

@@ -5,6 +5,9 @@ This example shows how to compose a custom component in [TensorFlow Extended (TF
 component which uses [Slack](https://slack.com/) [API](https://slack.dev/python-slackclient/)
 to integrate a 'human in the loop' step into a TFX pipeline.
 
+This examples uses Slack [RealTime Message](https://api.slack.com/rtm) API which
+requires **classic slack bot**.
+
 ## Disclaimer
 This example only serves as a demonstration of how to compose a custom component
 and should not be relied on for productionization use.
@@ -157,7 +160,7 @@ Pipeline UI. Remember to input the pipeline-root to gs://${BUCKET_NAME}.
 ### Interact with Slack
 After the `Model Validator` phase succeeds, you will get a Slack message sent to
 your Slack channel asking you to review a model with a URI. If you reply 'LGTM'
-or 'approve', the pipeline will continue to push the model. If you reply
-'decline' or 'reject', the pipeline will continue without pushing the model. All
-the key words are case insensitive. If your reply fall out of the above key
-words, you will get a hint.
+or 'approve' (**in thread**), the pipeline will continue to push the model. If
+you reply 'decline' or 'reject' (**in thread**), the pipeline will continue
+without pushing the model. All the key words are case insensitive. If your reply
+fall out of the above keywords, you will get a hint.
