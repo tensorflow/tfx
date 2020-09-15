@@ -94,7 +94,7 @@ class BeamDagRunner(tfx_runner.TfxRunner):
       self,
       pipeline: pipeline_pb2.Pipeline
   ) -> local_deployment_config_pb2.LocalDeploymentConfig:
-    """Extracts the proto.Any pipeline.deployment_config to IntermediateDeploymentConfig."""
+    """Extracts the proto.Any pipeline.deployment_config to LocalDeploymentConfig."""
 
     if not pipeline.deployment_config:
       raise ValueError('deployment_config is not available in the pipeline.')
