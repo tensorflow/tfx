@@ -27,7 +27,7 @@ import textwrap
 from typing import Dict, List, Text, Union
 
 import absl
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration.kubeflow import kubeflow_metadata_adapter
 from tfx.orchestration.kubeflow.proto import kubeflow_pb2

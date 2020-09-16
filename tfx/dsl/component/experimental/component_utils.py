@@ -15,8 +15,8 @@
 """Utils for TFX component types. Intended for internal usage only."""
 from typing import Any, Callable, Dict, Optional, Text
 
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec as base_executor_spec
+from tfx.components.base import base_component
+from tfx.components.base import executor_spec as base_executor_spec
 from tfx.types import component_spec
 
 

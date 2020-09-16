@@ -25,17 +25,8 @@ import datetime
 import os
 from typing import List, Text
 
+
 from tfx.components import CsvExampleGen
-from tfx.components.trainer.executor import GenericExecutor
-from tfx.dsl.components.base import executor_spec
-from tfx.orchestration import metadata
-from tfx.orchestration import pipeline
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
-from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
-from tfx.types import Channel
-from tfx.types.standard_artifacts import Model
-from tfx.types.standard_artifacts import ModelBlessing
-from tfx.utils.dsl_utils import external_input
 
 # from tfx.components import StatisticsGen # Step 3
 # from tfx.components import SchemaGen # Step 3
@@ -55,6 +46,16 @@ from tfx.utils.dsl_utils import external_input
 # from tfx.components import Pusher # Step 7
 # from tfx.proto import pusher_pb2 # Step 7
 
+from tfx.components.base import executor_spec
+from tfx.components.trainer.executor import GenericExecutor
+from tfx.orchestration import metadata
+from tfx.orchestration import pipeline
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowDagRunner
+from tfx.orchestration.airflow.airflow_dag_runner import AirflowPipelineConfig
+from tfx.types import Channel
+from tfx.types.standard_artifacts import Model
+from tfx.types.standard_artifacts import ModelBlessing
+from tfx.utils.dsl_utils import external_input
 
 _pipeline_name = 'taxi'
 

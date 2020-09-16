@@ -28,7 +28,7 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_big_query.example_gen import component as big_query_example_gen_component
 from tfx.extensions.google_cloud_big_query.pusher import executor as bigquery_pusher_executor

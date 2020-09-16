@@ -25,7 +25,7 @@ import click
 import mock
 import tensorflow as tf
 
-from tfx.dsl.components.base import base_driver
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.tools.cli.handler import airflow_handler
 from tfx.utils import io_utils

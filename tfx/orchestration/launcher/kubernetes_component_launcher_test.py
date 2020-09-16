@@ -24,8 +24,8 @@ from kubernetes import client
 from kubernetes import config
 import mock
 import tensorflow as tf
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import publisher

@@ -19,11 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from tfx.components.base import base_driver
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import base_example_gen_executor
 from tfx.components.example_gen import component
 from tfx.components.example_gen import driver
-from tfx.dsl.components.base import base_driver
-from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.types import standard_artifacts
 

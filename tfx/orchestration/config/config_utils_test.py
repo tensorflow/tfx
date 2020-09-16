@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import executor_spec
 from tfx.orchestration.config import config_utils
 from tfx.orchestration.config import docker_component_config
 from tfx.orchestration.config import pipeline_config

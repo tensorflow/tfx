@@ -20,7 +20,7 @@ from __future__ import print_function
 
 from typing import Optional, Tuple, Type
 
-from tfx.dsl.components.base import base_component
+from tfx.components.base import base_component
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import pipeline_config
 from tfx.orchestration.launcher import base_component_launcher

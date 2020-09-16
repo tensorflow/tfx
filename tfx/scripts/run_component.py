@@ -25,7 +25,7 @@ from __future__ import print_function
 import sys
 from typing import List, Text
 
-from tfx.dsl.components.base import base_executor
+from tfx.components.base import base_executor
 from tfx.types import channel_utils
 from tfx.utils import import_utils
 

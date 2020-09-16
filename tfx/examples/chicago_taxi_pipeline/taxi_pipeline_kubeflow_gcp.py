@@ -33,7 +33,7 @@ from tfx.components import SchemaGen
 from tfx.components import StatisticsGen
 from tfx.components import Trainer
 from tfx.components import Transform
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor

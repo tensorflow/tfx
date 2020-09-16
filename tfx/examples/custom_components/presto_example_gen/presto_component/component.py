@@ -22,10 +22,11 @@ from typing import Optional, Text
 
 from presto_component import executor
 from proto import presto_config_pb2
+
 from tfx import types
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import component
 from tfx.components.example_gen import utils
-from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 
 

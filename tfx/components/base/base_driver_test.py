@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.base.base_driver."""
+"""Tests for tfx.components.base.base_driver."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,7 @@ import os
 import mock
 import tensorflow as tf
 from tfx import types
-from tfx.dsl.components.base import base_driver
+from tfx.components.base import base_driver
 from tfx.orchestration import data_types
 from tfx.types import channel_utils
 from tfx.types import standard_artifacts
@@ -111,7 +111,7 @@ class BaseDriverTest(tf.test.TestCase):
         pipeline_info=self._pipeline_info)
 
   @mock.patch(
-      'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
   def testPreExecutionNewExecution(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(
@@ -150,7 +150,7 @@ class BaseDriverTest(tf.test.TestCase):
                      _STRING_VALUE)
 
   @mock.patch(
-      'tfx.dsl.components.base.base_driver.BaseDriver.verify_input_artifacts')
+      'tfx.components.base.base_driver.BaseDriver.verify_input_artifacts')
   @mock.patch.object(types.ValueArtifact, 'read', fake_read)
   def testPreExecutionCached(self, mock_verify_input_artifacts_fn):
     self._mock_metadata.search_artifacts.return_value = list(

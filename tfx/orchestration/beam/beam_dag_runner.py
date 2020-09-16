@@ -25,7 +25,7 @@ from typing import Any, Iterable, List, Optional, Text, Type
 import absl
 import apache_beam as beam
 
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline

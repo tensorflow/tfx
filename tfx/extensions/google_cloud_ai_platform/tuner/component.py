@@ -14,8 +14,8 @@
 # limitations under the License.
 """TFX Tuner that distributes tuner workers as a job on AI Platform Training."""
 
+from tfx.components.base import executor_spec
 from tfx.components.tuner import component as tuner_component
-from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.tuner import executor
 
 

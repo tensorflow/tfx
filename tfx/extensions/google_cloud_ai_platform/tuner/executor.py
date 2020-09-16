@@ -21,10 +21,11 @@ import os
 from typing import Any, Dict, List, Text
 
 from absl import logging
+
 from tfx import types
+from tfx.components.base import base_executor
 from tfx.components.trainer import constants
 from tfx.components.tuner import executor as tuner_executor
-from tfx.dsl.components.base import base_executor
 from tfx.extensions.google_cloud_ai_platform import runner
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.utils import json_utils

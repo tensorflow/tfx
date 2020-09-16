@@ -25,10 +25,10 @@ import tensorflow as tf
 from tfx import types
 from tfx.components import CsvExampleGen
 from tfx.components import ResolverNode
+from tfx.components.base import base_component
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.dsl.compiler import compiler_utils
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
 from tfx.dsl.experimental import latest_blessed_model_resolver
 from tfx.proto.orchestration import pipeline_pb2
 from tfx.utils.dsl_utils import external_input

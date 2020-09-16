@@ -20,10 +20,11 @@ from __future__ import print_function
 from typing import Any, Dict, Optional, Text, Union
 
 import absl
+
 from tfx import types
+from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.trainer import executor
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import trainer_pb2
 from tfx.types import standard_artifacts

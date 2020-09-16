@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.base.decorators."""
+"""Tests for tfx.components.base.decorators."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,16 +25,18 @@ import unittest
 # Standard Imports
 
 import six
+
 import tensorflow as tf
+
 from tfx import types
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental.annotations import InputArtifact
 from tfx.dsl.component.experimental.annotations import OutputArtifact
 from tfx.dsl.component.experimental.annotations import OutputDict
 from tfx.dsl.component.experimental.annotations import Parameter
 from tfx.dsl.component.experimental.decorators import _SimpleComponent
 from tfx.dsl.component.experimental.decorators import component
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import metadata
 from tfx.orchestration import pipeline
 from tfx.orchestration.beam import beam_dag_runner

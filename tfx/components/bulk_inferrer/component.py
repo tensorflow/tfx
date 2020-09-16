@@ -21,9 +21,9 @@ from __future__ import print_function
 from typing import Any, Dict, Optional, Text, Union
 
 from tfx import types
+from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.bulk_inferrer import executor
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec
 from tfx.proto import bulk_inferrer_pb2
 from tfx.types import standard_artifacts
 from tfx.types.standard_component_specs import BulkInferrerSpec

@@ -19,9 +19,9 @@ from __future__ import print_function
 
 from typing import Any, Callable, Dict, Text
 
+from tfx.components.base import base_component
 from tfx.dsl.component.experimental import container_component
 from tfx.dsl.component.experimental import placeholders
-from tfx.dsl.components.base import base_component
 from tfx.extensions.experimental.kfp_compatibility.proto import kfp_component_spec_pb2
 from tfx.types import standard_artifacts
 import yaml

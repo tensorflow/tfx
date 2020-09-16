@@ -28,11 +28,12 @@ from typing import Any, Callable, Dict, List, Text
 # Standard Imports
 
 import six
+
 from tfx import types as tfx_types
+from tfx.components.base import base_component
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental import function_parser
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
 from tfx.types import channel_utils
 from tfx.types import component_spec
 
@@ -206,14 +207,14 @@ def component(func: types.FunctionType) -> Callable[..., Any]:
 
   This is example usage of component definition using this decorator:
 
-      from tfx.dsl.components.base.annotations import OutputDict
-      from tfx.dsl.components.base.annotations import
+      from tfx.components.base.annotations import OutputDict
+      from tfx.components.base.annotations import
       InputArtifact
-      from tfx.dsl.components.base.annotations import
+      from tfx.components.base.annotations import
       OutputArtifact
-      from tfx.dsl.components.base.annotations import
+      from tfx.components.base.annotations import
       Parameter
-      from tfx.dsl.components.base.decorators import component
+      from tfx.components.base.decorators import component
       from tfx.types.standard_artifacts import Examples
       from tfx.types.standard_artifacts import Model
 

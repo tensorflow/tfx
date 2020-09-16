@@ -32,7 +32,7 @@ from typing import Dict, Optional, Set, Text, Type
 import absl
 from kfp import dsl
 from kubernetes import client as k8s_client
-from tfx.dsl.components.base import base_node as tfx_base_node
+from tfx.components.base import base_node as tfx_base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.kubeflow import node_wrapper

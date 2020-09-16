@@ -19,13 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, List, Optional, Text, Union
-
 from absl import logging
 import tensorflow_model_analysis as tfma
+
 from tfx import types
+from tfx.components.base import base_component
+from tfx.components.base import executor_spec
 from tfx.components.evaluator import executor
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.proto import evaluator_pb2
 from tfx.types import standard_artifacts

@@ -30,7 +30,7 @@ import click
 from six import with_metaclass
 import tensorflow as tf
 
-from tfx.dsl.components.base import base_driver
+from tfx.components.base import base_driver
 from tfx.tools.cli import labels
 from tfx.utils import io_utils
 

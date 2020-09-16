@@ -22,6 +22,8 @@ import os
 
 import absl
 import tensorflow as tf
+
+from tfx.components.base import executor_spec
 from tfx.components.common_nodes.importer_node import ImporterNode
 from tfx.components.evaluator.component import Evaluator
 from tfx.components.example_gen.csv_example_gen.component import CsvExampleGen
@@ -29,7 +31,6 @@ from tfx.components.pusher.component import Pusher
 from tfx.components.statistics_gen.component import StatisticsGen
 from tfx.components.trainer.component import Trainer
 from tfx.components.transform.component import Transform
-from tfx.dsl.components.base import executor_spec
 from tfx.extensions.google_cloud_ai_platform.pusher import executor as ai_platform_pusher_executor
 from tfx.extensions.google_cloud_ai_platform.trainer import executor as ai_platform_trainer_executor
 from tfx.extensions.google_cloud_ai_platform.tuner import component as ai_platform_tuner_component

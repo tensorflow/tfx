@@ -37,7 +37,7 @@ import jinja2
 import nbformat
 from six.moves import builtins
 from tfx import types
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.experimental.interactive import execution_result

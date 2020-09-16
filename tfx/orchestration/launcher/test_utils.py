@@ -24,10 +24,10 @@ from typing import Any, Dict, List, Optional, Text
 import tensorflow as tf
 
 from tfx import types
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_driver
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import base_component
+from tfx.components.base import base_driver
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.orchestration import data_types
 from tfx.types import artifact_utils
 from tfx.types import channel_utils

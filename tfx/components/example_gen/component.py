@@ -19,14 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 from typing import Any, Dict, Optional, Text, Union
-
 from absl import logging
+
 from tfx import types
+from tfx.components.base import base_component
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.components.example_gen import driver
 from tfx.components.example_gen import utils
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.types import artifact_utils
 from tfx.types import standard_artifacts

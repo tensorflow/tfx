@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Text, Type
 
 from airflow import models
 from airflow.operators import python_operator
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 from tfx.orchestration import data_types
 from tfx.orchestration import metadata
 from tfx.orchestration.config import base_component_config

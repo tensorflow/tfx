@@ -22,9 +22,10 @@ from typing import Any, Dict, List, Optional, Text, cast
 
 from absl import logging
 from kubernetes import client
+
 from tfx import types
+from tfx.components.base import executor_spec
 from tfx.dsl.component.experimental import executor_specs
-from tfx.dsl.components.base import executor_spec
 from tfx.orchestration.config import base_component_config
 from tfx.orchestration.config import kubernetes_component_config
 from tfx.orchestration.launcher import base_component_launcher

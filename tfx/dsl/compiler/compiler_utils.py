@@ -19,12 +19,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import List, Optional, Text, Type
+from typing import Type, List, Optional, Text
 
 from tfx import types
+from tfx.components.base import base_component
+from tfx.components.base import base_node
 from tfx.components.common_nodes import resolver_node
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_node
 from tfx.proto.orchestration import pipeline_pb2
 
 

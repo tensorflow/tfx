@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tfx.dsl.components.base.base_component."""
+"""Tests for tfx.components.base.base_component."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,9 +21,9 @@ from __future__ import print_function
 import tensorflow as tf
 
 from tfx import types
-from tfx.dsl.components.base import base_component
-from tfx.dsl.components.base import base_executor
-from tfx.dsl.components.base import executor_spec
+from tfx.components.base import base_component
+from tfx.components.base import base_executor
+from tfx.components.base import executor_spec
 from tfx.proto import example_gen_pb2
 from tfx.types import component_spec
 from tfx.utils import json_utils

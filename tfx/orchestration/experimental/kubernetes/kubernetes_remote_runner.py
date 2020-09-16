@@ -20,7 +20,7 @@ from typing import Dict, List, Text
 
 import absl
 from kubernetes import client
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 from tfx.orchestration import pipeline as tfx_pipeline
 from tfx.orchestration.kubeflow import node_wrapper
 from tfx.utils import json_utils

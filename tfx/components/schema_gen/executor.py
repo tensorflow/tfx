@@ -25,7 +25,7 @@ from absl import logging
 import tensorflow_data_validation as tfdv
 
 from tfx import types
-from tfx.dsl.components.base import base_executor
+from tfx.components.base import base_executor
 from tfx.types import artifact_utils
 from tfx.utils import io_utils
 from tfx.utils import json_utils

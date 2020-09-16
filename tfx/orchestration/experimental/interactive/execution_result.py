@@ -24,7 +24,7 @@ from __future__ import print_function
 
 # Standard Imports
 
-from tfx.dsl.components.base import base_node
+from tfx.components.base import base_node
 
 
 class ExecutionResult(object):
